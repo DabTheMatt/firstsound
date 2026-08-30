@@ -6,7 +6,7 @@ import {
   defaultPlayRegion,
   playbackRate,
 } from '../parameters/mapping'
-import type { EngineMode, ParamId, PresetV1 } from '../parameters/types'
+import type { EngineMode, FilterType, ParamId, PresetV1 } from '../parameters/types'
 import { mixToMono } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -18,6 +18,7 @@ export type EngineSnapshot = {
   playing: boolean
   loop: boolean
   engineMode: EngineMode
+  filterType: FilterType
   audioStatus: AudioStatus
   params: Record<ParamId, number>
 }
@@ -44,6 +45,7 @@ function createContext(): AudioContext {
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
+  private filter: BiquadFilterNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private buffer: AudioBuffer | null = null
   private mono: Float32Array | null = null
@@ -51,6 +53,7 @@ export class AudioEngine {
   private playing = false
   private loop = true
   private engineMode: EngineMode = 'grain'
+  private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private params: Record<ParamId, number> = defaultParamValues()
   private listeners = new Set<Listener>()
@@ -232,6 +235,7 @@ export class AudioEngine {
     this.params.start = region.start
     this.params.end = region.end
     this.engineMode = 'playback'
+    this.filterType = 'off'
     this.applyLiveAudio()
     this.emit()
   }
@@ -242,6 +246,7 @@ export class AudioEngine {
       version: 1,
       loop: this.loop,
       engineMode: this.engineMode,
+      filterType: this.filterType,
       params: { ...this.params },
     }
   }
@@ -249,6 +254,7 @@ export class AudioEngine {
   applyPreset(preset: PresetV1): void {
     this.loop = preset.loop
     this.engineMode = preset.engineMode
+    this.filterType = preset.filterType ?? 'off'
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = preset.params[id]
       if (typeof value === 'number') {
@@ -282,15 +288,19 @@ export class AudioEngine {
     if (!this.ctx) {
       this.ctx = createContext()
       this.master = this.ctx.createGain()
+      this.filter = this.ctx.createBiquadFilter()
       this.limiter = this.ctx.createDynamicsCompressor()
       this.limiter.threshold.value = -6
       this.limiter.knee.value = 6
       this.limiter.ratio.value = 12
       this.limiter.attack.value = 0.003
       this.limiter.release.value = 0.12
-      this.master.connect(this.limiter)
+      // Voices -> master gain -> filter -> limiter -> output.
+      this.master.connect(this.filter)
+      this.filter.connect(this.limiter)
       this.limiter.connect(this.ctx.destination)
       this.master.gain.value = dbToGain(this.params.gain)
+      this.applyFilter(0)
       this.bindVisibility()
     }
     if (this.ctx.state === 'suspended') {
@@ -313,10 +323,39 @@ export class AudioEngine {
     })
   }
 
+  setFilterType(type: FilterType): void {
+    if (this.filterType === type) return
+    this.filterType = type
+    this.applyFilter(0.02)
+    this.emit()
+  }
+
+  /**
+   * Configure the biquad from current params. When `off` we keep the node in the
+   * graph but make it transparent (open low-pass, no resonance) instead of
+   * reconnecting the graph, which would risk clicks mid-playback.
+   */
+  private applyFilter(smoothing: number): void {
+    if (!this.ctx || !this.filter) return
+    const now = this.ctx.currentTime
+    const nyquist = this.ctx.sampleRate / 2
+    if (this.filterType === 'off') {
+      this.filter.type = 'lowpass'
+      this.filter.frequency.setTargetAtTime(Math.min(20000, nyquist), now, smoothing)
+      this.filter.Q.setTargetAtTime(0.0001, now, smoothing)
+      return
+    }
+    this.filter.type = this.filterType
+    const cutoff = Math.min(this.params.filterCutoff, nyquist * 0.99)
+    this.filter.frequency.setTargetAtTime(cutoff, now, smoothing)
+    this.filter.Q.setTargetAtTime(this.params.filterReso, now, smoothing)
+  }
+
   private applyLiveAudio(): void {
     if (!this.ctx || !this.master) return
     const now = this.ctx.currentTime
     this.master.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    this.applyFilter(0.03)
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
@@ -415,6 +454,7 @@ export class AudioEngine {
       playing: this.playing,
       loop: this.loop,
       engineMode: this.engineMode,
+      filterType: this.filterType,
       audioStatus: this.audioStatus,
       params: { ...this.params },
     }

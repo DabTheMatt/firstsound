@@ -84,6 +84,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'position':
     case 'scatter':
       return `${Math.round(value)} %`
+    case 'filterCutoff':
+      return value >= 1000
+        ? `${(value / 1000).toFixed(2)} kHz`
+        : `${Math.round(value)} Hz`
+    case 'filterReso':
+      return `${value.toFixed(2)} Q`
     default:
       return String(value)
   }

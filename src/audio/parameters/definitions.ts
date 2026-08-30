@@ -1,4 +1,4 @@
-import type { ParamDef, ParamId } from './types'
+import type { FilterType, ParamDef, ParamId } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
   start: {
@@ -104,7 +104,35 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 0.01,
   },
+  filterCutoff: {
+    id: 'filterCutoff',
+    label: 'Cutoff',
+    min: 20,
+    max: 18000,
+    // Open by default so engaging the filter starts transparent, then closes.
+    defaultValue: 18000,
+    unit: 'Hz',
+    mapping: 'log',
+  },
+  filterReso: {
+    id: 'filterReso',
+    label: 'Resonance',
+    min: 0.1,
+    max: 18,
+    defaultValue: 0.7,
+    unit: 'Q',
+    mapping: 'log',
+    step: 0.01,
+  },
 }
+
+/** Filter type options, in UI order. `off` bypasses the filter entirely. */
+export const FILTER_TYPES: { value: FilterType; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'lowpass', label: 'Low' },
+  { value: 'highpass', label: 'High' },
+  { value: 'bandpass', label: 'Band' },
+]
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
@@ -119,6 +147,7 @@ export const GRAIN_KNOBS: ParamId[] = [
 ]
 export const MOTION_KNOBS: ParamId[] = ['position', 'scatter', 'speed']
 export const SPACE_KNOBS: ParamId[] = ['gain']
+export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {

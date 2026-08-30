@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
+import { FILTER_TYPES } from '../audio/parameters/definitions'
 import { Knob } from '../components/controls/Knob'
+import { Segmented } from '../components/controls/Segmented'
 import { Toggle } from '../components/controls/Toggle'
 import { TransportButton } from '../components/controls/TransportButton'
 import { Waveform } from '../components/waveform/Waveform'
@@ -214,6 +216,17 @@ export default function App() {
         </nav>
 
         {note ? <p className={styles.note}>{note}</p> : null}
+
+        {tab === 'filter' ? (
+          <div className={styles.moduleControls}>
+            <Segmented
+              label="Filter type"
+              value={snap.filterType}
+              options={FILTER_TYPES}
+              onChange={(type) => engine.setFilterType(type)}
+            />
+          </div>
+        ) : null}
 
         <div className={styles.knobs}>
           {knobs.map((id) => (

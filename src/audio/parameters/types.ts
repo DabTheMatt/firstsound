@@ -12,6 +12,10 @@ export type ParamId =
   | 'scatter'
   | 'grainPitch'
   | 'pitchSpread'
+  | 'filterCutoff'
+  | 'filterReso'
+
+export type FilterType = 'off' | 'lowpass' | 'highpass' | 'bandpass'
 
 export type ParamDef = {
   id: ParamId
@@ -32,4 +36,6 @@ export type PresetV1 = {
   loop: boolean
   engineMode: EngineMode
   params: Record<ParamId, number>
+  // Optional so presets saved before the filter module still load.
+  filterType?: FilterType
 }

@@ -191,6 +191,13 @@
   line-height: 1.4;
 }
 
+.moduleControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .knobs {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));

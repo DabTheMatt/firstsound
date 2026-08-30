@@ -5,6 +5,7 @@ import {
   clampRegion,
   dbToGain,
   defaultPlayRegion,
+  formatParamValue,
   fromNormalized,
   playbackRate,
   toNormalized,
@@ -21,6 +22,21 @@ describe('mapping', () => {
     const def = PARAMS.speed
     const n = toNormalized(2, def)
     expect(fromNormalized(n, def)).toBeCloseTo(2, 8)
+  })
+
+  it('round-trips log filter cutoff', () => {
+    const def = PARAMS.filterCutoff
+    const n = toNormalized(800, def)
+    expect(fromNormalized(n, def)).toBeCloseTo(800, 6)
+  })
+
+  it('formats filter cutoff in Hz and kHz', () => {
+    expect(formatParamValue(800, PARAMS.filterCutoff)).toBe('800 Hz')
+    expect(formatParamValue(4200, PARAMS.filterCutoff)).toBe('4.20 kHz')
+  })
+
+  it('formats resonance as Q', () => {
+    expect(formatParamValue(0.7, PARAMS.filterReso)).toBe('0.70 Q')
   })
 
   it('clamps to def range', () => {
