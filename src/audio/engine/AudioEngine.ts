@@ -107,10 +107,10 @@ export class AudioEngine {
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
     const span = Math.max(end - start, MIN_REGION)
-    // Reverse moves the playhead from `end` down towards `start`.
-    const direction = this.reverse ? -1 : 1
     if (this.loop) {
-      const rel = (this.playOffset - start + direction * elapsed) % span
+      // Reverse counts the playhead down from `end`, wrapping back to `end`.
+      if (this.reverse) return end - (elapsed % span)
+      const rel = (this.playOffset - start + elapsed) % span
       return start + (rel < 0 ? rel + span : rel)
     }
     return this.reverse
