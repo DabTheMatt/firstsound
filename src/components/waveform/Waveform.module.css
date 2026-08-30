@@ -1,0 +1,107 @@
+.wrap {
+  position: relative;
+  height: 168px;
+  border-radius: 10px;
+  background: #151717;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: calc(100% - 22px);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0 0 22px 0;
+}
+
+.region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-left: 1.5px solid #f4f4f4;
+  border-right: 1.5px solid #f4f4f4;
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  width: 28px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.handle::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.ruler {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px 0;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  position: absolute;
+  inset: 0 0 22px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.demo {
+  pointer-events: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}

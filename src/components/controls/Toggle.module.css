@@ -1,0 +1,18 @@
+.loop {
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}
+
+.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}

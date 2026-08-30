@@ -1,0 +1,49 @@
+:root {
+  --bg-page: #e6dfd2;
+  --bg-shell: #1a1a1a;
+  --bg-panel: #2e3133;
+  --accent: #d4a251;
+  --organic: #5e6144;
+  --muted: #8c8c8c;
+  --text: #e8e8e8;
+  --waveform: #9aa0a3;
+  --handle: #f2f2f2;
+  --danger: #c45c4a;
+  --radius-shell: 22px;
+  --font: 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

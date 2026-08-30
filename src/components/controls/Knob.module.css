@@ -1,0 +1,41 @@
+.knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 96px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dial {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  touch-action: none;
+}
+
+.dial:active {
+  cursor: ns-resize;
+}
+
+.value {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}

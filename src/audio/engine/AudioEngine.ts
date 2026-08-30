@@ -1,0 +1,429 @@
+import { defaultParamValues, PARAMS } from '../parameters/definitions'
+import {
+  applyParamValue,
+  clampRegion,
+  dbToGain,
+  defaultPlayRegion,
+  playbackRate,
+} from '../parameters/mapping'
+import type { EngineMode, ParamId, PresetV1 } from '../parameters/types'
+import { mixToMono } from './peaks'
+
+export type AudioStatus = 'idle' | 'blocked' | 'running'
+
+export type EngineSnapshot = {
+  fileName: string
+  duration: number
+  sampleLoaded: boolean
+  playing: boolean
+  loop: boolean
+  engineMode: EngineMode
+  audioStatus: AudioStatus
+  params: Record<ParamId, number>
+}
+
+type Listener = () => void
+
+const LOOKAHEAD = 0.08
+const SCHEDULER_MS = 20
+const MIN_REGION = 0.05
+
+function createContext(): AudioContext {
+  const Ctor =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext
+  if (!Ctor) throw new Error('Web Audio is not available in this browser.')
+  return new Ctor()
+}
+
+/**
+ * Client-side sample instrument engine.
+ * React must not drive audio timing — this class owns the clock.
+ */
+export class AudioEngine {
+  private ctx: AudioContext | null = null
+  private master: GainNode | null = null
+  private limiter: DynamicsCompressorNode | null = null
+  private buffer: AudioBuffer | null = null
+  private mono: Float32Array | null = null
+  private fileName = ''
+  private playing = false
+  private loop = true
+  private engineMode: EngineMode = 'grain'
+  private audioStatus: AudioStatus = 'idle'
+  private params: Record<ParamId, number> = defaultParamValues()
+  private listeners = new Set<Listener>()
+  private snapshot: EngineSnapshot
+  private source: AudioBufferSourceNode | null = null
+  private playCtxTime = 0
+  private playOffset = 0
+  private nextGrainTime = 0
+  private schedulerId = 0
+  private visibilityBound = false
+
+  constructor() {
+    this.snapshot = this.buildSnapshot()
+  }
+
+  subscribe = (listener: Listener): (() => void) => {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  getSnapshot = (): EngineSnapshot => this.snapshot
+
+  getBuffer(): AudioBuffer | null {
+    return this.buffer
+  }
+
+  getMono(): Float32Array | null {
+    return this.mono
+  }
+
+  getPlayheadSeconds(): number {
+    const duration = this.buffer?.duration ?? 0
+    const { start, end } = this.region(duration)
+    if (!this.playing || !this.ctx || duration <= 0) {
+      if (this.engineMode === 'grain') {
+        return start + (this.params.position / 100) * (end - start)
+      }
+      return start
+    }
+    if (this.engineMode === 'grain') {
+      return start + (this.params.position / 100) * (end - start)
+    }
+    const rate = playbackRate(this.params.speed, this.params.pitch)
+    const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
+    const span = Math.max(end - start, MIN_REGION)
+    if (this.loop) {
+      const rel = (this.playOffset - start + elapsed) % span
+      return start + (rel < 0 ? rel + span : rel)
+    }
+    return Math.min(end, this.playOffset + elapsed)
+  }
+
+  async unlock(): Promise<void> {
+    await this.ensureContext()
+  }
+
+  async loadDemoTone(): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx) return
+    const duration = 8
+    const rate = this.ctx.sampleRate
+    const buffer = this.ctx.createBuffer(2, Math.floor(duration * rate), rate)
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch)
+      let lp = 0
+      for (let i = 0; i < data.length; i++) {
+        const t = i / rate
+        const noise = Math.random() * 2 - 1
+        lp += 0.02 * (noise - lp)
+        const tone = Math.sin(2 * Math.PI * 110 * t) * Math.exp(-t * 0.12)
+        const grain = Math.sin(2 * Math.PI * (220 + ch * 3) * t) * 0.15
+        data[i] = lp * 0.55 + tone * 0.35 + grain
+      }
+    }
+    this.stopVoices()
+    this.playing = false
+    this.fileName = 'field_demo.wav'
+    this.applyLoadedBuffer(buffer)
+  }
+
+  async loadArrayBuffer(data: ArrayBuffer, fileName: string): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx) return
+    const copy = data.slice(0)
+    const decoded = await this.ctx.decodeAudioData(copy)
+    this.stopVoices()
+    this.playing = false
+    this.fileName = fileName
+    this.applyLoadedBuffer(decoded)
+  }
+
+  async play(): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx || !this.buffer) return
+    if (this.audioStatus === 'blocked') return
+    this.stopVoices()
+    this.playing = true
+    const { start } = this.region(this.buffer.duration)
+    this.playCtxTime = this.ctx.currentTime
+    this.playOffset =
+      this.engineMode === 'grain'
+        ? start + (this.params.position / 100) * (this.region(this.buffer.duration).end - start)
+        : start
+    if (this.engineMode === 'grain') {
+      this.nextGrainTime = this.ctx.currentTime
+      this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
+      this.scheduleGrains()
+    } else {
+      this.startBufferVoice(this.playOffset)
+    }
+    this.emit()
+  }
+
+  stop(): void {
+    this.stopVoices()
+    this.playing = false
+    this.emit()
+  }
+
+  togglePlay(): void {
+    if (this.playing) this.stop()
+    else void this.play()
+  }
+
+  setLoop(loop: boolean): void {
+    this.loop = loop
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  setEngineMode(mode: EngineMode): void {
+    if (this.engineMode === mode) return
+    this.engineMode = mode
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  setParam(id: ParamId, value: number): void {
+    const duration = this.buffer?.duration ?? 0
+    if (id === 'start' || id === 'end') {
+      const next = { ...this.params, [id]: value }
+      const region = clampRegion(next.start, next.end, duration, MIN_REGION)
+      this.params.start = region.start
+      this.params.end = region.end
+    } else {
+      this.params[id] = applyParamValue(value, PARAMS[id])
+    }
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  setRegion(start: number, end: number): void {
+    const duration = this.buffer?.duration ?? 0
+    const region = clampRegion(start, end, duration, MIN_REGION)
+    this.params.start = region.start
+    this.params.end = region.end
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  resetParam(id: ParamId): void {
+    if (id === 'start') {
+      this.setParam('start', 0)
+      return
+    }
+    if (id === 'end') {
+      this.setParam('end', this.buffer?.duration ?? 1)
+      return
+    }
+    this.setParam(id, PARAMS[id].defaultValue)
+  }
+
+  resetAll(): void {
+    const duration = this.buffer?.duration ?? 0
+    this.params = defaultParamValues()
+    const region = defaultPlayRegion(duration, MIN_REGION)
+    this.params.start = region.start
+    this.params.end = region.end
+    this.engineMode = 'playback'
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  toPreset(): PresetV1 {
+    return {
+      instrument: 'field',
+      version: 1,
+      loop: this.loop,
+      engineMode: this.engineMode,
+      params: { ...this.params },
+    }
+  }
+
+  applyPreset(preset: PresetV1): void {
+    this.loop = preset.loop
+    this.engineMode = preset.engineMode
+    for (const id of Object.keys(this.params) as ParamId[]) {
+      const value = preset.params[id]
+      if (typeof value === 'number') {
+        this.params[id] = applyParamValue(value, PARAMS[id])
+      }
+    }
+    const duration = this.buffer?.duration ?? 0
+    const region = clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
+    this.params.start = region.start
+    this.params.end = region.end
+    if (this.playing) void this.play()
+    else {
+      this.applyLiveAudio()
+      this.emit()
+    }
+  }
+
+  private applyLoadedBuffer(buffer: AudioBuffer): void {
+    this.buffer = buffer
+    this.mono = mixToMono(buffer)
+    const region = defaultPlayRegion(buffer.duration, MIN_REGION)
+    this.params = { ...this.params, start: region.start, end: region.end }
+    this.emit()
+  }
+
+  private region(duration: number) {
+    return clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
+  }
+
+  private async ensureContext(): Promise<void> {
+    if (!this.ctx) {
+      this.ctx = createContext()
+      this.master = this.ctx.createGain()
+      this.limiter = this.ctx.createDynamicsCompressor()
+      this.limiter.threshold.value = -6
+      this.limiter.knee.value = 6
+      this.limiter.ratio.value = 12
+      this.limiter.attack.value = 0.003
+      this.limiter.release.value = 0.12
+      this.master.connect(this.limiter)
+      this.limiter.connect(this.ctx.destination)
+      this.master.gain.value = dbToGain(this.params.gain)
+      this.bindVisibility()
+    }
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume()
+    }
+    this.audioStatus = this.ctx.state === 'running' ? 'running' : 'blocked'
+    this.emit()
+  }
+
+  private bindVisibility(): void {
+    if (this.visibilityBound || typeof document === 'undefined') return
+    this.visibilityBound = true
+    // iOS suspends AudioContext in the background; resume on return.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !this.ctx) return
+      void this.ctx.resume().then(() => {
+        this.audioStatus = this.ctx?.state === 'running' ? 'running' : 'blocked'
+        this.emit()
+      })
+    })
+  }
+
+  private applyLiveAudio(): void {
+    if (!this.ctx || !this.master) return
+    const now = this.ctx.currentTime
+    this.master.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    if (this.source && this.engineMode === 'playback') {
+      const rate = playbackRate(this.params.speed, this.params.pitch)
+      this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
+      const duration = this.buffer?.duration ?? 0
+      const { start, end } = this.region(duration)
+      this.source.loopStart = start
+      this.source.loopEnd = end
+    }
+  }
+
+  private startBufferVoice(offset: number): void {
+    if (!this.ctx || !this.master || !this.buffer) return
+    const { start, end } = this.region(this.buffer.duration)
+    const src = this.ctx.createBufferSource()
+    src.buffer = this.buffer
+    src.loop = this.loop
+    src.loopStart = start
+    src.loopEnd = end
+    src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
+    src.connect(this.master)
+    const clamped = Math.min(Math.max(offset, start), Math.max(start, end - 0.001))
+    src.start(this.ctx.currentTime, clamped)
+    if (!this.loop) {
+      src.onended = () => {
+        if (this.source === src) this.stop()
+      }
+    }
+    this.source = src
+  }
+
+  private scheduleGrains(): void {
+    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !this.buffer || !this.master) {
+      return
+    }
+    const ctx = this.ctx
+    const horizon = ctx.currentTime + LOOKAHEAD
+    const density = Math.max(this.params.density, 0.5)
+    const interval = 1 / density
+    const grainDur = this.params.grainSize / 1000
+    const { start, end } = this.region(this.buffer.duration)
+    const span = Math.max(end - start, MIN_REGION)
+    const amp = 0.35 / Math.sqrt(density / 8)
+
+    while (this.nextGrainTime < horizon) {
+      const t = Math.max(this.nextGrainTime, ctx.currentTime)
+      const scatter = this.params.scatter / 100
+      const pos = this.params.position / 100
+      const jitter = (Math.random() * 2 - 1) * scatter * span * 0.5
+      let offset = start + pos * span + jitter
+      offset = Math.min(Math.max(offset, start), Math.max(start, end - grainDur * 0.25))
+      const grainPitch =
+        this.params.grainPitch + (Math.random() * 2 - 1) * this.params.pitchSpread
+      const rate = playbackRate(this.params.speed, this.params.pitch + grainPitch)
+
+      const src = ctx.createBufferSource()
+      src.buffer = this.buffer
+      src.playbackRate.value = rate
+      const gain = ctx.createGain()
+      const attack = Math.min(0.012, grainDur * 0.25)
+      const releaseStart = Math.max(attack, grainDur - grainDur * 0.35)
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(amp, t + attack)
+      gain.gain.linearRampToValueAtTime(amp, t + releaseStart)
+      gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      src.connect(gain)
+      gain.connect(this.master)
+      const dur = Math.min(grainDur, Math.max(0.01, this.buffer.duration - offset))
+      src.start(t, offset, dur)
+      src.stop(t + dur + 0.02)
+      this.nextGrainTime += interval
+    }
+  }
+
+  private stopVoices(): void {
+    if (this.schedulerId) {
+      window.clearInterval(this.schedulerId)
+      this.schedulerId = 0
+    }
+    if (this.source) {
+      try {
+        this.source.onended = null
+        this.source.stop()
+      } catch {
+        /* already stopped */
+      }
+      this.source.disconnect()
+      this.source = null
+    }
+  }
+
+  private buildSnapshot(): EngineSnapshot {
+    return {
+      fileName: this.fileName,
+      duration: this.buffer?.duration ?? 0,
+      sampleLoaded: Boolean(this.buffer),
+      playing: this.playing,
+      loop: this.loop,
+      engineMode: this.engineMode,
+      audioStatus: this.audioStatus,
+      params: { ...this.params },
+    }
+  }
+
+  private emit(): void {
+    this.snapshot = this.buildSnapshot()
+    for (const listener of this.listeners) listener()
+  }
+}
+
+export const engine = new AudioEngine()

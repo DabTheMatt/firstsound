@@ -1,0 +1,20 @@
+.play {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.play:active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.icon {
+  display: block;
+}

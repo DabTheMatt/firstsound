@@ -1,0 +1,17 @@
+{
+  "name": "FIELD",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "vite",
+      "command": "npm run dev",
+      "description": "FIELD sample instrument at http://localhost:5199/"
+    }
+  ],
+  "ports": [
+    {
+      "name": "vite",
+      "port": 5199
+    }
+  ]
+}
