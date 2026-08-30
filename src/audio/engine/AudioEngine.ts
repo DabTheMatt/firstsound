@@ -7,6 +7,7 @@ import {
   playbackRate,
 } from '../parameters/mapping'
 import type { EngineMode, FilterType, ParamId, PresetV1 } from '../parameters/types'
+import { reverseChannel, reverseTime } from './buffers'
 import { mixToMono } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -18,6 +19,7 @@ export type EngineSnapshot = {
   playing: boolean
   loop: boolean
   engineMode: EngineMode
+  reverse: boolean
   filterType: FilterType
   audioStatus: AudioStatus
   params: Record<ParamId, number>
@@ -48,11 +50,15 @@ export class AudioEngine {
   private filter: BiquadFilterNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private buffer: AudioBuffer | null = null
+  // Time-reversed copy of `buffer`; Web Audio can't play a source backwards, so
+  // reverse playback plays this forward instead.
+  private reversed: AudioBuffer | null = null
   private mono: Float32Array | null = null
   private fileName = ''
   private playing = false
   private loop = true
   private engineMode: EngineMode = 'grain'
+  private reverse = false
   private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private params: Record<ParamId, number> = defaultParamValues()
@@ -101,11 +107,15 @@ export class AudioEngine {
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
     const span = Math.max(end - start, MIN_REGION)
+    // Reverse moves the playhead from `end` down towards `start`.
+    const direction = this.reverse ? -1 : 1
     if (this.loop) {
-      const rel = (this.playOffset - start + elapsed) % span
+      const rel = (this.playOffset - start + direction * elapsed) % span
       return start + (rel < 0 ? rel + span : rel)
     }
-    return Math.min(end, this.playOffset + elapsed)
+    return this.reverse
+      ? Math.max(start, this.playOffset - elapsed)
+      : Math.min(end, this.playOffset + elapsed)
   }
 
   async unlock(): Promise<void> {
@@ -155,10 +165,13 @@ export class AudioEngine {
     this.playing = true
     const { start } = this.region(this.buffer.duration)
     this.playCtxTime = this.ctx.currentTime
+    const { end } = this.region(this.buffer.duration)
     this.playOffset =
       this.engineMode === 'grain'
-        ? start + (this.params.position / 100) * (this.region(this.buffer.duration).end - start)
-        : start
+        ? start + (this.params.position / 100) * (end - start)
+        : this.reverse
+          ? end
+          : start
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -189,6 +202,13 @@ export class AudioEngine {
   setEngineMode(mode: EngineMode): void {
     if (this.engineMode === mode) return
     this.engineMode = mode
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  setReverse(reverse: boolean): void {
+    if (this.reverse === reverse) return
+    this.reverse = reverse
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -235,6 +255,7 @@ export class AudioEngine {
     this.params.start = region.start
     this.params.end = region.end
     this.engineMode = 'playback'
+    this.reverse = false
     this.filterType = 'off'
     this.applyLiveAudio()
     this.emit()
@@ -246,6 +267,7 @@ export class AudioEngine {
       version: 1,
       loop: this.loop,
       engineMode: this.engineMode,
+      reverse: this.reverse,
       filterType: this.filterType,
       params: { ...this.params },
     }
@@ -254,6 +276,7 @@ export class AudioEngine {
   applyPreset(preset: PresetV1): void {
     this.loop = preset.loop
     this.engineMode = preset.engineMode
+    this.reverse = preset.reverse ?? false
     this.filterType = preset.filterType ?? 'off'
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = preset.params[id]
@@ -274,10 +297,29 @@ export class AudioEngine {
 
   private applyLoadedBuffer(buffer: AudioBuffer): void {
     this.buffer = buffer
+    this.reversed = this.buildReversed(buffer)
     this.mono = mixToMono(buffer)
     const region = defaultPlayRegion(buffer.duration, MIN_REGION)
     this.params = { ...this.params, start: region.start, end: region.end }
     this.emit()
+  }
+
+  private buildReversed(buffer: AudioBuffer): AudioBuffer | null {
+    if (!this.ctx) return null
+    const rev = this.ctx.createBuffer(
+      buffer.numberOfChannels,
+      buffer.length,
+      buffer.sampleRate,
+    )
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      rev.getChannelData(ch).set(reverseChannel(buffer.getChannelData(ch)))
+    }
+    return rev
+  }
+
+  /** Buffer feeding the voices — reversed copy when playing backwards. */
+  private activeBuffer(): AudioBuffer | null {
+    return this.reverse && this.reversed ? this.reversed : this.buffer
   }
 
   private region(duration: number) {
@@ -367,16 +409,23 @@ export class AudioEngine {
   }
 
   private startBufferVoice(offset: number): void {
-    if (!this.ctx || !this.master || !this.buffer) return
-    const { start, end } = this.region(this.buffer.duration)
+    const buffer = this.activeBuffer()
+    if (!this.ctx || !this.master || !buffer) return
+    const duration = buffer.duration
+    const { start, end } = this.region(duration)
     const src = this.ctx.createBufferSource()
-    src.buffer = this.buffer
+    src.buffer = buffer
     src.loop = this.loop
-    src.loopStart = start
-    src.loopEnd = end
+    // Reversed buffer: mirror the region so the same forward-time window plays.
+    src.loopStart = this.reverse ? reverseTime(end, duration) : start
+    src.loopEnd = this.reverse ? reverseTime(start, duration) : end
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
     src.connect(this.master)
-    const clamped = Math.min(Math.max(offset, start), Math.max(start, end - 0.001))
+    const mapped = this.reverse ? reverseTime(offset, duration) : offset
+    const clamped = Math.min(
+      Math.max(mapped, src.loopStart),
+      Math.max(src.loopStart, src.loopEnd - 0.001),
+    )
     src.start(this.ctx.currentTime, clamped)
     if (!this.loop) {
       src.onended = () => {
@@ -387,15 +436,17 @@ export class AudioEngine {
   }
 
   private scheduleGrains(): void {
-    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !this.buffer || !this.master) {
+    const buffer = this.activeBuffer()
+    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.master) {
       return
     }
     const ctx = this.ctx
+    const duration = buffer.duration
     const horizon = ctx.currentTime + LOOKAHEAD
     const density = Math.max(this.params.density, 0.5)
     const interval = 1 / density
     const grainDur = this.params.grainSize / 1000
-    const { start, end } = this.region(this.buffer.duration)
+    const { start, end } = this.region(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
 
@@ -411,7 +462,7 @@ export class AudioEngine {
       const rate = playbackRate(this.params.speed, this.params.pitch + grainPitch)
 
       const src = ctx.createBufferSource()
-      src.buffer = this.buffer
+      src.buffer = buffer
       src.playbackRate.value = rate
       const gain = ctx.createGain()
       const attack = Math.min(0.012, grainDur * 0.25)
@@ -422,8 +473,10 @@ export class AudioEngine {
       gain.gain.linearRampToValueAtTime(0, t + grainDur)
       src.connect(gain)
       gain.connect(this.master)
-      const dur = Math.min(grainDur, Math.max(0.01, this.buffer.duration - offset))
-      src.start(t, offset, dur)
+      const dur = Math.min(grainDur, Math.max(0.01, duration - offset))
+      // Mirror the grain window so each grain also plays backwards when reversed.
+      const grainOffset = this.reverse ? Math.max(0, duration - offset - dur) : offset
+      src.start(t, grainOffset, dur)
       src.stop(t + dur + 0.02)
       this.nextGrainTime += interval
     }
@@ -454,6 +507,7 @@ export class AudioEngine {
       playing: this.playing,
       loop: this.loop,
       engineMode: this.engineMode,
+      reverse: this.reverse,
       filterType: this.filterType,
       audioStatus: this.audioStatus,
       params: { ...this.params },

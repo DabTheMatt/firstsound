@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
-import { FILTER_TYPES } from '../audio/parameters/definitions'
+import { FILTER_TYPES, PLAYBACK_DIRECTIONS } from '../audio/parameters/definitions'
 import { Knob } from '../components/controls/Knob'
 import { Segmented } from '../components/controls/Segmented'
 import { Toggle } from '../components/controls/Toggle'
@@ -216,6 +216,17 @@ export default function App() {
         </nav>
 
         {note ? <p className={styles.note}>{note}</p> : null}
+
+        {tab === 'source' ? (
+          <div className={styles.moduleControls}>
+            <Segmented
+              label="Playback direction"
+              value={snap.reverse ? 'reverse' : 'forward'}
+              options={PLAYBACK_DIRECTIONS}
+              onChange={(value) => engine.setReverse(value === 'reverse')}
+            />
+          </div>
+        ) : null}
 
         {tab === 'filter' ? (
           <div className={styles.moduleControls}>

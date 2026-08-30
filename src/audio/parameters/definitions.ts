@@ -134,6 +134,12 @@ export const FILTER_TYPES: { value: FilterType; label: string }[] = [
   { value: 'bandpass', label: 'Band' },
 ]
 
+/** Playback direction options for the region/grain engines. */
+export const PLAYBACK_DIRECTIONS: { value: 'forward' | 'reverse'; label: string }[] = [
+  { value: 'forward', label: 'Forward' },
+  { value: 'reverse', label: 'Reverse' },
+]
+
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
 export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain']

@@ -36,6 +36,7 @@ export type PresetV1 = {
   loop: boolean
   engineMode: EngineMode
   params: Record<ParamId, number>
-  // Optional so presets saved before the filter module still load.
+  // Optional so presets saved before these modules existed still load.
   filterType?: FilterType
+  reverse?: boolean
 }
