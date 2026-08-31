@@ -149,6 +149,7 @@ export default function App() {
         ) : null}
 
         <Waveform
+          key={snap.fileName || 'empty'}
           duration={snap.duration}
           start={snap.params.start}
           end={snap.params.end}
