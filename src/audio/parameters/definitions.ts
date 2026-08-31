@@ -124,6 +124,43 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'log',
     step: 0.01,
   },
+  spaceMix: {
+    id: 'spaceMix',
+    label: 'Mix',
+    min: 0,
+    max: 100,
+    // Off by default so the dry signal is unchanged until Space is dialed in.
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  delayTime: {
+    id: 'delayTime',
+    label: 'Delay',
+    min: 20,
+    max: 1000,
+    defaultValue: 300,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  delayFeedback: {
+    id: 'delayFeedback',
+    label: 'Feedback',
+    min: 0,
+    max: 95,
+    defaultValue: 35,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverb: {
+    id: 'reverb',
+    label: 'Reverb',
+    min: 0,
+    max: 100,
+    defaultValue: 25,
+    unit: '%',
+    mapping: 'linear',
+  },
 }
 
 /** Filter type options, in UI order. `off` bypasses the filter entirely. */
@@ -153,7 +190,7 @@ export const GRAIN_KNOBS: ParamId[] = [
   'pitchSpread',
 ]
 export const MOTION_KNOBS: ParamId[] = ['position', 'scatter', 'speed']
-export const SPACE_KNOBS: ParamId[] = ['gain']
+export const SPACE_KNOBS: ParamId[] = ['spaceMix', 'delayTime', 'delayFeedback', 'reverb']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 

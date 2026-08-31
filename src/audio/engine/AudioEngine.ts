@@ -68,6 +68,11 @@ export class AudioEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private filter: BiquadFilterNode | null = null
+  private spaceSend: GainNode | null = null
+  private delay: DelayNode | null = null
+  private delayFeedback: GainNode | null = null
+  private reverb: ConvolverNode | null = null
+  private reverbGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private buffer: AudioBuffer | null = null
   // Time-reversed copy of `buffer`; Web Audio can't play a source backwards, so
@@ -395,11 +400,31 @@ export class AudioEngine {
       this.limiter.ratio.value = 12
       this.limiter.attack.value = 0.003
       this.limiter.release.value = 0.12
-      // Voices -> master gain -> filter -> limiter -> output.
+      // Dry path: voices -> master gain -> filter -> limiter -> output.
+      // Space send (parallel): filter -> spaceSend -> delay(+feedback) & reverb -> limiter.
+      this.spaceSend = this.ctx.createGain()
+      this.delay = this.ctx.createDelay(2)
+      this.delayFeedback = this.ctx.createGain()
+      this.reverb = this.ctx.createConvolver()
+      this.reverb.buffer = this.buildReverbImpulse()
+      this.reverbGain = this.ctx.createGain()
       this.master.connect(this.filter)
       this.filter.connect(this.limiter)
+      this.filter.connect(this.spaceSend)
+      this.spaceSend.connect(this.delay)
+      this.delay.connect(this.delayFeedback)
+      this.delayFeedback.connect(this.delay)
+      this.delay.connect(this.limiter)
+      this.spaceSend.connect(this.reverb)
+      this.reverb.connect(this.reverbGain)
+      this.reverbGain.connect(this.limiter)
       this.limiter.connect(this.ctx.destination)
       this.master.gain.value = dbToGain(this.params.gain)
+      // Initialise space params directly; live changes are smoothed in applySpace.
+      this.spaceSend.gain.value = this.params.spaceMix / 100
+      this.delay.delayTime.value = this.params.delayTime / 1000
+      this.delayFeedback.gain.value = Math.min(0.95, this.params.delayFeedback / 100)
+      this.reverbGain.gain.value = this.params.reverb / 100
       this.applyFilter(0)
       this.bindVisibility()
     }
@@ -465,11 +490,44 @@ export class AudioEngine {
     this.filter.Q.setTargetAtTime(this.params.filterReso, now, smoothing)
   }
 
+  /** Exponentially decaying stereo noise — a lightweight synthetic reverb tail. */
+  private buildReverbImpulse(): AudioBuffer | null {
+    if (!this.ctx) return null
+    const sr = this.ctx.sampleRate
+    const len = Math.floor(sr * 2.2)
+    const ir = this.ctx.createBuffer(2, len, sr)
+    for (let ch = 0; ch < 2; ch++) {
+      const data = ir.getChannelData(ch)
+      for (let i = 0; i < len; i++) {
+        const decay = (1 - i / len) ** 2.5
+        data[i] = (Math.random() * 2 - 1) * decay
+      }
+    }
+    return ir
+  }
+
+  private applySpace(smoothing: number): void {
+    if (!this.ctx || !this.spaceSend || !this.delay || !this.delayFeedback || !this.reverbGain) {
+      return
+    }
+    const now = this.ctx.currentTime
+    this.spaceSend.gain.setTargetAtTime(this.params.spaceMix / 100, now, smoothing)
+    this.delay.delayTime.setTargetAtTime(this.params.delayTime / 1000, now, smoothing)
+    // Clamp feedback below unity so the delay tail always decays.
+    this.delayFeedback.gain.setTargetAtTime(
+      Math.min(0.95, this.params.delayFeedback / 100),
+      now,
+      smoothing,
+    )
+    this.reverbGain.gain.setTargetAtTime(this.params.reverb / 100, now, smoothing)
+  }
+
   private applyLiveAudio(): void {
     if (!this.ctx || !this.master) return
     const now = this.ctx.currentTime
     this.master.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
     this.applyFilter(0.03)
+    this.applySpace(0.03)
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)

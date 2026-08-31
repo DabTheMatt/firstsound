@@ -14,6 +14,10 @@ export type ParamId =
   | 'pitchSpread'
   | 'filterCutoff'
   | 'filterReso'
+  | 'spaceMix'
+  | 'delayTime'
+  | 'delayFeedback'
+  | 'reverb'
 
 export type FilterType = 'off' | 'lowpass' | 'highpass' | 'bandpass'
 

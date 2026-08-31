@@ -83,7 +83,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
       return `${value.toFixed(1)} Hz`
     case 'position':
     case 'scatter':
+    case 'spaceMix':
+    case 'delayFeedback':
+    case 'reverb':
       return `${Math.round(value)} %`
+    case 'delayTime':
+      return `${Math.round(value)} ms`
     case 'filterCutoff':
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`

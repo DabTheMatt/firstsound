@@ -39,6 +39,17 @@ describe('mapping', () => {
     expect(formatParamValue(0.7, PARAMS.filterReso)).toBe('0.70 Q')
   })
 
+  it('round-trips log delay time', () => {
+    const def = PARAMS.delayTime
+    expect(fromNormalized(toNormalized(300, def), def)).toBeCloseTo(300, 4)
+  })
+
+  it('formats space params', () => {
+    expect(formatParamValue(300, PARAMS.delayTime)).toBe('300 ms')
+    expect(formatParamValue(35, PARAMS.delayFeedback)).toBe('35 %')
+    expect(formatParamValue(0, PARAMS.spaceMix)).toBe('0 %')
+  })
+
   it('clamps to def range', () => {
     expect(applyParamValue(99, PARAMS.speed)).toBe(PARAMS.speed.max)
     expect(applyParamValue(-2, PARAMS.speed)).toBe(PARAMS.speed.min)
