@@ -40,6 +40,20 @@ function createContext(): AudioContext {
   return new Ctor()
 }
 
+type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
+
+/** Route audio through the "playback" category so iOS ignores the silent switch. */
+function setPlaybackAudioSession(): void {
+  try {
+    const nav = navigator as AudioSessionNavigator
+    if (nav.audioSession && nav.audioSession.type !== 'playback') {
+      nav.audioSession.type = 'playback'
+    }
+  } catch {
+    /* audioSession unsupported — Web Audio still works elsewhere. */
+  }
+}
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
@@ -70,6 +84,7 @@ export class AudioEngine {
   private nextGrainTime = 0
   private schedulerId = 0
   private visibilityBound = false
+  private unlocked = false
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -327,6 +342,10 @@ export class AudioEngine {
   }
 
   private async ensureContext(): Promise<void> {
+    // iOS Safari plays Web Audio through the "ambient" session by default, which
+    // the hardware silent switch mutes. Opt into "playback" so sound is audible
+    // regardless of the mute switch (iOS 16.4+). Must run inside a user gesture.
+    setPlaybackAudioSession()
     if (!this.ctx) {
       this.ctx = createContext()
       this.master = this.ctx.createGain()
@@ -348,8 +367,22 @@ export class AudioEngine {
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume()
     }
+    // Older iOS needs a source started from the gesture to fully unlock output.
+    if (!this.unlocked && this.ctx.state === 'running') {
+      this.primeOutput()
+      this.unlocked = true
+    }
     this.audioStatus = this.ctx.state === 'running' ? 'running' : 'blocked'
     this.emit()
+  }
+
+  private primeOutput(): void {
+    if (!this.ctx) return
+    const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate)
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.connect(this.ctx.destination)
+    src.start(0)
   }
 
   private bindVisibility(): void {
