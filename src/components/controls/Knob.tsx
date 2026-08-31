@@ -22,7 +22,10 @@ export function Knob({ id, value }: Props) {
   const normalized = toNormalized(value, def)
   const dialRef = useRef<HTMLButtonElement>(null)
   const valueRef = useRef(normalized)
-  valueRef.current = normalized
+
+  useEffect(() => {
+    valueRef.current = normalized
+  }, [normalized])
 
   useEffect(() => {
     const el = dialRef.current
