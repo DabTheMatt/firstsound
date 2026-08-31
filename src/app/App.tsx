@@ -218,27 +218,26 @@ export default function App() {
 
         {note ? <p className={styles.note}>{note}</p> : null}
 
-        {tab === 'source' ? (
-          <div className={styles.moduleControls}>
+        {/* Always rendered with a fixed height so switching tabs never resizes
+            the waveform above it. */}
+        <div className={styles.moduleControls}>
+          {tab === 'source' ? (
             <Segmented
               label="Playback direction"
               value={snap.direction}
               options={PLAYBACK_DIRECTIONS}
               onChange={(value) => engine.setDirection(value)}
             />
-          </div>
-        ) : null}
-
-        {tab === 'filter' ? (
-          <div className={styles.moduleControls}>
+          ) : null}
+          {tab === 'filter' ? (
             <Segmented
               label="Filter type"
               value={snap.filterType}
               options={FILTER_TYPES}
               onChange={(type) => engine.setFilterType(type)}
             />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         <div className={styles.knobs}>
           {knobs.map((id) => (

@@ -79,17 +79,29 @@ export function Overview({ duration, start, end, view, onScrub }: Props) {
     event.preventDefault()
     const target = event.currentTarget
     target.setPointerCapture(event.pointerId)
-    scrubTo(event.clientX, target)
-    const move = (e: PointerEvent) => scrubTo(e.clientX, target)
     const up = (e: PointerEvent) => {
-      target.releasePointerCapture(e.pointerId)
+      try {
+        target.releasePointerCapture(e.pointerId)
+      } catch {
+        /* already released */
+      }
       target.removeEventListener('pointermove', move)
       target.removeEventListener('pointerup', up)
       target.removeEventListener('pointercancel', up)
+      target.removeEventListener('lostpointercapture', up)
     }
+    const move = (e: PointerEvent) => {
+      if (e.buttons === 0) {
+        up(e)
+        return
+      }
+      scrubTo(e.clientX, target)
+    }
+    scrubTo(event.clientX, target)
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerup', up)
     target.addEventListener('pointercancel', up)
+    target.addEventListener('lostpointercapture', up)
   }
 
   const viewLeft = duration > 0 ? Math.max(0, timeToFrac(view.start, { start: 0, end: duration }) * 100) : 0

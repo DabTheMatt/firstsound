@@ -193,6 +193,11 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!pointers.current.has(event.pointerId)) return
+    // Mouse released outside the window: stop dragging instead of "sticking".
+    if (event.buttons === 0 && event.pointerType === 'mouse') {
+      endPointer(event)
+      return
+    }
     pointers.current.set(event.pointerId, event.clientX)
     const overlay = overlayRef.current
     if (!overlay) return
@@ -219,8 +224,11 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
   }
 
   const endPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const overlay = overlayRef.current
-    overlay?.releasePointerCapture(event.pointerId)
+    try {
+      overlayRef.current?.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
     pointers.current.delete(event.pointerId)
     if (pointers.current.size < 2) pinch.current = null
     if (pointers.current.size === 0) drag.current = null

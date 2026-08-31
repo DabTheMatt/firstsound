@@ -24,6 +24,8 @@ html,
 body,
 #root {
   min-height: 100%;
+  /* Dark all the way down so no light edge/frame can peek through. */
+  background: var(--bg-shell);
 }
 
 body {

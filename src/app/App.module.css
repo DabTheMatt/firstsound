@@ -194,6 +194,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  /* Reserve the segmented-control height even when empty, so tabs with and
+     without module controls keep the same overall height. */
+  min-height: 40px;
 }
 
 .knobs {
