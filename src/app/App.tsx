@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
+import { FILTER_TYPES } from '../audio/parameters/definitions'
 import { Knob } from '../components/controls/Knob'
+import { Segmented } from '../components/controls/Segmented'
 import { Toggle } from '../components/controls/Toggle'
-import { TransportButton } from '../components/controls/TransportButton'
+import { TransportDock } from '../components/controls/TransportDock'
 import { Waveform } from '../components/waveform/Waveform'
 import { downloadJson, parsePreset, readAudioFile } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
@@ -147,6 +149,7 @@ export default function App() {
         ) : null}
 
         <Waveform
+          key={snap.fileName || 'empty'}
           duration={snap.duration}
           start={snap.params.start}
           end={snap.params.end}
@@ -157,18 +160,6 @@ export default function App() {
         />
 
         <div className={styles.transport}>
-          <TransportButton
-            playing={snap.playing}
-            disabled={!snap.sampleLoaded}
-            onToggle={() => {
-              void engine.unlock().then(() => engine.togglePlay())
-            }}
-          />
-          <Toggle
-            pressed={snap.loop}
-            label="Loop"
-            onToggle={() => engine.setLoop(!snap.loop)}
-          />
           <Toggle
             pressed={snap.engineMode === 'grain'}
             label="Grain"
@@ -215,11 +206,33 @@ export default function App() {
 
         {note ? <p className={styles.note}>{note}</p> : null}
 
+        {/* Always rendered with a fixed height so switching tabs never resizes
+            the waveform above it. */}
+        <div className={styles.moduleControls}>
+          {tab === 'filter' ? (
+            <Segmented
+              label="Filter type"
+              value={snap.filterType}
+              options={FILTER_TYPES}
+              onChange={(type) => engine.setFilterType(type)}
+            />
+          ) : null}
+        </div>
+
         <div className={styles.knobs}>
           {knobs.map((id) => (
             <Knob key={id} id={id} value={snap.params[id]} />
           ))}
         </div>
+
+        <TransportDock
+          playing={snap.playing}
+          loop={snap.loop}
+          direction={snap.direction}
+          start={snap.params.start}
+          end={snap.params.end}
+          disabled={!snap.sampleLoaded}
+        />
 
         <input
           ref={sampleInput}

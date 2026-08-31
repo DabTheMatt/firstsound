@@ -1,12 +1,21 @@
 import { defaultParamValues, PARAMS } from '../parameters/definitions'
 import {
   applyParamValue,
+  clamp,
   clampRegion,
   dbToGain,
   defaultPlayRegion,
   playbackRate,
 } from '../parameters/mapping'
-import type { EngineMode, ParamId, PresetV1 } from '../parameters/types'
+import type {
+  EngineMode,
+  FilterType,
+  ParamId,
+  PlaybackDirection,
+  PresetV1,
+} from '../parameters/types'
+import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
+import { motionValue } from './motion'
 import { mixToMono } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -18,6 +27,8 @@ export type EngineSnapshot = {
   playing: boolean
   loop: boolean
   engineMode: EngineMode
+  direction: PlaybackDirection
+  filterType: FilterType
   audioStatus: AudioStatus
   params: Record<ParamId, number>
 }
@@ -37,6 +48,20 @@ function createContext(): AudioContext {
   return new Ctor()
 }
 
+type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
+
+/** Route audio through the "playback" category so iOS ignores the silent switch. */
+function setPlaybackAudioSession(): void {
+  try {
+    const nav = navigator as AudioSessionNavigator
+    if (nav.audioSession && nav.audioSession.type !== 'playback') {
+      nav.audioSession.type = 'playback'
+    }
+  } catch {
+    /* audioSession unsupported — Web Audio still works elsewhere. */
+  }
+}
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
@@ -44,13 +69,24 @@ function createContext(): AudioContext {
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
+  private filter: BiquadFilterNode | null = null
+  private spaceSend: GainNode | null = null
+  private delay: DelayNode | null = null
+  private delayFeedback: GainNode | null = null
+  private reverb: ConvolverNode | null = null
+  private reverbGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private buffer: AudioBuffer | null = null
+  // Time-reversed copy of `buffer`; Web Audio can't play a source backwards, so
+  // reverse playback plays this forward instead.
+  private reversed: AudioBuffer | null = null
   private mono: Float32Array | null = null
   private fileName = ''
   private playing = false
   private loop = true
   private engineMode: EngineMode = 'grain'
+  private direction: PlaybackDirection = 'forward'
+  private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private params: Record<ParamId, number> = defaultParamValues()
   private listeners = new Set<Listener>()
@@ -61,6 +97,11 @@ export class AudioEngine {
   private nextGrainTime = 0
   private schedulerId = 0
   private visibilityBound = false
+  private unlocked = false
+  // Motion modulation state (grain-position drift): smoothed random-walk value.
+  private motionRandCur = 0
+  private motionRandTarget = 0
+  private motionClock = 0
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -93,16 +134,28 @@ export class AudioEngine {
       return start
     }
     if (this.engineMode === 'grain') {
-      return start + (this.params.position / 100) * (end - start)
+      // Reflect motion drift in the playhead so modulation is visible.
+      const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
+      return start + p * (end - start)
     }
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
     const span = Math.max(end - start, MIN_REGION)
+    if (this.direction === 'pingpong') {
+      // Bounce start -> end -> start over a 2*span cycle.
+      const cycle = 2 * span
+      const phase = this.loop ? elapsed % cycle : Math.min(elapsed, cycle)
+      return phase <= span ? start + phase : end - (phase - span)
+    }
     if (this.loop) {
+      // Reverse counts the playhead down from `end`, wrapping back to `end`.
+      if (this.direction === 'reverse') return end - (elapsed % span)
       const rel = (this.playOffset - start + elapsed) % span
       return start + (rel < 0 ? rel + span : rel)
     }
-    return Math.min(end, this.playOffset + elapsed)
+    return this.direction === 'reverse'
+      ? Math.max(start, this.playOffset - elapsed)
+      : Math.min(end, this.playOffset + elapsed)
   }
 
   async unlock(): Promise<void> {
@@ -152,14 +205,19 @@ export class AudioEngine {
     this.playing = true
     const { start } = this.region(this.buffer.duration)
     this.playCtxTime = this.ctx.currentTime
+    const { end } = this.region(this.buffer.duration)
     this.playOffset =
       this.engineMode === 'grain'
-        ? start + (this.params.position / 100) * (this.region(this.buffer.duration).end - start)
-        : start
+        ? start + (this.params.position / 100) * (end - start)
+        : this.direction === 'reverse'
+          ? end
+          : start
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
       this.scheduleGrains()
+    } else if (this.direction === 'pingpong') {
+      this.startPingPongVoice()
     } else {
       this.startBufferVoice(this.playOffset)
     }
@@ -183,9 +241,44 @@ export class AudioEngine {
     else this.emit()
   }
 
+  /**
+   * Move the playhead to `frac` (0..1) of the region. In grain mode this drives
+   * the grain read position; in the region player it seeks the play offset.
+   */
+  seek(frac: number): void {
+    const duration = this.buffer?.duration ?? 0
+    if (duration <= 0) return
+    const pos = clamp(frac, 0, 1)
+    if (this.engineMode === 'grain') {
+      this.setParam('position', pos * 100)
+      return
+    }
+    const { start, end } = this.region(duration)
+    const offset = start + pos * (end - start)
+    this.playOffset = offset
+    if (this.ctx) this.playCtxTime = this.ctx.currentTime
+    if (this.playing) {
+      if (this.direction === 'forward') {
+        this.stopVoices()
+        this.startBufferVoice(offset)
+      } else {
+        // Reverse/ping-pong restart from their own anchor rather than a seek.
+        void this.play()
+      }
+    }
+    this.emit()
+  }
+
   setEngineMode(mode: EngineMode): void {
     if (this.engineMode === mode) return
     this.engineMode = mode
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  setDirection(direction: PlaybackDirection): void {
+    if (this.direction === direction) return
+    this.direction = direction
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -197,10 +290,11 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
+      this.applyRegionChange()
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
+      this.applyLiveAudio()
     }
-    this.applyLiveAudio()
     this.emit()
   }
 
@@ -209,8 +303,17 @@ export class AudioEngine {
     const region = clampRegion(start, end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
-    this.applyLiveAudio()
+    this.applyRegionChange()
     this.emit()
+  }
+
+  /** Ping-pong bakes the region into a buffer, so a region change rebuilds it. */
+  private applyRegionChange(): void {
+    if (this.playing && this.engineMode === 'playback' && this.direction === 'pingpong') {
+      void this.play()
+    } else {
+      this.applyLiveAudio()
+    }
   }
 
   resetParam(id: ParamId): void {
@@ -232,6 +335,8 @@ export class AudioEngine {
     this.params.start = region.start
     this.params.end = region.end
     this.engineMode = 'playback'
+    this.direction = 'forward'
+    this.filterType = 'off'
     this.applyLiveAudio()
     this.emit()
   }
@@ -242,6 +347,10 @@ export class AudioEngine {
       version: 1,
       loop: this.loop,
       engineMode: this.engineMode,
+      direction: this.direction,
+      // Legacy field so older builds still read a sensible value.
+      reverse: this.direction === 'reverse',
+      filterType: this.filterType,
       params: { ...this.params },
     }
   }
@@ -249,6 +358,8 @@ export class AudioEngine {
   applyPreset(preset: PresetV1): void {
     this.loop = preset.loop
     this.engineMode = preset.engineMode
+    this.direction = preset.direction ?? (preset.reverse ? 'reverse' : 'forward')
+    this.filterType = preset.filterType ?? 'off'
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = preset.params[id]
       if (typeof value === 'number') {
@@ -268,10 +379,42 @@ export class AudioEngine {
 
   private applyLoadedBuffer(buffer: AudioBuffer): void {
     this.buffer = buffer
+    this.reversed = this.buildReversed(buffer)
     this.mono = mixToMono(buffer)
     const region = defaultPlayRegion(buffer.duration, MIN_REGION)
     this.params = { ...this.params, start: region.start, end: region.end }
     this.emit()
+  }
+
+  private buildReversed(buffer: AudioBuffer): AudioBuffer | null {
+    if (!this.ctx) return null
+    const rev = this.ctx.createBuffer(
+      buffer.numberOfChannels,
+      buffer.length,
+      buffer.sampleRate,
+    )
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      rev.getChannelData(ch).set(reverseChannel(buffer.getChannelData(ch)))
+    }
+    return rev
+  }
+
+  /** Buffer feeding the voices — reversed copy when playing backwards. */
+  private activeBuffer(): AudioBuffer | null {
+    return this.direction === 'reverse' && this.reversed ? this.reversed : this.buffer
+  }
+
+  private buildPingPong(startSec: number, endSec: number): AudioBuffer | null {
+    if (!this.ctx || !this.buffer) return null
+    const sr = this.buffer.sampleRate
+    const s = Math.floor(startSec * sr)
+    const e = Math.floor(endSec * sr)
+    const len = Math.max(2, (e - s) * 2)
+    const pp = this.ctx.createBuffer(this.buffer.numberOfChannels, len, sr)
+    for (let ch = 0; ch < this.buffer.numberOfChannels; ch++) {
+      pp.getChannelData(ch).set(pingPongChannel(this.buffer.getChannelData(ch), s, e))
+    }
+    return pp
   }
 
   private region(duration: number) {
@@ -279,25 +422,67 @@ export class AudioEngine {
   }
 
   private async ensureContext(): Promise<void> {
+    // iOS Safari plays Web Audio through the "ambient" session by default, which
+    // the hardware silent switch mutes. Opt into "playback" so sound is audible
+    // regardless of the mute switch (iOS 16.4+). Must run inside a user gesture.
+    setPlaybackAudioSession()
     if (!this.ctx) {
       this.ctx = createContext()
       this.master = this.ctx.createGain()
+      this.filter = this.ctx.createBiquadFilter()
       this.limiter = this.ctx.createDynamicsCompressor()
       this.limiter.threshold.value = -6
       this.limiter.knee.value = 6
       this.limiter.ratio.value = 12
       this.limiter.attack.value = 0.003
       this.limiter.release.value = 0.12
-      this.master.connect(this.limiter)
+      // Dry path: voices -> master gain -> filter -> limiter -> output.
+      // Space send (parallel): filter -> spaceSend -> delay(+feedback) & reverb -> limiter.
+      this.spaceSend = this.ctx.createGain()
+      this.delay = this.ctx.createDelay(2)
+      this.delayFeedback = this.ctx.createGain()
+      this.reverb = this.ctx.createConvolver()
+      this.reverb.buffer = this.buildReverbImpulse()
+      this.reverbGain = this.ctx.createGain()
+      this.master.connect(this.filter)
+      this.filter.connect(this.limiter)
+      this.filter.connect(this.spaceSend)
+      this.spaceSend.connect(this.delay)
+      this.delay.connect(this.delayFeedback)
+      this.delayFeedback.connect(this.delay)
+      this.delay.connect(this.limiter)
+      this.spaceSend.connect(this.reverb)
+      this.reverb.connect(this.reverbGain)
+      this.reverbGain.connect(this.limiter)
       this.limiter.connect(this.ctx.destination)
       this.master.gain.value = dbToGain(this.params.gain)
+      // Initialise space params directly; live changes are smoothed in applySpace.
+      this.spaceSend.gain.value = this.params.spaceMix / 100
+      this.delay.delayTime.value = this.params.delayTime / 1000
+      this.delayFeedback.gain.value = Math.min(0.95, this.params.delayFeedback / 100)
+      this.reverbGain.gain.value = this.params.reverb / 100
+      this.applyFilter(0)
       this.bindVisibility()
     }
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume()
     }
+    // Older iOS needs a source started from the gesture to fully unlock output.
+    if (!this.unlocked && this.ctx.state === 'running') {
+      this.primeOutput()
+      this.unlocked = true
+    }
     this.audioStatus = this.ctx.state === 'running' ? 'running' : 'blocked'
     this.emit()
+  }
+
+  private primeOutput(): void {
+    if (!this.ctx) return
+    const buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate)
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.connect(this.ctx.destination)
+    src.start(0)
   }
 
   private bindVisibility(): void {
@@ -313,31 +498,104 @@ export class AudioEngine {
     })
   }
 
+  setFilterType(type: FilterType): void {
+    if (this.filterType === type) return
+    this.filterType = type
+    this.applyFilter(0.02)
+    this.emit()
+  }
+
+  /**
+   * Configure the biquad from current params. When `off` we keep the node in the
+   * graph but make it transparent (open low-pass, no resonance) instead of
+   * reconnecting the graph, which would risk clicks mid-playback.
+   */
+  private applyFilter(smoothing: number): void {
+    if (!this.ctx || !this.filter) return
+    const now = this.ctx.currentTime
+    const nyquist = this.ctx.sampleRate / 2
+    if (this.filterType === 'off') {
+      this.filter.type = 'lowpass'
+      this.filter.frequency.setTargetAtTime(Math.min(20000, nyquist), now, smoothing)
+      this.filter.Q.setTargetAtTime(0.0001, now, smoothing)
+      return
+    }
+    this.filter.type = this.filterType
+    const cutoff = Math.min(this.params.filterCutoff, nyquist * 0.99)
+    this.filter.frequency.setTargetAtTime(cutoff, now, smoothing)
+    this.filter.Q.setTargetAtTime(this.params.filterReso, now, smoothing)
+  }
+
+  /** Exponentially decaying stereo noise — a lightweight synthetic reverb tail. */
+  private buildReverbImpulse(): AudioBuffer | null {
+    if (!this.ctx) return null
+    const sr = this.ctx.sampleRate
+    const len = Math.floor(sr * 2.2)
+    const ir = this.ctx.createBuffer(2, len, sr)
+    for (let ch = 0; ch < 2; ch++) {
+      const data = ir.getChannelData(ch)
+      for (let i = 0; i < len; i++) {
+        const decay = (1 - i / len) ** 2.5
+        data[i] = (Math.random() * 2 - 1) * decay
+      }
+    }
+    return ir
+  }
+
+  private applySpace(smoothing: number): void {
+    if (!this.ctx || !this.spaceSend || !this.delay || !this.delayFeedback || !this.reverbGain) {
+      return
+    }
+    const now = this.ctx.currentTime
+    this.spaceSend.gain.setTargetAtTime(this.params.spaceMix / 100, now, smoothing)
+    this.delay.delayTime.setTargetAtTime(this.params.delayTime / 1000, now, smoothing)
+    // Clamp feedback below unity so the delay tail always decays.
+    this.delayFeedback.gain.setTargetAtTime(
+      Math.min(0.95, this.params.delayFeedback / 100),
+      now,
+      smoothing,
+    )
+    this.reverbGain.gain.setTargetAtTime(this.params.reverb / 100, now, smoothing)
+  }
+
   private applyLiveAudio(): void {
     if (!this.ctx || !this.master) return
     const now = this.ctx.currentTime
     this.master.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    this.applyFilter(0.03)
+    this.applySpace(0.03)
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
-      const duration = this.buffer?.duration ?? 0
-      const { start, end } = this.region(duration)
-      this.source.loopStart = start
-      this.source.loopEnd = end
+      // Ping-pong loops the whole baked buffer, so its loop points stay fixed.
+      if (this.direction !== 'pingpong') {
+        const duration = this.buffer?.duration ?? 0
+        const { start, end } = this.region(duration)
+        this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
+        this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
+      }
     }
   }
 
   private startBufferVoice(offset: number): void {
-    if (!this.ctx || !this.master || !this.buffer) return
-    const { start, end } = this.region(this.buffer.duration)
+    const buffer = this.activeBuffer()
+    if (!this.ctx || !this.master || !buffer) return
+    const duration = buffer.duration
+    const { start, end } = this.region(duration)
+    const reverse = this.direction === 'reverse'
     const src = this.ctx.createBufferSource()
-    src.buffer = this.buffer
+    src.buffer = buffer
     src.loop = this.loop
-    src.loopStart = start
-    src.loopEnd = end
+    // Reversed buffer: mirror the region so the same forward-time window plays.
+    src.loopStart = reverse ? reverseTime(end, duration) : start
+    src.loopEnd = reverse ? reverseTime(start, duration) : end
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
     src.connect(this.master)
-    const clamped = Math.min(Math.max(offset, start), Math.max(start, end - 0.001))
+    const mapped = reverse ? reverseTime(offset, duration) : offset
+    const clamped = Math.min(
+      Math.max(mapped, src.loopStart),
+      Math.max(src.loopStart, src.loopEnd - 0.001),
+    )
     src.start(this.ctx.currentTime, clamped)
     if (!this.loop) {
       src.onended = () => {
@@ -347,23 +605,71 @@ export class AudioEngine {
     this.source = src
   }
 
+  private startPingPongVoice(): void {
+    if (!this.ctx || !this.master || !this.buffer) return
+    const { start, end } = this.region(this.buffer.duration)
+    const buffer = this.buildPingPong(start, end)
+    if (!buffer) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.loop = this.loop
+    src.loopStart = 0
+    src.loopEnd = buffer.duration
+    src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
+    src.connect(this.master)
+    src.start(this.ctx.currentTime, 0)
+    if (!this.loop) {
+      src.onended = () => {
+        if (this.source === src) this.stop()
+      }
+    }
+    this.source = src
+  }
+
+  /** Slow drift applied to the grain position: sine LFO blended with a random walk. */
+  private motionOffset(t: number): number {
+    return motionValue(
+      this.params.motionDepth,
+      this.params.motionRate,
+      this.params.motionJitter,
+      this.motionRandCur,
+      t,
+    )
+  }
+
+  /** Step the motion random-walk once per scheduler tick toward a new target. */
+  private advanceMotion(): void {
+    if (this.params.motionDepth <= 0 || this.params.motionJitter <= 0) return
+    const dt = SCHEDULER_MS / 1000
+    this.motionClock += dt
+    const period = 1 / Math.max(this.params.motionRate, 0.02)
+    if (this.motionClock >= period) {
+      this.motionClock -= period
+      this.motionRandTarget = Math.random() * 2 - 1
+    }
+    this.motionRandCur += (this.motionRandTarget - this.motionRandCur) * Math.min(1, dt * 4)
+  }
+
   private scheduleGrains(): void {
-    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !this.buffer || !this.master) {
+    const buffer = this.activeBuffer()
+    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.master) {
       return
     }
     const ctx = this.ctx
+    const duration = buffer.duration
     const horizon = ctx.currentTime + LOOKAHEAD
     const density = Math.max(this.params.density, 0.5)
     const interval = 1 / density
     const grainDur = this.params.grainSize / 1000
-    const { start, end } = this.region(this.buffer.duration)
+    const { start, end } = this.region(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
+    this.advanceMotion()
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
       const scatter = this.params.scatter / 100
-      const pos = this.params.position / 100
+      const pos = clamp(this.params.position / 100 + this.motionOffset(t) * 0.5, 0, 1)
       const jitter = (Math.random() * 2 - 1) * scatter * span * 0.5
       let offset = start + pos * span + jitter
       offset = Math.min(Math.max(offset, start), Math.max(start, end - grainDur * 0.25))
@@ -372,7 +678,7 @@ export class AudioEngine {
       const rate = playbackRate(this.params.speed, this.params.pitch + grainPitch)
 
       const src = ctx.createBufferSource()
-      src.buffer = this.buffer
+      src.buffer = buffer
       src.playbackRate.value = rate
       const gain = ctx.createGain()
       const attack = Math.min(0.012, grainDur * 0.25)
@@ -383,8 +689,11 @@ export class AudioEngine {
       gain.gain.linearRampToValueAtTime(0, t + grainDur)
       src.connect(gain)
       gain.connect(this.master)
-      const dur = Math.min(grainDur, Math.max(0.01, this.buffer.duration - offset))
-      src.start(t, offset, dur)
+      const dur = Math.min(grainDur, Math.max(0.01, duration - offset))
+      // Mirror the grain window so each grain also plays backwards when reversed.
+      const grainOffset =
+        this.direction === 'reverse' ? Math.max(0, duration - offset - dur) : offset
+      src.start(t, grainOffset, dur)
       src.stop(t + dur + 0.02)
       this.nextGrainTime += interval
     }
@@ -415,6 +724,8 @@ export class AudioEngine {
       playing: this.playing,
       loop: this.loop,
       engineMode: this.engineMode,
+      direction: this.direction,
+      filterType: this.filterType,
       audioStatus: this.audioStatus,
       params: { ...this.params },
     }

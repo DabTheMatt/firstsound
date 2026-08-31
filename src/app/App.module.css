@@ -2,24 +2,22 @@
   min-height: 100dvh;
   min-height: 100svh;
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  padding: max(16px, env(safe-area-inset-top))
-    max(16px, env(safe-area-inset-right))
-    max(20px, env(safe-area-inset-bottom))
-    max(16px, env(safe-area-inset-left));
+  /* Edge-to-edge: only inset for iOS safe areas (0 on desktop) so the
+     instrument uses the full available screen by default. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .shell {
-  width: min(920px, 100%);
-  margin: auto;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
   background: var(--bg-shell);
-  border-radius: var(--radius-shell);
-  padding: 18px 18px 20px;
+  border-radius: 0;
+  padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 24px 60px rgb(0 0 0 / 18%);
 }
 
 .header {
@@ -189,6 +187,16 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.moduleControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  /* Reserve the segmented-control height even when empty, so tabs with and
+     without module controls keep the same overall height. */
+  min-height: 40px;
 }
 
 .knobs {

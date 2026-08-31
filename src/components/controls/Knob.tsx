@@ -28,19 +28,22 @@ export function Knob({ id, value }: Props) {
     let current = normalized
     const started = event.timeStamp
 
-    const move = (moveEvent: PointerEvent) => {
-      const dy = lastY - moveEvent.clientY
-      lastY = moveEvent.clientY
-      current = Math.min(1, Math.max(0, current + dy / DRAG_PX))
-      engine.setParam(id, fromNormalized(current, def))
-    }
     const up = (upEvent: PointerEvent) => {
-      target.releasePointerCapture(upEvent.pointerId)
+      try {
+        target.releasePointerCapture(upEvent.pointerId)
+      } catch {
+        /* capture already released */
+      }
       target.removeEventListener('pointermove', move)
       target.removeEventListener('pointerup', up)
       target.removeEventListener('pointercancel', up)
-      // Double tap / quick second press resets — also available via menu.
-      if (upEvent.timeStamp - started < 220 && Math.abs(upEvent.clientY - event.clientY) < 6) {
+      target.removeEventListener('lostpointercapture', up)
+      // Double tap / quick second press resets — only count real pointer-ups.
+      if (
+        upEvent.type === 'pointerup' &&
+        upEvent.timeStamp - started < 220 &&
+        Math.abs(upEvent.clientY - event.clientY) < 6
+      ) {
         const prev = target.dataset.lastTap
         if (prev && upEvent.timeStamp - Number(prev) < 400) {
           engine.resetParam(id)
@@ -50,9 +53,22 @@ export function Knob({ id, value }: Props) {
         target.dataset.lastTap = String(upEvent.timeStamp)
       }
     }
+    const move = (moveEvent: PointerEvent) => {
+      // If the button was released outside the window, the pointerup can be
+      // lost; stop as soon as we see the pointer moving with no button held.
+      if (moveEvent.buttons === 0) {
+        up(moveEvent)
+        return
+      }
+      const dy = lastY - moveEvent.clientY
+      lastY = moveEvent.clientY
+      current = Math.min(1, Math.max(0, current + dy / DRAG_PX))
+      engine.setParam(id, fromNormalized(current, def))
+    }
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerup', up)
     target.addEventListener('pointercancel', up)
+    target.addEventListener('lostpointercapture', up)
   }
 
   const r = 26

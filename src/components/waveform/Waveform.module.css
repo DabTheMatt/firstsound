@@ -1,6 +1,56 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tool {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #4a4e51;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}
+
+.toolActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.iconTool {
+  width: 34px;
+  height: 32px;
+  border: 1px solid #4a4e51;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.spacer {
+  flex: 1;
+}
+
 .wrap {
   position: relative;
-  height: 168px;
+  flex: 1 1 auto;
+  min-height: 150px;
   border-radius: 10px;
   background: #151717;
   overflow: hidden;

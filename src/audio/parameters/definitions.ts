@@ -1,4 +1,4 @@
-import type { ParamDef, ParamId } from './types'
+import type { FilterType, ParamDef, ParamId, PlaybackDirection } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
   start: {
@@ -104,7 +104,107 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 0.01,
   },
+  filterCutoff: {
+    id: 'filterCutoff',
+    label: 'Cutoff',
+    min: 20,
+    max: 18000,
+    // Open by default so engaging the filter starts transparent, then closes.
+    defaultValue: 18000,
+    unit: 'Hz',
+    mapping: 'log',
+  },
+  filterReso: {
+    id: 'filterReso',
+    label: 'Resonance',
+    min: 0.1,
+    max: 18,
+    defaultValue: 0.7,
+    unit: 'Q',
+    mapping: 'log',
+    step: 0.01,
+  },
+  spaceMix: {
+    id: 'spaceMix',
+    label: 'Mix',
+    min: 0,
+    max: 100,
+    // Off by default so the dry signal is unchanged until Space is dialed in.
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  delayTime: {
+    id: 'delayTime',
+    label: 'Delay',
+    min: 20,
+    max: 1000,
+    defaultValue: 300,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  delayFeedback: {
+    id: 'delayFeedback',
+    label: 'Feedback',
+    min: 0,
+    max: 95,
+    defaultValue: 35,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverb: {
+    id: 'reverb',
+    label: 'Reverb',
+    min: 0,
+    max: 100,
+    defaultValue: 25,
+    unit: '%',
+    mapping: 'linear',
+  },
+  motionDepth: {
+    id: 'motionDepth',
+    label: 'Depth',
+    min: 0,
+    max: 100,
+    // Off by default so the grain position stays where you set it.
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  motionRate: {
+    id: 'motionRate',
+    label: 'Rate',
+    min: 0.02,
+    max: 8,
+    defaultValue: 0.3,
+    unit: 'Hz',
+    mapping: 'log',
+  },
+  motionJitter: {
+    id: 'motionJitter',
+    label: 'Jitter',
+    min: 0,
+    max: 100,
+    defaultValue: 30,
+    unit: '%',
+    mapping: 'linear',
+  },
 }
+
+/** Filter type options, in UI order. `off` bypasses the filter entirely. */
+export const FILTER_TYPES: { value: FilterType; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'lowpass', label: 'Low' },
+  { value: 'highpass', label: 'High' },
+  { value: 'bandpass', label: 'Band' },
+]
+
+/** Playback direction options for the region player. */
+export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] = [
+  { value: 'forward', label: 'Forward' },
+  { value: 'reverse', label: 'Reverse' },
+  { value: 'pingpong', label: 'Ping-Pong' },
+]
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
@@ -117,8 +217,9 @@ export const GRAIN_KNOBS: ParamId[] = [
   'grainPitch',
   'pitchSpread',
 ]
-export const MOTION_KNOBS: ParamId[] = ['position', 'scatter', 'speed']
-export const SPACE_KNOBS: ParamId[] = ['gain']
+export const MOTION_KNOBS: ParamId[] = ['motionDepth', 'motionRate', 'motionJitter', 'position']
+export const SPACE_KNOBS: ParamId[] = ['spaceMix', 'delayTime', 'delayFeedback', 'reverb']
+export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {

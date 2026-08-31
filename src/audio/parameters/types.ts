@@ -12,6 +12,17 @@ export type ParamId =
   | 'scatter'
   | 'grainPitch'
   | 'pitchSpread'
+  | 'filterCutoff'
+  | 'filterReso'
+  | 'spaceMix'
+  | 'delayTime'
+  | 'delayFeedback'
+  | 'reverb'
+  | 'motionDepth'
+  | 'motionRate'
+  | 'motionJitter'
+
+export type FilterType = 'off' | 'lowpass' | 'highpass' | 'bandpass'
 
 export type ParamDef = {
   id: ParamId
@@ -26,10 +37,17 @@ export type ParamDef = {
 
 export type EngineMode = 'playback' | 'grain'
 
+export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
+
 export type PresetV1 = {
   instrument: 'field'
   version: 1
   loop: boolean
   engineMode: EngineMode
   params: Record<ParamId, number>
+  // Optional so presets saved before these modules existed still load.
+  filterType?: FilterType
+  direction?: PlaybackDirection
+  // Legacy flag kept for reading presets saved before ping-pong existed.
+  reverse?: boolean
 }
