@@ -1,4 +1,4 @@
-import type { ParamDef } from './types'
+import type { ParamDef, ScrubMode } from './types'
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -48,6 +48,28 @@ export function clampRegion(
   const s = clamp(start, 0, Math.max(0, duration - span))
   const e = clamp(end, s + span, duration)
   return { start: s, end: e }
+}
+
+export function scrubBounds(
+  mode: ScrubMode,
+  start: number,
+  end: number,
+  duration: number,
+): { min: number; max: number } {
+  if (duration <= 0) return { min: 0, max: 0 }
+  if (mode === 'region') return { min: start, max: end }
+  return { min: 0, max: duration }
+}
+
+export function clampScrubTime(
+  time: number,
+  mode: ScrubMode,
+  start: number,
+  end: number,
+  duration: number,
+): number {
+  const { min, max } = scrubBounds(mode, start, end, duration)
+  return clamp(time, min, max)
 }
 
 /** Inset region so start/end handles are visible, like the FIELD mockup. */

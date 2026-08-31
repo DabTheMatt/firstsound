@@ -1,16 +1,21 @@
 .dock {
+  box-sizing: border-box;
+  flex: none;
+  width: 268px;
+  height: 148px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .switches {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .directions {
@@ -23,15 +28,15 @@
 }
 
 .dir {
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 26px;
+  padding: 0 8px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   touch-action: manipulation;
 }
@@ -43,15 +48,15 @@
 }
 
 .loop {
-  min-height: 30px;
-  padding: 0 18px;
+  min-height: 26px;
+  padding: 0 14px;
   border-radius: 999px;
   border: 1.5px solid var(--muted);
   background: transparent;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   touch-action: manipulation;
 }

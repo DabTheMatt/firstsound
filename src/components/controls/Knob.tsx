@@ -1,4 +1,4 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { PARAMS } from '../../audio/parameters/definitions'
 import {
   formatParamValue,
@@ -7,6 +7,7 @@ import {
 } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import { wheelToNormalized } from './scrub'
 import styles from './Knob.module.css'
 
 type Props = {
@@ -19,6 +20,24 @@ const DRAG_PX = 140
 export function Knob({ id, value }: Props) {
   const def = PARAMS[id]
   const normalized = toNormalized(value, def)
+  const dialRef = useRef<HTMLButtonElement>(null)
+  const valueRef = useRef(normalized)
+  valueRef.current = normalized
+
+  useEffect(() => {
+    const el = dialRef.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const next = Math.min(
+        1,
+        Math.max(0, valueRef.current + wheelToNormalized(event.deltaY, event.shiftKey)),
+      )
+      engine.setParam(id, fromNormalized(next, def))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [id, def])
 
   const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -86,6 +105,7 @@ export function Knob({ id, value }: Props) {
     <div className={styles.knob}>
       <p className={styles.label}>{def.label}</p>
       <button
+        ref={dialRef}
         type="button"
         className={styles.dial}
         aria-label={`${def.label} ${formatParamValue(value, def)}`}

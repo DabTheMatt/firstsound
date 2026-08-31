@@ -1,7 +1,15 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
-import type { PlaybackDirection } from '../../audio/parameters/types'
+import { scrubBounds } from '../../audio/parameters/mapping'
+import type { PlaybackDirection, ScrubMode } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import {
+  angleToTime,
+  pointerAngle,
+  regionArcDash,
+  timeToFraction,
+  wheelToTimeDelta,
+} from './scrub'
 import styles from './TransportDock.module.css'
 
 type Props = {
@@ -10,6 +18,7 @@ type Props = {
   direction: PlaybackDirection
   start: number
   end: number
+  duration: number
   disabled: boolean
 }
 
@@ -17,25 +26,41 @@ const SIZE = 120
 const CENTER = SIZE / 2
 const RADIUS = 53
 const CIRC = 2 * Math.PI * RADIUS
+const TICK = 8
 
-export function TransportDock({ playing, loop, direction, start, end, disabled }: Props) {
-  const arcRef = useRef<SVGCircleElement>(null)
-  const region = useRef({ start, end })
+const SCRUB_MODES: { value: ScrubMode; label: string }[] = [
+  { value: 'region', label: 'Region' },
+  { value: 'sample', label: 'Sample' },
+]
+
+export function TransportDock({
+  playing,
+  loop,
+  direction,
+  start,
+  end,
+  duration,
+  disabled,
+}: Props) {
+  const [scrubMode, setScrubMode] = useState<ScrubMode>('region')
+  const tickRef = useRef<SVGLineElement>(null)
+  const playWrapRef = useRef<HTMLDivElement>(null)
+  const stateRef = useRef({ start, end, duration, scrubMode })
 
   useEffect(() => {
-    region.current = { start, end }
-  }, [start, end])
+    stateRef.current = { start, end, duration, scrubMode }
+  }, [start, end, duration, scrubMode])
 
-  // Playhead ring is refs + rAF only, so it never re-renders the transport.
+  // Playhead tick is refs + rAF only, so it never re-renders the transport.
   useEffect(() => {
     let frame = 0
     const tick = () => {
-      const el = arcRef.current
+      const el = tickRef.current
+      const dur = stateRef.current.duration
       if (el) {
-        const { start: s, end: e } = region.current
-        const span = e - s
-        const frac = span > 0 ? Math.min(1, Math.max(0, (engine.getPlayheadSeconds() - s) / span)) : 0
-        el.style.strokeDasharray = `${CIRC * frac} ${CIRC}`
+        const frac = timeToFraction(engine.getPlayheadSeconds(), dur)
+        const angle = frac * 360
+        el.setAttribute('transform', `rotate(${angle} ${CENTER} ${CENTER})`)
       }
       frame = requestAnimationFrame(tick)
     }
@@ -43,14 +68,17 @@ export function TransportDock({ playing, loop, direction, start, end, disabled }
     return () => cancelAnimationFrame(frame)
   }, [])
 
+  const applyTime = (time: number) => {
+    const { start: s, end: e, duration: dur, scrubMode: mode } = stateRef.current
+    const { min, max } = scrubBounds(mode, s, e, dur)
+    const span = Math.max(max - min, 0)
+    if (span <= 0) return
+    engine.seekSeconds(time, mode)
+  }
+
   const scrub = (clientX: number, clientY: number, target: Element) => {
     const rect = target.getBoundingClientRect()
-    const dx = clientX - (rect.left + rect.width / 2)
-    const dy = clientY - (rect.top + rect.height / 2)
-    // 0 at the top (12 o'clock), increasing clockwise.
-    let angle = Math.atan2(dx, -dy)
-    if (angle < 0) angle += Math.PI * 2
-    engine.seek(angle / (Math.PI * 2))
+    applyTime(angleToTime(pointerAngle(clientX, clientY, rect), stateRef.current.duration))
   }
 
   const onRingPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -83,6 +111,22 @@ export function TransportDock({ playing, loop, direction, start, end, disabled }
     target.addEventListener('lostpointercapture', up)
   }
 
+  useEffect(() => {
+    const wrap = playWrapRef.current
+    if (!wrap) return
+    const onWheel = (event: WheelEvent) => {
+      if (disabled) return
+      event.preventDefault()
+      const { start: s, end: e, duration: dur, scrubMode: mode } = stateRef.current
+      const { min, max } = scrubBounds(mode, s, e, dur)
+      engine.nudgePlayhead(wheelToTimeDelta(event.deltaY, event.shiftKey, max - min), mode)
+    }
+    wrap.addEventListener('wheel', onWheel, { passive: false })
+    return () => wrap.removeEventListener('wheel', onWheel)
+  }, [disabled])
+
+  const regionDash = regionArcDash(start, end, duration, CIRC)
+
   return (
     <div className={styles.dock}>
       <div className={styles.switches}>
@@ -93,10 +137,11 @@ export function TransportDock({ playing, loop, direction, start, end, disabled }
               type="button"
               role="radio"
               aria-checked={direction === opt.value}
+              aria-label={opt.label}
               className={`${styles.dir} ${direction === opt.value ? styles.dirActive : ''}`}
               onClick={() => engine.setDirection(opt.value)}
             >
-              {opt.label}
+              {opt.value === 'pingpong' ? 'P-P' : opt.label}
             </button>
           ))}
         </div>
@@ -108,22 +153,51 @@ export function TransportDock({ playing, loop, direction, start, end, disabled }
         >
           Loop
         </button>
+        <div className={styles.directions} role="radiogroup" aria-label="Scrub mode">
+          {SCRUB_MODES.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={scrubMode === opt.value}
+              className={`${styles.dir} ${scrubMode === opt.value ? styles.dirActive : ''}`}
+              onClick={() => setScrubMode(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className={styles.playWrap} onPointerDown={onRingPointerDown}>
+      <div
+        ref={playWrapRef}
+        className={styles.playWrap}
+        onPointerDown={onRingPointerDown}
+      >
         <svg className={styles.ring} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
           <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#34383b" strokeWidth="4" />
           <circle
-            ref={arcRef}
             cx={CENTER}
             cy={CENTER}
             r={RADIUS}
             fill="none"
-            stroke="var(--accent)"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeDasharray={`0 ${CIRC}`}
+            stroke="color-mix(in srgb, var(--accent) 55%, #34383b)"
+            strokeWidth="6"
+            strokeLinecap="butt"
+            strokeDasharray={regionDash.dashArray}
+            strokeDashoffset={regionDash.dashOffset}
             transform={`rotate(-90 ${CENTER} ${CENTER})`}
+          />
+          <line
+            ref={tickRef}
+            x1={CENTER}
+            y1={CENTER - RADIUS - 1}
+            x2={CENTER}
+            y2={CENTER - RADIUS + TICK}
+            stroke="var(--accent)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            transform={`rotate(0 ${CENTER} ${CENTER})`}
           />
         </svg>
         <button

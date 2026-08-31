@@ -3,6 +3,7 @@ import { PARAMS } from './definitions'
 import {
   applyParamValue,
   clampRegion,
+  clampScrubTime,
   dbToGain,
   defaultPlayRegion,
   formatParamValue,
@@ -80,6 +81,19 @@ describe('clampRegion', () => {
     const r = clampRegion(-1, 99, 2)
     expect(r.start).toBe(0)
     expect(r.end).toBe(2)
+  })
+})
+
+describe('clampScrubTime', () => {
+  it('keeps region scrubbing inside the selection', () => {
+    expect(clampScrubTime(0.2, 'region', 1, 3, 10)).toBe(1)
+    expect(clampScrubTime(2, 'region', 1, 3, 10)).toBe(2)
+    expect(clampScrubTime(9, 'region', 1, 3, 10)).toBe(3)
+  })
+
+  it('lets sample scrubbing travel the full file', () => {
+    expect(clampScrubTime(9, 'sample', 1, 3, 10)).toBe(9)
+    expect(clampScrubTime(-1, 'sample', 1, 3, 10)).toBe(0)
   })
 })
 

@@ -219,20 +219,22 @@ export default function App() {
           ) : null}
         </div>
 
-        <div className={styles.knobs}>
-          {knobs.map((id) => (
-            <Knob key={id} id={id} value={snap.params[id]} />
-          ))}
+        <div className={styles.chain}>
+          <div className={styles.knobs}>
+            {knobs.map((id) => (
+              <Knob key={id} id={id} value={snap.params[id]} />
+            ))}
+          </div>
+          <TransportDock
+            playing={snap.playing}
+            loop={snap.loop}
+            direction={snap.direction}
+            start={snap.params.start}
+            end={snap.params.end}
+            duration={snap.duration}
+            disabled={!snap.sampleLoaded}
+          />
         </div>
-
-        <TransportDock
-          playing={snap.playing}
-          loop={snap.loop}
-          direction={snap.direction}
-          start={snap.params.start}
-          end={snap.params.end}
-          disabled={!snap.sampleLoaded}
-        />
 
         <input
           ref={sampleInput}

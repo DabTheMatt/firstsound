@@ -39,6 +39,9 @@ export type EngineMode = 'playback' | 'grain'
 
 export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
 
+/** Where transport scrubbing (ring drag / wheel) is allowed to land. */
+export type ScrubMode = 'region' | 'sample'
+
 export type PresetV1 = {
   instrument: 'field'
   version: 1

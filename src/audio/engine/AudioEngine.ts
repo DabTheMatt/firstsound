@@ -3,6 +3,7 @@ import {
   applyParamValue,
   clamp,
   clampRegion,
+  clampScrubTime,
   dbToGain,
   defaultPlayRegion,
   playbackRate,
@@ -13,6 +14,7 @@ import type {
   ParamId,
   PlaybackDirection,
   PresetV1,
+  ScrubMode,
 } from '../parameters/types'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 import { motionValue } from './motion'
@@ -128,10 +130,11 @@ export class AudioEngine {
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
+      if (duration <= 0) return 0
       if (this.engineMode === 'grain') {
         return start + (this.params.position / 100) * (end - start)
       }
-      return start
+      return clamp(this.playOffset, 0, duration)
     }
     if (this.engineMode === 'grain') {
       // Reflect motion drift in the playhead so modulation is visible.
@@ -242,31 +245,38 @@ export class AudioEngine {
   }
 
   /**
-   * Move the playhead to `frac` (0..1) of the region. In grain mode this drives
-   * the grain read position; in the region player it seeks the play offset.
+   * Move the playhead to an absolute time in the sample.
+   * `region` clamps to the loop selection; `sample` allows the full file.
    */
-  seek(frac: number): void {
+  seekSeconds(time: number, mode: ScrubMode = 'region'): void {
     const duration = this.buffer?.duration ?? 0
     if (duration <= 0) return
-    const pos = clamp(frac, 0, 1)
+    const { start, end } = this.region(duration)
+    const offset = clampScrubTime(time, mode, start, end, duration)
     if (this.engineMode === 'grain') {
-      this.setParam('position', pos * 100)
+      const span = Math.max(end - start, MIN_REGION)
+      this.setParam('position', ((offset - start) / span) * 100)
       return
     }
-    const { start, end } = this.region(duration)
-    const offset = start + pos * (end - start)
     this.playOffset = offset
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
     if (this.playing) {
       if (this.direction === 'forward') {
         this.stopVoices()
         this.startBufferVoice(offset)
+        this.emit()
       } else {
         // Reverse/ping-pong restart from their own anchor rather than a seek.
         void this.play()
       }
+    } else {
+      this.emit()
     }
-    this.emit()
+  }
+
+  /** Nudge the playhead by `delta` seconds, honoring the active scrub mode. */
+  nudgePlayhead(delta: number, mode: ScrubMode = 'region'): void {
+    this.seekSeconds(this.getPlayheadSeconds() + delta, mode)
   }
 
   setEngineMode(mode: EngineMode): void {
@@ -383,6 +393,7 @@ export class AudioEngine {
     this.mono = mixToMono(buffer)
     const region = defaultPlayRegion(buffer.duration, MIN_REGION)
     this.params = { ...this.params, start: region.start, end: region.end }
+    this.playOffset = region.start
     this.emit()
   }
 
@@ -592,10 +603,8 @@ export class AudioEngine {
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
     src.connect(this.master)
     const mapped = reverse ? reverseTime(offset, duration) : offset
-    const clamped = Math.min(
-      Math.max(mapped, src.loopStart),
-      Math.max(src.loopStart, src.loopEnd - 0.001),
-    )
+    // Allow sample-mode seeks outside the loop region; still stay in the buffer.
+    const clamped = Math.min(Math.max(mapped, 0), Math.max(0, duration - 0.001))
     src.start(this.ctx.currentTime, clamped)
     if (!this.loop) {
       src.onended = () => {
