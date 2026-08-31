@@ -241,6 +241,34 @@ export class AudioEngine {
     else this.emit()
   }
 
+  /**
+   * Move the playhead to `frac` (0..1) of the region. In grain mode this drives
+   * the grain read position; in the region player it seeks the play offset.
+   */
+  seek(frac: number): void {
+    const duration = this.buffer?.duration ?? 0
+    if (duration <= 0) return
+    const pos = clamp(frac, 0, 1)
+    if (this.engineMode === 'grain') {
+      this.setParam('position', pos * 100)
+      return
+    }
+    const { start, end } = this.region(duration)
+    const offset = start + pos * (end - start)
+    this.playOffset = offset
+    if (this.ctx) this.playCtxTime = this.ctx.currentTime
+    if (this.playing) {
+      if (this.direction === 'forward') {
+        this.stopVoices()
+        this.startBufferVoice(offset)
+      } else {
+        // Reverse/ping-pong restart from their own anchor rather than a seek.
+        void this.play()
+      }
+    }
+    this.emit()
+  }
+
   setEngineMode(mode: EngineMode): void {
     if (this.engineMode === mode) return
     this.engineMode = mode

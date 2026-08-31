@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
-import { FILTER_TYPES, PLAYBACK_DIRECTIONS } from '../audio/parameters/definitions'
+import { FILTER_TYPES } from '../audio/parameters/definitions'
 import { Knob } from '../components/controls/Knob'
 import { Segmented } from '../components/controls/Segmented'
 import { Toggle } from '../components/controls/Toggle'
-import { TransportButton } from '../components/controls/TransportButton'
+import { TransportDock } from '../components/controls/TransportDock'
 import { Waveform } from '../components/waveform/Waveform'
 import { downloadJson, parsePreset, readAudioFile } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
@@ -160,18 +160,6 @@ export default function App() {
         />
 
         <div className={styles.transport}>
-          <TransportButton
-            playing={snap.playing}
-            disabled={!snap.sampleLoaded}
-            onToggle={() => {
-              void engine.unlock().then(() => engine.togglePlay())
-            }}
-          />
-          <Toggle
-            pressed={snap.loop}
-            label="Loop"
-            onToggle={() => engine.setLoop(!snap.loop)}
-          />
           <Toggle
             pressed={snap.engineMode === 'grain'}
             label="Grain"
@@ -221,14 +209,6 @@ export default function App() {
         {/* Always rendered with a fixed height so switching tabs never resizes
             the waveform above it. */}
         <div className={styles.moduleControls}>
-          {tab === 'source' ? (
-            <Segmented
-              label="Playback direction"
-              value={snap.direction}
-              options={PLAYBACK_DIRECTIONS}
-              onChange={(value) => engine.setDirection(value)}
-            />
-          ) : null}
           {tab === 'filter' ? (
             <Segmented
               label="Filter type"
@@ -244,6 +224,15 @@ export default function App() {
             <Knob key={id} id={id} value={snap.params[id]} />
           ))}
         </div>
+
+        <TransportDock
+          playing={snap.playing}
+          loop={snap.loop}
+          direction={snap.direction}
+          start={snap.params.start}
+          end={snap.params.end}
+          disabled={!snap.sampleLoaded}
+        />
 
         <input
           ref={sampleInput}
