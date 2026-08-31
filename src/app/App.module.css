@@ -2,10 +2,10 @@
   min-height: 100dvh;
   min-height: 100svh;
   display: flex;
-  padding: max(10px, env(safe-area-inset-top))
-    max(10px, env(safe-area-inset-right))
-    max(10px, env(safe-area-inset-bottom))
-    max(10px, env(safe-area-inset-left));
+  /* Edge-to-edge: only inset for iOS safe areas (0 on desktop) so the
+     instrument uses the full available screen by default. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .shell {
@@ -13,12 +13,11 @@
   width: 100%;
   min-height: 0;
   background: var(--bg-shell);
-  border-radius: var(--radius-shell);
-  padding: 18px 18px 20px;
+  border-radius: 0;
+  padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 24px 60px rgb(0 0 0 / 18%);
 }
 
 .header {

@@ -29,7 +29,8 @@ body,
 body {
   margin: 0;
   font-family: var(--font);
-  background: var(--bg-page);
+  /* Full-screen dark instrument; the shell now spans edge to edge. */
+  background: var(--bg-shell);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
