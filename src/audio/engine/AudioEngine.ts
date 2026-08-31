@@ -6,8 +6,14 @@ import {
   defaultPlayRegion,
   playbackRate,
 } from '../parameters/mapping'
-import type { EngineMode, FilterType, ParamId, PresetV1 } from '../parameters/types'
-import { reverseChannel, reverseTime } from './buffers'
+import type {
+  EngineMode,
+  FilterType,
+  ParamId,
+  PlaybackDirection,
+  PresetV1,
+} from '../parameters/types'
+import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 import { mixToMono } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -19,7 +25,7 @@ export type EngineSnapshot = {
   playing: boolean
   loop: boolean
   engineMode: EngineMode
-  reverse: boolean
+  direction: PlaybackDirection
   filterType: FilterType
   audioStatus: AudioStatus
   params: Record<ParamId, number>
@@ -72,7 +78,7 @@ export class AudioEngine {
   private playing = false
   private loop = true
   private engineMode: EngineMode = 'grain'
-  private reverse = false
+  private direction: PlaybackDirection = 'forward'
   private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private params: Record<ParamId, number> = defaultParamValues()
@@ -122,13 +128,19 @@ export class AudioEngine {
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
     const span = Math.max(end - start, MIN_REGION)
+    if (this.direction === 'pingpong') {
+      // Bounce start -> end -> start over a 2*span cycle.
+      const cycle = 2 * span
+      const phase = this.loop ? elapsed % cycle : Math.min(elapsed, cycle)
+      return phase <= span ? start + phase : end - (phase - span)
+    }
     if (this.loop) {
       // Reverse counts the playhead down from `end`, wrapping back to `end`.
-      if (this.reverse) return end - (elapsed % span)
+      if (this.direction === 'reverse') return end - (elapsed % span)
       const rel = (this.playOffset - start + elapsed) % span
       return start + (rel < 0 ? rel + span : rel)
     }
-    return this.reverse
+    return this.direction === 'reverse'
       ? Math.max(start, this.playOffset - elapsed)
       : Math.min(end, this.playOffset + elapsed)
   }
@@ -184,13 +196,15 @@ export class AudioEngine {
     this.playOffset =
       this.engineMode === 'grain'
         ? start + (this.params.position / 100) * (end - start)
-        : this.reverse
+        : this.direction === 'reverse'
           ? end
           : start
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
       this.scheduleGrains()
+    } else if (this.direction === 'pingpong') {
+      this.startPingPongVoice()
     } else {
       this.startBufferVoice(this.playOffset)
     }
@@ -221,9 +235,9 @@ export class AudioEngine {
     else this.emit()
   }
 
-  setReverse(reverse: boolean): void {
-    if (this.reverse === reverse) return
-    this.reverse = reverse
+  setDirection(direction: PlaybackDirection): void {
+    if (this.direction === direction) return
+    this.direction = direction
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -235,10 +249,11 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
+      this.applyRegionChange()
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
+      this.applyLiveAudio()
     }
-    this.applyLiveAudio()
     this.emit()
   }
 
@@ -247,8 +262,17 @@ export class AudioEngine {
     const region = clampRegion(start, end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
-    this.applyLiveAudio()
+    this.applyRegionChange()
     this.emit()
+  }
+
+  /** Ping-pong bakes the region into a buffer, so a region change rebuilds it. */
+  private applyRegionChange(): void {
+    if (this.playing && this.engineMode === 'playback' && this.direction === 'pingpong') {
+      void this.play()
+    } else {
+      this.applyLiveAudio()
+    }
   }
 
   resetParam(id: ParamId): void {
@@ -270,7 +294,7 @@ export class AudioEngine {
     this.params.start = region.start
     this.params.end = region.end
     this.engineMode = 'playback'
-    this.reverse = false
+    this.direction = 'forward'
     this.filterType = 'off'
     this.applyLiveAudio()
     this.emit()
@@ -282,7 +306,9 @@ export class AudioEngine {
       version: 1,
       loop: this.loop,
       engineMode: this.engineMode,
-      reverse: this.reverse,
+      direction: this.direction,
+      // Legacy field so older builds still read a sensible value.
+      reverse: this.direction === 'reverse',
       filterType: this.filterType,
       params: { ...this.params },
     }
@@ -291,7 +317,7 @@ export class AudioEngine {
   applyPreset(preset: PresetV1): void {
     this.loop = preset.loop
     this.engineMode = preset.engineMode
-    this.reverse = preset.reverse ?? false
+    this.direction = preset.direction ?? (preset.reverse ? 'reverse' : 'forward')
     this.filterType = preset.filterType ?? 'off'
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = preset.params[id]
@@ -334,7 +360,20 @@ export class AudioEngine {
 
   /** Buffer feeding the voices — reversed copy when playing backwards. */
   private activeBuffer(): AudioBuffer | null {
-    return this.reverse && this.reversed ? this.reversed : this.buffer
+    return this.direction === 'reverse' && this.reversed ? this.reversed : this.buffer
+  }
+
+  private buildPingPong(startSec: number, endSec: number): AudioBuffer | null {
+    if (!this.ctx || !this.buffer) return null
+    const sr = this.buffer.sampleRate
+    const s = Math.floor(startSec * sr)
+    const e = Math.floor(endSec * sr)
+    const len = Math.max(2, (e - s) * 2)
+    const pp = this.ctx.createBuffer(this.buffer.numberOfChannels, len, sr)
+    for (let ch = 0; ch < this.buffer.numberOfChannels; ch++) {
+      pp.getChannelData(ch).set(pingPongChannel(this.buffer.getChannelData(ch), s, e))
+    }
+    return pp
   }
 
   private region(duration: number) {
@@ -434,10 +473,13 @@ export class AudioEngine {
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
-      const duration = this.buffer?.duration ?? 0
-      const { start, end } = this.region(duration)
-      this.source.loopStart = start
-      this.source.loopEnd = end
+      // Ping-pong loops the whole baked buffer, so its loop points stay fixed.
+      if (this.direction !== 'pingpong') {
+        const duration = this.buffer?.duration ?? 0
+        const { start, end } = this.region(duration)
+        this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
+        this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
+      }
     }
   }
 
@@ -446,20 +488,42 @@ export class AudioEngine {
     if (!this.ctx || !this.master || !buffer) return
     const duration = buffer.duration
     const { start, end } = this.region(duration)
+    const reverse = this.direction === 'reverse'
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = this.loop
     // Reversed buffer: mirror the region so the same forward-time window plays.
-    src.loopStart = this.reverse ? reverseTime(end, duration) : start
-    src.loopEnd = this.reverse ? reverseTime(start, duration) : end
+    src.loopStart = reverse ? reverseTime(end, duration) : start
+    src.loopEnd = reverse ? reverseTime(start, duration) : end
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
     src.connect(this.master)
-    const mapped = this.reverse ? reverseTime(offset, duration) : offset
+    const mapped = reverse ? reverseTime(offset, duration) : offset
     const clamped = Math.min(
       Math.max(mapped, src.loopStart),
       Math.max(src.loopStart, src.loopEnd - 0.001),
     )
     src.start(this.ctx.currentTime, clamped)
+    if (!this.loop) {
+      src.onended = () => {
+        if (this.source === src) this.stop()
+      }
+    }
+    this.source = src
+  }
+
+  private startPingPongVoice(): void {
+    if (!this.ctx || !this.master || !this.buffer) return
+    const { start, end } = this.region(this.buffer.duration)
+    const buffer = this.buildPingPong(start, end)
+    if (!buffer) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.loop = this.loop
+    src.loopStart = 0
+    src.loopEnd = buffer.duration
+    src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
+    src.connect(this.master)
+    src.start(this.ctx.currentTime, 0)
     if (!this.loop) {
       src.onended = () => {
         if (this.source === src) this.stop()
@@ -508,7 +572,8 @@ export class AudioEngine {
       gain.connect(this.master)
       const dur = Math.min(grainDur, Math.max(0.01, duration - offset))
       // Mirror the grain window so each grain also plays backwards when reversed.
-      const grainOffset = this.reverse ? Math.max(0, duration - offset - dur) : offset
+      const grainOffset =
+        this.direction === 'reverse' ? Math.max(0, duration - offset - dur) : offset
       src.start(t, grainOffset, dur)
       src.stop(t + dur + 0.02)
       this.nextGrainTime += interval
@@ -540,7 +605,7 @@ export class AudioEngine {
       playing: this.playing,
       loop: this.loop,
       engineMode: this.engineMode,
-      reverse: this.reverse,
+      direction: this.direction,
       filterType: this.filterType,
       audioStatus: this.audioStatus,
       params: { ...this.params },

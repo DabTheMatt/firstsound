@@ -21,7 +21,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
 }
 
 export const TAB_NOTES: Record<ModuleTab, string | null> = {
-  source: 'Region player — speed also transposes, like tape. Reverse plays it backwards.',
+  source: 'Region player — speed also transposes, like tape. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Motion macros land in a later milestone. Position and scatter are live.',
   space: 'Delay and reverb land in a later milestone. Gain is live.',

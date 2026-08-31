@@ -221,9 +221,9 @@ export default function App() {
           <div className={styles.moduleControls}>
             <Segmented
               label="Playback direction"
-              value={snap.reverse ? 'reverse' : 'forward'}
+              value={snap.direction}
               options={PLAYBACK_DIRECTIONS}
-              onChange={(value) => engine.setReverse(value === 'reverse')}
+              onChange={(value) => engine.setDirection(value)}
             />
           </div>
         ) : null}

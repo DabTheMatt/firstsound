@@ -21,3 +21,25 @@ export function reverseChannel(input: Float32Array): Float32Array {
 export function reverseTime(seconds: number, duration: number): number {
   return Math.max(0, duration - seconds)
 }
+
+/**
+ * Build a ping-pong window: samples [startIdx, endIdx) forwards followed by the
+ * same samples backwards. Looping this buffer plays the region back and forth
+ * seamlessly (the turnaround samples are shared, avoiding a click).
+ */
+export function pingPongChannel(
+  input: Float32Array,
+  startIdx: number,
+  endIdx: number,
+): Float32Array {
+  const s = Math.max(0, Math.min(startIdx, input.length))
+  const e = Math.max(s, Math.min(endIdx, input.length))
+  const region = e - s
+  const out = new Float32Array(region * 2)
+  for (let i = 0; i < region; i++) {
+    const sample = input[s + i]
+    out[i] = sample
+    out[region * 2 - 1 - i] = sample
+  }
+  return out
+}

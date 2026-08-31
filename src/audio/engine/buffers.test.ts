@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reverseChannel, reverseTime } from './buffers'
+import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 
 describe('reverseChannel', () => {
   it('reverses sample order without mutating the input', () => {
@@ -22,5 +22,23 @@ describe('reverseTime', () => {
 
   it('never returns a negative position', () => {
     expect(reverseTime(11, 10)).toBe(0)
+  })
+})
+
+describe('pingPongChannel', () => {
+  it('concatenates the region forwards then backwards', () => {
+    const input = new Float32Array([9, 1, 2, 3, 9])
+    // region [1,4) = [1,2,3] -> forward + mirrored
+    expect(Array.from(pingPongChannel(input, 1, 4))).toEqual([1, 2, 3, 3, 2, 1])
+  })
+
+  it('is symmetric (a palindrome) so looping turns around smoothly', () => {
+    const out = pingPongChannel(new Float32Array([0, 0.5, 1]), 0, 3)
+    const reversed = Array.from(out).reverse()
+    expect(Array.from(out)).toEqual(reversed)
+  })
+
+  it('clamps out-of-range indices', () => {
+    expect(pingPongChannel(new Float32Array([1, 2]), 0, 99).length).toBe(4)
   })
 })

@@ -1,4 +1,4 @@
-import type { FilterType, ParamDef, ParamId } from './types'
+import type { FilterType, ParamDef, ParamId, PlaybackDirection } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
   start: {
@@ -134,10 +134,11 @@ export const FILTER_TYPES: { value: FilterType; label: string }[] = [
   { value: 'bandpass', label: 'Band' },
 ]
 
-/** Playback direction options for the region/grain engines. */
-export const PLAYBACK_DIRECTIONS: { value: 'forward' | 'reverse'; label: string }[] = [
+/** Playback direction options for the region player. */
+export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] = [
   { value: 'forward', label: 'Forward' },
   { value: 'reverse', label: 'Reverse' },
+  { value: 'pingpong', label: 'Ping-Pong' },
 ]
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
