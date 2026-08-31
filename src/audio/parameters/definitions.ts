@@ -161,6 +161,34 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: '%',
     mapping: 'linear',
   },
+  motionDepth: {
+    id: 'motionDepth',
+    label: 'Depth',
+    min: 0,
+    max: 100,
+    // Off by default so the grain position stays where you set it.
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  motionRate: {
+    id: 'motionRate',
+    label: 'Rate',
+    min: 0.02,
+    max: 8,
+    defaultValue: 0.3,
+    unit: 'Hz',
+    mapping: 'log',
+  },
+  motionJitter: {
+    id: 'motionJitter',
+    label: 'Jitter',
+    min: 0,
+    max: 100,
+    defaultValue: 30,
+    unit: '%',
+    mapping: 'linear',
+  },
 }
 
 /** Filter type options, in UI order. `off` bypasses the filter entirely. */
@@ -189,7 +217,7 @@ export const GRAIN_KNOBS: ParamId[] = [
   'grainPitch',
   'pitchSpread',
 ]
-export const MOTION_KNOBS: ParamId[] = ['position', 'scatter', 'speed']
+export const MOTION_KNOBS: ParamId[] = ['motionDepth', 'motionRate', 'motionJitter', 'position']
 export const SPACE_KNOBS: ParamId[] = ['spaceMix', 'delayTime', 'delayFeedback', 'reverb']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']

@@ -1,6 +1,7 @@
 import { defaultParamValues, PARAMS } from '../parameters/definitions'
 import {
   applyParamValue,
+  clamp,
   clampRegion,
   dbToGain,
   defaultPlayRegion,
@@ -14,6 +15,7 @@ import type {
   PresetV1,
 } from '../parameters/types'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
+import { motionValue } from './motion'
 import { mixToMono } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -96,6 +98,10 @@ export class AudioEngine {
   private schedulerId = 0
   private visibilityBound = false
   private unlocked = false
+  // Motion modulation state (grain-position drift): smoothed random-walk value.
+  private motionRandCur = 0
+  private motionRandTarget = 0
+  private motionClock = 0
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -128,7 +134,9 @@ export class AudioEngine {
       return start
     }
     if (this.engineMode === 'grain') {
-      return start + (this.params.position / 100) * (end - start)
+      // Reflect motion drift in the playhead so modulation is visible.
+      const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
+      return start + p * (end - start)
     }
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
@@ -590,6 +598,30 @@ export class AudioEngine {
     this.source = src
   }
 
+  /** Slow drift applied to the grain position: sine LFO blended with a random walk. */
+  private motionOffset(t: number): number {
+    return motionValue(
+      this.params.motionDepth,
+      this.params.motionRate,
+      this.params.motionJitter,
+      this.motionRandCur,
+      t,
+    )
+  }
+
+  /** Step the motion random-walk once per scheduler tick toward a new target. */
+  private advanceMotion(): void {
+    if (this.params.motionDepth <= 0 || this.params.motionJitter <= 0) return
+    const dt = SCHEDULER_MS / 1000
+    this.motionClock += dt
+    const period = 1 / Math.max(this.params.motionRate, 0.02)
+    if (this.motionClock >= period) {
+      this.motionClock -= period
+      this.motionRandTarget = Math.random() * 2 - 1
+    }
+    this.motionRandCur += (this.motionRandTarget - this.motionRandCur) * Math.min(1, dt * 4)
+  }
+
   private scheduleGrains(): void {
     const buffer = this.activeBuffer()
     if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.master) {
@@ -604,11 +636,12 @@ export class AudioEngine {
     const { start, end } = this.region(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
+    this.advanceMotion()
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
       const scatter = this.params.scatter / 100
-      const pos = this.params.position / 100
+      const pos = clamp(this.params.position / 100 + this.motionOffset(t) * 0.5, 0, 1)
       const jitter = (Math.random() * 2 - 1) * scatter * span * 0.5
       let offset = start + pos * span + jitter
       offset = Math.min(Math.max(offset, start), Math.max(start, end - grainDur * 0.25))

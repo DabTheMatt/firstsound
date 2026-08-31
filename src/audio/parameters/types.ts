@@ -18,6 +18,9 @@ export type ParamId =
   | 'delayTime'
   | 'delayFeedback'
   | 'reverb'
+  | 'motionDepth'
+  | 'motionRate'
+  | 'motionJitter'
 
 export type FilterType = 'off' | 'lowpass' | 'highpass' | 'bandpass'
 
