@@ -44,6 +44,14 @@
   height: calc(100% - 22px);
 }
 
+.fxCanvas {
+  position: absolute;
+  inset: 0 0 22px 0;
+  width: 100%;
+  height: calc(100% - 22px);
+  pointer-events: none;
+}
+
 .overlay {
   position: absolute;
   inset: 0 0 22px 0;

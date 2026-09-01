@@ -26,6 +26,9 @@ import {
   zoomToSelection,
   type View,
 } from './viewport'
+import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
+import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
+import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import styles from './Waveform.module.css'
 
 type Props = {
@@ -47,6 +50,7 @@ type Props = {
   onFades: (patch: { fadeIn?: number; fadeOut?: number }) => void
   onFadesCommit?: () => void
   contentRev?: number
+  fxMode?: 'delay' | 'reverb' | null
 }
 
 export type WaveformHandle = {
@@ -57,7 +61,7 @@ export type WaveformHandle = {
   zoomBy: (factor: number) => void
 }
 
-type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | null
+type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | 'fx' | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   {
@@ -79,11 +83,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onFades,
     onFadesCommit,
     contentRev = 0,
+    fxMode = null,
   },
   ref,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const peaksRef = useRef<{ min: Float32Array; max: Float32Array } | null>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const viewRef = useRef(view)
@@ -163,6 +170,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           const bottom = mid - lo * half
           ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
         }
+        if (lane === 0) peaksRef.current = { min, max }
       }
     }
     draw()
@@ -184,11 +192,61 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           el.style.display = 'none'
         }
       }
+      const fxCanvas = fxCanvasRef.current
+      const snap = engine.getSnapshot()
+      const mode = fxMode
+      if (fxCanvas && mode && !snap.chain.find((m) => m.type === mode)?.bypassed) {
+        const rect = fxCanvas.getBoundingClientRect()
+        const dpr = Math.min(window.devicePixelRatio || 1, 2)
+        const width = Math.max(1, Math.floor(rect.width * dpr))
+        const height = Math.max(1, Math.floor(rect.height * dpr))
+        if (fxCanvas.width !== width || fxCanvas.height !== height) {
+          fxCanvas.width = width
+          fxCanvas.height = height
+        }
+        const ctx = fxCanvas.getContext('2d')
+        if (ctx) {
+          ctx.clearRect(0, 0, width, height)
+          const view = viewRef.current
+          const now = performance.now() / 1000
+          if (mode === 'delay') {
+            const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm, now)
+            const peaks = peaksRef.current
+            if (peaks) {
+              drawDelayOverlay(
+                ctx,
+                width,
+                height,
+                view.start,
+                view.end,
+                snap.params.start,
+                taps,
+                peaks.min,
+                peaks.max,
+              )
+            }
+          } else {
+            drawReverbOverlay(
+              ctx,
+              width,
+              height,
+              view.start,
+              view.end,
+              snap.params.start,
+              reverbTail(snap.params, snap.reverbType, snap.params.bpm),
+              now,
+            )
+          }
+        }
+      } else if (fxCanvas) {
+        const ctx = fxCanvas.getContext('2d')
+        ctx?.clearRect(0, 0, fxCanvas.width, fxCanvas.height)
+      }
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [fxMode])
 
   useEffect(() => {
     const overlay = overlayRef.current
@@ -217,7 +275,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     mode: DragMode
     span: number
     originT: number
+    originY: number
     origin: { start: number; end: number }
+    fx?: SpaceHit
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
@@ -252,6 +312,35 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const fadeInX = timeToFrac(start + fadeIn, viewRef.current) * width
     const fadeOutX = timeToFrac(end - fadeOut, viewRef.current) * width
 
+    if (fxMode && tool === 'select') {
+      const snap = engine.getSnapshot()
+      const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm)
+      const tail = reverbTail(snap.params, snap.reverbType, snap.params.bpm)
+      const spaceHit = hitSpaceOverlay(
+        x,
+        event.clientY - rect.top,
+        width,
+        rect.height,
+        viewRef.current.start,
+        viewRef.current.end,
+        start,
+        fxMode,
+        taps,
+        tail,
+      )
+      if (spaceHit) {
+        drag.current = {
+          mode: 'fx',
+          span: end - start,
+          originT: t,
+          originY: event.clientY - rect.top,
+          origin: { start, end },
+          fx: spaceHit,
+        }
+        return
+      }
+    }
+
     let mode: DragMode = tool === 'pan' ? 'pan' : 'move'
     if (tool === 'fade') {
       if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit) mode = 'fadeIn'
@@ -264,7 +353,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         mode = 'start'
       }
     }
-    drag.current = { mode, span: end - start, originT: t, origin: { start, end } }
+    drag.current = { mode, span: end - start, originT: t, originY: event.clientY - rect.top, origin: { start, end } }
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -287,7 +376,21 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
-    const { mode, span, originT, origin } = drag.current
+    const { mode, span, originT, origin, fx } = drag.current
+    if (mode === 'fx' && fx) {
+      engine.setParams(
+        dragSpaceOverlay(
+          fx,
+          originT,
+          next,
+          drag.current.originY,
+          event.clientY - rect.top,
+          rect.height,
+          engine.getSnapshot().params,
+        ),
+      )
+      return
+    }
     if (mode === 'pan') {
       setView(panView(viewRef.current, originT - next, duration))
       drag.current.originT = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
@@ -353,6 +456,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
         <div className={styles.wrap} hidden={!showWave}>
             <canvas ref={canvasRef} className={styles.canvas} />
+            <canvas ref={fxCanvasRef} className={styles.fxCanvas} />
             <div
               ref={overlayRef}
               className={styles.overlay}

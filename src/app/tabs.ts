@@ -24,7 +24,7 @@ export const TAB_NOTES: Record<ModuleTab, string | null> = {
   source: 'Region player — speed also transposes, like tape. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
-  space: 'Delay + reverb send. Raise Mix to hear it; Feedback sets the delay tail.',
+      space: 'Delay + reverb. Macros first; Advanced unlocks filters, modulation, freeze, and presets.',
   filter: 'Pick a type to engage the filter, then sweep cutoff and resonance.',
   output: 'Limiter is always on. Recording lands in a later milestone.',
 }

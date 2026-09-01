@@ -27,6 +27,50 @@ export type ParamId =
   | 'reverbDecay'
   | 'reverbPredelay'
   | 'reverbDamping'
+  | 'bpm'
+  | 'delaySync'
+  | 'delayNote'
+  | 'delayNoteKind'
+  | 'delayWidth'
+  | 'delayPan'
+  | 'delayOffset'
+  | 'delayHp'
+  | 'delayLp'
+  | 'delayDrive'
+  | 'delayModRate'
+  | 'delayModDepth'
+  | 'delayWow'
+  | 'delayFlutter'
+  | 'delayDiffusion'
+  | 'delayPitch'
+  | 'delayReverse'
+  | 'delayDuck'
+  | 'delayFreeze'
+  | 'delayDrift'
+  | 'reverbSync'
+  | 'reverbNote'
+  | 'reverbNoteKind'
+  | 'reverbEarly'
+  | 'reverbDiffusion'
+  | 'reverbDensity'
+  | 'reverbLowCut'
+  | 'reverbHighCut'
+  | 'reverbWidth'
+  | 'reverbModRate'
+  | 'reverbModDepth'
+  | 'reverbShimmerPitch'
+  | 'reverbShimmer'
+  | 'reverbDrive'
+  | 'reverbDuck'
+  | 'reverbGate'
+  | 'reverbGateThres'
+  | 'reverbGateAttack'
+  | 'reverbGateHold'
+  | 'reverbGateRelease'
+  | 'reverbReverse'
+  | 'reverbFreeze'
+  | 'reverbColor'
+  | 'reverbDistance'
 
 export type FilterType =
   | 'off'
@@ -58,13 +102,14 @@ export type ScrubMode = 'region' | 'sample'
 
 import type { ChainModule } from '../chain/chain'
 import type { EqBand } from '../engine/eqBands'
+import type { DelayType, ReverbType } from '../fx/types'
 
 export type PresetV1 = {
   instrument: 'field'
   version: 1
   loop: boolean
   engineMode: EngineMode
-  params: Record<ParamId, number>
+  params: Record<string, number>
   // Optional so presets saved before these modules existed still load.
   filterType?: FilterType
   direction?: PlaybackDirection
@@ -73,4 +118,6 @@ export type PresetV1 = {
   chain?: ChainModule[]
   eqBands?: EqBand[]
   muted?: boolean
+  delayType?: DelayType
+  reverbType?: ReverbType
 }
