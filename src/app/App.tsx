@@ -221,10 +221,12 @@ export default function App() {
               ) : null}
             </div>
 
-            <div className={styles.knobs}>
-              {knobs.map((id) => (
-                <Knob key={id} id={id} value={snap.params[id]} />
-              ))}
+            <div className={styles.knobsScroll}>
+              <div className={styles.knobs}>
+                {knobs.map((id) => (
+                  <Knob key={id} id={id} value={snap.params[id]} />
+                ))}
+              </div>
             </div>
           </div>
 

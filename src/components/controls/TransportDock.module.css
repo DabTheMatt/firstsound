@@ -39,6 +39,9 @@
   text-transform: uppercase;
   white-space: nowrap;
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   touch-action: manipulation;
 }
 
@@ -110,32 +113,60 @@
 
 @media (max-width: 820px) {
   .dock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px;
+    align-items: center;
     width: 100%;
     height: auto;
-    min-height: 112px;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 0 2px;
-    gap: 12px;
+    min-height: 0;
+    margin-top: 8px;
+    padding: 10px 10px 8px;
+    gap: 10px 14px;
+    border-top: 1px solid #2c2f31;
+    background: #161818;
+    border-radius: 14px;
+    flex-shrink: 0;
   }
 
   .switches {
-    align-items: flex-start;
-    flex: 1 1 auto;
-    min-width: 0;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .directions {
-    max-width: 100%;
+    display: flex;
+    width: 100%;
+    max-width: none;
+  }
+
+  .dir {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 6px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .loop {
+    width: 100%;
+    min-height: 34px;
+    text-align: center;
   }
 
   .playWrap {
-    width: 104px;
-    height: 104px;
+    grid-column: 2;
+    grid-row: 1;
+    width: 96px;
+    height: 96px;
+    justify-self: end;
   }
 
   .play {
-    width: 70px;
-    height: 70px;
+    width: 64px;
+    height: 64px;
   }
 }
