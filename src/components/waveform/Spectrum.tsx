@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { combAsEqBands } from '../../audio/engine/comb'
 import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
 import {
   dbToY as eqDbToY,
@@ -95,6 +94,11 @@ function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: nu
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active }: Props) {
   const snap = useEngine()
+  const eqNodeMod = snap.chain.find((m) => m.type === 'eq' && !m.bypassed)
+  const eqNodeBands = eqNodeMod
+    ? (snap.eqById[eqNodeMod.instanceId]?.bands ?? snap.eqBands)
+    : []
+  const eqNodeId = eqNodeMod?.instanceId
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const plotRef = useRef<HTMLDivElement>(null)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
@@ -107,6 +111,7 @@ export function Spectrum({ active }: Props) {
   const postSlow = useRef(emptyBands(prefs.bands))
   const drag = useRef<{
     index: number
+    instanceId: string
     pointerId: number
     q0: number
     y0: number
@@ -240,7 +245,7 @@ export function Spectrum({ active }: Props) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
-        const eqOn = !live.chain.find((m) => m.type === 'eq')?.bypassed
+        const eqOn = live.chain.some((m) => m.type === 'eq' && !m.bypassed)
         if (eqOn) {
           ctx.beginPath()
           ctx.strokeStyle = colors.eqCurve
@@ -249,7 +254,7 @@ export function Spectrum({ active }: Props) {
           const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
           for (let i = 0; i < freqs.length; i++) {
             const hz = freqs[i] ?? minHz
-            const db = eqMagnitudeDb([...live.eqBands, ...combAsEqBands(live.comb)], hz, sr)
+            const db = eqMagnitudeDb(live.eqPlotBands, hz, sr)
             const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
             const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
             if (i === 0) ctx.moveTo(x, y)
@@ -269,10 +274,12 @@ export function Spectrum({ active }: Props) {
     event.stopPropagation()
     setSelectedBand(index)
     event.currentTarget.setPointerCapture(event.pointerId)
+    if (!eqNodeId) return
     drag.current = {
       index,
+      instanceId: eqNodeId,
       pointerId: event.pointerId,
-      q0: snap.eqBands[index]?.q ?? 1,
+      q0: eqNodeBands[index]?.q ?? 1,
       y0: event.clientY,
     }
   }
@@ -284,11 +291,11 @@ export function Spectrum({ active }: Props) {
     const rect = plot.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
-    const band = snap.eqBands[d.index]
+    const band = (snap.eqById[d.instanceId]?.bands ?? snap.eqBands)[d.index]
     if (!band) return
     const frequency = xToFreq(x, rect.width, EQ_MAX_HZ)
     const db = eqYToDb(y, rect.height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
-    engine.setEqBand(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY))
+    engine.setEqBand(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY), d.instanceId)
   }
 
   const onNodePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -415,9 +422,8 @@ export function Spectrum({ active }: Props) {
           bottom: SPECTRUM_PLOT_PAD.bottom,
         }}
       >
-        {snap.chain.find((m) => m.type === 'eq')?.bypassed
-          ? null
-          : snap.eqBands.map((band, index) => {
+        {eqNodeMod
+          ? eqNodeBands.map((band, index) => {
           if (band.type === 'off') return null
           const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
           const yPct =
@@ -436,7 +442,8 @@ export function Spectrum({ active }: Props) {
               onPointerCancel={onNodePointerUp}
             />
           )
-        })}
+        })
+        : null}
       </div>
       {hover ? (
         <div

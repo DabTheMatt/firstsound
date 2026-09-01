@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultChain,
+  insertChainModule,
+  moduleLabel,
+  nextInstanceId,
   normalizeChain,
   parseChain,
+  removeChainModule,
   reorderChain,
   setBypassed,
 } from './chain'
@@ -66,5 +70,33 @@ describe('parseChain', () => {
     )
     expect(parseChain(null)).toBeNull()
     expect(parseChain([{ instanceId: 'x' }])).toBeNull()
+  })
+})
+
+describe('insertChainModule', () => {
+  it('inserts a second EQ between neighbours', () => {
+    const chain = defaultChain()
+    const eqIndex = chain.findIndex((m) => m.type === 'eq')
+    const next = insertChainModule(chain, 'eq', eqIndex)
+    expect(next.filter((m) => m.type === 'eq')).toHaveLength(2)
+    expect(next[eqIndex + 1]?.type).toBe('eq')
+    expect(next[eqIndex + 1]?.instanceId).toBe('eq-2')
+    expect(next[0]?.type).toBe('gain')
+    expect(next.at(-1)?.type).toBe('output')
+  })
+
+  it('refuses Main/Output and numbers extra labels', () => {
+    const chain = insertChainModule(defaultChain(), 'eq', 2)
+    expect(insertChainModule(chain, 'gain', 0)).toEqual(chain)
+    expect(nextInstanceId('eq', chain)).toBe('eq-3')
+    const second = chain.find((m) => m.instanceId === 'eq-2')!
+    expect(moduleLabel(second, chain)).toBe('EQ 2')
+  })
+
+  it('removes a middle module but keeps endpoints', () => {
+    const gone = removeChainModule(defaultChain(), 'eq-1')
+    expect(gone.some((m) => m.type === 'eq')).toBe(false)
+    expect(gone[0]?.type).toBe('gain')
+    expect(removeChainModule(gone, 'gain-1')[0]?.type).toBe('gain')
   })
 })

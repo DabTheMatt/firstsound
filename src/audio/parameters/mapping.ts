@@ -158,6 +158,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
       return `${value.toFixed(2)} st`
     case 'gain':
     case 'outputGain':
+    case 'channelGainL':
+    case 'channelGainR':
     case 'reverbGateThres':
     case 'reverbLimit':
       return `${value.toFixed(1)} dB`
@@ -194,7 +196,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbSync':
     case 'delayFreeze':
     case 'reverbFreeze':
+    case 'makeMono':
+    case 'invertPhase':
       return value > 0.5 ? 'On' : 'Off'
+    case 'pan':
+      if (Math.abs(value) < 0.5) return 'C'
+      return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
     default:
       if (def.unit === '%') return `${Math.round(value)} %`
       if (def.unit === 'ms') return `${Math.round(value)} ms`
