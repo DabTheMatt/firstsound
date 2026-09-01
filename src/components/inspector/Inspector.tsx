@@ -26,7 +26,7 @@ import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { InspectorEye } from './InspectorEye'
-import { LimiterWave } from './LimiterWave'
+import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
 import styles from './Inspector.module.css'
 
@@ -421,7 +421,7 @@ function LimiterEditor({
   return (
     <div className={styles.eq}>
       <div className={styles.eqViz}>
-        <LimiterWave />
+        <LimiterPlot />
       </div>
       {params(LIMITER_MAIN_KNOBS)}
       <details className={styles.band}>

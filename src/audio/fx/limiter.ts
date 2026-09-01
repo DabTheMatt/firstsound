@@ -92,3 +92,46 @@ export function limiterReductionDb(g: LimiterGraph | null | undefined): number {
   const gr = g?.comp.reduction
   return typeof gr === 'number' && Number.isFinite(gr) ? gr : 0
 }
+
+export const LIMITER_PLOT_MIN_DB = -48
+export const LIMITER_PLOT_MAX_DB = 6
+
+export function amplitudeToDb(amp: number): number {
+  if (!(amp > 0) || !Number.isFinite(amp)) return Number.NEGATIVE_INFINITY
+  return 20 * Math.log10(amp)
+}
+
+export function peakAmplitude(samples: Float32Array): number {
+  let peak = 0
+  for (let i = 0; i < samples.length; i++) {
+    const a = Math.abs(samples[i] ?? 0)
+    if (a > peak) peak = a
+  }
+  return peak
+}
+
+/**
+ * Soft-knee compressor gain in dB (0 or negative), matching the usual
+ * DynamicsCompressor knee shape.
+ */
+export function compressorGainDb(inputDb: number, threshold: number, ratio: number, knee: number): number {
+  if (!Number.isFinite(inputDb)) return 0
+  const r = Math.max(1, ratio)
+  const k = Math.max(0, knee)
+  const half = k / 2
+  if (inputDb <= threshold - half) return 0
+  if (k > 0 && inputDb < threshold + half) {
+    const x = inputDb - threshold + half
+    return ((1 / r - 1) * x * x) / (2 * k)
+  }
+  return (1 / r - 1) * (inputDb - threshold)
+}
+
+/** Predicted output level after input drive, compression, makeup, and ceiling. */
+export function limiterOutputDb(inputDb: number, s: LimiterSettings): number {
+  const driveDb = amplitudeToDb(s.inputGain)
+  const driven = inputDb + (Number.isFinite(driveDb) ? driveDb : 0)
+  const makeupDb = amplitudeToDb(s.makeupGain)
+  const after = driven + compressorGainDb(driven, s.threshold, s.ratio, s.knee) + (Number.isFinite(makeupDb) ? makeupDb : 0)
+  return Math.min(s.ceiling, after)
+}

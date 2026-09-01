@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { autoMakeupDb, limiterSettings } from './limiter'
+import {
+  amplitudeToDb,
+  autoMakeupDb,
+  compressorGainDb,
+  limiterOutputDb,
+  limiterSettings,
+} from './limiter'
 
 describe('autoMakeupDb', () => {
   it('is zero at 0 dB threshold', () => {
@@ -33,5 +39,41 @@ describe('limiterSettings', () => {
     params.limiterMakeup = 0
     const s = limiterSettings(params)
     expect(s.makeupGain).toBeGreaterThan(1)
+  })
+})
+
+describe('compressorGainDb', () => {
+  it('is transparent below the knee', () => {
+    expect(compressorGainDb(-24, -6, 12, 0)).toBe(0)
+    expect(compressorGainDb(-12, -6, 20, 6)).toBe(0)
+  })
+
+  it('reduces more as the ratio and overshoot grow', () => {
+    const soft = compressorGainDb(0, -6, 4, 0)
+    const hard = compressorGainDb(0, -6, 20, 0)
+    expect(hard).toBeLessThan(soft)
+    expect(soft).toBeLessThan(0)
+  })
+})
+
+describe('limiterOutputDb', () => {
+  it('follows unity below threshold and compresses above it', () => {
+    const s = limiterSettings(defaultParamValues())
+    expect(limiterOutputDb(-24, s)).toBeCloseTo(-24, 3)
+    expect(limiterOutputDb(0, s)).toBeLessThan(-1)
+  })
+
+  it('never exceeds the ceiling after makeup', () => {
+    const params = defaultParamValues()
+    params.limiterThreshold = -24
+    params.limiterRatio = 20
+    params.limiterMakeup = 24
+    const s = limiterSettings(params)
+    expect(limiterOutputDb(0, s)).toBeCloseTo(s.ceiling, 5)
+  })
+
+  it('converts amplitude to dB', () => {
+    expect(amplitudeToDb(1)).toBeCloseTo(0)
+    expect(amplitudeToDb(0.5)).toBeCloseTo(-6.02, 1)
   })
 })
