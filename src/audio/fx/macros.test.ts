@@ -13,6 +13,14 @@ describe('macros', () => {
     expect(patch.delayTime).toBeGreaterThan(1)
     expect(delayMacroNormalized('mix', { ...p, delayWet: 40 })).toBeCloseTo(0.4)
   })
+
+  it('lets Color reach 0%', () => {
+    const p = defaultParamValues()
+    const dark = applyDelayMacro('color', 0, p)
+    expect(delayMacroNormalized('color', { ...p, ...dark })).toBeCloseTo(0)
+    const bright = applyDelayMacro('color', 1, p)
+    expect(delayMacroNormalized('color', { ...p, ...bright })).toBeCloseTo(1)
+  })
 })
 
 describe('migrateSpaceParams', () => {

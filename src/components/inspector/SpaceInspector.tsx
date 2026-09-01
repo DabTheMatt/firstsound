@@ -112,7 +112,8 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
 
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
-        Categories load a starting sound. Dry stays full unless you pull it down; Wet adds the effect.
+        Categories load a starting sound. Mix is a single dry/wet control. Feedback stays below unity so
+        each delay repeat is quieter than the last.
       </p>
       <Segmented
         label="Preset category"
@@ -165,9 +166,12 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
       </div>
 
       {kind === 'delay'
-        ? params(['delayDry', 'delayWet', 'delayOutput', 'delayTime', 'delayFeedback'])
-        : params(['reverbDry', 'reverbWet', 'reverbOutput', 'reverbSize', 'reverbDecay'])}
+        ? params(['delayWet', 'delayTime', 'delayFeedback'])
+        : params(['reverbWet', 'reverbSize', 'reverbDecay', 'reverbLimit'])}
 
+      <p className={styles.help}>
+        Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.
+      </p>
       {variant === 'knob' ? (
         <div className={styles.knobs}>
           <ValueKnob

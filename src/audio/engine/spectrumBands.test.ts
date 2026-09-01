@@ -52,7 +52,9 @@ describe('clampSpectrumBandCount', () => {
   it('snaps to the nearest allowed band count', () => {
     expect(clampSpectrumBandCount(30)).toBe(32)
     expect(clampSpectrumBandCount(8)).toBe(8)
-    expect(clampSpectrumBandCount(99)).toBe(64)
+    expect(clampSpectrumBandCount(99)).toBe(96)
+    expect(clampSpectrumBandCount(256)).toBe(256)
+    expect(clampSpectrumBandCount(200)).toBe(256)
   })
 })
 

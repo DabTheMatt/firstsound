@@ -216,19 +216,22 @@ export function Spectrum({ active }: Props) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
-        ctx.beginPath()
-        ctx.strokeStyle = colors.eqCurve
-        ctx.lineWidth = Math.max(1.5, dpr)
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
-        for (let i = 0; i < freqs.length; i++) {
-          const hz = freqs[i] ?? minHz
-          const db = eqMagnitudeDb([...snap.eqBands, ...combAsEqBands(snap.comb)], hz, sr)
-          const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
-          const y = top + ((18 - db) / 36) * plotH
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
+        const eqOn = !snap.chain.find((m) => m.type === 'eq')?.bypassed
+        if (eqOn) {
+          ctx.beginPath()
+          ctx.strokeStyle = colors.eqCurve
+          ctx.lineWidth = Math.max(1.5, dpr)
+          const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+          for (let i = 0; i < freqs.length; i++) {
+            const hz = freqs[i] ?? minHz
+            const db = eqMagnitudeDb([...snap.eqBands, ...combAsEqBands(snap.comb)], hz, sr)
+            const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
+            const y = top + ((18 - db) / 36) * plotH
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
         }
-        ctx.stroke()
       }
       frame = requestAnimationFrame(tick)
     }

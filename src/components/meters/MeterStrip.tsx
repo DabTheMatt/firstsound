@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { engine } from '../../hooks/useEngine'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
+import { engine, useEngine } from '../../hooks/useEngine'
+import { ValueKnob } from '../controls/ValueKnob'
 import {
   dbToMeterPct,
   fallHoldDb,
@@ -18,6 +21,7 @@ type Props = {
 }
 
 export function MeterStrip({ channels, range, onRange }: Props) {
+  const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
   const leftHoldRef = useRef<HTMLDivElement>(null)
@@ -63,16 +67,18 @@ export function MeterStrip({ channels, range, onRange }: Props) {
 
   return (
     <div className={styles.strip}>
-      <button
-        type="button"
-        className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
-        aria-label="Reset clip"
-        title="Reset clip indicator"
-        onClick={() => setClipped(false)}
-      >
-        <span className={styles.led} aria-hidden="true" />
-        <span className={styles.clipLabel}>Clip</span>
-      </button>
+      <div className={styles.clipRow}>
+        <button
+          type="button"
+          className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
+          aria-label="Reset clip"
+          title="Reset clip indicator"
+          onClick={() => setClipped(false)}
+        >
+          <span className={styles.led} aria-hidden="true" />
+          <span className={styles.clipLabel}>Clip</span>
+        </button>
+      </div>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
           <div
@@ -109,6 +115,18 @@ export function MeterStrip({ channels, range, onRange }: Props) {
             </div>
           ) : null}
         </div>
+      </div>
+      <div className={styles.outKnob}>
+        <ValueKnob
+          label="Out"
+          valueText={formatParamValue(snap.params.outputGain, PARAMS.outputGain)}
+          normalized={toNormalized(snap.params.outputGain, PARAMS.outputGain)}
+          min={PARAMS.outputGain.min}
+          max={PARAMS.outputGain.max}
+          now={Number(snap.params.outputGain.toFixed(3))}
+          onChange={(n) => engine.setParam('outputGain', fromNormalized(n, PARAMS.outputGain))}
+          onReset={() => engine.resetParam('outputGain')}
+        />
       </div>
       <select
         className={styles.select}
