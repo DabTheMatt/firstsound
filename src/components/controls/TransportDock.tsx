@@ -178,7 +178,14 @@ export function TransportDock({
         className={styles.playWrap}
         onPointerDown={onRingPointerDown}
       >
-        <svg className={styles.ring} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
+        <svg
+          className={styles.ring}
+          width={SIZE}
+          height={SIZE}
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
+          overflow="visible"
+          aria-hidden="true"
+        >
           <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#34383b" strokeWidth="4" />
           <circle
             cx={CENTER}
