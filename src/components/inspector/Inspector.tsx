@@ -1,6 +1,12 @@
 import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { bandUsesGain, EQ_FILTER_TYPES } from '../../audio/engine/eqBands'
+import {
+  bandUsesGain,
+  bandUsesSlope,
+  EQ_FILTER_TYPES,
+  FILTER_SLOPES,
+  type FilterSlope,
+} from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
@@ -293,12 +299,7 @@ function ToolInspector({
       </>
     )
   }
-  return (
-    <>
-      <h2 className={styles.title}>Pan</h2>
-      <p className={styles.help}>Drag the waveform to move the viewport. Pinch or use +/− to zoom.</p>
-    </>
-  )
+  return null
 }
 
 function ModuleInspector({
@@ -383,6 +384,22 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
             wrap
             onChange={(type) => engine.setEqBand(index, { type })}
           />
+          {bandUsesSlope(band.type) ? (
+            <>
+              <p className={styles.help}>Slope (dB/oct)</p>
+              <Segmented
+                label={`Band ${index + 1} slope`}
+                value={String(band.slope) as `${FilterSlope}`}
+                options={FILTER_SLOPES.map((s) => ({
+                  value: String(s.value) as `${FilterSlope}`,
+                  label: `${s.value}`,
+                  title: `${s.value} dB/oct`,
+                }))}
+                wrap
+                onChange={(slope) => engine.setEqBand(index, { slope: Number(slope) as FilterSlope })}
+              />
+            </>
+          ) : null}
           {knobs ? (
             <div className={styles.knobs}>
               <ValueKnob

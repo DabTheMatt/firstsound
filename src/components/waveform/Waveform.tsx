@@ -21,6 +21,7 @@ import {
   panView,
   timeToFrac,
   verticalGain,
+  wheelPanSeconds,
   zoomAround,
   zoomPercent,
   zoomToSelection,
@@ -93,6 +94,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const peaksRef = useRef<{ min: Float32Array; max: Float32Array } | null>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
+  const [panning, setPanning] = useState(false)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -257,10 +259,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       event.preventDefault()
       const rect = overlay.getBoundingClientRect()
       const v = viewRef.current
-      if (event.shiftKey) {
+      if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
         const span = v.end - v.start
-        const delta = ((event.deltaX || event.deltaY) / rect.width) * span
-        setView(panView(v, delta, d))
+        const delta = wheelPanSeconds(event.deltaX, event.deltaY, event.shiftKey, span, rect.width)
+        if (delta !== null) setView(panView(v, delta, d))
       } else {
         const focus = fracToTime((event.clientX - rect.left) / rect.width, v)
         setView(zoomAround(v, event.deltaY > 0 ? 1.2 : 1 / 1.2, focus, d))
@@ -276,6 +278,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     span: number
     originT: number
     originY: number
+    originX: number
+    originView: View
     origin: { start: number; end: number }
     fx?: SpaceHit
   } | null>(null)
@@ -334,6 +338,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           span: end - start,
           originT: t,
           originY: event.clientY - rect.top,
+          originX: event.clientX,
+          originView: { ...viewRef.current },
           origin: { start, end },
           fx: spaceHit,
         }
@@ -341,11 +347,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       }
     }
 
-    let mode: DragMode = tool === 'pan' ? 'pan' : 'move'
-    if (tool === 'fade') {
+    let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : 'move'
+    if (tool === 'fade' && mode !== 'pan') {
       if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit) mode = 'fadeIn'
       else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit) mode = 'fadeOut'
-    } else if (tool !== 'pan') {
+    } else if (mode !== 'pan') {
       if (Math.abs(x - startX) < hit) mode = 'start'
       else if (Math.abs(x - endX) < hit) mode = 'end'
       else if (x < startX || x > endX) {
@@ -353,7 +359,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         mode = 'start'
       }
     }
-    drag.current = { mode, span: end - start, originT: t, originY: event.clientY - rect.top, origin: { start, end } }
+    drag.current = {
+      mode,
+      span: end - start,
+      originT: t,
+      originY: event.clientY - rect.top,
+      originX: event.clientX,
+      originView: { ...viewRef.current },
+      origin: { start, end },
+    }
+    setPanning(mode === 'pan')
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -376,7 +391,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
-    const { mode, span, originT, origin, fx } = drag.current
+    const { mode, span, originT, origin, fx, originX, originView } = drag.current
     if (mode === 'fx' && fx) {
       engine.setParams(
         dragSpaceOverlay(
@@ -392,8 +407,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       return
     }
     if (mode === 'pan') {
-      setView(panView(viewRef.current, originT - next, duration))
-      drag.current.originT = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
+      const spanSec = originView.end - originView.start
+      const delta = -((event.clientX - originX) / Math.max(1, rect.width)) * spanSec
+      setView(panView(originView, delta, duration))
       return
     }
     if (mode === 'start') engine.setParam('start', next)
@@ -419,6 +435,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     if (pointers.current.size === 0) {
       const mode = drag.current?.mode
       drag.current = null
+      setPanning(false)
       if (mode === 'start' || mode === 'end' || mode === 'move') {
         if (autoSnap || tool === 'zero') {
           if (mode === 'start' || mode === 'move') engine.snapToZero('start')
@@ -459,7 +476,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} />
             <div
               ref={overlayRef}
-              className={styles.overlay}
+              className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
               onPointerDown={loaded ? onPointerDown : undefined}
               onPointerMove={loaded ? onPointerMove : undefined}
               onPointerUp={loaded ? endPointer : undefined}
@@ -490,7 +507,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   {tool === 'fade' && fadeOutPct >= 0 && fadeOutPct <= 100 ? (
                     <div className={styles.fadeHandle} style={{ left: `${fadeOutPct}%` }} />
                   ) : null}
-                  {startPct >= 0 && startPct <= 100 ? (
+                  {!panning && startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"
                       className={styles.handle}
@@ -498,7 +515,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       aria-label="Region start"
                     />
                   ) : null}
-                  {endPct >= 0 && endPct <= 100 ? (
+                  {!panning && endPct >= 0 && endPct <= 100 ? (
                     <button
                       type="button"
                       className={styles.handle}

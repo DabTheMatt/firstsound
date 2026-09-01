@@ -29,7 +29,20 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
         const active = mod.instanceId === selectedId
         return (
           <div key={mod.instanceId} className={styles.item}>
-            {index > 0 ? <span className={styles.arrow} aria-hidden="true" /> : null}
+            {index > 0 ? (
+              <span className={styles.arrow} aria-hidden="true">
+                <svg viewBox="0 0 14 16" width="14" height="16">
+                  <path
+                    d="M2 8h8M7 4l4 4-4 4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            ) : null}
             <button
               type="button"
               className={`${styles.tab} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed && reorder ? styles.locked : ''}`}

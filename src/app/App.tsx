@@ -318,7 +318,6 @@ export default function App() {
           viz={viz}
           onViz={setViz}
           zoomLabel={zoomLabel}
-          compact={sheet}
           normalizeView={normalizeView}
           onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
           onZoomOut={() => waveRef.current?.zoomBy(1.4)}

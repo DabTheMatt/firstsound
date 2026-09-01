@@ -8,11 +8,15 @@ export type EqFilterType =
   | 'notch'
   | 'bandpass'
 
+/** dB/octave for cascaded LP/HP biquads. One biquad is 12 dB/oct. */
+export type FilterSlope = 12 | 24 | 36 | 48
+
 export type EqBand = {
   type: EqFilterType
   frequency: number
   gain: number
   q: number
+  slope: FilterSlope
 }
 
 export const EQ_FILTER_TYPES: { value: EqFilterType; label: string; short: string }[] = [
@@ -26,19 +30,49 @@ export const EQ_FILTER_TYPES: { value: EqFilterType; label: string; short: strin
   { value: 'bandpass', label: 'Band Pass', short: 'BP' },
 ]
 
+export const FILTER_SLOPES: { value: FilterSlope; label: string }[] = [
+  { value: 12, label: '12' },
+  { value: 24, label: '24' },
+  { value: 36, label: '36' },
+  { value: 48, label: '48' },
+]
+
 export const EQ_BAND_COUNT = 4
+export const EQ_MAX_STAGES = 4
+export const EQ_NODE_COUNT = EQ_BAND_COUNT * EQ_MAX_STAGES
 
 export function defaultEqBands(): EqBand[] {
   return [
-    { type: 'off', frequency: 80, gain: 0, q: 0.7 },
-    { type: 'off', frequency: 400, gain: 0, q: 1 },
-    { type: 'off', frequency: 2500, gain: 0, q: 1 },
-    { type: 'off', frequency: 12000, gain: 0, q: 0.7 },
+    { type: 'off', frequency: 80, gain: 0, q: 0.7, slope: 12 },
+    { type: 'off', frequency: 400, gain: 0, q: 1, slope: 12 },
+    { type: 'off', frequency: 2500, gain: 0, q: 1, slope: 12 },
+    { type: 'off', frequency: 12000, gain: 0, q: 0.7, slope: 12 },
   ]
 }
 
 export function bandUsesGain(type: EqFilterType): boolean {
   return type === 'peaking' || type === 'lowshelf' || type === 'highshelf'
+}
+
+export function bandUsesSlope(type: EqFilterType): boolean {
+  return type === 'lowpass' || type === 'highpass'
+}
+
+export function parseFilterSlope(raw: unknown): FilterSlope {
+  if (raw === 12 || raw === 24 || raw === 36 || raw === 48) return raw
+  return 12
+}
+
+export function filterStageCount(band: EqBand): number {
+  if (band.type === 'off') return 0
+  if (bandUsesSlope(band.type)) return Math.min(EQ_MAX_STAGES, band.slope / 12)
+  return 1
+}
+
+/** First stage uses the band Q (resonance); extra LP/HP stages stay Butterworth. */
+export function stageQ(band: EqBand, stageIndex: number): number {
+  if (stageIndex === 0) return band.q
+  return 1 / Math.SQRT2
 }
 
 export function parseEqBands(raw: unknown): EqBand[] | null {
@@ -54,6 +88,7 @@ export function parseEqBands(raw: unknown): EqBand[] | null {
       frequency: rec.frequency,
       gain: typeof rec.gain === 'number' ? rec.gain : 0,
       q: rec.q,
+      slope: parseFilterSlope(rec.slope),
     })
   }
   return bands

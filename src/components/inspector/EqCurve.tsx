@@ -8,7 +8,7 @@ type Props = {
   sampleRate: number
 }
 
-const MIN_DB = -18
+const MIN_DB = -48
 const MAX_DB = 18
 
 export function EqCurve({ bands, sampleRate }: Props) {
