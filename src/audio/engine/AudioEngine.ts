@@ -32,6 +32,7 @@ export type EngineSnapshot = {
   direction: PlaybackDirection
   filterType: FilterType
   audioStatus: AudioStatus
+  scrubMode: ScrubMode
   params: Record<ParamId, number>
 }
 
@@ -90,6 +91,7 @@ export class AudioEngine {
   private direction: PlaybackDirection = 'forward'
   private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
+  private scrubMode: ScrubMode = 'region'
   private params: Record<ParamId, number> = defaultParamValues()
   private listeners = new Set<Listener>()
   private snapshot: EngineSnapshot
@@ -131,9 +133,6 @@ export class AudioEngine {
     const { start, end } = this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
       if (duration <= 0) return 0
-      if (this.engineMode === 'grain') {
-        return start + (this.params.position / 100) * (end - start)
-      }
       return clamp(this.playOffset, 0, duration)
     }
     if (this.engineMode === 'grain') {
@@ -206,15 +205,9 @@ export class AudioEngine {
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
-    const { start } = this.region(this.buffer.duration)
+    const duration = this.buffer.duration
     this.playCtxTime = this.ctx.currentTime
-    const { end } = this.region(this.buffer.duration)
-    this.playOffset =
-      this.engineMode === 'grain'
-        ? start + (this.params.position / 100) * (end - start)
-        : this.direction === 'reverse'
-          ? end
-          : start
+    this.playOffset = clamp(this.playOffset, 0, duration)
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -248,25 +241,28 @@ export class AudioEngine {
    * Move the playhead to an absolute time in the sample.
    * `region` clamps to the loop selection; `sample` allows the full file.
    */
-  seekSeconds(time: number, mode: ScrubMode = 'region'): void {
+  seekSeconds(time: number, mode: ScrubMode = this.scrubMode): void {
     const duration = this.buffer?.duration ?? 0
     if (duration <= 0) return
     const { start, end } = this.region(duration)
     const offset = clampScrubTime(time, mode, start, end, duration)
-    if (this.engineMode === 'grain') {
-      const span = Math.max(end - start, MIN_REGION)
-      this.setParam('position', ((offset - start) / span) * 100)
-      return
-    }
     this.playOffset = offset
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
+    if (this.engineMode === 'grain') {
+      const span = Math.max(end - start, MIN_REGION)
+      if (offset >= start && offset <= end) {
+        this.params.position = applyParamValue(((offset - start) / span) * 100, PARAMS.position)
+        this.applyLiveAudio()
+      }
+      this.emit()
+      return
+    }
     if (this.playing) {
       if (this.direction === 'forward') {
         this.stopVoices()
         this.startBufferVoice(offset)
         this.emit()
       } else {
-        // Reverse/ping-pong restart from their own anchor rather than a seek.
         void this.play()
       }
     } else {
@@ -275,8 +271,26 @@ export class AudioEngine {
   }
 
   /** Nudge the playhead by `delta` seconds, honoring the active scrub mode. */
-  nudgePlayhead(delta: number, mode: ScrubMode = 'region'): void {
+  nudgePlayhead(delta: number, mode: ScrubMode = this.scrubMode): void {
     this.seekSeconds(this.getPlayheadSeconds() + delta, mode)
+  }
+
+  setScrubMode(mode: ScrubMode): void {
+    if (this.scrubMode === mode) return
+    this.scrubMode = mode
+    const duration = this.buffer?.duration ?? 0
+    if (duration > 0 && mode === 'region') {
+      const { start, end } = this.region(duration)
+      this.playOffset = clamp(this.playOffset, start, end)
+      if (this.engineMode === 'grain') {
+        const span = Math.max(end - start, MIN_REGION)
+        this.params.position = applyParamValue(
+          ((this.playOffset - start) / span) * 100,
+          PARAMS.position,
+        )
+      }
+    }
+    this.emit()
   }
 
   setEngineMode(mode: EngineMode): void {
@@ -304,6 +318,11 @@ export class AudioEngine {
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
       this.applyLiveAudio()
+    }
+    if (id === 'position' || id === 'start' || id === 'end') {
+      const dur = this.buffer?.duration ?? 0
+      const { start, end } = this.region(dur)
+      this.playOffset = start + (this.params.position / 100) * Math.max(end - start, 0)
     }
     this.emit()
   }
@@ -736,6 +755,7 @@ export class AudioEngine {
       direction: this.direction,
       filterType: this.filterType,
       audioStatus: this.audioStatus,
+      scrubMode: this.scrubMode,
       params: { ...this.params },
     }
   }

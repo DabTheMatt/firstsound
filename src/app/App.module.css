@@ -207,16 +207,20 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+  height: 1.4em;
+  overflow: hidden;
+  flex: none;
 }
 
 .moduleControls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
-  /* Reserve the segmented-control height even when empty, so tabs with and
-     without module controls keep the same overall height. */
-  min-height: 36px;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  overflow: hidden;
   flex: none;
 }
 
@@ -243,7 +247,7 @@
 .knobsScroll {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 0;
+  min-height: 118px;
   overflow: hidden;
 }
 
@@ -305,10 +309,6 @@
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .moduleControls {
-    min-height: 0;
   }
 
   .knobsScroll {

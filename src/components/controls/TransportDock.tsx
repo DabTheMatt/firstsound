@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import { scrubBounds } from '../../audio/parameters/mapping'
 import type { PlaybackDirection, ScrubMode } from '../../audio/parameters/types'
@@ -19,6 +19,7 @@ type Props = {
   start: number
   end: number
   duration: number
+  scrubMode: ScrubMode
   disabled: boolean
 }
 
@@ -29,7 +30,7 @@ const CIRC = 2 * Math.PI * RADIUS
 const TICK = 8
 
 const SCRUB_MODES: { value: ScrubMode; label: string }[] = [
-  { value: 'region', label: 'Region' },
+  { value: 'region', label: 'Range' },
   { value: 'sample', label: 'Sample' },
 ]
 
@@ -40,9 +41,9 @@ export function TransportDock({
   start,
   end,
   duration,
+  scrubMode,
   disabled,
 }: Props) {
-  const [scrubMode, setScrubMode] = useState<ScrubMode>('region')
   const tickRef = useRef<SVGLineElement>(null)
   const playWrapRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef({ start, end, duration, scrubMode })
@@ -161,7 +162,10 @@ export function TransportDock({
               role="radio"
               aria-checked={scrubMode === opt.value}
               className={`${styles.dir} ${scrubMode === opt.value ? styles.dirActive : ''}`}
-              onClick={() => setScrubMode(opt.value)}
+              onClick={(event) => {
+                event.stopPropagation()
+                engine.setScrubMode(opt.value)
+              }}
             >
               {opt.label}
             </button>

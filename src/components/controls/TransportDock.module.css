@@ -15,6 +15,8 @@
   align-items: flex-end;
   gap: 6px;
   min-width: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .directions {
@@ -75,8 +77,10 @@
   width: 120px;
   height: 120px;
   flex: none;
+  overflow: hidden;
   touch-action: none;
   cursor: pointer;
+  z-index: 0;
 }
 
 .ring {
@@ -160,13 +164,13 @@
   .playWrap {
     grid-column: 2;
     grid-row: 1;
-    width: 96px;
-    height: 96px;
+    width: 88px;
+    height: 88px;
     justify-self: end;
   }
 
   .play {
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
   }
 }

@@ -237,6 +237,7 @@ export default function App() {
             start={snap.params.start}
             end={snap.params.end}
             duration={snap.duration}
+            scrubMode={snap.scrubMode}
             disabled={!snap.sampleLoaded}
           />
         </div>
