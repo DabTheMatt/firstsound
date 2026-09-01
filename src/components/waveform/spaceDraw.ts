@@ -1,4 +1,5 @@
 import type { DelayTap, ReverbTail } from '../../audio/fx/spaceModel'
+import { colorWithAlpha, readThemeColors } from '../../theme'
 
 /** Vertical trigger marks at each delay repeat — not ghost copies of the waveform. */
 export function drawDelayOverlay(
@@ -10,12 +11,13 @@ export function drawDelayOverlay(
   regionStart: number,
   taps: DelayTap[],
 ): void {
+  const colors = readThemeColors()
   const span = Math.max(0.0001, viewEnd - viewStart)
   for (const tap of taps) {
     const x = ((regionStart + tap.time - viewStart) / span) * width
     if (x < -4 || x > width + 4) continue
     const alpha = Math.max(0.14, Math.min(0.9, tap.gain * 1.05))
-    ctx.strokeStyle = `rgba(122, 214, 196, ${alpha})`
+    ctx.strokeStyle = colorWithAlpha(colors.accent, alpha)
     ctx.lineWidth = tap.channel === 'C' ? 1.6 : 1.2
     ctx.beginPath()
     ctx.moveTo(x, 6)
@@ -23,7 +25,7 @@ export function drawDelayOverlay(
     ctx.stroke()
     const tickH = 9
     const tickY = tap.channel === 'R' ? height - 6 - tickH : 6
-    ctx.fillStyle = `rgba(210, 240, 230, ${alpha})`
+    ctx.fillStyle = colorWithAlpha(colors.spectrumLine, alpha)
     ctx.fillRect(x - 1.5, tickY, 3, tickH)
   }
 }
@@ -38,6 +40,7 @@ export function drawReverbOverlay(
   tail: ReverbTail,
   now: number,
 ): void {
+  const colors = readThemeColors()
   if (tail.mix < 0.01 && !tail.freeze) return
   const span = Math.max(0.0001, viewEnd - viewStart)
   const xOf = (t: number) => ((regionStart + t - viewStart) / span) * width
@@ -49,14 +52,15 @@ export function drawReverbOverlay(
   const wobble = Math.sin(now * (0.4 + tail.shimmer) * Math.PI * 2) * tail.size * 6
   const spread = height * (0.18 + tail.size * 0.22) * (0.6 + tail.width * 0.4)
   const grd = ctx.createLinearGradient(left, 0, right, 0)
+  const fill = colors.spectrum
   if (tail.reverse) {
-    grd.addColorStop(0, 'rgba(90, 170, 210, 0.02)')
-    grd.addColorStop(0.7, `rgba(120, 210, 200, ${0.08 + tail.mix * 0.18})`)
-    grd.addColorStop(1, `rgba(180, 230, 220, ${0.16 + tail.mix * 0.2})`)
+    grd.addColorStop(0, colorWithAlpha(fill, 0.02))
+    grd.addColorStop(0.7, colorWithAlpha(fill, 0.08 + tail.mix * 0.18))
+    grd.addColorStop(1, colorWithAlpha(fill, 0.16 + tail.mix * 0.2))
   } else {
-    grd.addColorStop(0, `rgba(120, 210, 200, ${0.14 + tail.mix * 0.18})`)
-    grd.addColorStop(Math.min(0.9, 0.25 + tail.diffusion * 0.3), `rgba(90, 160, 180, ${0.08 + tail.mix * 0.1})`)
-    grd.addColorStop(1, 'rgba(40, 80, 90, 0.01)')
+    grd.addColorStop(0, colorWithAlpha(fill, 0.14 + tail.mix * 0.18))
+    grd.addColorStop(Math.min(0.9, 0.25 + tail.diffusion * 0.3), colorWithAlpha(fill, 0.08 + tail.mix * 0.1))
+    grd.addColorStop(1, colorWithAlpha(fill, 0.01))
   }
   ctx.fillStyle = grd
   const mid = height / 2 + wobble * 0.15
@@ -79,7 +83,7 @@ export function drawReverbOverlay(
   }
   ctx.closePath()
   ctx.fill()
-  ctx.strokeStyle = `rgba(154, 220, 210, ${0.25 + tail.mix * 0.3})`
+  ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 0.25 + tail.mix * 0.3)
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.moveTo(x0, 6)
@@ -88,11 +92,11 @@ export function drawReverbOverlay(
   for (const e of tail.early) {
     const x = xOf(e)
     if (x < 0 || x > width) continue
-    ctx.fillStyle = `rgba(170, 230, 220, ${0.15 + tail.mix * 0.2})`
+    ctx.fillStyle = colorWithAlpha(colors.spectrumLine, 0.15 + tail.mix * 0.2)
     ctx.fillRect(x, height * 0.2, 1.5, height * 0.6)
   }
   if (tail.freeze) {
-    ctx.fillStyle = 'rgba(120, 210, 255, 0.12)'
+    ctx.fillStyle = colorWithAlpha(colors.accent, 0.1)
     ctx.fillRect(0, 0, width, height)
   }
 }

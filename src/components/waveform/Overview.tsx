@@ -2,6 +2,7 @@ import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { clampView, resizeViewEdge, timeToFrac, type View } from './viewport'
+import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Overview.module.css'
 
 type Props = {
@@ -50,7 +51,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
         : computeMinMax(mono, 0, mono.length, width)
       const mid = height / 2
       const half = height * 0.44
-      ctx.fillStyle = '#5c6164'
+      ctx.fillStyle = readThemeColors().waveformSecondary
       for (let x = 0; x < width; x++) {
         const top = mid - (max[x] ?? 0) * half
         const bottom = mid - (min[x] ?? 0) * half
@@ -60,7 +61,11 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
     draw()
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
-    return () => ro.disconnect()
+    const unsub = subscribeThemeChange(draw)
+    return () => {
+      ro.disconnect()
+      unsub()
+    }
   }, [duration, contentRev])
 
   useEffect(() => {

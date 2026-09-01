@@ -25,7 +25,7 @@ function CurveIcon({ id, active }: { id: FadeCurveId; active: boolean }) {
           : 'M2 14 C8 14 10 2 22 2'
   return (
     <svg viewBox="0 0 24 16" aria-hidden="true">
-      <path d={d} fill="none" stroke={active ? 'var(--accent)' : '#9aa0a3'} strokeWidth="1.6" />
+      <path d={d} fill="none" stroke={active ? 'var(--accent-primary)' : 'var(--text-muted)'} strokeWidth="1.6" />
     </svg>
   )
 }

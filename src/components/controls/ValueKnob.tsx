@@ -125,13 +125,13 @@ export function ValueKnob({
         onDoubleClick={() => onReset?.()}
       >
         <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
-          <circle cx={cx} cy={cy} r={r} fill="#25282a" />
+          <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
           <circle
             cx={cx}
             cy={cy}
             r={r}
             fill="none"
-            stroke="#3a3e41"
+            stroke="var(--border-default)"
             strokeWidth="3"
             strokeDasharray={`${sweep} ${circ}`}
             strokeDashoffset={sweep * 0.125}
@@ -143,7 +143,7 @@ export function ValueKnob({
             cy={cy}
             r={r}
             fill="none"
-            stroke="var(--accent)"
+            stroke="var(--accent-primary)"
             strokeWidth="3"
             strokeDasharray={`${filled} ${circ}`}
             strokeDashoffset={sweep * 0.125}
@@ -155,7 +155,7 @@ export function ValueKnob({
             y1={cy}
             x2={nx}
             y2={ny}
-            stroke="#f3f3f3"
+            stroke="var(--text-primary)"
             strokeWidth="2"
             strokeLinecap="round"
           />

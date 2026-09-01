@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
@@ -331,11 +332,21 @@ function ModuleInspector({
 }
 
 function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
+  const [openBand, setOpenBand] = useState(0)
   return (
     <div className={styles.eq}>
-      <EqCurve bands={snap.eqBands} sampleRate={snap.sampleRate} />
+      <div className={styles.eqViz}>
+        <EqCurve bands={snap.eqBands} sampleRate={snap.sampleRate} selectedBand={openBand} />
+      </div>
       {snap.eqBands.map((band, index) => (
-        <details key={index} className={styles.band} open={index === 0}>
+        <details
+          key={index}
+          className={styles.band}
+          open={openBand === index}
+          onToggle={(event) => {
+            if (event.currentTarget.open) setOpenBand(index)
+          }}
+        >
           <summary>Band {index + 1}</summary>
           <Segmented
             label={`Band ${index + 1} type`}

@@ -16,6 +16,7 @@ import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
+import { THEME_OPTIONS, useTheme } from '../theme'
 import styles from './App.module.css'
 
 type Hist = {
@@ -46,6 +47,7 @@ function histKey(
 export default function App() {
   const snap = useEngine()
   const { mode } = useLayoutMode()
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
@@ -269,9 +271,31 @@ export default function App() {
         <button type="button" onClick={() => applyHistory(redoHistory(history))}>
           Redo
         </button>
+        <div className={styles.appearance}>
+          <p className={styles.appearanceTitle}>Appearance</p>
+          <div className={styles.themeList} role="radiogroup" aria-label="Theme">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                role="radio"
+                className={styles.themeOption}
+                aria-checked={themePreference === opt.id}
+                onClick={() => setThemePreference(opt.id)}
+              >
+                <span className={styles.swatches} aria-hidden="true">
+                  <span className={styles.dot} style={{ background: opt.preview.bg }} />
+                  <span className={styles.dot} style={{ background: opt.preview.surface }} />
+                  <span className={styles.dot} style={{ background: opt.preview.accent }} />
+                </span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     ),
-    [history, snap.hasSource],
+    [history, snap.hasSource, themePreference, setThemePreference],
   )
 
   return (

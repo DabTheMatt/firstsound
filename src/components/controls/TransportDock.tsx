@@ -186,13 +186,13 @@ export function TransportDock({
           overflow="visible"
           aria-hidden="true"
         >
-          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#8a8f92" strokeWidth="3.5" />
+          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="var(--border-strong)" strokeWidth="3.5" />
           <circle
             cx={CENTER}
             cy={CENTER}
             r={RADIUS}
             fill="none"
-            stroke="var(--accent)"
+            stroke="var(--accent-primary)"
             strokeWidth="3.5"
             strokeLinecap="butt"
             strokeDasharray={regionDash.dashArray}
@@ -205,7 +205,7 @@ export function TransportDock({
             y1={CENTER - RADIUS + 1}
             x2={CENTER}
             y2={CENTER - RADIUS + TICK}
-            stroke="var(--accent)"
+            stroke="var(--accent-primary)"
             strokeWidth="3"
             strokeLinecap="round"
             transform={`rotate(0 ${CENTER} ${CENTER})`}

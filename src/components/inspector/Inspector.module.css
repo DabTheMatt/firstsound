@@ -16,6 +16,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
@@ -23,12 +25,12 @@
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-primary);
 }
 
 .help {
   margin: 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -38,14 +40,14 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .readout strong {
-  color: var(--accent);
+  color: var(--accent-primary);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
@@ -63,18 +65,23 @@
 .fine button,
 .ghost {
   min-height: 44px;
-  border: 1px solid #3a3e41;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: var(--bg-panel);
-  color: var(--text);
+  background: var(--bg-control);
+  color: var(--text-primary);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
+.fine button:hover,
+.ghost:hover {
+  background: var(--bg-control-hover);
+}
+
 .fine span {
   text-align: center;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -82,7 +89,7 @@
 
 .range {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: var(--accent-primary);
   height: 44px;
 }
 
@@ -93,29 +100,42 @@
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .field input {
-  accent-color: var(--accent);
+  accent-color: var(--accent-primary);
   height: 36px;
 }
 
 .field span {
-  color: var(--accent);
+  color: var(--accent-primary);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   text-transform: none;
 }
 
+.eq {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eqViz {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .band {
-  border-top: 1px solid #2c2f31;
-  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding: 4px 8px 8px;
+  border-radius: 8px;
 }
 
 .band summary {
   cursor: pointer;
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -124,10 +144,14 @@
   align-items: center;
 }
 
-.eq {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.band[open] {
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  border-top-color: var(--border-subtle);
+}
+
+.band[open] summary {
+  color: var(--text-primary);
 }
 
 .knobs {
@@ -156,7 +180,7 @@
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .presets {
@@ -169,10 +193,14 @@
   min-height: 32px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid #3a3e41;
-  background: var(--bg-panel);
-  color: var(--text);
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-primary);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.preset:hover {
+  background: var(--bg-control-hover);
 }

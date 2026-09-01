@@ -30,6 +30,7 @@ import {
 import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
+import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
 
 type Props = {
@@ -151,6 +152,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       if (!ctx) return
       ctx.clearRect(0, 0, width, height)
       if (!buffer || duration <= 0) return
+      const colors = readThemeColors()
+      const selA = Math.min(start, end)
+      const selB = Math.max(start, end)
       const channels = buffer.numberOfChannels
       const lanes = Math.min(2, channels)
       for (let lane = 0; lane < lanes; lane++) {
@@ -164,8 +168,15 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const gain = normalizeView ? verticalGain(peak) : 1
         const mid = top0 + laneH / 2
         const half = laneH * 0.42
-        ctx.fillStyle = '#9aa0a3'
+        const span = Math.max(0.0001, view.end - view.start)
+        let lastSelected: boolean | null = null
         for (let x = 0; x < width; x++) {
+          const t = view.start + (x / width) * span
+          const selected = t >= selA && t <= selB
+          if (selected !== lastSelected) {
+            ctx.fillStyle = selected ? colors.waveformSelected : colors.waveform
+            lastSelected = selected
+          }
           const hi = Math.max(-1, Math.min(1, (max[x] ?? 0) * gain))
           const lo = Math.max(-1, Math.min(1, (min[x] ?? 0) * gain))
           const top = mid - hi * half
@@ -178,8 +189,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     draw()
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
-    return () => ro.disconnect()
-  }, [view, normalizeView, loaded, duration, viz, contentRev])
+    const unsub = subscribeThemeChange(draw)
+    return () => {
+      ro.disconnect()
+      unsub()
+    }
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end])
 
   useEffect(() => {
     let frame = 0

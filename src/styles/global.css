@@ -1,17 +1,9 @@
+@import './themes.css';
+
 :root {
-  --bg-page: #e6dfd2;
-  --bg-shell: #1a1a1a;
-  --bg-panel: #2e3133;
-  --accent: #d4a251;
-  --organic: #5e6144;
-  --muted: #8c8c8c;
-  --text: #e8e8e8;
-  --waveform: #9aa0a3;
-  --handle: #f2f2f2;
-  --danger: #c45c4a;
   --radius-shell: 22px;
   --font: 'Inter', system-ui, sans-serif;
-  color-scheme: dark;
+  --theme-shift: 150ms ease;
 }
 
 *,
@@ -24,23 +16,38 @@ html,
 body,
 #root {
   min-height: 100%;
-  /* Dark all the way down so no light edge/frame can peek through. */
-  background: var(--bg-shell);
+  background: var(--bg-app);
   user-select: none;
   -webkit-user-select: none;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  transition:
+    background-color var(--theme-shift),
+    border-color var(--theme-shift),
+    color var(--theme-shift);
+}
+
+canvas {
+  transition: none;
 }
 
 body {
   margin: 0;
   font-family: var(--font);
-  /* Full-screen dark instrument; the shell now spans edge to edge. */
-  background: var(--bg-shell);
-  color: var(--text);
+  background: var(--bg-app);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
 button,
-input {
+input,
+select {
   font-family: inherit;
 }
 
@@ -54,7 +61,14 @@ textarea {
   -webkit-user-select: text;
 }
 
+button:disabled,
+input:disabled,
+select:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 2px;
 }
