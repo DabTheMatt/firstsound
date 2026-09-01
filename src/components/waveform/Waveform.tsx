@@ -165,7 +165,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
     return () => ro.disconnect()
-  }, [view, normalizeView, loaded, duration])
+  }, [view, normalizeView, loaded, duration, viz])
 
   useEffect(() => {
     let frame = 0
@@ -346,8 +346,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   return (
     <div className={styles.editor}>
       <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
-        {showWave ? (
-          <div className={styles.wrap}>
+        <div className={styles.wrap} hidden={!showWave}>
             <canvas ref={canvasRef} className={styles.canvas} />
             <div
               ref={overlayRef}
@@ -409,7 +408,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               ))}
             </div>
           </div>
-        ) : null}
         {showSpec ? (
           <div className={styles.spec}>
             <Spectrum active={showSpec} />
