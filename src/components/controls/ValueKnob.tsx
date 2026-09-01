@@ -124,7 +124,7 @@ export function ValueKnob({
         onPointerDown={onPointerDown}
         onDoubleClick={() => onReset?.()}
       >
-        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <svg width="72" height="58" viewBox="0 7 72 58" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
           <circle
             cx={cx}
