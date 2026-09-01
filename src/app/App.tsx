@@ -352,6 +352,7 @@ export default function App() {
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
               onFadesCommit={commit}
               onRegionCommit={commit}
+              fxMode={focus.kind === 'module' && (focus.type === 'delay' || focus.type === 'reverb') ? focus.type : null}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}

@@ -50,6 +50,7 @@ describe('mapping', () => {
     expect(formatParamValue(300, PARAMS.delayTime)).toBe('300 ms')
     expect(formatParamValue(35, PARAMS.delayFeedback)).toBe('35 %')
     expect(formatParamValue(0, PARAMS.spaceMix)).toBe('0 %')
+    expect(formatParamValue(1.6, PARAMS.reverbDecay)).toBe('1.60 s')
   })
 
   it('clamps to def range', () => {

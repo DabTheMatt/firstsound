@@ -102,38 +102,51 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'pitch':
     case 'grainPitch':
     case 'pitchSpread':
+    case 'delayPitch':
+    case 'reverbShimmerPitch':
       return `${value.toFixed(2)} st`
     case 'gain':
     case 'outputGain':
+    case 'reverbGateThres':
       return `${value.toFixed(1)} dB`
     case 'grainSize':
       return `${Math.round(value)} ms`
     case 'density':
       return `${value.toFixed(1)} Hz`
-    case 'position':
-    case 'scatter':
-    case 'spaceMix':
-    case 'delayFeedback':
-    case 'reverb':
-    case 'motionDepth':
-    case 'motionJitter':
-    case 'saturation':
-    case 'reverbSize':
-    case 'reverbDecay':
-      return `${Math.round(value)} %`
     case 'delayTime':
     case 'reverbPredelay':
-      return `${Math.round(value)} ms`
+    case 'reverbGateAttack':
+    case 'reverbGateHold':
+    case 'reverbGateRelease':
+      return value < 10 ? `${value.toFixed(1)} ms` : `${Math.round(value)} ms`
+    case 'reverbDecay':
+      return value < 10 ? `${value.toFixed(2)} s` : `${value.toFixed(1)} s`
+    case 'bpm':
+      return `${value.toFixed(1)} BPM`
     case 'motionRate':
+    case 'delayModRate':
+    case 'reverbModRate':
       return `${value.toFixed(2)} Hz`
     case 'filterCutoff':
     case 'reverbDamping':
+    case 'delayHp':
+    case 'delayLp':
+    case 'reverbLowCut':
+    case 'reverbHighCut':
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`
         : `${Math.round(value)} Hz`
     case 'filterReso':
       return `${value.toFixed(2)} Q`
+    case 'delaySync':
+    case 'reverbSync':
+    case 'delayFreeze':
+    case 'reverbFreeze':
+      return value > 0.5 ? 'On' : 'Off'
     default:
+      if (def.unit === '%') return `${Math.round(value)} %`
+      if (def.unit === 'ms') return `${Math.round(value)} ms`
+      if (def.unit === 'Hz') return `${value.toFixed(2)} Hz`
       return String(value)
   }
 }

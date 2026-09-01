@@ -17,6 +17,7 @@ import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus, WaveTool } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
+import { SpaceInspector } from './SpaceInspector'
 import styles from './Inspector.module.css'
 
 type Props = {
@@ -45,8 +46,6 @@ const GRAIN_IDS: ParamId[] = [
   'motionRate',
   'motionJitter',
 ]
-const DELAY_IDS: ParamId[] = ['delayTime', 'delayFeedback', 'spaceMix']
-const REVERB_IDS: ParamId[] = ['reverbSize', 'reverbDecay', 'reverbPredelay', 'reverbDamping', 'reverb']
 const SAT_IDS: ParamId[] = ['saturation']
 const OUT_IDS: ParamId[] = ['outputGain']
 
@@ -359,8 +358,8 @@ function ModuleInspector({
       ) : null}
       {type === 'eq' ? <EqEditor snap={snap} knobs={variant === 'knob'} /> : null}
       {type === 'saturation' ? params(SAT_IDS) : null}
-      {type === 'delay' ? params(DELAY_IDS) : null}
-      {type === 'reverb' ? params(REVERB_IDS) : null}
+      {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} /> : null}
+      {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} /> : null}
       {type === 'output' ? (
         <>
           {params(OUT_IDS)}

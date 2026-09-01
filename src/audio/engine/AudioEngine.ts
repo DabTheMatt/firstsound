@@ -27,6 +27,28 @@ import type {
   ScrubMode,
 } from '../parameters/types'
 import {
+  applyDelayGraph,
+  applyReverbGraph,
+  buildReverbBuffer,
+  createDelayGraph,
+  createReverbGraph,
+  reverbImpulseKey,
+  wetDryFor,
+  type DelayGraph,
+  type ReverbGraph,
+} from '../fx/graphs'
+import { migrateSpaceParams } from '../fx/migrate'
+import { findSpacePreset, type SpacePreset } from '../fx/presets'
+import { syncedDelayMs } from '../fx/sync'
+import {
+  noteDivisionAt,
+  noteKindAt,
+  parseDelayType,
+  parseReverbType,
+  type DelayType,
+  type ReverbType,
+} from '../fx/types'
+import {
   applyAutoFades,
   canRedo,
   canUndo,
@@ -96,6 +118,8 @@ export type EngineSnapshot = {
   chain: ChainModule[]
   eqBands: EqBand[]
   muted: boolean
+  delayType: DelayType
+  reverbType: ReverbType
   hasSource: boolean
   prep: SamplePrepState
   canUndoPrep: boolean
@@ -155,6 +179,8 @@ type Slot = {
   convolver?: ConvolverNode
   predelay?: DelayNode
   damp?: BiquadFilterNode
+  delayFx?: DelayGraph
+  reverbFx?: ReverbGraph
 }
 
 /**
@@ -191,6 +217,10 @@ export class AudioEngine {
   private audioStatus: AudioStatus = 'idle'
   private scrubMode: ScrubMode = 'region'
   private muted = false
+  private delayType: DelayType = 'digital'
+  private reverbType: ReverbType = 'hall'
+  private reverbIrKey = ''
+  private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
   private chain: ChainModule[] = defaultChain()
   private eqBands: EqBand[] = defaultEqBands()
@@ -487,6 +517,7 @@ export class AudioEngine {
       this.applyRegionChange()
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
+      this.syncTimeFromClock(id)
       this.applyLiveAudio()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
@@ -495,6 +526,63 @@ export class AudioEngine {
       this.playOffset = start + (this.params.position / 100) * Math.max(end - start, 0)
     }
     this.emit()
+  }
+
+  setParams(patch: Partial<Record<ParamId, number>>): void {
+    for (const key of Object.keys(patch) as ParamId[]) {
+      const value = patch[key]
+      if (typeof value !== 'number') continue
+      this.params[key] = applyParamValue(value, PARAMS[key])
+    }
+    this.syncTimeFromClock('bpm')
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  setDelayType(type: DelayType): void {
+    if (this.delayType === type) return
+    this.delayType = type
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  setReverbType(type: ReverbType): void {
+    if (this.reverbType === type) return
+    this.reverbType = type
+    this.reverbIrKey = ''
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  applySpacePreset(preset: SpacePreset | string): void {
+    const next = typeof preset === 'string' ? findSpacePreset(preset) : preset
+    if (!next) return
+    if (next.delayType) this.delayType = next.delayType
+    if (next.reverbType) this.reverbType = next.reverbType
+    this.setParams(next.params)
+  }
+
+  private syncTimeFromClock(id: ParamId): void {
+    if (id === 'delayTime' && this.params.delaySync > 0.5) this.params.delaySync = 0
+    if (id === 'reverbPredelay' && this.params.reverbSync > 0.5) this.params.reverbSync = 0
+    if (
+      this.params.delaySync > 0.5 &&
+      (id === 'bpm' || id === 'delayNote' || id === 'delayNoteKind' || id === 'delaySync')
+    ) {
+      this.params.delayTime = applyParamValue(
+        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNote), noteKindAt(this.params.delayNoteKind)),
+        PARAMS.delayTime,
+      )
+    }
+    if (
+      this.params.reverbSync > 0.5 &&
+      (id === 'bpm' || id === 'reverbNote' || id === 'reverbNoteKind' || id === 'reverbSync')
+    ) {
+      this.params.reverbPredelay = applyParamValue(
+        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.reverbNote), noteKindAt(this.params.reverbNoteKind)),
+        PARAMS.reverbPredelay,
+      )
+    }
   }
 
   setRegion(start: number, end: number): void {
@@ -850,6 +938,9 @@ export class AudioEngine {
     this.engineMode = 'playback'
     this.direction = 'forward'
     this.filterType = 'off'
+    this.delayType = 'digital'
+    this.reverbType = 'hall'
+    this.reverbIrKey = ''
     this.eqBands = defaultEqBands()
     this.chain = defaultChain()
     this.muted = false
@@ -896,6 +987,8 @@ export class AudioEngine {
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
       muted: this.muted,
+      delayType: this.delayType,
+      reverbType: this.reverbType,
     }
   }
 
@@ -905,10 +998,14 @@ export class AudioEngine {
     this.direction = preset.direction ?? (preset.reverse ? 'reverse' : 'forward')
     this.filterType = preset.filterType ?? 'off'
     this.muted = preset.muted ?? false
+    this.delayType = parseDelayType(preset.delayType) ?? 'digital'
+    this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
+    this.reverbIrKey = ''
+    const migrated = migrateSpaceParams(preset.params)
     for (const id of Object.keys(this.params) as ParamId[]) {
-      const value = preset.params[id]
+      const value = migrated[id]
       if (typeof value === 'number') {
-        this.params[id] = applyParamValue(value, PARAMS[id])
+        this.params[id] = value
       }
     }
     const duration = this.buffer?.duration ?? 0
@@ -1235,30 +1332,12 @@ export class AudioEngine {
       slot.shaper = shaper
     }
     if (mod.type === 'delay') {
-      const delay = ctx.createDelay(2)
-      const fb = ctx.createGain()
       input.connect(wet)
-      wet.connect(delay)
-      delay.connect(fb)
-      fb.connect(delay)
-      delay.connect(output)
-      slot.delay = delay
-      slot.delayFb = fb
+      slot.delayFx = createDelayGraph(ctx, wet, output, input)
     }
     if (mod.type === 'reverb') {
-      const pre = ctx.createDelay(0.2)
-      const conv = ctx.createConvolver()
-      conv.buffer = this.buildReverbImpulse()
-      const damp = ctx.createBiquadFilter()
-      damp.type = 'lowpass'
       input.connect(wet)
-      wet.connect(pre)
-      pre.connect(conv)
-      conv.connect(damp)
-      damp.connect(output)
-      slot.predelay = pre
-      slot.convolver = conv
-      slot.damp = damp
+      slot.reverbFx = createReverbGraph(ctx, wet, output, input)
     }
     return slot
   }
@@ -1412,23 +1491,34 @@ export class AudioEngine {
     }
   }
 
-  private buildReverbImpulse(): AudioBuffer | null {
-    if (!this.ctx) return null
-    const sr = this.ctx.sampleRate
-    const size = this.params.reverbSize / 100
-    const decayAmt = this.params.reverbDecay / 100
-    const seconds = 0.6 + size * 2.4
-    const len = Math.floor(sr * seconds)
-    const ir = this.ctx.createBuffer(2, len, sr)
-    const exp = 1.6 + (1 - decayAmt) * 3
-    for (let ch = 0; ch < 2; ch++) {
-      const data = ir.getChannelData(ch)
-      for (let i = 0; i < len; i++) {
-        const decay = (1 - i / len) ** exp
-        data[i] = (Math.random() * 2 - 1) * decay
+  private applyFxParams(smoothing: number): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    const bpm = this.params.bpm
+    for (const slot of this.slots.values()) {
+      if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
+      if (slot.delayFx) {
+        applyDelayGraph(slot.delayFx, this.params, this.delayType, bpm, now, smoothing, this.ctx)
+      }
+      if (slot.reverbFx) {
+        applyReverbGraph(slot.reverbFx, this.params, this.reverbType, bpm, now, smoothing)
+        const key = reverbImpulseKey(this.params, this.reverbType)
+        if (key !== this.reverbIrKey) {
+          this.reverbIrKey = key
+          if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+          const fx = slot.reverbFx
+          if (!fx.conv.buffer) {
+            fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
+          } else {
+            this.reverbIrTimer = window.setTimeout(() => {
+              this.reverbIrTimer = 0
+              if (!this.ctx || !fx) return
+              fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
+            }, 40)
+          }
+        }
       }
     }
-    return ir
   }
 
   private applyLiveAudio(): void {
@@ -1449,33 +1539,6 @@ export class AudioEngine {
         const { start, end } = this.region(duration)
         this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
         this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
-      }
-    }
-  }
-
-  private applyFxParams(smoothing: number): void {
-    if (!this.ctx) return
-    const now = this.ctx.currentTime
-    for (const slot of this.slots.values()) {
-      if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
-      if (slot.delay) {
-        slot.delay.delayTime.setTargetAtTime(this.params.delayTime / 1000, now, smoothing)
-      }
-      if (slot.delayFb) {
-        slot.delayFb.gain.setTargetAtTime(
-          Math.min(0.92, this.params.delayFeedback / 100),
-          now,
-          smoothing,
-        )
-      }
-      if (slot.predelay) {
-        slot.predelay.delayTime.setTargetAtTime(this.params.reverbPredelay / 1000, now, smoothing)
-      }
-      if (slot.damp) {
-        slot.damp.frequency.setTargetAtTime(this.params.reverbDamping, now, smoothing)
-      }
-      if (slot.convolver) {
-        // Rebuild only when size/decay moved a lot — cheap enough at live apply if flagged.
       }
     }
   }
@@ -1690,6 +1753,8 @@ export class AudioEngine {
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
       muted: this.muted,
+      delayType: this.delayType,
+      reverbType: this.reverbType,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,
       prep: { ...this.prep },
       canUndoPrep: canUndo(this.prepHistory),
@@ -1732,16 +1797,16 @@ function makeTanhCurve(amount: number): Float32Array<ArrayBuffer> {
 }
 
 function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
-  if (type === 'delay') return params.spaceMix / 100
-  if (type === 'reverb') return params.reverb / 100
+  if (type === 'delay') return wetDryFor('delay', params).wet
+  if (type === 'reverb') return wetDryFor('reverb', params).wet
   if (type === 'saturation') return params.saturation > 0 ? 1 : 0
   if (type === 'eq') return 1
   return 0
 }
 
 function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
-  if (type === 'delay') return 1 - params.spaceMix / 100
-  if (type === 'reverb') return 1 - params.reverb / 100
+  if (type === 'delay') return wetDryFor('delay', params).dry
+  if (type === 'reverb') return wetDryFor('reverb', params).dry
   if (type === 'saturation') return params.saturation > 0 ? 0 : 1
   if (type === 'eq') return 0
   return 1
