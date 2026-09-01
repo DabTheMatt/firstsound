@@ -1,56 +1,37 @@
 .editor {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.toolbar {
+.stage {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 6px;
 }
 
-.tool {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid #4a4e51;
-  border-radius: 8px;
-  background: var(--bg-panel);
-  color: var(--text);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  touch-action: manipulation;
+.split .wrap {
+  flex: 1.4;
 }
 
-.toolActive {
-  border-color: var(--accent);
-  color: var(--accent);
+.split .spec {
+  flex: 0.7;
+  min-height: 80px;
 }
 
-.iconTool {
-  width: 34px;
-  height: 32px;
-  border: 1px solid #4a4e51;
-  border-radius: 8px;
-  background: var(--bg-panel);
-  color: var(--text);
-  font-size: 18px;
-  line-height: 1;
-  touch-action: manipulation;
-}
-
-.spacer {
+.spec {
   flex: 1;
+  min-height: 0;
 }
 
 .wrap {
   position: relative;
   flex: 1 1 auto;
-  min-height: 120px;
+  min-height: 160px;
   border-radius: 10px;
   background: #151717;
   overflow: hidden;
@@ -73,14 +54,21 @@
   top: 0;
   bottom: 0;
   background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border-left: 1.5px solid #f4f4f4;
-  border-right: 1.5px solid #f4f4f4;
+  border-left: 1.5px solid var(--accent);
+  border-right: 1.5px solid var(--accent);
+}
+
+.fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
 }
 
 .handle {
   position: absolute;
   top: 0;
-  width: 28px;
+  width: 44px;
   height: 100%;
   transform: translateX(-50%);
   background: transparent;
@@ -106,7 +94,7 @@
   top: 0;
   bottom: 0;
   width: 1.5px;
-  background: var(--accent);
+  background: var(--handle);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -154,24 +142,4 @@
   font-weight: 500;
   text-transform: uppercase;
   touch-action: manipulation;
-}
-
-@media (max-width: 820px) {
-  .toolbar {
-    gap: 6px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .tool {
-    min-height: 28px;
-    padding: 0 8px;
-    font-size: 10px;
-    flex: none;
-  }
-
-  .wrap {
-    min-height: 72px;
-  }
 }

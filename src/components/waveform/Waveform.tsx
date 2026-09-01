@@ -1,17 +1,30 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import type { FadeCurve } from '../../audio/engine/fades'
+import { fadeGain } from '../../audio/engine/fades'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { computeMinMax } from '../../audio/engine/peaks'
+import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
+import { Spectrum } from './Spectrum'
 import {
   fitView,
   fracToTime,
   panView,
   timeToFrac,
   verticalGain,
-  type View,
   zoomAround,
+  zoomPercent,
   zoomToSelection,
+  type View,
 } from './viewport'
 import styles from './Waveform.module.css'
 
@@ -20,39 +33,99 @@ type Props = {
   start: number
   end: number
   loaded: boolean
+  tool: WaveTool
+  viz: VizMode
+  fadeIn: number
+  fadeOut: number
+  fadeCurve: FadeCurve
+  autoSnap: boolean
+  normalizeView: boolean
+  onNormalizeView: (value: boolean) => void
+  onZoomLabel: (label: string) => void
   onLoadDemo: () => void
+  onRegionCommit: () => void
+  onFades: (patch: { fadeIn?: number; fadeOut?: number }) => void
 }
 
-type DragMode = 'start' | 'end' | 'move' | null
-const HANDLE_PX = 18
+export type WaveformHandle = {
+  fitSample: () => void
+  zoomSelection: () => void
+  fitSelection: () => void
+  resetZoom: () => void
+  zoomBy: (factor: number) => void
+}
 
-export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
+type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | null
+
+export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
+  {
+    duration,
+    start,
+    end,
+    loaded,
+    tool,
+    viz,
+    fadeIn,
+    fadeOut,
+    fadeCurve,
+    autoSnap,
+    normalizeView,
+    onNormalizeView,
+    onZoomLabel,
+    onLoadDemo,
+    onRegionCommit,
+    onFades,
+  },
+  ref,
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
-
-  // The parent keys this component by the loaded sample, so a fresh file remounts
-  // with the whole sample in view — no reset effect required.
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
-  const [normalizeView, setNormalizeView] = useState(false)
   const viewRef = useRef(view)
-  const stateRef = useRef({ start, end, duration, normalizeView })
+  const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
+  const handlePx = useRef(28)
 
   const setView = (next: View) => {
     viewRef.current = next
     setViewState(next)
+    onZoomLabel(`${Math.round(zoomPercent(next, duration || 1))}%`)
   }
 
   useEffect(() => {
-    stateRef.current = { start, end, duration, normalizeView }
-  }, [start, end, duration, normalizeView])
+    stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
+  }, [start, end, duration, normalizeView, tool, autoSnap])
 
-  // Redraw the visible window (canvas) on view / normalize / data / resize change.
+  useEffect(() => {
+    handlePx.current = window.matchMedia('(pointer: coarse)').matches ? 44 : 22
+  }, [])
+
+  useImperativeHandle(ref, () => ({
+    fitSample: () => setView(fitView(duration)),
+    zoomSelection: () => setView(zoomToSelection(start, end, duration)),
+    fitSelection: () => {
+      setView(zoomToSelection(start, end, duration))
+      onNormalizeView(true)
+    },
+    resetZoom: () => {
+      setView(fitView(duration))
+      onNormalizeView(false)
+    },
+    zoomBy: (factor: number) => {
+      const v = viewRef.current
+      setView(zoomAround(v, factor, (v.start + v.end) / 2, duration))
+    },
+  }))
+
+  useEffect(() => {
+    onZoomLabel(`${Math.round(zoomPercent(viewRef.current, duration || 1))}%`)
+  }, [duration, onZoomLabel])
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
-      const mono = engine.getMono()
+      const buffer = engine.getBuffer()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -64,21 +137,28 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.clearRect(0, 0, width, height)
-      if (!mono || mono.length === 0 || duration <= 0) return
-      const samplesPerSec = mono.length / duration
-      const s = Math.floor(view.start * samplesPerSec)
-      const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
-      const { min, max, peak } = computeMinMax(mono, s, e, width)
-      const gain = normalizeView ? verticalGain(peak) : 1
-      const mid = height / 2
-      const half = height * 0.46
-      ctx.fillStyle = '#9aa0a3'
-      for (let x = 0; x < width; x++) {
-        const hi = Math.max(-1, Math.min(1, (max[x] ?? 0) * gain))
-        const lo = Math.max(-1, Math.min(1, (min[x] ?? 0) * gain))
-        const top = mid - hi * half
-        const bottom = mid - lo * half
-        ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+      if (!buffer || duration <= 0) return
+      const channels = buffer.numberOfChannels
+      const lanes = Math.min(2, channels)
+      for (let lane = 0; lane < lanes; lane++) {
+        const data = buffer.getChannelData(Math.min(lane, channels - 1))
+        const laneH = height / lanes
+        const top0 = lane * laneH
+        const samplesPerSec = data.length / duration
+        const s = Math.floor(view.start * samplesPerSec)
+        const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
+        const { min, max, peak } = computeMinMax(data, s, e, width)
+        const gain = normalizeView ? verticalGain(peak) : 1
+        const mid = top0 + laneH / 2
+        const half = laneH * 0.42
+        ctx.fillStyle = '#9aa0a3'
+        for (let x = 0; x < width; x++) {
+          const hi = Math.max(-1, Math.min(1, (max[x] ?? 0) * gain))
+          const lo = Math.max(-1, Math.min(1, (min[x] ?? 0) * gain))
+          const top = mid - hi * half
+          const bottom = mid - lo * half
+          ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+        }
       }
     }
     draw()
@@ -87,7 +167,6 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     return () => ro.disconnect()
   }, [view, normalizeView, loaded, duration])
 
-  // Playhead is refs + rAF only — never re-renders the waveform.
   useEffect(() => {
     let frame = 0
     const tick = () => {
@@ -107,7 +186,6 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     return () => cancelAnimationFrame(frame)
   }, [])
 
-  // Native wheel listener so we can preventDefault (zoom / pan) reliably.
   useEffect(() => {
     const overlay = overlayRef.current
     if (!overlay) return
@@ -130,28 +208,13 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     return () => overlay.removeEventListener('wheel', onWheel)
   }, [])
 
-  // Keyboard: F = Fit sample, Z = Zoom to selection (plain keys, not shortcuts-for-undo).
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return
-      const tag = (event.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      const { start: s, end: e, duration: d } = stateRef.current
-      if (d <= 0) return
-      if (event.key === 'f' || event.key === 'F') {
-        event.preventDefault()
-        setView(fitView(d))
-      } else if (event.key === 'z' || event.key === 'Z') {
-        event.preventDefault()
-        setView(zoomToSelection(s, e, d))
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
   const pointers = useRef(new Map<number, number>())
-  const drag = useRef<{ mode: DragMode; span: number; originT: number; origin: { start: number; end: number } } | null>(null)
+  const drag = useRef<{
+    mode: DragMode
+    span: number
+    originT: number
+    origin: { start: number; end: number }
+  } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -166,7 +229,7 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
       drag.current = null
       const xs = [...pointers.current.values()]
       const rect = overlay.getBoundingClientRect()
-      const midFrac = (( (xs[0] + xs[1]) / 2 ) - rect.left) / rect.width
+      const midFrac = ((xs[0] + xs[1]) / 2 - rect.left) / rect.width
       pinch.current = {
         dist: Math.max(1, Math.abs(xs[0] - xs[1])),
         view: viewRef.current,
@@ -181,19 +244,27 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     const startX = timeToFrac(start, viewRef.current) * width
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
-    let mode: DragMode = 'move'
-    if (Math.abs(x - startX) < HANDLE_PX) mode = 'start'
-    else if (Math.abs(x - endX) < HANDLE_PX) mode = 'end'
-    else if (x < startX || x > endX) {
-      engine.setParam('start', t)
-      mode = 'start'
+    const hit = handlePx.current
+    const fadeInX = timeToFrac(start + fadeIn, viewRef.current) * width
+    const fadeOutX = timeToFrac(end - fadeOut, viewRef.current) * width
+
+    let mode: DragMode = tool === 'pan' ? 'pan' : 'move'
+    if (tool === 'fade') {
+      if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit) mode = 'fadeIn'
+      else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit) mode = 'fadeOut'
+    } else if (tool !== 'pan') {
+      if (Math.abs(x - startX) < hit) mode = 'start'
+      else if (Math.abs(x - endX) < hit) mode = 'end'
+      else if (x < startX || x > endX) {
+        engine.setParam('start', t)
+        mode = 'start'
+      }
     }
     drag.current = { mode, span: end - start, originT: t, origin: { start, end } }
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!pointers.current.has(event.pointerId)) return
-    // Mouse released outside the window: stop dragging instead of "sticking".
     if (event.buttons === 0 && event.pointerType === 'mouse') {
       endPointer(event)
       return
@@ -213,9 +284,16 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
     const { mode, span, originT, origin } = drag.current
+    if (mode === 'pan') {
+      setView(panView(viewRef.current, originT - next, duration))
+      drag.current.originT = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
+      return
+    }
     if (mode === 'start') engine.setParam('start', next)
     else if (mode === 'end') engine.setParam('end', next)
-    else {
+    else if (mode === 'fadeIn') onFades({ fadeIn: Math.max(0, Math.min(end - start, next - start)) })
+    else if (mode === 'fadeOut') onFades({ fadeOut: Math.max(0, Math.min(end - start, end - next)) })
+    else if (mode === 'move') {
       const delta = next - originT
       const maxStart = Math.max(0, duration - span)
       const s = Math.min(maxStart, Math.max(0, origin.start + delta))
@@ -231,7 +309,17 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
     }
     pointers.current.delete(event.pointerId)
     if (pointers.current.size < 2) pinch.current = null
-    if (pointers.current.size === 0) drag.current = null
+    if (pointers.current.size === 0) {
+      const mode = drag.current?.mode
+      drag.current = null
+      if (mode === 'start' || mode === 'end' || mode === 'move') {
+        if (autoSnap || tool === 'zero') {
+          if (mode === 'start' || mode === 'move') engine.snapToZero('start')
+          if (mode === 'end' || mode === 'move') engine.snapToZero('end')
+        }
+        onRegionCommit()
+      }
+    }
   }
 
   const onDoubleClick = () => {
@@ -245,101 +333,121 @@ export function Waveform({ duration, start, end, loaded, onLoadDemo }: Props) {
   const endPct = pct(end)
   const regionLeft = Math.max(0, Math.min(100, startPct))
   const regionRight = Math.max(0, Math.min(100, endPct))
+  const fadeInPct = pct(start + fadeIn)
+  const fadeOutPct = pct(end - fadeOut)
 
   const ticks = useMemo(() => {
     return [0, 0.25, 0.5, 0.75, 1].map((p) => formatTimecode(view.start + (view.end - view.start) * p))
   }, [view])
 
-  const zoomBy = (factor: number) => {
-    setView(zoomAround(viewRef.current, factor, (view.start + view.end) / 2, duration))
-  }
+  const showWave = viz !== 'spectrum'
+  const showSpec = viz === 'spectrum' || viz === 'split'
 
   return (
     <div className={styles.editor}>
-      {loaded && duration > 0 ? (
-        <div className={styles.toolbar}>
-          <button type="button" className={styles.tool} onClick={() => setView(fitView(duration))}>
-            Fit
-          </button>
-          <button
-            type="button"
-            className={styles.tool}
-            onClick={() => setView(zoomToSelection(start, end, duration))}
-          >
-            Zoom to Selection
-          </button>
-          <button
-            type="button"
-            className={`${styles.tool} ${normalizeView ? styles.toolActive : ''}`}
-            aria-pressed={normalizeView}
-            onClick={() => setNormalizeView((n) => !n)}
-          >
-            Normalize View
-          </button>
-          <div className={styles.spacer} />
-          <button type="button" className={styles.iconTool} aria-label="Zoom out" onClick={() => zoomBy(1.4)}>
-            −
-          </button>
-          <button type="button" className={styles.iconTool} aria-label="Zoom in" onClick={() => zoomBy(1 / 1.4)}>
-            +
-          </button>
-        </div>
-      ) : null}
-
-      <div className={styles.wrap}>
-        <canvas ref={canvasRef} className={styles.canvas} />
-        <div
-          ref={overlayRef}
-          className={styles.overlay}
-          onPointerDown={loaded ? onPointerDown : undefined}
-          onPointerMove={loaded ? onPointerMove : undefined}
-          onPointerUp={loaded ? endPointer : undefined}
-          onPointerCancel={loaded ? endPointer : undefined}
-          onDoubleClick={loaded ? onDoubleClick : undefined}
-        >
-          {loaded && duration > 0 ? (
-            <>
-              <div
-                className={styles.region}
-                style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
-              />
-              {startPct >= 0 && startPct <= 100 ? (
-                <button
-                  type="button"
-                  className={styles.handle}
-                  style={{ left: `${startPct}%` }}
-                  aria-label="Region start"
-                />
-              ) : null}
-              {endPct >= 0 && endPct <= 100 ? (
-                <button
-                  type="button"
-                  className={styles.handle}
-                  style={{ left: `${endPct}%` }}
-                  aria-label="Region end"
-                />
-              ) : null}
-              <div ref={playheadRef} className={styles.playhead} />
-            </>
-          ) : (
-            <div className={styles.empty}>
-              <span>Load a sample to begin</span>
-              <button type="button" className={styles.demo} onClick={onLoadDemo}>
-                Load demo tone
-              </button>
+      <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
+        {showWave ? (
+          <div className={styles.wrap}>
+            <canvas ref={canvasRef} className={styles.canvas} />
+            <div
+              ref={overlayRef}
+              className={styles.overlay}
+              onPointerDown={loaded ? onPointerDown : undefined}
+              onPointerMove={loaded ? onPointerMove : undefined}
+              onPointerUp={loaded ? endPointer : undefined}
+              onPointerCancel={loaded ? endPointer : undefined}
+              onDoubleClick={loaded ? onDoubleClick : undefined}
+            >
+              {loaded && duration > 0 ? (
+                <>
+                  <div
+                    className={styles.region}
+                    style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
+                  />
+                  <FadeShade
+                    left={regionLeft}
+                    width={Math.max(0, fadeInPct - regionLeft)}
+                    curve={fadeCurve}
+                    side="in"
+                  />
+                  <FadeShade
+                    left={fadeOutPct}
+                    width={Math.max(0, regionRight - fadeOutPct)}
+                    curve={fadeCurve}
+                    side="out"
+                  />
+                  {startPct >= 0 && startPct <= 100 ? (
+                    <button
+                      type="button"
+                      className={styles.handle}
+                      style={{ left: `${startPct}%` }}
+                      aria-label="Region start"
+                    />
+                  ) : null}
+                  {endPct >= 0 && endPct <= 100 ? (
+                    <button
+                      type="button"
+                      className={styles.handle}
+                      style={{ left: `${endPct}%` }}
+                      aria-label="Region end"
+                    />
+                  ) : null}
+                  <div ref={playheadRef} className={styles.playhead} />
+                </>
+              ) : (
+                <div className={styles.empty}>
+                  <span>Load a sample to begin</span>
+                  <button type="button" className={styles.demo} onClick={onLoadDemo}>
+                    Load demo tone
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className={styles.ruler}>
-          {ticks.map((label, index) => (
-            <span key={index}>{loaded ? label : '—'}</span>
-          ))}
-        </div>
+            <div className={styles.ruler}>
+              {ticks.map((label, index) => (
+                <span key={index}>{loaded ? label : '—'}</span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {showSpec ? (
+          <div className={styles.spec}>
+            <Spectrum active={showSpec} />
+          </div>
+        ) : null}
       </div>
 
       {loaded && duration > 0 ? (
         <Overview duration={duration} start={start} end={end} view={view} onScrub={setView} />
       ) : null}
     </div>
+  )
+})
+
+function FadeShade({
+  left,
+  width,
+  curve,
+  side,
+}: {
+  left: number
+  width: number
+  curve: FadeCurve
+  side: 'in' | 'out'
+}) {
+  const alpha = side === 'in' ? 0.5 : 0.5
+  return (
+    <div
+      className={styles.fade}
+      style={{
+        left: `${left}%`,
+        width: `${width}%`,
+        opacity: 0.35 + alpha * fadeGain(0.5, curve) * 0.2,
+        background:
+          side === 'in'
+            ? 'linear-gradient(90deg, #1a1a1a 0%, transparent 100%)'
+            : 'linear-gradient(90deg, transparent 0%, #1a1a1a 100%)',
+      }}
+    />
   )
 }

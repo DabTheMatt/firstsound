@@ -1,35 +1,69 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
-import { FILTER_TYPES } from '../audio/parameters/definitions'
-import { Knob } from '../components/controls/Knob'
-import { Segmented } from '../components/controls/Segmented'
-import { Toggle } from '../components/controls/Toggle'
-import { TransportDock } from '../components/controls/TransportDock'
-import { Waveform } from '../components/waveform/Waveform'
+import { downloadBlob, encodeWav } from '../audio/engine/wav'
 import { downloadJson, parsePreset, readAudioFile } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
-import { TAB_KNOBS, TAB_NOTES, TABS, type ModuleTab } from './tabs'
+import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
+import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
+import { useLayoutMode } from './useLayoutMode'
+import { AppHeader } from '../components/header/AppHeader'
+import { SignalChain } from '../components/chain/SignalChain'
+import { Inspector } from '../components/inspector/Inspector'
+import { CompactTransport } from '../components/transport/CompactTransport'
+import { MeterStrip } from '../components/meters/MeterStrip'
+import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
+import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import styles from './App.module.css'
+
+type Hist = { start: number; end: number; chain: string }
+
+function histKey(start: number, end: number, chain: { instanceId: string }[]): Hist {
+  return { start, end, chain: chain.map((m) => m.instanceId).join(',') }
+}
 
 export default function App() {
   const snap = useEngine()
-  const [tab, setTab] = useState<ModuleTab>('grain')
+  const { mode } = useLayoutMode()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const sampleInput = useRef<HTMLInputElement>(null)
-  const presetInput = useRef<HTMLInputElement>(null)
-
+  const [tool, setTool] = useState<WaveTool>('select')
+  const [viz, setViz] = useState<VizMode>('waveform')
+  const [meterRange, setMeterRange] = useState<MeterRange>('normal')
+  const [edit, setEdit] = useState<EditState>(DEFAULT_EDIT)
+  const [normalizeView, setNormalizeView] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
+  const [zoomLabel, setZoomLabel] = useState('100%')
+  const [focus, setFocus] = useState<InspectorFocus>({
+    kind: 'module',
+    instanceId: 'gain-1',
+    type: 'gain',
+  })
+  const [history, setHistory] = useState(() => createHistory(histKey(0, 1, [])))
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.code !== 'Space') return
       const tag = (event.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
-      event.preventDefault()
-      void engine.unlock().then(() => engine.togglePlay())
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT') return
+      if (event.code === 'Space') {
+        event.preventDefault()
+        void engine.unlock().then(() => engine.togglePlay())
+        return
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        setHistory((h) => {
+          const next = event.shiftKey ? redoHistory(h) : undoHistory(h)
+          engine.setRegion(next.present.start, next.present.end)
+          return next
+        })
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  const sampleInput = useRef<HTMLInputElement>(null)
+  const presetInput = useRef<HTMLInputElement>(null)
+  const waveRef = useRef<WaveformHandle>(null)
 
   const loadSample = async (file: File) => {
     await engine.unlock()
@@ -42,8 +76,120 @@ export default function App() {
     if (file) void loadSample(file)
   }
 
-  const knobs = TAB_KNOBS[tab]
-  const note = TAB_NOTES[tab]
+  const commit = useCallback(() => {
+    setHistory((h) =>
+      commitHistory(
+        h,
+        histKey(engine.getSnapshot().params.start, engine.getSnapshot().params.end, engine.getSnapshot().chain),
+        (a, b) => a.start === b.start && a.end === b.end && a.chain === b.chain,
+      ),
+    )
+  }, [])
+
+  const selectModule = (instanceId: string) => {
+    const mod = snap.chain.find((m) => m.instanceId === instanceId)
+    if (!mod) return
+    setFocus({ kind: 'module', instanceId, type: mod.type })
+    if (mode === 'sheet') setSheetLevel('medium')
+  }
+
+  const selectTool = (next: WaveTool) => {
+    setTool(next)
+    setFocus({ kind: 'tool', tool: next })
+    if (mode === 'sheet') setSheetLevel('medium')
+  }
+
+  const applyHistory = (next: typeof history) => {
+    setHistory(next)
+    // Region restore is approximate — chain undo goes through reorder by ids.
+    engine.setRegion(next.present.start, next.present.end)
+  }
+
+  const onExport = () => {
+    const buffer = engine.renderEdit({
+      fadeIn: edit.fadeIn,
+      fadeOut: edit.fadeOut,
+      fadeCurve: edit.fadeCurve,
+      reverse: snap.direction === 'reverse',
+      normalize: edit.normalizeOnUse,
+    })
+    if (!buffer) return
+    downloadBlob(`${stem(snap.fileName)}.wav`, encodeWav(buffer, 24))
+  }
+
+  const onUseSample = () => {
+    void engine.useAsSample({
+      fadeIn: edit.fadeIn,
+      fadeOut: edit.fadeOut,
+      fadeCurve: edit.fadeCurve,
+      reverse: false,
+      normalize: edit.normalizeOnUse,
+    })
+  }
+
+  const dockRight = mode === 'dock-right'
+  const sheet = mode === 'sheet'
+  const compact = mode !== 'dock-right'
+
+  const moreOpen = menuOpen
+
+  const inspector = inspectorOpen ? (
+    <Inspector
+      snap={snap}
+      focus={focus}
+      edit={edit}
+      sheet={sheet && sheetLevel !== 'expanded'}
+      onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
+      onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
+    />
+  ) : null
+
+  const actions = useMemo(
+    () => (
+      <div className={styles.moreMenu}>
+        <button type="button" onClick={() => sampleInput.current?.click()}>
+          Load sample
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadJson('field-preset.json', engine.toPreset())}
+        >
+          Save preset
+        </button>
+        <button type="button" onClick={() => presetInput.current?.click()}>
+          Load preset
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void engine.unlock().then(() => engine.loadDemoTone())
+          }}
+        >
+          Load demo tone
+        </button>
+        <button type="button" onClick={() => engine.resetAll()}>
+          Reset all
+        </button>
+        {snap.hasSource ? (
+          <button type="button" onClick={() => engine.revertToSource()}>
+            Revert to source
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            applyHistory(undoHistory(history))
+          }}
+        >
+          Undo
+        </button>
+        <button type="button" onClick={() => applyHistory(redoHistory(history))}>
+          Redo
+        </button>
+      </div>
+    ),
+    [history, snap.hasSource],
+  )
 
   return (
     <div
@@ -60,187 +206,119 @@ export default function App() {
         if (file) void loadSample(file)
       }}
     >
-      <main className={`${styles.shell} ${dragging ? styles.drop : ''}`}>
-        <header className={styles.header}>
-          <div className={styles.fileMeta}>
-            <span className={styles.wordmark}>Field</span>
-            <span className={styles.fileName}>
-              {snap.fileName || 'No sample loaded'}
-            </span>
-          </div>
-          <div className={styles.duration}>
-            {snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.ghost}
-              onClick={() => sampleInput.current?.click()}
-            >
-              Load
-            </button>
-            <button
-              type="button"
-              className={styles.ghost}
-              onClick={() => downloadJson('field-preset.json', engine.toPreset())}
-            >
-              Save
-            </button>
-            <div className={styles.menuWrap}>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                aria-label="More"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                ···
-              </button>
-              {menuOpen ? (
-                <div className={styles.menu}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void engine.unlock().then(() => engine.loadDemoTone())
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Load demo tone
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      presetInput.current?.click()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Load preset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      engine.resetAll()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Reset all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      engine.setEngineMode(
-                        snap.engineMode === 'grain' ? 'playback' : 'grain',
-                      )
-                      setMenuOpen(false)
-                    }}
-                  >
-                    {snap.engineMode === 'grain' ? 'Use region player' : 'Use grain engine'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </header>
+      <main
+        className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden}`}
+      >
+        <AppHeader
+          snap={snap}
+          settingsOpen={moreOpen}
+          onToggleSettings={() => setMenuOpen((v) => !v)}
+          onLoadSample={() => sampleInput.current?.click()}
+          compact={sheet}
+        />
+        {moreOpen ? <div className={styles.settingsFly}>{actions}</div> : null}
 
         {snap.audioStatus === 'blocked' ? (
-          <p className={styles.banner}>
-            Audio is paused by the browser. Tap Play to resume.
-          </p>
+          <p className={styles.banner}>Audio is paused by the browser. Tap Play to resume.</p>
         ) : null}
 
-        <div className={styles.waveZone}>
-          <Waveform
-            key={snap.fileName || 'empty'}
-            duration={snap.duration}
-            start={snap.params.start}
-            end={snap.params.end}
-            loaded={snap.sampleLoaded}
-            onLoadDemo={() => {
-              void engine.unlock().then(() => engine.loadDemoTone())
-            }}
-          />
-        </div>
+        <SignalChain
+          chain={snap.chain}
+          selectedId={focus.kind === 'module' ? focus.instanceId : ''}
+          onSelect={selectModule}
+          touch={compact}
+        />
 
-        <div className={styles.lower}>
-          <div className={styles.paramsZone}>
-            <dl className={styles.readouts}>
-              <div className={styles.readout}>
-                <dt>Start</dt>
-                <dd>{formatTimecode(snap.params.start)}</dd>
-              </div>
-              <div className={styles.readout}>
-                <dt>End</dt>
-                <dd>{formatTimecode(snap.params.end)}</dd>
-              </div>
-              <div className={`${styles.readout} ${styles.readoutExtra}`}>
-                <dt>Speed</dt>
-                <dd>{snap.params.speed.toFixed(2)}x</dd>
-              </div>
-              <div className={`${styles.readout} ${styles.readoutExtra}`}>
-                <dt>Pitch</dt>
-                <dd>{snap.params.pitch.toFixed(0)} st</dd>
-              </div>
-              <div className={`${styles.readout} ${styles.readoutExtra}`}>
-                <dt>Gain</dt>
-                <dd>{snap.params.gain.toFixed(1)} dB</dd>
-              </div>
-            </dl>
+        <WaveformToolbar
+          tool={tool}
+          onTool={selectTool}
+          viz={viz}
+          onViz={setViz}
+          zoomLabel={zoomLabel}
+          compact={sheet}
+          onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
+          onZoomOut={() => waveRef.current?.zoomBy(1.4)}
+          onView={(action) => {
+            if (action === 'fit-sample') waveRef.current?.fitSample()
+            if (action === 'zoom-selection') waveRef.current?.zoomSelection()
+            if (action === 'fit-selection') waveRef.current?.fitSelection()
+            if (action === 'normalize-view') setNormalizeView((n) => !n)
+            if (action === 'reset-zoom') waveRef.current?.resetZoom()
+          }}
+        />
 
-            <nav className={styles.tabs} aria-label="Modules">
-              {TABS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`${styles.tab} ${tab === item.id ? styles.tabActive : ''}`}
-                  onClick={() => setTab(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-
-            {note ? <p className={styles.note}>{note}</p> : null}
-
-            <div className={styles.moduleControls}>
-              {tab === 'grain' ? (
-                <Toggle
-                  pressed={snap.engineMode === 'grain'}
-                  label="Grain"
-                  onToggle={() =>
-                    engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
-                  }
-                />
-              ) : null}
-              {tab === 'filter' ? (
-                <Segmented
-                  label="Filter type"
-                  value={snap.filterType}
-                  options={FILTER_TYPES}
-                  onChange={(type) => engine.setFilterType(type)}
-                />
-              ) : null}
-            </div>
-
-            <div className={styles.knobsScroll}>
-              <div className={styles.knobs}>
-                {knobs.map((id) => (
-                  <Knob key={id} id={id} value={snap.params[id]} />
-                ))}
-              </div>
-            </div>
+        <div className={styles.work}>
+          <div className={styles.waveCol}>
+            <Waveform
+              ref={waveRef}
+              key={snap.fileName || 'empty'}
+              duration={snap.duration}
+              start={snap.params.start}
+              end={snap.params.end}
+              loaded={snap.sampleLoaded}
+              tool={tool}
+              viz={viz}
+              fadeIn={edit.fadeIn}
+              fadeOut={edit.fadeOut}
+              fadeCurve={edit.fadeCurve}
+              autoSnap={edit.autoSnap}
+              normalizeView={normalizeView}
+              onNormalizeView={setNormalizeView}
+              onZoomLabel={setZoomLabel}
+              onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
+              onRegionCommit={commit}
+              onLoadDemo={() => {
+                void engine.unlock().then(() => engine.loadDemoTone())
+              }}
+            />
           </div>
-
-          <TransportDock
-            playing={snap.playing}
-            loop={snap.loop}
-            direction={snap.direction}
-            start={snap.params.start}
-            end={snap.params.end}
-            duration={snap.duration}
-            scrubMode={snap.scrubMode}
-            disabled={!snap.sampleLoaded}
-          />
+          {dockRight && inspectorOpen ? <aside className={styles.inspector}>{inspector}</aside> : null}
+          {dockRight ? (
+            <MeterStrip channels={snap.channelCount} range={meterRange} onRange={setMeterRange} />
+          ) : null}
         </div>
+
+        <CompactTransport
+          playing={snap.playing}
+          loop={snap.loop}
+          start={snap.params.start}
+          end={snap.params.end}
+          disabled={!snap.sampleLoaded}
+          compact={compact}
+          onExport={onExport}
+          onUseSample={onUseSample}
+        />
+
+        {!dockRight && inspectorOpen ? (
+          <div className={`${styles.bottom} ${styles[sheetLevel]}`}>
+            {sheet ? (
+              <button
+                type="button"
+                className={styles.sheetHandle}
+                onClick={() =>
+                  setSheetLevel((s) =>
+                    s === 'collapsed' ? 'medium' : s === 'medium' ? 'expanded' : 'collapsed',
+                  )
+                }
+              >
+                Inspector
+              </button>
+            ) : null}
+            {sheetLevel !== 'collapsed' || !sheet ? inspector : null}
+          </div>
+        ) : null}
+
+        {dockRight ? (
+          <button
+            type="button"
+            className={styles.toggleInspector}
+            onClick={() => setInspectorOpen((v) => !v)}
+          >
+            {inspectorOpen ? 'Hide inspector' : 'Show inspector'}
+          </button>
+        ) : null}
+
+        <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>
 
         <input
           ref={sampleInput}
@@ -269,4 +347,8 @@ export default function App() {
       </main>
     </div>
   )
+}
+
+function stem(name: string): string {
+  return name.replace(/\.[^/.]+$/, '') || 'field'
 }

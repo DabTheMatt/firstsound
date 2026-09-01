@@ -7,6 +7,7 @@ import {
   timeToFrac,
   verticalGain,
   zoomAround,
+  zoomPercent,
   zoomToSelection,
 } from './viewport'
 
@@ -57,6 +58,11 @@ describe('viewport', () => {
 
   it('fitView spans the whole sample', () => {
     expect(fitView(23)).toEqual({ start: 0, end: 23 })
+  })
+
+  it('zoomPercent is 100 when the whole file is in view', () => {
+    expect(zoomPercent({ start: 0, end: 10 }, 10)).toBeCloseTo(100)
+    expect(zoomPercent({ start: 0, end: 5 }, 10)).toBeCloseTo(200)
   })
 
   it('verticalGain lifts quiet material and never attenuates', () => {
