@@ -337,7 +337,7 @@ export class AudioEngine {
 
   getPlayheadSeconds(): number {
     const duration = this.buffer?.duration ?? 0
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playing ? this.playbackRegion(duration) : this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
       if (duration <= 0) return 0
       return clamp(this.playOffset, 0, duration)
@@ -414,7 +414,7 @@ export class AudioEngine {
       this.applyLiveAudio()
     }
     const duration = this.buffer.duration
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
     if (this.playFullSample) {
       this.playOffset = 0
@@ -1317,6 +1317,12 @@ export class AudioEngine {
     return clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
   }
 
+  /** Selection, or the whole file when playing from the sample start. */
+  private playbackRegion(duration: number) {
+    if (this.playFullSample) return { start: 0, end: Math.max(duration, MIN_REGION) }
+    return this.region(duration)
+  }
+
   private async ensureContext(): Promise<void> {
     setPlaybackAudioSession()
     if (!this.ctx) {
@@ -1667,7 +1673,7 @@ export class AudioEngine {
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
       if (this.direction !== 'pingpong') {
         const duration = this.buffer?.duration ?? 0
-        const { start, end } = this.region(duration)
+        const { start, end } = this.playbackRegion(duration)
         this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
         this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
       }
@@ -1678,11 +1684,11 @@ export class AudioEngine {
     const buffer = this.activeBuffer()
     if (!this.ctx || !this.voiceBus || !buffer) return
     const duration = buffer.duration
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     const reverse = this.direction === 'reverse'
     const full = this.playFullSample
-    const loopStart = full ? 0 : reverse ? reverseTime(end, duration) : start
-    const loopEnd = full ? duration : reverse ? reverseTime(start, duration) : end
+    const loopStart = reverse && !full ? reverseTime(end, duration) : start
+    const loopEnd = reverse && !full ? reverseTime(start, duration) : end
     const span = Math.max(loopEnd - loopStart, MIN_REGION)
     const mapped = reverse && !full ? reverseTime(offset, duration) : offset
     const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
@@ -1711,7 +1717,7 @@ export class AudioEngine {
 
   private startPingPongVoice(): void {
     if (!this.ctx || !this.voiceBus || !this.buffer) return
-    const { start, end } = this.region(this.buffer.duration)
+    const { start, end } = this.playbackRegion(this.buffer.duration)
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
     const span = buffer.duration
@@ -1802,7 +1808,7 @@ export class AudioEngine {
     const density = Math.max(this.params.density, 0.5)
     const interval = 1 / density
     const grainDur = this.params.grainSize / 1000
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
     this.advanceMotion()

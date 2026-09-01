@@ -109,6 +109,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
   const [waveShare, setWaveShare] = useState(loadSplitShare)
+  const waveShareRef = useRef(waveShare)
   const splitDrag = useRef<{ y: number; share: number } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
@@ -119,6 +120,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     setViewState(next)
     onZoomLabel(`${Math.round(zoomPercent(next, duration || 1))}%`)
   }
+
+  useEffect(() => {
+    waveShareRef.current = waveShare
+  }, [waveShare])
 
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
@@ -489,37 +494,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   return (
     <div className={styles.editor}>
-      <div
-        className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}
-        onPointerMove={(event) => {
-          const drag = splitDrag.current
-          const stage = event.currentTarget
-          if (!drag) return
-          const h = stage.getBoundingClientRect().height
-          if (h < 80) return
-          const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
-          setWaveShare(next)
-        }}
-        onPointerUp={() => {
-          if (!splitDrag.current) return
-          splitDrag.current = null
-          try {
-            localStorage.setItem(SPLIT_PREF, String(waveShare))
-          } catch {
-            /* private mode */
-          }
-        }}
-        onPointerLeave={() => {
-          if (splitDrag.current) {
-            try {
-              localStorage.setItem(SPLIT_PREF, String(waveShare))
-            } catch {
-              /* private mode */
-            }
-            splitDrag.current = null
-          }
-        }}
-      >
+      <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
         <div
           className={styles.wrap}
           hidden={!showWave}
@@ -600,7 +575,27 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             aria-label="Resize waveform and FFT"
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId)
-              splitDrag.current = { y: event.clientY, share: waveShare }
+              splitDrag.current = { y: event.clientY, share: waveShareRef.current }
+            }}
+            onPointerMove={(event) => {
+              const drag = splitDrag.current
+              if (!drag) return
+              const stage = event.currentTarget.parentElement
+              if (!stage) return
+              const h = stage.getBoundingClientRect().height
+              if (h < 80) return
+              const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
+              waveShareRef.current = next
+              setWaveShare(next)
+            }}
+            onPointerUp={() => {
+              if (!splitDrag.current) return
+              splitDrag.current = null
+              try {
+                localStorage.setItem(SPLIT_PREF, String(waveShareRef.current))
+              } catch {
+                /* private mode */
+              }
             }}
           />
         ) : null}

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
-import { Knob } from '../controls/Knob'
+import { ValueKnob } from '../controls/ValueKnob'
 import {
   dbToMeterPct,
   meterDbMin,
@@ -103,7 +105,16 @@ export function MeterStrip({ channels, range, onRange }: Props) {
         </div>
       </div>
       <div className={styles.outKnob}>
-        <Knob id="outputGain" value={snap.params.outputGain} />
+        <ValueKnob
+          label="Out"
+          valueText={formatParamValue(snap.params.outputGain, PARAMS.outputGain)}
+          normalized={toNormalized(snap.params.outputGain, PARAMS.outputGain)}
+          min={PARAMS.outputGain.min}
+          max={PARAMS.outputGain.max}
+          now={Number(snap.params.outputGain.toFixed(3))}
+          onChange={(n) => engine.setParam('outputGain', fromNormalized(n, PARAMS.outputGain))}
+          onReset={() => engine.resetParam('outputGain')}
+        />
       </div>
       <select
         className={styles.select}
