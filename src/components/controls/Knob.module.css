@@ -49,17 +49,19 @@
   cursor: ns-resize;
 }
 
-.value {
+.valueInput {
   margin: 0;
   width: 100%;
+  max-width: 96px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  background: var(--bg-control);
+  color: var(--accent-primary);
   font-size: 12px;
   font-weight: 500;
-  color: var(--accent-primary);
   font-variant-numeric: tabular-nums;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 2px 4px;
 }
 
 @media (max-width: 820px) {

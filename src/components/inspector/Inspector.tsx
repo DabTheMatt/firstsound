@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
+import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
   bandUsesGain,
   bandUsesSlope,
+  bandUsesWidth,
+  bandwidthHz,
   EQ_FILTER_TYPES,
+  EQ_MAX_HZ,
+  EQ_MIN_HZ,
   FILTER_SLOPES,
+  qFromBandwidth,
   type FilterSlope,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
+import { parseTypedRange } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
@@ -178,6 +185,12 @@ function ToolInspector({
             onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
             onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
             onGestureEnd={onCommit}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 0, 2000, 'ms')
+              if (next == null) return false
+              onEdit({ fadeIn: next / 1000, fadeAuto: false })
+              return true
+            }}
           />
           <ValueKnob
             label="Fade Out"
@@ -189,6 +202,12 @@ function ToolInspector({
             onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
             onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
             onGestureEnd={onCommit}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 0, 2000, 'ms')
+              if (next == null) return false
+              onEdit({ fadeOut: next / 1000, fadeAuto: false })
+              return true
+            }}
           />
         </div>
       ) : (
@@ -352,10 +371,30 @@ function ModuleInspector({
 
 function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
   const [openBand, setOpenBand] = useState(0)
+  const comb = snap.comb
+  const formatHz = (hz: number) =>
+    hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
   return (
     <div className={styles.eq}>
+      <Segmented
+        label="EQ listen"
+        value={snap.eqListen}
+        options={[
+          { value: 'sample', label: 'Sample', title: 'Sample with filters' },
+          { value: 'filters', label: 'Filters', title: 'Filters only (pink noise)' },
+        ]}
+        wrap
+        onChange={(mode) => engine.setEqListen(mode)}
+      />
       <div className={styles.eqViz}>
-        <EqCurve bands={snap.eqBands} sampleRate={snap.sampleRate} selectedBand={openBand} />
+        <EqCurve
+          bands={snap.eqBands}
+          sampleRate={snap.sampleRate}
+          selectedBand={openBand}
+          comb={comb}
+          onSelectBand={setOpenBand}
+          onDragBand={(index, patch) => engine.setEqBand(index, patch)}
+        />
       </div>
       {snap.eqBands.map((band, index) => (
         <details
@@ -394,16 +433,18 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
             <div className={styles.knobs}>
               <ValueKnob
                 label="Freq"
-                valueText={
-                  band.frequency >= 1000
-                    ? `${(band.frequency / 1000).toFixed(2)} kHz`
-                    : `${Math.round(band.frequency)} Hz`
-                }
+                valueText={formatHz(band.frequency)}
                 normalized={freqToN(band.frequency)}
-                min={20}
-                max={20000}
+                min={EQ_MIN_HZ}
+                max={EQ_MAX_HZ}
                 now={band.frequency}
                 onChange={(n) => engine.setEqBand(index, { frequency: nToFreq(n) })}
+                onTypedValue={(text) => {
+                  const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
+                  if (next == null) return false
+                  engine.setEqBand(index, { frequency: next })
+                  return true
+                }}
               />
               {bandUsesGain(band.type) ? (
                 <ValueKnob
@@ -414,17 +455,49 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   max={18}
                   now={band.gain}
                   onChange={(n) => engine.setEqBand(index, { gain: n * 36 - 18 })}
+                  onTypedValue={(text) => {
+                    const next = parseTypedRange(text, -18, 18, 'dB')
+                    if (next == null) return false
+                    engine.setEqBand(index, { gain: next })
+                    return true
+                  }}
                 />
               ) : null}
-              <ValueKnob
-                label="Q"
-                valueText={band.q.toFixed(2)}
-                normalized={qToN(band.q)}
-                min={0.1}
-                max={20}
-                now={band.q}
-                onChange={(n) => engine.setEqBand(index, { q: nToQ(n) })}
-              />
+              {bandUsesWidth(band.type) ? (
+                <ValueKnob
+                  label="Width"
+                  valueText={formatHz(bandwidthHz(band.frequency, band.q))}
+                  normalized={widthToN(bandwidthHz(band.frequency, band.q))}
+                  min={10}
+                  max={10000}
+                  now={bandwidthHz(band.frequency, band.q)}
+                  onChange={(n) =>
+                    engine.setEqBand(index, { q: qFromBandwidth(band.frequency, nToWidth(n)) })
+                  }
+                  onTypedValue={(text) => {
+                    const next = parseTypedRange(text, 10, 10000, 'Hz')
+                    if (next == null) return false
+                    engine.setEqBand(index, { q: qFromBandwidth(band.frequency, next) })
+                    return true
+                  }}
+                />
+              ) : (
+                <ValueKnob
+                  label="Q"
+                  valueText={band.q.toFixed(2)}
+                  normalized={qToN(band.q)}
+                  min={0.1}
+                  max={20}
+                  now={band.q}
+                  onChange={(n) => engine.setEqBand(index, { q: nToQ(n) })}
+                  onTypedValue={(text) => {
+                    const next = parseTypedRange(text, 0.1, 20)
+                    if (next == null) return false
+                    engine.setEqBand(index, { q: next })
+                    return true
+                  }}
+                />
+              )}
             </div>
           ) : (
             <>
@@ -440,11 +513,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                     engine.setEqBand(index, { frequency: nToFreq(Number(e.target.value)) })
                   }
                 />
-                <span>
-                  {band.frequency >= 1000
-                    ? `${(band.frequency / 1000).toFixed(2)} kHz`
-                    : `${Math.round(band.frequency)} Hz`}
-                </span>
+                <span>{formatHz(band.frequency)}</span>
               </label>
               {bandUsesGain(band.type) ? (
                 <label className={styles.field}>
@@ -460,22 +529,149 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   <span>{band.gain.toFixed(1)} dB</span>
                 </label>
               ) : null}
-              <label className={styles.field}>
-                Q
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.001}
-                  value={qToN(band.q)}
-                  onChange={(e) => engine.setEqBand(index, { q: nToQ(Number(e.target.value)) })}
-                />
-                <span>{band.q.toFixed(2)}</span>
-              </label>
+              {bandUsesWidth(band.type) ? (
+                <label className={styles.field}>
+                  Width
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.001}
+                    value={widthToN(bandwidthHz(band.frequency, band.q))}
+                    onChange={(e) =>
+                      engine.setEqBand(index, {
+                        q: qFromBandwidth(band.frequency, nToWidth(Number(e.target.value))),
+                      })
+                    }
+                  />
+                  <span>{formatHz(bandwidthHz(band.frequency, band.q))}</span>
+                </label>
+              ) : (
+                <label className={styles.field}>
+                  Q
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.001}
+                    value={qToN(band.q)}
+                    onChange={(e) => engine.setEqBand(index, { q: nToQ(Number(e.target.value)) })}
+                  />
+                  <span>{band.q.toFixed(2)}</span>
+                </label>
+              )}
             </>
           )}
         </details>
       ))}
+      <details className={styles.band}>
+        <summary>Advanced</summary>
+        <Toggle
+          pressed={comb.enabled}
+          label="Comb filter"
+          onToggle={() => engine.setComb({ enabled: !comb.enabled })}
+        />
+        <Segmented
+          label="Comb spacing"
+          value={comb.spacingMode}
+          options={[
+            { value: 'linear', label: 'Lin', title: 'Linear Hz spacing' },
+            { value: 'log', label: 'Log', title: 'Logarithmic ratio spacing' },
+          ]}
+          wrap
+          onChange={(spacingMode) =>
+            engine.setComb({
+              spacingMode,
+              spacing: defaultSpacingForMode(spacingMode),
+            })
+          }
+        />
+        {knobs ? (
+          <div className={styles.knobs}>
+            <ValueKnob
+              label="Teeth"
+              valueText={`${Math.round(comb.teeth)}`}
+              normalized={(comb.teeth - 2) / 14}
+              min={2}
+              max={16}
+              now={comb.teeth}
+              onChange={(n) => engine.setComb({ teeth: Math.round(n * 14 + 2) })}
+              onTypedValue={(text) => {
+                const next = parseTypedRange(text, 2, 16)
+                if (next == null) return false
+                engine.setComb({ teeth: Math.round(next) })
+                return true
+              }}
+            />
+            <ValueKnob
+              label="Gain"
+              valueText={`${comb.gain.toFixed(1)} dB`}
+              normalized={(comb.gain + 18) / 36}
+              min={-18}
+              max={18}
+              now={comb.gain}
+              onChange={(n) => engine.setComb({ gain: n * 36 - 18 })}
+              onTypedValue={(text) => {
+                const next = parseTypedRange(text, -18, 18, 'dB')
+                if (next == null) return false
+                engine.setComb({ gain: next })
+                return true
+              }}
+            />
+            <ValueKnob
+              label="Base"
+              valueText={formatHz(comb.frequency)}
+              normalized={freqToN(comb.frequency)}
+              min={EQ_MIN_HZ}
+              max={EQ_MAX_HZ}
+              now={comb.frequency}
+              onChange={(n) => engine.setComb({ frequency: nToFreq(n) })}
+              onTypedValue={(text) => {
+                const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
+                if (next == null) return false
+                engine.setComb({ frequency: next })
+                return true
+              }}
+            />
+            <ValueKnob
+              label="Spacing"
+              valueText={
+                comb.spacingMode === 'log'
+                  ? `${comb.spacing.toFixed(2)}×`
+                  : formatHz(comb.spacing)
+              }
+              normalized={
+                comb.spacingMode === 'log'
+                  ? (Math.log(clampCombSpacing('log', comb.spacing)) - Math.log(1.05)) /
+                    (Math.log(4) - Math.log(1.05))
+                  : (Math.log(clampCombSpacing('linear', comb.spacing)) - Math.log(10)) /
+                    (Math.log(4000) - Math.log(10))
+              }
+              min={comb.spacingMode === 'log' ? 1.05 : 10}
+              max={comb.spacingMode === 'log' ? 4 : 4000}
+              now={comb.spacing}
+              onChange={(n) => {
+                if (comb.spacingMode === 'log') {
+                  engine.setComb({ spacing: 1.05 * (4 / 1.05) ** n })
+                } else {
+                  engine.setComb({ spacing: 10 * (4000 / 10) ** n })
+                }
+              }}
+              onTypedValue={(text) => {
+                const next = parseTypedRange(
+                  text,
+                  comb.spacingMode === 'log' ? 1.05 : 10,
+                  comb.spacingMode === 'log' ? 4 : 4000,
+                  comb.spacingMode === 'log' ? '' : 'Hz',
+                )
+                if (next == null) return false
+                engine.setComb({ spacing: next })
+                return true
+              }}
+            />
+          </div>
+        ) : null}
+      </details>
     </div>
   )
 }
@@ -490,13 +686,23 @@ function Readout({ label, value }: { label: string; value: string }) {
 }
 
 function freqToN(hz: number): number {
-  const min = Math.log(20)
-  const max = Math.log(20000)
-  return (Math.log(Math.min(20000, Math.max(20, hz))) - min) / (max - min)
+  const min = Math.log(EQ_MIN_HZ)
+  const max = Math.log(EQ_MAX_HZ)
+  return (Math.log(Math.min(EQ_MAX_HZ, Math.max(EQ_MIN_HZ, hz))) - min) / (max - min)
 }
 
 function nToFreq(n: number): number {
-  return 20 * (20000 / 20) ** Math.min(1, Math.max(0, n))
+  return EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** Math.min(1, Math.max(0, n))
+}
+
+function widthToN(hz: number): number {
+  const min = Math.log(10)
+  const max = Math.log(10000)
+  return (Math.log(Math.min(10000, Math.max(10, hz))) - min) / (max - min)
+}
+
+function nToWidth(n: number): number {
+  return 10 * (10000 / 10) ** Math.min(1, Math.max(0, n))
 }
 
 function qToN(q: number): number {

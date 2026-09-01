@@ -3,9 +3,10 @@ import { engine } from '../../hooks/useEngine'
 import {
   dbToMeterPct,
   meterDbMin,
-  meterScaleTicks,
+  meterScaleMarks,
   meterSweetBand,
   type MeterRange,
+  type MeterScaleMark,
 } from '../../app/editorState'
 import styles from './MeterStrip.module.css'
 
@@ -45,7 +46,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
 
   const stereo = channels !== 1
   const minDb = meterDbMin(range)
-  const ticks = meterScaleTicks(minDb)
+  const marks = meterScaleMarks(minDb)
   const sweet = meterSweetBand(minDb)
 
   return (
@@ -62,21 +63,22 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       </button>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
-          {ticks.map((db) => {
-            const edge = db === 0 ? 'top' : db === minDb ? 'bottom' : 'mid'
+          {marks.map((mark) => {
+            const edge = mark.db === 0 ? 'top' : mark.db === minDb ? 'bottom' : 'mid'
             return (
               <span
-                key={db}
-                className={`${styles.tick} ${styles[edge]} ${db === -12 || db === -6 ? styles.sweetTick : ''}`}
-                style={{ bottom: `${dbToMeterPct(db, minDb)}%` }}
+                key={mark.db}
+                className={`${styles.tick} ${styles[edge]} ${mark.label ? styles.major : styles.minor} ${mark.db === -12 || mark.db === -6 ? styles.sweetTick : ''}`}
+                style={{ bottom: `${dbToMeterPct(mark.db, minDb)}%` }}
               >
-                {db === 0 ? '0' : `${db}`}
+                {mark.label ? (mark.db === 0 ? '0' : `${mark.db}`) : null}
               </span>
             )
           })}
         </div>
         <div className={styles.meters}>
           <div className={styles.lane}>
+            <LaneHashes marks={marks} minDb={minDb} />
             <div
               className={styles.zone}
               title="−12 to −6 dB"
@@ -87,6 +89,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
           </div>
           {stereo ? (
             <div className={styles.lane}>
+              <LaneHashes marks={marks} minDb={minDb} />
               <div
                 className={styles.zone}
                 title="−12 to −6 dB"
@@ -108,6 +111,20 @@ export function MeterStrip({ channels, range, onRange }: Props) {
         <option value="field">−100</option>
         <option value="full">−120</option>
       </select>
+    </div>
+  )
+}
+
+function LaneHashes({ marks, minDb }: { marks: MeterScaleMark[]; minDb: number }) {
+  return (
+    <div className={styles.hashes} aria-hidden="true">
+      {marks.map((mark) => (
+        <i
+          key={mark.db}
+          className={mark.label ? styles.hashMajor : styles.hashMinor}
+          style={{ bottom: `${dbToMeterPct(mark.db, minDb)}%` }}
+        />
+      ))}
     </div>
   )
 }

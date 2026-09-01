@@ -105,8 +105,11 @@ export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
 export type ScrubMode = 'region' | 'sample'
 
 import type { ChainModule } from '../chain/chain'
+import type { CombFilterState } from '../engine/comb'
 import type { EqBand } from '../engine/eqBands'
 import type { DelayType, ReverbType } from '../fx/types'
+
+export type EqListenMode = 'sample' | 'filters'
 
 export type PresetV1 = {
   instrument: 'field'
@@ -124,4 +127,5 @@ export type PresetV1 = {
   muted?: boolean
   delayType?: DelayType
   reverbType?: ReverbType
+  comb?: CombFilterState
 }

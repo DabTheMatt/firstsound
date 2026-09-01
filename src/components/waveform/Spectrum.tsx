@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { combAsEqBands } from '../../audio/engine/comb'
+import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import {
   DB_SCALE,
@@ -46,10 +48,10 @@ function loadPrefs(): SpectrumPrefs {
     return {
       layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : 'both',
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
-      regionColors: Boolean(raw?.regionColors),
+      regionColors: raw?.regionColors !== false,
     }
   } catch {
-    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: false }
+    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true }
   }
 }
 
@@ -117,7 +119,8 @@ export function Spectrum({ active }: Props) {
         ctx.clearRect(0, 0, width, height)
         const sr = snap.sampleRate || 44100
         const nyquist = sr / 2
-        const minHz = 20
+        const minHz = EQ_MIN_HZ
+        const maxHz = EQ_MAX_HZ
         const padL = 36 * dpr
         const padR = 10 * dpr
         const padT = 18 * dpr
@@ -148,8 +151,8 @@ export function Spectrum({ active }: Props) {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         for (const hz of FREQ_SCALE_HZ) {
-          if (hz > nyquist) continue
-          const x = hzToX(hz, minHz, nyquist, left, right)
+          if (hz > maxHz) continue
+          const x = hzToX(hz, minHz, maxHz, left, right)
           ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, 0.7)
           ctx.beginPath()
           ctx.moveTo(x, top)
@@ -161,8 +164,8 @@ export function Spectrum({ active }: Props) {
 
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.85)
-        for (const tick of musicalScaleHz(minHz, nyquist)) {
-          const x = hzToX(tick.hz, minHz, nyquist, left, right)
+        for (const tick of musicalScaleHz(minHz, maxHz)) {
+          const x = hzToX(tick.hz, minHz, maxHz, left, right)
           ctx.fillText(tick.label, x, top - 2 * dpr)
         }
 
@@ -178,11 +181,11 @@ export function Spectrum({ active }: Props) {
           const peaks = bandPeakDb(bins, sr, bands, minHz)
           followBands(fast, peaks, FAST_ATTACK, FAST_RELEASE)
           followBands(slow, peaks, SLOW_ATTACK, SLOW_RELEASE)
-          const edges = logBandEdgesHz(minHz, nyquist, bands)
+          const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           for (let i = 0; i < bands; i++) {
-            const x0 = hzToX(edges[i] ?? minHz, minHz, nyquist, left, right)
-            const x1 = hzToX(edges[i + 1] ?? nyquist, minHz, nyquist, left, right)
+            const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
+            const x1 = hzToX(edges[i + 1] ?? Math.min(nyquist, maxHz), minHz, maxHz, left, right)
             const bandW = Math.max(1, x1 - x0)
             const center = bandCenterHz(edges, i)
             const region = regionForHz(center)
@@ -216,10 +219,10 @@ export function Spectrum({ active }: Props) {
         ctx.beginPath()
         ctx.strokeStyle = colors.eqCurve
         ctx.lineWidth = Math.max(1.5, dpr)
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, nyquist)
+        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
         for (let i = 0; i < freqs.length; i++) {
           const hz = freqs[i] ?? minHz
-          const db = eqMagnitudeDb(snap.eqBands, hz, sr)
+          const db = eqMagnitudeDb([...snap.eqBands, ...combAsEqBands(snap.comb)], hz, sr)
           const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
           const y = top + ((18 - db) / 36) * plotH
           if (i === 0) ctx.moveTo(x, y)
