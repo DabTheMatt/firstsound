@@ -16,13 +16,13 @@ export function LimiterWave() {
     let historyOut: Float32Array | null = null
     const scratchIn = new Float32Array(new ArrayBuffer(512 * 4))
     const scratchOut = new Float32Array(new ArrayBuffer(512 * 4))
-    const timeIn = new Float32Array(new ArrayBuffer(2048 * 4))
-    const timeOut = new Float32Array(new ArrayBuffer(2048 * 4))
 
-    const readTap = (tap: 'limiterPre' | 'limiterPost', dest: Float32Array<ArrayBuffer>): void => {
+    const readTap = (tap: 'limiterPre' | 'limiterPost'): Float32Array | null => {
       const analyser = engine.getAnalyser(tap)
-      if (!analyser) return
-      analyser.getFloatTimeDomainData(dest)
+      if (!analyser) return null
+      const buf = new Float32Array(analyser.fftSize)
+      analyser.getFloatTimeDomainData(buf)
+      return buf
     }
 
     const draw = (now: number) => {
@@ -48,9 +48,13 @@ export function LimiterWave() {
       const dt = Math.min(0.08, Math.max(0, (now - last) / 1000))
       last = now
       const n = Math.min(scratchIn.length, samplesToAppend(dt, width))
-      readTap('limiterPre', timeIn)
-      readTap('limiterPost', timeOut)
-      const sliceNewest = (buf: Float32Array, out: Float32Array) => {
+      const timeIn = readTap('limiterPre')
+      const timeOut = readTap('limiterPost')
+      const sliceNewest = (buf: Float32Array | null, out: Float32Array) => {
+        if (!buf || buf.length === 0) {
+          out.fill(0, 0, n)
+          return
+        }
         const srcCount = Math.min(buf.length, Math.max(n, Math.floor((n / width) * buf.length)))
         decimateWave(buf.subarray(buf.length - srcCount), n, out)
       }
@@ -73,8 +77,8 @@ export function LimiterWave() {
       const pad = height * 0.08
       const amp = (height - pad * 2) / 2
       const mid = height / 2
-      drawTrace(ctx, historyIn, width, mid, amp, colorWithAlpha(colors.waveform || colors.textMuted, 0.85), dpr)
-      drawTrace(ctx, historyOut, width, mid, amp, colors.eqCurve || colors.accent, dpr * 1.15)
+      drawTrace(ctx, historyIn, width, mid, amp, colorWithAlpha(colors.waveform || colors.textMuted, 0.9), Math.max(1.2, dpr))
+      drawTrace(ctx, historyOut, width, mid, amp, colors.eqCurve || colors.accent, Math.max(1.6, dpr * 1.25))
 
       const gr = engine.getLimiterReduction()
       ctx.font = `${Math.round(10 * dpr)}px ui-sans-serif, system-ui, sans-serif`

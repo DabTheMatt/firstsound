@@ -65,12 +65,12 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
   const analyserPost = makeTimeAnalyser(ctx)
 
   input.connect(analyserPre)
-  input.connect(inputGain)
+  analyserPre.connect(inputGain)
   inputGain.connect(comp)
   comp.connect(makeup)
   makeup.connect(ceiling)
-  ceiling.connect(wet)
   ceiling.connect(analyserPost)
+  analyserPost.connect(wet)
 
   return { inputGain, comp, makeup, ceiling, analyserPre, analyserPost }
 }
