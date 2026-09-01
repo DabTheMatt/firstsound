@@ -21,8 +21,9 @@ export function AppHeader({ snap, settingsOpen, onToggleSettings, onLoadSample, 
         <button type="button" className={styles.file} onClick={onLoadSample}>
           {snap.fileName || 'Load sample'}
         </button>
-        <ThemePicker />
+        {!compact ? <ThemePicker /> : null}
       </div>
+      {compact ? <ThemePicker alignRight /> : null}
       <p className={styles.meta}>
         <span>{rate}</span>
         <span>{ch}</span>

@@ -10,6 +10,7 @@ type Props = {
   end: number
   disabled: boolean
   compact: boolean
+  dock?: boolean
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -25,6 +26,7 @@ export function CompactTransport({
   end,
   disabled,
   compact,
+  dock = false,
   canUndo,
   canRedo,
   onUndo,
@@ -33,55 +35,108 @@ export function CompactTransport({
   onUseSample,
 }: Props) {
   const length = Math.max(0, end - start)
+  const transportControls = (
+    <>
+      <TransportButton
+        playing={playing}
+        disabled={disabled}
+        onToggle={() => {
+          void engine.unlock().then(() => engine.togglePlay())
+        }}
+      />
+      <button
+        type="button"
+        className={styles.icon}
+        disabled={disabled}
+        aria-label="Stop"
+        onClick={() => engine.stop()}
+      >
+        ■
+      </button>
+      <button
+        type="button"
+        className={`${styles.loop} ${loop ? styles.on : ''}`}
+        aria-pressed={loop}
+        onClick={() => engine.setLoop(!loop)}
+      >
+        Loop
+      </button>
+      {!dock ? (
+        <>
+          <button
+            type="button"
+            className={styles.icon}
+            aria-label="Kill effects"
+            title="Kill delay and reverb tails"
+            onClick={() => engine.killFx('all')}
+          >
+            Kill FX
+          </button>
+          <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
+            Undo
+          </button>
+          <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
+            Redo
+          </button>
+        </>
+      ) : null}
+    </>
+  )
+
+  const times = (
+    <p className={styles.times}>
+      <span>{formatTimecode(start)}</span>
+      <span>—</span>
+      <span>{formatTimecode(end)}</span>
+      <strong>{length.toFixed(3)} s</strong>
+    </p>
+  )
+
+  if (dock) {
+    return (
+      <div className={styles.mobileFooter}>
+        <div className={styles.actionStrip}>
+          <button
+            type="button"
+            className={styles.stripBtn}
+            disabled={disabled}
+            onClick={() => engine.seekSeconds(start, 'region')}
+          >
+            Start
+          </button>
+          <button
+            type="button"
+            className={styles.stripBtn}
+            disabled={disabled}
+            onClick={() => engine.seekSeconds(end, 'region')}
+          >
+            End
+          </button>
+          <button type="button" className={styles.stripBtn} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
+            Undo
+          </button>
+          <button type="button" className={styles.stripBtn} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
+            Redo
+          </button>
+          <button type="button" className={styles.stripBtn} disabled={disabled} onClick={onExport}>
+            Export
+          </button>
+          <button type="button" className={`${styles.stripBtn} ${styles.stripUse}`} disabled={disabled} onClick={onUseSample}>
+            Use as Sample
+          </button>
+        </div>
+        <div className={styles.dockBar}>
+          <div className={styles.transport}>{transportControls}</div>
+          {times}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`${styles.bar} ${compact ? styles.compact : ''}`}>
-      <div className={styles.transport}>
-        <TransportButton
-          playing={playing}
-          disabled={disabled}
-          onToggle={() => {
-            void engine.unlock().then(() => engine.togglePlay())
-          }}
-        />
-        <button
-          type="button"
-          className={styles.icon}
-          disabled={disabled}
-          aria-label="Stop"
-          onClick={() => engine.stop()}
-        >
-          ■
-        </button>
-        <button
-          type="button"
-          className={styles.icon}
-          aria-label="Kill effects"
-          title="Kill delay and reverb tails"
-          onClick={() => engine.killFx('all')}
-        >
-          Kill FX
-        </button>
-        <button
-          type="button"
-          className={`${styles.loop} ${loop ? styles.on : ''}`}
-          aria-pressed={loop}
-          onClick={() => engine.setLoop(!loop)}
-        >
-          Loop
-        </button>
-        <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
-          Undo
-        </button>
-        <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
-          Redo
-        </button>
-      </div>
-      <p className={styles.times}>
-        <span>{formatTimecode(start)}</span>
-        <span>—</span>
-        <span>{formatTimecode(end)}</span>
-        <strong>{length.toFixed(3)} s</strong>
-      </p>
+      <div className={styles.transport}>{transportControls}</div>
+      {times}
       <div className={styles.jumps}>
         <button
           type="button"

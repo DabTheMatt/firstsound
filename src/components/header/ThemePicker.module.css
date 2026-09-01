@@ -36,6 +36,7 @@
   left: 0;
   z-index: 20;
   min-width: 240px;
+  max-width: min(280px, calc(100vw - 24px));
   max-height: min(72vh, 520px);
   overflow: auto;
   padding: 6px;
@@ -43,6 +44,11 @@
   border: 1px solid var(--border-default);
   border-radius: 10px;
   box-shadow: 0 12px 40px color-mix(in srgb, var(--bg-app) 70%, transparent);
+}
+
+.menuRight {
+  left: auto;
+  right: 0;
 }
 
 .option {

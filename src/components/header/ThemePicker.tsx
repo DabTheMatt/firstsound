@@ -3,7 +3,7 @@ import type { ThemePreference } from '../../theme'
 import { CUSTOM_COLOR_FIELDS, THEME_OPTIONS, useTheme } from '../../theme'
 import styles from './ThemePicker.module.css'
 
-export function ThemePicker() {
+export function ThemePicker({ alignRight = false }: { alignRight?: boolean }) {
   const { preference, setPreference, customColors, setCustomColor } = useTheme()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -43,7 +43,11 @@ export function ThemePicker() {
         <span className={styles.triggerLabel}>{active.label}</span>
       </button>
       {open ? (
-        <div className={styles.menu} role="listbox" aria-label="Theme">
+        <div
+          className={`${styles.menu} ${alignRight ? styles.menuRight : ''}`}
+          role="listbox"
+          aria-label="Theme"
+        >
           {THEME_OPTIONS.map((opt) => {
             const swatch =
               opt.id === 'custom'
