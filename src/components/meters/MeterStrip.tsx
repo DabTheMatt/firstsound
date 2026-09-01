@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { engine } from '../../hooks/useEngine'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
+import { engine, useEngine } from '../../hooks/useEngine'
+import { ValueKnob } from '../controls/ValueKnob'
 import {
   dbToMeterPct,
   fallHoldDb,
   meterDbMin,
+  isMeterSweetMark,
   meterScaleMarks,
-  meterSweetBand,
   type MeterRange,
   type MeterScaleMark,
 } from '../../app/editorState'
@@ -18,6 +21,7 @@ type Props = {
 }
 
 export function MeterStrip({ channels, range, onRange }: Props) {
+  const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
   const leftHoldRef = useRef<HTMLDivElement>(null)
@@ -59,33 +63,29 @@ export function MeterStrip({ channels, range, onRange }: Props) {
   const stereo = channels !== 1
   const minDb = meterDbMin(range)
   const marks = meterScaleMarks(minDb)
-  const sweet = meterSweetBand(minDb)
 
   return (
     <div className={styles.strip}>
-      <button
-        type="button"
-        className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
-        aria-label="Reset clip"
-        title="Reset clip indicator"
-        onClick={() => setClipped(false)}
-      >
-        <span className={styles.led} aria-hidden="true" />
-        <span className={styles.clipLabel}>Clip</span>
-      </button>
+      <div className={styles.clipRow}>
+        <button
+          type="button"
+          className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
+          aria-label="Reset clip"
+          title="Reset clip indicator"
+          onClick={() => setClipped(false)}
+        >
+          <span className={styles.led} aria-hidden="true" />
+          <span className={styles.clipLabel}>Clip</span>
+        </button>
+      </div>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
-          <div
-            className={styles.sweetBand}
-            title="−12 to −6 dB"
-            style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
-          />
           {marks.map((mark) => {
             const edge = mark.db === 0 ? 'top' : mark.db === minDb ? 'bottom' : 'mid'
             return (
               <span
                 key={mark.db}
-                className={`${styles.tick} ${styles[edge]} ${mark.label ? styles.major : styles.minor} ${mark.db === -12 || mark.db === -6 ? styles.sweetTick : ''}`}
+                className={`${styles.tick} ${styles[edge]} ${mark.label ? styles.major : styles.minor} ${isMeterSweetMark(mark.db) ? styles.sweetTick : ''}`}
                 style={{ bottom: `${dbToMeterPct(mark.db, minDb)}%` }}
               >
                 {mark.label ? (mark.db === 0 ? '0' : `${mark.db}`) : null}
@@ -109,6 +109,18 @@ export function MeterStrip({ channels, range, onRange }: Props) {
             </div>
           ) : null}
         </div>
+      </div>
+      <div className={styles.outKnob}>
+        <ValueKnob
+          label="Out"
+          valueText={formatParamValue(snap.params.outputGain, PARAMS.outputGain)}
+          normalized={toNormalized(snap.params.outputGain, PARAMS.outputGain)}
+          min={PARAMS.outputGain.min}
+          max={PARAMS.outputGain.max}
+          now={Number(snap.params.outputGain.toFixed(3))}
+          onChange={(n) => engine.setParam('outputGain', fromNormalized(n, PARAMS.outputGain))}
+          onReset={() => engine.resetParam('outputGain')}
+        />
       </div>
       <select
         className={styles.select}

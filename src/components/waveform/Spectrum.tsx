@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { combAsEqBands } from '../../audio/engine/comb'
-import { bandUsesGain, EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
+import {
+  dbToY as eqDbToY,
+  eqBandDragPatch,
+  freqToX,
+  nodeDisplayDb,
+  SPECTRUM_EQ_MAX_DB,
+  SPECTRUM_EQ_MIN_DB,
+  xToFreq,
+  yToDb as eqYToDb,
+} from '../../audio/engine/eqPlot'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import {
   DB_SCALE,
@@ -24,7 +33,7 @@ import {
   type SpectrumBandCount,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
-import { engine } from '../../hooks/useEngine'
+import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors } from '../../theme'
 import styles from './Spectrum.module.css'
 
@@ -36,10 +45,14 @@ type Layer = 'pre' | 'post' | 'both'
 
 const SPECTRUM_PREF_KEY = 'field.spectrum'
 
+/** Matches canvas padding so EQ nodes sit on the plotted curve. */
+export const SPECTRUM_PLOT_PAD = { left: 36, right: 10, top: 18, bottom: 28 }
+
 type SpectrumPrefs = {
   layer: Layer
   bands: SpectrumBandCount
   regionColors: boolean
+  legendOpen: boolean
 }
 
 function loadPrefs(): SpectrumPrefs {
@@ -49,9 +62,10 @@ function loadPrefs(): SpectrumPrefs {
       layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : 'both',
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
       regionColors: raw?.regionColors !== false,
+      legendOpen: raw?.legendOpen !== false,
     }
   } catch {
-    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true }
+    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true, legendOpen: true }
   }
 }
 
@@ -79,14 +93,29 @@ function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: nu
 
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active }: Props) {
+  const snap = useEngine()
+  const eqNodeMod = snap.chain.find((m) => m.type === 'eq' && !m.bypassed)
+  const eqNodeBands = eqNodeMod
+    ? (snap.eqById[eqNodeMod.instanceId]?.bands ?? snap.eqBands)
+    : []
+  const eqNodeId = eqNodeMod?.instanceId
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const plotRef = useRef<HTMLDivElement>(null)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
+  const [selectedBand, setSelectedBand] = useState(0)
   const prefsRef = useRef(prefs)
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
   const postFast = useRef(emptyBands(prefs.bands))
   const postSlow = useRef(emptyBands(prefs.bands))
+  const drag = useRef<{
+    index: number
+    instanceId: string
+    pointerId: number
+    q0: number
+    y0: number
+  } | null>(null)
 
   useEffect(() => {
     prefsRef.current = prefs
@@ -103,7 +132,7 @@ export function Spectrum({ active }: Props) {
     if (!canvas) return
     let frame = 0
     const tick = () => {
-      const snap = engine.getSnapshot()
+      const live = engine.getSnapshot()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -117,14 +146,14 @@ export function Spectrum({ active }: Props) {
         const colors = readThemeColors()
         const { layer, bands, regionColors } = prefsRef.current
         ctx.clearRect(0, 0, width, height)
-        const sr = snap.sampleRate || 44100
+        const sr = live.sampleRate || 44100
         const nyquist = sr / 2
         const minHz = EQ_MIN_HZ
         const maxHz = EQ_MAX_HZ
-        const padL = 36 * dpr
-        const padR = 10 * dpr
-        const padT = 18 * dpr
-        const padB = 28 * dpr
+        const padL = SPECTRUM_PLOT_PAD.left * dpr
+        const padR = SPECTRUM_PLOT_PAD.right * dpr
+        const padT = SPECTRUM_PLOT_PAD.top * dpr
+        const padB = SPECTRUM_PLOT_PAD.bottom * dpr
         const left = padL
         const right = width - padR
         const top = padT
@@ -216,45 +245,67 @@ export function Spectrum({ active }: Props) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
-        ctx.beginPath()
-        ctx.strokeStyle = colors.eqCurve
-        ctx.lineWidth = Math.max(1.5, dpr)
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
-        for (let i = 0; i < freqs.length; i++) {
-          const hz = freqs[i] ?? minHz
-          const db = eqMagnitudeDb([...snap.eqBands, ...combAsEqBands(snap.comb)], hz, sr)
-          const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
-          const y = top + ((18 - db) / 36) * plotH
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        }
-        ctx.stroke()
-
-        ctx.font = `700 ${9 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        snap.eqBands.forEach((band, index) => {
-          if (band.type === 'off') return
-          const nodeDb = bandUsesGain(band.type) ? band.gain : 0
-          const x = hzToX(band.frequency, minHz, maxHz, left, right)
-          const y = top + ((18 - nodeDb) / 36) * plotH
-          const r = 8 * dpr
+        const eqOn = live.chain.some((m) => m.type === 'eq' && !m.bypassed)
+        if (eqOn) {
           ctx.beginPath()
-          ctx.fillStyle = colors.eqNode
-          ctx.arc(x, y, r, 0, Math.PI * 2)
-          ctx.fill()
           ctx.strokeStyle = colors.eqCurve
-          ctx.lineWidth = Math.max(1, dpr)
+          ctx.lineWidth = Math.max(1.5, dpr)
+          const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+          const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
+          for (let i = 0; i < freqs.length; i++) {
+            const hz = freqs[i] ?? minHz
+            const db = eqMagnitudeDb(live.eqPlotBands, hz, sr)
+            const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
+            const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
           ctx.stroke()
-          ctx.fillStyle = colors.bgApp
-          ctx.fillText(String(index + 1), x, y + 0.4 * dpr)
-        })
+        }
       }
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [active])
+
+  const onNodePointerDown = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedBand(index)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    if (!eqNodeId) return
+    drag.current = {
+      index,
+      instanceId: eqNodeId,
+      pointerId: event.pointerId,
+      q0: eqNodeBands[index]?.q ?? 1,
+      y0: event.clientY,
+    }
+  }
+
+  const onNodePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const d = drag.current
+    const plot = plotRef.current
+    if (!d || d.pointerId !== event.pointerId || !plot) return
+    const rect = plot.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+    const band = (snap.eqById[d.instanceId]?.bands ?? snap.eqBands)[d.index]
+    if (!band) return
+    const frequency = xToFreq(x, rect.width, EQ_MAX_HZ)
+    const db = eqYToDb(y, rect.height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
+    engine.setEqBand(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY), d.instanceId)
+  }
+
+  const onNodePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+  }
 
   if (!active) return null
   return (
@@ -298,27 +349,49 @@ export function Spectrum({ active }: Props) {
           Band colors
         </button>
       </div>
-      {prefs.regionColors ? (
-        <p className={styles.regions}>
-          {SPECTRUM_REGIONS.map((region) => (
-            <span key={region.id}>
-              <i style={{ background: region.color }} />
-              {region.label}
-            </span>
-          ))}
-        </p>
-      ) : (
-        <p className={styles.legend}>
-          <span>Slow</span>
-          <span>Fast</span>
-          {prefs.layer === 'both' ? <span>Before / after EQ</span> : null}
-        </p>
-      )}
+      <div className={styles.legendDock}>
+        <button
+          type="button"
+          className={`${styles.legendToggle} ${prefs.legendOpen ? styles.on : ''}`}
+          aria-pressed={prefs.legendOpen}
+          aria-label={prefs.legendOpen ? 'Hide spectrum legend' : 'Show spectrum legend'}
+          title={prefs.legendOpen ? 'Hide legend' : 'Show legend'}
+          onClick={() => setPrefs((p) => ({ ...p, legendOpen: !p.legendOpen }))}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <rect x="1.5" y="2" width="3" height="3" rx="1" fill="currentColor" />
+            <rect x="6.5" y="2.5" width="8" height="2" rx="1" fill="currentColor" />
+            <rect x="1.5" y="6.5" width="3" height="3" rx="1" fill="currentColor" />
+            <rect x="6.5" y="7" width="8" height="2" rx="1" fill="currentColor" />
+            <rect x="1.5" y="11" width="3" height="3" rx="1" fill="currentColor" />
+            <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
+          </svg>
+        </button>
+        {prefs.legendOpen ? (
+          prefs.regionColors ? (
+            <ul className={styles.regions}>
+              {SPECTRUM_REGIONS.map((region) => (
+                <li key={region.id}>
+                  <i style={{ background: region.color }} />
+                  {region.label}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <ul className={styles.regions}>
+              <li>Slow</li>
+              <li>Fast</li>
+              {prefs.layer === 'both' ? <li>Before / after EQ</li> : null}
+            </ul>
+          )
+        ) : null}
+      </div>
       <canvas
         ref={canvasRef}
         className={styles.canvas}
         aria-label="Spectrum analyzer"
         onPointerMove={(event) => {
+          if (drag.current) return
           const canvas = canvasRef.current
           if (!canvas) return
           const rect = canvas.getBoundingClientRect()
@@ -326,10 +399,10 @@ export function Spectrum({ active }: Props) {
           const y = event.clientY - rect.top
           const sr = engine.getSnapshot().sampleRate || 44100
           const nyquist = sr / 2
-          const left = 36
-          const right = rect.width - 10
-          const top = 18
-          const bottom = rect.height - 28
+          const left = SPECTRUM_PLOT_PAD.left
+          const right = rect.width - SPECTRUM_PLOT_PAD.right
+          const top = SPECTRUM_PLOT_PAD.top
+          const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
           if (x < left || x > right || y < top || y > bottom) {
             setHover(null)
             return
@@ -339,6 +412,41 @@ export function Spectrum({ active }: Props) {
         }}
         onPointerLeave={() => setHover(null)}
       />
+      <div
+        ref={plotRef}
+        className={styles.plot}
+        style={{
+          left: SPECTRUM_PLOT_PAD.left,
+          right: SPECTRUM_PLOT_PAD.right,
+          top: SPECTRUM_PLOT_PAD.top,
+          bottom: SPECTRUM_PLOT_PAD.bottom,
+        }}
+      >
+        {eqNodeMod
+          ? eqNodeBands.map((band, index) => {
+          if (band.type === 'off') return null
+          const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
+          const yPct =
+            eqDbToY(nodeDisplayDb(band), 1, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB) * 100
+          const selected = index === selectedBand
+          return (
+            <button
+              key={index}
+              type="button"
+              className={`${styles.node} ${selected ? styles.nodeOn : ''}`}
+              style={{ left: `${xPct}%`, top: `${Math.min(100, Math.max(0, yPct))}%` }}
+              aria-label={`EQ band ${index + 1} ${band.type}`}
+              onPointerDown={(event) => onNodePointerDown(index, event)}
+              onPointerMove={onNodePointerMove}
+              onPointerUp={onNodePointerUp}
+              onPointerCancel={onNodePointerUp}
+            >
+              {index + 1}
+            </button>
+          )
+        })
+        : null}
+      </div>
       {hover ? (
         <div
           className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}

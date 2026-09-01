@@ -2,11 +2,17 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   width: 72px;
   flex: none;
   min-height: 0;
   padding: 2px 0;
+}
+
+.clipRow {
+  display: flex;
+  justify-content: center;
+  padding-left: 30px;
 }
 
 .clip {
@@ -14,12 +20,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  width: 100%;
+  gap: 3px;
+  width: 28px;
   margin: 0;
-  padding: 4px 2px 2px;
+  padding: 2px 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
   min-height: 0;
@@ -32,8 +38,8 @@
 }
 
 .led {
-  width: 22px;
-  height: 22px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   flex: none;
   background: var(--bg-control);
@@ -46,7 +52,7 @@
 }
 
 .clipLabel {
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 1;
@@ -66,19 +72,6 @@
   align-self: stretch;
   width: 30px;
   min-height: 0;
-}
-
-.sweetBand {
-  position: absolute;
-  left: 0;
-  right: 1px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--meter-mid) 38%, var(--bg-panel));
-  box-shadow:
-    inset 3px 0 0 var(--meter-mid),
-    inset 0 0 0 1px color-mix(in srgb, var(--meter-mid) 55%, transparent);
-  pointer-events: none;
-  z-index: 0;
 }
 
 .scale span,
@@ -129,13 +122,20 @@
 }
 
 .sweetTick {
-  color: var(--meter-mid);
+  color: var(--accent-primary);
   font-weight: 700;
+  font-size: 8px;
+}
+
+.minor.sweetTick {
+  color: transparent;
+  font-size: 7px;
 }
 
 .sweetTick::after {
-  background: var(--meter-mid);
-  width: 6px;
+  background: var(--accent-primary);
+  width: 7px;
+  height: 2px;
 }
 
 .meters {
@@ -218,6 +218,13 @@
   font-size: 8px;
   color: var(--text-muted);
   letter-spacing: 0.08em;
+}
+
+.outKnob {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .select {

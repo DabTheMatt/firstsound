@@ -68,10 +68,9 @@ export function meterScaleMarks(minDb: number): MeterScaleMark[] {
   return out
 }
 
-export function meterSweetBand(minDb: number): { bottom: number; height: number } {
-  const bottom = dbToMeterPct(METER_SWEET_LO, minDb)
-  const top = dbToMeterPct(METER_SWEET_HI, minDb)
-  return { bottom, height: Math.max(0, top - bottom) }
+/** Scale ticks and labels in the −12…−6 dB window. */
+export function isMeterSweetMark(db: number): boolean {
+  return db <= METER_SWEET_HI && db >= METER_SWEET_LO
 }
 
 /** Peak-hold that jumps up with the peak and falls slower than the bar. */

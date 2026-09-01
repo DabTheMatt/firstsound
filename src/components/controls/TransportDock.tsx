@@ -1,7 +1,6 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import { scrubBounds } from '../../audio/parameters/mapping'
-import type { PlaybackDirection, ScrubMode } from '../../audio/parameters/types'
+import type { ScrubMode } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import {
   angleToTime,
@@ -15,7 +14,6 @@ import styles from './TransportDock.module.css'
 type Props = {
   playing: boolean
   loop: boolean
-  direction: PlaybackDirection
   start: number
   end: number
   duration: number
@@ -37,7 +35,6 @@ const SCRUB_MODES: { value: ScrubMode; label: string }[] = [
 export function TransportDock({
   playing,
   loop,
-  direction,
   start,
   end,
   duration,
@@ -130,22 +127,7 @@ export function TransportDock({
 
   return (
     <div className={styles.dock}>
-      <div className={styles.switches}>
-        <div className={styles.directions} role="radiogroup" aria-label="Playback direction">
-          {PLAYBACK_DIRECTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={direction === opt.value}
-              aria-label={opt.label}
-              className={`${styles.dir} ${direction === opt.value ? styles.dirActive : ''}`}
-              onClick={() => engine.setDirection(opt.value)}
-            >
-              {opt.value === 'forward' ? 'Fwd' : opt.value === 'reverse' ? 'Rev' : 'P-P'}
-            </button>
-          ))}
-        </div>
+        <div className={styles.switches}>
         <button
           type="button"
           aria-pressed={loop}

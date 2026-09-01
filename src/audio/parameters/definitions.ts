@@ -48,6 +48,56 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 0.1,
   },
+  pan: {
+    id: 'pan',
+    label: 'Pan',
+    min: -100,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+    step: 1,
+  },
+  channelGainL: {
+    id: 'channelGainL',
+    label: 'Left',
+    min: -24,
+    max: 6,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  channelGainR: {
+    id: 'channelGainR',
+    label: 'Right',
+    min: -24,
+    max: 6,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  makeMono: {
+    id: 'makeMono',
+    label: 'Mono',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  invertPhase: {
+    id: 'invertPhase',
+    label: 'Invert Phase',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
   grainSize: {
     id: 'grainSize',
     label: 'Grain Size',
@@ -135,7 +185,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   delayWet: {
     id: 'delayWet',
-    label: 'Wet',
+    label: 'Mix',
     min: 0,
     max: 100,
     defaultValue: 0,
@@ -164,7 +214,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     id: 'delayFeedback',
     label: 'Feedback',
     min: 0,
-    max: 120,
+    max: 95,
     defaultValue: 35,
     unit: '%',
     mapping: 'linear',
@@ -180,7 +230,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   reverbWet: {
     id: 'reverbWet',
-    label: 'Wet',
+    label: 'Mix',
     min: 0,
     max: 100,
     defaultValue: 0,
@@ -195,6 +245,16 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     defaultValue: 100,
     unit: '%',
     mapping: 'linear',
+  },
+  reverbLimit: {
+    id: 'reverbLimit',
+    label: 'Limit',
+    min: 0,
+    max: 24,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.5,
   },
   motionDepth: {
     id: 'motionDepth',
@@ -710,7 +770,7 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
-export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain']
+export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain', 'pan']
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',
@@ -721,23 +781,20 @@ export const GRAIN_KNOBS: ParamId[] = [
 ]
 export const MOTION_KNOBS: ParamId[] = ['motionDepth', 'motionRate', 'motionJitter', 'position']
 export const SPACE_KNOBS: ParamId[] = [
-  'delayDry',
   'delayWet',
-  'delayOutput',
   'delayTime',
   'delayFeedback',
-  'reverbDry',
   'reverbWet',
-  'reverbOutput',
-]
-export const DELAY_MAIN_KNOBS: ParamId[] = ['delayDry', 'delayWet', 'delayOutput', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = [
-  'reverbDry',
-  'reverbWet',
-  'reverbOutput',
   'reverbSize',
   'reverbDecay',
-  'reverbPredelay',
+  'reverbLimit',
+]
+export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
+export const REVERB_MAIN_KNOBS: ParamId[] = [
+  'reverbWet',
+  'reverbSize',
+  'reverbDecay',
+  'reverbLimit',
 ]
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']

@@ -77,14 +77,23 @@
 .zoom {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   margin-left: auto;
 }
 
 .zoom span {
-  min-width: 48px;
+  min-width: 36px;
+  padding: 0 2px;
   text-align: center;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+  cursor: ns-resize;
+  user-select: none;
+}
+
+.zoom .icon {
+  min-width: 32px;
+  min-height: 36px;
+  padding: 0 6px;
 }

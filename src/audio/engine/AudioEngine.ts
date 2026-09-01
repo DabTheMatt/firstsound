@@ -1,9 +1,11 @@
 import {
   defaultChain,
+  insertChainModule,
   normalizeChain,
   parseChain,
   reorderChain,
   setBypassed,
+  removeChainModule,
   type ChainModule,
   type ModuleType,
 } from '../chain/chain'
@@ -110,6 +112,7 @@ import {
 import { pingPongFadeCurve, regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
+import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
@@ -131,6 +134,8 @@ export type EngineSnapshot = {
   params: Record<ParamId, number>
   chain: ChainModule[]
   eqBands: EqBand[]
+  eqById: Record<string, { bands: EqBand[]; comb: CombFilterState }>
+  eqPlotBands: EqBand[]
   comb: CombFilterState
   eqListen: EqListenMode
   recording: boolean
@@ -200,6 +205,7 @@ type Slot = {
   damp?: BiquadFilterNode
   delayFx?: DelayGraph
   reverbFx?: ReverbGraph
+  stereo?: StereoStage
 }
 
 /**
@@ -245,6 +251,7 @@ export class AudioEngine {
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
   private chain: ChainModule[] = defaultChain()
+  private eqById = new Map<string, { bands: EqBand[]; comb: CombFilterState }>()
   private eqBands: EqBand[] = defaultEqBands()
   private comb: CombFilterState = defaultCombFilter()
   private eqListen: EqListenMode = 'sample'
@@ -262,6 +269,7 @@ export class AudioEngine {
   private source: AudioBufferSourceNode | null = null
   private playCtxTime = 0
   private playOffset = 0
+  private playFullSample = false
   private nextGrainTime = 0
   private schedulerId = 0
   private visibilityBound = false
@@ -359,7 +367,7 @@ export class AudioEngine {
 
   getPlayheadSeconds(): number {
     const duration = this.buffer?.duration ?? 0
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playing ? this.playbackRegion(duration) : this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
       if (duration <= 0) return 0
       return clamp(this.playOffset, 0, duration)
@@ -436,9 +444,13 @@ export class AudioEngine {
       this.applyLiveAudio()
     }
     const duration = this.buffer.duration
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
-    this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
+    if (this.playFullSample) {
+      this.playOffset = 0
+    } else {
+      this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
+    }
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -465,12 +477,20 @@ export class AudioEngine {
       this.params.position = applyParamValue(this.direction === 'reverse' ? 100 : 0, PARAMS.position)
     }
     this.killFx('all')
+    this.playFullSample = false
     this.emit()
   }
 
   togglePlay(): void {
     if (this.playing) this.stop()
     else void this.play()
+  }
+
+  playFromStart(): void {
+    this.playFullSample = true
+    this.playOffset = 0
+    this.params.position = applyParamValue(0, PARAMS.position)
+    void this.play()
   }
 
   setLoop(loop: boolean): void {
@@ -1027,11 +1047,13 @@ export class AudioEngine {
     this.delayType = 'digital'
     this.reverbType = 'hall'
     this.reverbIrKey = ''
+    this.eqById = new Map()
     this.eqBands = defaultEqBands()
     this.comb = defaultCombFilter()
     this.eqListen = 'sample'
     this.stopNoise()
     this.chain = defaultChain()
+    this.seedEqStates()
     this.muted = false
     void this.rebuildGraph()
     this.applyLiveAudio()
@@ -1045,6 +1067,28 @@ export class AudioEngine {
     void this.rebuildGraph()
   }
 
+  insertModule(type: ModuleType, afterIndex: number): string | null {
+    const next = insertChainModule(this.chain, type, afterIndex)
+    if (modulesEqual(next, this.chain)) return null
+    const added = next.find((mod) => !this.chain.some((m) => m.instanceId === mod.instanceId))
+    this.chain = next
+    if (added?.type === 'eq') this.eqById.set(added.instanceId, cloneEqState())
+    if (added?.type === 'grain') this.engineMode = 'grain'
+    void this.rebuildGraph()
+    return added?.instanceId ?? null
+  }
+
+  removeModule(instanceId: string): void {
+    const next = removeChainModule(this.chain, instanceId)
+    if (modulesEqual(next, this.chain)) return
+    this.chain = next
+    this.eqById.delete(instanceId)
+    if (!this.chain.some((m) => m.type === 'grain' && !m.bypassed)) this.engineMode = 'playback'
+    this.syncPrimaryEq()
+    if (this.playing && this.engineMode === 'grain') void this.play()
+    void this.rebuildGraph()
+  }
+
   setModuleBypass(instanceId: string, bypassed: boolean): void {
     this.chain = setBypassed(this.chain, instanceId, bypassed)
     const grain = this.chain.find((m) => m.instanceId === instanceId && m.type === 'grain')
@@ -1054,17 +1098,25 @@ export class AudioEngine {
     else this.emit()
   }
 
-  setEqBand(index: number, patch: Partial<EqBand>): void {
-    const band = this.eqBands[index]
+  setEqBand(index: number, patch: Partial<EqBand>, instanceId?: string): void {
+    const id = instanceId ?? this.primaryEqId()
+    const st = this.eqState(id)
+    const band = st.bands[index]
     if (!band) return
-    this.eqBands = this.eqBands.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    st.bands = st.bands.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    this.eqById.set(id, st)
+    this.syncPrimaryEq()
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
     this.emit()
   }
 
-  setComb(patch: Partial<CombFilterState>): void {
-    this.comb = { ...this.comb, ...patch }
+  setComb(patch: Partial<CombFilterState>, instanceId?: string): void {
+    const id = instanceId ?? this.primaryEqId()
+    const st = this.eqState(id)
+    st.comb = { ...st.comb, ...patch }
+    this.eqById.set(id, st)
+    this.syncPrimaryEq()
     this.applyEq(0.03)
     this.emit()
   }
@@ -1219,6 +1271,12 @@ export class AudioEngine {
     }
     const parsedComb = parseCombFilter(preset.comb)
     if (parsedComb) this.comb = parsedComb
+    const savedBands = this.eqBands
+    const savedComb = this.comb
+    this.eqById = new Map()
+    this.seedEqStates()
+    this.eqById.set(this.primaryEqId(), cloneEqState(savedBands, savedComb))
+    this.syncPrimaryEq()
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1427,6 +1485,12 @@ export class AudioEngine {
     return clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
   }
 
+  /** Selection, or the whole file when playing from the sample start. */
+  private playbackRegion(duration: number) {
+    if (this.playFullSample) return { start: 0, end: Math.max(duration, MIN_REGION) }
+    return this.region(duration)
+  }
+
   private async ensureContext(): Promise<void> {
     setPlaybackAudioSession()
     if (!this.ctx) {
@@ -1505,6 +1569,17 @@ export class AudioEngine {
     if (mod.type === 'gain' || mod.type === 'output' || mod.type === 'grain') {
       wet.gain.value = 0
       dry.gain.value = 1
+      if (mod.type === 'gain') {
+        try {
+          dry.disconnect(output)
+        } catch {
+          /* first connect */
+        }
+        const stereo = createStereoStage(ctx)
+        dry.connect(stereo.input)
+        stereo.output.connect(output)
+        slot.stereo = stereo
+      }
       return slot
     }
     if (mod.type === 'eq') {
@@ -1543,14 +1618,16 @@ export class AudioEngine {
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
     this.voiceBus.connect(ordered[0]!.input)
-    const eqSlot = ordered.find((s) => s.type === 'eq')
-    if (eqSlot) {
-      if (this.analyserPre) eqSlot.input.connect(this.analyserPre)
-      if (this.analyserEq) eqSlot.output.connect(this.analyserEq)
-      if (this.noiseGain) this.noiseGain.connect(eqSlot.input)
+    const eqSlots = ordered.filter((s) => s.type === 'eq')
+    const firstEq = eqSlots[0]
+    const lastEq = eqSlots.at(-1)
+    if (firstEq) {
+      if (this.analyserPre) firstEq.input.connect(this.analyserPre)
+      if (this.noiseGain) this.noiseGain.connect(firstEq.input)
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
+    if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
@@ -1604,8 +1681,13 @@ export class AudioEngine {
       return
     }
     this.disconnectSlots()
+    const live = new Set(this.chain.map((m) => m.instanceId))
+    for (const id of [...this.slots.keys()]) {
+      if (!live.has(id)) this.slots.delete(id)
+    }
     for (const mod of this.chain) {
       if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
+      if (mod.type === 'eq') this.eqState(mod.instanceId)
     }
     this.connectSlots()
     this.applyLiveAudio()
@@ -1712,11 +1794,23 @@ export class AudioEngine {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const nyquist = this.ctx.sampleRate / 2
-    const eqSlot = [...this.slots.values()].find((s) => s.type === 'eq')
-    const filters = eqSlot?.eq
-    if (!filters) return
+    for (const slot of this.slots.values()) {
+      if (slot.type !== 'eq' || !slot.eq) continue
+      const st = this.eqState(slot.instanceId)
+      this.writeEqFilters(slot.eq, st.bands, st.comb, now, smoothing, nyquist)
+    }
+  }
+
+  private writeEqFilters(
+    filters: BiquadFilterNode[],
+    bands: EqBand[],
+    comb: CombFilterState,
+    now: number,
+    smoothing: number,
+    nyquist: number,
+  ): void {
     for (let bandIndex = 0; bandIndex < EQ_BAND_COUNT; bandIndex++) {
-      const band = this.eqBands[bandIndex]
+      const band = bands[bandIndex]
       const stages = band ? filterStageCount(band) : 0
       for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
         const node = filters[bandIndex * EQ_MAX_STAGES + stage]
@@ -1734,7 +1828,7 @@ export class AudioEngine {
         node.gain.setTargetAtTime(band.gain, now, smoothing)
       }
     }
-    const combBands = combAsEqBands(this.comb)
+    const combBands = combAsEqBands(comb)
     const combOffset = EQ_BAND_COUNT * EQ_MAX_STAGES
     for (let i = 0; i < COMB_MAX_TEETH; i++) {
       const node = filters[combOffset + i]
@@ -1833,7 +1927,23 @@ export class AudioEngine {
     const now = this.ctx.currentTime
     const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
     const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
-    if (gainSlot) gainSlot.output.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    if (gainSlot?.stereo) {
+      applyStereoStage(
+        gainSlot.stereo,
+        {
+          gainDb: this.params.gain,
+          pan: this.params.pan,
+          leftDb: this.params.channelGainL,
+          rightDb: this.params.channelGainR,
+          mono: this.params.makeMono > 0.5,
+          invert: this.params.invertPhase > 0.5,
+        },
+        now,
+        0.03,
+      )
+    } else if (gainSlot) {
+      gainSlot.output.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    }
     if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(this.params.outputGain), now, 0.03)
     this.applyEq(0.03)
     this.applyFxParams(0.03)
@@ -1844,7 +1954,7 @@ export class AudioEngine {
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
       if (this.direction !== 'pingpong') {
         const duration = this.buffer?.duration ?? 0
-        const { start, end } = this.region(duration)
+        const { start, end } = this.playbackRegion(duration)
         this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
         this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
       }
@@ -1855,12 +1965,13 @@ export class AudioEngine {
     const buffer = this.activeBuffer()
     if (!this.ctx || !this.voiceBus || !buffer) return
     const duration = buffer.duration
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     const reverse = this.direction === 'reverse'
-    const loopStart = reverse ? reverseTime(end, duration) : start
-    const loopEnd = reverse ? reverseTime(start, duration) : end
+    const full = this.playFullSample
+    const loopStart = reverse && !full ? reverseTime(end, duration) : start
+    const loopEnd = reverse && !full ? reverseTime(start, duration) : end
     const span = Math.max(loopEnd - loopStart, MIN_REGION)
-    const mapped = reverse ? reverseTime(offset, duration) : offset
+    const mapped = reverse && !full ? reverseTime(offset, duration) : offset
     const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
     const fromRel = Math.max(0, clamped - loopStart)
     const remaining = Math.max(0.01, loopEnd - clamped)
@@ -1875,7 +1986,7 @@ export class AudioEngine {
       if (this.source !== src || !this.playing) return
       if (this.loop) {
         this.source = null
-        this.playOffset = reverse ? end : start
+        this.playOffset = full ? 0 : reverse ? end : start
         this.playCtxTime = this.ctx?.currentTime ?? 0
         this.startBufferVoice(this.playOffset)
         return
@@ -1887,7 +1998,7 @@ export class AudioEngine {
 
   private startPingPongVoice(): void {
     if (!this.ctx || !this.voiceBus || !this.buffer) return
-    const { start, end } = this.region(this.buffer.duration)
+    const { start, end } = this.playbackRegion(this.buffer.duration)
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
     const regionSpan = Math.max(end - start, MIN_REGION)
@@ -1987,7 +2098,7 @@ export class AudioEngine {
     const density = Math.max(this.params.density, 0.5)
     const interval = 1 / density
     const grainDur = this.params.grainSize / 1000
-    const { start, end } = this.region(duration)
+    const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
     this.advanceMotion()
@@ -2069,6 +2180,8 @@ export class AudioEngine {
       params: { ...this.params },
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
+      eqById: this.snapshotEqById(),
+      eqPlotBands: this.plotEqBands(),
       comb: { ...this.comb },
       eqListen: this.eqListen,
       recording: this.recording,
@@ -2098,9 +2211,63 @@ export class AudioEngine {
     this.snapshot = this.buildSnapshot()
     for (const listener of this.listeners) listener()
   }
+
+  private primaryEqId(): string {
+    return this.chain.find((m) => m.type === 'eq')?.instanceId ?? 'eq-1'
+  }
+
+  private eqState(instanceId: string): { bands: EqBand[]; comb: CombFilterState } {
+    let st = this.eqById.get(instanceId)
+    if (!st) {
+      st = cloneEqState()
+      this.eqById.set(instanceId, st)
+    }
+    return st
+  }
+
+  private seedEqStates(): void {
+    const next = new Map<string, { bands: EqBand[]; comb: CombFilterState }>()
+    for (const mod of this.chain) {
+      if (mod.type !== 'eq') continue
+      next.set(mod.instanceId, this.eqById.get(mod.instanceId) ?? cloneEqState())
+    }
+    this.eqById = next
+    this.syncPrimaryEq()
+  }
+
+  private syncPrimaryEq(): void {
+    const st = this.eqState(this.primaryEqId())
+    this.eqBands = st.bands.map((b) => ({ ...b }))
+    this.comb = { ...st.comb }
+  }
+
+  private plotEqBands(): EqBand[] {
+    const out: EqBand[] = []
+    for (const mod of this.chain) {
+      if (mod.type !== 'eq' || mod.bypassed) continue
+      const st = this.eqState(mod.instanceId)
+      out.push(...st.bands, ...combAsEqBands(st.comb))
+    }
+    return out
+  }
+
+  private snapshotEqById(): Record<string, { bands: EqBand[]; comb: CombFilterState }> {
+    const rec: Record<string, { bands: EqBand[]; comb: CombFilterState }> = {}
+    for (const [id, st] of this.eqById) {
+      rec[id] = { bands: st.bands.map((b) => ({ ...b })), comb: { ...st.comb } }
+    }
+    return rec
+  }
 }
 
 export const engine = new AudioEngine()
+
+function cloneEqState(
+  bands: EqBand[] = defaultEqBands(),
+  comb: CombFilterState = defaultCombFilter(),
+): { bands: EqBand[]; comb: CombFilterState } {
+  return { bands: bands.map((b) => ({ ...b })), comb: { ...comb } }
+}
 
 function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))

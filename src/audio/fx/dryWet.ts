@@ -20,12 +20,9 @@ export function fxSendLevels(
   }
 }
 
-/** Soft-clip feedback so values above 100% can run away without exploding. */
+/** Feedback gain for delay repeats. Always < 1 so each echo is quieter than the last. */
 export function safeFeedbackGain(feedbackPct: number): number {
-  const raw = feedbackPct / 100
-  if (raw <= 1) return Math.max(0, raw)
-  const extra = raw - 1
-  return 1 + extra / (1 + extra * 2.4)
+  return Math.min(0.95, Math.max(0, feedbackPct / 100))
 }
 
 /** Mid/side width: 0 = mono, 100 = natural, 200 = extra-wide. */

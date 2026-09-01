@@ -15,12 +15,29 @@
 }
 
 .split .wrap {
-  flex: 1.4;
+  flex: none;
 }
 
 .split .spec {
-  flex: 0.7;
-  min-height: 80px;
+  flex: none;
+  min-height: 64px;
+}
+
+.splitHandle {
+  flex: none;
+  height: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--bg-control);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.splitHandle:hover,
+.splitHandle:active {
+  background: var(--accent-soft);
 }
 
 .spec {
@@ -29,13 +46,21 @@
 }
 
 .wrap {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 160px;
   border-radius: 10px;
   background: var(--bg-app);
   overflow: hidden;
+  gap: 4px;
   touch-action: none;
+}
+
+.wavePane {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 80px;
 }
 
 .canvas {

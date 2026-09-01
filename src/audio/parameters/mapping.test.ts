@@ -87,6 +87,12 @@ describe('mapping', () => {
     expect(playbackRate(1, 12)).toBeCloseTo(2)
     expect(playbackRate(0.5, 0)).toBeCloseTo(0.5)
   })
+
+  it('formats pan as L/C/R', () => {
+    expect(formatParamValue(0, PARAMS.pan)).toBe('C')
+    expect(formatParamValue(-40, PARAMS.pan)).toBe('L 40')
+    expect(formatParamValue(25, PARAMS.pan)).toBe('R 25')
+  })
 })
 
 describe('clampRegion', () => {

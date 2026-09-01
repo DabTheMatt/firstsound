@@ -101,7 +101,17 @@ export function WaveformToolbar({
         <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>
           −
         </button>
-        <span>{zoomLabel}</span>
+        <span
+          title="Scroll to zoom"
+          onWheel={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.deltaY > 0) onZoomOut()
+            else onZoomIn()
+          }}
+        >
+          {zoomLabel}
+        </span>
         <button type="button" className={styles.icon} aria-label="Zoom in" onClick={onZoomIn}>
           +
         </button>
