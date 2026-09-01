@@ -3,6 +3,34 @@
  * reusable outside the browser engine (e.g. a future native port).
  */
 
+/** Reverse samples in `[startIdx, endIdx)` in place. */
+export function reverseRegionInPlace(data: Float32Array, startIdx: number, endIdx: number): void {
+  let i = Math.max(0, Math.min(startIdx, data.length))
+  let j = Math.max(i, Math.min(endIdx, data.length)) - 1
+  while (i < j) {
+    const tmp = data[i] ?? 0
+    data[i] = data[j] ?? 0
+    data[j] = tmp
+    i++
+    j--
+  }
+}
+
+/** Scale samples in `[startIdx, endIdx)` in place. */
+export function applyGainInPlace(
+  data: Float32Array,
+  startIdx: number,
+  endIdx: number,
+  gain: number,
+): void {
+  if (gain === 1) return
+  const s = Math.max(0, Math.min(startIdx, data.length))
+  const e = Math.max(s, Math.min(endIdx, data.length))
+  for (let i = s; i < e; i++) {
+    data[i] = (data[i] ?? 0) * gain
+  }
+}
+
 /** Return a new array with samples in reverse order (non-mutating). */
 export function reverseChannel(input: Float32Array): Float32Array {
   const out = new Float32Array(input.length)

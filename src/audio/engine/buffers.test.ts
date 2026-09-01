@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
+import { applyGainInPlace, pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime } from './buffers'
+
+describe('reverseRegionInPlace', () => {
+  it('reverses only the selected span', () => {
+    const data = new Float32Array([0, 1, 2, 3, 4])
+    reverseRegionInPlace(data, 1, 4)
+    expect(Array.from(data)).toEqual([0, 3, 2, 1, 4])
+  })
+})
+
+describe('applyGainInPlace', () => {
+  it('scales only the selected span', () => {
+    const data = new Float32Array([1, 0.5, 0.25, 1])
+    applyGainInPlace(data, 1, 3, 2)
+    expect(Array.from(data)).toEqual([1, 1, 0.5, 1])
+  })
+})
 
 describe('reverseChannel', () => {
   it('reverses sample order without mutating the input', () => {

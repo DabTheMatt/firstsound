@@ -46,6 +46,7 @@ type Props = {
   onRegionCommit: () => void
   onFades: (patch: { fadeIn?: number; fadeOut?: number }) => void
   onFadesCommit?: () => void
+  contentRev?: number
 }
 
 export type WaveformHandle = {
@@ -77,6 +78,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onRegionCommit,
     onFades,
     onFadesCommit,
+    contentRev = 0,
   },
   ref,
 ) {
@@ -167,7 +169,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
     return () => ro.disconnect()
-  }, [view, normalizeView, loaded, duration, viz])
+  }, [view, normalizeView, loaded, duration, viz, contentRev])
 
   useEffect(() => {
     let frame = 0
@@ -425,7 +427,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       </div>
 
       {loaded && duration > 0 ? (
-        <Overview duration={duration} start={start} end={end} view={view} onScrub={setView} />
+        <Overview
+          duration={duration}
+          start={start}
+          end={end}
+          view={view}
+          contentRev={contentRev}
+          onScrub={setView}
+        />
       ) : null}
     </div>
   )

@@ -59,7 +59,7 @@ import {
   ZERO_WARN_SEC,
 } from '../samplePrep'
 import type { SilenceProposal } from '../samplePrep/prepare'
-import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
+import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import { defaultEqBands, parseEqBands, type EqBand, type EqFilterType } from './eqBands'
 import { regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
 import { motionValue } from './motion'
@@ -96,6 +96,7 @@ export type EngineSnapshot = {
   sourceSampleRate: number
   sourceChannels: number
   prepApplied: boolean
+  bufferRev: number
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
   variations: { id: string; name: string }[]
@@ -202,6 +203,7 @@ export class AudioEngine {
   private prepHistory: History<SamplePrepState> = createHistory(this.prep)
   private prepGestureOrigin: SamplePrepState | null = null
   private prepApplied = false
+  private bufferRev = 0
   private previewLoop = true
   private previewPlaying = false
   private previewSource: AudioBufferSourceNode | null = null
@@ -977,6 +979,31 @@ export class AudioEngine {
     this.applyLoadedBuffer(this.sourceBuffer, false)
   }
 
+  /** Peak-normalize the current play region in place (does not crop). */
+  normalizeRegion(): void {
+    const buffer = this.detachWorkingBuffer()
+    if (!buffer) return
+    const { start, end } = this.region(buffer.duration)
+    const gain = peakNormalizeGain(peakOfBuffer(buffer, start, end), -1)
+    const idx = this.regionIndices(buffer)
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      applyGainInPlace(buffer.getChannelData(ch), idx.start, idx.end, gain)
+    }
+    this.afterBufferEdit()
+  }
+
+  /** Reverse the current play region in place (does not crop). */
+  reverseRegion(): void {
+    const buffer = this.detachWorkingBuffer()
+    if (!buffer) return
+    const idx = this.regionIndices(buffer)
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      reverseRegionInPlace(buffer.getChannelData(ch), idx.start, idx.end)
+    }
+    if (this.direction === 'reverse') this.direction = 'forward'
+    this.afterBufferEdit()
+  }
+
   renderEdit(edit: {
     fadeIn: number
     fadeOut: number
@@ -1037,7 +1064,37 @@ export class AudioEngine {
       this.params = { ...this.params, start: region.start, end: region.end }
       this.playOffset = region.start
     }
+    this.bufferRev++
     this.emit()
+  }
+
+  private detachWorkingBuffer(): AudioBuffer | null {
+    if (!this.ctx || !this.buffer) return null
+    if (this.buffer !== this.sourceBuffer) return this.buffer
+    const src = this.buffer
+    const copy = this.ctx.createBuffer(src.numberOfChannels, src.length, src.sampleRate)
+    for (let ch = 0; ch < src.numberOfChannels; ch++) {
+      copy.getChannelData(ch).set(src.getChannelData(ch))
+    }
+    this.buffer = copy
+    return copy
+  }
+
+  private regionIndices(buffer: AudioBuffer): { start: number; end: number } {
+    const { start, end } = this.region(buffer.duration)
+    const sr = buffer.sampleRate
+    const s = Math.min(Math.max(0, Math.floor(start * sr)), buffer.length)
+    const e = Math.min(buffer.length, Math.max(s + 1, Math.floor(end * sr)))
+    return { start: s, end: e }
+  }
+
+  private afterBufferEdit(): void {
+    if (!this.buffer) return
+    this.reversed = this.buildReversed(this.buffer)
+    this.mono = mixToMono(this.buffer)
+    this.bufferRev++
+    if (this.playing) void this.play()
+    else this.emit()
   }
 
   private buildReversed(buffer: AudioBuffer): AudioBuffer | null {
@@ -1630,6 +1687,7 @@ export class AudioEngine {
       sourceSampleRate: this.sourceBuffer?.sampleRate ?? 0,
       sourceChannels: this.sourceBuffer?.numberOfChannels ?? 0,
       prepApplied: this.prepApplied,
+      bufferRev: this.bufferRev,
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),

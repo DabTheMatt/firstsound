@@ -349,6 +349,7 @@ export default function App() {
               normalizeView={normalizeView}
               onNormalizeView={setNormalizeView}
               onZoomLabel={setZoomLabel}
+              contentRev={snap.bufferRev}
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
               onFadesCommit={commit}
               onRegionCommit={commit}

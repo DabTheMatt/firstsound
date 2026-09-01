@@ -157,22 +157,14 @@ function ToolInspector({
         <button
           type="button"
           className={styles.ghost}
-          onClick={() =>
-            void engine.useAsSample({
-              fadeIn: 0,
-              fadeOut: 0,
-              fadeCurve: 'linear',
-              reverse: false,
-              normalize: true,
-            })
-          }
+          onClick={() => engine.normalizeRegion()}
         >
           Normalize
         </button>
         <button
           type="button"
           className={styles.ghost}
-          onClick={() => engine.setDirection(snap.direction === 'reverse' ? 'forward' : 'reverse')}
+          onClick={() => engine.reverseRegion()}
         >
           Reverse
         </button>

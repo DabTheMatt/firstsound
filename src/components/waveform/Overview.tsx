@@ -10,6 +10,7 @@ type Props = {
   end: number
   view: View
   onScrub: (view: View) => void
+  contentRev?: number
   silence?: { startSec: number; endSec: number } | null
 }
 
@@ -17,7 +18,7 @@ type Props = {
  * Minimap of the whole file (independent of zoom). Shows the current viewport,
  * the selection and the playhead; dragging pans the main viewport.
  */
-export function Overview({ duration, start, end, view, onScrub, silence }: Props) {
+export function Overview({ duration, start, end, view, onScrub, contentRev = 0, silence }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
 
@@ -25,7 +26,7 @@ export function Overview({ duration, start, end, view, onScrub, silence }: Props
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
-      const mono = engine.getSourceMono() ?? engine.getMono()
+      const mono = engine.getMono() ?? engine.getSourceMono()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -38,7 +39,7 @@ export function Overview({ duration, start, end, view, onScrub, silence }: Props
       if (!ctx) return
       ctx.clearRect(0, 0, width, height)
       if (!mono || mono.length === 0) return
-      const mips = engine.getSourceMips()[0]
+      const mips = engine.getBuffer() === engine.getSourceBuffer() ? engine.getSourceMips()[0] : undefined
       const { min, max } = mips?.length
         ? computeMinMaxCached(mono, mips, 0, mono.length, width)
         : computeMinMax(mono, 0, mono.length, width)
@@ -55,7 +56,7 @@ export function Overview({ duration, start, end, view, onScrub, silence }: Props
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
     return () => ro.disconnect()
-  }, [duration])
+  }, [duration, contentRev])
 
   useEffect(() => {
     let frame = 0
