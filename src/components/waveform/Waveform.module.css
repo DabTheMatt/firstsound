@@ -159,15 +159,19 @@
 @media (max-width: 820px) {
   .toolbar {
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
   .tool {
     min-height: 28px;
     padding: 0 8px;
     font-size: 10px;
+    flex: none;
   }
 
   .wrap {
-    min-height: 96px;
+    min-height: 72px;
   }
 }
