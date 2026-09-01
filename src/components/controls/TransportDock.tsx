@@ -193,7 +193,7 @@ export function TransportDock({
             r={RADIUS}
             fill="none"
             stroke="color-mix(in srgb, var(--accent) 55%, #34383b)"
-            strokeWidth="6"
+            strokeWidth="4"
             strokeLinecap="butt"
             strokeDasharray={regionDash.dashArray}
             strokeDashoffset={regionDash.dashOffset}
@@ -202,7 +202,7 @@ export function TransportDock({
           <line
             ref={tickRef}
             x1={CENTER}
-            y1={CENTER - RADIUS - 1}
+            y1={CENTER - RADIUS + 1}
             x2={CENTER}
             y2={CENTER - RADIUS + TICK}
             stroke="var(--accent)"
