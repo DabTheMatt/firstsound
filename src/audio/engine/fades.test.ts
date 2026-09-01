@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFades, fadeGain, regionFadeGain } from './fades'
+import { applyFades, fadeGain, pingPongFadeCurve, pingPongRegionRel, regionFadeGain } from './fades'
 
 describe('fadeGain', () => {
   it('starts at 0 and ends at 1 for fade-in', () => {
@@ -19,6 +19,24 @@ describe('regionFadeGain', () => {
     expect(regionFadeGain(0, 1, 0.2, 0.2, 'linear')).toBeCloseTo(0)
     expect(regionFadeGain(0.5, 1, 0.2, 0.2, 'linear')).toBeCloseTo(1)
     expect(regionFadeGain(1, 1, 0.2, 0.2, 'linear')).toBeCloseTo(0)
+  })
+})
+
+describe('pingPongFadeCurve', () => {
+  it('puts fade-out at the turnaround, matching fade-in at the start', () => {
+    const curve = pingPongFadeCurve(1, 0.2, 0.2, 'linear', 21)
+    expect(curve[0]).toBeCloseTo(0.0001)
+    expect(curve[10]).toBeCloseTo(0.0001)
+    expect(curve[5]).toBeCloseTo(1)
+    expect(curve[15]).toBeCloseTo(1)
+    expect(curve[20]).toBeCloseTo(0.0001)
+  })
+
+  it('maps ping-pong time back into the original region', () => {
+    expect(pingPongRegionRel(0.25, 1)).toBeCloseTo(0.25)
+    expect(pingPongRegionRel(1, 1)).toBeCloseTo(1)
+    expect(pingPongRegionRel(1.25, 1)).toBeCloseTo(0.75)
+    expect(pingPongRegionRel(2, 1)).toBeCloseTo(0)
   })
 })
 

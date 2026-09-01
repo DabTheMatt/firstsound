@@ -107,7 +107,7 @@ import {
   type EqBand,
   type EqFilterType,
 } from './eqBands'
-import { regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
+import { pingPongFadeCurve, regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
@@ -1890,13 +1890,13 @@ export class AudioEngine {
     const { start, end } = this.region(this.buffer.duration)
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
-    const span = buffer.duration
+    const regionSpan = Math.max(end - start, MIN_REGION)
     const rate = playbackRate(this.params.speed, this.params.pitch)
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = false
     src.playbackRate.value = rate
-    this.connectFadedVoice(src, 0, span, span / rate)
+    this.connectFadedVoice(src, 0, regionSpan, buffer.duration / rate, true)
     src.start(this.ctx.currentTime, 0)
     src.onended = () => {
       if (this.source !== src || !this.playing) return
@@ -1917,18 +1917,27 @@ export class AudioEngine {
     fromRel: number,
     span: number,
     durationSec: number,
+    pingPong = false,
   ): void {
     if (!this.ctx || !this.voiceBus) return
     this.disconnectVoiceGain()
     const gain = this.ctx.createGain()
-    const curve = regionFadeCurveFrom(
-      fromRel,
-      span,
-      this.regionFade.fadeIn,
-      this.regionFade.fadeOut,
-      this.regionFade.curve,
-      96,
-    )
+    const curve = pingPong
+      ? pingPongFadeCurve(
+          span,
+          this.regionFade.fadeIn,
+          this.regionFade.fadeOut,
+          this.regionFade.curve,
+          128,
+        )
+      : regionFadeCurveFrom(
+          fromRel,
+          span,
+          this.regionFade.fadeIn,
+          this.regionFade.fadeOut,
+          this.regionFade.curve,
+          96,
+        )
     gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, Math.max(0.008, durationSec))
     src.connect(gain)
     gain.connect(this.voiceBus)

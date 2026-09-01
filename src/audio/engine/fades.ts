@@ -40,6 +40,15 @@ export function regionFadeGain(
   return g
 }
 
+/** Position inside the original region while traversing a ping-pong cycle. */
+export function pingPongRegionRel(t: number, regionSpan: number): number {
+  const span = Math.max(regionSpan, 1e-9)
+  const cycle = span * 2
+  let phase = t % cycle
+  if (phase < 0) phase += cycle
+  return phase <= span ? phase : cycle - phase
+}
+
 /** Playback envelope from `fromRel` to `span`, for Web Audio setValueCurveAtTime. */
 export function regionFadeCurveFrom(
   fromRel: number,
@@ -55,6 +64,28 @@ export function regionFadeCurveFrom(
   for (let i = 0; i < n; i++) {
     const rel = start + ((span - start) * i) / (n - 1)
     out[i] = Math.max(0.0001, regionFadeGain(rel, span, fadeInSec, fadeOutSec, curve))
+  }
+  return out
+}
+
+/**
+ * Envelope for one ping-pong cycle (forward then reverse). Fade-in/out follow
+ * the playhead in the original region, so the turnaround hears fade-out.
+ */
+export function pingPongFadeCurve(
+  regionSpan: number,
+  fadeInSec: number,
+  fadeOutSec: number,
+  curve: FadeCurve,
+  samples = 128,
+): Float32Array {
+  const n = Math.max(2, samples)
+  const total = Math.max(regionSpan, 1e-9) * 2
+  const out = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const t = (total * i) / (n - 1)
+    const rel = pingPongRegionRel(t, regionSpan)
+    out[i] = Math.max(0.0001, regionFadeGain(rel, regionSpan, fadeInSec, fadeOutSec, curve))
   }
   return out
 }
