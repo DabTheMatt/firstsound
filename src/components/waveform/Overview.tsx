@@ -1,5 +1,5 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { computeMinMax } from '../../audio/engine/peaks'
+import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { clampView, timeToFrac, type View } from './viewport'
 import styles from './Overview.module.css'
@@ -10,13 +10,14 @@ type Props = {
   end: number
   view: View
   onScrub: (view: View) => void
+  silence?: { startSec: number; endSec: number } | null
 }
 
 /**
  * Minimap of the whole file (independent of zoom). Shows the current viewport,
  * the selection and the playhead; dragging pans the main viewport.
  */
-export function Overview({ duration, start, end, view, onScrub }: Props) {
+export function Overview({ duration, start, end, view, onScrub, silence }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
 
@@ -24,7 +25,7 @@ export function Overview({ duration, start, end, view, onScrub }: Props) {
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
-      const mono = engine.getMono()
+      const mono = engine.getSourceMono() ?? engine.getMono()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -37,7 +38,10 @@ export function Overview({ duration, start, end, view, onScrub }: Props) {
       if (!ctx) return
       ctx.clearRect(0, 0, width, height)
       if (!mono || mono.length === 0) return
-      const { min, max } = computeMinMax(mono, 0, mono.length, width)
+      const mips = engine.getSourceMips()[0]
+      const { min, max } = mips?.length
+        ? computeMinMaxCached(mono, mips, 0, mono.length, width)
+        : computeMinMax(mono, 0, mono.length, width)
       const mid = height / 2
       const half = height * 0.44
       ctx.fillStyle = '#5c6164'
@@ -124,6 +128,15 @@ export function Overview({ duration, start, end, view, onScrub }: Props) {
             style={{ left: `${viewLeft}%`, width: `${viewWidth}%` }}
           />
           <div ref={playheadRef} className={styles.playhead} />
+          {silence ? (
+            <div
+              className={styles.silence}
+              style={{
+                left: `${(silence.startSec / duration) * 100}%`,
+                width: `${((silence.endSec - silence.startSec) / duration) * 100}%`,
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </div>

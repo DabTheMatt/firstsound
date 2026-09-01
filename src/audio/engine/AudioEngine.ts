@@ -463,10 +463,9 @@ export class AudioEngine {
     this.prepGestureOrigin = { ...this.prep }
   }
 
-  setPrepLive(patch: Partial<SamplePrepState>): void {
+  setPrepLive(patch: Partial<SamplePrepState>, emit = false): void {
     this.prep = clampPrep({ ...this.prep, ...patch }, this.sourceDuration())
-    this.syncInstrumentRegionFromPrep()
-    this.emit()
+    if (emit) this.emit()
   }
 
   endPrepGesture(): void {
@@ -477,6 +476,7 @@ export class AudioEngine {
       this.prep = applyAutoFades(this.prep)
     }
     this.prepHistory = commit({ ...this.prepHistory, current: origin }, this.prep, prepEqual)
+    this.syncInstrumentRegionFromPrep()
     this.emit()
   }
 

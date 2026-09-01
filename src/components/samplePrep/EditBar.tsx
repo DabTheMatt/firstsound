@@ -154,7 +154,7 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
           onPointerDown={() => engine.beginPrepGesture()}
           onChange={(e) => {
             const bend = Number(e.target.value)
-            engine.setPrepLive({ fadeInBend: bend, fadeOutBend: bend, fadeAuto: false })
+            engine.setPrepLive({ fadeInBend: bend, fadeOutBend: bend, fadeAuto: false }, true)
           }}
           onPointerUp={() => engine.endPrepGesture()}
         />
@@ -338,7 +338,7 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
           value={prep.clipName}
           placeholder="birds_01"
           onFocus={() => engine.beginPrepGesture()}
-          onChange={(e) => engine.setPrepLive({ clipName: e.target.value })}
+          onChange={(e) => engine.setPrepLive({ clipName: e.target.value }, true)}
           onBlur={() => engine.endPrepGesture()}
         />
       </label>

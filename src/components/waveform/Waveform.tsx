@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { formatTimecode, timecodeDigits } from '../../audio/engine/formatTime'
 import { computeMinMax, computeMinMaxCached, samplesPerPixel } from '../../audio/engine/peaks'
-import { fadeGain } from '../../audio/samplePrep'
+import { fadeGain, findZeroCrossing } from '../../audio/samplePrep'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import {
@@ -52,8 +52,13 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
   )
   const [normalizeView, setNormalizeView] = useState(false)
   const [tool, setTool] = useState<Tool>('select')
-  const [loupe, setLoupe] = useState<{ x: number; t: number; label: string } | null>(null)
+  const loupeRef = useRef<HTMLDivElement>(null)
   const loupeCanvasRef = useRef<HTMLCanvasElement>(null)
+  const loupeLabelRef = useRef<HTMLSpanElement>(null)
+  const regionRef = useRef<HTMLDivElement>(null)
+  const startHandleRef = useRef<HTMLButtonElement>(null)
+  const endHandleRef = useRef<HTMLButtonElement>(null)
+  const holdTimer = useRef(0)
   const viewRef = useRef(view)
   const windowKey = `${windowStart.toFixed(4)}:${windowEnd.toFixed(4)}`
   const stateRef = useRef({
@@ -77,6 +82,78 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     [sourceDuration, windowStart, windowEnd],
   )
 
+  const layoutOverlay = (startSec: number, endSec: number) => {
+    const startPct = timeToFrac(startSec, viewRef.current) * 100
+    const endPct = timeToFrac(endSec, viewRef.current) * 100
+    const left = Math.max(0, Math.min(100, startPct))
+    const right = Math.max(0, Math.min(100, endPct))
+    if (regionRef.current) {
+      regionRef.current.style.left = `${left}%`
+      regionRef.current.style.width = `${Math.max(0, right - left)}%`
+    }
+    if (startHandleRef.current) {
+      startHandleRef.current.style.left = `${startPct}%`
+      startHandleRef.current.style.display = startPct >= 0 && startPct <= 100 ? '' : 'none'
+    }
+    if (endHandleRef.current) {
+      endHandleRef.current.style.left = `${endPct}%`
+      endHandleRef.current.style.display = endPct >= 0 && endPct <= 100 ? '' : 'none'
+    }
+  }
+
+  const hideLoupe = () => {
+    const el = loupeRef.current
+    if (el) el.style.display = 'none'
+  }
+
+  const showLoupe = (x: number, t: number) => {
+    const el = loupeRef.current
+    const label = loupeLabelRef.current
+    const canvas = loupeCanvasRef.current
+    if (!el) return
+    el.style.display = ''
+    el.style.left = `clamp(90px, ${x}px, calc(100% - 90px))`
+    if (label) {
+      label.textContent = formatTimecode(t, timecodeDigits(viewRef.current.end - viewRef.current.start))
+    }
+    if (!canvas || sourceDuration <= 0) return
+    const mono = engine.getSourceMono() ?? engine.getMono()
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const width = Math.floor(160 * dpr)
+    const height = Math.floor(48 * dpr)
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx || !mono) return
+    ctx.fillStyle = '#111313'
+    ctx.fillRect(0, 0, width, height)
+    const windowSec = 0.06
+    const sr = mono.length / sourceDuration
+    const center = Math.floor(t * sr)
+    const half = Math.floor((windowSec * sr) / 2)
+    const from = Math.max(0, center - half)
+    const to = Math.min(mono.length, center + half)
+    ctx.strokeStyle = '#9aa0a3'
+    ctx.lineWidth = dpr
+    ctx.beginPath()
+    const mid = height / 2
+    const amp = height * 0.4
+    for (let px = 0; px < width; px++) {
+      const idx = from + Math.floor((px / width) * Math.max(1, to - from))
+      const y = mid - (mono[idx] ?? 0) * amp
+      if (px === 0) ctx.moveTo(px, y)
+      else ctx.lineTo(px, y)
+    }
+    ctx.stroke()
+    ctx.strokeStyle = '#e8e8e8'
+    ctx.beginPath()
+    ctx.moveTo(width / 2, 0)
+    ctx.lineTo(width / 2, height)
+    ctx.stroke()
+  }
+
   useEffect(() => {
     stateRef.current = {
       selStart,
@@ -95,7 +172,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     const fitted = clampView({ start: windowStart, end: windowEnd }, sourceDuration || 1)
     viewRef.current = fitted
     setViewState(fitted)
-  }, [editMode, windowKey, windowStart, windowEnd, sourceDuration])
+  }, [windowKey, windowStart, windowEnd, sourceDuration, editMode])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -155,6 +232,18 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
             else ctx.lineTo(x, y)
           }
           ctx.stroke()
+          if (spp <= 1.15) {
+            ctx.fillStyle = '#c8cdcf'
+            const iStart = Math.max(0, s)
+            const iEnd = Math.min(ch.length - 1, e)
+            for (let i = iStart; i <= iEnd; i++) {
+              const x = ((i - s) / Math.max(1, e - s)) * width
+              const y = mid - Math.max(-1, Math.min(1, (ch[i] ?? 0) * gain)) * half
+              ctx.beginPath()
+              ctx.arc(x, y, Math.max(1.4, dpr * 1.1), 0, Math.PI * 2)
+              ctx.fill()
+            }
+          }
           return
         }
         ctx.fillStyle = '#9aa0a3'
@@ -232,48 +321,27 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
         ctx.arc(x1 - fadeOutW, height * 0.35, 4 * dpr, 0, Math.PI * 2)
         ctx.fill()
       }
+      const channels = engine.getSourceChannels()
+      const sr = engine.getSnapshot().sourceSampleRate
+      const markZero = (seconds: number) => {
+        const hit = findZeroCrossing(channels, sr, seconds)
+        if (!hit || hit.far) return
+        const x = timeToFrac(hit.seconds, viewRef.current) * width
+        ctx.fillStyle = '#6a8f6a'
+        ctx.fillRect(x - dpr, height * 0.08, dpr * 2, height * 0.84)
+      }
+      markZero(prep.selectionStart)
+      markZero(prep.selectionEnd)
+      const silence = engine.getSnapshot().silenceProposal
+      if (silence) {
+        ctx.fillStyle = 'rgba(106, 143, 106, 0.18)'
+        const a = timeToFrac(silence.startSec, viewRef.current) * width
+        const b = timeToFrac(silence.endSec, viewRef.current) * width
+        ctx.fillRect(Math.min(a, b), 0, Math.abs(b - a), height)
+      }
     }
     draw()
-  }, [view, editMode, snap.prep])
-
-  useEffect(() => {
-    const canvas = loupeCanvasRef.current
-    if (!canvas || !loupe) return
-    const mono = engine.getSourceMono() ?? engine.getMono()
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const width = Math.floor(160 * dpr)
-    const height = Math.floor(48 * dpr)
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
-    if (!ctx || !mono || sourceDuration <= 0) return
-    ctx.clearRect(0, 0, width, height)
-    ctx.fillStyle = '#111313'
-    ctx.fillRect(0, 0, width, height)
-    const windowSec = 0.06
-    const sr = mono.length / sourceDuration
-    const center = Math.floor(loupe.t * sr)
-    const half = Math.floor((windowSec * sr) / 2)
-    const from = Math.max(0, center - half)
-    const to = Math.min(mono.length, center + half)
-    ctx.strokeStyle = '#9aa0a3'
-    ctx.lineWidth = dpr
-    ctx.beginPath()
-    const mid = height / 2
-    const amp = height * 0.4
-    for (let x = 0; x < width; x++) {
-      const idx = from + Math.floor((x / width) * Math.max(1, to - from))
-      const y = mid - (mono[idx] ?? 0) * amp
-      if (x === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    }
-    ctx.stroke()
-    ctx.strokeStyle = '#e8e8e8'
-    ctx.beginPath()
-    ctx.moveTo(width / 2, 0)
-    ctx.lineTo(width / 2, height)
-    ctx.stroke()
-  }, [loupe, sourceDuration])
+  }, [view, editMode, snap.prep, snap.silenceProposal])
 
   useEffect(() => {
     let frame = 0
@@ -403,6 +471,8 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       mode = Math.abs(x - fadeInX) < Math.abs(x - fadeOutX) ? 'fadeIn' : 'fadeOut'
     } else if (Math.abs(x - startX) < px) mode = 'start'
     else if (Math.abs(x - endX) < px) mode = 'end'
+    else if (editMode && prep.fadeInEnabled && Math.abs(x - fadeInX) < px) mode = 'fadeIn'
+    else if (editMode && prep.fadeOutEnabled && Math.abs(x - fadeOutX) < px) mode = 'fadeOut'
     else if (tool === 'pan') mode = 'pan'
     else if (x < startX || x > endX) {
       if (editMode && tool === 'select') mode = 'select'
@@ -410,6 +480,19 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
         engine.setParam('start', t)
         mode = 'start'
       } else mode = 'pan'
+    }
+
+    if (holdTimer.current) window.clearTimeout(holdTimer.current)
+    if (editMode && event.pointerType === 'touch' && mode === 'move') {
+      holdTimer.current = window.setTimeout(() => {
+        if (!drag.current) return
+        drag.current.mode = 'select'
+        drag.current.originT = fracToTime(
+          ((drag.current.originX - (overlayRef.current?.getBoundingClientRect().left ?? 0)) /
+            Math.max(1, overlayRef.current?.getBoundingClientRect().width ?? 1)),
+          viewRef.current,
+        )
+      }, 420)
     }
 
     if (editMode && mode !== 'pan') engine.beginPrepGesture()
@@ -424,7 +507,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       pointerType: event.pointerType,
     }
     if (editMode) {
-      setLoupe({ x, t, label: formatTimecode(t, timecodeDigits(view.end - view.start)) })
+      showLoupe(x, t)
     }
   }
 
@@ -449,14 +532,14 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
     const { mode, span, originT, origin, originX, originView } = drag.current
-    if (Math.abs(next - originT) > 0.0002) drag.current.moved = true
-    if (editMode) {
-      setLoupe({
-        x: event.clientX - rect.left,
-        t: next,
-        label: formatTimecode(next, timecodeDigits(viewRef.current.end - viewRef.current.start)),
-      })
+    if (Math.abs(next - originT) > 0.0002) {
+      drag.current.moved = true
+      if (holdTimer.current) {
+        window.clearTimeout(holdTimer.current)
+        holdTimer.current = 0
+      }
     }
+    if (editMode) showLoupe(event.clientX - rect.left, next)
     if (mode === 'pan') {
       const spanView = originView.end - originView.start
       const delta = ((originX - event.clientX) / rect.width) * spanView
@@ -465,6 +548,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     }
     if (editMode) {
       const prep = engine.getPrep()
+      const fadeEmit = mode === 'fadeIn' || mode === 'fadeOut'
       if (mode === 'start') engine.setPrepLive({ selectionStart: next })
       else if (mode === 'end') engine.setPrepLive({ selectionEnd: next })
       else if (mode === 'select') {
@@ -472,14 +556,16 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
         const b = Math.max(originT, next)
         engine.setPrepLive({ selectionStart: a, selectionEnd: b })
       } else if (mode === 'fadeIn') {
-        engine.setPrepLive({ fadeInSec: Math.max(0, next - prep.selectionStart), fadeAuto: false })
+        engine.setPrepLive({ fadeInSec: Math.max(0, next - prep.selectionStart), fadeAuto: false }, fadeEmit)
       } else if (mode === 'fadeOut') {
-        engine.setPrepLive({ fadeOutSec: Math.max(0, prep.selectionEnd - next), fadeAuto: false })
+        engine.setPrepLive({ fadeOutSec: Math.max(0, prep.selectionEnd - next), fadeAuto: false }, fadeEmit)
       } else {
         const delta = next - originT
         const maxStart = Math.max(windowStart, Math.min(origin.start + delta, windowEnd - span))
         engine.setPrepLive({ selectionStart: maxStart, selectionEnd: maxStart + span })
       }
+      const live = engine.getPrep()
+      layoutOverlay(live.selectionStart, live.selectionEnd)
       return
     }
     if (mode === 'start') engine.setParam('start', next)
@@ -497,6 +583,10 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       overlayRef.current?.releasePointerCapture(event.pointerId)
     } catch {
       /* already released */
+    }
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current)
+      holdTimer.current = 0
     }
     const pending = drag.current
     pointers.current.delete(event.pointerId)
@@ -521,7 +611,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
         }
       }
       drag.current = null
-      setLoupe(null)
+      hideLoupe()
     }
   }
 
@@ -634,35 +724,29 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
           {loaded && sourceDuration > 0 ? (
             <>
               <div
+                ref={regionRef}
                 className={styles.region}
                 style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
               />
-              {startPct >= 0 && startPct <= 100 ? (
-                <button
-                  type="button"
-                  className={`${styles.handle} ${editMode ? styles.handleEdit : ''}`}
-                  style={{ left: `${startPct}%` }}
-                  aria-label="Region start"
-                />
-              ) : null}
-              {endPct >= 0 && endPct <= 100 ? (
-                <button
-                  type="button"
-                  className={`${styles.handle} ${editMode ? styles.handleEdit : ''} ${styles.handleEnd}`}
-                  style={{ left: `${endPct}%` }}
-                  aria-label="Region end"
-                />
-              ) : null}
+              <button
+                ref={startHandleRef}
+                type="button"
+                className={`${styles.handle} ${editMode ? styles.handleEdit : ''}`}
+                style={{ left: `${startPct}%`, display: startPct >= 0 && startPct <= 100 ? undefined : 'none' }}
+                aria-label="Region start"
+              />
+              <button
+                ref={endHandleRef}
+                type="button"
+                className={`${styles.handle} ${editMode ? styles.handleEdit : ''} ${styles.handleEnd}`}
+                style={{ left: `${endPct}%`, display: endPct >= 0 && endPct <= 100 ? undefined : 'none' }}
+                aria-label="Region end"
+              />
               <div ref={playheadRef} className={styles.playhead} />
-              {loupe ? (
-                <div
-                  className={styles.loupe}
-                  style={{ left: `clamp(90px, ${loupe.x}px, calc(100% - 90px))` }}
-                >
-                  <canvas ref={loupeCanvasRef} className={styles.loupeWave} />
-                  <span>{loupe.label}</span>
-                </div>
-              ) : null}
+              <div ref={loupeRef} className={styles.loupe} style={{ display: 'none' }}>
+                <canvas ref={loupeCanvasRef} className={styles.loupeWave} />
+                <span ref={loupeLabelRef} />
+              </div>
             </>
           ) : (
             <div className={styles.empty}>
@@ -681,7 +765,14 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       </div>
 
       {loaded && sourceDuration > 0 ? (
-        <Overview duration={sourceDuration} start={selStart} end={selEnd} view={view} onScrub={setView} />
+        <Overview
+          duration={sourceDuration}
+          start={selStart}
+          end={selEnd}
+          view={view}
+          onScrub={setView}
+          silence={snap.silenceProposal}
+        />
       ) : null}
     </div>
   )
