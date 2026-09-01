@@ -28,4 +28,18 @@ describe('eqMagnitudeDb', () => {
     lp48[0] = { type: 'lowpass', frequency: 500, gain: 0, q: 0.7, slope: 48 }
     expect(eqMagnitudeDb(lp48, 8000, 48000)).toBeLessThan(eqMagnitudeDb(lp12, 8000, 48000) - 12)
   })
+
+  it('boosts the high-pass passband with makeup gain', () => {
+    const bands = defaultEqBands()
+    bands[0] = { type: 'highpass', frequency: 80, gain: 6, q: 0.7, slope: 12 }
+    expect(eqMagnitudeDb(bands, 4000, 48000)).toBeGreaterThan(5)
+    expect(eqMagnitudeDb(bands, 4000, 48000)).toBeLessThan(7)
+  })
+
+  it('boosts the low-pass passband with makeup gain', () => {
+    const bands = defaultEqBands()
+    bands[0] = { type: 'lowpass', frequency: 800, gain: 6, q: 0.7, slope: 12 }
+    expect(eqMagnitudeDb(bands, 80, 48000)).toBeGreaterThan(5)
+    expect(eqMagnitudeDb(bands, 80, 48000)).toBeLessThan(7)
+  })
 })
