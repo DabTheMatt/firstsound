@@ -1323,11 +1323,11 @@ export class AudioEngine {
     }
     if (mod.type === 'delay') {
       input.connect(wet)
-      slot.delayFx = createDelayGraph(ctx, wet, output)
+      slot.delayFx = createDelayGraph(ctx, wet, output, input)
     }
     if (mod.type === 'reverb') {
       input.connect(wet)
-      slot.reverbFx = createReverbGraph(ctx, wet, output)
+      slot.reverbFx = createReverbGraph(ctx, wet, output, input)
     }
     return slot
   }

@@ -16,8 +16,9 @@ describe('space overlay hit', () => {
   it('maps a time drag onto delayTime', () => {
     const p = defaultParamValues()
     p.delayTime = 300
-    const next = dragSpaceOverlay({ kind: 'delayTime' }, 0.3, 0.4, 0, 0, 100, p)
+    const next = dragSpaceOverlay({ kind: 'delayTime' }, 0.3, 0.4, 50, 20, 100, p)
     expect(next.delayTime).toBeCloseTo(400)
     expect(next.delaySync).toBe(0)
+    expect(next.spaceMix).toBeGreaterThan(p.spaceMix)
   })
 })

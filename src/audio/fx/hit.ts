@@ -62,7 +62,11 @@ export function dragSpaceOverlay(
   const dy = (originY - nextY) / Math.max(1, height)
   switch (hit.kind) {
     case 'delayTime':
-      return { delayTime: Math.max(1, params.delayTime + dt * 1000), delaySync: 0 }
+      return {
+        delayTime: Math.max(1, params.delayTime + dt * 1000),
+        delaySync: 0,
+        spaceMix: Math.min(100, Math.max(0, params.spaceMix + dy * 90)),
+      }
     case 'delayFeedback':
       return { delayFeedback: params.delayFeedback + dt * 40 + dy * 30 }
     case 'delayOffset':

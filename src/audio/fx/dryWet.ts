@@ -12,3 +12,18 @@ export function safeFeedbackGain(feedbackPct: number): number {
   const extra = raw - 1
   return 1 + extra / (1 + extra * 2.4)
 }
+
+/** Mid/side width: 0 = mono, 100 = natural, 200 = extra-wide. */
+export function sideGainFromWidth(widthPct: number): number {
+  return Math.min(2.2, Math.max(0, widthPct / 100))
+}
+
+/** Full-wave rectifier curve for an envelope follower (dry ducking). */
+export function makeAbsCurve(n = 1024): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(new ArrayBuffer(n * 4))
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1
+    curve[i] = Math.abs(x)
+  }
+  return curve
+}

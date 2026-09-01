@@ -109,6 +109,22 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
         />
       )}
 
+      <h3 className={styles.sub}>Quick start</h3>
+      <Segmented
+        label="Preset category"
+        value={category}
+        options={cats.map((c) => ({ value: c, label: c }))}
+        wrap
+        onChange={(c) => setCategory(c)}
+      />
+      <div className={styles.presets}>
+        {presets.map((p) => (
+          <button key={p.id} type="button" className={styles.preset} onClick={() => engine.applySpacePreset(p)}>
+            {p.name}
+          </button>
+        ))}
+      </div>
+
       <div className={styles.macros}>
         {kind === 'delay'
           ? DELAY_MACROS.map((m) => (
@@ -175,22 +191,6 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
       )}
 
       {advanced ? params(kind === 'delay' ? DELAY_ADV : REVERB_ADV) : null}
-
-      <h3 className={styles.sub}>Presets</h3>
-      <Segmented
-        label="Preset category"
-        value={category}
-        options={cats.map((c) => ({ value: c, label: c }))}
-        wrap
-        onChange={(c) => setCategory(c)}
-      />
-      <div className={styles.presets}>
-        {presets.map((p) => (
-          <button key={p.id} type="button" className={styles.preset} onClick={() => engine.applySpacePreset(p)}>
-            {p.name}
-          </button>
-        ))}
-      </div>
     </>
   )
 }

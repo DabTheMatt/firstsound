@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { equalPowerDryWet, safeFeedbackGain } from './dryWet'
+import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
 
 describe('equalPowerDryWet', () => {
   it('keeps near-unity power at 50%', () => {
@@ -24,5 +24,22 @@ describe('safeFeedbackGain', () => {
   it('compresses runaway values above 100%', () => {
     expect(safeFeedbackGain(120)).toBeLessThan(1.2)
     expect(safeFeedbackGain(120)).toBeGreaterThan(1)
+  })
+})
+
+describe('sideGainFromWidth', () => {
+  it('maps 0/100/200% to mono, natural, double side', () => {
+    expect(sideGainFromWidth(0)).toBe(0)
+    expect(sideGainFromWidth(100)).toBe(1)
+    expect(sideGainFromWidth(200)).toBe(2)
+  })
+})
+
+describe('makeAbsCurve', () => {
+  it('rectifies bipolar samples', () => {
+    const c = makeAbsCurve(5)
+    expect(c[0]).toBeCloseTo(1)
+    expect(c[2]).toBeCloseTo(0)
+    expect(c[4]).toBeCloseTo(1)
   })
 })
