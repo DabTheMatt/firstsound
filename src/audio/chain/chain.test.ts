@@ -35,10 +35,18 @@ describe('reorderChain', () => {
 describe('setBypassed', () => {
   it('toggles an effect and ignores gain/output', () => {
     const chain = defaultChain()
-    const delayed = setBypassed(chain, 'delay-1', true)
-    expect(delayed.find((m) => m.instanceId === 'delay-1')?.bypassed).toBe(true)
+    expect(chain.find((m) => m.instanceId === 'delay-1')?.bypassed).toBe(true)
+    const on = setBypassed(chain, 'delay-1', false)
+    expect(on.find((m) => m.instanceId === 'delay-1')?.bypassed).toBe(false)
     const gain = setBypassed(chain, 'gain-1', true)
     expect(gain[0]?.bypassed).toBe(false)
+  })
+
+  it('starts grain and FX bypassed', () => {
+    const chain = defaultChain()
+    expect(chain.filter((m) => m.type !== 'gain' && m.type !== 'output').every((m) => m.bypassed)).toBe(
+      true,
+    )
   })
 })
 

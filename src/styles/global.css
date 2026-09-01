@@ -26,6 +26,8 @@ body,
   min-height: 100%;
   /* Dark all the way down so no light edge/frame can peek through. */
   background: var(--bg-shell);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body {
@@ -44,6 +46,12 @@ input {
 
 button {
   cursor: pointer;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 :focus-visible {

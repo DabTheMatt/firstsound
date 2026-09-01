@@ -72,6 +72,22 @@ export function panView(view: View, delta: number, duration: number): View {
   return clampView({ start: view.start + delta, end: view.end + delta }, duration, span)
 }
 
+/** Drag a viewport edge on the overview strip to zoom the current view. */
+export function resizeViewEdge(
+  view: View,
+  edge: 'start' | 'end',
+  time: number,
+  duration: number,
+  minSpan = MIN_SPAN,
+): View {
+  if (edge === 'start') {
+    const start = Math.min(Math.max(time, 0), view.end - minSpan)
+    return clampView({ start, end: view.end }, duration, minSpan)
+  }
+  const end = Math.max(Math.min(time, duration), view.start + minSpan)
+  return clampView({ start: view.start, end }, duration, minSpan)
+}
+
 /**
  * Trackpad / wheel: pan when the gesture is mostly horizontal (or Shift is held).
  * Returns seconds to shift the view, or null to zoom instead.

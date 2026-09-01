@@ -21,11 +21,7 @@ export type ViewAction =
   | 'normalize-view'
   | 'reset-zoom'
 
-const TOOLS: { id: WaveTool; label: string }[] = [
-  { id: 'select', label: 'Select' },
-  { id: 'fade', label: 'Fade' },
-  { id: 'zero', label: 'Zero' },
-]
+const TOOLS: { id: WaveTool; label: string }[] = [{ id: 'select', label: 'Edit' }]
 
 export function WaveformToolbar({
   tool,
@@ -56,32 +52,48 @@ export function WaveformToolbar({
         ))}
       </div>
       <div className={styles.views}>
-        <IconButton label="Fit sample" onClick={() => onView('fit-sample')}>
+        <IconButton label="Fit sample" caption="Fit" onClick={() => onView('fit-sample')}>
           <FitIcon />
         </IconButton>
-        <IconButton label="Fit selection" onClick={() => onView('fit-selection')}>
+        <IconButton label="Fit selection" caption="Sel" onClick={() => onView('fit-selection')}>
           <FitSelIcon />
         </IconButton>
-        <IconButton label="Zoom to selection" onClick={() => onView('zoom-selection')}>
+        <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
           <ZoomSelIcon />
         </IconButton>
         <IconButton
           label="Normalize view"
+          caption="Norm"
           pressed={normalizeView}
           onClick={() => onView('normalize-view')}
         >
           <NormIcon />
         </IconButton>
-        <IconButton label="Reset zoom" onClick={() => onView('reset-zoom')}>
+        <IconButton label="Reset zoom" caption="Reset" onClick={() => onView('reset-zoom')}>
           <ResetIcon />
         </IconButton>
-        <IconButton label="Waveform" pressed={viz === 'waveform'} onClick={() => onViz('waveform')}>
+        <IconButton
+          label="Waveform"
+          caption="Wave"
+          pressed={viz === 'waveform'}
+          onClick={() => onViz('waveform')}
+        >
           <WaveIcon />
         </IconButton>
-        <IconButton label="Spectrum" pressed={viz === 'spectrum'} onClick={() => onViz('spectrum')}>
+        <IconButton
+          label="Spectrum"
+          caption="FFT"
+          pressed={viz === 'spectrum'}
+          onClick={() => onViz('spectrum')}
+        >
           <SpecIcon />
         </IconButton>
-        <IconButton label="Split view" pressed={viz === 'split'} onClick={() => onViz('split')}>
+        <IconButton
+          label="Split view"
+          caption="Split"
+          pressed={viz === 'split'}
+          onClick={() => onViz('split')}
+        >
           <SplitIcon />
         </IconButton>
       </div>
@@ -100,11 +112,13 @@ export function WaveformToolbar({
 
 function IconButton({
   label,
+  caption,
   pressed,
   onClick,
   children,
 }: {
   label: string
+  caption: string
   pressed?: boolean
   onClick: () => void
   children: ReactNode
@@ -119,6 +133,7 @@ function IconButton({
       onClick={onClick}
     >
       {children}
+      <span className={styles.caption}>{caption}</span>
     </button>
   )
 }

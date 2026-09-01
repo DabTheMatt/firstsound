@@ -1,6 +1,8 @@
-/** Equal-power dry/wet so Mix 50% stays near unity loudness. */
+/** Equal-power dry/wet so Mix 50% stays near unity loudness. Ends are exact 0/1 so Mix can mute. */
 export function equalPowerDryWet(mix01: number): { dry: number; wet: number } {
   const t = Math.min(1, Math.max(0, mix01))
+  if (t <= 0.002) return { dry: 1, wet: 0 }
+  if (t >= 0.998) return { dry: 0, wet: 1 }
   const a = t * (Math.PI / 2)
   return { dry: Math.cos(a), wet: Math.sin(a) }
 }

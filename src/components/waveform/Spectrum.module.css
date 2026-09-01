@@ -38,3 +38,18 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.legend {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 2;
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+}

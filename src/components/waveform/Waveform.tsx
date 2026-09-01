@@ -213,20 +213,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           const now = performance.now() / 1000
           if (mode === 'delay') {
             const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm, now)
-            const peaks = peaksRef.current
-            if (peaks) {
-              drawDelayOverlay(
-                ctx,
-                width,
-                height,
-                view.start,
-                view.end,
-                snap.params.start,
-                taps,
-                peaks.min,
-                peaks.max,
-              )
-            }
+            drawDelayOverlay(ctx, width, height, view.start, view.end, snap.params.start, taps)
           } else {
             drawReverbOverlay(
               ctx,
@@ -348,13 +335,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
 
     let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : 'move'
-    if (tool === 'fade' && mode !== 'pan') {
-      if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit) mode = 'fadeIn'
-      else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit) mode = 'fadeOut'
-    } else if (mode !== 'pan') {
-      if (Math.abs(x - startX) < hit) mode = 'start'
-      else if (Math.abs(x - endX) < hit) mode = 'end'
-      else if (x < startX || x > endX) {
+    if (mode !== 'pan') {
+      if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit * 0.6) {
+        if (Math.abs(x - fadeInX) < hit && Math.abs(x - startX) >= hit) mode = 'fadeIn'
+        else if (Math.abs(x - startX) < hit) mode = 'start'
+        else mode = 'fadeIn'
+      } else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit * 0.6) {
+        if (Math.abs(x - fadeOutX) < hit && Math.abs(x - endX) >= hit) mode = 'fadeOut'
+        else if (Math.abs(x - endX) < hit) mode = 'end'
+        else mode = 'fadeOut'
+      } else if (x < startX || x > endX) {
         engine.setParam('start', t)
         mode = 'start'
       }
@@ -437,7 +427,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       drag.current = null
       setPanning(false)
       if (mode === 'start' || mode === 'end' || mode === 'move') {
-        if (autoSnap || tool === 'zero') {
+        if (autoSnap) {
           if (mode === 'start' || mode === 'move') engine.snapToZero('start')
           if (mode === 'end' || mode === 'move') engine.snapToZero('end')
         }
@@ -486,7 +476,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               {loaded && duration > 0 ? (
                 <>
                   <div
-                    className={tool === 'fade' ? styles.regionFrame : styles.region}
+                    className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
                   <FadePlot
@@ -501,10 +491,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     curve={fadeCurve}
                     side="out"
                   />
-                  {tool === 'fade' && fadeInPct >= 0 && fadeInPct <= 100 ? (
+                  {fadeInPct >= 0 && fadeInPct <= 100 ? (
                     <div className={styles.fadeHandle} style={{ left: `${fadeInPct}%` }} />
                   ) : null}
-                  {tool === 'fade' && fadeOutPct >= 0 && fadeOutPct <= 100 ? (
+                  {fadeOutPct >= 0 && fadeOutPct <= 100 ? (
                     <div className={styles.fadeHandle} style={{ left: `${fadeOutPct}%` }} />
                   ) : null}
                   {!panning && startPct >= 0 && startPct <= 100 ? (

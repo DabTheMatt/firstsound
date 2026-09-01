@@ -4,6 +4,7 @@ import {
   fitView,
   fracToTime,
   panView,
+  resizeViewEdge,
   timeToFrac,
   verticalGain,
   wheelPanSeconds,
@@ -60,6 +61,16 @@ describe('viewport', () => {
     const clamped = panView(view, 100, 10)
     expect(clamped.end).toBe(10)
     expect(clamped.end - clamped.start).toBeCloseTo(4)
+  })
+
+  it('shrinks the overview frame by dragging an edge', () => {
+    const view = { start: 0, end: 10 }
+    const fromLeft = resizeViewEdge(view, 'start', 2, 10)
+    expect(fromLeft.start).toBeCloseTo(2)
+    expect(fromLeft.end).toBeCloseTo(10)
+    const fromRight = resizeViewEdge(view, 'end', 4, 10)
+    expect(fromRight.start).toBeCloseTo(0)
+    expect(fromRight.end).toBeCloseTo(4)
   })
 
   it('fitView spans the whole sample', () => {

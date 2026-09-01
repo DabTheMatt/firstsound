@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
-import { clampView, timeToFrac, type View } from './viewport'
+import { clampView, resizeViewEdge, timeToFrac, type View } from './viewport'
 import styles from './Overview.module.css'
 
 type Props = {
@@ -16,11 +16,16 @@ type Props = {
 
 /**
  * Minimap of the whole file (independent of zoom). Shows the current viewport,
- * the selection and the playhead; dragging pans the main viewport.
+ * the selection and the playhead; dragging pans the main viewport. Edge handles
+ * shrink/grow the frame to zoom the waveform view.
  */
 export function Overview({ duration, start, end, view, onScrub, contentRev = 0, silence }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<View>({ start: 0, end: 0 })
+  useEffect(() => {
+    viewRef.current = view
+  }, [view])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -109,6 +114,44 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
     target.addEventListener('lostpointercapture', up)
   }
 
+  const onResizeEdge = (edge: 'start' | 'end', event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (duration <= 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const host = event.currentTarget.closest(`.${styles.overview}`)
+    if (!(host instanceof HTMLElement)) return
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const apply = (clientX: number) => {
+      const rect = host.getBoundingClientRect()
+      const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+      onScrub(resizeViewEdge(viewRef.current, edge, frac * duration, duration))
+    }
+    const up = (e: PointerEvent) => {
+      try {
+        target.releasePointerCapture(e.pointerId)
+      } catch {
+        /* already released */
+      }
+      target.removeEventListener('pointermove', move)
+      target.removeEventListener('pointerup', up)
+      target.removeEventListener('pointercancel', up)
+      target.removeEventListener('lostpointercapture', up)
+    }
+    const move = (e: PointerEvent) => {
+      if (e.buttons === 0) {
+        up(e)
+        return
+      }
+      apply(e.clientX)
+    }
+    apply(event.clientX)
+    target.addEventListener('pointermove', move)
+    target.addEventListener('pointerup', up)
+    target.addEventListener('pointercancel', up)
+    target.addEventListener('lostpointercapture', up)
+  }
+
   const viewLeft = duration > 0 ? Math.max(0, timeToFrac(view.start, { start: 0, end: duration }) * 100) : 0
   const viewWidth =
     duration > 0 ? Math.min(100, ((view.end - view.start) / duration) * 100) : 100
@@ -127,7 +170,22 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
           <div
             className={styles.viewport}
             style={{ left: `${viewLeft}%`, width: `${viewWidth}%` }}
-          />
+          >
+            <button
+              type="button"
+              className={`${styles.edge} ${styles.edgeL}`}
+              aria-label="Zoom view start"
+              title="Drag to zoom"
+              onPointerDown={(e) => onResizeEdge('start', e)}
+            />
+            <button
+              type="button"
+              className={`${styles.edge} ${styles.edgeR}`}
+              aria-label="Zoom view end"
+              title="Drag to zoom"
+              onPointerDown={(e) => onResizeEdge('end', e)}
+            />
+          </div>
           <div ref={playheadRef} className={styles.playhead} />
           {silence ? (
             <div

@@ -15,7 +15,7 @@ import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
-import type { EditState, InspectorFocus, WaveTool } from '../../app/editorState'
+import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { SpaceInspector } from './SpaceInspector'
 import styles from './Inspector.module.css'
@@ -71,7 +71,6 @@ export function Inspector({
     <div className={`${styles.panel} ${sheet ? styles.sheet : ''}`}>
       {focus.kind === 'tool' ? (
         <ToolInspector
-          tool={focus.tool}
           snap={snap}
           edit={edit}
           onEdit={onEdit}
@@ -93,7 +92,6 @@ export function Inspector({
 }
 
 function ToolInspector({
-  tool,
   snap,
   edit,
   onEdit,
@@ -102,7 +100,6 @@ function ToolInspector({
   onTrim,
   knobs,
 }: {
-  tool: WaveTool
   snap: EngineSnapshot
   edit: EditState
   onEdit: (patch: Partial<EditState>) => void
@@ -112,194 +109,157 @@ function ToolInspector({
   knobs: boolean
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
-  if (tool === 'select') {
-    return (
-      <>
-        <h2 className={styles.title}>Select</h2>
-        <Readout label="Start" value={formatTimecode(snap.params.start)} />
-        <Readout label="End" value={formatTimecode(snap.params.end)} />
-        <Readout label="Length" value={formatTimecode(length)} />
-        <div className={styles.fine}>
-          <button type="button" onClick={() => onFine('start', -0.001)}>
-            −1 ms
-          </button>
-          <span>Start</span>
-          <button type="button" onClick={() => onFine('start', 0.001)}>
-            +1 ms
-          </button>
+  const maxMs = 2000
+  return (
+    <>
+      <h2 className={styles.title}>Edit</h2>
+      <Readout label="Start" value={formatTimecode(snap.params.start)} />
+      <Readout label="End" value={formatTimecode(snap.params.end)} />
+      <Readout label="Length" value={formatTimecode(length)} />
+      <div className={styles.fine}>
+        <button type="button" onClick={() => onFine('start', -0.001)}>
+          −1 ms
+        </button>
+        <span>Start</span>
+        <button type="button" onClick={() => onFine('start', 0.001)}>
+          +1 ms
+        </button>
+      </div>
+      <div className={styles.fine}>
+        <button type="button" onClick={() => onFine('end', -0.001)}>
+          −1 ms
+        </button>
+        <span>End</span>
+        <button type="button" onClick={() => onFine('end', 0.001)}>
+          +1 ms
+        </button>
+      </div>
+      <Toggle
+        pressed={edit.autoSnap}
+        label="Zero crossing"
+        onToggle={() => onEdit({ autoSnap: !edit.autoSnap })}
+      />
+      <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('start')}>
+        Snap Start
+      </button>
+      <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('end')}>
+        Snap End
+      </button>
+      {snap.engineMode === 'grain' ? (
+        <p className={styles.help}>
+          Grain plays from the cursor, so region fades are easy to miss. Use Playback to hear
+          fade-in and fade-out on the selection.
+        </p>
+      ) : null}
+      {knobs ? (
+        <div className={styles.knobs}>
+          <ValueKnob
+            label="Fade In"
+            valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
+            normalized={Math.min(1, edit.fadeIn / 2)}
+            min={0}
+            max={maxMs}
+            now={Math.round(edit.fadeIn * 1000)}
+            onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
+            onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
+            onGestureEnd={onCommit}
+          />
+          <ValueKnob
+            label="Fade Out"
+            valueText={`${Math.round(edit.fadeOut * 1000)} ms`}
+            normalized={Math.min(1, edit.fadeOut / 2)}
+            min={0}
+            max={maxMs}
+            now={Math.round(edit.fadeOut * 1000)}
+            onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
+            onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
+            onGestureEnd={onCommit}
+          />
         </div>
-        <div className={styles.fine}>
-          <button type="button" onClick={() => onFine('end', -0.001)}>
-            −1 ms
-          </button>
-          <span>End</span>
-          <button type="button" onClick={() => onFine('end', 0.001)}>
-            +1 ms
-          </button>
-        </div>
-        <Toggle
-          pressed={edit.autoSnap}
-          label="Auto Snap"
-          onToggle={() => onEdit({ autoSnap: !edit.autoSnap })}
-        />
-        <button
-          type="button"
-          className={styles.ghost}
-          onClick={() =>
-            onTrim
-              ? onTrim()
-              : void engine.useAsSample({
-                  fadeIn: 0,
-                  fadeOut: 0,
-                  fadeCurve: 'linear',
-                  reverse: false,
-                  normalize: false,
-                })
-          }
-        >
-          Trim
-        </button>
-        <button
-          type="button"
-          className={styles.ghost}
-          onClick={() => engine.normalizeRegion()}
-        >
-          Normalize
-        </button>
-        <button
-          type="button"
-          className={styles.ghost}
-          onClick={() => engine.reverseRegion()}
-        >
-          Reverse
-        </button>
-      </>
-    )
-  }
-  if (tool === 'fade') {
-    const maxMs = 2000
-    return (
-      <>
-        <h2 className={styles.title}>Fade</h2>
-        {snap.engineMode === 'grain' ? (
-          <>
-            <p className={styles.help}>
-              Grain plays from the cursor, so region fades are easy to miss. Use Playback to hear
-              fade-in and fade-out on the selection.
-            </p>
-            <button type="button" className={styles.ghost} onClick={() => engine.setEngineMode('playback')}>
-              Playback
-            </button>
-          </>
-        ) : null}
-        <Readout label="Fade In" value={`${Math.round(edit.fadeIn * 1000)} ms`} />
-        <Readout label="Fade Out" value={`${Math.round(edit.fadeOut * 1000)} ms`} />
-        {knobs ? (
-          <div className={styles.knobs}>
-            <ValueKnob
-              label="Fade In"
-              valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
-              normalized={Math.min(1, edit.fadeIn / 2)}
-              min={0}
-              max={maxMs}
-              now={Math.round(edit.fadeIn * 1000)}
-              onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
-              onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
-              onGestureEnd={onCommit}
-            />
-            <ValueKnob
-              label="Fade Out"
-              valueText={`${Math.round(edit.fadeOut * 1000)} ms`}
-              normalized={Math.min(1, edit.fadeOut / 2)}
-              min={0}
-              max={maxMs}
-              now={Math.round(edit.fadeOut * 1000)}
-              onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
-              onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
-              onGestureEnd={onCommit}
-            />
-          </div>
-        ) : (
-          <>
-            <input
-              className={styles.range}
-              type="range"
-              min={0}
-              max={2000}
-              value={Math.round(edit.fadeIn * 1000)}
-              aria-label="Fade in"
-              onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false })}
-              onPointerUp={onCommit}
-            />
-            <input
-              className={styles.range}
-              type="range"
-              min={0}
-              max={2000}
-              value={Math.round(edit.fadeOut * 1000)}
-              aria-label="Fade out"
-              onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false })}
-              onPointerUp={onCommit}
-            />
-          </>
-        )}
-        <Segmented
-          label="Curve"
-          value={edit.fadeCurve}
-          options={[
-            { value: 'linear', label: 'Lin', title: 'Linear' },
-            { value: 'equalPower', label: 'EqPow', title: 'Equal Power' },
-            { value: 'exponential', label: 'Exp', title: 'Exponential' },
-            { value: 'sCurve', label: 'S', title: 'S-Curve' },
-          ]}
-          wrap
-          onChange={(fadeCurve) => {
-            onEdit({ fadeCurve })
-            onCommit?.()
-          }}
-        />
-        <button
-          type="button"
-          className={styles.ghost}
-          onClick={() => {
-            onEdit({ fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true })
-            onCommit?.()
-          }}
-        >
-          Auto 10 ms
-        </button>
-        <button
-          type="button"
-          className={styles.ghost}
-          onClick={() => {
-            onEdit({ fadeIn: 0, fadeOut: 0, fadeAuto: false })
-            onCommit?.()
-          }}
-        >
-          Off
-        </button>
-      </>
-    )
-  }
-  if (tool === 'zero') {
-    return (
-      <>
-        <h2 className={styles.title}>Zero</h2>
-        <Toggle
-          pressed={edit.autoSnap}
-          label="Auto Snap"
-          onToggle={() => onEdit({ autoSnap: !edit.autoSnap })}
-        />
-        <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('start')}>
-          Snap Start
-        </button>
-        <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('end')}>
-          Snap End
-        </button>
-      </>
-    )
-  }
-  return null
+      ) : (
+        <>
+          <input
+            className={styles.range}
+            type="range"
+            min={0}
+            max={2000}
+            value={Math.round(edit.fadeIn * 1000)}
+            aria-label="Fade in"
+            onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false })}
+            onPointerUp={onCommit}
+          />
+          <input
+            className={styles.range}
+            type="range"
+            min={0}
+            max={2000}
+            value={Math.round(edit.fadeOut * 1000)}
+            aria-label="Fade out"
+            onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false })}
+            onPointerUp={onCommit}
+          />
+        </>
+      )}
+      <Segmented
+        label="Curve"
+        value={edit.fadeCurve}
+        options={[
+          { value: 'linear', label: 'Lin', title: 'Linear' },
+          { value: 'equalPower', label: 'EqPow', title: 'Equal Power' },
+          { value: 'exponential', label: 'Exp', title: 'Exponential' },
+          { value: 'sCurve', label: 'S', title: 'S-Curve' },
+        ]}
+        wrap
+        onChange={(fadeCurve) => {
+          onEdit({ fadeCurve })
+          onCommit?.()
+        }}
+      />
+      <button
+        type="button"
+        className={styles.ghost}
+        onClick={() => {
+          onEdit({ fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true })
+          onCommit?.()
+        }}
+      >
+        Auto 10 ms
+      </button>
+      <button
+        type="button"
+        className={styles.ghost}
+        onClick={() => {
+          onEdit({ fadeIn: 0, fadeOut: 0, fadeAuto: false })
+          onCommit?.()
+        }}
+      >
+        Fades Off
+      </button>
+      <button
+        type="button"
+        className={styles.ghost}
+        onClick={() =>
+          onTrim
+            ? onTrim()
+            : void engine.useAsSample({
+                fadeIn: 0,
+                fadeOut: 0,
+                fadeCurve: 'linear',
+                reverse: false,
+                normalize: false,
+              })
+        }
+      >
+        Trim
+      </button>
+      <button type="button" className={styles.ghost} onClick={() => engine.normalizeRegion()}>
+        Normalize
+      </button>
+      <button type="button" className={styles.ghost} onClick={() => engine.reverseRegion()}>
+        Reverse
+      </button>
+    </>
+  )
 }
 
 function ModuleInspector({

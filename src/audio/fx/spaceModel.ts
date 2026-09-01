@@ -42,8 +42,7 @@ export function delayTaps(
   bpm: number,
   now = 0,
 ): DelayTap[] {
-  const mix = equalPowerDryWet(params.spaceMix / 100).wet
-  if (mix < 0.004 && params.delayFreeze < 0.5) return []
+  const mix = Math.max(equalPowerDryWet(params.spaceMix / 100).wet, 0.18)
   const time = Math.max(0.001, delayTimeSeconds(params, bpm))
   const fb = safeFeedbackGain(params.delayFeedback)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100

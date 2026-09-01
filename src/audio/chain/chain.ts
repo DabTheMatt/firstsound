@@ -32,11 +32,11 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
 export function defaultChain(): ChainModule[] {
   return [
     { instanceId: 'gain-1', type: 'gain', bypassed: false },
-    { instanceId: 'grain-1', type: 'grain', bypassed: false },
-    { instanceId: 'eq-1', type: 'eq', bypassed: false },
-    { instanceId: 'saturation-1', type: 'saturation', bypassed: false },
-    { instanceId: 'delay-1', type: 'delay', bypassed: false },
-    { instanceId: 'reverb-1', type: 'reverb', bypassed: false },
+    { instanceId: 'grain-1', type: 'grain', bypassed: true },
+    { instanceId: 'eq-1', type: 'eq', bypassed: true },
+    { instanceId: 'saturation-1', type: 'saturation', bypassed: true },
+    { instanceId: 'delay-1', type: 'delay', bypassed: true },
+    { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
     { instanceId: 'output-1', type: 'output', bypassed: false },
   ]
 }

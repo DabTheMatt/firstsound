@@ -19,6 +19,6 @@ describe('space overlay hit', () => {
     const next = dragSpaceOverlay({ kind: 'delayTime' }, 0.3, 0.4, 50, 20, 100, p)
     expect(next.delayTime).toBeCloseTo(400)
     expect(next.delaySync).toBe(0)
-    expect(next.spaceMix).toBeGreaterThan(p.spaceMix)
+    expect(next.spaceMix).toBeUndefined()
   })
 })

@@ -211,7 +211,7 @@ export class AudioEngine {
   private fileName = ''
   private playing = false
   private loop = true
-  private engineMode: EngineMode = 'grain'
+  private engineMode: EngineMode = 'playback'
   private direction: PlaybackDirection = 'forward'
   private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
@@ -560,6 +560,9 @@ export class AudioEngine {
     if (next.delayType) this.delayType = next.delayType
     if (next.reverbType) this.reverbType = next.reverbType
     this.setParams(next.params)
+    const type = next.kind
+    const mod = this.chain.find((m) => m.type === type)
+    if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
   }
 
   private syncTimeFromClock(id: ParamId): void {
@@ -1433,8 +1436,10 @@ export class AudioEngine {
         continue
       }
       const bypassed = mod.bypassed
-      slot.dry.gain.setTargetAtTime(bypassed ? 1 : dryLevel(mod.type, this.params), now, smoothing)
-      slot.wet.gain.setTargetAtTime(bypassed ? 0 : wetLevel(mod.type, this.params), now, smoothing)
+      const dry = bypassed ? 1 : dryLevel(mod.type, this.params)
+      const wet = bypassed ? 0 : wetLevel(mod.type, this.params)
+      rampGainExact(slot.dry.gain, dry, now, smoothing)
+      rampGainExact(slot.wet.gain, wet, now, smoothing)
     }
   }
 
@@ -1794,6 +1799,19 @@ function makeTanhCurve(amount: number): Float32Array<ArrayBuffer> {
     curve[i] = denom === 0 ? x : Math.tanh(k * x) / denom
   }
   return curve
+}
+
+function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {
+  param.cancelScheduledValues(now)
+  if (value <= 1e-5) {
+    param.setValueAtTime(0, now)
+    return
+  }
+  if (value >= 1 - 1e-5) {
+    param.setTargetAtTime(1, now, smoothing)
+    return
+  }
+  param.setTargetAtTime(value, now, smoothing)
 }
 
 function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {

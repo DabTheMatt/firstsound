@@ -157,7 +157,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Reverb',
     min: 0,
     max: 100,
-    defaultValue: 25,
+    defaultValue: 0,
     unit: '%',
     mapping: 'linear',
   },

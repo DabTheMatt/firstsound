@@ -1,5 +1,6 @@
 import type { DelayTap, ReverbTail } from '../../audio/fx/spaceModel'
 
+/** Vertical trigger marks at each delay repeat — not ghost copies of the waveform. */
 export function drawDelayOverlay(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -8,39 +9,23 @@ export function drawDelayOverlay(
   viewEnd: number,
   regionStart: number,
   taps: DelayTap[],
-  min: Float32Array,
-  max: Float32Array,
 ): void {
   const span = Math.max(0.0001, viewEnd - viewStart)
-  const lanes = 1
-  const mid = height / 2
-  const half = height * 0.38
   for (const tap of taps) {
-    const x0 = ((regionStart + tap.time - viewStart) / span) * width
-    if (x0 > width + 8 || x0 + width < -8) continue
-    const panY = tap.pan * height * 0.16
-    const alpha = Math.max(0.05, Math.min(0.45, tap.gain * 0.7))
-    const dark = 0.55 + tap.degraded * 0.35
-    ctx.fillStyle = `rgba(${Math.round(180 * (1 - dark * 0.3))}, ${Math.round(210 * (1 - tap.degraded * 0.4))}, ${Math.round(200 * dark)}, ${alpha})`
-    const step = Math.max(1, Math.floor(min.length / width))
-    for (let x = 0; x < width; x += step) {
-      const src = Math.min(min.length - 1, Math.floor((x / width) * min.length))
-      let hi = max[src] ?? 0
-      let lo = min[src] ?? 0
-      if (tap.reverse) {
-        const r = min.length - 1 - src
-        hi = max[r] ?? 0
-        lo = min[r] ?? 0
-      }
-      const px = x0 + x
-      const top = mid + panY - hi * half * (0.55 + tap.gain * 0.4)
-      const bot = mid + panY - lo * half * (0.55 + tap.gain * 0.4)
-      ctx.fillRect(px, top, step, Math.max(1, bot - top))
-    }
-    ctx.fillStyle = `rgba(122, 214, 196, ${Math.min(0.8, alpha + 0.2)})`
-    ctx.fillRect(x0, 8 + (tap.channel === 'R' ? height - 16 : 0), 2, 10)
+    const x = ((regionStart + tap.time - viewStart) / span) * width
+    if (x < -4 || x > width + 4) continue
+    const alpha = Math.max(0.14, Math.min(0.9, tap.gain * 1.05))
+    ctx.strokeStyle = `rgba(122, 214, 196, ${alpha})`
+    ctx.lineWidth = tap.channel === 'C' ? 1.6 : 1.2
+    ctx.beginPath()
+    ctx.moveTo(x, 6)
+    ctx.lineTo(x, height - 6)
+    ctx.stroke()
+    const tickH = 9
+    const tickY = tap.channel === 'R' ? height - 6 - tickH : 6
+    ctx.fillStyle = `rgba(210, 240, 230, ${alpha})`
+    ctx.fillRect(x - 1.5, tickY, 3, tickH)
   }
-  void lanes
 }
 
 export function drawReverbOverlay(

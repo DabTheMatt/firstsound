@@ -10,8 +10,9 @@ describe('equalPowerDryWet', () => {
 
   it('is fully dry or wet at the ends', () => {
     expect(equalPowerDryWet(0)).toEqual({ dry: 1, wet: 0 })
-    expect(equalPowerDryWet(1).wet).toBeCloseTo(1)
-    expect(equalPowerDryWet(1).dry).toBeCloseTo(0)
+    expect(equalPowerDryWet(0.001)).toEqual({ dry: 1, wet: 0 })
+    expect(equalPowerDryWet(1).wet).toBe(1)
+    expect(equalPowerDryWet(1).dry).toBe(0)
   })
 })
 
