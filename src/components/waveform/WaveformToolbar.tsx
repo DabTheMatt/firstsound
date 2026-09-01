@@ -66,45 +66,45 @@ export function WaveformToolbar({
             {item.label}
           </button>
         ))}
-        <div className={styles.menuWrap} ref={wrapRef}>
-          <button
-            type="button"
-            className={styles.tool}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            View ▾
-          </button>
-          {open ? (
-            <div className={styles.menu} role="menu">
-              <button type="button" onClick={() => { onView('fit-sample'); setOpen(false) }}>
-                Fit Sample
-              </button>
-              <button type="button" onClick={() => { onView('fit-selection'); setOpen(false) }}>
-                Fit Selection
-              </button>
-              <button type="button" onClick={() => { onView('zoom-selection'); setOpen(false) }}>
-                Zoom to Selection
-              </button>
-              <button type="button" onClick={() => { onView('normalize-view'); setOpen(false) }}>
-                Normalize View
-              </button>
-              <button type="button" onClick={() => { onView('reset-zoom'); setOpen(false) }}>
-                Reset Zoom
-              </button>
-              <hr />
-              <button type="button" className={viz === 'waveform' ? styles.picked : ''} onClick={() => { onViz('waveform'); setOpen(false) }}>
-                Waveform
-              </button>
-              <button type="button" className={viz === 'spectrum' ? styles.picked : ''} onClick={() => { onViz('spectrum'); setOpen(false) }}>
-                Spectrum
-              </button>
-              <button type="button" className={viz === 'split' ? styles.picked : ''} onClick={() => { onViz('split'); setOpen(false) }}>
-                Split
-              </button>
-            </div>
-          ) : null}
-        </div>
+      </div>
+      <div className={styles.menuWrap} ref={wrapRef}>
+        <button
+          type="button"
+          className={styles.tool}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          View ▾
+        </button>
+        {open ? (
+          <div className={styles.menu} role="menu">
+            <button type="button" onClick={() => { onView('fit-sample'); setOpen(false) }}>
+              Fit Sample
+            </button>
+            <button type="button" onClick={() => { onView('fit-selection'); setOpen(false) }}>
+              Fit Selection
+            </button>
+            <button type="button" onClick={() => { onView('zoom-selection'); setOpen(false) }}>
+              Zoom to Selection
+            </button>
+            <button type="button" onClick={() => { onView('normalize-view'); setOpen(false) }}>
+              Normalize View
+            </button>
+            <button type="button" onClick={() => { onView('reset-zoom'); setOpen(false) }}>
+              Reset Zoom
+            </button>
+            <hr />
+            <button type="button" className={viz === 'waveform' ? styles.picked : ''} onClick={() => { onViz('waveform'); setOpen(false) }}>
+              Waveform
+            </button>
+            <button type="button" className={viz === 'spectrum' ? styles.picked : ''} onClick={() => { onViz('spectrum'); setOpen(false) }}>
+              Spectrum
+            </button>
+            <button type="button" className={viz === 'split' ? styles.picked : ''} onClick={() => { onViz('split'); setOpen(false) }}>
+              Split
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className={styles.zoom}>
         <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>

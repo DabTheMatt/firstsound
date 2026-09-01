@@ -1,23 +1,19 @@
 .bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 4px;
   flex: none;
   min-height: 44px;
 }
 
-.tools,
-.zoom {
+.tools {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.tools {
   overflow-x: auto;
   scrollbar-width: none;
   min-width: 0;
+  flex: 1;
 }
 
 .tool,
@@ -37,6 +33,13 @@
 .active {
   color: var(--accent);
   box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .zoom span {
@@ -60,7 +63,7 @@
   background: var(--bg-panel);
   border: 1px solid #3a3e41;
   border-radius: 10px;
-  z-index: 8;
+  z-index: 20;
   display: flex;
   flex-direction: column;
 }
