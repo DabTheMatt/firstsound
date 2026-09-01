@@ -1,9 +1,10 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex: none;
   min-height: 44px;
+  padding: 2px 0;
 }
 
 .tools,
@@ -29,7 +30,7 @@
 .iconBtn {
   min-height: 44px;
   min-width: 44px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 0;
   background: transparent;
   color: var(--text-muted);
@@ -40,13 +41,13 @@
 }
 
 .iconBtn {
-  padding: 4px 2px 2px;
+  padding: 6px 8px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 40px;
+  gap: 4px;
+  min-width: 44px;
 }
 
 .caption {

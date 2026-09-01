@@ -14,10 +14,10 @@
   width: 100%;
   min-height: 0;
   background: var(--bg-app);
-  padding: 8px 12px 10px;
+  padding: 10px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow: hidden;
   position: relative;
 }
@@ -31,11 +31,11 @@
 }
 
 .dock-right .work {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 36px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 72px;
 }
 
 .inspectorHidden.dock-right .work {
-  grid-template-columns: minmax(0, 1fr) 36px;
+  grid-template-columns: minmax(0, 1fr) 72px;
 }
 
 .waveCol {
@@ -92,10 +92,11 @@
 
 .toggleInspector {
   position: absolute;
-  right: 52px;
-  bottom: 62px;
+  right: 100px;
+  bottom: 168px;
+  z-index: 8;
   min-height: 32px;
-  padding: 0 10px;
+  padding: 8px 14px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-panel);

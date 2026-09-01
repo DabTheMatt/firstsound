@@ -98,10 +98,20 @@ export function CompactTransport({
         <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
           Export
         </button>
-        <button type="button" className={styles.use} disabled={disabled} onClick={onUseSample}>
+        <button
+          type="button"
+          className={styles.use}
+          disabled={disabled}
+          title="Bake the current selection into a new sample (fades included) and load it as the working clip."
+          aria-label="Use as sample: bake the selection into the working clip"
+          onClick={onUseSample}
+        >
           Use as Sample
         </button>
       </div>
+      <p className={styles.useHint}>
+        Bakes this selection (with fades) into the working sample.
+      </p>
     </div>
   )
 }

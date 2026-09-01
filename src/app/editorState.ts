@@ -32,3 +32,25 @@ export function meterDbMin(range: MeterRange): number {
   if (range === 'field') return -100
   return -60
 }
+
+/** Peak-meter mapping: 0 dBFS at the top of the lane. */
+export function dbToMeterPct(db: number, minDb: number): number {
+  if (!Number.isFinite(db)) return 0
+  const span = 0 - minDb
+  if (!(span > 0)) return 0
+  return Math.min(100, Math.max(0, ((db - minDb) / span) * 100))
+}
+
+export const METER_SWEET_LO = -12
+export const METER_SWEET_HI = -6
+
+export function meterScaleTicks(minDb: number): number[] {
+  const ticks = [0, -6, -12, -24, -36, -48, -60, -80, -100, -120]
+  return ticks.filter((db) => db >= minDb)
+}
+
+export function meterSweetBand(minDb: number): { bottom: number; height: number } {
+  const bottom = dbToMeterPct(METER_SWEET_LO, minDb)
+  const top = dbToMeterPct(METER_SWEET_HI, minDb)
+  return { bottom, height: Math.max(0, top - bottom) }
+}
