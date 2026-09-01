@@ -70,8 +70,19 @@
   position: relative;
   flex: none;
   align-self: stretch;
-  width: 30px;
+  width: 32px;
   min-height: 0;
+}
+
+.sweetBracket {
+  position: absolute;
+  left: 0;
+  width: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  border-right: 0;
+  border-radius: 1px 0 0 1px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .scale span,
@@ -119,23 +130,6 @@
 
 .bottom {
   transform: none;
-}
-
-.sweetTick {
-  color: var(--accent-primary);
-  font-weight: 700;
-  font-size: 8px;
-}
-
-.minor.sweetTick {
-  color: transparent;
-  font-size: 7px;
-}
-
-.sweetTick::after {
-  background: var(--accent-primary);
-  width: 7px;
-  height: 2px;
 }
 
 .meters {

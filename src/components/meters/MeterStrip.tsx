@@ -7,8 +7,8 @@ import {
   dbToMeterPct,
   fallHoldDb,
   meterDbMin,
-  isMeterSweetMark,
   meterScaleMarks,
+  meterSweetBand,
   type MeterRange,
   type MeterScaleMark,
 } from '../../app/editorState'
@@ -63,6 +63,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
   const stereo = channels !== 1
   const minDb = meterDbMin(range)
   const marks = meterScaleMarks(minDb)
+  const sweet = meterSweetBand(minDb)
 
   return (
     <div className={styles.strip}>
@@ -80,12 +81,17 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       </div>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
+          <div
+            className={styles.sweetBracket}
+            title="−12 to −6 dB"
+            style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
+          />
           {marks.map((mark) => {
             const edge = mark.db === 0 ? 'top' : mark.db === minDb ? 'bottom' : 'mid'
             return (
               <span
                 key={mark.db}
-                className={`${styles.tick} ${styles[edge]} ${mark.label ? styles.major : styles.minor} ${isMeterSweetMark(mark.db) ? styles.sweetTick : ''}`}
+                className={`${styles.tick} ${styles[edge]} ${mark.label ? styles.major : styles.minor}`}
                 style={{ bottom: `${dbToMeterPct(mark.db, minDb)}%` }}
               >
                 {mark.label ? (mark.db === 0 ? '0' : `${mark.db}`) : null}

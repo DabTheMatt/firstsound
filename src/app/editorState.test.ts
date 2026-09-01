@@ -3,6 +3,7 @@ import {
   dbToMeterPct,
   fallHoldDb,
   isMeterSweetMark,
+  meterSweetBand,
   meterDbMin,
   meterScaleMarks,
   meterScaleTicks,
@@ -21,6 +22,12 @@ describe('meter mapping', () => {
     expect(isMeterSweetMark(-12)).toBe(true)
     expect(isMeterSweetMark(-3)).toBe(false)
     expect(isMeterSweetMark(-15)).toBe(false)
+  })
+
+  it('places the −12…−6 dB bracket in the upper quarter on a −60 range', () => {
+    const band = meterSweetBand(-60)
+    expect(band.bottom).toBeCloseTo(80)
+    expect(band.height).toBeCloseTo(10)
   })
 
   it('uses a denser 3 dB grid in the top of the meter', () => {

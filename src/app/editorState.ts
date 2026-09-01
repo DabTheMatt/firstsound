@@ -73,6 +73,13 @@ export function isMeterSweetMark(db: number): boolean {
   return db <= METER_SWEET_HI && db >= METER_SWEET_LO
 }
 
+/** Vertical span of the −12…−6 dB window on the meter scale. */
+export function meterSweetBand(minDb: number): { bottom: number; height: number } {
+  const bottom = dbToMeterPct(METER_SWEET_LO, minDb)
+  const top = dbToMeterPct(METER_SWEET_HI, minDb)
+  return { bottom, height: Math.max(0, top - bottom) }
+}
+
 /** Peak-hold that jumps up with the peak and falls slower than the bar. */
 export function fallHoldDb(prev: number, peak: number, dtSec: number, fallDbPerSec = 9): number {
   const p = Number.isFinite(peak) ? peak : Number.NEGATIVE_INFINITY
