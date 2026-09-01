@@ -13,6 +13,8 @@ export type EditState = {
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
+  fadeInBend: number
+  fadeOutBend: number
   autoSnap: boolean
   fadeAuto: boolean
   normalizeOnUse: boolean
@@ -22,6 +24,8 @@ export const DEFAULT_EDIT: EditState = {
   fadeIn: 0.01,
   fadeOut: 0.01,
   fadeCurve: 'equalPower',
+  fadeInBend: 0.5,
+  fadeOutBend: 0.5,
   autoSnap: true,
   fadeAuto: true,
   normalizeOnUse: false,

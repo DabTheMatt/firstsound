@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
+import { eqColorIndex } from '../../audio/chain/chain'
+import { combAsEqBands } from '../../audio/engine/comb'
 import {
   dbToY as eqDbToY,
   eqBandDragPatch,
@@ -10,7 +11,7 @@ import {
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
-import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
 import {
   DB_SCALE,
   FREQ_SCALE_HZ,
@@ -34,7 +35,8 @@ import {
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { engine, useEngine } from '../../hooks/useEngine'
-import { colorWithAlpha, readThemeColors } from '../../theme'
+import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
+import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -94,16 +96,12 @@ function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: nu
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active }: Props) {
   const snap = useEngine()
-  const eqNodeMod = snap.chain.find((m) => m.type === 'eq' && !m.bypassed)
-  const eqNodeBands = eqNodeMod
-    ? (snap.eqById[eqNodeMod.instanceId]?.bands ?? snap.eqBands)
-    : []
-  const eqNodeId = eqNodeMod?.instanceId
+  const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const plotRef = useRef<HTMLDivElement>(null)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
-  const [selectedBand, setSelectedBand] = useState(0)
+  const [selectedBand, setSelectedBand] = useState<{ instanceId: string; index: number } | null>(null)
   const prefsRef = useRef(prefs)
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
@@ -245,22 +243,32 @@ export function Spectrum({ active }: Props) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
-        const eqOn = live.chain.some((m) => m.type === 'eq' && !m.bypassed)
-        if (eqOn) {
+        const eqs = live.chain.filter((m) => m.type === 'eq')
+        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+        const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
+        for (let ei = 0; ei < eqs.length; ei++) {
+          const mod = eqs[ei]
+          if (!mod) continue
+          const st = live.eqById[mod.instanceId]
+          if (!st) continue
+          const hasShape = st.bands.some((b) => b.type !== 'off') || st.comb.enabled
+          if (!hasShape) continue
+          const plotBands = [...st.bands, ...combAsEqBands(st.comb)]
+          const tone = eqTone(ei, colors)
           ctx.beginPath()
-          ctx.strokeStyle = colors.eqCurve
-          ctx.lineWidth = Math.max(1.5, dpr)
-          const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
-          const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
+          ctx.strokeStyle = colorWithAlpha(tone.curve, mod.bypassed ? 0.28 : 1)
+          ctx.lineWidth = Math.max(1.15, dpr * (mod.bypassed ? 0.9 : 1.1))
+          ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           for (let i = 0; i < freqs.length; i++) {
             const hz = freqs[i] ?? minHz
-            const db = eqMagnitudeDb(live.eqPlotBands, hz, sr)
+            const db = eqMagnitudeDb(plotBands, hz, sr)
             const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
             const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
             if (i === 0) ctx.moveTo(x, y)
             else ctx.lineTo(x, y)
           }
           ctx.stroke()
+          ctx.setLineDash([])
         }
       }
       frame = requestAnimationFrame(tick)
@@ -269,17 +277,21 @@ export function Spectrum({ active }: Props) {
     return () => cancelAnimationFrame(frame)
   }, [active])
 
-  const onNodePointerDown = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onNodePointerDown = (
+    instanceId: string,
+    index: number,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
     event.preventDefault()
     event.stopPropagation()
-    setSelectedBand(index)
+    setSelectedBand({ instanceId, index })
     event.currentTarget.setPointerCapture(event.pointerId)
-    if (!eqNodeId) return
+    const bands = snap.eqById[instanceId]?.bands ?? snap.eqBands
     drag.current = {
       index,
-      instanceId: eqNodeId,
+      instanceId,
       pointerId: event.pointerId,
-      q0: eqNodeBands[index]?.q ?? 1,
+      q0: bands[index]?.q ?? 1,
       y0: event.clientY,
     }
   }
@@ -422,21 +434,30 @@ export function Spectrum({ active }: Props) {
           bottom: SPECTRUM_PLOT_PAD.bottom,
         }}
       >
-        {eqNodeMod
-          ? eqNodeBands.map((band, index) => {
+        {eqMods.flatMap((mod) => {
+          const bands = snap.eqById[mod.instanceId]?.bands ?? []
+          const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
+          return bands.map((band, index) => {
           if (band.type === 'off') return null
           const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
           const yPct =
             eqDbToY(nodeDisplayDb(band), 1, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB) * 100
-          const selected = index === selectedBand
+          const selected =
+            selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
+          const dim = mod.bypassed || band.bypassed
           return (
             <button
-              key={index}
+              key={`${mod.instanceId}-${index}`}
               type="button"
-              className={`${styles.node} ${selected ? styles.nodeOn : ''}`}
-              style={{ left: `${xPct}%`, top: `${Math.min(100, Math.max(0, yPct))}%` }}
-              aria-label={`EQ band ${index + 1} ${band.type}`}
-              onPointerDown={(event) => onNodePointerDown(index, event)}
+              className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''}`}
+              style={{
+                left: `${xPct}%`,
+                top: `${Math.min(100, Math.max(0, yPct))}%`,
+                background: dim ? undefined : tone.node,
+                borderColor: tone.curve,
+              }}
+              aria-label={`EQ ${mod.instanceId} band ${index + 1} ${band.type}`}
+              onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
               onPointerMove={onNodePointerMove}
               onPointerUp={onNodePointerUp}
               onPointerCancel={onNodePointerUp}
@@ -445,7 +466,7 @@ export function Spectrum({ active }: Props) {
             </button>
           )
         })
-        : null}
+        })}
       </div>
       {hover ? (
         <div

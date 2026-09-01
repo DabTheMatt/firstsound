@@ -47,3 +47,7 @@
 .node:active {
   cursor: grabbing;
 }
+
+.nodeOff {
+  opacity: 0.35;
+}

@@ -245,3 +245,37 @@
   background: var(--accent-soft);
   color: var(--accent-primary);
 }
+
+.paneTabs {
+  display: flex;
+  gap: 0;
+  margin: 0 -12px 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 36px;
+  z-index: 2;
+  background: var(--bg-panel);
+}
+
+.paneTab,
+.paneTabOn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.paneTabOn {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.paneTab:hover {
+  color: var(--text-secondary);
+}

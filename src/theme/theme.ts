@@ -32,6 +32,8 @@ export type ThemeColors = {
   eqCurve: string
   eqNode: string
   eqNodeSelected: string
+  eqCurve2: string
+  eqNode2: string
   accent: string
   accentSoft: string
   borderSubtle: string
@@ -78,6 +80,8 @@ const CUSTOM_STYLE_PROPS = [
   '--spectrum-line',
   '--eq-curve',
   '--eq-node',
+  '--eq-curve-2',
+  '--eq-node-2',
   '--envelope',
   '--scrim',
 ] as const
@@ -106,6 +110,8 @@ export function computeThemeColors(root: HTMLElement = document.documentElement)
     eqCurve: readVar(styles, '--eq-curve'),
     eqNode: readVar(styles, '--eq-node'),
     eqNodeSelected: accentHover || readVar(styles, '--eq-node'),
+    eqCurve2: readVar(styles, '--eq-curve-2') || readVar(styles, '--eq-curve'),
+    eqNode2: readVar(styles, '--eq-node-2') || readVar(styles, '--eq-node'),
     accent: readVar(styles, '--accent-primary'),
     accentSoft: readVar(styles, '--accent-soft'),
     borderSubtle: readVar(styles, '--border-subtle'),
@@ -167,7 +173,9 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--spectrum-line', mixCssColor(custom.spectrum, paper, 0.35))
   root.style.setProperty('--eq-curve', custom.accent)
   root.style.setProperty('--eq-node', mixCssColor(custom.accent, paper, 0.2))
-  root.style.setProperty('--envelope', mixCssColor('#5ec8c0', custom.accent, 0.28))
+  root.style.setProperty('--eq-curve-2', mixCssColor(custom.accent, custom.spectrum, 0.42))
+  root.style.setProperty('--eq-node-2', mixCssColor(custom.spectrum, paper, 0.18))
+  root.style.setProperty('--envelope', custom.accent)
   root.style.setProperty('--scrim', colorWithAlpha(custom.bgApp, 0.55))
 }
 
@@ -335,6 +343,12 @@ export function readStoredPreference(): ThemePreference {
 
 export function getThemePreference(): ThemePreference {
   return currentPreference
+}
+
+export function eqTone(index: number, colors: ThemeColors): { curve: string; node: string } {
+  return index % 2 === 1
+    ? { curve: colors.eqCurve2, node: colors.eqNode2 }
+    : { curve: colors.eqCurve, node: colors.eqNode }
 }
 
 export function subscribeThemeChange(onChange: () => void): () => void {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFades, fadeGain, pingPongFadeCurve, pingPongRegionRel, regionFadeGain } from './fades'
+import { applyFades, fadeBendFromMidGain, fadeGain, pingPongFadeCurve, pingPongRegionRel, regionFadeGain } from './fades'
 
 describe('fadeGain', () => {
   it('starts at 0 and ends at 1 for fade-in', () => {
@@ -11,6 +11,17 @@ describe('fadeGain', () => {
 
   it('equal-power is 1/sqrt(2) at the midpoint', () => {
     expect(fadeGain(0.5, 'equalPower')).toBeCloseTo(Math.SQRT1_2, 5)
+  })
+
+  it('raising the midpoint bend increases gain at t=0.5', () => {
+    expect(fadeGain(0.5, 'linear', 0.8)).toBeGreaterThan(fadeGain(0.5, 'linear', 0.5))
+    expect(fadeGain(0.5, 'linear', 0.2)).toBeLessThan(fadeGain(0.5, 'linear', 0.5))
+  })
+
+  it('inverts midpoint gain back to a matching bend', () => {
+    const bend = 0.72
+    const g = fadeGain(0.5, 'linear', bend)
+    expect(fadeGain(0.5, 'linear', fadeBendFromMidGain(g, 'linear'))).toBeCloseTo(g, 3)
   })
 })
 

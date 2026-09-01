@@ -234,10 +234,18 @@ export class AudioEngine {
   private analyserR: AnalyserNode | null = null
   private spaceLatched = false
   private spacePresetId: string | null = null
-  private regionFade: { fadeIn: number; fadeOut: number; curve: FadeCurve } = {
+  private regionFade: {
+    fadeIn: number
+    fadeOut: number
+    curve: FadeCurve
+    fadeInBend: number
+    fadeOutBend: number
+  } = {
     fadeIn: 0.01,
     fadeOut: 0.01,
     curve: 'equalPower',
+    fadeInBend: 0.5,
+    fadeOutBend: 0.5,
   }
   private voiceGain: GainNode | null = null
   private fadeRestartId = 0
@@ -354,16 +362,26 @@ export class AudioEngine {
     return limiterReductionDb(slot?.limiterFx)
   }
 
-  setRegionFades(fadeIn: number, fadeOut: number, curve: FadeCurve): void {
+  setRegionFades(
+    fadeIn: number,
+    fadeOut: number,
+    curve: FadeCurve,
+    fadeInBend = 0.5,
+    fadeOutBend = 0.5,
+  ): void {
     const next = {
       fadeIn: Math.max(0, fadeIn),
       fadeOut: Math.max(0, fadeOut),
       curve,
+      fadeInBend: Math.min(1, Math.max(0, fadeInBend)),
+      fadeOutBend: Math.min(1, Math.max(0, fadeOutBend)),
     }
     const same =
       this.regionFade.fadeIn === next.fadeIn &&
       this.regionFade.fadeOut === next.fadeOut &&
-      this.regionFade.curve === next.curve
+      this.regionFade.curve === next.curve &&
+      this.regionFade.fadeInBend === next.fadeInBend &&
+      this.regionFade.fadeOutBend === next.fadeOutBend
     if (same) return
     this.regionFade = next
     this.emit()
@@ -1305,6 +1323,8 @@ export class AudioEngine {
     fadeIn: number
     fadeOut: number
     fadeCurve: FadeCurve
+    fadeInBend?: number
+    fadeOutBend?: number
     reverse: boolean
     normalize: boolean
   }): Promise<void> {
@@ -1323,6 +1343,8 @@ export class AudioEngine {
         fadeIn: edit.fadeIn,
         fadeOut: edit.fadeOut,
         fadeCurve: edit.fadeCurve,
+        fadeInBend: edit.fadeInBend,
+        fadeOutBend: edit.fadeOutBend,
         gain,
       })
       this.fileName = stemName(this.fileName) + '_sample.wav'
@@ -1379,6 +1401,8 @@ export class AudioEngine {
     fadeIn: number
     fadeOut: number
     fadeCurve: FadeCurve
+    fadeInBend?: number
+    fadeOutBend?: number
     reverse: boolean
     normalize: boolean
   }): AudioBuffer | null {
@@ -1392,6 +1416,8 @@ export class AudioEngine {
       fadeIn: edit.fadeIn,
       fadeOut: edit.fadeOut,
       fadeCurve: edit.fadeCurve,
+      fadeInBend: edit.fadeInBend,
+      fadeOutBend: edit.fadeOutBend,
       gain,
     })
   }
@@ -2073,6 +2099,8 @@ export class AudioEngine {
           this.regionFade.fadeOut,
           this.regionFade.curve,
           128,
+          this.regionFade.fadeInBend,
+          this.regionFade.fadeOutBend,
         )
       : regionFadeCurveFrom(
           fromRel,
@@ -2081,6 +2109,8 @@ export class AudioEngine {
           this.regionFade.fadeOut,
           this.regionFade.curve,
           96,
+          this.regionFade.fadeInBend,
+          this.regionFade.fadeOutBend,
         )
     gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, Math.max(0.008, durationSec))
     src.connect(gain)
@@ -2155,6 +2185,8 @@ export class AudioEngine {
         this.regionFade.fadeIn,
         this.regionFade.fadeOut,
         this.regionFade.curve,
+        this.regionFade.fadeInBend,
+        this.regionFade.fadeOutBend,
       )
       const src = ctx.createBufferSource()
       src.buffer = buffer

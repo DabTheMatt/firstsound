@@ -31,6 +31,13 @@ describe('parseEqBands', () => {
     raw[0] = { ...raw[0]!, type: 'lowpass', slope: 48 }
     expect(parseEqBands(raw)?.[0]?.slope).toBe(48)
   })
+
+  it('defaults bypassed to false and keeps a stored bypass', () => {
+    const raw = defaultEqBands()
+    raw[1] = { ...raw[1]!, type: 'peaking', bypassed: true }
+    expect(parseEqBands(raw)?.[1]?.bypassed).toBe(true)
+    expect(parseEqBands(raw)?.[0]?.bypassed).toBe(false)
+  })
 })
 
 describe('filterStageCount', () => {
@@ -39,6 +46,9 @@ describe('filterStageCount', () => {
     expect(filterStageCount({ type: 'lowpass', frequency: 800, gain: 0, q: 0.7, slope: 12 })).toBe(1)
     expect(filterStageCount({ type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 48 })).toBe(4)
     expect(filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 48 })).toBe(1)
+    expect(
+      filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 12, bypassed: true }),
+    ).toBe(0)
   })
 })
 

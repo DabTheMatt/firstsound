@@ -3,6 +3,7 @@ export {
   applyThemePreference,
   persistThemePreference,
   readThemeColors,
+  eqTone,
   subscribeThemeChange,
   colorWithAlpha,
   getThemePreference,

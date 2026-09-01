@@ -27,6 +27,7 @@ type Props = {
   snap: EngineSnapshot
   kind: 'delay' | 'reverb'
   variant: 'knob' | 'slider'
+  pane: 'main' | 'advanced'
 }
 
 const DELAY_ADV: ParamId[] = [
@@ -71,8 +72,7 @@ const REVERB_ADV: ParamId[] = [
   'reverbDistance',
 ]
 
-export function SpaceInspector({ snap, kind, variant }: Props) {
-  const [advanced, setAdvanced] = useState(false)
+export function SpaceInspector({ snap, kind, variant, pane }: Props) {
   const [category, setCategory] = useState<FxPresetCategory>('Vocals')
   const cats = kind === 'delay' ? DELAY_PRESET_CATEGORIES : REVERB_PRESET_CATEGORIES
   const presets = useMemo(() => presetsFor(kind, category), [kind, category])
@@ -90,7 +90,20 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
   const colorNorm =
     kind === 'delay' ? delayMacroNormalized('color', snap.params) : reverbMacroNormalized('color', snap.params)
 
-  return (
+  return pane === 'advanced' ? (
+    <>
+      <details className={styles.band} open>
+        <summary>Tempo sync</summary>
+        {kind === 'delay' ? (
+          <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+        ) : (
+          <SyncRow snap={snap} syncId="reverbSync" noteId="reverbNote" kindId="reverbNoteKind" />
+        )}
+        {params(['bpm'])}
+      </details>
+      {params(kind === 'delay' ? DELAY_ADV : REVERB_ADV)}
+    </>
+  ) : (
     <>
       {kind === 'delay' ? (
         <Segmented
@@ -145,11 +158,6 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
         <button type="button" className={styles.ghost} onClick={() => engine.killFx(kind)}>
           Kill {kind}
         </button>
-        <Toggle
-          pressed={advanced}
-          label={advanced ? 'Advanced' : 'Main'}
-          onToggle={() => setAdvanced((v) => !v)}
-        />
         {kind === 'delay' ? (
           <Toggle
             pressed={snap.params.delayFreeze > 0.5}
@@ -204,18 +212,6 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
           />
         </label>
       )}
-
-      <details className={styles.band}>
-        <summary>Tempo sync</summary>
-        {kind === 'delay' ? (
-          <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
-        ) : (
-          <SyncRow snap={snap} syncId="reverbSync" noteId="reverbNote" kindId="reverbNoteKind" />
-        )}
-        {params(['bpm'])}
-      </details>
-
-      {advanced ? params(kind === 'delay' ? DELAY_ADV : REVERB_ADV) : null}
     </>
   )
 }

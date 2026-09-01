@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MODULE_LABELS, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
+import { MODULE_LABELS, eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
@@ -15,7 +15,7 @@ import {
   type FilterSlope,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import { LIMITER_ADV_KNOBS, LIMITER_MAIN_KNOBS, PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
+import { GRAIN_KNOBS, LIMITER_ADV_KNOBS, LIMITER_MAIN_KNOBS, MOTION_KNOBS, PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import { parseTypedRange } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
@@ -44,17 +44,8 @@ type Props = {
 }
 
 const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch']
-const GRAIN_IDS: ParamId[] = [
-  'grainSize',
-  'density',
-  'position',
-  'scatter',
-  'grainPitch',
-  'pitchSpread',
-  'motionDepth',
-  'motionRate',
-  'motionJitter',
-]
+const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
+const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
 const SAT_IDS: ParamId[] = ['saturation']
 const OUT_IDS: ParamId[] = ['outputGain']
@@ -296,6 +287,37 @@ function ToolInspector({
   )
 }
 
+function InspectorTabs({
+  value,
+  onChange,
+}: {
+  value: 'main' | 'advanced'
+  onChange: (next: 'main' | 'advanced') => void
+}) {
+  return (
+    <div className={styles.paneTabs} role="tablist" aria-label="Effect settings">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 'main'}
+        className={value === 'main' ? styles.paneTabOn : styles.paneTab}
+        onClick={() => onChange('main')}
+      >
+        Main
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 'advanced'}
+        className={value === 'advanced' ? styles.paneTabOn : styles.paneTab}
+        onClick={() => onChange('advanced')}
+      >
+        Advanced
+      </button>
+    </div>
+  )
+}
+
 function ModuleInspector({
   snap,
   type,
@@ -309,7 +331,12 @@ function ModuleInspector({
   variant: 'knob' | 'slider'
   onHideInspector?: () => void
 }) {
+  const [paneById, setPaneById] = useState<Record<string, 'main' | 'advanced'>>({})
   const mod = snap.chain.find((m) => m.instanceId === instanceId)
+  const pane = paneById[instanceId] ?? 'main'
+  const setPane = (next: 'main' | 'advanced') =>
+    setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
+  const hasAdvanced = type !== 'saturation' && type !== 'output'
   const params = (ids: ParamId[]) =>
     variant === 'knob' ? (
       <div className={styles.knobs}>
@@ -344,7 +371,8 @@ function ModuleInspector({
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
-      {type === 'gain' ? (
+      {hasAdvanced ? <InspectorTabs value={pane} onChange={setPane} /> : null}
+      {type === 'gain' && pane === 'main' ? (
         <>
           <Segmented
             label="Direction"
@@ -354,6 +382,10 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
+        </>
+      ) : null}
+      {type === 'gain' && pane === 'advanced' ? (
+        <>
           <h3 className={styles.sub}>Panorama</h3>
           <p className={styles.help}>
             Pan is stereo balance. Left/Right set channel levels. Make mono sums both sides. Invert
@@ -374,7 +406,7 @@ function ModuleInspector({
           </div>
         </>
       ) : null}
-      {type === 'grain' ? (
+      {type === 'grain' && pane === 'main' ? (
         <>
           <Toggle
             pressed={snap.engineMode === 'grain'}
@@ -383,14 +415,17 @@ function ModuleInspector({
               engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
             }
           />
-          {params(GRAIN_IDS)}
+          {params(GRAIN_MAIN_IDS)}
         </>
       ) : null}
-      {type === 'eq' ? <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} /> : null}
+      {type === 'grain' && pane === 'advanced' ? params(GRAIN_ADV_IDS) : null}
+      {type === 'eq' ? (
+        <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
+      ) : null}
       {type === 'saturation' ? params(SAT_IDS) : null}
-      {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} /> : null}
-      {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} /> : null}
-      {type === 'limiter' ? <LimiterEditor snap={snap} variant={variant} /> : null}
+      {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} pane={pane} /> : null}
+      {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} pane={pane} /> : null}
+      {type === 'limiter' ? <LimiterEditor snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'output' ? (
         <>
           {params(OUT_IDS)}
@@ -404,9 +439,11 @@ function ModuleInspector({
 function LimiterEditor({
   snap,
   variant,
+  pane,
 }: {
   snap: EngineSnapshot
   variant: 'knob' | 'slider'
+  pane: 'main' | 'advanced'
 }) {
   const params = (ids: ParamId[]) =>
     variant === 'knob' ? (
@@ -420,21 +457,25 @@ function LimiterEditor({
     )
   return (
     <div className={styles.eq}>
-      <div className={styles.eqViz}>
-        <LimiterWave />
-      </div>
-      {params(LIMITER_MAIN_KNOBS)}
-      <details className={styles.band}>
-        <summary>Advanced</summary>
-        <Toggle
-          pressed={snap.params.limiterAutoMakeup > 0.5}
-          label="Auto makeup"
-          onToggle={() =>
-            engine.setParam('limiterAutoMakeup', snap.params.limiterAutoMakeup > 0.5 ? 0 : 1)
-          }
-        />
-        {params(LIMITER_ADV_KNOBS)}
-      </details>
+      {pane === 'main' ? (
+        <>
+          <div className={styles.eqViz}>
+            <LimiterWave />
+          </div>
+          {params(LIMITER_MAIN_KNOBS)}
+        </>
+      ) : (
+        <>
+          <Toggle
+            pressed={snap.params.limiterAutoMakeup > 0.5}
+            label="Auto makeup"
+            onToggle={() =>
+              engine.setParam('limiterAutoMakeup', snap.params.limiterAutoMakeup > 0.5 ? 0 : 1)
+            }
+          />
+          {params(LIMITER_ADV_KNOBS)}
+        </>
+      )}
     </div>
   )
 }
@@ -443,15 +484,18 @@ function EqEditor({
   snap,
   knobs,
   instanceId,
+  pane,
 }: {
   snap: EngineSnapshot
   knobs: boolean
   instanceId: string
+  pane: 'main' | 'advanced'
 }) {
   const [openBand, setOpenBand] = useState(0)
   const st = snap.eqById[instanceId] ?? { bands: snap.eqBands, comb: snap.comb }
   const bands = st.bands
   const comb = st.comb
+  const toneIndex = eqColorIndex(snap.chain, instanceId)
   const setBand = (index: number, patch: Parameters<typeof engine.setEqBand>[1]) =>
     engine.setEqBand(index, patch, instanceId)
   const setComb = (patch: Parameters<typeof engine.setComb>[0]) => engine.setComb(patch, instanceId)
@@ -459,6 +503,8 @@ function EqEditor({
     hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
   return (
     <div className={styles.eq}>
+      {pane === 'main' ? (
+        <>
       <Segmented
         label="EQ listen"
         value={snap.eqListen}
@@ -475,6 +521,7 @@ function EqEditor({
           sampleRate={snap.sampleRate}
           selectedBand={openBand}
           comb={comb}
+          toneIndex={toneIndex}
           onSelectBand={setOpenBand}
           onDragBand={(index, patch) => setBand(index, patch)}
         />
@@ -488,7 +535,15 @@ function EqEditor({
             if (event.currentTarget.open) setOpenBand(index)
           }}
         >
-          <summary>Band {index + 1}</summary>
+          <summary>
+            Band {index + 1}
+            {band.bypassed ? ' · bypass' : ''}
+          </summary>
+          <Toggle
+            pressed={!band.bypassed}
+            label={band.bypassed ? 'Bypassed' : 'Active'}
+            onToggle={() => setBand(index, { bypassed: !band.bypassed })}
+          />
           <Segmented
             label={`Band ${index + 1} type`}
             value={band.type}
@@ -647,8 +702,9 @@ function EqEditor({
           )}
         </details>
       ))}
-      <details className={styles.band}>
-        <summary>Advanced</summary>
+        </>
+      ) : (
+        <>
         <Toggle
           pressed={comb.enabled}
           label="Comb filter"
@@ -754,7 +810,8 @@ function EqEditor({
             />
           </div>
         ) : null}
-      </details>
+        </>
+      )}
     </div>
   )
 }

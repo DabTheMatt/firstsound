@@ -94,54 +94,88 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
                 ) : null}
               </span>
             ) : null}
-            <button
-              type="button"
-              className={`${styles.tab} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed && reorder ? styles.locked : ''}`}
-              aria-pressed={active}
-              onPointerDown={(event) => {
-                if (fixed) return
-                if (touch) {
-                  press.current = window.setTimeout(() => beginReorder(index), 420)
-                  return
-                }
-                if (event.button !== 0) return
-                beginReorder(index)
-              }}
-              onPointerUp={() => {
-                if (press.current) {
-                  window.clearTimeout(press.current)
-                  press.current = null
-                }
-                drag.current = null
-                setReorder(false)
-              }}
-              onPointerCancel={() => {
-                if (press.current) window.clearTimeout(press.current)
-                press.current = null
-                drag.current = null
-                setReorder(false)
-              }}
-              onPointerEnter={() => {
-                if (!drag.current || drag.current.id === mod.instanceId) return
-                const from = chain.findIndex((m) => m.instanceId === drag.current?.id)
-                if (from >= 0) engine.reorderModules(from, index)
-              }}
-              onClick={() => {
-                if (press.current) {
-                  window.clearTimeout(press.current)
-                  press.current = null
-                }
-                closeAdd()
-                onSelect(mod.instanceId)
-              }}
-              onContextMenu={(event) => {
-                if (fixed) return
-                event.preventDefault()
-                engine.setModuleBypass(mod.instanceId, !mod.bypassed)
-              }}
+            <div
+              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed && reorder ? styles.locked : ''}`}
             >
-              {moduleLabel(mod, chain)}
-            </button>
+              <button
+                type="button"
+                className={styles.tab}
+                aria-pressed={active}
+                onPointerDown={(event) => {
+                  if (fixed) return
+                  if (touch) {
+                    press.current = window.setTimeout(() => beginReorder(index), 420)
+                    return
+                  }
+                  if (event.button !== 0) return
+                  beginReorder(index)
+                }}
+                onPointerUp={() => {
+                  if (press.current) {
+                    window.clearTimeout(press.current)
+                    press.current = null
+                  }
+                  drag.current = null
+                  setReorder(false)
+                }}
+                onPointerCancel={() => {
+                  if (press.current) window.clearTimeout(press.current)
+                  press.current = null
+                  drag.current = null
+                  setReorder(false)
+                }}
+                onPointerEnter={() => {
+                  if (!drag.current || drag.current.id === mod.instanceId) return
+                  const from = chain.findIndex((m) => m.instanceId === drag.current?.id)
+                  if (from >= 0) engine.reorderModules(from, index)
+                }}
+                onClick={() => {
+                  if (press.current) {
+                    window.clearTimeout(press.current)
+                    press.current = null
+                  }
+                  closeAdd()
+                  onSelect(mod.instanceId)
+                }}
+                onContextMenu={(event) => {
+                  if (fixed) return
+                  event.preventDefault()
+                  engine.setModuleBypass(mod.instanceId, !mod.bypassed)
+                }}
+              >
+                {moduleLabel(mod, chain)}
+              </button>
+              {!fixed ? (
+                <button
+                  type="button"
+                  className={`${styles.power} ${mod.bypassed ? styles.powerOff : styles.powerOn}`}
+                  aria-label={mod.bypassed ? `Enable ${MODULE_LABELS[mod.type]}` : `Bypass ${MODULE_LABELS[mod.type]}`}
+                  title={mod.bypassed ? 'Enable' : 'Bypass'}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    engine.setModuleBypass(mod.instanceId, !mod.bypassed)
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+                    <path
+                      d="M8 2.5v5.2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5.15 4.35a4.2 4.2 0 1 0 5.7 0"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
             {mod.type === 'delay' || mod.type === 'reverb' ? (
               <button
                 type="button"

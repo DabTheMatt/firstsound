@@ -37,4 +37,10 @@ describe('eqMagnitudeDb', () => {
     ]
     expect(eqMagnitudeDb(withComb, 1000, 48000)).toBeGreaterThan(eqMagnitudeDb(bands, 1000, 48000) + 4)
   })
+
+  it('ignores a bypassed peaking band', () => {
+    const bands = defaultEqBands()
+    bands[2] = { type: 'peaking', frequency: 1000, gain: 6, q: 1, slope: 12, bypassed: true }
+    expect(eqMagnitudeDb(bands, 1000, 48000)).toBeCloseTo(0, 5)
+  })
 })

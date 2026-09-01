@@ -27,13 +27,15 @@ type Hist = {
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
+  fadeInBend: number
+  fadeOutBend: number
 }
 
 function histKey(
   start: number,
   end: number,
   chain: { instanceId: string }[],
-  edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve'>,
+  edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve' | 'fadeInBend' | 'fadeOutBend'>,
 ): Hist {
   return {
     start,
@@ -42,6 +44,8 @@ function histKey(
     fadeIn: edit.fadeIn,
     fadeOut: edit.fadeOut,
     fadeCurve: edit.fadeCurve,
+    fadeInBend: edit.fadeInBend,
+    fadeOutBend: edit.fadeOutBend,
   }
 }
 
@@ -72,8 +76,8 @@ export default function App() {
   }, [edit])
 
   useEffect(() => {
-    engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve)
-  }, [edit.fadeIn, edit.fadeOut, edit.fadeCurve])
+    engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend)
+  }, [edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -108,6 +112,8 @@ export default function App() {
             fadeIn: next.present.fadeIn,
             fadeOut: next.present.fadeOut,
             fadeCurve: next.present.fadeCurve,
+            fadeInBend: next.present.fadeInBend,
+            fadeOutBend: next.present.fadeOutBend,
           }))
           return next
         })
@@ -155,7 +161,9 @@ export default function App() {
           a.chain === b.chain &&
           a.fadeIn === b.fadeIn &&
           a.fadeOut === b.fadeOut &&
-          a.fadeCurve === b.fadeCurve,
+          a.fadeCurve === b.fadeCurve &&
+          a.fadeInBend === b.fadeInBend &&
+          a.fadeOutBend === b.fadeOutBend,
       ),
     )
   }, [])
@@ -167,6 +175,8 @@ export default function App() {
       fadeIn: present.fadeIn,
       fadeOut: present.fadeOut,
       fadeCurve: present.fadeCurve,
+      fadeInBend: present.fadeInBend,
+      fadeOutBend: present.fadeOutBend,
     }))
   }
 
@@ -202,6 +212,8 @@ export default function App() {
       fadeIn: edit.fadeIn,
       fadeOut: edit.fadeOut,
       fadeCurve: edit.fadeCurve,
+      fadeInBend: edit.fadeInBend,
+      fadeOutBend: edit.fadeOutBend,
       reverse: false,
       normalize: edit.normalizeOnUse,
     })
@@ -405,6 +417,8 @@ export default function App() {
               fadeIn={edit.fadeIn}
               fadeOut={edit.fadeOut}
               fadeCurve={edit.fadeCurve}
+              fadeInBend={edit.fadeInBend}
+              fadeOutBend={edit.fadeOutBend}
               autoSnap={edit.autoSnap}
               normalizeView={normalizeView}
               onNormalizeView={setNormalizeView}
