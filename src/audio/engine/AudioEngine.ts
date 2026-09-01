@@ -1632,7 +1632,7 @@ export class AudioEngine {
       slot.reverbFx = createReverbGraph(ctx, wet, output, input)
     }
     if (mod.type === 'limiter') {
-      slot.limiterFx = createLimiterGraph(ctx, input, wet)
+      slot.limiterFx = createLimiterGraph(ctx, input, wet, this.analyserLimiterPost)
       wet.connect(output)
     }
     return slot
@@ -1656,10 +1656,7 @@ export class AudioEngine {
     }
     if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
     const limSlot = ordered.find((s) => s.type === 'limiter')
-    if (limSlot) {
-      if (this.analyserLimiterPre) limSlot.input.connect(this.analyserLimiterPre)
-      if (this.analyserLimiterPost) limSlot.output.connect(this.analyserLimiterPost)
-    }
+    if (limSlot && this.analyserLimiterPre) limSlot.input.connect(this.analyserLimiterPre)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }

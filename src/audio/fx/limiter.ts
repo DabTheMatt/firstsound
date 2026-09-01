@@ -43,7 +43,16 @@ export type LimiterGraph = {
   ceiling: DynamicsCompressorNode
 }
 
-export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
+/**
+ * Optional `post` analyser is inserted in series after the ceiling so it
+ * keeps receiving audio even when `slot.output` is disconnected on rebuild.
+ */
+export function createLimiterGraph(
+  ctx: AudioContext,
+  input: AudioNode,
+  wet: GainNode,
+  post?: AnalyserNode | null,
+): LimiterGraph {
   const inputGain = ctx.createGain()
   const comp = ctx.createDynamicsCompressor()
   const makeup = ctx.createGain()
@@ -53,7 +62,12 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
   inputGain.connect(comp)
   comp.connect(makeup)
   makeup.connect(ceiling)
-  ceiling.connect(wet)
+  if (post) {
+    ceiling.connect(post)
+    post.connect(wet)
+  } else {
+    ceiling.connect(wet)
+  }
 
   return { inputGain, comp, makeup, ceiling }
 }
