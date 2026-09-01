@@ -140,6 +140,25 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
           Auto
         </button>
       </div>
+      <label className={styles.fade}>
+        <header>
+          Curve character
+          <b>{prep.fadeInBend < 0.45 ? 'Slow start' : prep.fadeInBend > 0.55 ? 'Fast start' : 'Default'}</b>
+        </header>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={prep.fadeInBend}
+          onPointerDown={() => engine.beginPrepGesture()}
+          onChange={(e) => {
+            const bend = Number(e.target.value)
+            engine.setPrepLive({ fadeInBend: bend, fadeOutBend: bend, fadeAuto: false })
+          }}
+          onPointerUp={() => engine.endPrepGesture()}
+        />
+      </label>
 
       <div className={styles.row}>
         <button
@@ -311,6 +330,37 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
           Invert R
         </button>
       </div>
+      <label>
+        Clip name
+        <input
+          className={styles.input}
+          style={{ width: 160 }}
+          value={prep.clipName}
+          placeholder="birds_01"
+          onFocus={() => engine.beginPrepGesture()}
+          onChange={(e) => engine.setPrepLive({ clipName: e.target.value })}
+          onBlur={() => engine.endPrepGesture()}
+        />
+      </label>
+      <button type="button" className={styles.tool} onClick={() => engine.saveVariation(prep.clipName)}>
+        Save variation
+      </button>
+      {snap.variations.length ? (
+        <div className={styles.row}>
+          {snap.variations.map((clip) => (
+            <button
+              key={clip.id}
+              type="button"
+              className={`${styles.tool} ${prep.clipName === clip.name ? styles.toolActive : ''}`}
+              onClick={() => engine.loadVariation(clip.id)}
+            >
+              {clip.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.notice}>Several clips can share one recording.</p>
+      )}
     </div>
   )
 }

@@ -137,7 +137,7 @@
   position: absolute;
   top: 8px;
   transform: translateX(-50%);
-  padding: 4px 8px;
+  padding: 4px 6px 6px;
   border-radius: 6px;
   background: #151717;
   border: 1px solid #4a4e51;
@@ -146,6 +146,17 @@
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.loupeWave {
+  display: block;
+  width: 160px;
+  height: 48px;
+  border-radius: 4px;
 }
 
 .badge {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { formatTimecode, timecodeDigits } from '../../audio/engine/formatTime'
-import { computeMinMax } from '../../audio/engine/peaks'
+import { computeMinMax, computeMinMaxCached, samplesPerPixel } from '../../audio/engine/peaks'
 import { fadeGain } from '../../audio/samplePrep'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
@@ -52,8 +52,10 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
   )
   const [normalizeView, setNormalizeView] = useState(false)
   const [tool, setTool] = useState<Tool>('select')
-  const [loupe, setLoupe] = useState<{ x: number; label: string } | null>(null)
+  const [loupe, setLoupe] = useState<{ x: number; t: number; label: string } | null>(null)
+  const loupeCanvasRef = useRef<HTMLCanvasElement>(null)
   const viewRef = useRef(view)
+  const windowKey = `${windowStart.toFixed(4)}:${windowEnd.toFixed(4)}`
   const stateRef = useRef({
     selStart,
     selEnd,
@@ -89,6 +91,13 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
   }, [selStart, selEnd, sourceDuration, normalizeView, editMode, tool, windowStart, windowEnd])
 
   useEffect(() => {
+    if (!editMode) return
+    const fitted = clampView({ start: windowStart, end: windowEnd }, sourceDuration || 1)
+    viewRef.current = fitted
+    setViewState(fitted)
+  }, [editMode, windowKey, windowStart, windowEnd, sourceDuration])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
@@ -115,9 +124,14 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
       const lanes = editMode && channels.length >= 2 ? 2 : 1
       const laneH = height / lanes
+      const spp = samplesPerPixel(s, e, width)
+      const mips = editMode ? engine.getSourceMips() : []
       let peak = 0
-      const envelopes = channels.slice(0, lanes).map((ch) => {
-        const mm = computeMinMax(ch, s, e, width)
+      const envelopes = channels.slice(0, lanes).map((ch, idx) => {
+        const cached = mips[idx]
+        const mm = cached?.length
+          ? computeMinMaxCached(ch, cached, s, e, width)
+          : computeMinMax(ch, s, e, width)
         peak = Math.max(peak, mm.peak)
         return mm
       })
@@ -125,6 +139,24 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       envelopes.forEach((mm, lane) => {
         const mid = laneH * lane + laneH / 2
         const half = laneH * 0.42
+        const ch = channels[lane]
+        if (spp <= 3 && ch) {
+          ctx.beginPath()
+          ctx.strokeStyle = '#9aa0a3'
+          ctx.lineWidth = Math.max(1, dpr * 0.7)
+          for (let x = 0; x < width; x++) {
+            const idx = s + (x / Math.max(1, width - 1)) * (e - s)
+            const i0 = Math.floor(idx)
+            const i1 = Math.min(ch.length - 1, i0 + 1)
+            const t = idx - i0
+            const v = ((ch[i0] ?? 0) * (1 - t) + (ch[i1] ?? 0) * t) * gain
+            const y = mid - Math.max(-1, Math.min(1, v)) * half
+            if (x === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+          return
+        }
         ctx.fillStyle = '#9aa0a3'
         for (let x = 0; x < width; x++) {
           const hi = Math.max(-1, Math.min(1, (mm.max[x] ?? 0) * gain))
@@ -189,9 +221,59 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
         ctx.fillStyle = 'rgba(196, 92, 74, 0.18)'
         ctx.fill()
       }
+      ctx.fillStyle = '#c4b49a'
+      if (prep.fadeInEnabled) {
+        ctx.beginPath()
+        ctx.arc(x0 + fadeInW, height * 0.35, 4 * dpr, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      if (prep.fadeOutEnabled) {
+        ctx.beginPath()
+        ctx.arc(x1 - fadeOutW, height * 0.35, 4 * dpr, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
     draw()
   }, [view, editMode, snap.prep])
+
+  useEffect(() => {
+    const canvas = loupeCanvasRef.current
+    if (!canvas || !loupe) return
+    const mono = engine.getSourceMono() ?? engine.getMono()
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const width = Math.floor(160 * dpr)
+    const height = Math.floor(48 * dpr)
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx || !mono || sourceDuration <= 0) return
+    ctx.clearRect(0, 0, width, height)
+    ctx.fillStyle = '#111313'
+    ctx.fillRect(0, 0, width, height)
+    const windowSec = 0.06
+    const sr = mono.length / sourceDuration
+    const center = Math.floor(loupe.t * sr)
+    const half = Math.floor((windowSec * sr) / 2)
+    const from = Math.max(0, center - half)
+    const to = Math.min(mono.length, center + half)
+    ctx.strokeStyle = '#9aa0a3'
+    ctx.lineWidth = dpr
+    ctx.beginPath()
+    const mid = height / 2
+    const amp = height * 0.4
+    for (let x = 0; x < width; x++) {
+      const idx = from + Math.floor((x / width) * Math.max(1, to - from))
+      const y = mid - (mono[idx] ?? 0) * amp
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+    ctx.strokeStyle = '#e8e8e8'
+    ctx.beginPath()
+    ctx.moveTo(width / 2, 0)
+    ctx.lineTo(width / 2, height)
+    ctx.stroke()
+  }, [loupe, sourceDuration])
 
   useEffect(() => {
     let frame = 0
@@ -342,7 +424,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
       pointerType: event.pointerType,
     }
     if (editMode) {
-      setLoupe({ x, label: formatTimecode(t, timecodeDigits(view.end - view.start)) })
+      setLoupe({ x, t, label: formatTimecode(t, timecodeDigits(view.end - view.start)) })
     }
   }
 
@@ -371,6 +453,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     if (editMode) {
       setLoupe({
         x: event.clientX - rect.left,
+        t: next,
         label: formatTimecode(next, timecodeDigits(viewRef.current.end - viewRef.current.start)),
       })
     }
@@ -572,8 +655,9 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
               ) : null}
               <div ref={playheadRef} className={styles.playhead} />
               {loupe ? (
-                <div className={styles.loupe} style={{ left: `${Math.min(92, Math.max(8, loupe.x)) }px` }}>
-                  {loupe.label}
+                <div className={styles.loupe} style={{ left: `${Math.min(92, Math.max(8, loupe.x))}px` }}>
+                  <canvas ref={loupeCanvasRef} className={styles.loupeWave} />
+                  <span>{loupe.label}</span>
                 </div>
               ) : null}
             </>

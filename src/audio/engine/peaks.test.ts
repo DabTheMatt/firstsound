@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeMinMax, computePeaks, mixToMono } from './peaks'
+import { computeMinMax, computeMinMaxCached, computePeaks, buildPeakMips, mixToMono } from './peaks'
 
 describe('computePeaks', () => {
   it('finds the absolute peak in each bucket', () => {
@@ -24,6 +24,20 @@ describe('computeMinMax', () => {
     const data = new Float32Array([1, 1, 0.1, 0.2, 1, 1])
     const { peak } = computeMinMax(data, 2, 4, 1)
     expect(peak).toBeCloseTo(0.2)
+  })
+})
+
+describe('peak mips', () => {
+  it('covers the same peak as a raw scan on a coarse window', () => {
+    const data = new Float32Array(4096)
+    data[2000] = 0.8
+    data[2001] = -0.6
+    const mips = buildPeakMips(data, [32, 256])
+    expect(mips.length).toBeGreaterThan(0)
+    const raw = computeMinMax(data, 0, data.length, 16)
+    const cached = computeMinMaxCached(data, mips, 0, data.length, 16)
+    expect(cached.peak).toBeCloseTo(raw.peak)
+    expect(cached.peak).toBeCloseTo(0.8)
   })
 })
 

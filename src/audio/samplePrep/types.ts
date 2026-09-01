@@ -46,6 +46,8 @@ export type SamplePrepState = {
   fadeOutBend: number
   fadeAuto: boolean
   autoSnapZero: boolean
+  /** Optional name for this crop inside a shared source recording. */
+  clipName: string
 }
 
 export type Pcm = {

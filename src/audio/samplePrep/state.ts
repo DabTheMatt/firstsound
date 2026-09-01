@@ -32,6 +32,7 @@ export function defaultPrep(duration: number): SamplePrepState {
     fadeOutBend: 0.5,
     fadeAuto: true,
     autoSnapZero: false,
+    clipName: '',
   }
 }
 
@@ -139,6 +140,7 @@ export function prepEqual(a: SamplePrepState, b: SamplePrepState): boolean {
     a.fadeInBend === b.fadeInBend &&
     a.fadeOutBend === b.fadeOutBend &&
     a.fadeAuto === b.fadeAuto &&
-    a.autoSnapZero === b.autoSnapZero
+    a.autoSnapZero === b.autoSnapZero &&
+    a.clipName === b.clipName
   )
 }

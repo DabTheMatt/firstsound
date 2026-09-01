@@ -16,6 +16,8 @@ export type {
   SamplePrepState,
   WavBitDepth,
 } from './types'
+export { nextVariationName } from './variations'
+export type { SampleVariation } from './variations'
 export {
   CHANNEL_MODES,
   DEFAULT_NORMALIZE_DBFS,

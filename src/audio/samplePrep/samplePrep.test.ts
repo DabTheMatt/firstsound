@@ -6,6 +6,7 @@ import { renderPrep } from './render'
 import { resampleChannel } from './resample'
 import { autoFadeSeconds, defaultPrep } from './state'
 import type { Pcm, SamplePrepState } from './types'
+import { nextVariationName } from './variations'
 import { encodeWav, exportFileName } from './wav'
 import { findZeroCrossing } from './zeroCrossing'
 
@@ -165,6 +166,7 @@ describe('exportFileName', () => {
   it('does not overwrite the source name', () => {
     expect(exportFileName('forest_recording.wav', true)).toBe('forest_recording_trim.wav')
     expect(exportFileName('forest_recording.wav', false)).toBe('forest_recording_prep.wav')
+    expect(exportFileName('forest_recording.wav', true, 'birds_01')).toBe('birds_01.wav')
   })
 })
 
@@ -181,5 +183,12 @@ describe('history', () => {
     expect(h.current.n).toBe(2)
     h = redo(h)
     expect(h.current.n).toBe(3)
+  })
+})
+
+describe('nextVariationName', () => {
+  it('numbers clips from one source without colliding', () => {
+    expect(nextVariationName('forest.wav', [])).toBe('forest_01')
+    expect(nextVariationName('forest.wav', ['forest_01'])).toBe('forest_02')
   })
 })

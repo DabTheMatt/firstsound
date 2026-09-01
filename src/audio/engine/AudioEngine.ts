@@ -31,6 +31,7 @@ import {
   exportFileName,
   findZeroCrossing,
   isTrimmed,
+  nextVariationName,
   pcmDuration,
   prepEqual,
   renderPrep,
@@ -40,6 +41,7 @@ import {
   type Pcm,
   type RenderOptions,
   type SamplePrepState,
+  type SampleVariation,
   undo as undoHistory,
   redo as redoHistory,
   PREP_MIN_REGION,
@@ -49,7 +51,7 @@ import {
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 import { motionValue } from './motion'
-import { mixToMono } from './peaks'
+import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
 
@@ -76,6 +78,7 @@ export type EngineSnapshot = {
   prepApplied: boolean
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
+  variations: { id: string; name: string }[]
 }
 
 type Listener = () => void
@@ -164,6 +167,9 @@ export class AudioEngine {
   private previewDuration = 0
   private zeroNotice: string | null = null
   private silenceProposal: SilenceProposal | null = null
+  private sourceMips: PeakMip[][] = []
+  private variations: SampleVariation[] = []
+  private variationSeq = 0
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -201,6 +207,10 @@ export class AudioEngine {
       out.push(this.sourceBuffer.getChannelData(c))
     }
     return out
+  }
+
+  getSourceMips(): PeakMip[][] {
+    return this.sourceMips
   }
 
   getPrep(): SamplePrepState {
@@ -674,6 +684,32 @@ export class AudioEngine {
     this.emit()
   }
 
+  saveVariation(name?: string): void {
+    const label =
+      name?.trim() ||
+      this.prep.clipName.trim() ||
+      nextVariationName(
+        this.fileName,
+        this.variations.map((v) => v.name),
+      )
+    this.variationSeq += 1
+    const id = `clip-${this.variationSeq}`
+    const prep = { ...this.prep, clipName: label }
+    this.variations = [...this.variations, { id, name: label, prep }]
+    this.prep = prep
+    this.emit()
+  }
+
+  loadVariation(id: string): void {
+    const found = this.variations.find((v) => v.id === id)
+    if (!found) return
+    const next = clampPrep({ ...found.prep }, this.sourceDuration())
+    this.prepHistory = commit(this.prepHistory, next, prepEqual)
+    this.prep = this.prepHistory.current
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
   enterSampleEdit(): void {
     if (!this.sourceBuffer) return
     this.stopPreview()
@@ -703,7 +739,7 @@ export class AudioEngine {
     const partial = isTrimmed(this.prep, this.sourceDuration()) ||
       this.prep.selectionStart > this.prep.windowStart + 0.001 ||
       this.prep.selectionEnd < this.prep.windowEnd - 0.001
-    const filename = settings.name || exportFileName(this.fileName, partial)
+    const filename = settings.name || exportFileName(this.fileName, partial, this.prep.clipName)
     return {
       filename: filename.endsWith('.wav') ? filename : `${filename}.wav`,
       blob: new Blob([bytes], { type: 'audio/wav' }),
@@ -798,6 +834,14 @@ export class AudioEngine {
     this.reversed = this.buildReversed(buffer)
     this.mono = mixToMono(buffer)
     this.sourceMono = this.mono
+    this.sourceMips = []
+    if (this.sourceBuffer) {
+      for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+        this.sourceMips.push(buildPeakMips(this.sourceBuffer.getChannelData(c)))
+      }
+    }
+    this.variations = []
+    this.variationSeq = 0
     this.prepApplied = false
     this.prep = defaultPrep(buffer.duration)
     this.prepHistory = resetHistory(this.prep)
@@ -1168,6 +1212,7 @@ export class AudioEngine {
       prepApplied: this.prepApplied,
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
+      variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
     }
   }
 

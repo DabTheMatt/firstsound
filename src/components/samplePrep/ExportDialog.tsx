@@ -25,7 +25,9 @@ export function ExportDialog({ snap, onClose }: Props) {
     isTrimmed(prep, snap.sourceDuration) ||
     prep.selectionStart > prep.windowStart + 0.001 ||
     prep.selectionEnd < prep.windowEnd - 0.001
-  const [name, setName] = useState(exportFileName(snap.fileName || 'sample', partial).replace(/\.wav$/, ''))
+  const [name, setName] = useState(
+    exportFileName(snap.fileName || 'sample', partial, prep.clipName).replace(/\.wav$/, ''),
+  )
   const [format] = useState('wav')
   const [rate, setRate] = useState<'original' | string>('original')
   const [bitDepth, setBitDepth] = useState<WavBitDepth>(24)

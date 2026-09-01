@@ -77,7 +77,11 @@ export function exportBaseName(fileName: string): string {
   return trimmed || 'sample'
 }
 
-export function exportFileName(fileName: string, selectionIsPartial: boolean): string {
+export function exportFileName(fileName: string, selectionIsPartial: boolean, clipName = ''): string {
+  if (clipName.trim()) {
+    const safe = clipName.trim().replace(/[^\w.-]+/g, '_')
+    return `${safe}.wav`
+  }
   const base = exportBaseName(fileName)
   const suffix = selectionIsPartial ? '_trim' : '_prep'
   return `${base}${suffix}.wav`
