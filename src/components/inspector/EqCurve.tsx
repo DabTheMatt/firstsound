@@ -217,7 +217,9 @@ export function EqCurve({
             onPointerMove={onNodePointerMove}
             onPointerUp={onNodePointerUp}
             onPointerCancel={onNodePointerUp}
-          />
+          >
+            {index + 1}
+          </button>
         )
       })}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
+import { bandUsesGain, EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import {
   DB_SCALE,
@@ -229,6 +229,26 @@ export function Spectrum({ active }: Props) {
           else ctx.lineTo(x, y)
         }
         ctx.stroke()
+
+        ctx.font = `700 ${9 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        snap.eqBands.forEach((band, index) => {
+          if (band.type === 'off') return
+          const nodeDb = bandUsesGain(band.type) ? band.gain : 0
+          const x = hzToX(band.frequency, minHz, maxHz, left, right)
+          const y = top + ((18 - nodeDb) / 36) * plotH
+          const r = 8 * dpr
+          ctx.beginPath()
+          ctx.fillStyle = colors.eqNode
+          ctx.arc(x, y, r, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.strokeStyle = colors.eqCurve
+          ctx.lineWidth = Math.max(1, dpr)
+          ctx.stroke()
+          ctx.fillStyle = colors.bgApp
+          ctx.fillText(String(index + 1), x, y + 0.4 * dpr)
+        })
       }
       frame = requestAnimationFrame(tick)
     }
