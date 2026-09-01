@@ -150,6 +150,8 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  visibility: hidden;
+  opacity: 0;
 }
 
 .loupeWave {

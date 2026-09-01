@@ -103,7 +103,10 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
 
   const hideLoupe = () => {
     const el = loupeRef.current
-    if (el) el.style.display = 'none'
+    if (el) {
+      el.style.visibility = 'hidden'
+      el.style.opacity = '0'
+    }
   }
 
   const showLoupe = (x: number, t: number) => {
@@ -111,7 +114,8 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
     const label = loupeLabelRef.current
     const canvas = loupeCanvasRef.current
     if (!el) return
-    el.style.display = ''
+    el.style.visibility = 'visible'
+    el.style.opacity = '1'
     el.style.left = `clamp(90px, ${x}px, calc(100% - 90px))`
     if (label) {
       label.textContent = formatTimecode(t, timecodeDigits(viewRef.current.end - viewRef.current.start))
@@ -743,7 +747,7 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
                 aria-label="Region end"
               />
               <div ref={playheadRef} className={styles.playhead} />
-              <div ref={loupeRef} className={styles.loupe} style={{ display: 'none' }}>
+              <div ref={loupeRef} className={styles.loupe}>
                 <canvas ref={loupeCanvasRef} className={styles.loupeWave} />
                 <span ref={loupeLabelRef} />
               </div>

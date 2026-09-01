@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { FADE_CURVES, type FadeCurveId } from '../../audio/samplePrep'
 import { formatTimecode, timecodeDigits } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
@@ -34,6 +35,28 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
   const digits = timecodeDigits(viewSpan)
   const len = Math.max(0, prep.selectionEnd - prep.selectionStart)
   const step = Math.max(0.0005, viewSpan / 400)
+  const startReadout = useRef<HTMLElement>(null)
+  const endReadout = useRef<HTMLElement>(null)
+  const lenReadout = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    let frame = 0
+    const tick = () => {
+      const live = engine.getPrep()
+      const d = timecodeDigits(viewSpan)
+      if (startReadout.current) startReadout.current.textContent = formatTimecode(live.selectionStart, d)
+      if (endReadout.current) endReadout.current.textContent = formatTimecode(live.selectionEnd, d)
+      if (lenReadout.current) {
+        lenReadout.current.textContent = formatTimecode(
+          Math.max(0, live.selectionEnd - live.selectionStart),
+          d,
+        )
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [viewSpan])
 
   const setFadeSec = (which: 'in' | 'out', sec: number) => {
     if (which === 'in') engine.commitPrep({ fadeInSec: Math.max(0, sec), fadeAuto: false })
@@ -49,7 +72,7 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
             <button type="button" aria-label="Nudge start earlier" onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart - step })}>
               −
             </button>
-            <strong>{formatTimecode(prep.selectionStart, digits)}</strong>
+            <strong ref={startReadout}>{formatTimecode(prep.selectionStart, digits)}</strong>
             <button type="button" aria-label="Nudge start later" onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart + step })}>
               +
             </button>
@@ -61,7 +84,7 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
             <button type="button" aria-label="Nudge end earlier" onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd - step })}>
               −
             </button>
-            <strong>{formatTimecode(prep.selectionEnd, digits)}</strong>
+            <strong ref={endReadout}>{formatTimecode(prep.selectionEnd, digits)}</strong>
             <button type="button" aria-label="Nudge end later" onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd + step })}>
               +
             </button>
@@ -69,7 +92,7 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
         </div>
         <div className={styles.time}>
           <span>Length</span>
-          <strong>{formatTimecode(len, digits)}</strong>
+          <strong ref={lenReadout}>{formatTimecode(len, digits)}</strong>
         </div>
       </div>
 
