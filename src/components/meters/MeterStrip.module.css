@@ -74,19 +74,6 @@
   min-height: 0;
 }
 
-.sweetBand {
-  position: absolute;
-  left: 0;
-  right: 1px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--meter-mid) 38%, var(--bg-panel));
-  box-shadow:
-    inset 3px 0 0 var(--meter-mid),
-    inset 0 0 0 1px color-mix(in srgb, var(--meter-mid) 55%, transparent);
-  pointer-events: none;
-  z-index: 0;
-}
-
 .scale span,
 .tick {
   position: absolute;
@@ -139,9 +126,14 @@
   font-weight: 700;
 }
 
+.minor.sweetTick {
+  color: transparent;
+}
+
 .sweetTick::after {
   background: var(--meter-mid);
   width: 6px;
+  height: 1.5px;
 }
 
 .meters {

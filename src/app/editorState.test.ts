@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { dbToMeterPct, fallHoldDb, meterDbMin, meterScaleMarks, meterScaleTicks, meterSweetBand } from './editorState'
+import {
+  dbToMeterPct,
+  fallHoldDb,
+  isMeterSweetMark,
+  meterDbMin,
+  meterScaleMarks,
+  meterScaleTicks,
+} from './editorState'
 
 describe('meter mapping', () => {
   it('puts 0 dB at the top and the range floor at the bottom', () => {
@@ -8,10 +15,12 @@ describe('meter mapping', () => {
     expect(dbToMeterPct(-30, -60)).toBe(50)
   })
 
-  it('highlights −12 to −6 as a band in the upper quarter on a −60 range', () => {
-    const band = meterSweetBand(-60)
-    expect(band.bottom).toBeCloseTo(80)
-    expect(band.height).toBeCloseTo(10)
+  it('marks −12 through −6 on the scale, including −9', () => {
+    expect(isMeterSweetMark(-6)).toBe(true)
+    expect(isMeterSweetMark(-9)).toBe(true)
+    expect(isMeterSweetMark(-12)).toBe(true)
+    expect(isMeterSweetMark(-3)).toBe(false)
+    expect(isMeterSweetMark(-15)).toBe(false)
   })
 
   it('uses a denser 3 dB grid in the top of the meter', () => {
