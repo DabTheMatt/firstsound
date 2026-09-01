@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   INSERTABLE_TYPES,
   isFixedType,
@@ -21,22 +22,28 @@ type Props = {
 export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
   const [reorder, setReorder] = useState(false)
   const [openAdd, setOpenAdd] = useState<number | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const drag = useRef<{ id: string; from: number } | null>(null)
   const press = useRef<number | null>(null)
   const middle = chain.filter((m) => !isFixedType(m.type)).length
   const canAdd = middle < MAX_CHAIN_MIDDLE
+
+  const closeAdd = () => {
+    setOpenAdd(null)
+    setMenuPos(null)
+  }
 
   const beginReorder = (index: number) => {
     const mod = chain[index]
     if (!mod || isFixedType(mod.type)) return
     drag.current = { id: mod.instanceId, from: index }
     setReorder(true)
-    setOpenAdd(null)
+    closeAdd()
   }
 
   const insert = (type: ModuleType, afterIndex: number) => {
     const id = engine.insertModule(type, afterIndex)
-    setOpenAdd(null)
+    closeAdd()
     if (id) onSelect(id)
   }
 
@@ -59,29 +66,18 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
                       title="Add effect"
                       onClick={(event) => {
                         event.stopPropagation()
-                        setOpenAdd((cur) => (cur === index - 1 ? null : index - 1))
+                        const slot = index - 1
+                        if (openAdd === slot) {
+                          closeAdd()
+                          return
+                        }
+                        const rect = event.currentTarget.getBoundingClientRect()
+                        setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
+                        setOpenAdd(slot)
                       }}
                     >
                       +
                     </button>
-                    {openAdd === index - 1 ? (
-                      <div className={styles.menu} role="menu">
-                        {INSERTABLE_TYPES.map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            role="menuitem"
-                            className={styles.menuItem}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              insert(type, index - 1)
-                            }}
-                          >
-                            {MODULE_LABELS[type]}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
                   </span>
                 ) : (
                   <span className={styles.arrow} aria-hidden="true">
@@ -136,7 +132,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
                   window.clearTimeout(press.current)
                   press.current = null
                 }
-                setOpenAdd(null)
+                closeAdd()
                 onSelect(mod.instanceId)
               }}
               onContextMenu={(event) => {
@@ -164,6 +160,28 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
           </div>
         )
       })}
+      {openAdd != null && menuPos
+        ? createPortal(
+            <div
+              className={styles.menu}
+              role="menu"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
+              {INSERTABLE_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="menuitem"
+                  className={styles.menuItem}
+                  onClick={() => insert(type, openAdd)}
+                >
+                  {MODULE_LABELS[type]}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </nav>
   )
 }
