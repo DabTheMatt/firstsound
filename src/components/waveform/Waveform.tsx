@@ -682,8 +682,8 @@ function FadePlot({
     >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.42 : 0} />
-          <stop offset="100%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0 : 0.42} />
+          <stop offset="0%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.55 : 0.04} />
+          <stop offset="100%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.04 : 0.55} />
         </linearGradient>
       </defs>
       <polygon points={fill.join(' ')} fill={`url(#${gradId})`} />
