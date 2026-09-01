@@ -65,6 +65,15 @@
   font-weight: 500;
 }
 
+.head {
+  color: var(--playhead, var(--accent-primary));
+  font-weight: 600;
+}
+
+.selRange {
+  color: var(--text-muted);
+}
+
 .jumps {
   display: flex;
   gap: 6px;

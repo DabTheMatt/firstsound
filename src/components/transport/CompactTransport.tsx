@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
 import { TransportButton } from '../controls/TransportButton'
@@ -33,6 +34,16 @@ export function CompactTransport({
   onUseSample,
 }: Props) {
   const length = Math.max(0, end - start)
+  const playheadRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    let frame = 0
+    const tick = () => {
+      if (playheadRef.current) playheadRef.current.textContent = formatTimecode(engine.getPlayheadSeconds())
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [])
   return (
     <div className={`${styles.bar} ${compact ? styles.compact : ''}`}>
       <div className={styles.transport}>
@@ -77,9 +88,12 @@ export function CompactTransport({
         </button>
       </div>
       <p className={styles.times}>
-        <span>{formatTimecode(start)}</span>
-        <span>—</span>
-        <span>{formatTimecode(end)}</span>
+        <span className={styles.head} ref={playheadRef} title="Playhead">
+          {formatTimecode(start)}
+        </span>
+        <span className={styles.selRange} title="Selection">
+          {formatTimecode(start)} — {formatTimecode(end)}
+        </span>
         <strong>{length.toFixed(3)} s</strong>
       </p>
       <div className={styles.jumps}>

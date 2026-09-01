@@ -18,7 +18,6 @@ import {
   fullPlayRegion,
   playbackRate,
   parkPlayheadOnStop,
-  snapPlayheadToRegion,
 } from '../parameters/mapping'
 import type {
   EngineMode,
@@ -415,12 +414,7 @@ export class AudioEngine {
     const duration = this.buffer.duration
     const { start, end } = this.region(duration)
     this.playCtxTime = this.ctx.currentTime
-    this.playOffset = snapPlayheadToRegion(
-      clamp(this.playOffset, 0, duration),
-      start,
-      end,
-      this.direction === 'reverse',
-    )
+    this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
