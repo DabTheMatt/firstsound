@@ -640,7 +640,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           />
         ) : null}
         {showSpec ? (
-          <div className={styles.spec} style={viz === 'split' ? { flex: 1 - waveShare } : undefined}>
+          <div
+            className={`${styles.spec} ${viz === 'spectrum' ? styles.specSolo : ''}`}
+            style={viz === 'split' ? { flex: 1 - waveShare } : undefined}
+          >
             <Spectrum active={showSpec} />
           </div>
         ) : null}

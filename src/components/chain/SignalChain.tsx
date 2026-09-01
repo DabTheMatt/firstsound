@@ -56,6 +56,18 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
           <div key={mod.instanceId} className={styles.item}>
             {index > 0 ? (
               <span className={styles.gap}>
+                <span className={styles.arrow} aria-hidden="true">
+                  <svg viewBox="0 0 14 16" width="14" height="16">
+                    <path
+                      d="M2 8h8M7 4l4 4-4 4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
                 {canAdd ? (
                   <span className={`${styles.addWrap} ${openAdd === index - 1 ? styles.addOpen : ''}`}>
                     <button
@@ -79,20 +91,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
                       +
                     </button>
                   </span>
-                ) : (
-                  <span className={styles.arrow} aria-hidden="true">
-                    <svg viewBox="0 0 14 16" width="14" height="16">
-                      <path
-                        d="M2 8h8M7 4l4 4-4 4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                )}
+                ) : null}
               </span>
             ) : null}
             <button

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { wheelToNormalized } from './scrub'
+import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
 import styles from './Knob.module.css'
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   min?: number
   max?: number
   now?: number
+  bipolar?: boolean
 }
 
 const DRAG_PX = 140
@@ -28,6 +30,7 @@ export function ValueKnob({
   min = 0,
   max = 1,
   now,
+  bipolar = false,
 }: Props) {
   const dialRef = useRef<HTMLButtonElement>(null)
   const valueRef = useRef(normalized)
@@ -105,13 +108,11 @@ export function ValueKnob({
   const r = 26
   const cx = 36
   const cy = 36
-  const circ = 2 * Math.PI * r
-  const sweep = circ * 0.75
-  const filled = sweep * normalized
-  const angle = -225 + normalized * 270
-  const rad = (angle * Math.PI) / 180
-  const nx = cx + Math.cos(rad) * (r - 6)
-  const ny = cy + Math.sin(rad) * (r - 6)
+  const tipDeg = knobAngleDeg(normalized)
+  const needle = polar(cx, cy, r - 6, tipDeg)
+  const track = arcPath(cx, cy, r, 135, 405)
+  const valueArc = knobValueArc(normalized, bipolar)
+  const fill = arcPath(cx, cy, r, valueArc.startDeg, valueArc.endDeg)
 
   return (
     <div className={styles.knob}>
@@ -130,35 +131,27 @@ export function ValueKnob({
       >
         <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r}
+          <path
+            d={track}
             fill="none"
             stroke="var(--border-default)"
             strokeWidth="3"
-            strokeDasharray={`${sweep} ${circ}`}
-            strokeDashoffset={sweep * 0.125}
             strokeLinecap="round"
-            transform={`rotate(135 ${cx} ${cy})`}
           />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke="var(--accent-primary)"
-            strokeWidth="3"
-            strokeDasharray={`${filled} ${circ}`}
-            strokeDashoffset={sweep * 0.125}
-            strokeLinecap="round"
-            transform={`rotate(135 ${cx} ${cy})`}
-          />
+          {fill ? (
+            <path
+              d={fill}
+              fill="none"
+              stroke="var(--accent-primary)"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          ) : null}
           <line
             x1={cx}
             y1={cy}
-            x2={nx}
-            y2={ny}
+            x2={needle.x}
+            y2={needle.y}
             stroke="var(--text-primary)"
             strokeWidth="2"
             strokeLinecap="round"
