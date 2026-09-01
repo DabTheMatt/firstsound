@@ -20,7 +20,7 @@
 .wrap .segment {
   flex: 1 1 calc(25% - 3px);
   min-width: 52px;
-  padding: 0 6px;
+  padding: 0 10px;
   font-size: 10px;
   letter-spacing: 0.06em;
 }
@@ -30,10 +30,10 @@
 }
 
 .segment {
-  min-height: 34px;
+  min-height: 36px;
   min-width: 0;
   flex: 1 1 0;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: transparent;
