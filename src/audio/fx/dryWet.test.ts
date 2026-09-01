@@ -34,27 +34,22 @@ describe('fxSendLevels', () => {
 })
 
 describe('wetDryFor', () => {
-  it('does not attenuate dry when wet is raised', () => {
+  it('uses equal-power Mix so dry falls as wet rises', () => {
     const p = defaultParamValues()
-    p.delayDry = 100
     p.delayWet = 50
-    p.delayOutput = 100
     const delay = wetDryFor('delay', p)
-    expect(delay.dry).toBe(1)
-    expect(delay.wet).toBeCloseTo(0.5)
+    expect(delay.dry).toBeCloseTo(Math.SQRT1_2, 5)
+    expect(delay.wet).toBeCloseTo(Math.SQRT1_2, 5)
     expect(delay.out).toBe(1)
   })
 })
 
 describe('safeFeedbackGain', () => {
-  it('passes through 0–100%', () => {
+  it('passes through 0–95% and never exceeds unity', () => {
     expect(safeFeedbackGain(0)).toBe(0)
     expect(safeFeedbackGain(80)).toBeCloseTo(0.8)
-  })
-
-  it('compresses runaway values above 100%', () => {
-    expect(safeFeedbackGain(120)).toBeLessThan(1.2)
-    expect(safeFeedbackGain(120)).toBeGreaterThan(1)
+    expect(safeFeedbackGain(95)).toBeCloseTo(0.95)
+    expect(safeFeedbackGain(120)).toBeLessThanOrEqual(0.95)
   })
 })
 

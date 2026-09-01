@@ -144,7 +144,7 @@ export const SPACE_PRESETS: SpacePreset[] = [
   { id: 'dly-lofi', name: 'Lo-Fi Delay', kind: 'delay', category: 'Lo-Fi', delayType: 'lofi', params: delayP({ delayTime: 260, delayFeedback: 44, delayHp: 280, delayLp: 3200, delayDrive: 48, delayDrift: 35, delayWet: 36 }) },
   { id: 'dly-mod', name: 'Modulated Delay', kind: 'delay', category: 'Synth', delayType: 'digital', params: delayP({ delayTime: 240, delayFeedback: 40, delayModDepth: 55, delayModRate: 0.8, delayWet: 32 }) },
   { id: 'dly-chorus', name: 'Chorus-like Short Delay', kind: 'delay', category: 'Synth', delayType: 'stereo', params: delayP({ delayTime: 18, delayFeedback: 22, delayModDepth: 70, delayModRate: 2.4, delayWidth: 160, delayWet: 45, delayOffset: 18 }) },
-  { id: 'dly-osc', name: 'Self-Oscillating Delay', kind: 'delay', category: 'Experimental', delayType: 'analog', params: delayP({ delayTime: 220, delayFeedback: 112, delayDrive: 18, delayLp: 6000, delayWet: 40 }) },
+  { id: 'dly-osc', name: 'Self-Oscillating Delay', kind: 'delay', category: 'Experimental', delayType: 'analog', params: delayP({ delayTime: 220, delayFeedback: 90, delayDrive: 18, delayLp: 6000, delayWet: 40 }) },
   { id: 'dly-pitch', name: 'Pitch-Shifting Delay', kind: 'delay', category: 'Experimental', delayType: 'pitch', params: delayP({ delayTime: 360, delayFeedback: 48, delayPitch: 12, delayWet: 38 }) },
   { id: 'dly-diffused', name: 'Diffused Delay', kind: 'delay', category: 'Ambient', delayType: 'diffuse', params: delayP({ delayTime: 190, delayFeedback: 58, delayDiffusion: 92, delayWet: 36, delayWidth: 140 }) },
 

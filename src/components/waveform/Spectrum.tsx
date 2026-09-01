@@ -240,20 +240,23 @@ export function Spectrum({ active }: Props) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
-        ctx.beginPath()
-        ctx.strokeStyle = colors.eqCurve
-        ctx.lineWidth = Math.max(1.5, dpr)
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
-        const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
-        for (let i = 0; i < freqs.length; i++) {
-          const hz = freqs[i] ?? minHz
-          const db = eqMagnitudeDb([...live.eqBands, ...combAsEqBands(live.comb)], hz, sr)
-          const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
-          const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
+        const eqOn = !live.chain.find((m) => m.type === 'eq')?.bypassed
+        if (eqOn) {
+          ctx.beginPath()
+          ctx.strokeStyle = colors.eqCurve
+          ctx.lineWidth = Math.max(1.5, dpr)
+          const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+          const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
+          for (let i = 0; i < freqs.length; i++) {
+            const hz = freqs[i] ?? minHz
+            const db = eqMagnitudeDb([...live.eqBands, ...combAsEqBands(live.comb)], hz, sr)
+            const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
+            const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
         }
-        ctx.stroke()
       }
       frame = requestAnimationFrame(tick)
     }
@@ -412,7 +415,9 @@ export function Spectrum({ active }: Props) {
           bottom: SPECTRUM_PLOT_PAD.bottom,
         }}
       >
-        {snap.eqBands.map((band, index) => {
+        {snap.chain.find((m) => m.type === 'eq')?.bypassed
+          ? null
+          : snap.eqBands.map((band, index) => {
           if (band.type === 'off') return null
           const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
           const yPct =

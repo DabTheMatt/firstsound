@@ -2,7 +2,7 @@
 
 export const SPECTRUM_BAND_COUNT = 32
 
-export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64] as const
+export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256] as const
 
 export type SpectrumBandCount = (typeof SPECTRUM_BAND_CHOICES)[number]
 
