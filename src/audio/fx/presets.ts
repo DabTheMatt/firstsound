@@ -28,6 +28,54 @@ export type SpacePreset = {
   params: Partial<Record<ParamId, number>>
 }
 
+export const PRESET_HINTS: Record<string, string> = {
+  'dly-drums': '70 ms slap, almost no repeats — snare/hat space',
+  'dly-vocal-slap': 'Short digital slapback behind a vocal',
+  'dly-rockabilly': 'Tape slap ~128 ms with wow — guitar/amp vibe',
+  'dly-1-4': 'Quarter-note tempo delay',
+  'dly-1-8': 'Eighth-note tempo delay',
+  'dly-dot-8': 'Dotted 1/8 bounce (U2 / The Edge feel)',
+  'dly-ping': 'Left-right ping-pong eighths',
+  'dly-haas': '18 ms offset, no feedback — stereo width only',
+  'dly-analog': 'Dark BBD-style repeats',
+  'dly-tape': 'Wow, flutter and rolled-off tape echo',
+  'dly-dub': 'Long dark feedback that can run away',
+  'dly-throw': 'One-shot quarter throw with ducking',
+  'dly-lead': 'Dotted 1/8 lead delay, open top end',
+  'dly-ambient': 'Long diffuse wash',
+  'dly-multitap': 'Rhythmic extra taps',
+  'dly-rev': 'Reverse repeats',
+  'dly-lofi': 'Broken, band-limited delay',
+  'dly-mod': 'Chorus-y modulation on repeats',
+  'dly-chorus': 'Very short stereo chorus delay',
+  'dly-osc': 'Feedback over 100% — self-oscillates (use Kill)',
+  'dly-pitch': 'Pitched repeats',
+  'dly-diffused': 'Delay into a smear',
+  'rv-guitar-room': 'Small room around a cab',
+  'rv-small': 'Tight practice-room air',
+  'rv-drum-room': 'Close drum booth, strong earlies',
+  'rv-vocal-room': 'Intimate vocal booth',
+  'rv-vocal-plate': 'Bright studio plate',
+  'rv-drum-plate': 'Snare/kit plate, short-ish',
+  'rv-snare-plate': 'Classic snare plate',
+  'rv-amb': 'Barely-there ambience',
+  'rv-vocal-hall': 'Medium vocal hall',
+  'rv-large-hall': 'Wide hall',
+  'rv-cathedral': 'Very long stone space',
+  'rv-dark-hall': 'Dark damped hall',
+  'rv-bright-plate': 'Extra-bright plate',
+  'rv-spring': 'Twangy guitar spring',
+  'rv-gated': '80s gated snare',
+  'rv-reverse': 'Swell into the hit',
+  'rv-shimmer': 'Octave-up bloom',
+  'rv-dreamy': 'Long cloud pad',
+  'rv-cinema': 'Huge cinematic tail',
+  'rv-infinite': 'Freeze / infinite pad',
+  'rv-lofi': 'Dark cheap room',
+  'rv-mod': 'Wobbly chamber',
+  'rv-wash': 'Distant washed-out hall',
+}
+
 function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId, number>> {
   return {
     delaySync: 0,
@@ -152,6 +200,14 @@ export function presetsFor(kind: 'delay' | 'reverb', category?: FxPresetCategory
   return SPACE_PRESETS.filter((p) => p.kind === kind && (!category || p.category === category))
 }
 
+export function defaultPresetFor(kind: 'delay' | 'reverb', category: FxPresetCategory): SpacePreset | undefined {
+  return presetsFor(kind, category)[0]
+}
+
 export function findSpacePreset(id: string): SpacePreset | undefined {
   return SPACE_PRESETS.find((p) => p.id === id)
+}
+
+export function presetHint(preset: SpacePreset): string {
+  return PRESET_HINTS[preset.id] ?? preset.name
 }

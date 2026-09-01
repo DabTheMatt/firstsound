@@ -6,13 +6,18 @@ export {
   subscribeThemeChange,
   colorWithAlpha,
   getThemePreference,
+  getCustomThemeColors,
+  setCustomThemeColor,
 } from './theme'
-export type { ThemeColors } from './theme'
+export type { ThemeColors, CustomColorId, CustomThemeColors } from './theme'
 export {
   THEME_IDS,
   THEME_OPTIONS,
   THEME_STORAGE_KEY,
+  CUSTOM_COLOR_FIELDS,
+  DEFAULT_CUSTOM_COLORS,
   parseThemePreference,
+  parseCustomThemeColors,
   resolveTheme,
   isThemeId,
 } from './tokens'

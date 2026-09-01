@@ -1,5 +1,6 @@
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import { ThemePicker } from './ThemePicker'
 import styles from './AppHeader.module.css'
 
 type Props = {
@@ -20,6 +21,7 @@ export function AppHeader({ snap, settingsOpen, onToggleSettings, onLoadSample, 
         <button type="button" className={styles.file} onClick={onLoadSample}>
           {snap.fileName || 'Load sample'}
         </button>
+        <ThemePicker />
       </div>
       <p className={styles.meta}>
         <span>{rate}</span>
@@ -31,6 +33,7 @@ export function AppHeader({ snap, settingsOpen, onToggleSettings, onLoadSample, 
         className={styles.settings}
         aria-label="Settings"
         aria-expanded={settingsOpen}
+        data-settings-toggle=""
         onClick={onToggleSettings}
       >
         {compact ? '☰' : 'Settings'}

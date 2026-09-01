@@ -7,10 +7,40 @@ export const THEME_IDS = [
   'forest',
   'light-studio',
   'oled',
+  'custom',
 ] as const
 
 export type ThemeId = (typeof THEME_IDS)[number]
 export type ThemePreference = ThemeId | 'system'
+
+export const CUSTOM_THEME_STORAGE_KEY = 'field.theme.custom'
+
+export const CUSTOM_COLOR_FIELDS = [
+  { id: 'bgApp', label: 'Background', css: '--bg-app' },
+  { id: 'bgPanel', label: 'Panel', css: '--bg-panel' },
+  { id: 'bgElevated', label: 'Surface', css: '--bg-panel-elevated' },
+  { id: 'textPrimary', label: 'Text', css: '--text-primary' },
+  { id: 'accent', label: 'Accent', css: '--accent-primary' },
+  { id: 'waveform', label: 'Waveform', css: '--waveform-primary' },
+  { id: 'spectrum', label: 'Spectrum', css: '--spectrum-fill' },
+  { id: 'playhead', label: 'Playhead', css: '--playhead' },
+  { id: 'selection', label: 'Selection', css: '--selection-border' },
+] as const
+
+export type CustomColorId = (typeof CUSTOM_COLOR_FIELDS)[number]['id']
+export type CustomThemeColors = Record<CustomColorId, string>
+
+export const DEFAULT_CUSTOM_COLORS: CustomThemeColors = {
+  bgApp: '#151616',
+  bgPanel: '#191b1b',
+  bgElevated: '#202222',
+  textPrimary: '#e8e6df',
+  accent: '#e6ad48',
+  waveform: '#b5b9b6',
+  spectrum: '#aeb5b6',
+  playhead: '#f0b74e',
+  selection: '#e6ad48',
+}
 
 export const THEME_OPTIONS: {
   id: ThemePreference
@@ -24,6 +54,7 @@ export const THEME_OPTIONS: {
   { id: 'forest', label: 'Forest', preview: { bg: '#101512', surface: '#1C2520', accent: '#72B98A' } },
   { id: 'light-studio', label: 'Light Studio', preview: { bg: '#E7E7E3', surface: '#F8F8F5', accent: '#A96E13' } },
   { id: 'oled', label: 'OLED', preview: { bg: '#050606', surface: '#0E1111', accent: '#DFAF55' } },
+  { id: 'custom', label: 'Custom', preview: { bg: '#151616', surface: '#202222', accent: '#E6AD48' } },
 ]
 
 const THEME_SET = new Set<string>(THEME_IDS)
@@ -40,4 +71,17 @@ export function parseThemePreference(raw: string | null | undefined): ThemePrefe
 export function resolveTheme(preference: ThemePreference, prefersDark: boolean): ThemeId {
   if (preference !== 'system') return preference
   return prefersDark ? 'studio-dark' : 'light-studio'
+}
+
+export function parseCustomThemeColors(raw: unknown): CustomThemeColors {
+  const next = { ...DEFAULT_CUSTOM_COLORS }
+  if (!raw || typeof raw !== 'object') return next
+  const rec = raw as Record<string, unknown>
+  for (const field of CUSTOM_COLOR_FIELDS) {
+    const value = rec[field.id]
+    if (typeof value === 'string' && /^#([0-9a-f]{6}|[0-9a-f]{3})$/i.test(value)) {
+      next[field.id] = value
+    }
+  }
+  return next
 }

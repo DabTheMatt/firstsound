@@ -2,6 +2,24 @@
 
 export const SPECTRUM_BAND_COUNT = 32
 
+export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64] as const
+
+export type SpectrumBandCount = (typeof SPECTRUM_BAND_CHOICES)[number]
+
+export function clampSpectrumBandCount(value: number): SpectrumBandCount {
+  const allowed = SPECTRUM_BAND_CHOICES
+  let best: SpectrumBandCount = 32
+  let dist = Infinity
+  for (const n of allowed) {
+    const d = Math.abs(n - value)
+    if (d < dist) {
+      dist = d
+      best = n
+    }
+  }
+  return best
+}
+
 export const FAST_ATTACK = 0.55
 export const FAST_RELEASE = 0.28
 export const SLOW_ATTACK = 0.07

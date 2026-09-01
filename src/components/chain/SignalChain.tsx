@@ -90,6 +90,20 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
             >
               {MODULE_LABELS[mod.type]}
             </button>
+            {mod.type === 'delay' || mod.type === 'reverb' ? (
+              <button
+                type="button"
+                className={styles.kill}
+                aria-label={`Kill ${MODULE_LABELS[mod.type]}`}
+                title={`Kill ${MODULE_LABELS[mod.type]} tails`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  engine.killFx(mod.type === 'delay' ? 'delay' : 'reverb')
+                }}
+              >
+                ×
+              </button>
+            ) : null}
           </div>
         )
       })}

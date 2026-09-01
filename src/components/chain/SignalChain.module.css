@@ -18,6 +18,25 @@
   flex: none;
 }
 
+.kill {
+  min-width: 28px;
+  min-height: 28px;
+  margin-left: -4px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-control);
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.kill:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--text-on-accent);
+}
+
 .arrow {
   display: grid;
   place-items: center;

@@ -16,7 +16,6 @@ import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
-import { THEME_OPTIONS, useTheme } from '../theme'
 import styles from './App.module.css'
 
 type Hist = {
@@ -47,7 +46,6 @@ function histKey(
 export default function App() {
   const snap = useEngine()
   const { mode } = useLayoutMode()
-  const { preference: themePreference, setPreference: setThemePreference } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
@@ -74,6 +72,19 @@ export default function App() {
   useEffect(() => {
     engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve)
   }, [edit.fadeIn, edit.fadeOut, edit.fadeCurve])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointer = (event: PointerEvent) => {
+      const node = event.target as Node | null
+      if (!node) return
+      if (settingsRef.current?.contains(node)) return
+      if (node instanceof Element && node.closest('[data-settings-toggle]')) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    return () => document.removeEventListener('pointerdown', onPointer)
+  }, [menuOpen])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -117,6 +128,7 @@ export default function App() {
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
   const waveRef = useRef<WaveformHandle>(null)
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   const loadSample = async (file: File) => {
     await engine.unlock()
@@ -271,31 +283,9 @@ export default function App() {
         <button type="button" onClick={() => applyHistory(redoHistory(history))}>
           Redo
         </button>
-        <div className={styles.appearance}>
-          <p className={styles.appearanceTitle}>Appearance</p>
-          <div className={styles.themeList} role="radiogroup" aria-label="Theme">
-            {THEME_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                role="radio"
-                className={styles.themeOption}
-                aria-checked={themePreference === opt.id}
-                onClick={() => setThemePreference(opt.id)}
-              >
-                <span className={styles.swatches} aria-hidden="true">
-                  <span className={styles.dot} style={{ background: opt.preview.bg }} />
-                  <span className={styles.dot} style={{ background: opt.preview.surface }} />
-                  <span className={styles.dot} style={{ background: opt.preview.accent }} />
-                </span>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     ),
-    [history, snap.hasSource, themePreference, setThemePreference],
+    [history, snap.hasSource],
   )
 
   return (
@@ -323,7 +313,19 @@ export default function App() {
           onLoadSample={() => sampleInput.current?.click()}
           compact={sheet}
         />
-        {moreOpen ? <div className={styles.settingsFly}>{actions}</div> : null}
+        {moreOpen ? (
+          <>
+            <button
+              type="button"
+              className={styles.settingsScrim}
+              aria-label="Close settings"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div className={styles.settingsFly} ref={settingsRef}>
+              {actions}
+            </div>
+          </>
+        ) : null}
 
         {snap.audioStatus === 'blocked' ? (
           <p className={styles.banner}>Audio is paused by the browser. Tap Play to resume.</p>
