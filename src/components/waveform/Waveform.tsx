@@ -30,6 +30,7 @@ import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import { rulerMarks } from './rulerTicks'
+import { insetHandleFrac } from './handleLayout'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
 
@@ -96,6 +97,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const playheadRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
+  const [overlayW, setOverlayW] = useState(400)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -112,6 +114,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   useEffect(() => {
     handlePx.current = window.matchMedia('(pointer: coarse)').matches ? 44 : 22
+  }, [])
+
+  useEffect(() => {
+    const overlay = overlayRef.current
+    if (!overlay) return
+    const measure = () => setOverlayW(Math.max(1, overlay.getBoundingClientRect().width))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(overlay)
+    return () => ro.disconnect()
   }, [])
 
   useImperativeHandle(ref, () => ({
@@ -315,8 +327,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
     const hit = handlePx.current
-    const fadeInX = timeToFrac(start + fadeIn, viewRef.current) * width
-    const fadeOutX = timeToFrac(end - fadeOut, viewRef.current) * width
 
     if (fxMode && tool === 'select') {
       const snap = engine.getSnapshot()
@@ -354,19 +364,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
     if (mode !== 'pan') {
-      if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
-      else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
-      else if (handleAttr?.dataset.edge === 'start') mode = 'start'
+      if (handleAttr?.dataset.edge === 'start') mode = 'start'
       else if (handleAttr?.dataset.edge === 'end') mode = 'end'
-      else if (!event.shiftKey) {
-        if (Math.abs(x - fadeInX) < hit && Math.abs(x - startX) >= hit * 0.45) mode = 'fadeIn'
-        else if (Math.abs(x - fadeOutX) < hit && Math.abs(x - endX) >= hit * 0.45) mode = 'fadeOut'
-        else if (Math.abs(x - startX) < hit) mode = 'start'
-        else if (Math.abs(x - endX) < hit) mode = 'end'
-      } else {
-        if (Math.abs(x - startX) < hit) mode = 'start'
-        else if (Math.abs(x - endX) < hit) mode = 'end'
-      }
+      else if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
+      else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
+      else if (Math.abs(x - startX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'start'
+      else if (Math.abs(x - endX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'end'
     }
     if (mode === 'playhead') engine.seekSeconds(t, 'sample')
     drag.current = {
@@ -471,6 +474,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const regionRight = Math.max(0, Math.min(100, endPct))
   const fadeInPct = pct(start + fadeIn)
   const fadeOutPct = pct(end - fadeOut)
+  const minHandleFrac = 22 / Math.max(120, overlayW)
+  const fadeInHandlePct = insetHandleFrac(startPct / 100, fadeInPct / 100, minHandleFrac, 1) * 100
+  const fadeOutHandlePct = insetHandleFrac(endPct / 100, fadeOutPct / 100, minHandleFrac, -1) * 100
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
@@ -511,19 +517,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     curve={fadeCurve}
                     side="out"
                   />
-                  {fadeInPct >= 0 && fadeInPct <= 100 ? (
+                  {fadeInHandlePct >= 0 && fadeInHandlePct <= 100 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="in"
-                      style={{ left: `${fadeInPct}%` }}
+                      style={{ left: `${fadeInHandlePct}%` }}
                       aria-label="Fade in"
                     />
                   ) : null}
-                  {fadeOutPct >= 0 && fadeOutPct <= 100 ? (
+                  {fadeOutHandlePct >= 0 && fadeOutHandlePct <= 100 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="out"
-                      style={{ left: `${fadeOutPct}%` }}
+                      style={{ left: `${fadeOutHandlePct}%` }}
                       aria-label="Fade out"
                     />
                   ) : null}

@@ -73,3 +73,11 @@ export function meterSweetBand(minDb: number): { bottom: number; height: number 
   const top = dbToMeterPct(METER_SWEET_HI, minDb)
   return { bottom, height: Math.max(0, top - bottom) }
 }
+
+/** Peak-hold that jumps up with the peak and falls slower than the bar. */
+export function fallHoldDb(prev: number, peak: number, dtSec: number, fallDbPerSec = 9): number {
+  const p = Number.isFinite(peak) ? peak : Number.NEGATIVE_INFINITY
+  if (!Number.isFinite(prev)) return p
+  if (p >= prev) return p
+  return Math.max(p, prev - fallDbPerSec * Math.max(0, dtSec))
+}

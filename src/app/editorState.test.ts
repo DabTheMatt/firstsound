@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dbToMeterPct, meterDbMin, meterScaleMarks, meterScaleTicks, meterSweetBand } from './editorState'
+import { dbToMeterPct, fallHoldDb, meterDbMin, meterScaleMarks, meterScaleTicks, meterSweetBand } from './editorState'
 
 describe('meter mapping', () => {
   it('puts 0 dB at the top and the range floor at the bottom', () => {
@@ -37,5 +37,12 @@ describe('meter mapping', () => {
       expect(ticks).toContain(-12)
       expect(ticks.at(-1)).toBe(meterDbMin(range))
     }
+  })
+})
+
+describe('fallHoldDb', () => {
+  it('jumps up with a new peak and falls slower than the peak', () => {
+    expect(fallHoldDb(-20, -6, 0.05)).toBe(-6)
+    expect(fallHoldDb(-6, -20, 0.2, 10)).toBeCloseTo(-8)
   })
 })

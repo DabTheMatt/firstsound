@@ -63,14 +63,29 @@
 .scale {
   position: relative;
   flex: none;
-  width: 28px;
+  align-self: stretch;
+  width: 30px;
   min-height: 0;
+}
+
+.sweetBand {
+  position: absolute;
+  left: 0;
+  right: 1px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--meter-mid) 38%, var(--bg-panel));
+  box-shadow:
+    inset 3px 0 0 var(--meter-mid),
+    inset 0 0 0 1px color-mix(in srgb, var(--meter-mid) 55%, transparent);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .scale span,
 .tick {
   position: absolute;
   right: 5px;
+  z-index: 1;
   font-size: 7px;
   line-height: 1;
   letter-spacing: 0;
@@ -114,8 +129,13 @@
 }
 
 .sweetTick {
-  color: color-mix(in srgb, var(--meter-mid) 55%, var(--text-muted));
-  font-weight: 500;
+  color: var(--meter-mid);
+  font-weight: 700;
+}
+
+.sweetTick::after {
+  background: var(--meter-mid);
+  width: 6px;
 }
 
 .meters {
@@ -160,18 +180,6 @@
   opacity: 0.7;
 }
 
-.zone {
-  position: absolute;
-  left: 0;
-  right: 0;
-  background: color-mix(in srgb, var(--meter-mid) 16%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--meter-mid) 28%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--meter-mid) 28%, transparent);
-  pointer-events: none;
-  z-index: 1;
-}
-
 .fill {
   position: absolute;
   left: 0;
@@ -186,6 +194,18 @@
     var(--meter-low) 100%
   );
   transition: none;
+}
+
+.hold {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 4;
+  background: var(--text-primary);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--text-primary) 50%, transparent);
+  pointer-events: none;
+  opacity: 0;
 }
 
 .lane span {
