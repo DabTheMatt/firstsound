@@ -31,6 +31,18 @@ npm run build
 
 Wynik: `dist/`. Workflow `.github/workflows/pages.yml` publikuje `main` na GitHub Pages. W repozytorium włącz Pages: **Settings → Pages → Source: GitHub Actions**.
 
+## Import na iPhone / iPad
+
+Safari na iOS pozwala wgrać dźwięk przez **Load sample** (picker Files) albo — na iPadzie — przeciągnięcie pliku. `decodeAudioData` dekoduje:
+
+- WAV (PCM)
+- AIFF
+- MP3
+- M4A / AAC (także ścieżka audio w MP4)
+- CAF
+
+OGG i WebM zwykle **nie** działają na iOS. Pliki zostają w przeglądarce (nic nie idzie na serwer).
+
 ## Prywatność
 
 Sample pozostają w przeglądarce. Presety to zwykły JSON parametrów, bez audio.

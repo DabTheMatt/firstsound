@@ -58,10 +58,33 @@
   border-right: 1.5px solid var(--accent);
 }
 
-.fade {
+.fadeSvg {
   position: absolute;
   top: 0;
   bottom: 0;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.fadeFill {
+  fill: color-mix(in srgb, #0b0c0c 70%, transparent);
+}
+
+.fadeLine {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.fadeHandle {
+  position: absolute;
+  top: 18px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--accent);
   pointer-events: none;
 }
 

@@ -22,6 +22,43 @@ export function fadeGain(t: number, curve: FadeCurve): number {
   }
 }
 
+/** Gain at `rel` seconds into a region of length `span`. */
+export function regionFadeGain(
+  rel: number,
+  span: number,
+  fadeInSec: number,
+  fadeOutSec: number,
+  curve: FadeCurve,
+): number {
+  const s = Math.max(span, 1e-9)
+  const t = Math.min(s, Math.max(0, rel))
+  const inSec = Math.min(Math.max(0, fadeInSec), s)
+  const outSec = Math.min(Math.max(0, fadeOutSec), s)
+  let g = 1
+  if (inSec > 0 && t < inSec) g *= fadeGain(t / inSec, curve)
+  if (outSec > 0 && t > s - outSec) g *= fadeGain((s - t) / outSec, curve)
+  return g
+}
+
+/** Playback envelope from `fromRel` to `span`, for Web Audio setValueCurveAtTime. */
+export function regionFadeCurveFrom(
+  fromRel: number,
+  span: number,
+  fadeInSec: number,
+  fadeOutSec: number,
+  curve: FadeCurve,
+  samples = 64,
+): Float32Array {
+  const n = Math.max(2, samples)
+  const start = Math.min(span, Math.max(0, fromRel))
+  const out = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const rel = start + ((span - start) * i) / (n - 1)
+    out[i] = Math.max(0.0001, regionFadeGain(rel, span, fadeInSec, fadeOutSec, curve))
+  }
+  return out
+}
+
 export function applyFades(
   samples: Float32Array,
   sampleRate: number,

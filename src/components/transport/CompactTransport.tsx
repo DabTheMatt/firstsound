@@ -10,6 +10,10 @@ type Props = {
   end: number
   disabled: boolean
   compact: boolean
+  canUndo: boolean
+  canRedo: boolean
+  onUndo: () => void
+  onRedo: () => void
   onExport: () => void
   onUseSample: () => void
 }
@@ -21,6 +25,10 @@ export function CompactTransport({
   end,
   disabled,
   compact,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   onExport,
   onUseSample,
 }: Props) {
@@ -51,6 +59,12 @@ export function CompactTransport({
           onClick={() => engine.setLoop(!loop)}
         >
           Loop
+        </button>
+        <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
+          Undo
+        </button>
+        <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
+          Redo
         </button>
       </div>
       <p className={styles.times}>

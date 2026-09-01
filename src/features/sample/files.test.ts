@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsePreset } from './files'
+import { parsePreset, AUDIO_FILE_ACCEPT } from './files'
 
 describe('parsePreset', () => {
   it('accepts a v1 field preset', () => {
@@ -17,5 +17,13 @@ describe('parsePreset', () => {
   it('rejects other shapes', () => {
     expect(parsePreset(null)).toBeNull()
     expect(parsePreset({ instrument: 'other', version: 1, params: {} })).toBeNull()
+  })
+})
+
+describe('AUDIO_FILE_ACCEPT', () => {
+  it('lists formats Safari on iOS can typically decode', () => {
+    expect(AUDIO_FILE_ACCEPT).toContain('.wav')
+    expect(AUDIO_FILE_ACCEPT).toContain('.m4a')
+    expect(AUDIO_FILE_ACCEPT).toContain('.caf')
   })
 })

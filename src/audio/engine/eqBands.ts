@@ -15,15 +15,15 @@ export type EqBand = {
   q: number
 }
 
-export const EQ_FILTER_TYPES: { value: EqFilterType; label: string }[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'lowpass', label: 'Low Pass' },
-  { value: 'highpass', label: 'High Pass' },
-  { value: 'lowshelf', label: 'Low Shelf' },
-  { value: 'highshelf', label: 'High Shelf' },
-  { value: 'peaking', label: 'Bell' },
-  { value: 'notch', label: 'Notch' },
-  { value: 'bandpass', label: 'Band Pass' },
+export const EQ_FILTER_TYPES: { value: EqFilterType; label: string; short: string }[] = [
+  { value: 'off', label: 'Off', short: 'Off' },
+  { value: 'lowpass', label: 'Low Pass', short: 'LP' },
+  { value: 'highpass', label: 'High Pass', short: 'HP' },
+  { value: 'lowshelf', label: 'Low Shelf', short: 'LS' },
+  { value: 'highshelf', label: 'High Shelf', short: 'HS' },
+  { value: 'peaking', label: 'Bell', short: 'Bell' },
+  { value: 'notch', label: 'Notch', short: 'Notch' },
+  { value: 'bandpass', label: 'Band Pass', short: 'BP' },
 ]
 
 export const EQ_BAND_COUNT = 4

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import styles from './WaveformToolbar.module.css'
 
@@ -12,6 +12,7 @@ type Props = {
   onZoomOut: () => void
   onView: (action: ViewAction) => void
   compact: boolean
+  normalizeView: boolean
 }
 
 export type ViewAction =
@@ -38,18 +39,8 @@ export function WaveformToolbar({
   onZoomOut,
   onView,
   compact,
+  normalizeView,
 }: Props) {
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onDoc = (event: PointerEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onDoc)
-    return () => document.removeEventListener('pointerdown', onDoc)
-  }, [])
-
   const tools = compact ? TOOLS.filter((t) => t.id !== 'pan') : TOOLS
 
   return (
@@ -67,44 +58,35 @@ export function WaveformToolbar({
           </button>
         ))}
       </div>
-      <div className={styles.menuWrap} ref={wrapRef}>
-        <button
-          type="button"
-          className={styles.tool}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
+      <div className={styles.views}>
+        <IconButton label="Fit sample" onClick={() => onView('fit-sample')}>
+          <FitIcon />
+        </IconButton>
+        <IconButton label="Fit selection" onClick={() => onView('fit-selection')}>
+          <FitSelIcon />
+        </IconButton>
+        <IconButton label="Zoom to selection" onClick={() => onView('zoom-selection')}>
+          <ZoomSelIcon />
+        </IconButton>
+        <IconButton
+          label="Normalize view"
+          pressed={normalizeView}
+          onClick={() => onView('normalize-view')}
         >
-          View ▾
-        </button>
-        {open ? (
-          <div className={styles.menu} role="menu">
-            <button type="button" onClick={() => { onView('fit-sample'); setOpen(false) }}>
-              Fit Sample
-            </button>
-            <button type="button" onClick={() => { onView('fit-selection'); setOpen(false) }}>
-              Fit Selection
-            </button>
-            <button type="button" onClick={() => { onView('zoom-selection'); setOpen(false) }}>
-              Zoom to Selection
-            </button>
-            <button type="button" onClick={() => { onView('normalize-view'); setOpen(false) }}>
-              Normalize View
-            </button>
-            <button type="button" onClick={() => { onView('reset-zoom'); setOpen(false) }}>
-              Reset Zoom
-            </button>
-            <hr />
-            <button type="button" className={viz === 'waveform' ? styles.picked : ''} onClick={() => { onViz('waveform'); setOpen(false) }}>
-              Waveform
-            </button>
-            <button type="button" className={viz === 'spectrum' ? styles.picked : ''} onClick={() => { onViz('spectrum'); setOpen(false) }}>
-              Spectrum
-            </button>
-            <button type="button" className={viz === 'split' ? styles.picked : ''} onClick={() => { onViz('split'); setOpen(false) }}>
-              Split
-            </button>
-          </div>
-        ) : null}
+          <NormIcon />
+        </IconButton>
+        <IconButton label="Reset zoom" onClick={() => onView('reset-zoom')}>
+          <ResetIcon />
+        </IconButton>
+        <IconButton label="Waveform" pressed={viz === 'waveform'} onClick={() => onViz('waveform')}>
+          <WaveIcon />
+        </IconButton>
+        <IconButton label="Spectrum" pressed={viz === 'spectrum'} onClick={() => onViz('spectrum')}>
+          <SpecIcon />
+        </IconButton>
+        <IconButton label="Split view" pressed={viz === 'split'} onClick={() => onViz('split')}>
+          <SplitIcon />
+        </IconButton>
       </div>
       <div className={styles.zoom}>
         <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>
@@ -116,5 +98,97 @@ export function WaveformToolbar({
         </button>
       </div>
     </div>
+  )
+}
+
+function IconButton({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string
+  pressed?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      className={`${styles.iconBtn} ${pressed ? styles.active : ''}`}
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
+function FitIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M3 7V3h4M15 7V3h-4M3 11v4h4M15 11v4h-4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function FitSelIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="4" y="5" width="10" height="8" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2 9h2M14 9h2" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function ZoomSelIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12 12l4 4M6 8h4M8 6v4" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function NormIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M4 14V4M9 14V7M14 14V9" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function ResetIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M4 9a5 5 0 1 0 1.5-3.5M4 4v4h4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function WaveIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M1 9c2-6 3 6 5 0s3 6 5 0 3 6 6 0" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function SpecIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M3 14V8M7 14V4M11 14V6M15 14V9" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function SplitIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2 10h14" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
   )
 }

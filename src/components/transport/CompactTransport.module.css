@@ -92,6 +92,7 @@
 }
 
 .use:disabled,
-.export:disabled {
+.export:disabled,
+.icon:disabled {
   opacity: 0.4;
 }

@@ -11,6 +11,20 @@
   scrollbar-width: none;
 }
 
+.wrap {
+  flex-wrap: wrap;
+  border-radius: 12px;
+  overflow: visible;
+}
+
+.wrap .segment {
+  flex: 1 1 calc(25% - 3px);
+  min-width: 52px;
+  padding: 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
 .group::-webkit-scrollbar {
   display: none;
 }

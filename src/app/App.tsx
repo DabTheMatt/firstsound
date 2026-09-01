@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
-import { downloadJson, parsePreset, readAudioFile } from '../features/sample/files'
+import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT, AUDIO_IMPORT_HINT } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
+import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
+import { isTypingTarget } from './keys'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { SignalChain } from '../components/chain/SignalChain'
@@ -16,10 +18,29 @@ import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
 import styles from './App.module.css'
 
-type Hist = { start: number; end: number; chain: string }
+type Hist = {
+  start: number
+  end: number
+  chain: string
+  fadeIn: number
+  fadeOut: number
+  fadeCurve: FadeCurve
+}
 
-function histKey(start: number, end: number, chain: { instanceId: string }[]): Hist {
-  return { start, end, chain: chain.map((m) => m.instanceId).join(',') }
+function histKey(
+  start: number,
+  end: number,
+  chain: { instanceId: string }[],
+  edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve'>,
+): Hist {
+  return {
+    start,
+    end,
+    chain: chain.map((m) => m.instanceId).join(','),
+    fadeIn: edit.fadeIn,
+    fadeOut: edit.fadeOut,
+    fadeCurve: edit.fadeCurve,
+  }
 }
 
 export default function App() {
@@ -42,13 +63,23 @@ export default function App() {
     instanceId: 'gain-1',
     type: 'gain',
   })
-  const [history, setHistory] = useState(() => createHistory(histKey(0, 1, [])))
+  const [history, setHistory] = useState(() => createHistory(histKey(0, 1, [], DEFAULT_EDIT)))
+  const editRef = useRef(edit)
+  useEffect(() => {
+    editRef.current = edit
+  }, [edit])
+
+  useEffect(() => {
+    engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve)
+  }, [edit.fadeIn, edit.fadeOut, edit.fadeCurve])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const tag = (event.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT') return
+      if (isTypingTarget(event.target)) return
       if (event.code === 'Space') {
         event.preventDefault()
+        event.stopPropagation()
+        if (event.repeat) return
         void engine.unlock().then(() => engine.togglePlay())
         return
       }
@@ -57,12 +88,29 @@ export default function App() {
         setHistory((h) => {
           const next = event.shiftKey ? redoHistory(h) : undoHistory(h)
           engine.setRegion(next.present.start, next.present.end)
+          setEdit((e) => ({
+            ...e,
+            fadeIn: next.present.fadeIn,
+            fadeOut: next.present.fadeOut,
+            fadeCurve: next.present.fadeCurve,
+          }))
           return next
         })
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return
+      if (event.code === 'Space') {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onKeyUp, true)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onKeyUp, true)
+    }
   }, [])
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
@@ -80,14 +128,31 @@ export default function App() {
   }
 
   const commit = useCallback(() => {
+    const e = editRef.current
     setHistory((h) =>
       commitHistory(
         h,
-        histKey(engine.getSnapshot().params.start, engine.getSnapshot().params.end, engine.getSnapshot().chain),
-        (a, b) => a.start === b.start && a.end === b.end && a.chain === b.chain,
+        histKey(engine.getSnapshot().params.start, engine.getSnapshot().params.end, engine.getSnapshot().chain, e),
+        (a, b) =>
+          a.start === b.start &&
+          a.end === b.end &&
+          a.chain === b.chain &&
+          a.fadeIn === b.fadeIn &&
+          a.fadeOut === b.fadeOut &&
+          a.fadeCurve === b.fadeCurve,
       ),
     )
   }, [])
+
+  const restorePresent = (present: Hist) => {
+    engine.setRegion(present.start, present.end)
+    setEdit((e) => ({
+      ...e,
+      fadeIn: present.fadeIn,
+      fadeOut: present.fadeOut,
+      fadeCurve: present.fadeCurve,
+    }))
+  }
 
   const selectModule = (instanceId: string) => {
     const mod = snap.chain.find((m) => m.instanceId === instanceId)
@@ -104,8 +169,7 @@ export default function App() {
 
   const applyHistory = (next: typeof history) => {
     setHistory(next)
-    // Region restore is approximate — chain undo goes through reorder by ids.
-    engine.setRegion(next.present.start, next.present.end)
+    restorePresent(next.present)
   }
 
   const onUseSample = () => {
@@ -131,6 +195,8 @@ export default function App() {
       edit={edit}
       sheet={sheet && sheetLevel !== 'expanded'}
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
+      onCommit={commit}
+      knobs={mode !== 'sheet'}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
   ) : null
@@ -138,9 +204,10 @@ export default function App() {
   const actions = useMemo(
     () => (
       <div className={styles.moreMenu}>
-        <button type="button" onClick={() => sampleInput.current?.click()}>
-          Load sample
-        </button>
+          <p className={styles.hint}>{AUDIO_IMPORT_HINT}</p>
+          <button type="button" onClick={() => sampleInput.current?.click()}>
+            Load sample
+          </button>
         <button
           type="button"
           onClick={() => downloadJson('field-preset.json', engine.toPreset())}
@@ -237,6 +304,7 @@ export default function App() {
           onViz={setViz}
           zoomLabel={zoomLabel}
           compact={sheet}
+          normalizeView={normalizeView}
           onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
           onZoomOut={() => waveRef.current?.zoomBy(1.4)}
           onView={(action) => {
@@ -267,6 +335,7 @@ export default function App() {
               onNormalizeView={setNormalizeView}
               onZoomLabel={setZoomLabel}
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
+              onFadesCommit={commit}
               onRegionCommit={commit}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
@@ -286,6 +355,10 @@ export default function App() {
           end={snap.params.end}
           disabled={!snap.sampleLoaded}
           compact={compact}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          onUndo={() => applyHistory(undoHistory(history))}
+          onRedo={() => applyHistory(redoHistory(history))}
           onExport={() => setExportOpen(true)}
           onUseSample={onUseSample}
         />
@@ -339,7 +412,7 @@ export default function App() {
         <input
           ref={sampleInput}
           type="file"
-          accept="audio/*"
+          accept={AUDIO_FILE_ACCEPT}
           hidden
           onChange={(event) => {
             onFiles(event.target.files)

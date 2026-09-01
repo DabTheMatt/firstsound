@@ -133,6 +133,15 @@
   background: #3a3e41;
 }
 
+.hint {
+  margin: 0;
+  padding: 8px 10px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 280px;
+}
+
 .banner {
   margin: 0;
   padding: 8px 10px;

@@ -60,7 +60,7 @@ import {
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 import { defaultEqBands, parseEqBands, type EqBand, type EqFilterType } from './eqBands'
-import { type FadeCurve } from './fades'
+import { regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
@@ -155,8 +155,16 @@ export class AudioEngine {
   private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
+  private analyserPre: AnalyserNode | null = null
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
+  private regionFade: { fadeIn: number; fadeOut: number; curve: FadeCurve } = {
+    fadeIn: 0.01,
+    fadeOut: 0.01,
+    curve: 'equalPower',
+  }
+  private voiceGain: GainNode | null = null
+  private fadeRestartId = 0
   private slots = new Map<string, Slot>()
   private buffer: AudioBuffer | null = null
   private sourceBuffer: AudioBuffer | null = null
@@ -239,8 +247,33 @@ export class AudioEngine {
     return this.prep
   }
 
-  getAnalyser(): AnalyserNode | null {
+  getAnalyser(tap: 'pre' | 'post' = 'post'): AnalyserNode | null {
+    if (tap === 'pre') return this.analyserPre ?? this.analyser
     return this.analyser
+  }
+
+  setRegionFades(fadeIn: number, fadeOut: number, curve: FadeCurve): void {
+    const next = {
+      fadeIn: Math.max(0, fadeIn),
+      fadeOut: Math.max(0, fadeOut),
+      curve,
+    }
+    const same =
+      this.regionFade.fadeIn === next.fadeIn &&
+      this.regionFade.fadeOut === next.fadeOut &&
+      this.regionFade.curve === next.curve
+    if (same) return
+    this.regionFade = next
+    this.emit()
+    if (this.playing && this.engineMode === 'playback') {
+      if (this.fadeRestartId) window.clearTimeout(this.fadeRestartId)
+      this.fadeRestartId = window.setTimeout(() => {
+        this.fadeRestartId = 0
+        if (!this.playing || this.engineMode !== 'playback') return
+        this.playOffset = this.getPlayheadSeconds()
+        void this.play()
+      }, 70)
+    }
   }
 
   getChannelAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
@@ -337,6 +370,10 @@ export class AudioEngine {
   }
 
   stop(): void {
+    if (this.fadeRestartId) {
+      window.clearTimeout(this.fadeRestartId)
+      this.fadeRestartId = 0
+    }
     this.stopVoices()
     this.playing = false
     this.emit()
@@ -1064,6 +1101,9 @@ export class AudioEngine {
     this.analyser = ctx.createAnalyser()
     this.analyser.fftSize = 4096
     this.analyser.smoothingTimeConstant = 0.7
+    this.analyserPre = ctx.createAnalyser()
+    this.analyserPre.fftSize = 4096
+    this.analyserPre.smoothingTimeConstant = 0.7
     this.analyserL = ctx.createAnalyser()
     this.analyserR = ctx.createAnalyser()
     this.analyserL.fftSize = 2048
@@ -1155,6 +1195,7 @@ export class AudioEngine {
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
     this.voiceBus.connect(ordered[0]!.input)
+    if (this.analyserPre) this.voiceBus.connect(this.analyserPre)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
@@ -1367,20 +1408,30 @@ export class AudioEngine {
     const duration = buffer.duration
     const { start, end } = this.region(duration)
     const reverse = this.direction === 'reverse'
+    const loopStart = reverse ? reverseTime(end, duration) : start
+    const loopEnd = reverse ? reverseTime(start, duration) : end
+    const span = Math.max(loopEnd - loopStart, MIN_REGION)
+    const mapped = reverse ? reverseTime(offset, duration) : offset
+    const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
+    const fromRel = Math.max(0, clamped - loopStart)
+    const remaining = Math.max(0.01, loopEnd - clamped)
+    const rate = playbackRate(this.params.speed, this.params.pitch)
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
-    src.loop = this.loop
-    src.loopStart = reverse ? reverseTime(end, duration) : start
-    src.loopEnd = reverse ? reverseTime(start, duration) : end
-    src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
-    src.connect(this.voiceBus)
-    const mapped = reverse ? reverseTime(offset, duration) : offset
-    const clamped = Math.min(Math.max(mapped, 0), Math.max(0, duration - 0.001))
-    src.start(this.ctx.currentTime, clamped)
-    if (!this.loop) {
-      src.onended = () => {
-        if (this.source === src) this.stop()
+    src.loop = false
+    src.playbackRate.value = rate
+    this.connectFadedVoice(src, fromRel, span, remaining / rate)
+    src.start(this.ctx.currentTime, clamped, remaining)
+    src.onended = () => {
+      if (this.source !== src || !this.playing) return
+      if (this.loop) {
+        this.source = null
+        this.playOffset = reverse ? end : start
+        this.playCtxTime = this.ctx?.currentTime ?? 0
+        this.startBufferVoice(this.playOffset)
+        return
       }
+      this.stop()
     }
     this.source = src
   }
@@ -1390,20 +1441,59 @@ export class AudioEngine {
     const { start, end } = this.region(this.buffer.duration)
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
+    const span = buffer.duration
+    const rate = playbackRate(this.params.speed, this.params.pitch)
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
-    src.loop = this.loop
-    src.loopStart = 0
-    src.loopEnd = buffer.duration
-    src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
-    src.connect(this.voiceBus)
+    src.loop = false
+    src.playbackRate.value = rate
+    this.connectFadedVoice(src, 0, span, span / rate)
     src.start(this.ctx.currentTime, 0)
-    if (!this.loop) {
-      src.onended = () => {
-        if (this.source === src) this.stop()
+    src.onended = () => {
+      if (this.source !== src || !this.playing) return
+      if (this.loop) {
+        this.source = null
+        this.playOffset = start
+        this.playCtxTime = this.ctx?.currentTime ?? 0
+        this.startPingPongVoice()
+        return
       }
+      this.stop()
     }
     this.source = src
+  }
+
+  private connectFadedVoice(
+    src: AudioBufferSourceNode,
+    fromRel: number,
+    span: number,
+    durationSec: number,
+  ): void {
+    if (!this.ctx || !this.voiceBus) return
+    this.disconnectVoiceGain()
+    const gain = this.ctx.createGain()
+    const curve = regionFadeCurveFrom(
+      fromRel,
+      span,
+      this.regionFade.fadeIn,
+      this.regionFade.fadeOut,
+      this.regionFade.curve,
+      96,
+    )
+    gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, Math.max(0.008, durationSec))
+    src.connect(gain)
+    gain.connect(this.voiceBus)
+    this.voiceGain = gain
+  }
+
+  private disconnectVoiceGain(): void {
+    if (!this.voiceGain) return
+    try {
+      this.voiceGain.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    this.voiceGain = null
   }
 
   private motionOffset(t: number): number {
@@ -1455,15 +1545,25 @@ export class AudioEngine {
         this.params.grainPitch + (Math.random() * 2 - 1) * this.params.pitchSpread
       const rate = playbackRate(this.params.speed, this.params.pitch + grainPitch)
 
+      const playbackRel =
+        this.direction === 'reverse' ? Math.max(0, end - offset) : Math.max(0, offset - start)
+      const fadeAmp = regionFadeGain(
+        playbackRel,
+        span,
+        this.regionFade.fadeIn,
+        this.regionFade.fadeOut,
+        this.regionFade.curve,
+      )
       const src = ctx.createBufferSource()
       src.buffer = buffer
       src.playbackRate.value = rate
       const gain = ctx.createGain()
       const attack = Math.min(0.012, grainDur * 0.25)
       const releaseStart = Math.max(attack, grainDur - grainDur * 0.35)
+      const peak = amp * fadeAmp
       gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(amp, t + attack)
-      gain.gain.linearRampToValueAtTime(amp, t + releaseStart)
+      gain.gain.linearRampToValueAtTime(peak, t + attack)
+      gain.gain.linearRampToValueAtTime(peak, t + releaseStart)
       gain.gain.linearRampToValueAtTime(0, t + grainDur)
       src.connect(gain)
       gain.connect(this.voiceBus)
@@ -1491,6 +1591,7 @@ export class AudioEngine {
       this.source.disconnect()
       this.source = null
     }
+    this.disconnectVoiceGain()
   }
 
   private buildSnapshot(): EngineSnapshot {

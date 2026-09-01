@@ -1,3 +1,9 @@
+.wrap {
+  position: relative;
+  height: 100%;
+  min-height: 72px;
+}
+
 .canvas {
   display: block;
   width: 100%;
@@ -5,4 +11,30 @@
   min-height: 72px;
   background: #151717;
   border-radius: 8px;
+}
+
+.taps {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+}
+
+.taps button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #3a3e41;
+  border-radius: 999px;
+  background: #161818;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.taps .on {
+  border-color: var(--accent);
+  color: var(--accent);
 }

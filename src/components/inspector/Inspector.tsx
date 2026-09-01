@@ -6,10 +6,12 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
-import { ParamSlider } from '../controls/ParamSlider'
+import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
+import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus, WaveTool } from '../../app/editorState'
+import { EqCurve } from './EqCurve'
 import styles from './Inspector.module.css'
 
 type Props = {
@@ -18,7 +20,9 @@ type Props = {
   edit: EditState
   onEdit: (patch: Partial<EditState>) => void
   onFine: (which: 'start' | 'end', delta: number) => void
+  onCommit?: () => void
   sheet?: boolean
+  knobs?: boolean
 }
 
 const GAIN_IDS: ParamId[] = ['gain']
@@ -40,7 +44,23 @@ const REVERB_IDS: ParamId[] = ['reverbSize', 'reverbDecay', 'reverbPredelay', 'r
 const SAT_IDS: ParamId[] = ['saturation']
 const OUT_IDS: ParamId[] = ['outputGain']
 
-export function Inspector({ snap, focus, edit, onEdit, onFine, sheet }: Props) {
+const EQ_TYPE_OPTIONS = EQ_FILTER_TYPES.map((t) => ({
+  value: t.value,
+  label: t.short,
+  title: t.label,
+}))
+
+export function Inspector({
+  snap,
+  focus,
+  edit,
+  onEdit,
+  onFine,
+  onCommit,
+  sheet,
+  knobs = true,
+}: Props) {
+  const variant = knobs ? 'knob' : 'slider'
   return (
     <div className={`${styles.panel} ${sheet ? styles.sheet : ''}`}>
       {focus.kind === 'tool' ? (
@@ -50,9 +70,16 @@ export function Inspector({ snap, focus, edit, onEdit, onFine, sheet }: Props) {
           edit={edit}
           onEdit={onEdit}
           onFine={onFine}
+          onCommit={onCommit}
+          knobs={knobs}
         />
       ) : (
-        <ModuleInspector snap={snap} type={focus.type} instanceId={focus.instanceId} />
+        <ModuleInspector
+          snap={snap}
+          type={focus.type}
+          instanceId={focus.instanceId}
+          variant={variant}
+        />
       )}
     </div>
   )
@@ -64,12 +91,16 @@ function ToolInspector({
   edit,
   onEdit,
   onFine,
+  onCommit,
+  knobs,
 }: {
   tool: WaveTool
   snap: EngineSnapshot
   edit: EditState
   onEdit: (patch: Partial<EditState>) => void
   onFine: (which: 'start' | 'end', delta: number) => void
+  onCommit?: () => void
+  knobs: boolean
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
   if (tool === 'select') {
@@ -143,46 +174,97 @@ function ToolInspector({
     )
   }
   if (tool === 'fade') {
+    const maxMs = 2000
     return (
       <>
         <h2 className={styles.title}>Fade</h2>
+        {snap.engineMode === 'grain' ? (
+          <>
+            <p className={styles.help}>
+              Grain plays from the cursor, so region fades are easy to miss. Use Playback to hear
+              fade-in and fade-out on the selection.
+            </p>
+            <button type="button" className={styles.ghost} onClick={() => engine.setEngineMode('playback')}>
+              Playback
+            </button>
+          </>
+        ) : null}
         <Readout label="Fade In" value={`${Math.round(edit.fadeIn * 1000)} ms`} />
         <Readout label="Fade Out" value={`${Math.round(edit.fadeOut * 1000)} ms`} />
-        <input
-          className={styles.range}
-          type="range"
-          min={0}
-          max={500}
-          value={Math.round(edit.fadeIn * 1000)}
-          aria-label="Fade in"
-          onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false })}
-        />
-        <input
-          className={styles.range}
-          type="range"
-          min={0}
-          max={500}
-          value={Math.round(edit.fadeOut * 1000)}
-          aria-label="Fade out"
-          onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false })}
-        />
+        {knobs ? (
+          <div className={styles.knobs}>
+            <ValueKnob
+              label="Fade In"
+              valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
+              normalized={Math.min(1, edit.fadeIn / 2)}
+              min={0}
+              max={maxMs}
+              now={Math.round(edit.fadeIn * 1000)}
+              onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
+              onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
+            />
+            <ValueKnob
+              label="Fade Out"
+              valueText={`${Math.round(edit.fadeOut * 1000)} ms`}
+              normalized={Math.min(1, edit.fadeOut / 2)}
+              min={0}
+              max={maxMs}
+              now={Math.round(edit.fadeOut * 1000)}
+              onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
+              onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
+            />
+          </div>
+        ) : (
+          <>
+            <input
+              className={styles.range}
+              type="range"
+              min={0}
+              max={2000}
+              value={Math.round(edit.fadeIn * 1000)}
+              aria-label="Fade in"
+              onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false })}
+              onPointerUp={onCommit}
+            />
+            <input
+              className={styles.range}
+              type="range"
+              min={0}
+              max={2000}
+              value={Math.round(edit.fadeOut * 1000)}
+              aria-label="Fade out"
+              onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false })}
+              onPointerUp={onCommit}
+            />
+          </>
+        )}
         <Segmented
           label="Curve"
           value={edit.fadeCurve}
           options={FADE_CURVES}
-          onChange={(fadeCurve) => onEdit({ fadeCurve })}
+          wrap
+          onChange={(fadeCurve) => {
+            onEdit({ fadeCurve })
+            onCommit?.()
+          }}
         />
         <button
           type="button"
           className={styles.ghost}
-          onClick={() => onEdit({ fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true })}
+          onClick={() => {
+            onEdit({ fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true })
+            onCommit?.()
+          }}
         >
           Auto 10 ms
         </button>
         <button
           type="button"
           className={styles.ghost}
-          onClick={() => onEdit({ fadeIn: 0, fadeOut: 0, fadeAuto: false })}
+          onClick={() => {
+            onEdit({ fadeIn: 0, fadeOut: 0, fadeAuto: false })
+            onCommit?.()
+          }}
         >
           Off
         </button>
@@ -219,12 +301,24 @@ function ModuleInspector({
   snap,
   type,
   instanceId,
+  variant,
 }: {
   snap: EngineSnapshot
   type: ModuleType
   instanceId: string
+  variant: 'knob' | 'slider'
 }) {
   const mod = snap.chain.find((m) => m.instanceId === instanceId)
+  const params = (ids: ParamId[]) =>
+    variant === 'knob' ? (
+      <div className={styles.knobs}>
+        {ids.map((id) => (
+          <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
+        ))}
+      </div>
+    ) : (
+      ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
+    )
   return (
     <>
       <div className={styles.head}>
@@ -237,7 +331,7 @@ function ModuleInspector({
           />
         ) : null}
       </div>
-      {type === 'gain' ? GAIN_IDS.map((id) => <ParamSlider key={id} id={id} value={snap.params[id]} />) : null}
+      {type === 'gain' ? params(GAIN_IDS) : null}
       {type === 'grain' ? (
         <>
           <Toggle
@@ -251,22 +345,19 @@ function ModuleInspector({
             label="Direction"
             value={snap.direction}
             options={PLAYBACK_DIRECTIONS}
+            wrap
             onChange={(d) => engine.setDirection(d)}
           />
-          {GRAIN_IDS.map((id) => (
-            <ParamSlider key={id} id={id} value={snap.params[id]} />
-          ))}
+          {params(GRAIN_IDS)}
         </>
       ) : null}
-      {type === 'eq' ? <EqEditor snap={snap} /> : null}
-      {type === 'saturation' ? SAT_IDS.map((id) => <ParamSlider key={id} id={id} value={snap.params[id]} />) : null}
-      {type === 'delay' ? DELAY_IDS.map((id) => <ParamSlider key={id} id={id} value={snap.params[id]} />) : null}
-      {type === 'reverb' ? REVERB_IDS.map((id) => <ParamSlider key={id} id={id} value={snap.params[id]} />) : null}
+      {type === 'eq' ? <EqEditor snap={snap} knobs={variant === 'knob'} /> : null}
+      {type === 'saturation' ? params(SAT_IDS) : null}
+      {type === 'delay' ? params(DELAY_IDS) : null}
+      {type === 'reverb' ? params(REVERB_IDS) : null}
       {type === 'output' ? (
         <>
-          {OUT_IDS.map((id) => (
-            <ParamSlider key={id} id={id} value={snap.params[id]} />
-          ))}
+          {params(OUT_IDS)}
           <Toggle pressed={snap.muted} label="Mute" onToggle={() => engine.setMuted(!snap.muted)} />
         </>
       ) : null}
@@ -274,58 +365,104 @@ function ModuleInspector({
   )
 }
 
-function EqEditor({ snap }: { snap: EngineSnapshot }) {
+function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
   return (
     <div className={styles.eq}>
+      <EqCurve bands={snap.eqBands} sampleRate={snap.sampleRate} />
       {snap.eqBands.map((band, index) => (
         <details key={index} className={styles.band} open={index === 0}>
           <summary>Band {index + 1}</summary>
           <Segmented
             label={`Band ${index + 1} type`}
             value={band.type}
-            options={EQ_FILTER_TYPES}
+            options={EQ_TYPE_OPTIONS}
+            wrap
             onChange={(type) => engine.setEqBand(index, { type })}
           />
-          <label className={styles.field}>
-            Frequency
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.001}
-              value={freqToN(band.frequency)}
-              onChange={(e) =>
-                engine.setEqBand(index, { frequency: nToFreq(Number(e.target.value)) })
-              }
-            />
-            <span>{band.frequency >= 1000 ? `${(band.frequency / 1000).toFixed(2)} kHz` : `${Math.round(band.frequency)} Hz`}</span>
-          </label>
-          {bandUsesGain(band.type) ? (
-            <label className={styles.field}>
-              Gain
-              <input
-                type="range"
-                min={-18}
-                max={18}
-                step={0.1}
-                value={band.gain}
-                onChange={(e) => engine.setEqBand(index, { gain: Number(e.target.value) })}
+          {knobs ? (
+            <div className={styles.knobs}>
+              <ValueKnob
+                label="Freq"
+                valueText={
+                  band.frequency >= 1000
+                    ? `${(band.frequency / 1000).toFixed(2)} kHz`
+                    : `${Math.round(band.frequency)} Hz`
+                }
+                normalized={freqToN(band.frequency)}
+                min={20}
+                max={20000}
+                now={band.frequency}
+                onChange={(n) => engine.setEqBand(index, { frequency: nToFreq(n) })}
               />
-              <span>{band.gain.toFixed(1)} dB</span>
-            </label>
-          ) : null}
-          <label className={styles.field}>
-            Q
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.001}
-              value={qToN(band.q)}
-              onChange={(e) => engine.setEqBand(index, { q: nToQ(Number(e.target.value)) })}
-            />
-            <span>{band.q.toFixed(2)}</span>
-          </label>
+              {bandUsesGain(band.type) ? (
+                <ValueKnob
+                  label="Gain"
+                  valueText={`${band.gain.toFixed(1)} dB`}
+                  normalized={(band.gain + 18) / 36}
+                  min={-18}
+                  max={18}
+                  now={band.gain}
+                  onChange={(n) => engine.setEqBand(index, { gain: n * 36 - 18 })}
+                />
+              ) : null}
+              <ValueKnob
+                label="Q"
+                valueText={band.q.toFixed(2)}
+                normalized={qToN(band.q)}
+                min={0.1}
+                max={20}
+                now={band.q}
+                onChange={(n) => engine.setEqBand(index, { q: nToQ(n) })}
+              />
+            </div>
+          ) : (
+            <>
+              <label className={styles.field}>
+                Frequency
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  value={freqToN(band.frequency)}
+                  onChange={(e) =>
+                    engine.setEqBand(index, { frequency: nToFreq(Number(e.target.value)) })
+                  }
+                />
+                <span>
+                  {band.frequency >= 1000
+                    ? `${(band.frequency / 1000).toFixed(2)} kHz`
+                    : `${Math.round(band.frequency)} Hz`}
+                </span>
+              </label>
+              {bandUsesGain(band.type) ? (
+                <label className={styles.field}>
+                  Gain
+                  <input
+                    type="range"
+                    min={-18}
+                    max={18}
+                    step={0.1}
+                    value={band.gain}
+                    onChange={(e) => engine.setEqBand(index, { gain: Number(e.target.value) })}
+                  />
+                  <span>{band.gain.toFixed(1)} dB</span>
+                </label>
+              ) : null}
+              <label className={styles.field}>
+                Q
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  value={qToN(band.q)}
+                  onChange={(e) => engine.setEqBand(index, { q: nToQ(Number(e.target.value)) })}
+                />
+                <span>{band.q.toFixed(2)}</span>
+              </label>
+            </>
+          )}
         </details>
       ))}
     </div>

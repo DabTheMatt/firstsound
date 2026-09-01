@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFades, fadeGain } from './fades'
+import { applyFades, fadeGain, regionFadeGain } from './fades'
 
 describe('fadeGain', () => {
   it('starts at 0 and ends at 1 for fade-in', () => {
@@ -11,6 +11,14 @@ describe('fadeGain', () => {
 
   it('equal-power is 1/sqrt(2) at the midpoint', () => {
     expect(fadeGain(0.5, 'equalPower')).toBeCloseTo(Math.SQRT1_2, 5)
+  })
+})
+
+describe('regionFadeGain', () => {
+  it('is 0 at the start of a fade-in and 1 in the middle', () => {
+    expect(regionFadeGain(0, 1, 0.2, 0.2, 'linear')).toBeCloseTo(0)
+    expect(regionFadeGain(0.5, 1, 0.2, 0.2, 'linear')).toBeCloseTo(1)
+    expect(regionFadeGain(1, 1, 0.2, 0.2, 'linear')).toBeCloseTo(0)
   })
 })
 

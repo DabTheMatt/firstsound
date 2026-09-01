@@ -45,6 +45,7 @@ type Props = {
   onLoadDemo: () => void
   onRegionCommit: () => void
   onFades: (patch: { fadeIn?: number; fadeOut?: number }) => void
+  onFadesCommit?: () => void
 }
 
 export type WaveformHandle = {
@@ -75,6 +76,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onLoadDemo,
     onRegionCommit,
     onFades,
+    onFadesCommit,
   },
   ref,
 ) {
@@ -319,6 +321,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         }
         onRegionCommit()
       }
+      if (mode === 'fadeIn' || mode === 'fadeOut') onFadesCommit?.()
     }
   }
 
@@ -363,18 +366,24 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     className={styles.region}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
-                  <FadeShade
+                  <FadePlot
                     left={regionLeft}
                     width={Math.max(0, fadeInPct - regionLeft)}
                     curve={fadeCurve}
                     side="in"
                   />
-                  <FadeShade
+                  <FadePlot
                     left={fadeOutPct}
                     width={Math.max(0, regionRight - fadeOutPct)}
                     curve={fadeCurve}
                     side="out"
                   />
+                  {tool === 'fade' && fadeInPct >= 0 && fadeInPct <= 100 ? (
+                    <div className={styles.fadeHandle} style={{ left: `${fadeInPct}%` }} />
+                  ) : null}
+                  {tool === 'fade' && fadeOutPct >= 0 && fadeOutPct <= 100 ? (
+                    <div className={styles.fadeHandle} style={{ left: `${fadeOutPct}%` }} />
+                  ) : null}
                   {startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"
@@ -422,7 +431,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   )
 })
 
-function FadeShade({
+function FadePlot({
   left,
   width,
   curve,
@@ -433,19 +442,29 @@ function FadeShade({
   curve: FadeCurve
   side: 'in' | 'out'
 }) {
-  const alpha = side === 'in' ? 0.5 : 0.5
+  if (width <= 0.08) return null
+  const n = 40
+  const line: string[] = []
+  const fill: string[] = ['0,100']
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const g = side === 'in' ? fadeGain(t, curve) : fadeGain(1 - t, curve)
+    const x = t * 100
+    const y = (1 - g) * 100
+    line.push(`${x},${y}`)
+    fill.push(`${x},${y}`)
+  }
+  fill.push('100,100')
   return (
-    <div
-      className={styles.fade}
-      style={{
-        left: `${left}%`,
-        width: `${width}%`,
-        opacity: 0.35 + alpha * fadeGain(0.5, curve) * 0.2,
-        background:
-          side === 'in'
-            ? 'linear-gradient(90deg, #1a1a1a 0%, transparent 100%)'
-            : 'linear-gradient(90deg, transparent 0%, #1a1a1a 100%)',
-      }}
-    />
+    <svg
+      className={styles.fadeSvg}
+      style={{ left: `${left}%`, width: `${width}%` }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polygon points={fill.join(' ')} className={styles.fadeFill} />
+      <polyline points={line.join(' ')} className={styles.fadeLine} />
+    </svg>
   )
 }
