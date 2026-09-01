@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatFreqTick, hzToNoteName, midiToHz, midiToNoteName, musicalScaleHz } from './pitchScale'
+import {
+  formatFreqTick,
+  formatHoverFreq,
+  hzFromLogAxis,
+  hzToNoteName,
+  midiToHz,
+  midiToNoteName,
+  musicalScaleHz,
+} from './pitchScale'
 
 describe('pitchScale', () => {
   it('names A4 and C4 from frequency', () => {
@@ -19,5 +27,16 @@ describe('pitchScale', () => {
     expect(formatFreqTick(20)).toBe('20')
     expect(formatFreqTick(1000)).toBe('1k')
     expect(formatFreqTick(20000)).toBe('20k')
+  })
+
+  it('inverts a log frequency axis', () => {
+    expect(hzFromLogAxis(0, 20, 20000)).toBeCloseTo(20)
+    expect(hzFromLogAxis(1, 20, 20000)).toBeCloseTo(20000)
+    expect(hzFromLogAxis(0.5, 20, 20000)).toBeCloseTo(Math.sqrt(20 * 20000))
+  })
+
+  it('formats a cursor readout with note name', () => {
+    expect(formatHoverFreq(440)).toBe('440 Hz · A4')
+    expect(formatHoverFreq(2000)).toMatch(/2\.00 kHz/)
   })
 })

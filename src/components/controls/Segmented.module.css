@@ -18,11 +18,15 @@
 }
 
 .wrap .segment {
-  flex: 1 1 calc(25% - 3px);
-  min-width: 52px;
-  padding: 0 10px;
+  flex: 0 1 auto;
+  min-width: unset;
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px 10px;
   font-size: 10px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .group::-webkit-scrollbar {

@@ -32,7 +32,7 @@
 }
 
 .dock-right .work {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 72px;
 }
 
 .inspectorHidden.dock-right .work {

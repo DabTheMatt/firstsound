@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT, AUDIO_IMPORT_HINT } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
@@ -6,6 +6,7 @@ import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { isTypingTarget } from './keys'
+import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { SignalChain } from '../components/chain/SignalChain'
@@ -46,7 +47,7 @@ function histKey(
 
 export default function App() {
   const snap = useEngine()
-  const { mode } = useLayoutMode()
+  const { mode, width: viewportWidth } = useLayoutMode()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
@@ -307,6 +308,11 @@ export default function App() {
     >
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden}`}
+        style={
+          mode === 'dock-right' && inspectorOpen
+            ? ({ '--inspector-col': `${inspectorWidth(mode, viewportWidth)}px` } as CSSProperties)
+            : undefined
+        }
       >
         <AppHeader
           snap={snap}
