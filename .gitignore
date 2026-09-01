@@ -21,3 +21,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# local agent test dumps
+FIELD_APP_TEST_REPORT.md
+field_test_screenshots/
