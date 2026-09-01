@@ -50,8 +50,17 @@ export function defaultEqBands(): EqBand[] {
   ]
 }
 
-export function bandUsesGain(type: EqFilterType): boolean {
+export function bandUsesBiquadGain(type: EqFilterType): boolean {
   return type === 'peaking' || type === 'lowshelf' || type === 'highshelf'
+}
+
+/** HP/LP (and notch/BP) ignore BiquadFilter.gain — apply makeup after the band. */
+export function bandUsesMakeupGain(type: EqFilterType): boolean {
+  return type === 'lowpass' || type === 'highpass' || type === 'notch' || type === 'bandpass'
+}
+
+export function bandUsesGain(type: EqFilterType): boolean {
+  return bandUsesBiquadGain(type) || bandUsesMakeupGain(type)
 }
 
 export function bandUsesSlope(type: EqFilterType): boolean {

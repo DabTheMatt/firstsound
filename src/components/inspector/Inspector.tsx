@@ -369,6 +369,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                 wrap
                 onChange={(slope) => engine.setEqBand(index, { slope: Number(slope) as FilterSlope })}
               />
+              <p className={styles.help}>Gain is makeup after the filter.</p>
             </>
           ) : null}
           {knobs ? (

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bandUsesGain,
+  bandUsesMakeupGain,
   defaultEqBands,
   filterStageCount,
   parseEqBands,
@@ -28,6 +30,16 @@ describe('parseEqBands', () => {
     const raw = defaultEqBands()
     raw[0] = { ...raw[0]!, type: 'lowpass', slope: 48 }
     expect(parseEqBands(raw)?.[0]?.slope).toBe(48)
+  })
+})
+
+describe('bandUsesGain', () => {
+  it('exposes gain for HP/LP makeup as well as bells and shelves', () => {
+    expect(bandUsesGain('highpass')).toBe(true)
+    expect(bandUsesGain('lowpass')).toBe(true)
+    expect(bandUsesMakeupGain('highpass')).toBe(true)
+    expect(bandUsesMakeupGain('peaking')).toBe(false)
+    expect(bandUsesGain('off')).toBe(false)
   })
 })
 

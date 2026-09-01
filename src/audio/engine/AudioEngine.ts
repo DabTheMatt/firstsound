@@ -91,6 +91,7 @@ import {
   EQ_BAND_COUNT,
   EQ_MAX_STAGES,
   EQ_NODE_COUNT,
+  bandUsesMakeupGain,
   filterStageCount,
   parseEqBands,
   stageQ,
@@ -178,6 +179,7 @@ type Slot = {
   dry: GainNode
   wet: GainNode
   eq?: BiquadFilterNode[]
+  eqMakeup?: GainNode[]
   shaper?: WaveShaperNode
   delay?: DelayNode
   delayFb?: GainNode
@@ -1372,12 +1374,22 @@ export class AudioEngine {
     }
     if (mod.type === 'eq') {
       const bands: BiquadFilterNode[] = []
+      const makeup: GainNode[] = []
       for (let i = 0; i < EQ_NODE_COUNT; i++) bands.push(ctx.createBiquadFilter())
+      for (let i = 0; i < EQ_BAND_COUNT; i++) makeup.push(ctx.createGain())
       input.connect(wet)
       wet.connect(bands[0]!)
-      for (let i = 0; i < bands.length - 1; i++) bands[i]!.connect(bands[i + 1]!)
-      bands.at(-1)!.connect(output)
+      for (let bandIndex = 0; bandIndex < EQ_BAND_COUNT; bandIndex++) {
+        const first = bandIndex * EQ_MAX_STAGES
+        const last = first + EQ_MAX_STAGES - 1
+        for (let i = first; i < last; i++) bands[i]!.connect(bands[i + 1]!)
+        bands[last]!.connect(makeup[bandIndex]!)
+        const next = bands[(bandIndex + 1) * EQ_MAX_STAGES]
+        if (next) makeup[bandIndex]!.connect(next)
+        else makeup[bandIndex]!.connect(output)
+      }
       slot.eq = bands
+      slot.eqMakeup = makeup
     }
     if (mod.type === 'saturation') {
       const shaper = ctx.createWaveShaper()
@@ -1585,6 +1597,11 @@ export class AudioEngine {
         node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
         node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
         node.gain.setTargetAtTime(band.gain, now, smoothing)
+      }
+      const makeup = eqSlot.eqMakeup?.[bandIndex]
+      if (makeup) {
+        const g = band && bandUsesMakeupGain(band.type) ? dbToGain(band.gain) : 1
+        makeup.gain.setTargetAtTime(g, now, smoothing)
       }
     }
   }

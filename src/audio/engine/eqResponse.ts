@@ -1,4 +1,4 @@
-import { filterStageCount, stageQ, type EqBand, type EqFilterType } from './eqBands'
+import { bandUsesMakeupGain, filterStageCount, stageQ, type EqBand, type EqFilterType } from './eqBands'
 
 type Biquad = { b0: number; b1: number; b2: number; a1: number; a2: number }
 
@@ -19,6 +19,7 @@ export function eqMagnitudeDb(bands: EqBand[], freqHz: number, sampleRate: numbe
       if (!coef) continue
       db += biquadMagDb(coef, f, sampleRate)
     }
+    if (bandUsesMakeupGain(band.type)) db += band.gain
   }
   return db
 }
