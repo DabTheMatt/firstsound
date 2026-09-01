@@ -481,6 +481,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     <div className={styles.editor}>
       <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
         <div className={styles.wrap} hidden={!showWave}>
+          <div className={styles.wavePane}>
             <canvas ref={canvasRef} className={styles.canvas} />
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} />
             <div
@@ -567,14 +568,24 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
+          {loaded && duration > 0 ? (
+            <Overview
+              duration={duration}
+              start={start}
+              end={end}
+              view={view}
+              contentRev={contentRev}
+              onScrub={setView}
+            />
+          ) : null}
+        </div>
         {showSpec ? (
           <div className={styles.spec}>
             <Spectrum active={showSpec} />
           </div>
         ) : null}
       </div>
-
-      {loaded && duration > 0 ? (
+      {loaded && duration > 0 && !showWave ? (
         <Overview
           duration={duration}
           start={start}

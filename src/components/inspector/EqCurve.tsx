@@ -1,15 +1,18 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
+import { EQ_MAX_HZ, EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
 import {
-  bandUsesGain,
-  bandUsesWidth,
-  EQ_MAX_HZ,
-  EQ_MIN_HZ,
-  type EqBand,
-} from '../../audio/engine/eqBands'
+  dbToY,
+  eqBandDragPatch,
+  EQ_MINI_BAND_COUNT,
+  freqToX,
+  nodeDisplayDb,
+  xToFreq,
+  yToDb,
+} from '../../audio/engine/eqPlot'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
-import { fftPeakDbInHzRange } from '../../audio/engine/spectrumBands'
+import { bandPeakDb, logBandEdgesHz } from '../../audio/engine/spectrumBands'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -23,34 +26,7 @@ type Props = {
   onDragBand?: (index: number, patch: Partial<EqBand>) => void
 }
 
-const MIN_DB = -48
-const MAX_DB = 18
-
-export function freqToX(hz: number, width: number, maxHz: number): number {
-  const hi = Math.max(maxHz, EQ_MIN_HZ * 1.01)
-  const t = Math.log(Math.min(hi, Math.max(EQ_MIN_HZ, hz)) / EQ_MIN_HZ) / Math.log(hi / EQ_MIN_HZ)
-  return t * width
-}
-
-export function xToFreq(x: number, width: number, maxHz: number): number {
-  const hi = Math.max(maxHz, EQ_MIN_HZ * 1.01)
-  const t = Math.min(1, Math.max(0, x / Math.max(1, width)))
-  return EQ_MIN_HZ * (hi / EQ_MIN_HZ) ** t
-}
-
-export function dbToY(db: number, height: number): number {
-  return ((MAX_DB - db) / (MAX_DB - MIN_DB)) * height
-}
-
-export function yToDb(y: number, height: number): number {
-  return MAX_DB - (y / Math.max(1, height)) * (MAX_DB - MIN_DB)
-}
-
-function nodeDb(band: EqBand): number {
-  if (bandUsesGain(band.type)) return band.gain
-  if (bandUsesWidth(band.type)) return Math.min(12, Math.max(-12, (Math.log(band.q) - Math.log(0.7)) * 6))
-  return 0
-}
+export { dbToY, freqToX, xToFreq, yToDb }
 
 export function EqCurve({
   bands,
@@ -99,25 +75,21 @@ export function EqCurve({
         const bins = new Float32Array(analyser.frequencyBinCount)
         analyser.getFloatFrequencyData(bins)
         const fftSr = engine.getSnapshot().sampleRate || sr
+        const nyquist = fftSr / 2
+        const peaks = bandPeakDb(bins, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ)
+        const edges = logBandEdgesHz(EQ_MIN_HZ, Math.min(nyquist, EQ_MAX_HZ), EQ_MINI_BAND_COUNT)
+        const gap = Math.max(1, Math.floor((width / EQ_MINI_BAND_COUNT) * 0.12))
         const zeroY = dbToY(0, height)
-        ctx.beginPath()
-        ctx.moveTo(0, height)
-        for (let x = 0; x < width; x++) {
-          const t0 = x / Math.max(1, width)
-          const t1 = (x + 1) / Math.max(1, width)
-          const lo = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** t0
-          const hi = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** t1
-          const mag = fftPeakDbInHzRange(bins, fftSr, lo, hi)
-          const t = Math.min(1, Math.max(0, (0 - mag) / 90))
-          ctx.lineTo(x, zeroY + t * (height - zeroY))
-        }
-        ctx.lineTo(width, height)
-        ctx.closePath()
         ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.42)
-        ctx.fill()
-        ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 0.7)
-        ctx.lineWidth = Math.max(1, dpr)
-        ctx.stroke()
+        for (let i = 0; i < EQ_MINI_BAND_COUNT; i++) {
+          const x0 = freqToX(edges[i] ?? EQ_MIN_HZ, width, EQ_MAX_HZ)
+          const x1 = freqToX(edges[i + 1] ?? Math.min(nyquist, EQ_MAX_HZ), width, EQ_MAX_HZ)
+          const mag = peaks[i] ?? -100
+          const t = Math.min(1, Math.max(0, (0 - mag) / 90))
+          const y = zeroY + t * (height - zeroY)
+          const bandW = Math.max(1, x1 - x0)
+          ctx.fillRect(x0 + gap / 2, y, Math.max(1, bandW - gap), height - y)
+        }
       }
       const zeroY = dbToY(0, height)
       ctx.strokeStyle = colors.borderSubtle
@@ -177,16 +149,7 @@ export function EqCurve({
     if (!band) return
     const frequency = xToFreq(x, rect.width, EQ_MAX_HZ)
     const db = yToDb(y, rect.height)
-    const patch: Partial<EqBand> = { frequency }
-    if (bandUsesGain(band.type)) patch.gain = Math.min(18, Math.max(-18, db))
-    else if (bandUsesWidth(band.type)) {
-      const dy = d.y0 - event.clientY
-      patch.q = Math.min(20, Math.max(0.1, d.q0 * 2 ** (dy / 80)))
-    } else {
-      const dy = d.y0 - event.clientY
-      patch.q = Math.min(20, Math.max(0.1, d.q0 * 2 ** (dy / 90)))
-    }
-    onDragBand?.(d.index, patch)
+    onDragBand?.(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY))
   }
 
   const onNodePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -204,7 +167,7 @@ export function EqCurve({
       {bands.map((band, index) => {
         if (band.type === 'off') return null
         const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
-        const yPct = dbToY(nodeDb(band), 1) * 100
+        const yPct = dbToY(nodeDisplayDb(band), 1) * 100
         const selected = index === selectedBand
         return (
           <button
