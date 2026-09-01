@@ -3,6 +3,7 @@ import {
   SPECTRUM_BAND_COUNT,
   bandPeakDb,
   clampSpectrumBandCount,
+  fftPeakDbInHzRange,
   followEnvelope,
   logBandEdgesHz,
 } from './spectrumBands'
@@ -31,6 +32,19 @@ describe('bandPeakDb', () => {
     const peakBand = [...bands].indexOf(Math.max(...bands))
     expect(bands[peakBand]).toBeCloseTo(-12)
     expect(bands.filter((d) => d > -80).length).toBeLessThan(4)
+  })
+})
+
+describe('fftPeakDbInHzRange', () => {
+  it('reads the peak inside a frequency window', () => {
+    const bins = new Float32Array(512)
+    bins.fill(-90)
+    const sampleRate = 44100
+    const fftSize = 1024
+    const hz = 1000
+    bins[Math.round((hz * fftSize) / sampleRate)] = -8
+    expect(fftPeakDbInHzRange(bins, sampleRate, 800, 1200)).toBeCloseTo(-8)
+    expect(fftPeakDbInHzRange(bins, sampleRate, 80, 120)).toBeCloseTo(-90)
   })
 })
 

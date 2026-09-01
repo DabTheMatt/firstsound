@@ -66,6 +66,29 @@ export function bandPeakDb(
   return out
 }
 
+/** Peak FFT bin dB between two frequencies (AnalyserNode.getFloatFrequencyData). */
+export function fftPeakDbInHzRange(
+  binsDb: ArrayLike<number>,
+  sampleRate: number,
+  loHz: number,
+  hiHz: number,
+): number {
+  const n = binsDb.length
+  if (n < 2 || !(sampleRate > 0)) return -100
+  const fftSize = n * 2
+  const nyquist = sampleRate / 2
+  const lo = Math.min(nyquist, Math.max(1, Math.min(loHz, hiHz)))
+  const hi = Math.min(nyquist, Math.max(lo * 1.001, Math.max(loHz, hiHz)))
+  const i0 = Math.max(1, Math.floor((lo * fftSize) / sampleRate))
+  const i1 = Math.min(n - 1, Math.ceil((hi * fftSize) / sampleRate))
+  let peak = -100
+  for (let i = i0; i <= i1; i++) {
+    const db = binsDb[i] ?? -100
+    if (db > peak) peak = db
+  }
+  return peak
+}
+
 export function followEnvelope(prev: number, target: number, attack: number, release: number): number {
   const coef = target > prev ? attack : release
   return prev + (target - prev) * coef

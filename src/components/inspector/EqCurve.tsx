@@ -9,6 +9,7 @@ import {
   type EqBand,
 } from '../../audio/engine/eqBands'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { fftPeakDbInHzRange } from '../../audio/engine/spectrumBands'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -93,31 +94,30 @@ export function EqCurve({
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
-      const analyser = engine.getAnalyser('eq')
+      const analyser = engine.getAnalyser('pre') ?? engine.getAnalyser('eq')
       if (analyser) {
         const bins = new Float32Array(analyser.frequencyBinCount)
         analyser.getFloatFrequencyData(bins)
         const fftSr = engine.getSnapshot().sampleRate || sr
-        const nyquist = fftSr / 2
-        const fftSize = analyser.fftSize
+        const zeroY = dbToY(0, height)
         ctx.beginPath()
         ctx.moveTo(0, height)
         for (let x = 0; x < width; x++) {
-          const hz = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** (x / Math.max(1, width - 1))
-          const bin = Math.min(bins.length - 1, Math.max(1, Math.round((hz * fftSize) / fftSr)))
-          if (hz > nyquist) {
-            ctx.lineTo(x, height)
-            continue
-          }
-          const mag = bins[bin] ?? -100
-          const t = Math.min(1, Math.max(0, (0 - mag) / 100))
-          const y = dbToY(0, height) + t * (height - dbToY(0, height))
-          ctx.lineTo(x, y)
+          const t0 = x / Math.max(1, width)
+          const t1 = (x + 1) / Math.max(1, width)
+          const lo = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** t0
+          const hi = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** t1
+          const mag = fftPeakDbInHzRange(bins, fftSr, lo, hi)
+          const t = Math.min(1, Math.max(0, (0 - mag) / 90))
+          ctx.lineTo(x, zeroY + t * (height - zeroY))
         }
         ctx.lineTo(width, height)
         ctx.closePath()
-        ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.35)
+        ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.42)
         ctx.fill()
+        ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 0.7)
+        ctx.lineWidth = Math.max(1, dpr)
+        ctx.stroke()
       }
       const zeroY = dbToY(0, height)
       ctx.strokeStyle = colors.borderSubtle
