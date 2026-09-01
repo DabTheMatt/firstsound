@@ -10,6 +10,7 @@ import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
+import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
@@ -226,6 +227,7 @@ export default function App() {
           })
       }}
       knobs={mode !== 'sheet'}
+      onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
   ) : null
@@ -385,6 +387,11 @@ export default function App() {
             />
           </div>
           {dockRight && inspectorOpen ? <aside className={styles.inspector}>{inspector}</aside> : null}
+          {dockRight && !inspectorOpen ? (
+            <div className={styles.inspectorReveal}>
+              <InspectorEye open={false} onClick={() => setInspectorOpen(true)} />
+            </div>
+          ) : null}
           {dockRight ? (
             <MeterStrip channels={snap.channelCount} range={meterRange} onRange={setMeterRange} />
           ) : null}
@@ -437,16 +444,6 @@ export default function App() {
             ) : null}
             {sheetLevel !== 'collapsed' || !sheet ? inspector : null}
           </div>
-        ) : null}
-
-        {dockRight ? (
-          <button
-            type="button"
-            className={styles.toggleInspector}
-            onClick={() => setInspectorOpen((v) => !v)}
-          >
-            {inspectorOpen ? 'Hide inspector' : 'Show inspector'}
-          </button>
         ) : null}
 
         <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>

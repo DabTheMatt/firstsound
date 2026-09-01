@@ -1,0 +1,29 @@
+.eye {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1.5px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  touch-action: manipulation;
+}
+
+.eye:hover,
+.eye.open {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.eye:hover {
+  color: var(--text-secondary);
+}
+
+.eye.open:hover {
+  color: var(--accent-primary);
+}

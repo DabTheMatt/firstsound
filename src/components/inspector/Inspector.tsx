@@ -18,6 +18,7 @@ import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
+import { InspectorEye } from './InspectorEye'
 import { SpaceInspector } from './SpaceInspector'
 import styles from './Inspector.module.css'
 
@@ -31,6 +32,7 @@ type Props = {
   onTrim?: () => void
   sheet?: boolean
   knobs?: boolean
+  onHideInspector?: () => void
 }
 
 const GAIN_IDS: ParamId[] = ['gain']
@@ -66,6 +68,7 @@ export function Inspector({
   onTrim,
   sheet,
   knobs = true,
+  onHideInspector,
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
@@ -79,6 +82,7 @@ export function Inspector({
           onCommit={onCommit}
           onTrim={onTrim}
           knobs={knobs}
+          onHideInspector={onHideInspector}
         />
       ) : (
         <ModuleInspector
@@ -86,6 +90,7 @@ export function Inspector({
           type={focus.type}
           instanceId={focus.instanceId}
           variant={variant}
+          onHideInspector={onHideInspector}
         />
       )}
     </div>
@@ -100,6 +105,7 @@ function ToolInspector({
   onCommit,
   onTrim,
   knobs,
+  onHideInspector,
 }: {
   snap: EngineSnapshot
   edit: EditState
@@ -108,12 +114,20 @@ function ToolInspector({
   onCommit?: () => void
   onTrim?: () => void
   knobs: boolean
+  onHideInspector?: () => void
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
   const maxMs = 2000
   return (
     <>
-      <h2 className={styles.title}>Edit</h2>
+      <div className={styles.head}>
+        <h2 className={styles.title}>Edit</h2>
+        {onHideInspector ? (
+          <div className={styles.headActions}>
+            <InspectorEye open onClick={onHideInspector} />
+          </div>
+        ) : null}
+      </div>
       <Readout label="Start" value={formatTimecode(snap.params.start)} />
       <Readout label="End" value={formatTimecode(snap.params.end)} />
       <Readout label="Length" value={formatTimecode(length)} />
@@ -268,11 +282,13 @@ function ModuleInspector({
   type,
   instanceId,
   variant,
+  onHideInspector,
 }: {
   snap: EngineSnapshot
   type: ModuleType
   instanceId: string
   variant: 'knob' | 'slider'
+  onHideInspector?: () => void
 }) {
   const mod = snap.chain.find((m) => m.instanceId === instanceId)
   const params = (ids: ParamId[]) =>
@@ -289,13 +305,16 @@ function ModuleInspector({
     <>
       <div className={styles.head}>
         <h2 className={styles.title}>{MODULE_LABELS[type]}</h2>
-        {type !== 'gain' && type !== 'output' ? (
-          <Toggle
-            pressed={!mod?.bypassed}
-            label={mod?.bypassed ? 'Bypassed' : 'Active'}
-            onToggle={() => engine.setModuleBypass(instanceId, !mod?.bypassed)}
-          />
-        ) : null}
+        <div className={styles.headActions}>
+          {type !== 'gain' && type !== 'output' ? (
+            <Toggle
+              pressed={!mod?.bypassed}
+              label={mod?.bypassed ? 'Bypassed' : 'Active'}
+              onToggle={() => engine.setModuleBypass(instanceId, !mod?.bypassed)}
+            />
+          ) : null}
+          {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
+        </div>
       </div>
       {type === 'gain' ? params(GAIN_IDS) : null}
       {type === 'grain' ? (
