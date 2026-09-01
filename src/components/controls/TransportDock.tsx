@@ -186,14 +186,14 @@ export function TransportDock({
           overflow="visible"
           aria-hidden="true"
         >
-          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#34383b" strokeWidth="4" />
+          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#8a8f92" strokeWidth="3.5" />
           <circle
             cx={CENTER}
             cy={CENTER}
             r={RADIUS}
             fill="none"
-            stroke="color-mix(in srgb, var(--accent) 55%, #34383b)"
-            strokeWidth="4"
+            stroke="var(--accent)"
+            strokeWidth="3.5"
             strokeLinecap="butt"
             strokeDasharray={regionDash.dashArray}
             strokeDashoffset={regionDash.dashOffset}
