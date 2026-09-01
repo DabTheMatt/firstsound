@@ -55,8 +55,7 @@ export function LimiterWave() {
           out.fill(0, 0, n)
           return
         }
-        const srcCount = Math.min(buf.length, Math.max(n, Math.floor((n / width) * buf.length)))
-        decimateWave(buf.subarray(buf.length - srcCount), n, out)
+        decimateWave(buf, n, out)
       }
       sliceNewest(timeIn, scratchIn)
       sliceNewest(timeOut, scratchOut)

@@ -1654,15 +1654,12 @@ export class AudioEngine {
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
-<<<<<<< HEAD
     if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
-=======
     const limSlot = ordered.find((s) => s.type === 'limiter')
     if (limSlot) {
       if (this.analyserLimiterPre) limSlot.input.connect(this.analyserLimiterPre)
       if (this.analyserLimiterPost) limSlot.output.connect(this.analyserLimiterPost)
     }
->>>>>>> 4b7f3db (Tap limiter In/Out analysers the same way as EQ.)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
