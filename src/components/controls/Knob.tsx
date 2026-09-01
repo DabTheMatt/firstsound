@@ -1,5 +1,5 @@
 import { PARAMS } from '../../audio/parameters/definitions'
-import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
+import { formatParamValue, fromNormalized, parseTypedParam, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ValueKnob } from './ValueKnob'
@@ -21,6 +21,12 @@ export function Knob({ id, value }: Props) {
       now={Number(value.toFixed(3))}
       onChange={(n) => engine.setParam(id, fromNormalized(n, def))}
       onReset={() => engine.resetParam(id)}
+      onTypedValue={(text) => {
+        const next = parseTypedParam(text, def)
+        if (next == null) return false
+        engine.setParam(id, next)
+        return true
+      }}
     />
   )
 }

@@ -9,7 +9,6 @@ import {
 } from 'react'
 import type { FadeCurve } from '../../audio/engine/fades'
 import { fadeGain } from '../../audio/engine/fades'
-import { formatTimecode } from '../../audio/engine/formatTime'
 import { computeMinMax } from '../../audio/engine/peaks'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine } from '../../hooks/useEngine'
@@ -30,6 +29,7 @@ import {
 import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
+import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
 
@@ -63,7 +63,7 @@ export type WaveformHandle = {
   zoomBy: (factor: number) => void
 }
 
-type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | 'fx' | null
+type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | 'fx' | 'playhead' | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   {
@@ -349,21 +349,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       }
     }
 
-    let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : 'move'
+    const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
+    const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
+
+    let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
     if (mode !== 'pan') {
-      if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit * 0.6) {
-        if (Math.abs(x - fadeInX) < hit && Math.abs(x - startX) >= hit) mode = 'fadeIn'
+      if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
+      else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
+      else if (handleAttr?.dataset.edge === 'start') mode = 'start'
+      else if (handleAttr?.dataset.edge === 'end') mode = 'end'
+      else if (!event.shiftKey) {
+        if (Math.abs(x - fadeInX) < hit && Math.abs(x - startX) >= hit * 0.45) mode = 'fadeIn'
+        else if (Math.abs(x - fadeOutX) < hit && Math.abs(x - endX) >= hit * 0.45) mode = 'fadeOut'
         else if (Math.abs(x - startX) < hit) mode = 'start'
-        else mode = 'fadeIn'
-      } else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit * 0.6) {
-        if (Math.abs(x - fadeOutX) < hit && Math.abs(x - endX) >= hit) mode = 'fadeOut'
         else if (Math.abs(x - endX) < hit) mode = 'end'
-        else mode = 'fadeOut'
-      } else if (x < startX || x > endX) {
-        engine.setParam('start', t)
-        mode = 'start'
+      } else {
+        if (Math.abs(x - startX) < hit) mode = 'start'
+        else if (Math.abs(x - endX) < hit) mode = 'end'
       }
     }
+    if (mode === 'playhead') engine.seekSeconds(t, 'sample')
     drag.current = {
       mode,
       span: end - start,
@@ -421,6 +426,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     else if (mode === 'end') engine.setParam('end', next)
     else if (mode === 'fadeIn') onFades({ fadeIn: Math.max(0, Math.min(end - start, next - start)) })
     else if (mode === 'fadeOut') onFades({ fadeOut: Math.max(0, Math.min(end - start, end - next)) })
+    else if (mode === 'playhead') engine.seekSeconds(next, 'sample')
     else if (mode === 'move') {
       const delta = next - originT
       const maxStart = Math.max(0, duration - span)
@@ -466,9 +472,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const fadeInPct = pct(start + fadeIn)
   const fadeOutPct = pct(end - fadeOut)
 
-  const ticks = useMemo(() => {
-    return [0, 0.25, 0.5, 0.75, 1].map((p) => formatTimecode(view.start + (view.end - view.start) * p))
-  }, [view])
+  const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
   const showWave = viz !== 'spectrum'
   const showSpec = viz === 'spectrum' || viz === 'split'
@@ -507,15 +511,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     side="out"
                   />
                   {fadeInPct >= 0 && fadeInPct <= 100 ? (
-                    <div className={styles.fadeHandle} style={{ left: `${fadeInPct}%` }} />
+                    <div
+                      className={styles.fadeHandle}
+                      data-fade="in"
+                      style={{ left: `${fadeInPct}%` }}
+                      aria-label="Fade in"
+                    />
                   ) : null}
                   {fadeOutPct >= 0 && fadeOutPct <= 100 ? (
-                    <div className={styles.fadeHandle} style={{ left: `${fadeOutPct}%` }} />
+                    <div
+                      className={styles.fadeHandle}
+                      data-fade="out"
+                      style={{ left: `${fadeOutPct}%` }}
+                      aria-label="Fade out"
+                    />
                   ) : null}
                   {!panning && startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"
                       className={styles.handle}
+                      data-edge="start"
                       style={{ left: `${startPct}%` }}
                       aria-label="Region start"
                     />
@@ -524,6 +539,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     <button
                       type="button"
                       className={styles.handle}
+                      data-edge="end"
                       style={{ left: `${endPct}%` }}
                       aria-label="Region end"
                     />
@@ -540,9 +556,15 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               )}
             </div>
             <div className={styles.ruler}>
-              {ticks.map((label, index) => (
-                <span key={index}>{loaded ? label : '—'}</span>
-              ))}
+              {loaded
+                ? ticks.map((mark) => (
+                    <span key={mark.t} className={styles.tick} style={{ left: `${mark.frac * 100}%` }}>
+                      {mark.label}
+                    </span>
+                  ))
+                : (
+                    <span>—</span>
+                  )}
             </div>
           </div>
         {showSpec ? (

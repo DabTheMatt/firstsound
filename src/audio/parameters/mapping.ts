@@ -95,6 +95,41 @@ export function playbackRate(speed: number, pitchSemitones: number): number {
   return speed * 2 ** (pitchSemitones / 12)
 }
 
+/** Parse a typed knob readout (`2k`, `12 dB`, `80ms`) into a parameter value. */
+export function parseTypedNumber(raw: string): { value: number; suffix: string } | null {
+  const s = raw.trim().toLowerCase().replace(',', '.')
+  const m = s.match(/[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/)
+  if (!m || m.index == null) return null
+  const value = Number(m[0])
+  if (!Number.isFinite(value)) return null
+  return { value, suffix: s.slice(m.index + m[0].length).replace(/\s+/g, '') }
+}
+
+export function parseTypedParam(raw: string, def: ParamDef): number | null {
+  const parsed = parseTypedNumber(raw)
+  if (!parsed) return null
+  let v = parsed.value
+  const suf = parsed.suffix
+  if (def.unit === 'Hz' && (suf.startsWith('k') || suf === 'khz')) v *= 1000
+  else if (def.unit === 'ms' && (suf === 's' || suf === 'sec')) v *= 1000
+  else if (def.unit === 's' && suf === 'ms') v /= 1000
+  return applyParamValue(v, def)
+}
+
+export function parseTypedRange(raw: string, min: number, max: number, unit = ''): number | null {
+  const parsed = parseTypedNumber(raw)
+  if (!parsed) return null
+  let v = parsed.value
+  const suf = parsed.suffix
+  if (unit === 'Hz' && (suf.startsWith('k') || suf === 'khz')) v *= 1000
+  else if (unit === 'ms' && (suf === 's' || suf === 'sec')) v *= 1000
+  else if (unit === 's' && suf === 'ms') v /= 1000
+  else if (unit === 'ms' && suf === '') {
+    /* typed value is already in display milliseconds */
+  }
+  return clamp(v, min, max)
+}
+
 export function formatParamValue(value: number, def: ParamDef): string {
   switch (def.id) {
     case 'speed':

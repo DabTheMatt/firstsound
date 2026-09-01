@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { wheelToNormalized } from './scrub'
 import styles from './Knob.module.css'
 
@@ -9,6 +9,7 @@ type Props = {
   onChange: (normalized: number) => void
   onReset?: () => void
   onGestureEnd?: () => void
+  onTypedValue?: (text: string) => boolean
   min?: number
   max?: number
   now?: number
@@ -23,12 +24,15 @@ export function ValueKnob({
   onChange,
   onReset,
   onGestureEnd,
+  onTypedValue,
   min = 0,
   max = 1,
   now,
 }: Props) {
   const dialRef = useRef<HTMLButtonElement>(null)
   const valueRef = useRef(normalized)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(valueText)
 
   useEffect(() => {
     valueRef.current = normalized
@@ -161,7 +165,39 @@ export function ValueKnob({
           />
         </svg>
       </button>
-      <p className={styles.value}>{valueText}</p>
+      {editing ? (
+        <input
+          className={styles.valueInput}
+          value={draft}
+          autoFocus
+          aria-label={`${label} value`}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => setEditing(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              const ok = onTypedValue?.(draft)
+              if (ok !== false) setEditing(false)
+            } else if (event.key === 'Escape') {
+              event.preventDefault()
+              setEditing(false)
+            }
+          }}
+        />
+      ) : (
+        <p
+          className={styles.value}
+          onDoubleClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setDraft(valueText)
+            setEditing(true)
+          }}
+          title="Double-click to type a value"
+        >
+          {valueText}
+        </p>
+      )}
     </div>
   )
 }

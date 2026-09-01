@@ -18,6 +18,6 @@ describe('pitchScale', () => {
   it('formats frequency ticks', () => {
     expect(formatFreqTick(20)).toBe('20')
     expect(formatFreqTick(1000)).toBe('1k')
-    expect(formatFreqTick(20000)).toBe('20k')
+    expect(formatFreqTick(25000)).toBe('25k')
   })
 })

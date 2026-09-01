@@ -239,6 +239,17 @@ export default function App() {
           </button>
         <button
           type="button"
+          onClick={() => {
+            void engine.unlock().then(() => {
+              if (engine.getSnapshot().recording) engine.stopMicRecord()
+              else void engine.startMicRecord()
+            })
+          }}
+        >
+          {snap.recording ? 'Stop recording' : 'Record microphone'}
+        </button>
+        <button
+          type="button"
           onClick={() => downloadJson('field-preset.json', engine.toPreset())}
         >
           Save preset
@@ -285,7 +296,7 @@ export default function App() {
         </button>
       </div>
     ),
-    [history, snap.hasSource],
+    [history, snap.hasSource, snap.recording],
   )
 
   return (
@@ -311,6 +322,12 @@ export default function App() {
           settingsOpen={moreOpen}
           onToggleSettings={() => setMenuOpen((v) => !v)}
           onLoadSample={() => sampleInput.current?.click()}
+          onRecord={() => {
+            void engine.unlock().then(() => {
+              if (engine.getSnapshot().recording) engine.stopMicRecord()
+              else void engine.startMicRecord()
+            })
+          }}
           compact={sheet}
         />
         {moreOpen ? (
@@ -330,6 +347,7 @@ export default function App() {
         {snap.audioStatus === 'blocked' ? (
           <p className={styles.banner}>Audio is paused by the browser. Tap Play to resume.</p>
         ) : null}
+        {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
         <SignalChain
           chain={snap.chain}

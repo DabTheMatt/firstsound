@@ -16,11 +16,12 @@
 .toolbar {
   position: absolute;
   top: 6px;
-  right: 8px;
+  left: 8px;
+  right: auto;
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 6px;
   max-width: calc(100% - 16px);
 }
@@ -74,19 +75,23 @@
 .regions {
   position: absolute;
   top: 8px;
-  left: 10px;
+  right: 10px;
+  left: auto;
   z-index: 2;
   margin: 0;
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-  max-width: 42%;
+  max-width: 48%;
   padding: 4px 6px;
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
   pointer-events: none;
+  background: color-mix(in srgb, var(--bg-app) 72%, transparent);
+  border-radius: 6px;
 }
 
 .regions span {

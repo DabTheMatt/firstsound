@@ -9,6 +9,9 @@ import {
   fullPlayRegion,
   formatParamValue,
   fromNormalized,
+  parseTypedNumber,
+  parseTypedParam,
+  parseTypedRange,
   playbackRate,
   toNormalized,
 } from './mapping'
@@ -35,6 +38,13 @@ describe('mapping', () => {
   it('formats filter cutoff in Hz and kHz', () => {
     expect(formatParamValue(800, PARAMS.filterCutoff)).toBe('800 Hz')
     expect(formatParamValue(4200, PARAMS.filterCutoff)).toBe('4.20 kHz')
+  })
+
+  it('parses typed knob values with unit suffixes', () => {
+    expect(parseTypedParam('2k', PARAMS.filterCutoff)).toBeCloseTo(2000, 5)
+    expect(parseTypedParam('12 st', PARAMS.pitch)).toBe(12)
+    expect(parseTypedNumber('80 ms')?.value).toBe(80)
+    expect(parseTypedRange('1.5s', 0, 2000, 'ms')).toBe(1500)
   })
 
   it('formats resonance as Q', () => {

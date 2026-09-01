@@ -20,12 +20,20 @@ import {
 } from '../parameters/mapping'
 import type {
   EngineMode,
+  EqListenMode,
   FilterType,
   ParamId,
   PlaybackDirection,
   PresetV1,
   ScrubMode,
 } from '../parameters/types'
+import {
+  combAsEqBands,
+  defaultCombFilter,
+  parseCombFilter,
+  type CombFilterState,
+} from './comb'
+import { createPinkNoiseBuffer } from './pinkNoise'
 import {
   applyDelayGraph,
   applyReverbGraph,
@@ -88,6 +96,7 @@ import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import {
   defaultEqBands,
+  COMB_MAX_TEETH,
   EQ_BAND_COUNT,
   EQ_MAX_STAGES,
   EQ_NODE_COUNT,
@@ -121,6 +130,10 @@ export type EngineSnapshot = {
   params: Record<ParamId, number>
   chain: ChainModule[]
   eqBands: EqBand[]
+  comb: CombFilterState
+  eqListen: EqListenMode
+  recording: boolean
+  recordError: string | null
   muted: boolean
   delayType: DelayType
   reverbType: ReverbType
@@ -232,6 +245,17 @@ export class AudioEngine {
   private params: Record<ParamId, number> = defaultParamValues()
   private chain: ChainModule[] = defaultChain()
   private eqBands: EqBand[] = defaultEqBands()
+  private comb: CombFilterState = defaultCombFilter()
+  private eqListen: EqListenMode = 'sample'
+  private noiseGain: GainNode | null = null
+  private noiseSource: AudioBufferSourceNode | null = null
+  private recStream: MediaStream | null = null
+  private recSource: MediaStreamAudioSourceNode | null = null
+  private recProc: ScriptProcessorNode | null = null
+  private recMute: GainNode | null = null
+  private recChunks: Float32Array[] = []
+  private recording = false
+  private recordError: string | null = null
   private listeners = new Set<Listener>()
   private snapshot: EngineSnapshot
   private source: AudioBufferSourceNode | null = null
@@ -996,6 +1020,9 @@ export class AudioEngine {
     this.reverbType = 'hall'
     this.reverbIrKey = ''
     this.eqBands = defaultEqBands()
+    this.comb = defaultCombFilter()
+    this.eqListen = 'sample'
+    this.stopNoise()
     this.chain = defaultChain()
     this.muted = false
     void this.rebuildGraph()
@@ -1028,6 +1055,103 @@ export class AudioEngine {
     this.emit()
   }
 
+  setComb(patch: Partial<CombFilterState>): void {
+    this.comb = { ...this.comb, ...patch }
+    this.applyEq(0.03)
+    this.emit()
+  }
+
+  setEqListen(mode: EqListenMode): void {
+    if (this.eqListen === mode) return
+    this.eqListen = mode
+    void this.ensureContext().then(() => {
+      this.syncEqListen()
+      this.applyBypassRamps(0.02)
+      this.emit()
+    })
+  }
+
+  async startMicRecord(): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx || this.recording) return
+    this.recordError = null
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+      })
+      this.recStream = stream
+      this.recChunks = []
+      const src = this.ctx.createMediaStreamSource(stream)
+      const proc = this.ctx.createScriptProcessor(4096, 1, 1)
+      const mute = this.ctx.createGain()
+      mute.gain.value = 0
+      proc.onaudioprocess = (event) => {
+        if (!this.recording) return
+        this.recChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+      }
+      src.connect(proc)
+      proc.connect(mute)
+      mute.connect(this.ctx.destination)
+      this.recSource = src
+      this.recProc = proc
+      this.recMute = mute
+      this.recording = true
+      this.emit()
+    } catch {
+      this.recordError = 'Microphone access was denied or is unavailable.'
+      this.emit()
+    }
+  }
+
+  stopMicRecord(): void {
+    if (!this.recording && !this.recStream) return
+    this.recording = false
+    const chunks = this.recChunks
+    this.recChunks = []
+    try {
+      this.recProc?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.recSource?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.recMute?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    this.recProc = null
+    this.recSource = null
+    this.recMute = null
+    this.recStream?.getTracks().forEach((t) => t.stop())
+    this.recStream = null
+    if (!this.ctx || chunks.length === 0) {
+      this.emit()
+      return
+    }
+    let total = 0
+    for (const c of chunks) total += c.length
+    if (total < this.ctx.sampleRate * 0.05) {
+      this.recordError = 'Recording was too short.'
+      this.emit()
+      return
+    }
+    const buffer = this.ctx.createBuffer(1, total, this.ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    let offset = 0
+    for (const c of chunks) {
+      data.set(c, offset)
+      offset += c.length
+    }
+    this.stopVoices()
+    this.playing = false
+    this.fileName = `mic-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.wav`
+    this.applyLoadedBuffer(buffer, true)
+  }
+
   toPreset(): PresetV1 {
     return {
       instrument: 'field',
@@ -1040,6 +1164,7 @@ export class AudioEngine {
       params: { ...this.params },
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
+      comb: { ...this.comb },
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
@@ -1084,6 +1209,8 @@ export class AudioEngine {
         ]
       }
     }
+    const parsedComb = parseCombFilter(preset.comb)
+    if (parsedComb) this.comb = parsedComb
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1341,6 +1468,8 @@ export class AudioEngine {
     this.analyserR.smoothingTimeConstant = 0.4
     this.previewGain = ctx.createGain()
     this.previewGain.gain.value = 1
+    this.noiseGain = ctx.createGain()
+    this.noiseGain.gain.value = 0
 
     for (const mod of normalizeChain(this.chain)) {
       this.slots.set(mod.instanceId, this.createSlot(mod))
@@ -1410,6 +1539,7 @@ export class AudioEngine {
     if (eqSlot) {
       if (this.analyserPre) eqSlot.input.connect(this.analyserPre)
       if (this.analyserEq) eqSlot.output.connect(this.analyserEq)
+      if (this.noiseGain) this.noiseGain.connect(eqSlot.input)
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
@@ -1472,6 +1602,7 @@ export class AudioEngine {
     this.connectSlots()
     this.applyLiveAudio()
     this.applyBypassRamps(0.01)
+    this.syncEqListen()
     this.rampSafety(this.muted ? 0.0001 : 1)
     this.reconnecting = false
     this.emit()
@@ -1523,7 +1654,11 @@ export class AudioEngine {
         slot.wet.gain.setTargetAtTime(0, now, smoothing)
         continue
       }
-      const bypassed = mod.bypassed
+      const bypassed = this.eqListen === 'filters' && (mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'saturation')
+        ? true
+        : this.eqListen === 'filters' && mod.type === 'eq'
+          ? false
+          : mod.bypassed
       const dry = bypassed ? 1 : dryLevel(mod.type, this.params)
       const wet =
         this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
@@ -1587,6 +1722,64 @@ export class AudioEngine {
         node.gain.setTargetAtTime(band.gain, now, smoothing)
       }
     }
+    const combBands = combAsEqBands(this.comb)
+    const combOffset = EQ_BAND_COUNT * EQ_MAX_STAGES
+    for (let i = 0; i < COMB_MAX_TEETH; i++) {
+      const node = filters[combOffset + i]
+      if (!node) continue
+      const tooth = combBands[i]
+      if (!tooth) {
+        node.type = 'allpass'
+        node.frequency.setTargetAtTime(1000, now, smoothing)
+        node.Q.setTargetAtTime(0.0001, now, smoothing)
+        node.gain.setTargetAtTime(0, now, smoothing)
+        continue
+      }
+      node.type = 'peaking'
+      node.frequency.setTargetAtTime(Math.min(tooth.frequency, nyquist * 0.99), now, smoothing)
+      node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, tooth.q)), now, smoothing)
+      node.gain.setTargetAtTime(tooth.gain, now, smoothing)
+    }
+  }
+
+  private syncEqListen(): void {
+    if (!this.ctx || !this.voiceBus || !this.noiseGain) return
+    const now = this.ctx.currentTime
+    if (this.eqListen === 'filters') {
+      this.voiceBus.gain.setTargetAtTime(0.0001, now, 0.02)
+      this.noiseGain.gain.setTargetAtTime(0.35, now, 0.02)
+      this.startNoise()
+    } else {
+      this.voiceBus.gain.setTargetAtTime(1, now, 0.02)
+      this.noiseGain.gain.setTargetAtTime(0, now, 0.02)
+      this.stopNoise()
+    }
+  }
+
+  private startNoise(): void {
+    if (!this.ctx || !this.noiseGain || this.noiseSource) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = createPinkNoiseBuffer(this.ctx, 2)
+    src.loop = true
+    src.connect(this.noiseGain)
+    src.start()
+    this.noiseSource = src
+  }
+
+  private stopNoise(): void {
+    if (this.noiseSource) {
+      try {
+        this.noiseSource.stop()
+      } catch {
+        /* already stopped */
+      }
+      try {
+        this.noiseSource.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+      this.noiseSource = null
+    }
   }
 
   private applyFxParams(smoothing: number): void {
@@ -1633,6 +1826,7 @@ export class AudioEngine {
     this.applyEq(0.03)
     this.applyFxParams(0.03)
     this.applyBypassRamps(0.03)
+    this.syncEqListen()
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
@@ -1854,6 +2048,10 @@ export class AudioEngine {
       params: { ...this.params },
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
+      comb: { ...this.comb },
+      eqListen: this.eqListen,
+      recording: this.recording,
+      recordError: this.recordError,
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,

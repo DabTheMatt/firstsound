@@ -107,8 +107,8 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   filterCutoff: {
     id: 'filterCutoff',
     label: 'Cutoff',
-    min: 20,
-    max: 18000,
+    min: 10,
+    max: 25000,
     // Open by default so engaging the filter starts transparent, then closes.
     defaultValue: 18000,
     unit: 'Hz',

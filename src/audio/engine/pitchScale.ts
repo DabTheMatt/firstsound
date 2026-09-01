@@ -23,7 +23,7 @@ export function hzToNoteName(hz: number): string {
 }
 
 /** C notes across the audible range, plus A4 as a reference. */
-export function musicalScaleHz(minHz = 20, maxHz = 20000): { hz: number; label: string }[] {
+export function musicalScaleHz(minHz = 10, maxHz = 25000): { hz: number; label: string }[] {
   const out: { hz: number; label: string }[] = []
   for (let midi = 24; midi <= 108; midi += 12) {
     const hz = midiToHz(midi)
@@ -37,7 +37,7 @@ export function musicalScaleHz(minHz = 20, maxHz = 20000): { hz: number; label: 
   return out
 }
 
-export const FREQ_SCALE_HZ = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000] as const
+export const FREQ_SCALE_HZ = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 25000] as const
 
 export function formatFreqTick(hz: number): string {
   if (hz >= 1000) return `${hz / 1000}k`

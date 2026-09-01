@@ -12,6 +12,7 @@ describe('spectrumRegions', () => {
     expect(regionForHz(3000).id).toBe('highMid')
     expect(regionForHz(8000).id).toBe('presence')
     expect(regionForHz(14000).id).toBe('air')
+    expect(regionForHz(12).id).toBe('sub')
   })
 
   it('uses geometric band centers', () => {

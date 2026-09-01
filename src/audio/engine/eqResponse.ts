@@ -27,7 +27,7 @@ export function eqCurveDb(bands: EqBand[], freqs: number[], sampleRate: number):
   return freqs.map((hz) => eqMagnitudeDb(bands, hz, sampleRate))
 }
 
-export function logFreqAxis(count: number, minHz = 20, maxHz = 20000): number[] {
+export function logFreqAxis(count: number, minHz = 10, maxHz = 25000): number[] {
   const n = Math.max(2, count)
   const out: number[] = []
   for (let i = 0; i < n; i++) {

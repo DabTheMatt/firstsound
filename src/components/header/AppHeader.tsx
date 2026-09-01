@@ -8,10 +8,18 @@ type Props = {
   settingsOpen: boolean
   onToggleSettings: () => void
   onLoadSample: () => void
+  onRecord: () => void
   compact: boolean
 }
 
-export function AppHeader({ snap, settingsOpen, onToggleSettings, onLoadSample, compact }: Props) {
+export function AppHeader({
+  snap,
+  settingsOpen,
+  onToggleSettings,
+  onLoadSample,
+  onRecord,
+  compact,
+}: Props) {
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
   const ch = snap.channelCount === 1 ? 'M' : snap.channelCount === 2 ? 'Stereo' : snap.channelCount ? `${snap.channelCount} ch` : '—'
   return (
@@ -20,6 +28,14 @@ export function AppHeader({ snap, settingsOpen, onToggleSettings, onLoadSample, 
         <span className={styles.wordmark}>Field</span>
         <button type="button" className={styles.file} onClick={onLoadSample}>
           {snap.fileName || 'Load sample'}
+        </button>
+        <button
+          type="button"
+          className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
+          aria-pressed={snap.recording}
+          onClick={onRecord}
+        >
+          {snap.recording ? 'Stop' : 'Record'}
         </button>
         <ThemePicker />
       </div>

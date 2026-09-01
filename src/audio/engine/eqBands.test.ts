@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bandwidthHz,
   defaultEqBands,
   filterStageCount,
   parseEqBands,
   parseFilterSlope,
+  qFromBandwidth,
   stageQ,
 } from './eqBands'
 
@@ -45,5 +47,12 @@ describe('stageQ', () => {
     const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
     expect(stageQ(band, 0)).toBe(4)
     expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  })
+})
+
+describe('bandwidthHz', () => {
+  it('round-trips Q and width at a centre frequency', () => {
+    expect(bandwidthHz(1000, 2)).toBeCloseTo(500)
+    expect(qFromBandwidth(1000, 500)).toBeCloseTo(2)
   })
 })
