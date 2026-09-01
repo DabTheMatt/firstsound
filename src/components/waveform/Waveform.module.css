@@ -111,13 +111,14 @@
 
 .fadeHandle {
   position: absolute;
-  top: 14px;
-  width: 16px;
-  height: 16px;
+  top: auto;
+  bottom: 10px;
+  width: 14px;
+  height: 14px;
   transform: translateX(-50%) rotate(45deg);
   background: var(--accent-primary);
   pointer-events: auto;
-  z-index: 5;
+  z-index: 4;
   cursor: ew-resize;
   box-shadow: 0 0 0 2px var(--bg-app);
 }
@@ -125,14 +126,14 @@
 .handle {
   position: absolute;
   top: 0;
-  width: 44px;
-  height: 100%;
+  width: 36px;
+  height: 32px;
   transform: translateX(-50%);
   background: transparent;
   border: 0;
   padding: 0;
   pointer-events: auto;
-  z-index: 3;
+  z-index: 6;
   cursor: ew-resize;
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { engine } from '../../hooks/useEngine'
 import {
   dbToMeterPct,
+  fallHoldDb,
   meterDbMin,
   meterScaleMarks,
   meterSweetBand,
@@ -19,8 +20,10 @@ type Props = {
 export function MeterStrip({ channels, range, onRange }: Props) {
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
+  const leftHoldRef = useRef<HTMLDivElement>(null)
+  const rightHoldRef = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
-  const hold = useRef({ l: 0, r: 0, t: 0 })
+  const hold = useRef({ l: Number.NEGATIVE_INFINITY, r: Number.NEGATIVE_INFINITY, t: 0 })
 
   useEffect(() => {
     let frame = 0
@@ -30,11 +33,20 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       const l = peakDb(left)
       const r = peakDb(right ?? left)
       const now = performance.now()
-      if (l > hold.current.l || now - hold.current.t > 1200) hold.current.l = l
-      if (r > hold.current.r || now - hold.current.t > 1200) hold.current.r = r
-      if (l > hold.current.l - 0.01 && r > hold.current.r - 0.01) hold.current.t = now
+      const dt = hold.current.t ? (now - hold.current.t) / 1000 : 0
+      hold.current.t = now
+      hold.current.l = fallHoldDb(hold.current.l, l, dt)
+      hold.current.r = fallHoldDb(hold.current.r, r, dt)
       if (leftRef.current) leftRef.current.style.height = `${dbToMeterPct(l, minDb)}%`
       if (rightRef.current) rightRef.current.style.height = `${dbToMeterPct(r, minDb)}%`
+      if (leftHoldRef.current) {
+        leftHoldRef.current.style.bottom = `${dbToMeterPct(hold.current.l, minDb)}%`
+        leftHoldRef.current.style.opacity = Number.isFinite(hold.current.l) ? '1' : '0'
+      }
+      if (rightHoldRef.current) {
+        rightHoldRef.current.style.bottom = `${dbToMeterPct(hold.current.r, minDb)}%`
+        rightHoldRef.current.style.opacity = Number.isFinite(hold.current.r) ? '1' : '0'
+      }
       if (l >= -0.1 || r >= -0.1) {
         setClipped(true)
       }
@@ -63,6 +75,11 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       </button>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
+          <div
+            className={styles.sweetBand}
+            title="−12 to −6 dB"
+            style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
+          />
           {marks.map((mark) => {
             const edge = mark.db === 0 ? 'top' : mark.db === minDb ? 'bottom' : 'mid'
             return (
@@ -79,23 +96,15 @@ export function MeterStrip({ channels, range, onRange }: Props) {
         <div className={styles.meters}>
           <div className={styles.lane}>
             <LaneHashes marks={marks} minDb={minDb} />
-            <div
-              className={styles.zone}
-              title="−12 to −6 dB"
-              style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
-            />
             <div ref={leftRef} className={styles.fill} />
+            <div ref={leftHoldRef} className={styles.hold} />
             <span>{stereo ? 'L' : 'M'}</span>
           </div>
           {stereo ? (
             <div className={styles.lane}>
               <LaneHashes marks={marks} minDb={minDb} />
-              <div
-                className={styles.zone}
-                title="−12 to −6 dB"
-                style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
-              />
               <div ref={rightRef} className={styles.fill} />
+              <div ref={rightHoldRef} className={styles.hold} />
               <span>R</span>
             </div>
           ) : null}
