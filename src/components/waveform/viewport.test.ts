@@ -6,6 +6,7 @@ import {
   panView,
   timeToFrac,
   verticalGain,
+  wheelPanSeconds,
   zoomAround,
   zoomPercent,
   zoomToSelection,
@@ -75,5 +76,11 @@ describe('viewport', () => {
     expect(verticalGain(1)).toBe(1)
     expect(verticalGain(0)).toBe(1)
     expect(verticalGain(0.0001)).toBeLessThanOrEqual(24)
+  })
+
+  it('wheelPanSeconds pans on horizontal / shift and zooms on vertical', () => {
+    expect(wheelPanSeconds(40, 2, false, 10, 200)).toBeCloseTo(2)
+    expect(wheelPanSeconds(0, 40, true, 10, 200)).toBeCloseTo(2)
+    expect(wheelPanSeconds(0, 40, false, 10, 200)).toBeNull()
   })
 })

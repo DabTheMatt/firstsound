@@ -47,6 +47,19 @@
 .overlay {
   position: absolute;
   inset: 0 0 22px 0;
+  touch-action: none;
+}
+
+.overlayPan {
+  cursor: grab;
+}
+
+.overlayPan > * {
+  pointer-events: none;
+}
+
+.grabbing {
+  cursor: grabbing;
 }
 
 .region {

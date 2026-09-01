@@ -1,6 +1,12 @@
 import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { bandUsesGain, EQ_FILTER_TYPES } from '../../audio/engine/eqBands'
+import {
+  bandUsesGain,
+  bandUsesSlope,
+  EQ_FILTER_TYPES,
+  FILTER_SLOPES,
+  type FilterSlope,
+} from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
@@ -23,6 +29,9 @@ type Props = {
   onTrim?: () => void
   sheet?: boolean
   knobs?: boolean
+  zoomLabel?: string
+  onZoomIn?: () => void
+  onZoomOut?: () => void
 }
 
 const GAIN_IDS: ParamId[] = ['gain']
@@ -60,6 +69,9 @@ export function Inspector({
   onTrim,
   sheet,
   knobs = true,
+  zoomLabel,
+  onZoomIn,
+  onZoomOut,
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
@@ -74,6 +86,9 @@ export function Inspector({
           onCommit={onCommit}
           onTrim={onTrim}
           knobs={knobs}
+          zoomLabel={zoomLabel}
+          onZoomIn={onZoomIn}
+          onZoomOut={onZoomOut}
         />
       ) : (
         <ModuleInspector
@@ -96,6 +111,9 @@ function ToolInspector({
   onCommit,
   onTrim,
   knobs,
+  zoomLabel,
+  onZoomIn,
+  onZoomOut,
 }: {
   tool: WaveTool
   snap: EngineSnapshot
@@ -105,6 +123,9 @@ function ToolInspector({
   onCommit?: () => void
   onTrim?: () => void
   knobs: boolean
+  zoomLabel?: string
+  onZoomIn?: () => void
+  onZoomOut?: () => void
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
   if (tool === 'select') {
@@ -297,7 +318,20 @@ function ToolInspector({
   return (
     <>
       <h2 className={styles.title}>Pan</h2>
-      <p className={styles.help}>Drag the waveform to move the viewport. Pinch or use +/− to zoom.</p>
+      <Readout label="Zoom" value={zoomLabel ?? '100%'} />
+      <p className={styles.help}>
+        Drag the waveform to move the viewport. Zoom in first if the whole sample is in view — pan
+        has nowhere to go at 100%. Trackpad: swipe sideways. Alt-drag also pans from other tools.
+      </p>
+      <div className={styles.fine}>
+        <button type="button" onClick={onZoomOut}>
+          −
+        </button>
+        <span>Zoom</span>
+        <button type="button" onClick={onZoomIn}>
+          +
+        </button>
+      </div>
     </>
   )
 }
@@ -384,6 +418,22 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
             wrap
             onChange={(type) => engine.setEqBand(index, { type })}
           />
+          {bandUsesSlope(band.type) ? (
+            <>
+              <p className={styles.help}>Slope (dB/oct)</p>
+              <Segmented
+                label={`Band ${index + 1} slope`}
+                value={String(band.slope) as `${FilterSlope}`}
+                options={FILTER_SLOPES.map((s) => ({
+                  value: String(s.value) as `${FilterSlope}`,
+                  label: `${s.value}`,
+                  title: `${s.value} dB/oct`,
+                }))}
+                wrap
+                onChange={(slope) => engine.setEqBand(index, { slope: Number(slope) as FilterSlope })}
+              />
+            </>
+          ) : null}
           {knobs ? (
             <div className={styles.knobs}>
               <ValueKnob

@@ -11,7 +11,6 @@ type Props = {
   onZoomIn: () => void
   onZoomOut: () => void
   onView: (action: ViewAction) => void
-  compact: boolean
   normalizeView: boolean
 }
 
@@ -38,10 +37,9 @@ export function WaveformToolbar({
   onZoomIn,
   onZoomOut,
   onView,
-  compact,
   normalizeView,
 }: Props) {
-  const tools = compact ? TOOLS.filter((t) => t.id !== 'pan') : TOOLS
+  const tools = TOOLS
 
   return (
     <div className={styles.bar}>

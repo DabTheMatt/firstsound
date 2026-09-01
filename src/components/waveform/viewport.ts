@@ -73,6 +73,23 @@ export function panView(view: View, delta: number, duration: number): View {
 }
 
 /**
+ * Trackpad / wheel: pan when the gesture is mostly horizontal (or Shift is held).
+ * Returns seconds to shift the view, or null to zoom instead.
+ */
+export function wheelPanSeconds(
+  deltaX: number,
+  deltaY: number,
+  shiftKey: boolean,
+  viewSpan: number,
+  widthPx: number,
+): number | null {
+  const pan = shiftKey || Math.abs(deltaX) > Math.abs(deltaY)
+  if (!pan) return null
+  const deltaPx = Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY
+  return (deltaPx / Math.max(1, widthPx)) * viewSpan
+}
+
+/**
  * Vertical draw gain so `peak` fills `headroom` of the height. Used by
  * "Normalize View" — a display-only amplitude zoom, never touching audio.
  */

@@ -1,4 +1,4 @@
-import { type EqBand, type EqFilterType } from './eqBands'
+import { filterStageCount, stageQ, type EqBand, type EqFilterType } from './eqBands'
 
 type Biquad = { b0: number; b1: number; b2: number; a1: number; a2: number }
 
@@ -13,9 +13,12 @@ export function eqMagnitudeDb(bands: EqBand[], freqHz: number, sampleRate: numbe
   let db = 0
   for (const band of bands) {
     if (band.type === 'off') continue
-    const coef = biquadCoeffs(band.type, band.frequency, band.q, band.gain, sampleRate)
-    if (!coef) continue
-    db += biquadMagDb(coef, f, sampleRate)
+    const stages = Math.max(1, filterStageCount(band))
+    for (let s = 0; s < stages; s++) {
+      const coef = biquadCoeffs(band.type, band.frequency, stageQ(band, s), band.gain, sampleRate)
+      if (!coef) continue
+      db += biquadMagDb(coef, f, sampleRate)
+    }
   }
   return db
 }

@@ -60,7 +60,17 @@ import {
 } from '../samplePrep'
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
-import { defaultEqBands, parseEqBands, type EqBand, type EqFilterType } from './eqBands'
+import {
+  defaultEqBands,
+  EQ_BAND_COUNT,
+  EQ_MAX_STAGES,
+  EQ_NODE_COUNT,
+  filterStageCount,
+  parseEqBands,
+  stageQ,
+  type EqBand,
+  type EqFilterType,
+} from './eqBands'
 import { regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
@@ -1208,7 +1218,7 @@ export class AudioEngine {
     }
     if (mod.type === 'eq') {
       const bands: BiquadFilterNode[] = []
-      for (let i = 0; i < 4; i++) bands.push(ctx.createBiquadFilter())
+      for (let i = 0; i < EQ_NODE_COUNT; i++) bands.push(ctx.createBiquadFilter())
       input.connect(wet)
       wet.connect(bands[0]!)
       for (let i = 0; i < bands.length - 1; i++) bands[i]!.connect(bands[i + 1]!)
@@ -1381,21 +1391,24 @@ export class AudioEngine {
     const eqSlot = [...this.slots.values()].find((s) => s.type === 'eq')
     const filters = eqSlot?.eq
     if (!filters) return
-    for (let i = 0; i < filters.length; i++) {
-      const band = this.eqBands[i]
-      const node = filters[i]
-      if (!band || !node) continue
-      if (band.type === 'off') {
-        node.type = 'allpass'
-        node.frequency.setTargetAtTime(1000, now, smoothing)
-        node.Q.setTargetAtTime(0.0001, now, smoothing)
-        node.gain.setTargetAtTime(0, now, smoothing)
-        continue
+    for (let bandIndex = 0; bandIndex < EQ_BAND_COUNT; bandIndex++) {
+      const band = this.eqBands[bandIndex]
+      const stages = band ? filterStageCount(band) : 0
+      for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
+        const node = filters[bandIndex * EQ_MAX_STAGES + stage]
+        if (!node) continue
+        if (!band || band.type === 'off' || stage >= stages) {
+          node.type = 'allpass'
+          node.frequency.setTargetAtTime(1000, now, smoothing)
+          node.Q.setTargetAtTime(0.0001, now, smoothing)
+          node.gain.setTargetAtTime(0, now, smoothing)
+          continue
+        }
+        node.type = band.type
+        node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
+        node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
+        node.gain.setTargetAtTime(band.gain, now, smoothing)
       }
-      node.type = band.type
-      node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
-      node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, band.q)), now, smoothing)
-      node.gain.setTargetAtTime(band.gain, now, smoothing)
     }
   }
 

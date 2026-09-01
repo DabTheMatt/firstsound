@@ -9,7 +9,7 @@ describe('eqMagnitudeDb', () => {
 
   it('peaks near the gain of a bell at its centre frequency', () => {
     const bands = defaultEqBands()
-    bands[2] = { type: 'peaking', frequency: 1000, gain: 6, q: 1 }
+    bands[2] = { type: 'peaking', frequency: 1000, gain: 6, q: 1, slope: 12 }
     expect(eqMagnitudeDb(bands, 1000, 48000)).toBeGreaterThan(5)
     expect(eqMagnitudeDb(bands, 1000, 48000)).toBeLessThan(7)
     expect(eqMagnitudeDb(bands, 100, 48000)).toBeLessThan(2)
@@ -17,7 +17,15 @@ describe('eqMagnitudeDb', () => {
 
   it('cuts high frequencies with a low-pass', () => {
     const bands = defaultEqBands()
-    bands[0] = { type: 'lowpass', frequency: 500, gain: 0, q: 0.7 }
+    bands[0] = { type: 'lowpass', frequency: 500, gain: 0, q: 0.7, slope: 12 }
     expect(eqMagnitudeDb(bands, 80, 48000)).toBeGreaterThan(eqMagnitudeDb(bands, 8000, 48000))
+  })
+
+  it('a steeper low-pass cuts more above the cutoff', () => {
+    const lp12 = defaultEqBands()
+    lp12[0] = { type: 'lowpass', frequency: 500, gain: 0, q: 0.7, slope: 12 }
+    const lp48 = defaultEqBands()
+    lp48[0] = { type: 'lowpass', frequency: 500, gain: 0, q: 0.7, slope: 48 }
+    expect(eqMagnitudeDb(lp48, 8000, 48000)).toBeLessThan(eqMagnitudeDb(lp12, 8000, 48000) - 12)
   })
 })
