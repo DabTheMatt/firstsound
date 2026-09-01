@@ -1632,7 +1632,8 @@ export class AudioEngine {
       slot.reverbFx = createReverbGraph(ctx, wet, output, input)
     }
     if (mod.type === 'limiter') {
-      slot.limiterFx = createLimiterGraph(ctx, input, wet, this.analyserLimiterPost)
+      slot.limiterFx = createLimiterGraph(ctx, input, wet)
+      this.analyserLimiterPost = slot.limiterFx.analyserPost
       wet.connect(output)
     }
     return slot
