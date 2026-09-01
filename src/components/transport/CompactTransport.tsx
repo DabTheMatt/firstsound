@@ -86,12 +86,20 @@ export function CompactTransport({
         <button
           type="button"
           disabled={disabled}
+          title="Jump the playhead to the start of the selection (loop in)"
+          aria-label="Selection start"
           onClick={() => engine.seekSeconds(start, 'region')}
         >
-          Start
+          Sel start
         </button>
-        <button type="button" disabled={disabled} onClick={() => engine.seekSeconds(end, 'region')}>
-          End
+        <button
+          type="button"
+          disabled={disabled}
+          title="Jump the playhead to the end of the selection (loop out)"
+          aria-label="Selection end"
+          onClick={() => engine.seekSeconds(end, 'region')}
+        >
+          Sel end
         </button>
       </div>
       <div className={styles.cta}>

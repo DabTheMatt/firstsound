@@ -72,9 +72,9 @@ export function clampScrubTime(
   return clamp(time, min, max)
 }
 
-/** Stop parks the playhead at the start of the loaded sample buffer. */
-export function sampleOriginSeconds(): number {
-  return 0
+/** Stop parks the playhead at the loop / selection, not the file origin. */
+export function parkPlayheadOnStop(start: number, end: number, reverse: boolean): number {
+  return reverse ? end : start
 }
 
 /** Play starts inside the region so the transport clock matches the voice. */

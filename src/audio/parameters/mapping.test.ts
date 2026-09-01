@@ -9,8 +9,8 @@ import {
   fullPlayRegion,
   formatParamValue,
   fromNormalized,
+  parkPlayheadOnStop,
   playbackRate,
-  sampleOriginSeconds,
   snapPlayheadToRegion,
   toNormalized,
 } from './mapping'
@@ -91,8 +91,9 @@ describe('clampRegion', () => {
 })
 
 describe('stop playhead', () => {
-  it('parks at the start of the sample', () => {
-    expect(sampleOriginSeconds()).toBe(0)
+  it('parks at the selection, not the file origin', () => {
+    expect(parkPlayheadOnStop(18, 65, false)).toBe(18)
+    expect(parkPlayheadOnStop(18, 65, true)).toBe(65)
   })
 
   it('snaps back into the region when play starts from the sample origin', () => {

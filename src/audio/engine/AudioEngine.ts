@@ -17,7 +17,7 @@ import {
   defaultPlayRegion,
   fullPlayRegion,
   playbackRate,
-  sampleOriginSeconds,
+  parkPlayheadOnStop,
   snapPlayheadToRegion,
 } from '../parameters/mapping'
 import type {
@@ -440,9 +440,11 @@ export class AudioEngine {
     }
     this.stopVoices()
     this.playing = false
-    this.playOffset = sampleOriginSeconds()
+    const duration = this.buffer?.duration ?? 0
+    const { start, end } = this.region(duration)
+    this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
     if (this.engineMode === 'grain') {
-      this.params.position = applyParamValue(0, PARAMS.position)
+      this.params.position = applyParamValue(this.direction === 'reverse' ? 100 : 0, PARAMS.position)
     }
     this.killFx('all')
     this.emit()
