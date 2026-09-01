@@ -1,14 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import {
+  DB_SCALE,
+  FREQ_SCALE_HZ,
+  formatFreqTick,
+  musicalScaleHz,
+} from '../../audio/engine/pitchScale'
+import {
   FAST_ATTACK,
   FAST_RELEASE,
   SLOW_ATTACK,
   SLOW_RELEASE,
+  SPECTRUM_BAND_CHOICES,
   SPECTRUM_BAND_COUNT,
   bandPeakDb,
+  clampSpectrumBandCount,
   followBands,
+  logBandEdgesHz,
+  type SpectrumBandCount,
 } from '../../audio/engine/spectrumBands'
+import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors } from '../../theme'
 import styles from './Spectrum.module.css'
@@ -17,18 +28,69 @@ type Props = {
   active: boolean
 }
 
-type Tap = 'pre' | 'post'
+type Layer = 'pre' | 'post' | 'both'
+
+const SPECTRUM_PREF_KEY = 'field.spectrum'
+
+type SpectrumPrefs = {
+  layer: Layer
+  bands: SpectrumBandCount
+  regionColors: boolean
+}
+
+function loadPrefs(): SpectrumPrefs {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SPECTRUM_PREF_KEY) ?? 'null') as Partial<SpectrumPrefs> | null
+    return {
+      layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : 'both',
+      bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
+      regionColors: Boolean(raw?.regionColors),
+    }
+  } catch {
+    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: false }
+  }
+}
+
+function persistPrefs(prefs: SpectrumPrefs): void {
+  try {
+    localStorage.setItem(SPECTRUM_PREF_KEY, JSON.stringify(prefs))
+  } catch {
+    /* private mode */
+  }
+}
+
+function emptyBands(n: number): Float32Array {
+  return new Float32Array(n).fill(-100)
+}
+
+function dbToY(db: number, top: number, bottom: number): number {
+  const t = Math.min(1, Math.max(0, (0 - db) / 100))
+  return top + t * (bottom - top)
+}
+
+function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: number): number {
+  const t = Math.log(Math.max(minHz, hz) / minHz) / Math.log(maxHz / minHz)
+  return left + t * (right - left)
+}
 
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [tap, setTap] = useState<Tap>('post')
-  const tapRef = useRef(tap)
-  const fastRef = useRef(new Float32Array(SPECTRUM_BAND_COUNT).fill(-100))
-  const slowRef = useRef(new Float32Array(SPECTRUM_BAND_COUNT).fill(-100))
+  const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
+  const prefsRef = useRef(prefs)
+  const preFast = useRef(emptyBands(prefs.bands))
+  const preSlow = useRef(emptyBands(prefs.bands))
+  const postFast = useRef(emptyBands(prefs.bands))
+  const postSlow = useRef(emptyBands(prefs.bands))
+
   useEffect(() => {
-    tapRef.current = tap
-  }, [tap])
+    prefsRef.current = prefs
+    persistPrefs(prefs)
+    preFast.current = emptyBands(prefs.bands)
+    preSlow.current = emptyBands(prefs.bands)
+    postFast.current = emptyBands(prefs.bands)
+    postSlow.current = emptyBands(prefs.bands)
+  }, [prefs])
 
   useEffect(() => {
     if (!active) return
@@ -36,7 +98,6 @@ export function Spectrum({ active }: Props) {
     if (!canvas) return
     let frame = 0
     const tick = () => {
-      const analyser = engine.getAnalyser(tapRef.current)
       const snap = engine.getSnapshot()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -49,39 +110,116 @@ export function Spectrum({ active }: Props) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         const colors = readThemeColors()
+        const { layer, bands, regionColors } = prefsRef.current
         ctx.clearRect(0, 0, width, height)
         const sr = snap.sampleRate || 44100
         const nyquist = sr / 2
-        if (analyser) {
+        const minHz = 20
+        const padL = 36 * dpr
+        const padR = 10 * dpr
+        const padT = 18 * dpr
+        const padB = 28 * dpr
+        const left = padL
+        const right = width - padR
+        const top = padT
+        const bottom = height - padB
+        const plotW = Math.max(1, right - left)
+        const plotH = Math.max(1, bottom - top)
+
+        ctx.fillStyle = colors.textMuted
+        ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'middle'
+        for (const db of DB_SCALE) {
+          const y = dbToY(db, top, bottom)
+          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, 0.9)
+          ctx.lineWidth = dpr * 0.5
+          ctx.beginPath()
+          ctx.moveTo(left, y)
+          ctx.lineTo(right, y)
+          ctx.stroke()
+          ctx.fillStyle = colors.textMuted
+          ctx.fillText(`${db}`, left - 6 * dpr, y)
+        }
+
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        for (const hz of FREQ_SCALE_HZ) {
+          if (hz > nyquist) continue
+          const x = hzToX(hz, minHz, nyquist, left, right)
+          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, 0.7)
+          ctx.beginPath()
+          ctx.moveTo(x, top)
+          ctx.lineTo(x, bottom)
+          ctx.stroke()
+          ctx.fillStyle = colors.textMuted
+          ctx.fillText(formatFreqTick(hz), x, bottom + 4 * dpr)
+        }
+
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.85)
+        for (const tick of musicalScaleHz(minHz, nyquist)) {
+          const x = hzToX(tick.hz, minHz, nyquist, left, right)
+          ctx.fillText(tick.label, x, top - 2 * dpr)
+        }
+
+        const drawLayer = (
+          analyser: AnalyserNode | null,
+          fast: Float32Array,
+          slow: Float32Array,
+          style: 'pre' | 'post',
+        ) => {
+          if (!analyser) return
           const bins = new Float32Array(analyser.frequencyBinCount)
           analyser.getFloatFrequencyData(bins)
-          const bands = bandPeakDb(bins, sr, SPECTRUM_BAND_COUNT, 20)
-          followBands(fastRef.current, bands, FAST_ATTACK, FAST_RELEASE)
-          followBands(slowRef.current, bands, SLOW_ATTACK, SLOW_RELEASE)
-          const gap = Math.max(1, Math.floor((width / SPECTRUM_BAND_COUNT) * 0.12))
-          const bandW = width / SPECTRUM_BAND_COUNT
-          for (let i = 0; i < SPECTRUM_BAND_COUNT; i++) {
-            const x = i * bandW
-            const slowDb = slowRef.current[i] ?? -100
-            const fastDb = fastRef.current[i] ?? -100
-            const slowH = Math.max(1, ((slowDb + 100) / 100) * height)
-            const fastH = Math.max(1, ((fastDb + 100) / 100) * height)
-            ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.42)
-            ctx.fillRect(x + gap / 2, height - slowH, Math.max(1, bandW - gap), slowH)
-            ctx.fillStyle = colors.spectrumLine
-            ctx.fillRect(x + gap / 2, height - fastH, Math.max(1, bandW - gap), Math.max(2, dpr))
-            ctx.fillStyle = colorWithAlpha(colors.spectrumLine, 0.35)
-            ctx.fillRect(x + gap / 2, height - fastH, Math.max(1, bandW - gap), Math.min(fastH, 8 * dpr))
+          const peaks = bandPeakDb(bins, sr, bands, minHz)
+          followBands(fast, peaks, FAST_ATTACK, FAST_RELEASE)
+          followBands(slow, peaks, SLOW_ATTACK, SLOW_RELEASE)
+          const edges = logBandEdgesHz(minHz, nyquist, bands)
+          const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
+          for (let i = 0; i < bands; i++) {
+            const x0 = hzToX(edges[i] ?? minHz, minHz, nyquist, left, right)
+            const x1 = hzToX(edges[i + 1] ?? nyquist, minHz, nyquist, left, right)
+            const bandW = Math.max(1, x1 - x0)
+            const center = bandCenterHz(edges, i)
+            const region = regionForHz(center)
+            const fill = regionColors ? region.color : colors.spectrum
+            const line = regionColors ? region.color : colors.spectrumLine
+            const slowDb = slow[i] ?? -100
+            const fastDb = fast[i] ?? -100
+            const slowY = dbToY(slowDb, top, bottom)
+            const fastY = dbToY(fastDb, top, bottom)
+            const slowH = bottom - slowY
+            const fastH = bottom - fastY
+            const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
+            ctx.fillStyle = colorWithAlpha(fill, alpha)
+            ctx.fillRect(x0 + gap / 2, bottom - slowH, Math.max(1, bandW - gap), slowH)
+            if (style === 'post' || layer !== 'both') {
+              ctx.fillStyle = line
+              ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.max(2, dpr))
+              ctx.fillStyle = colorWithAlpha(line, 0.35)
+              ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.min(fastH, 8 * dpr))
+            }
           }
         }
+
+        if (layer === 'pre' || layer === 'both') {
+          drawLayer(engine.getAnalyser('pre'), preFast.current, preSlow.current, 'pre')
+        }
+        if (layer === 'post' || layer === 'both') {
+          drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
+        }
+
         ctx.beginPath()
         ctx.strokeStyle = colors.eqCurve
         ctx.lineWidth = Math.max(1.5, dpr)
-        const freqs = logFreqAxis(width, 20, nyquist)
-        for (let x = 0; x < width; x++) {
-          const db = eqMagnitudeDb(snap.eqBands, freqs[x] ?? 20, sr)
-          const y = ((18 - db) / 36) * height
-          if (x === 0) ctx.moveTo(x, y)
+        const freqs = logFreqAxis(Math.floor(plotW), minHz, nyquist)
+        for (let i = 0; i < freqs.length; i++) {
+          const hz = freqs[i] ?? minHz
+          const db = eqMagnitudeDb(snap.eqBands, hz, sr)
+          const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
+          const y = top + ((18 - db) / 36) * plotH
+          if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
         ctx.stroke()
@@ -95,28 +233,61 @@ export function Spectrum({ active }: Props) {
   if (!active) return null
   return (
     <div className={styles.wrap}>
-      <div className={styles.taps} role="radiogroup" aria-label="Spectrum tap">
+      <div className={styles.toolbar}>
+        <div className={styles.taps} role="radiogroup" aria-label="EQ spectrum layer">
+          {(['pre', 'post', 'both'] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={prefs.layer === id ? styles.on : ''}
+              aria-pressed={prefs.layer === id}
+              onClick={() => setPrefs((p) => ({ ...p, layer: id }))}
+            >
+              {id === 'pre' ? 'Before' : id === 'post' ? 'After' : 'Both'}
+            </button>
+          ))}
+        </div>
+        <label className={styles.bands}>
+          Bands
+          <select
+            aria-label="FFT band count"
+            value={prefs.bands}
+            onChange={(event) =>
+              setPrefs((p) => ({ ...p, bands: clampSpectrumBandCount(Number(event.target.value)) }))
+            }
+          >
+            {SPECTRUM_BAND_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
-          className={tap === 'pre' ? styles.on : ''}
-          aria-pressed={tap === 'pre'}
-          onClick={() => setTap('pre')}
+          className={prefs.regionColors ? styles.on : ''}
+          aria-pressed={prefs.regionColors}
+          onClick={() => setPrefs((p) => ({ ...p, regionColors: !p.regionColors }))}
         >
-          Pre
-        </button>
-        <button
-          type="button"
-          className={tap === 'post' ? styles.on : ''}
-          aria-pressed={tap === 'post'}
-          onClick={() => setTap('post')}
-        >
-          Post
+          Band colors
         </button>
       </div>
-      <p className={styles.legend}>
-        <span>Slow</span>
-        <span>Fast</span>
-      </p>
+      {prefs.regionColors ? (
+        <p className={styles.regions}>
+          {SPECTRUM_REGIONS.map((region) => (
+            <span key={region.id}>
+              <i style={{ background: region.color }} />
+              {region.label}
+            </span>
+          ))}
+        </p>
+      ) : (
+        <p className={styles.legend}>
+          <span>Slow</span>
+          <span>Fast</span>
+          {prefs.layer === 'both' ? <span>Before / after EQ</span> : null}
+        </p>
+      )}
       <canvas ref={canvasRef} className={styles.canvas} aria-label="Spectrum analyzer" />
     </div>
   )

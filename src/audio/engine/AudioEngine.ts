@@ -33,6 +33,10 @@ import {
   createDelayGraph,
   createReverbGraph,
   reverbImpulseKey,
+  silenceDelayGraph,
+  silenceReverbGraph,
+  stopDelayGraph,
+  stopReverbGraph,
   wetDryFor,
   type DelayGraph,
   type ReverbGraph,
@@ -120,6 +124,7 @@ export type EngineSnapshot = {
   muted: boolean
   delayType: DelayType
   reverbType: ReverbType
+  spacePresetId: string | null
   hasSource: boolean
   prep: SamplePrepState
   canUndoPrep: boolean
@@ -194,8 +199,11 @@ export class AudioEngine {
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
   private analyserPre: AnalyserNode | null = null
+  private analyserEq: AnalyserNode | null = null
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
+  private spaceLatched = false
+  private spacePresetId: string | null = null
   private regionFade: { fadeIn: number; fadeOut: number; curve: FadeCurve } = {
     fadeIn: 0.01,
     fadeOut: 0.01,
@@ -290,8 +298,9 @@ export class AudioEngine {
     return this.prep
   }
 
-  getAnalyser(tap: 'pre' | 'post' = 'post'): AnalyserNode | null {
+  getAnalyser(tap: 'pre' | 'post' | 'eq' = 'post'): AnalyserNode | null {
     if (tap === 'pre') return this.analyserPre ?? this.analyser
+    if (tap === 'eq') return this.analyserEq ?? this.analyserPre ?? this.analyser
     return this.analyser
   }
 
@@ -397,6 +406,10 @@ export class AudioEngine {
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
+    if (this.spaceLatched) {
+      this.spaceLatched = false
+      this.applyLiveAudio()
+    }
     const duration = this.buffer.duration
     this.playCtxTime = this.ctx.currentTime
     this.playOffset = clamp(this.playOffset, 0, duration)
@@ -419,6 +432,7 @@ export class AudioEngine {
     }
     this.stopVoices()
     this.playing = false
+    this.killFx('all')
     this.emit()
   }
 
@@ -508,6 +522,7 @@ export class AudioEngine {
   }
 
   setParam(id: ParamId, value: number): void {
+    this.spacePresetId = null
     const duration = this.buffer?.duration ?? 0
     if (id === 'start' || id === 'end') {
       const next = { ...this.params, [id]: value }
@@ -529,6 +544,7 @@ export class AudioEngine {
   }
 
   setParams(patch: Partial<Record<ParamId, number>>): void {
+    this.spacePresetId = null
     for (const key of Object.keys(patch) as ParamId[]) {
       const value = patch[key]
       if (typeof value !== 'number') continue
@@ -559,10 +575,45 @@ export class AudioEngine {
     if (!next) return
     if (next.delayType) this.delayType = next.delayType
     if (next.reverbType) this.reverbType = next.reverbType
-    this.setParams(next.params)
+    this.spacePresetId = next.id
+    for (const key of Object.keys(next.params) as ParamId[]) {
+      const value = next.params[key]
+      if (typeof value !== 'number') continue
+      this.params[key] = applyParamValue(value, PARAMS[key])
+    }
+    this.syncTimeFromClock('bpm')
+    this.applyLiveAudio()
     const type = next.kind
     const mod = this.chain.find((m) => m.type === type)
     if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+    else this.emit()
+  }
+
+  /** Cut delay/reverb recirculation and rebuild empty buffers. */
+  killFx(which: 'delay' | 'reverb' | 'all' = 'all'): void {
+    const keepLive = this.playing
+    this.spaceLatched = !keepLive
+    if (!this.ctx) {
+      this.emit()
+      return
+    }
+    const now = this.ctx.currentTime
+    const kinds = which === 'all' ? (['delay', 'reverb'] as const) : ([which] as const)
+    for (const slot of this.slots.values()) {
+      if (!kinds.includes(slot.type as 'delay' | 'reverb')) continue
+      if (slot.delayFx) silenceDelayGraph(slot.delayFx, now)
+      if (slot.reverbFx) silenceReverbGraph(slot.reverbFx, now)
+    }
+    this.rebuildSpaceGraphs(kinds)
+    if (keepLive) this.applyLiveAudio()
+    else {
+      for (const slot of this.slots.values()) {
+        if (!kinds.includes(slot.type as 'delay' | 'reverb')) continue
+        slot.wet.gain.cancelScheduledValues(now)
+        slot.wet.gain.setValueAtTime(0, now)
+      }
+    }
+    this.emit()
   }
 
   private syncTimeFromClock(id: ParamId): void {
@@ -1279,6 +1330,9 @@ export class AudioEngine {
     this.analyserPre = ctx.createAnalyser()
     this.analyserPre.fftSize = 4096
     this.analyserPre.smoothingTimeConstant = 0.7
+    this.analyserEq = ctx.createAnalyser()
+    this.analyserEq.fftSize = 4096
+    this.analyserEq.smoothingTimeConstant = 0.7
     this.analyserL = ctx.createAnalyser()
     this.analyserR = ctx.createAnalyser()
     this.analyserL.fftSize = 2048
@@ -1352,7 +1406,13 @@ export class AudioEngine {
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
     this.voiceBus.connect(ordered[0]!.input)
-    if (this.analyserPre) this.voiceBus.connect(this.analyserPre)
+    const eqSlot = ordered.find((s) => s.type === 'eq')
+    if (eqSlot) {
+      if (this.analyserPre) eqSlot.input.connect(this.analyserPre)
+      if (this.analyserEq) eqSlot.output.connect(this.analyserEq)
+    } else if (this.analyserPre) {
+      this.voiceBus.connect(this.analyserPre)
+    }
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
@@ -1417,6 +1477,34 @@ export class AudioEngine {
     this.emit()
   }
 
+  private rebuildSpaceGraphs(kinds: readonly ('delay' | 'reverb')[]): void {
+    if (!this.ctx) return
+    const ctx = this.ctx
+    for (const slot of this.slots.values()) {
+      if (slot.type === 'delay' && kinds.includes('delay') && slot.delayFx) {
+        stopDelayGraph(slot.delayFx)
+        try {
+          slot.wet.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        slot.delayFx = createDelayGraph(ctx, slot.wet, slot.output, slot.input)
+        silenceDelayGraph(slot.delayFx, ctx.currentTime)
+      }
+      if (slot.type === 'reverb' && kinds.includes('reverb') && slot.reverbFx) {
+        stopReverbGraph(slot.reverbFx)
+        try {
+          slot.wet.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        slot.reverbFx = createReverbGraph(ctx, slot.wet, slot.output, slot.input)
+        silenceReverbGraph(slot.reverbFx, ctx.currentTime)
+        this.reverbIrKey = ''
+      }
+    }
+  }
+
   private rampSafety(value: number): void {
     if (!this.ctx || !this.safetyGain) return
     const now = this.ctx.currentTime
@@ -1437,7 +1525,12 @@ export class AudioEngine {
       }
       const bypassed = mod.bypassed
       const dry = bypassed ? 1 : dryLevel(mod.type, this.params)
-      const wet = bypassed ? 0 : wetLevel(mod.type, this.params)
+      const wet =
+        this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
+          ? 0
+          : bypassed
+            ? 0
+            : wetLevel(mod.type, this.params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
     }
@@ -1503,23 +1596,27 @@ export class AudioEngine {
     for (const slot of this.slots.values()) {
       if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
       if (slot.delayFx) {
-        applyDelayGraph(slot.delayFx, this.params, this.delayType, bpm, now, smoothing, this.ctx)
+        if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
+        else applyDelayGraph(slot.delayFx, this.params, this.delayType, bpm, now, smoothing, this.ctx)
       }
       if (slot.reverbFx) {
-        applyReverbGraph(slot.reverbFx, this.params, this.reverbType, bpm, now, smoothing)
-        const key = reverbImpulseKey(this.params, this.reverbType)
-        if (key !== this.reverbIrKey) {
-          this.reverbIrKey = key
-          if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
-          const fx = slot.reverbFx
-          if (!fx.conv.buffer) {
-            fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
-          } else {
-            this.reverbIrTimer = window.setTimeout(() => {
-              this.reverbIrTimer = 0
-              if (!this.ctx || !fx) return
+        if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
+        else {
+          applyReverbGraph(slot.reverbFx, this.params, this.reverbType, bpm, now, smoothing)
+          const key = reverbImpulseKey(this.params, this.reverbType)
+          if (key !== this.reverbIrKey) {
+            this.reverbIrKey = key
+            if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+            const fx = slot.reverbFx
+            if (!fx.conv.buffer) {
               fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
-            }, 40)
+            } else {
+              this.reverbIrTimer = window.setTimeout(() => {
+                this.reverbIrTimer = 0
+                if (!this.ctx || !fx) return
+                fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
+              }, 40)
+            }
           }
         }
       }
@@ -1760,6 +1857,7 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
+      spacePresetId: this.spacePresetId,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,
       prep: { ...this.prep },
       canUndoPrep: canUndo(this.prepHistory),

@@ -110,6 +110,16 @@
   color: var(--text-secondary);
 }
 
+.settingsScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  border: 0;
+  padding: 0;
+  background: var(--scrim);
+  cursor: default;
+}
+
 .settingsFly {
   position: absolute;
   right: 12px;

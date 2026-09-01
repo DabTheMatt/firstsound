@@ -13,16 +13,25 @@
   border-radius: 8px;
 }
 
-.taps {
+.toolbar {
   position: absolute;
   top: 6px;
   right: 8px;
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: calc(100% - 16px);
+}
+
+.taps {
+  display: flex;
   gap: 4px;
 }
 
-.taps button {
+.toolbar button,
+.bands {
   min-height: 28px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
@@ -34,28 +43,60 @@
   text-transform: uppercase;
 }
 
-.taps button:hover {
+.toolbar button:hover,
+.bands:hover {
   background: var(--bg-control-hover);
   color: var(--text-secondary);
 }
 
-.taps .on {
+.toolbar .on {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--accent-soft);
 }
 
-.legend {
+.bands {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bands select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.legend,
+.regions {
   position: absolute;
   top: 8px;
   left: 10px;
   z-index: 2;
   margin: 0;
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 42%;
   font-size: 9px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
   pointer-events: none;
+}
+
+.regions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.regions i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
 }

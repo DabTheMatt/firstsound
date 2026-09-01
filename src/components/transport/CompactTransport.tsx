@@ -54,6 +54,15 @@ export function CompactTransport({
         </button>
         <button
           type="button"
+          className={styles.icon}
+          aria-label="Kill effects"
+          title="Kill delay and reverb tails"
+          onClick={() => engine.killFx('all')}
+        >
+          Kill FX
+        </button>
+        <button
+          type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
           aria-pressed={loop}
           onClick={() => engine.setLoop(!loop)}

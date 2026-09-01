@@ -8,6 +8,8 @@ import {
 } from '../../audio/fx/macros'
 import {
   DELAY_PRESET_CATEGORIES,
+  defaultPresetFor,
+  presetHint,
   presetsFor,
   REVERB_PRESET_CATEGORIES,
   type FxPresetCategory,
@@ -109,22 +111,39 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
       )}
 
       <h3 className={styles.sub}>Presets</h3>
+      <p className={styles.help}>
+        Categories load a starting sound. Each chip then switches time, feedback, type and mix.
+      </p>
       <Segmented
         label="Preset category"
         value={category}
         options={cats.map((c) => ({ value: c, label: c }))}
         wrap
-        onChange={(c) => setCategory(c)}
+        onChange={(c) => {
+          setCategory(c)
+          const preset = defaultPresetFor(kind, c)
+          if (preset) engine.applySpacePreset(preset)
+        }}
       />
       <div className={styles.presets}>
         {presets.map((p) => (
-          <button key={p.id} type="button" className={styles.preset} onClick={() => engine.applySpacePreset(p)}>
-            {p.name}
+          <button
+            key={p.id}
+            type="button"
+            className={`${styles.preset} ${snap.spacePresetId === p.id ? styles.presetOn : ''}`}
+            title={presetHint(p)}
+            onClick={() => engine.applySpacePreset(p)}
+          >
+            <span>{p.name}</span>
+            <em>{presetHint(p)}</em>
           </button>
         ))}
       </div>
 
       <div className={styles.row}>
+        <button type="button" className={styles.ghost} onClick={() => engine.killFx(kind)}>
+          Kill {kind}
+        </button>
         <Toggle
           pressed={advanced}
           label={advanced ? 'Advanced' : 'Main'}

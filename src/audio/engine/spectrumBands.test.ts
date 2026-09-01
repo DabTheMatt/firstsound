@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   SPECTRUM_BAND_COUNT,
   bandPeakDb,
+  clampSpectrumBandCount,
   followEnvelope,
   logBandEdgesHz,
 } from './spectrumBands'
@@ -30,6 +31,14 @@ describe('bandPeakDb', () => {
     const peakBand = [...bands].indexOf(Math.max(...bands))
     expect(bands[peakBand]).toBeCloseTo(-12)
     expect(bands.filter((d) => d > -80).length).toBeLessThan(4)
+  })
+})
+
+describe('clampSpectrumBandCount', () => {
+  it('snaps to the nearest allowed band count', () => {
+    expect(clampSpectrumBandCount(30)).toBe(32)
+    expect(clampSpectrumBandCount(8)).toBe(8)
+    expect(clampSpectrumBandCount(99)).toBe(64)
   })
 })
 

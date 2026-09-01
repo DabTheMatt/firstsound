@@ -641,3 +641,68 @@ export function wetDryFor(type: 'delay' | 'reverb', params: Record<ParamId, numb
   const mix = type === 'delay' ? params.spaceMix / 100 : params.reverb / 100
   return equalPowerDryWet(mix)
 }
+
+function instantGain(param: AudioParam, now: number, value = 0): void {
+  param.cancelScheduledValues(now)
+  param.setValueAtTime(value, now)
+}
+
+function stopOsc(node: OscillatorNode): void {
+  try {
+    node.stop()
+  } catch {
+    /* already stopped */
+  }
+  try {
+    node.disconnect()
+  } catch {
+    /* already disconnected */
+  }
+}
+
+/** Cut feedback immediately so tails cannot self-oscillate after stop. */
+export function silenceDelayGraph(g: DelayGraph, now: number): void {
+  instantGain(g.fbL.gain, now)
+  instantGain(g.fbR.gain, now)
+  instantGain(g.pingToL.gain, now)
+  instantGain(g.pingToR.gain, now)
+  instantGain(g.tapAGain.gain, now)
+  instantGain(g.tapBGain.gain, now)
+  instantGain(g.reverseMix.gain, now)
+  instantGain(g.pitchMix.gain, now)
+  instantGain(g.freezeIn.gain, now)
+  instantGain(g.out.gain, now)
+}
+
+export function silenceReverbGraph(g: ReverbGraph, now: number): void {
+  instantGain(g.tankFb.gain, now)
+  instantGain(g.freezeIn.gain, now)
+  instantGain(g.earlyGain.gain, now)
+  instantGain(g.shimmerMix.gain, now)
+  instantGain(g.out.gain, now)
+}
+
+export function stopDelayGraph(g: DelayGraph): void {
+  silenceDelayGraph(g, 0)
+  stopOsc(g.lfo)
+  stopOsc(g.wow)
+  stopOsc(g.flutter)
+  stopOsc(g.drift)
+  stopOsc(g.pitchLfo)
+  try {
+    g.out.disconnect()
+  } catch {
+    /* already disconnected */
+  }
+}
+
+export function stopReverbGraph(g: ReverbGraph): void {
+  silenceReverbGraph(g, 0)
+  stopOsc(g.lfo)
+  stopOsc(g.shimmerLfo)
+  try {
+    g.out.disconnect()
+  } catch {
+    /* already disconnected */
+  }
+}

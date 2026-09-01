@@ -253,3 +253,7 @@
   --eq-curve: #dfaf55;
   --eq-node: #edc470;
 }
+
+[data-theme='custom'] {
+  color-scheme: dark;
+}

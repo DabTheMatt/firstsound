@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
 import { applyDelayMacro, delayMacroNormalized } from './macros'
 import { migrateSpaceParams } from './migrate'
-import { findSpacePreset, SPACE_PRESETS } from './presets'
+import { defaultPresetFor, findSpacePreset, SPACE_PRESETS } from './presets'
 
 describe('macros', () => {
   it('time macro writes delayTime and disables sync', () => {
@@ -34,5 +34,16 @@ describe('presets', () => {
     expect(SPACE_PRESETS.some((p) => p.id === 'dly-dot-8')).toBe(true)
     expect(SPACE_PRESETS.some((p) => p.id === 'rv-shimmer')).toBe(true)
     expect(findSpacePreset('dly-ping')?.delayType).toBe('pingPong')
+  })
+
+  it('maps guitar and drums categories to real patches', () => {
+    const guitarDelay = defaultPresetFor('delay', 'Guitar')
+    const drumDelay = defaultPresetFor('delay', 'Drums')
+    const guitarRev = defaultPresetFor('reverb', 'Guitar')
+    const drumRev = defaultPresetFor('reverb', 'Drums')
+    expect(guitarDelay?.params.delayTime ?? guitarDelay?.params.delaySync).toBeTruthy()
+    expect(drumDelay?.params.delayFeedback).toBeLessThan(20)
+    expect(guitarRev?.reverbType).toBe('room')
+    expect(drumRev?.category).toBe('Drums')
   })
 })

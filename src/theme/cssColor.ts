@@ -37,3 +37,28 @@ export function colorWithAlpha(color: string, alpha: number): string {
   const a = Math.min(1, Math.max(0, alpha))
   return `rgba(${Math.round(parsed.r)}, ${Math.round(parsed.g)}, ${Math.round(parsed.b)}, ${a})`
 }
+
+export function toCssHex(color: string): string | null {
+  const parsed = parseCssColor(color)
+  if (!parsed) return null
+  const h = (n: number) => Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, '0')
+  return `#${h(parsed.r)}${h(parsed.g)}${h(parsed.b)}`
+}
+
+export function mixCssColor(a: string, b: string, t: number): string {
+  const pa = parseCssColor(a)
+  const pb = parseCssColor(b)
+  if (!pa || !pb) return a
+  const u = Math.min(1, Math.max(0, t))
+  const r = pa.r + (pb.r - pa.r) * u
+  const g = pa.g + (pb.g - pa.g) * u
+  const bl = pa.b + (pb.b - pa.b) * u
+  return toCssHex(`rgb(${r}, ${g}, ${bl})`) ?? a
+}
+
+export function isDarkColor(color: string): boolean {
+  const p = parseCssColor(color)
+  if (!p) return true
+  const luma = (0.2126 * p.r + 0.7152 * p.g + 0.0722 * p.b) / 255
+  return luma < 0.55
+}
