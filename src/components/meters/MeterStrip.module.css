@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  width: 72px;
+  width: 78px;
   flex: none;
   min-height: 0;
   padding: 2px 0;
@@ -12,7 +12,7 @@
 .clipRow {
   display: flex;
   justify-content: center;
-  padding-left: 30px;
+  padding-left: 38px;
 }
 
 .clip {
@@ -70,15 +70,16 @@
   position: relative;
   flex: none;
   align-self: stretch;
-  width: 32px;
+  width: 38px;
   min-height: 0;
 }
 
 .sweetBracket {
   position: absolute;
-  left: 0;
-  width: 4px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 70%, transparent);
+  left: 1px;
+  width: 5px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 75%, transparent);
   border-right: 0;
   border-radius: 1px 0 0 1px;
   pointer-events: none;
@@ -88,7 +89,7 @@
 .scale span,
 .tick {
   position: absolute;
-  right: 5px;
+  right: 7px;
   z-index: 1;
   font-size: 7px;
   line-height: 1;
