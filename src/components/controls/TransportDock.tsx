@@ -178,15 +178,22 @@ export function TransportDock({
         className={styles.playWrap}
         onPointerDown={onRingPointerDown}
       >
-        <svg className={styles.ring} width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
-          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#34383b" strokeWidth="4" />
+        <svg
+          className={styles.ring}
+          width={SIZE}
+          height={SIZE}
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
+          overflow="visible"
+          aria-hidden="true"
+        >
+          <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="#8a8f92" strokeWidth="3.5" />
           <circle
             cx={CENTER}
             cy={CENTER}
             r={RADIUS}
             fill="none"
-            stroke="color-mix(in srgb, var(--accent) 55%, #34383b)"
-            strokeWidth="6"
+            stroke="var(--accent)"
+            strokeWidth="3.5"
             strokeLinecap="butt"
             strokeDasharray={regionDash.dashArray}
             strokeDashoffset={regionDash.dashOffset}
@@ -195,7 +202,7 @@ export function TransportDock({
           <line
             ref={tickRef}
             x1={CENTER}
-            y1={CENTER - RADIUS - 1}
+            y1={CENTER - RADIUS + 1}
             x2={CENTER}
             y2={CENTER - RADIUS + TICK}
             stroke="var(--accent)"
