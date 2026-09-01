@@ -6,6 +6,7 @@ import {
   clampScrubTime,
   dbToGain,
   defaultPlayRegion,
+  fullPlayRegion,
   formatParamValue,
   fromNormalized,
   playbackRate,
@@ -102,5 +103,10 @@ describe('defaultPlayRegion', () => {
     const r = defaultPlayRegion(100)
     expect(r.start).toBeCloseTo(18)
     expect(r.end).toBeCloseTo(65)
+  })
+
+  it('covers the whole buffer after a trim bake', () => {
+    expect(fullPlayRegion(3.76)).toEqual({ start: 0, end: 3.76 })
+    expect(fullPlayRegion(0)).toEqual({ start: 0, end: 0 })
   })
 })

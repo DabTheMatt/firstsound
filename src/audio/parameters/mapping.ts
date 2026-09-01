@@ -81,6 +81,12 @@ export function defaultPlayRegion(
   return clampRegion(duration * 0.18, duration * 0.65, duration, minLen)
 }
 
+/** Play the entire buffer — used after Trim / Use as Sample bake. */
+export function fullPlayRegion(duration: number): { start: number; end: number } {
+  if (duration <= 0) return { start: 0, end: 0 }
+  return { start: 0, end: duration }
+}
+
 export function dbToGain(db: number): number {
   return 10 ** (db / 20)
 }

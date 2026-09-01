@@ -15,6 +15,7 @@ import {
   clampScrubTime,
   dbToGain,
   defaultPlayRegion,
+  fullPlayRegion,
   playbackRate,
 } from '../parameters/mapping'
 import type {
@@ -952,7 +953,7 @@ export class AudioEngine {
         gain,
       })
       this.fileName = stemName(this.fileName) + '_sample.wav'
-      this.applyLoadedBuffer(rendered, false)
+      this.applyLoadedBuffer(rendered, false, 'full')
       return
     }
     if (!this.sourceBuffer) return
@@ -997,7 +998,11 @@ export class AudioEngine {
     })
   }
 
-  private applyLoadedBuffer(buffer: AudioBuffer, asSource: boolean): void {
+  private applyLoadedBuffer(
+    buffer: AudioBuffer,
+    asSource: boolean,
+    regionMode: 'inset' | 'full' = 'inset',
+  ): void {
     this.buffer = buffer
     if (asSource) this.sourceBuffer = buffer
     this.reversed = this.buildReversed(buffer)
@@ -1025,7 +1030,10 @@ export class AudioEngine {
       }
       this.playOffset = this.params.start
     } else {
-      const region = defaultPlayRegion(buffer.duration, MIN_REGION)
+      const region =
+        regionMode === 'full'
+          ? fullPlayRegion(buffer.duration)
+          : defaultPlayRegion(buffer.duration, MIN_REGION)
       this.params = { ...this.params, start: region.start, end: region.end }
       this.playOffset = region.start
     }

@@ -21,6 +21,11 @@ describe('viewport', () => {
     expect(past.start).toBeCloseTo(4)
   })
 
+  it('fits the whole sample across the view', () => {
+    expect(fitView(3.76)).toEqual({ start: 0, end: 3.76 })
+    expect(zoomPercent(fitView(3.76), 3.76)).toBeCloseTo(100)
+  })
+
   it('maps time to fraction and back', () => {
     const view = { start: 2, end: 6 }
     expect(timeToFrac(4, view)).toBeCloseTo(0.5)

@@ -196,6 +196,21 @@ export default function App() {
       sheet={sheet && sheetLevel !== 'expanded'}
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
       onCommit={commit}
+      onTrim={() => {
+        void engine
+          .useAsSample({
+            fadeIn: 0,
+            fadeOut: 0,
+            fadeCurve: 'linear',
+            reverse: false,
+            normalize: false,
+          })
+          .then(() => {
+            setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+            waveRef.current?.fitSample()
+            commit()
+          })
+      }}
       knobs={mode !== 'sheet'}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
@@ -320,7 +335,7 @@ export default function App() {
           <div className={styles.waveCol}>
             <Waveform
               ref={waveRef}
-              key={snap.fileName || 'empty'}
+              key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}`}
               duration={snap.duration}
               start={snap.params.start}
               end={snap.params.end}

@@ -20,6 +20,7 @@ type Props = {
   onEdit: (patch: Partial<EditState>) => void
   onFine: (which: 'start' | 'end', delta: number) => void
   onCommit?: () => void
+  onTrim?: () => void
   sheet?: boolean
   knobs?: boolean
 }
@@ -56,6 +57,7 @@ export function Inspector({
   onEdit,
   onFine,
   onCommit,
+  onTrim,
   sheet,
   knobs = true,
 }: Props) {
@@ -70,6 +72,7 @@ export function Inspector({
           onEdit={onEdit}
           onFine={onFine}
           onCommit={onCommit}
+          onTrim={onTrim}
           knobs={knobs}
         />
       ) : (
@@ -91,6 +94,7 @@ function ToolInspector({
   onEdit,
   onFine,
   onCommit,
+  onTrim,
   knobs,
 }: {
   tool: WaveTool
@@ -99,6 +103,7 @@ function ToolInspector({
   onEdit: (patch: Partial<EditState>) => void
   onFine: (which: 'start' | 'end', delta: number) => void
   onCommit?: () => void
+  onTrim?: () => void
   knobs: boolean
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
@@ -136,13 +141,15 @@ function ToolInspector({
           type="button"
           className={styles.ghost}
           onClick={() =>
-            void engine.useAsSample({
-              fadeIn: 0,
-              fadeOut: 0,
-              fadeCurve: 'linear',
-              reverse: false,
-              normalize: false,
-            })
+            onTrim
+              ? onTrim()
+              : void engine.useAsSample({
+                  fadeIn: 0,
+                  fadeOut: 0,
+                  fadeCurve: 'linear',
+                  reverse: false,
+                  normalize: false,
+                })
           }
         >
           Trim
