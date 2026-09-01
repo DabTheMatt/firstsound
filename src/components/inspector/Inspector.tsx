@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
+import { MODULE_LABELS, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
@@ -42,7 +42,7 @@ type Props = {
   onHideInspector?: () => void
 }
 
-const GAIN_IDS: ParamId[] = ['gain']
+const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch']
 const GRAIN_IDS: ParamId[] = [
   'grainSize',
   'density',
@@ -50,12 +50,11 @@ const GRAIN_IDS: ParamId[] = [
   'scatter',
   'grainPitch',
   'pitchSpread',
-  'speed',
-  'pitch',
   'motionDepth',
   'motionRate',
   'motionJitter',
 ]
+const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
 const SAT_IDS: ParamId[] = ['saturation']
 const OUT_IDS: ParamId[] = ['outputGain']
 
@@ -323,7 +322,7 @@ function ModuleInspector({
   return (
     <>
       <div className={styles.head}>
-        <h2 className={styles.title}>{MODULE_LABELS[type]}</h2>
+        <h2 className={styles.title}>{mod ? moduleLabel(mod, snap.chain) : MODULE_LABELS[type]}</h2>
         <div className={styles.headActions}>
           {type !== 'gain' && type !== 'output' ? (
             <Toggle
@@ -332,10 +331,48 @@ function ModuleInspector({
               onToggle={() => engine.setModuleBypass(instanceId, !mod?.bypassed)}
             />
           ) : null}
+          {mod && !isFixedType(mod.type) ? (
+            <button
+              type="button"
+              className={styles.ghost}
+              onClick={() => engine.removeModule(instanceId)}
+            >
+              Remove
+            </button>
+          ) : null}
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
-      {type === 'gain' ? params(GAIN_IDS) : null}
+      {type === 'gain' ? (
+        <>
+          <Segmented
+            label="Direction"
+            value={snap.direction}
+            options={PLAYBACK_DIRECTIONS}
+            wrap
+            onChange={(d) => engine.setDirection(d)}
+          />
+          {params(GAIN_IDS)}
+          <h3 className={styles.sub}>Panorama</h3>
+          <p className={styles.help}>
+            Pan is stereo balance. Left/Right set channel levels. Make mono sums both sides. Invert
+            phase flips polarity.
+          </p>
+          {params(PAN_IDS)}
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.params.makeMono > 0.5}
+              label="Make mono"
+              onToggle={() => engine.setParam('makeMono', snap.params.makeMono > 0.5 ? 0 : 1)}
+            />
+            <Toggle
+              pressed={snap.params.invertPhase > 0.5}
+              label="Invert phase"
+              onToggle={() => engine.setParam('invertPhase', snap.params.invertPhase > 0.5 ? 0 : 1)}
+            />
+          </div>
+        </>
+      ) : null}
       {type === 'grain' ? (
         <>
           <Toggle
@@ -345,17 +382,10 @@ function ModuleInspector({
               engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
             }
           />
-          <Segmented
-            label="Direction"
-            value={snap.direction}
-            options={PLAYBACK_DIRECTIONS}
-            wrap
-            onChange={(d) => engine.setDirection(d)}
-          />
           {params(GRAIN_IDS)}
         </>
       ) : null}
-      {type === 'eq' ? <EqEditor snap={snap} knobs={variant === 'knob'} /> : null}
+      {type === 'eq' ? <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} /> : null}
       {type === 'saturation' ? params(SAT_IDS) : null}
       {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} /> : null}
       {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} /> : null}
@@ -369,9 +399,22 @@ function ModuleInspector({
   )
 }
 
-function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
+function EqEditor({
+  snap,
+  knobs,
+  instanceId,
+}: {
+  snap: EngineSnapshot
+  knobs: boolean
+  instanceId: string
+}) {
   const [openBand, setOpenBand] = useState(0)
-  const comb = snap.comb
+  const st = snap.eqById[instanceId] ?? { bands: snap.eqBands, comb: snap.comb }
+  const bands = st.bands
+  const comb = st.comb
+  const setBand = (index: number, patch: Parameters<typeof engine.setEqBand>[1]) =>
+    engine.setEqBand(index, patch, instanceId)
+  const setComb = (patch: Parameters<typeof engine.setComb>[0]) => engine.setComb(patch, instanceId)
   const formatHz = (hz: number) =>
     hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
   return (
@@ -388,15 +431,15 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
       />
       <div className={styles.eqViz}>
         <EqCurve
-          bands={snap.eqBands}
+          bands={bands}
           sampleRate={snap.sampleRate}
           selectedBand={openBand}
           comb={comb}
           onSelectBand={setOpenBand}
-          onDragBand={(index, patch) => engine.setEqBand(index, patch)}
+          onDragBand={(index, patch) => setBand(index, patch)}
         />
       </div>
-      {snap.eqBands.map((band, index) => (
+      {bands.map((band, index) => (
         <details
           key={index}
           className={styles.band}
@@ -411,7 +454,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
             value={band.type}
             options={EQ_TYPE_OPTIONS}
             wrap
-            onChange={(type) => engine.setEqBand(index, { type })}
+            onChange={(type) => setBand(index, { type })}
           />
           {bandUsesSlope(band.type) ? (
             <>
@@ -425,7 +468,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   title: `${s.value} dB/oct`,
                 }))}
                 wrap
-                onChange={(slope) => engine.setEqBand(index, { slope: Number(slope) as FilterSlope })}
+                onChange={(slope) => setBand(index, { slope: Number(slope) as FilterSlope })}
               />
             </>
           ) : null}
@@ -438,11 +481,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                 min={EQ_MIN_HZ}
                 max={EQ_MAX_HZ}
                 now={band.frequency}
-                onChange={(n) => engine.setEqBand(index, { frequency: nToFreq(n) })}
+                onChange={(n) => setBand(index, { frequency: nToFreq(n) })}
                 onTypedValue={(text) => {
                   const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
                   if (next == null) return false
-                  engine.setEqBand(index, { frequency: next })
+                  setBand(index, { frequency: next })
                   return true
                 }}
               />
@@ -454,11 +497,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   min={-18}
                   max={18}
                   now={band.gain}
-                  onChange={(n) => engine.setEqBand(index, { gain: n * 36 - 18 })}
+                  onChange={(n) => setBand(index, { gain: n * 36 - 18 })}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, -18, 18, 'dB')
                     if (next == null) return false
-                    engine.setEqBand(index, { gain: next })
+                    setBand(index, { gain: next })
                     return true
                   }}
                 />
@@ -472,12 +515,12 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   max={10000}
                   now={bandwidthHz(band.frequency, band.q)}
                   onChange={(n) =>
-                    engine.setEqBand(index, { q: qFromBandwidth(band.frequency, nToWidth(n)) })
+                    setBand(index, { q: qFromBandwidth(band.frequency, nToWidth(n)) })
                   }
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, 10, 10000, 'Hz')
                     if (next == null) return false
-                    engine.setEqBand(index, { q: qFromBandwidth(band.frequency, next) })
+                    setBand(index, { q: qFromBandwidth(band.frequency, next) })
                     return true
                   }}
                 />
@@ -489,11 +532,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   min={0.1}
                   max={20}
                   now={band.q}
-                  onChange={(n) => engine.setEqBand(index, { q: nToQ(n) })}
+                  onChange={(n) => setBand(index, { q: nToQ(n) })}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, 0.1, 20)
                     if (next == null) return false
-                    engine.setEqBand(index, { q: next })
+                    setBand(index, { q: next })
                     return true
                   }}
                 />
@@ -510,7 +553,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   step={0.001}
                   value={freqToN(band.frequency)}
                   onChange={(e) =>
-                    engine.setEqBand(index, { frequency: nToFreq(Number(e.target.value)) })
+                    setBand(index, { frequency: nToFreq(Number(e.target.value)) })
                   }
                 />
                 <span>{formatHz(band.frequency)}</span>
@@ -524,7 +567,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                     max={18}
                     step={0.1}
                     value={band.gain}
-                    onChange={(e) => engine.setEqBand(index, { gain: Number(e.target.value) })}
+                    onChange={(e) => setBand(index, { gain: Number(e.target.value) })}
                   />
                   <span>{band.gain.toFixed(1)} dB</span>
                 </label>
@@ -539,7 +582,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                     step={0.001}
                     value={widthToN(bandwidthHz(band.frequency, band.q))}
                     onChange={(e) =>
-                      engine.setEqBand(index, {
+                      setBand(index, {
                         q: qFromBandwidth(band.frequency, nToWidth(Number(e.target.value))),
                       })
                     }
@@ -555,7 +598,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                     max={1}
                     step={0.001}
                     value={qToN(band.q)}
-                    onChange={(e) => engine.setEqBand(index, { q: nToQ(Number(e.target.value)) })}
+                    onChange={(e) => setBand(index, { q: nToQ(Number(e.target.value)) })}
                   />
                   <span>{band.q.toFixed(2)}</span>
                 </label>
@@ -569,7 +612,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
         <Toggle
           pressed={comb.enabled}
           label="Comb filter"
-          onToggle={() => engine.setComb({ enabled: !comb.enabled })}
+          onToggle={() => setComb({ enabled: !comb.enabled })}
         />
         <Segmented
           label="Comb spacing"
@@ -580,7 +623,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
           ]}
           wrap
           onChange={(spacingMode) =>
-            engine.setComb({
+            setComb({
               spacingMode,
               spacing: defaultSpacingForMode(spacingMode),
             })
@@ -595,11 +638,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
               min={2}
               max={16}
               now={comb.teeth}
-              onChange={(n) => engine.setComb({ teeth: Math.round(n * 14 + 2) })}
+              onChange={(n) => setComb({ teeth: Math.round(n * 14 + 2) })}
               onTypedValue={(text) => {
                 const next = parseTypedRange(text, 2, 16)
                 if (next == null) return false
-                engine.setComb({ teeth: Math.round(next) })
+                setComb({ teeth: Math.round(next) })
                 return true
               }}
             />
@@ -610,11 +653,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
               min={-18}
               max={18}
               now={comb.gain}
-              onChange={(n) => engine.setComb({ gain: n * 36 - 18 })}
+              onChange={(n) => setComb({ gain: n * 36 - 18 })}
               onTypedValue={(text) => {
                 const next = parseTypedRange(text, -18, 18, 'dB')
                 if (next == null) return false
-                engine.setComb({ gain: next })
+                setComb({ gain: next })
                 return true
               }}
             />
@@ -625,11 +668,11 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
               min={EQ_MIN_HZ}
               max={EQ_MAX_HZ}
               now={comb.frequency}
-              onChange={(n) => engine.setComb({ frequency: nToFreq(n) })}
+              onChange={(n) => setComb({ frequency: nToFreq(n) })}
               onTypedValue={(text) => {
                 const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
                 if (next == null) return false
-                engine.setComb({ frequency: next })
+                setComb({ frequency: next })
                 return true
               }}
             />
@@ -652,9 +695,9 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
               now={comb.spacing}
               onChange={(n) => {
                 if (comb.spacingMode === 'log') {
-                  engine.setComb({ spacing: 1.05 * (4 / 1.05) ** n })
+                  setComb({ spacing: 1.05 * (4 / 1.05) ** n })
                 } else {
-                  engine.setComb({ spacing: 10 * (4000 / 10) ** n })
+                  setComb({ spacing: 10 * (4000 / 10) ** n })
                 }
               }}
               onTypedValue={(text) => {
@@ -665,7 +708,7 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
                   comb.spacingMode === 'log' ? '' : 'Hz',
                 )
                 if (next == null) return false
-                engine.setComb({ spacing: next })
+                setComb({ spacing: next })
                 return true
               }}
             />

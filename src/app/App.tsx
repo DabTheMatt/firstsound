@@ -177,6 +177,15 @@ export default function App() {
     if (mode === 'sheet') setSheetLevel('medium')
   }
 
+  const resolvedFocus: InspectorFocus =
+    focus.kind === 'module' && !snap.chain.some((m) => m.instanceId === focus.instanceId)
+      ? {
+          kind: 'module',
+          instanceId: snap.chain[0]?.instanceId ?? 'gain-1',
+          type: snap.chain[0]?.type ?? 'gain',
+        }
+      : focus
+
   const selectTool = (next: WaveTool) => {
     setTool(next)
     setFocus({ kind: 'tool', tool: next })
@@ -207,7 +216,7 @@ export default function App() {
   const inspector = inspectorOpen ? (
     <Inspector
       snap={snap}
-      focus={focus}
+      focus={resolvedFocus}
       edit={edit}
       sheet={sheet && sheetLevel !== 'expanded'}
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
@@ -359,7 +368,7 @@ export default function App() {
 
         <SignalChain
           chain={snap.chain}
-          selectedId={focus.kind === 'module' ? focus.instanceId : ''}
+          selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
           onSelect={selectModule}
           touch={compact}
         />
@@ -404,7 +413,7 @@ export default function App() {
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
               onFadesCommit={commit}
               onRegionCommit={commit}
-              fxMode={focus.kind === 'module' && (focus.type === 'delay' || focus.type === 'reverb') ? focus.type : null}
+              fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}

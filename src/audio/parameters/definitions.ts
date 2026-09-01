@@ -48,6 +48,56 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 0.1,
   },
+  pan: {
+    id: 'pan',
+    label: 'Pan',
+    min: -100,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+    step: 1,
+  },
+  channelGainL: {
+    id: 'channelGainL',
+    label: 'Left',
+    min: -24,
+    max: 6,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  channelGainR: {
+    id: 'channelGainR',
+    label: 'Right',
+    min: -24,
+    max: 6,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  makeMono: {
+    id: 'makeMono',
+    label: 'Mono',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  invertPhase: {
+    id: 'invertPhase',
+    label: 'Invert Phase',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
   grainSize: {
     id: 'grainSize',
     label: 'Grain Size',
@@ -720,7 +770,7 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
-export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain']
+export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain', 'pan']
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',

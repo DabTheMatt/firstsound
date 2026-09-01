@@ -20,7 +20,7 @@ export type ChainModule = {
 }
 
 export const MODULE_LABELS: Record<ModuleType, string> = {
-  gain: 'Gain',
+  gain: 'Main',
   grain: 'Grain',
   eq: 'EQ',
   saturation: 'Saturation',
@@ -28,6 +28,11 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   reverb: 'Reverb',
   output: 'Output',
 }
+
+/** Modules that can be inserted between Main and Output. */
+export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb']
+
+export const MAX_CHAIN_MIDDLE = 12
 
 export function defaultChain(): ChainModule[] {
   return [
@@ -90,6 +95,48 @@ export function normalizeChain(chain: readonly ChainModule[]): ChainModule[] {
     chain.find((m) => m.type === 'output') ?? defaultChain().at(-1)!
   const middle = chain.filter((m) => m.type !== 'gain' && m.type !== 'output')
   return [{ ...gain, bypassed: false }, ...middle, { ...output, bypassed: false }]
+}
+
+export function nextInstanceId(type: ModuleType, chain: readonly ChainModule[]): string {
+  const used = new Set(chain.map((m) => m.instanceId))
+  let n = 1
+  while (used.has(`${type}-${n}`)) n++
+  return `${type}-${n}`
+}
+
+export function moduleLabel(mod: ChainModule, chain: readonly ChainModule[]): string {
+  const base = MODULE_LABELS[mod.type]
+  const same = chain.filter((m) => m.type === mod.type)
+  if (same.length <= 1) return base
+  const n = same.findIndex((m) => m.instanceId === mod.instanceId) + 1
+  return `${base} ${n}`
+}
+
+/** Insert `type` after `afterIndex` (the module to the left of the +). */
+export function insertChainModule(
+  chain: readonly ChainModule[],
+  type: ModuleType,
+  afterIndex: number,
+): ChainModule[] {
+  if (isFixedType(type)) return chain.slice()
+  if (!INSERTABLE_TYPES.includes(type)) return chain.slice()
+  const middleCount = chain.filter((m) => !isFixedType(m.type)).length
+  if (middleCount >= MAX_CHAIN_MIDDLE) return chain.slice()
+  const item: ChainModule = {
+    instanceId: nextInstanceId(type, chain),
+    type,
+    bypassed: false,
+  }
+  const dest = Math.min(Math.max(afterIndex + 1, 1), Math.max(1, chain.length - 1))
+  const next = chain.slice()
+  next.splice(dest, 0, item)
+  return normalizeChain(next)
+}
+
+export function removeChainModule(chain: readonly ChainModule[], instanceId: string): ChainModule[] {
+  const item = chain.find((m) => m.instanceId === instanceId)
+  if (!item || isFixedType(item.type)) return chain.slice()
+  return normalizeChain(chain.filter((m) => m.instanceId !== instanceId))
 }
 
 export function parseChain(raw: unknown): ChainModule[] | null {
