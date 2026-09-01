@@ -15,12 +15,32 @@
 }
 
 .split .wrap {
-  flex: 1.4;
+  flex: 1.2;
 }
 
 .split .spec {
-  flex: 0.7;
+  flex: 1;
   min-height: 80px;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    min-height: 180px;
+  }
+
+  .split .wrap {
+    flex: 1;
+    min-height: 140px;
+  }
+
+  .split .spec {
+    flex: 1;
+    min-height: 120px;
+  }
+
+  .stage:not(.split) .spec {
+    min-height: 220px;
+  }
 }
 
 .spec {

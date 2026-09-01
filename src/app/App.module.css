@@ -83,11 +83,25 @@
 }
 
 .medium {
-  max-height: 38vh;
+  max-height: 28vh;
 }
 
 .expanded {
-  max-height: 56vh;
+  max-height: 40vh;
+}
+
+.mobileShell {
+  --mobile-footer-height: 96px;
+  padding-bottom: calc(var(--mobile-footer-height) + env(safe-area-inset-bottom));
+}
+
+.mobileShell .work {
+  flex: 1 1 auto;
+  min-height: 140px;
+}
+
+.mobileShell .bottom {
+  min-height: 0;
 }
 
 .toggleInspector {

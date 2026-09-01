@@ -304,7 +304,7 @@ export default function App() {
       }}
     >
       <main
-        className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden}`}
+        className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${compact ? styles.mobileShell : ''}`}
       >
         <AppHeader
           snap={snap}
@@ -390,36 +390,6 @@ export default function App() {
           ) : null}
         </div>
 
-        <CompactTransport
-          playing={snap.playing}
-          loop={snap.loop}
-          start={snap.params.start}
-          end={snap.params.end}
-          disabled={!snap.sampleLoaded}
-          compact={compact}
-          canUndo={history.past.length > 0}
-          canRedo={history.future.length > 0}
-          onUndo={() => applyHistory(undoHistory(history))}
-          onRedo={() => applyHistory(redoHistory(history))}
-          onExport={() => setExportOpen(true)}
-          onUseSample={onUseSample}
-        />
-
-        {editMode && snap.sampleLoaded ? (
-          <EditBar
-            snap={snap}
-            viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
-            moreOpen={false}
-            onToggleMore={() => undefined}
-            onExport={() => setExportOpen(true)}
-            onDone={() => {
-              engine.stopPreview()
-              setEditMode(false)
-              setExportOpen(false)
-            }}
-          />
-        ) : null}
-
         {!dockRight && inspectorOpen ? (
           <div className={`${styles.bottom} ${styles[sheetLevel]}`}>
             {sheet ? (
@@ -437,6 +407,38 @@ export default function App() {
             ) : null}
             {sheetLevel !== 'collapsed' || !sheet ? inspector : null}
           </div>
+        ) : null}
+
+        {dockRight ? (
+          <CompactTransport
+            playing={snap.playing}
+            loop={snap.loop}
+            start={snap.params.start}
+            end={snap.params.end}
+            disabled={!snap.sampleLoaded}
+            compact={compact}
+            canUndo={history.past.length > 0}
+            canRedo={history.future.length > 0}
+            onUndo={() => applyHistory(undoHistory(history))}
+            onRedo={() => applyHistory(redoHistory(history))}
+            onExport={() => setExportOpen(true)}
+            onUseSample={onUseSample}
+          />
+        ) : null}
+
+        {editMode && snap.sampleLoaded ? (
+          <EditBar
+            snap={snap}
+            viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
+            moreOpen={false}
+            onToggleMore={() => undefined}
+            onExport={() => setExportOpen(true)}
+            onDone={() => {
+              engine.stopPreview()
+              setEditMode(false)
+              setExportOpen(false)
+            }}
+          />
         ) : null}
 
         {dockRight ? (
@@ -476,6 +478,23 @@ export default function App() {
           }}
         />
       </main>
+      {!dockRight ? (
+        <CompactTransport
+          playing={snap.playing}
+          loop={snap.loop}
+          start={snap.params.start}
+          end={snap.params.end}
+          disabled={!snap.sampleLoaded}
+          compact={compact}
+          dock
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          onUndo={() => applyHistory(undoHistory(history))}
+          onRedo={() => applyHistory(redoHistory(history))}
+          onExport={() => setExportOpen(true)}
+          onUseSample={onUseSample}
+        />
+      ) : null}
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
     </div>
   )
