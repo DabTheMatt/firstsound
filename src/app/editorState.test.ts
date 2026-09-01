@@ -14,6 +14,14 @@ describe('meter mapping', () => {
     expect(band.height).toBeCloseTo(10)
   })
 
+  it('uses a denser 3 dB grid in the top of the meter', () => {
+    const ticks = meterScaleTicks(-60)
+    expect(ticks).toContain(-3)
+    expect(ticks).toContain(-9)
+    expect(ticks).toContain(-18)
+    expect(ticks).toContain(-30)
+  })
+
   it('includes sweet-spot ticks for every meter range', () => {
     for (const range of ['normal', 'field', 'full'] as const) {
       const ticks = meterScaleTicks(meterDbMin(range))

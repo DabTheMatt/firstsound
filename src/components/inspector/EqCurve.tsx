@@ -9,7 +9,8 @@ import {
   type EqBand,
 } from '../../audio/engine/eqBands'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
-import { readThemeColors, subscribeThemeChange } from '../../theme'
+import { engine } from '../../hooks/useEngine'
+import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
 
 type Props = {
@@ -71,7 +72,10 @@ export function EqCurve({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    let frame = 0
     const draw = () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -81,11 +85,40 @@ export function EqCurve({
         canvas.height = height
       }
       const ctx = canvas.getContext('2d')
-      if (!ctx) return
+      if (!ctx) {
+        frame = requestAnimationFrame(draw)
+        return
+      }
       const colors = readThemeColors()
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
+      const analyser = engine.getAnalyser('eq')
+      if (analyser) {
+        const bins = new Float32Array(analyser.frequencyBinCount)
+        analyser.getFloatFrequencyData(bins)
+        const fftSr = engine.getSnapshot().sampleRate || sr
+        const nyquist = fftSr / 2
+        const fftSize = analyser.fftSize
+        ctx.beginPath()
+        ctx.moveTo(0, height)
+        for (let x = 0; x < width; x++) {
+          const hz = EQ_MIN_HZ * (EQ_MAX_HZ / EQ_MIN_HZ) ** (x / Math.max(1, width - 1))
+          const bin = Math.min(bins.length - 1, Math.max(1, Math.round((hz * fftSize) / fftSr)))
+          if (hz > nyquist) {
+            ctx.lineTo(x, height)
+            continue
+          }
+          const mag = bins[bin] ?? -100
+          const t = Math.min(1, Math.max(0, (0 - mag) / 100))
+          const y = dbToY(0, height) + t * (height - dbToY(0, height))
+          ctx.lineTo(x, y)
+        }
+        ctx.lineTo(width, height)
+        ctx.closePath()
+        ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.35)
+        ctx.fill()
+      }
       const zeroY = dbToY(0, height)
       ctx.strokeStyle = colors.borderSubtle
       ctx.lineWidth = 1
@@ -110,13 +143,12 @@ export function EqCurve({
       ctx.fillText('10', 4, height - 4)
       ctx.fillText('1k', width * 0.5 - 8, height - 4)
       ctx.fillText('25k', width - 28 * dpr, height - 4)
+      frame = requestAnimationFrame(draw)
     }
-    draw()
-    const ro = new ResizeObserver(draw)
-    ro.observe(canvas)
-    const unsub = subscribeThemeChange(draw)
+    frame = requestAnimationFrame(draw)
+    const unsub = subscribeThemeChange(() => undefined)
     return () => {
-      ro.disconnect()
+      cancelAnimationFrame(frame)
       unsub()
     }
   }, [bands, sr, selectedBand, comb])

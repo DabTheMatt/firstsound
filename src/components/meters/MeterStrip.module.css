@@ -71,7 +71,7 @@
 .tick {
   position: absolute;
   right: 0;
-  font-size: 8px;
+  font-size: 7px;
   line-height: 1;
   letter-spacing: 0;
   color: var(--text-muted);

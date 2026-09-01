@@ -45,8 +45,12 @@ export const METER_SWEET_LO = -12
 export const METER_SWEET_HI = -6
 
 export function meterScaleTicks(minDb: number): number[] {
-  const ticks = [0, -6, -12, -24, -36, -48, -60, -80, -100, -120]
-  return ticks.filter((db) => db >= minDb)
+  const ticks: number[] = []
+  for (let db = 0; db >= minDb - 1e-6; db -= db <= -24 ? 6 : 3) {
+    ticks.push(Math.round(db))
+  }
+  if (ticks[ticks.length - 1] !== minDb) ticks.push(minDb)
+  return ticks
 }
 
 export function meterSweetBand(minDb: number): { bottom: number; height: number } {
