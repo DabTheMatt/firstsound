@@ -141,7 +141,7 @@ export function TransportDock({
               className={`${styles.dir} ${direction === opt.value ? styles.dirActive : ''}`}
               onClick={() => engine.setDirection(opt.value)}
             >
-              {opt.value === 'pingpong' ? 'P-P' : opt.label}
+              {opt.value === 'forward' ? 'Fwd' : opt.value === 'reverse' ? 'Rev' : 'P-P'}
             </button>
           ))}
         </div>

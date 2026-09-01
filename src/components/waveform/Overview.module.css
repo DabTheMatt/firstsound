@@ -42,3 +42,9 @@
   transform: translateX(-50%);
   pointer-events: none;
 }
+
+@media (max-width: 820px) {
+  .overview {
+    height: 32px;
+  }
+}

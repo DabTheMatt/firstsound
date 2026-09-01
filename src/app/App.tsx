@@ -148,83 +148,86 @@ export default function App() {
           </p>
         ) : null}
 
-        <Waveform
-          key={snap.fileName || 'empty'}
-          duration={snap.duration}
-          start={snap.params.start}
-          end={snap.params.end}
-          loaded={snap.sampleLoaded}
-          onLoadDemo={() => {
-            void engine.unlock().then(() => engine.loadDemoTone())
-          }}
-        />
-
-        <div className={styles.transport}>
-          <Toggle
-            pressed={snap.engineMode === 'grain'}
-            label="Grain"
-            onToggle={() =>
-              engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
-            }
+        <div className={styles.waveZone}>
+          <Waveform
+            key={snap.fileName || 'empty'}
+            duration={snap.duration}
+            start={snap.params.start}
+            end={snap.params.end}
+            loaded={snap.sampleLoaded}
+            onLoadDemo={() => {
+              void engine.unlock().then(() => engine.loadDemoTone())
+            }}
           />
-          <dl className={styles.readouts}>
-            <div className={styles.readout}>
-              <dt>Start</dt>
-              <dd>{formatTimecode(snap.params.start)}</dd>
-            </div>
-            <div className={styles.readout}>
-              <dt>End</dt>
-              <dd>{formatTimecode(snap.params.end)}</dd>
-            </div>
-            <div className={styles.readout}>
-              <dt>Speed</dt>
-              <dd>{snap.params.speed.toFixed(2)}x</dd>
-            </div>
-            <div className={styles.readout}>
-              <dt>Pitch</dt>
-              <dd>{snap.params.pitch.toFixed(0)} st</dd>
-            </div>
-            <div className={styles.readout}>
-              <dt>Gain</dt>
-              <dd>{snap.params.gain.toFixed(1)} dB</dd>
-            </div>
-          </dl>
         </div>
 
-        <nav className={styles.tabs} aria-label="Modules">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.tab} ${tab === item.id ? styles.tabActive : ''}`}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <div className={styles.lower}>
+          <div className={styles.paramsZone}>
+            <dl className={styles.readouts}>
+              <div className={styles.readout}>
+                <dt>Start</dt>
+                <dd>{formatTimecode(snap.params.start)}</dd>
+              </div>
+              <div className={styles.readout}>
+                <dt>End</dt>
+                <dd>{formatTimecode(snap.params.end)}</dd>
+              </div>
+              <div className={`${styles.readout} ${styles.readoutExtra}`}>
+                <dt>Speed</dt>
+                <dd>{snap.params.speed.toFixed(2)}x</dd>
+              </div>
+              <div className={`${styles.readout} ${styles.readoutExtra}`}>
+                <dt>Pitch</dt>
+                <dd>{snap.params.pitch.toFixed(0)} st</dd>
+              </div>
+              <div className={`${styles.readout} ${styles.readoutExtra}`}>
+                <dt>Gain</dt>
+                <dd>{snap.params.gain.toFixed(1)} dB</dd>
+              </div>
+            </dl>
 
-        {note ? <p className={styles.note}>{note}</p> : null}
+            <nav className={styles.tabs} aria-label="Modules">
+              {TABS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`${styles.tab} ${tab === item.id ? styles.tabActive : ''}`}
+                  onClick={() => setTab(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
 
-        {/* Always rendered with a fixed height so switching tabs never resizes
-            the waveform above it. */}
-        <div className={styles.moduleControls}>
-          {tab === 'filter' ? (
-            <Segmented
-              label="Filter type"
-              value={snap.filterType}
-              options={FILTER_TYPES}
-              onChange={(type) => engine.setFilterType(type)}
-            />
-          ) : null}
-        </div>
+            {note ? <p className={styles.note}>{note}</p> : null}
 
-        <div className={styles.chain}>
-          <div className={styles.knobs}>
-            {knobs.map((id) => (
-              <Knob key={id} id={id} value={snap.params[id]} />
-            ))}
+            <div className={styles.moduleControls}>
+              {tab === 'grain' ? (
+                <Toggle
+                  pressed={snap.engineMode === 'grain'}
+                  label="Grain"
+                  onToggle={() =>
+                    engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
+                  }
+                />
+              ) : null}
+              {tab === 'filter' ? (
+                <Segmented
+                  label="Filter type"
+                  value={snap.filterType}
+                  options={FILTER_TYPES}
+                  onChange={(type) => engine.setFilterType(type)}
+                />
+              ) : null}
+            </div>
+
+            <div className={styles.knobs}>
+              {knobs.map((id) => (
+                <Knob key={id} id={id} value={snap.params[id]} />
+              ))}
+            </div>
           </div>
+
           <TransportDock
             playing={snap.playing}
             loop={snap.loop}
