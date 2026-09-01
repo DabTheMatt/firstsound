@@ -655,7 +655,10 @@ export function Waveform({ duration, start, end, loaded, editMode, onLoadDemo, o
               ) : null}
               <div ref={playheadRef} className={styles.playhead} />
               {loupe ? (
-                <div className={styles.loupe} style={{ left: `${Math.min(92, Math.max(8, loupe.x))}px` }}>
+                <div
+                  className={styles.loupe}
+                  style={{ left: `clamp(90px, ${loupe.x}px, calc(100% - 90px))` }}
+                >
                   <canvas ref={loupeCanvasRef} className={styles.loupeWave} />
                   <span>{loupe.label}</span>
                 </div>
