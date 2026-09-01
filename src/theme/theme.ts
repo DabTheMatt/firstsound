@@ -2,12 +2,20 @@ import { colorWithAlpha, isDarkColor, mixCssColor, toCssHex } from './cssColor'
 import {
   CUSTOM_THEME_STORAGE_KEY,
   DEFAULT_CUSTOM_COLORS,
+  isUserThemePreference,
+  MAX_SAVED_THEMES,
+  nextSavedThemeName,
   parseCustomThemeColors,
+  parseSavedThemes,
   parseThemePreference,
   resolveTheme,
+  SAVED_THEMES_STORAGE_KEY,
   THEME_STORAGE_KEY,
+  userThemeId,
+  userThemePreference,
   type CustomColorId,
   type CustomThemeColors,
+  type SavedTheme,
   type ThemeId,
   type ThemePreference,
 } from './tokens'
@@ -39,6 +47,7 @@ let cached: ThemeColors | null = null
 let media: MediaQueryList | null = null
 let currentPreference: ThemePreference = 'studio-dark'
 let currentCustom: CustomThemeColors = { ...DEFAULT_CUSTOM_COLORS }
+let savedThemes: SavedTheme[] = []
 
 const CUSTOM_STYLE_PROPS = [
   '--bg-app',
@@ -183,11 +192,13 @@ export function applyThemePreference(preference: ThemePreference): ThemeId {
 
 export function persistThemePreference(preference: ThemePreference): ThemeId {
   if (preference === 'custom' && currentPreference !== 'custom') {
-    try {
-      if (!localStorage.getItem(CUSTOM_THEME_STORAGE_KEY)) snapshotThemeToCustom()
-    } catch {
-      snapshotThemeToCustom()
-    }
+    snapshotThemeToCustom()
+  }
+  const userId = userThemeId(preference)
+  if (userId) {
+    const saved = savedThemes.find((t) => t.id === userId)
+    if (!saved) return applyThemePreference(currentPreference)
+    currentCustom = { ...saved.colors }
   }
   try {
     localStorage.setItem(THEME_STORAGE_KEY, preference)
@@ -213,7 +224,7 @@ export function persistCustomThemeColors(colors: CustomThemeColors): CustomTheme
   } catch {
     /* private mode */
   }
-  if (currentPreference === 'custom') applyResolvedTheme('custom')
+  if (currentPreference === 'custom' || isUserThemePreference(currentPreference)) applyResolvedTheme('custom')
   else {
     document.dispatchEvent(
       new CustomEvent(THEME_CHANGE, {
@@ -228,9 +239,16 @@ export function getCustomThemeColors(): CustomThemeColors {
   return { ...currentCustom }
 }
 
-export function snapshotThemeToCustom(): CustomThemeColors {
-  const colors = computeThemeColors()
-  const next = parseCustomThemeColors({
+export function customColorsFromComputed(colors: {
+  bgApp: string
+  textPrimary: string
+  accent: string
+  waveform: string
+  spectrum: string
+  playhead: string
+  selectionBorder: string
+}): CustomThemeColors {
+  return parseCustomThemeColors({
     bgApp: toCssHex(colors.bgApp) ?? DEFAULT_CUSTOM_COLORS.bgApp,
     bgPanel: mixCssColor(colors.bgApp, colors.textPrimary, 0.06),
     bgElevated: mixCssColor(colors.bgApp, colors.textPrimary, 0.12),
@@ -241,11 +259,68 @@ export function snapshotThemeToCustom(): CustomThemeColors {
     playhead: toCssHex(colors.playhead) ?? DEFAULT_CUSTOM_COLORS.playhead,
     selection: toCssHex(colors.selectionBorder) ?? DEFAULT_CUSTOM_COLORS.selection,
   })
-  return persistCustomThemeColors(next)
+}
+
+export function snapshotThemeToCustom(): CustomThemeColors {
+  return persistCustomThemeColors(customColorsFromComputed(computeThemeColors()))
 }
 
 export function setCustomThemeColor(id: CustomColorId, value: string): CustomThemeColors {
-  return persistCustomThemeColors({ ...currentCustom, [id]: value })
+  const next = persistCustomThemeColors({ ...currentCustom, [id]: value })
+  const editingId = userThemeId(currentPreference)
+  if (editingId) {
+    savedThemes = savedThemes.map((t) => (t.id === editingId ? { ...t, colors: next } : t))
+    persistSavedThemes()
+  }
+  return next
+}
+
+function persistSavedThemes(): void {
+  try {
+    localStorage.setItem(SAVED_THEMES_STORAGE_KEY, JSON.stringify(savedThemes))
+  } catch {
+    /* private mode */
+  }
+}
+
+export function readStoredSavedThemes(): SavedTheme[] {
+  try {
+    const raw = localStorage.getItem(SAVED_THEMES_STORAGE_KEY)
+    return parseSavedThemes(raw ? JSON.parse(raw) : null)
+  } catch {
+    return []
+  }
+}
+
+export function getSavedThemes(): SavedTheme[] {
+  return savedThemes.map((t) => ({ ...t, colors: { ...t.colors } }))
+}
+
+export function saveCurrentAsTheme(name?: string): SavedTheme | null {
+  const trimmed = (name ?? nextSavedThemeName(savedThemes)).trim().slice(0, 40)
+  if (!trimmed) return null
+  const theme: SavedTheme = {
+    id: `s${Date.now().toString(36)}`,
+    name: nextSavedThemeName(savedThemes, trimmed),
+    colors: { ...currentCustom },
+  }
+  savedThemes = [theme, ...savedThemes].slice(0, MAX_SAVED_THEMES)
+  persistSavedThemes()
+  persistThemePreference(userThemePreference(theme.id))
+  return theme
+}
+
+export function deleteSavedTheme(id: string): void {
+  savedThemes = savedThemes.filter((t) => t.id !== id)
+  persistSavedThemes()
+  if (userThemeId(currentPreference) === id) persistThemePreference('custom')
+  else {
+    document.dispatchEvent(
+      new CustomEvent(THEME_CHANGE, {
+        detail: { theme: resolveTheme(currentPreference, prefersDark()), preference: currentPreference },
+      }),
+    )
+  }
 }
 
 export function readStoredPreference(): ThemePreference {
@@ -272,8 +347,18 @@ function onSchemeChange(): void {
 }
 
 export function bootstrapTheme(): ThemePreference {
+  savedThemes = readStoredSavedThemes()
   currentCustom = readStoredCustomColors()
   const preference = readStoredPreference()
+  const userId = userThemeId(preference)
+  if (userId) {
+    const saved = savedThemes.find((t) => t.id === userId)
+    if (saved) currentCustom = { ...saved.colors }
+    else {
+      applyThemePreference('custom')
+      return getThemePreference()
+    }
+  }
   applyThemePreference(preference)
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     media?.removeEventListener('change', onSchemeChange)
@@ -284,4 +369,4 @@ export function bootstrapTheme(): ThemePreference {
 }
 
 export { colorWithAlpha }
-export type { CustomColorId, CustomThemeColors, ThemeId, ThemePreference }
+export type { CustomColorId, CustomThemeColors, SavedTheme, ThemeId, ThemePreference }

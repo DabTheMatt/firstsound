@@ -112,7 +112,7 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
 
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
-        Categories load a starting sound. Each chip then switches time, feedback, type and mix.
+        Categories load a starting sound. Dry stays full unless you pull it down; Wet adds the effect.
       </p>
       <Segmented
         label="Preset category"
@@ -164,7 +164,9 @@ export function SpaceInspector({ snap, kind, variant }: Props) {
         )}
       </div>
 
-      {kind === 'delay' ? params(['spaceMix', 'delayTime', 'delayFeedback']) : params(['reverb', 'reverbSize', 'reverbDecay'])}
+      {kind === 'delay'
+        ? params(['delayDry', 'delayWet', 'delayOutput', 'delayTime', 'delayFeedback'])
+        : params(['reverbDry', 'reverbWet', 'reverbOutput', 'reverbSize', 'reverbDecay'])}
 
       {variant === 'knob' ? (
         <div className={styles.knobs}>

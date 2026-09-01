@@ -11,9 +11,13 @@ export const THEME_IDS = [
 ] as const
 
 export type ThemeId = (typeof THEME_IDS)[number]
-export type ThemePreference = ThemeId | 'system'
+export type UserThemePreference = `user:${string}`
+export type ThemePreference = ThemeId | 'system' | UserThemePreference
 
 export const CUSTOM_THEME_STORAGE_KEY = 'field.theme.custom'
+export const SAVED_THEMES_STORAGE_KEY = 'field.theme.saved'
+export const USER_THEME_PREFIX = 'user:'
+export const MAX_SAVED_THEMES = 12
 
 export const CUSTOM_COLOR_FIELDS = [
   { id: 'bgApp', label: 'Background', css: '--bg-app' },
@@ -63,14 +67,29 @@ export function isThemeId(value: string): value is ThemeId {
   return THEME_SET.has(value)
 }
 
+export function isUserThemePreference(value: string): value is UserThemePreference {
+  return value.startsWith(USER_THEME_PREFIX) && value.length > USER_THEME_PREFIX.length
+}
+
+export function userThemeId(preference: string): string | null {
+  if (!isUserThemePreference(preference)) return null
+  return preference.slice(USER_THEME_PREFIX.length)
+}
+
+export function userThemePreference(id: string): UserThemePreference {
+  return `${USER_THEME_PREFIX}${id}`
+}
+
 export function parseThemePreference(raw: string | null | undefined): ThemePreference {
   if (raw === 'system' || (raw && isThemeId(raw))) return raw
+  if (raw && isUserThemePreference(raw)) return raw
   return 'studio-dark'
 }
 
 export function resolveTheme(preference: ThemePreference, prefersDark: boolean): ThemeId {
-  if (preference !== 'system') return preference
-  return prefersDark ? 'studio-dark' : 'light-studio'
+  if (preference === 'system') return prefersDark ? 'studio-dark' : 'light-studio'
+  if (isUserThemePreference(preference)) return 'custom'
+  return preference
 }
 
 export function parseCustomThemeColors(raw: unknown): CustomThemeColors {
@@ -84,4 +103,38 @@ export function parseCustomThemeColors(raw: unknown): CustomThemeColors {
     }
   }
   return next
+}
+
+export type SavedTheme = {
+  id: string
+  name: string
+  colors: CustomThemeColors
+}
+
+export function parseSavedThemes(raw: unknown): SavedTheme[] {
+  if (!Array.isArray(raw)) return []
+  const out: SavedTheme[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Partial<SavedTheme>
+    if (typeof rec.id !== 'string' || !rec.id || seen.has(rec.id)) continue
+    if (typeof rec.name !== 'string') continue
+    const name = rec.name.trim().slice(0, 40)
+    if (!name) continue
+    seen.add(rec.id)
+    out.push({ id: rec.id, name, colors: parseCustomThemeColors(rec.colors) })
+    if (out.length >= MAX_SAVED_THEMES) break
+  }
+  return out
+}
+
+export function nextSavedThemeName(existing: readonly { name: string }[], base = 'My theme'): string {
+  const names = new Set(existing.map((t) => t.name.toLowerCase()))
+  if (!names.has(base.toLowerCase())) return base
+  for (let n = 2; n < 100; n++) {
+    const name = `${base} ${n}`
+    if (!names.has(name.toLowerCase())) return name
+  }
+  return `${base} ${Date.now()}`
 }

@@ -11,7 +11,7 @@ describe('macros', () => {
     const patch = applyDelayMacro('time', 0.5, p)
     expect(patch.delaySync).toBe(0)
     expect(patch.delayTime).toBeGreaterThan(1)
-    expect(delayMacroNormalized('mix', { ...p, spaceMix: 40 })).toBeCloseTo(0.4)
+    expect(delayMacroNormalized('mix', { ...p, delayWet: 40 })).toBeCloseTo(0.4)
   })
 })
 
@@ -21,6 +21,15 @@ describe('migrateSpaceParams', () => {
     expect(next.reverbDecay).toBeGreaterThan(0.5)
     expect(next.reverbDecay).toBeLessThan(10)
     expect(next.delayTime).toBe(300)
+  })
+
+  it('maps legacy Mix onto Wet and leaves Dry at 100%', () => {
+    const next = migrateSpaceParams({ spaceMix: 40, reverb: 25, delayTime: 300, reverbWidth: 100 })
+    expect(next.delayDry).toBe(100)
+    expect(next.delayWet).toBe(40)
+    expect(next.reverbDry).toBe(100)
+    expect(next.reverbWet).toBe(25)
+    expect(next.delayOutput).toBe(100)
   })
 
   it('keeps new-format decay intact', () => {

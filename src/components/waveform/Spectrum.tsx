@@ -6,6 +6,8 @@ import {
   DB_SCALE,
   FREQ_SCALE_HZ,
   formatFreqTick,
+  formatHoverFreq,
+  hzFromLogAxis,
   musicalScaleHz,
 } from '../../audio/engine/pitchScale'
 import {
@@ -79,6 +81,7 @@ function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: nu
 export function Spectrum({ active }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
+  const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
   const prefsRef = useRef(prefs)
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
@@ -291,7 +294,39 @@ export function Spectrum({ active }: Props) {
           {prefs.layer === 'both' ? <span>Before / after EQ</span> : null}
         </p>
       )}
-      <canvas ref={canvasRef} className={styles.canvas} aria-label="Spectrum analyzer" />
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        aria-label="Spectrum analyzer"
+        onPointerMove={(event) => {
+          const canvas = canvasRef.current
+          if (!canvas) return
+          const rect = canvas.getBoundingClientRect()
+          const x = event.clientX - rect.left
+          const y = event.clientY - rect.top
+          const sr = engine.getSnapshot().sampleRate || 44100
+          const nyquist = sr / 2
+          const left = 36
+          const right = rect.width - 10
+          const top = 18
+          const bottom = rect.height - 28
+          if (x < left || x > right || y < top || y > bottom) {
+            setHover(null)
+            return
+          }
+          const hz = hzFromLogAxis((x - left) / Math.max(1, right - left), 20, nyquist)
+          setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68 })
+        }}
+        onPointerLeave={() => setHover(null)}
+      />
+      {hover ? (
+        <div
+          className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}
+          style={{ left: hover.x, top: hover.y }}
+        >
+          {hover.label}
+        </div>
+      ) : null}
     </div>
   )
 }

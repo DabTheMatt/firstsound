@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT, AUDIO_IMPORT_HINT } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
@@ -6,10 +6,12 @@ import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { isTypingTarget } from './keys'
+import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
+import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
@@ -45,7 +47,7 @@ function histKey(
 
 export default function App() {
   const snap = useEngine()
-  const { mode } = useLayoutMode()
+  const { mode, width: viewportWidth } = useLayoutMode()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
@@ -226,6 +228,7 @@ export default function App() {
           })
       }}
       knobs={mode !== 'sheet'}
+      onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
   ) : null
@@ -316,6 +319,11 @@ export default function App() {
     >
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden}`}
+        style={
+          mode === 'dock-right' && inspectorOpen
+            ? ({ '--inspector-col': `${inspectorWidth(mode, viewportWidth)}px` } as CSSProperties)
+            : undefined
+        }
       >
         <AppHeader
           snap={snap}
@@ -403,6 +411,11 @@ export default function App() {
             />
           </div>
           {dockRight && inspectorOpen ? <aside className={styles.inspector}>{inspector}</aside> : null}
+          {dockRight && !inspectorOpen ? (
+            <div className={styles.inspectorReveal}>
+              <InspectorEye open={false} onClick={() => setInspectorOpen(true)} />
+            </div>
+          ) : null}
           {dockRight ? (
             <MeterStrip channels={snap.channelCount} range={meterRange} onRange={setMeterRange} />
           ) : null}
@@ -455,16 +468,6 @@ export default function App() {
             ) : null}
             {sheetLevel !== 'collapsed' || !sheet ? inspector : null}
           </div>
-        ) : null}
-
-        {dockRight ? (
-          <button
-            type="button"
-            className={styles.toggleInspector}
-            onClick={() => setInspectorOpen((v) => !v)}
-          >
-            {inspectorOpen ? 'Hide inspector' : 'Show inspector'}
-          </button>
         ) : null}
 
         <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>

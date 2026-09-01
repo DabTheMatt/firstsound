@@ -13,6 +13,8 @@ import {
   parseTypedParam,
   parseTypedRange,
   playbackRate,
+  sampleOriginSeconds,
+  snapPlayheadToRegion,
   toNormalized,
 } from './mapping'
 
@@ -59,7 +61,9 @@ describe('mapping', () => {
   it('formats space params', () => {
     expect(formatParamValue(300, PARAMS.delayTime)).toBe('300 ms')
     expect(formatParamValue(35, PARAMS.delayFeedback)).toBe('35 %')
-    expect(formatParamValue(0, PARAMS.spaceMix)).toBe('0 %')
+    expect(formatParamValue(0, PARAMS.delayWet)).toBe('0 %')
+    expect(formatParamValue(100, PARAMS.delayDry)).toBe('100 %')
+    expect(formatParamValue(100, PARAMS.delayOutput)).toBe('100 %')
     expect(formatParamValue(1.6, PARAMS.reverbDecay)).toBe('1.60 s')
   })
 
@@ -93,6 +97,18 @@ describe('clampRegion', () => {
     const r = clampRegion(-1, 99, 2)
     expect(r.start).toBe(0)
     expect(r.end).toBe(2)
+  })
+})
+
+describe('stop playhead', () => {
+  it('parks at the start of the sample', () => {
+    expect(sampleOriginSeconds()).toBe(0)
+  })
+
+  it('snaps back into the region when play starts from the sample origin', () => {
+    expect(snapPlayheadToRegion(0, 18, 65, false)).toBe(18)
+    expect(snapPlayheadToRegion(0, 18, 65, true)).toBe(65)
+    expect(snapPlayheadToRegion(20, 18, 65, false)).toBe(20)
   })
 })
 

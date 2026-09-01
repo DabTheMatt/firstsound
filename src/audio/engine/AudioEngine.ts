@@ -17,6 +17,8 @@ import {
   defaultPlayRegion,
   fullPlayRegion,
   playbackRate,
+  sampleOriginSeconds,
+  snapPlayheadToRegion,
 } from '../parameters/mapping'
 import type {
   EngineMode,
@@ -435,8 +437,14 @@ export class AudioEngine {
       this.applyLiveAudio()
     }
     const duration = this.buffer.duration
+    const { start, end } = this.region(duration)
     this.playCtxTime = this.ctx.currentTime
-    this.playOffset = clamp(this.playOffset, 0, duration)
+    this.playOffset = snapPlayheadToRegion(
+      clamp(this.playOffset, 0, duration),
+      start,
+      end,
+      this.direction === 'reverse',
+    )
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -456,6 +464,10 @@ export class AudioEngine {
     }
     this.stopVoices()
     this.playing = false
+    this.playOffset = sampleOriginSeconds()
+    if (this.engineMode === 'grain') {
+      this.params.position = applyParamValue(0, PARAMS.position)
+    }
     this.killFx('all')
     this.emit()
   }
@@ -1668,6 +1680,10 @@ export class AudioEngine {
             : wetLevel(mod.type, this.params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
+      if (mod.type === 'delay' || mod.type === 'reverb') {
+        const out = bypassed ? 1 : wetDryFor(mod.type, this.params).out
+        rampGainExact(slot.output.gain, out, now, smoothing)
+      }
     }
   }
 

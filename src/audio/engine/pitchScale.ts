@@ -44,4 +44,18 @@ export function formatFreqTick(hz: number): string {
   return String(Math.round(hz))
 }
 
+/** Inverse of a log frequency axis mapped onto [0, 1]. */
+export function hzFromLogAxis(frac: number, minHz: number, maxHz: number): number {
+  const t = Math.min(1, Math.max(0, frac))
+  if (!(minHz > 0) || !(maxHz > minHz)) return minHz
+  return minHz * (maxHz / minHz) ** t
+}
+
+export function formatHoverFreq(hz: number): string {
+  if (!(hz > 0) || !Number.isFinite(hz)) return '—'
+  const freq =
+    hz >= 1000 ? `${hz >= 10000 ? (hz / 1000).toFixed(1) : (hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
+  return `${freq} · ${hzToNoteName(hz)}`
+}
+
 export const DB_SCALE = [0, -25, -50, -75, -100] as const

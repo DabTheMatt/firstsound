@@ -18,5 +18,16 @@ export function migrateSpaceParams(incoming: Record<string, number>): Partial<Re
   if (!hasNew && typeof incoming.reverbPredelay === 'number') {
     params.reverbPredelay = applyParamValue(Math.max(0.1, incoming.reverbPredelay), PARAMS.reverbPredelay)
   }
+  // Legacy Mix crossfaded dry away. Map it onto independent Wet, keep Dry at 100%.
+  if (typeof incoming.delayWet !== 'number' && typeof incoming.spaceMix === 'number') {
+    params.delayDry = PARAMS.delayDry.defaultValue
+    params.delayWet = applyParamValue(incoming.spaceMix, PARAMS.delayWet)
+    if (typeof incoming.delayOutput !== 'number') params.delayOutput = PARAMS.delayOutput.defaultValue
+  }
+  if (typeof incoming.reverbWet !== 'number' && typeof incoming.reverb === 'number') {
+    params.reverbDry = PARAMS.reverbDry.defaultValue
+    params.reverbWet = applyParamValue(incoming.reverb, PARAMS.reverbWet)
+    if (typeof incoming.reverbOutput !== 'number') params.reverbOutput = PARAMS.reverbOutput.defaultValue
+  }
   return params
 }

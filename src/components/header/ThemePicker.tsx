@@ -1,12 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ThemePreference } from '../../theme'
-import { CUSTOM_COLOR_FIELDS, THEME_OPTIONS, useTheme } from '../../theme'
+import {
+  CUSTOM_COLOR_FIELDS,
+  THEME_OPTIONS,
+  isUserThemePreference,
+  nextSavedThemeName,
+  useTheme,
+  userThemePreference,
+  type ThemePreference,
+} from '../../theme'
 import styles from './ThemePicker.module.css'
 
 export function ThemePicker() {
-  const { preference, setPreference, customColors, setCustomColor } = useTheme()
+  const {
+    preference,
+    setPreference,
+    customColors,
+    setCustomColor,
+    savedThemes,
+    saveCurrentTheme,
+    removeSavedTheme,
+  } = useTheme()
   const [open, setOpen] = useState(false)
+  const [saveName, setSaveName] = useState('')
   const wrapRef = useRef<HTMLDivElement>(null)
+  const editing = preference === 'custom' || isUserThemePreference(preference)
 
   useEffect(() => {
     if (!open) return
@@ -19,11 +36,14 @@ export function ThemePicker() {
     return () => document.removeEventListener('pointerdown', onPointer)
   }, [open])
 
-  const active = THEME_OPTIONS.find((opt) => opt.id === preference) ?? THEME_OPTIONS[1]!
+  const active =
+    THEME_OPTIONS.find((opt) => opt.id === preference) ??
+    savedThemes.find((t) => userThemePreference(t.id) === preference)
+  const triggerLabel = active && 'label' in active ? active.label : active && 'name' in active ? active.name : 'Theme'
   const preview =
-    preference === 'custom'
+    editing || isUserThemePreference(preference)
       ? { bg: customColors.bgApp, surface: customColors.bgElevated, accent: customColors.accent }
-      : active.preview
+      : (THEME_OPTIONS.find((opt) => opt.id === preference) ?? THEME_OPTIONS[1]!).preview
 
   return (
     <div className={styles.wrap} ref={wrapRef}>
@@ -32,7 +52,7 @@ export function ThemePicker() {
         className={styles.trigger}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Theme: ${active.label}`}
+        aria-label={`Theme: ${triggerLabel}`}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -40,7 +60,7 @@ export function ThemePicker() {
           <span className={styles.dot} style={{ background: preview.surface }} />
           <span className={styles.dot} style={{ background: preview.accent }} />
         </span>
-        <span className={styles.triggerLabel}>{active.label}</span>
+        <span className={styles.triggerLabel}>{triggerLabel}</span>
       </button>
       {open ? (
         <div className={styles.menu} role="listbox" aria-label="Theme">
@@ -67,9 +87,44 @@ export function ThemePicker() {
               </button>
             )
           })}
-          {preference === 'custom' ? (
+          {savedThemes.length > 0 ? (
+            <>
+              <p className={styles.customTitle}>My themes</p>
+              {savedThemes.map((theme) => {
+                const id = userThemePreference(theme.id)
+                return (
+                  <div key={theme.id} className={styles.savedRow}>
+                    <button
+                      type="button"
+                      role="option"
+                      className={styles.option}
+                      aria-selected={preference === id}
+                      onClick={() => setPreference(id)}
+                    >
+                      <span className={styles.swatches} aria-hidden="true">
+                        <span className={styles.dot} style={{ background: theme.colors.bgApp }} />
+                        <span className={styles.dot} style={{ background: theme.colors.bgElevated }} />
+                        <span className={styles.dot} style={{ background: theme.colors.accent }} />
+                      </span>
+                      {theme.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.delete}
+                      aria-label={`Delete ${theme.name}`}
+                      onClick={() => removeSavedTheme(theme.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )
+              })}
+            </>
+          ) : null}
+          {editing ? (
             <div className={styles.custom}>
               <p className={styles.customTitle}>Element colors</p>
+              <p className={styles.help}>Starts from the theme you had open. Save to keep it in My themes.</p>
               {CUSTOM_COLOR_FIELDS.map((field) => (
                 <label key={field.id} className={styles.colorRow}>
                   <span>{field.label}</span>
@@ -81,6 +136,26 @@ export function ThemePicker() {
                   />
                 </label>
               ))}
+              <form
+                className={styles.saveRow}
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  saveCurrentTheme(saveName.trim() || nextSavedThemeName(savedThemes))
+                  setSaveName('')
+                }}
+              >
+                <input
+                  className={styles.name}
+                  value={saveName}
+                  maxLength={40}
+                  aria-label="Theme name"
+                  placeholder={nextSavedThemeName(savedThemes)}
+                  onChange={(event) => setSaveName(event.target.value)}
+                />
+                <button type="submit" className={styles.save}>
+                  Save
+                </button>
+              </form>
             </div>
           ) : null}
         </div>

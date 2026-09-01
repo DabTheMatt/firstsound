@@ -7,6 +7,19 @@ export function equalPowerDryWet(mix01: number): { dry: number; wet: number } {
   return { dry: Math.cos(a), wet: Math.sin(a) }
 }
 
+/** Parallel send: Dry and Wet are independent; Output is post-sum gain (100% = unity). */
+export function fxSendLevels(
+  dryPct: number,
+  wetPct: number,
+  outPct: number,
+): { dry: number; wet: number; out: number } {
+  return {
+    dry: Math.min(1, Math.max(0, dryPct / 100)),
+    wet: Math.min(1, Math.max(0, wetPct / 100)),
+    out: Math.min(2, Math.max(0, outPct / 100)),
+  }
+}
+
 /** Soft-clip feedback so values above 100% can run away without exploding. */
 export function safeFeedbackGain(feedbackPct: number): number {
   const raw = feedbackPct / 100

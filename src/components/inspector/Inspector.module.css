@@ -2,9 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
   min-height: 0;
+  height: 100%;
   overflow: auto;
-  padding: 12px 12px 16px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 12px 12px 28px;
 }
 
 .sheet {
@@ -16,12 +21,27 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 8px;
+  position: sticky;
+  top: -12px;
+  z-index: 3;
+  margin: -12px -12px 0;
+  padding: 12px 12px 8px;
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: none;
 }
 
 .title {
   margin: 0;
+  min-width: 0;
+  flex: 1;
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -186,7 +206,7 @@
 
 .presets {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 8px;
 }
 

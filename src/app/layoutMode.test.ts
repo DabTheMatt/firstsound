@@ -27,7 +27,7 @@ describe('inspectorWidth', () => {
   })
 
   it('narrows on compact landscape', () => {
-    expect(inspectorWidth('dock-right', 1100)).toBe(232)
-    expect(inspectorWidth('dock-right', 1440)).toBe(300)
+    expect(inspectorWidth('dock-right', 1100)).toBe(280)
+    expect(inspectorWidth('dock-right', 1440)).toBe(360)
   })
 })

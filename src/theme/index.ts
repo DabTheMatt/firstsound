@@ -8,6 +8,10 @@ export {
   getThemePreference,
   getCustomThemeColors,
   setCustomThemeColor,
+  customColorsFromComputed,
+  saveCurrentAsTheme,
+  deleteSavedTheme,
+  getSavedThemes,
 } from './theme'
 export type { ThemeColors, CustomColorId, CustomThemeColors } from './theme'
 export {
@@ -18,8 +22,13 @@ export {
   DEFAULT_CUSTOM_COLORS,
   parseThemePreference,
   parseCustomThemeColors,
+  parseSavedThemes,
+  nextSavedThemeName,
   resolveTheme,
   isThemeId,
+  isUserThemePreference,
+  userThemeId,
+  userThemePreference,
 } from './tokens'
-export type { ThemeId, ThemePreference } from './tokens'
+export type { ThemeId, ThemePreference, SavedTheme } from './tokens'
 export { useTheme } from './useTheme'

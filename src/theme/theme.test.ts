@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { parseCustomThemeColors, parseThemePreference, resolveTheme, THEME_IDS } from './tokens'
+import {
+  nextSavedThemeName,
+  parseCustomThemeColors,
+  parseSavedThemes,
+  parseThemePreference,
+  resolveTheme,
+  THEME_IDS,
+  userThemeId,
+  userThemePreference,
+} from './tokens'
+import { customColorsFromComputed } from './theme'
 import { colorWithAlpha, mixCssColor, parseCssColor, toCssHex } from './cssColor'
 
 describe('theme tokens', () => {
@@ -13,6 +23,7 @@ describe('theme tokens', () => {
     expect(parseThemePreference('oled')).toBe('oled')
     expect(parseThemePreference('system')).toBe('system')
     expect(parseThemePreference('custom')).toBe('custom')
+    expect(parseThemePreference('user:s12abc')).toBe('user:s12abc')
     expect(THEME_IDS).toContain('light-studio')
     expect(THEME_IDS).toContain('custom')
   })
@@ -21,6 +32,22 @@ describe('theme tokens', () => {
     expect(resolveTheme('system', true)).toBe('studio-dark')
     expect(resolveTheme('system', false)).toBe('light-studio')
     expect(resolveTheme('forest', false)).toBe('forest')
+    expect(resolveTheme('user:s1', true)).toBe('custom')
+    expect(userThemeId(userThemePreference('abc'))).toBe('abc')
+  })
+
+  it('parses saved themes and unique names', () => {
+    const parsed = parseSavedThemes([
+      { id: 'a', name: '  Moss  ', colors: { accent: '#72b98a' } },
+      { id: 'a', name: 'dup' },
+      { id: '', name: 'nope' },
+      null,
+    ])
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0]?.name).toBe('Moss')
+    expect(parsed[0]?.colors.accent).toBe('#72b98a')
+    expect(nextSavedThemeName([], 'My theme')).toBe('My theme')
+    expect(nextSavedThemeName([{ name: 'My theme' }])).toBe('My theme 2')
   })
 })
 
@@ -37,5 +64,21 @@ describe('css color helpers', () => {
     expect(mixCssColor('#000000', '#ffffff', 0.5)).toBe('#808080')
     expect(parseCustomThemeColors({ accent: '#63b3d1', nope: 1 }).accent).toBe('#63b3d1')
     expect(parseCustomThemeColors({ accent: 'red' }).accent).toBe('#e6ad48')
+  })
+
+  it('seeds custom pickers from the active computed theme', () => {
+    const next = customColorsFromComputed({
+      bgApp: 'rgb(16, 21, 18)',
+      textPrimary: '#e8e6df',
+      accent: '#72b98a',
+      waveform: '#9db5a6',
+      spectrum: '#8aa090',
+      playhead: '#c4e0c8',
+      selectionBorder: '#72b98a',
+    })
+    expect(next.bgApp).toBe('#101512')
+    expect(next.accent).toBe('#72b98a')
+    expect(next.selection).toBe('#72b98a')
+    expect(next.bgPanel).not.toBe(next.bgApp)
   })
 })
