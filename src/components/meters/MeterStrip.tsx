@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { engine } from '../../hooks/useEngine'
-import { meterDbMin, type MeterRange } from '../../app/editorState'
+import {
+  dbToMeterPct,
+  meterDbMin,
+  meterScaleTicks,
+  meterSweetBand,
+  type MeterRange,
+} from '../../app/editorState'
 import styles from './MeterStrip.module.css'
 
 type Props = {
@@ -12,7 +18,6 @@ type Props = {
 export function MeterStrip({ channels, range, onRange }: Props) {
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
-  const clipRef = useRef<HTMLButtonElement>(null)
   const [clipped, setClipped] = useState(false)
   const hold = useRef({ l: 0, r: 0, t: 0 })
 
@@ -27,8 +32,8 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       if (l > hold.current.l || now - hold.current.t > 1200) hold.current.l = l
       if (r > hold.current.r || now - hold.current.t > 1200) hold.current.r = r
       if (l > hold.current.l - 0.01 && r > hold.current.r - 0.01) hold.current.t = now
-      if (leftRef.current) leftRef.current.style.height = `${dbToPct(l, minDb)}%`
-      if (rightRef.current) rightRef.current.style.height = `${dbToPct(r, minDb)}%`
+      if (leftRef.current) leftRef.current.style.height = `${dbToMeterPct(l, minDb)}%`
+      if (rightRef.current) rightRef.current.style.height = `${dbToMeterPct(r, minDb)}%`
       if (l >= -0.1 || r >= -0.1) {
         setClipped(true)
       }
@@ -39,27 +44,59 @@ export function MeterStrip({ channels, range, onRange }: Props) {
   }, [range])
 
   const stereo = channels !== 1
+  const minDb = meterDbMin(range)
+  const ticks = meterScaleTicks(minDb)
+  const sweet = meterSweetBand(minDb)
 
   return (
     <div className={styles.strip}>
       <button
-        ref={clipRef}
         type="button"
         className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
         aria-label="Reset clip"
+        title="Reset clip indicator"
         onClick={() => setClipped(false)}
-      />
-      <div className={styles.meters}>
-        <div className={styles.lane}>
-          <div ref={leftRef} className={styles.fill} />
-          <span>{stereo ? 'L' : 'M'}</span>
+      >
+        <span className={styles.led} aria-hidden="true" />
+        <span className={styles.clipLabel}>Clip</span>
+      </button>
+      <div className={styles.body}>
+        <div className={styles.scale} aria-hidden="true">
+          {ticks.map((db) => {
+            const edge = db === 0 ? 'top' : db === minDb ? 'bottom' : 'mid'
+            return (
+              <span
+                key={db}
+                className={`${styles.tick} ${styles[edge]} ${db === -12 || db === -6 ? styles.sweetTick : ''}`}
+                style={{ bottom: `${dbToMeterPct(db, minDb)}%` }}
+              >
+                {db === 0 ? '0' : `${db}`}
+              </span>
+            )
+          })}
         </div>
-        {stereo ? (
+        <div className={styles.meters}>
           <div className={styles.lane}>
-            <div ref={rightRef} className={styles.fill} />
-            <span>R</span>
+            <div
+              className={styles.zone}
+              title="−12 to −6 dB"
+              style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
+            />
+            <div ref={leftRef} className={styles.fill} />
+            <span>{stereo ? 'L' : 'M'}</span>
           </div>
-        ) : null}
+          {stereo ? (
+            <div className={styles.lane}>
+              <div
+                className={styles.zone}
+                title="−12 to −6 dB"
+                style={{ bottom: `${sweet.bottom}%`, height: `${sweet.height}%` }}
+              />
+              <div ref={rightRef} className={styles.fill} />
+              <span>R</span>
+            </div>
+          ) : null}
+        </div>
       </div>
       <select
         className={styles.select}
@@ -76,7 +113,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
 }
 
 function peakDb(node: AnalyserNode | null): number {
-  if (!node) return -Infinity
+  if (!node) return Number.NEGATIVE_INFINITY
   const buf = new Float32Array(node.fftSize)
   node.getFloatTimeDomainData(buf)
   let peak = 0
@@ -84,11 +121,6 @@ function peakDb(node: AnalyserNode | null): number {
     const a = Math.abs(buf[i] ?? 0)
     if (a > peak) peak = a
   }
-  if (!(peak > 0)) return -Infinity
+  if (!(peak > 0)) return Number.NEGATIVE_INFINITY
   return 20 * Math.log10(peak)
-}
-
-function dbToPct(db: number, minDb: number): number {
-  if (!Number.isFinite(db)) return 0
-  return Math.min(100, Math.max(0, ((db - minDb) / (0 - minDb)) * 100))
 }

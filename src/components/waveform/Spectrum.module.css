@@ -33,7 +33,7 @@
 .toolbar button,
 .bands {
   min-height: 28px;
-  padding: 0 10px;
+  padding: 4px 12px;
   border: 1px solid var(--border-default);
   border-radius: 999px;
   background: var(--bg-panel);
@@ -81,6 +81,7 @@
   flex-wrap: wrap;
   gap: 8px;
   max-width: 42%;
+  padding: 4px 6px;
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;

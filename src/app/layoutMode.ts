@@ -29,5 +29,5 @@ export function inspectorWidth(mode: LayoutMode, viewportWidth: number): number 
 }
 
 export function meterColumnWidth(mode: LayoutMode): number {
-  return mode === 'dock-right' ? 36 : 0
+  return mode === 'dock-right' ? 72 : 0
 }
