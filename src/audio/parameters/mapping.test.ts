@@ -72,6 +72,12 @@ describe('mapping', () => {
     expect(applyParamValue(-2, PARAMS.speed)).toBe(PARAMS.speed.min)
   })
 
+  it('lets Gain go down to −36 dB', () => {
+    expect(PARAMS.gain.min).toBe(-36)
+    expect(applyParamValue(-36, PARAMS.gain)).toBe(-36)
+    expect(applyParamValue(-40, PARAMS.gain)).toBe(-36)
+  })
+
   it('converts dB to amplitude', () => {
     expect(dbToGain(0)).toBeCloseTo(1)
     expect(dbToGain(-6)).toBeCloseTo(0.501, 2)

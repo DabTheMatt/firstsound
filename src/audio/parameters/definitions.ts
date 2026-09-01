@@ -41,7 +41,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   gain: {
     id: 'gain',
     label: 'Gain',
-    min: -24,
+    min: -36,
     max: 6,
     defaultValue: -3,
     unit: 'dB',
