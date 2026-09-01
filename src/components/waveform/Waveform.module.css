@@ -45,6 +45,11 @@
   min-height: 0;
 }
 
+.specSolo {
+  flex: 1 1 auto;
+  min-height: 160px;
+}
+
 .wrap {
   display: flex;
   flex-direction: column;
@@ -55,6 +60,10 @@
   overflow: hidden;
   gap: 4px;
   touch-action: none;
+}
+
+.wrap[hidden] {
+  display: none;
 }
 
 .wavePane {
