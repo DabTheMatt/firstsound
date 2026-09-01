@@ -46,11 +46,6 @@
   min-height: 80px;
 }
 
-.inlineOverview {
-  flex: 0 0 auto;
-  margin: 0 0 0;
-}
-
 .canvas {
   display: block;
   width: 100%;
