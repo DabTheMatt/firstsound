@@ -192,15 +192,15 @@
 
 .swatches {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   flex: none;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1px solid var(--border-subtle);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 28%, transparent);
 }
 
 .hint {
