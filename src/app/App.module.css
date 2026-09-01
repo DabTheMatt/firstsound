@@ -11,7 +11,7 @@
   flex: 1;
   width: 100%;
   min-height: 0;
-  background: var(--bg-shell);
+  background: var(--bg-app);
   padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
@@ -51,14 +51,16 @@
 .inspector {
   min-width: 0;
   min-height: 0;
-  background: #161818;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   overflow: hidden;
 }
 
 .bottom {
   flex: none;
-  background: #161818;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -68,7 +70,7 @@
   min-height: 36px;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-muted);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 10px;
@@ -92,13 +94,18 @@
   bottom: 62px;
   min-height: 32px;
   padding: 0 10px;
-  border: 1px solid #3a3e41;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #161818;
-  color: var(--muted);
+  background: var(--bg-panel);
+  color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.toggleInspector:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-secondary);
 }
 
 .settingsFly {
@@ -106,10 +113,13 @@
   right: 12px;
   top: 48px;
   z-index: 12;
-  min-width: 200px;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(72vh, 560px);
+  overflow: auto;
   padding: 6px;
-  background: var(--bg-panel);
-  border: 1px solid #3a3e41;
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
 }
 
@@ -121,7 +131,7 @@
 .moreMenu button {
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--text-primary);
   text-align: left;
   padding: 10px;
   border-radius: 8px;
@@ -130,13 +140,73 @@
 
 .moreMenu button:hover,
 .moreMenu button:active {
-  background: #3a3e41;
+  background: var(--bg-control-hover);
+}
+
+.appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 6px 6px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.appearanceTitle {
+  margin: 0;
+  padding: 6px 4px 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.themeList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moreMenu button.themeOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+}
+
+.moreMenu button.themeOption[aria-checked='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.moreMenu button.themeOption:hover {
+  background: var(--bg-control-hover);
+}
+
+.moreMenu button.themeOption[aria-checked='true']:hover {
+  background: var(--accent-soft);
+}
+
+.swatches {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
 }
 
 .hint {
   margin: 0;
   padding: 8px 10px 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
   max-width: 280px;
@@ -146,14 +216,14 @@
   margin: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-primary);
   font-size: 12px;
   flex: none;
 }
 
 .drop {
-  outline: 2px dashed var(--accent);
+  outline: 2px dashed var(--accent-primary);
 }
 
 .sr {

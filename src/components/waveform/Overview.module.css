@@ -2,7 +2,8 @@
   position: relative;
   height: 40px;
   border-radius: 8px;
-  background: #131515;
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
   touch-action: none;
   cursor: pointer;
@@ -18,7 +19,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: var(--selection-fill);
   pointer-events: none;
 }
 
@@ -27,9 +28,9 @@
   top: 0;
   bottom: 0;
   min-width: 6px;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--selection-border);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-soft);
   pointer-events: none;
 }
 
@@ -38,16 +39,17 @@
   top: 0;
   bottom: 0;
   width: 1.5px;
-  background: var(--handle);
+  background: var(--playhead);
   transform: translateX(-50%);
   pointer-events: none;
+  transition: none;
 }
 
 .silence {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, #6a8f6a 22%, transparent);
+  background: color-mix(in srgb, var(--positive) 22%, transparent);
   pointer-events: none;
 }
 

@@ -7,7 +7,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#1A1A1A" />
+    <meta name="theme-color" content="#151616" />
     <meta
       name="description"
       content="FIELD — a browser instrument for sample manipulation."
@@ -22,6 +22,33 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('field.theme') || 'studio-dark'
+          var theme = stored
+          if (stored === 'system') {
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light-studio'
+              : 'studio-dark'
+          }
+          var known = {
+            'studio-dark': 1,
+            'midnight-blue': 1,
+            oxide: 1,
+            forest: 1,
+            'light-studio': 1,
+            oled: 1,
+          }
+          if (!known[theme]) theme = 'studio-dark'
+          document.documentElement.setAttribute('data-theme', theme)
+          document.documentElement.style.colorScheme =
+            theme === 'light-studio' ? 'light' : 'dark'
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'studio-dark')
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

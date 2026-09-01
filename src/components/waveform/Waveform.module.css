@@ -33,7 +33,7 @@
   flex: 1 1 auto;
   min-height: 160px;
   border-radius: 10px;
-  background: #151717;
+  background: var(--bg-app);
   overflow: hidden;
   touch-action: none;
 }
@@ -74,9 +74,9 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border-left: 1.5px solid var(--accent);
-  border-right: 1.5px solid var(--accent);
+  background: var(--selection-fill);
+  border-left: 1.5px solid var(--selection-border);
+  border-right: 1.5px solid var(--selection-border);
 }
 
 .regionFrame {
@@ -84,8 +84,8 @@
   top: 0;
   bottom: 0;
   background: transparent;
-  border-left: 1.5px solid var(--accent);
-  border-right: 1.5px solid var(--accent);
+  border-left: 1.5px solid var(--selection-border);
+  border-right: 1.5px solid var(--selection-border);
 }
 
 .fadeSvg {
@@ -98,12 +98,12 @@
 }
 
 .fadeFill {
-  fill: color-mix(in srgb, #0b0c0c 70%, transparent);
+  fill: color-mix(in srgb, var(--bg-app) 70%, transparent);
 }
 
 .fadeLine {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--accent-primary);
   stroke-width: 1.75;
   vector-effect: non-scaling-stroke;
 }
@@ -114,7 +114,7 @@
   width: 12px;
   height: 12px;
   transform: translateX(-50%) rotate(45deg);
-  background: var(--accent);
+  background: var(--accent-primary);
   pointer-events: none;
 }
 
@@ -138,7 +138,7 @@
   width: 10px;
   height: 10px;
   border-radius: 1px;
-  background: var(--accent);
+  background: var(--accent-primary);
   transform: translateX(-50%);
 }
 
@@ -147,7 +147,8 @@
   top: 0;
   bottom: 0;
   width: 1.5px;
-  background: var(--handle);
+  background: var(--playhead);
+  transition: none;
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -161,7 +162,7 @@
   display: flex;
   justify-content: space-between;
   padding: 4px 8px 0;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
@@ -175,7 +176,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -187,9 +188,9 @@
   min-height: 40px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--accent-primary);
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-primary);
   letter-spacing: 0.14em;
   font-size: 11px;
   font-weight: 500;

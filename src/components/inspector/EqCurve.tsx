@@ -1,17 +1,26 @@
 import { useEffect, useRef } from 'react'
 import type { EqBand } from '../../audio/engine/eqBands'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
 
 type Props = {
   bands: EqBand[]
   sampleRate: number
+  selectedBand?: number
 }
 
 const MIN_DB = -48
 const MAX_DB = 18
+const MIN_HZ = 20
+const MAX_HZ = 20000
 
-export function EqCurve({ bands, sampleRate }: Props) {
+function freqToX(hz: number, width: number, maxHz: number): number {
+  const t = Math.log(Math.min(maxHz, Math.max(MIN_HZ, hz)) / MIN_HZ) / Math.log(maxHz / MIN_HZ)
+  return t * width
+}
+
+export function EqCurve({ bands, sampleRate, selectedBand = 0 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sr = sampleRate || 48000
 
@@ -29,28 +38,45 @@ export function EqCurve({ bands, sampleRate }: Props) {
       }
       const ctx = canvas.getContext('2d')
       if (!ctx) return
+      const colors = readThemeColors()
       ctx.clearRect(0, 0, width, height)
-      ctx.fillStyle = '#151717'
+      ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
       const zeroY = ((MAX_DB - 0) / (MAX_DB - MIN_DB)) * height
-      ctx.strokeStyle = '#2c2f31'
+      ctx.strokeStyle = colors.borderSubtle
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, zeroY)
       ctx.lineTo(width, zeroY)
       ctx.stroke()
-      const freqs = logFreqAxis(width, 20, Math.min(20000, sr / 2))
+      const nyquist = Math.min(MAX_HZ, sr / 2)
+      const freqs = logFreqAxis(width, MIN_HZ, nyquist)
       ctx.beginPath()
-      ctx.strokeStyle = '#c4a574'
+      ctx.strokeStyle = colors.eqCurve
       ctx.lineWidth = Math.max(1.5, dpr)
       for (let x = 0; x < width; x++) {
-        const db = eqMagnitudeDb(bands, freqs[x] ?? 20, sr)
+        const db = eqMagnitudeDb(bands, freqs[x] ?? MIN_HZ, sr)
         const y = ((MAX_DB - db) / (MAX_DB - MIN_DB)) * height
         if (x === 0) ctx.moveTo(x, y)
         else ctx.lineTo(x, y)
       }
       ctx.stroke()
-      ctx.fillStyle = '#9aa0a3'
+      for (let i = 0; i < bands.length; i++) {
+        const band = bands[i]
+        if (!band || band.type === 'off') continue
+        const x = freqToX(band.frequency, width, nyquist)
+        const db = eqMagnitudeDb(bands, band.frequency, sr)
+        const y = ((MAX_DB - db) / (MAX_DB - MIN_DB)) * height
+        const selected = i === selectedBand
+        ctx.beginPath()
+        ctx.fillStyle = selected ? colors.eqNodeSelected : colors.textMuted
+        ctx.strokeStyle = selected ? colors.eqCurve : colors.borderSubtle
+        ctx.lineWidth = Math.max(1, dpr)
+        ctx.arc(x, y, (selected ? 5 : 3.5) * dpr, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      }
+      ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`
       ctx.fillText('20', 4, height - 4)
       ctx.fillText('1k', width * 0.5 - 8, height - 4)
@@ -59,8 +85,12 @@ export function EqCurve({ bands, sampleRate }: Props) {
     draw()
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
-    return () => ro.disconnect()
-  }, [bands, sr])
+    const unsub = subscribeThemeChange(draw)
+    return () => {
+      ro.disconnect()
+      unsub()
+    }
+  }, [bands, sr, selectedBand])
 
   return <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
 }

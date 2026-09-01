@@ -22,13 +22,13 @@
   font-size: 9px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .time strong {
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent);
+  color: var(--accent-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -41,10 +41,10 @@
 .nudge button {
   width: 28px;
   height: 28px;
-  border: 1px solid #4a4e51;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   background: var(--bg-panel);
-  color: var(--text);
+  color: var(--text-primary);
   font-size: 14px;
 }
 
@@ -75,11 +75,11 @@
   font-size: 9px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .fade header b {
-  color: var(--text);
+  color: var(--text-primary);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -88,16 +88,16 @@
 
 .fade input[type='range'] {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: var(--accent-primary);
 }
 
 .input {
   width: 72px;
   height: 28px;
-  border: 1px solid #4a4e51;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background: #151717;
-  color: var(--text);
+  background: var(--bg-control);
+  color: var(--text-primary);
   padding: 0 6px;
   font-variant-numeric: tabular-nums;
 }
@@ -111,13 +111,14 @@
   width: 36px;
   height: 28px;
   padding: 3px;
-  border: 1px solid #4a4e51;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background: #151717;
+  background: var(--bg-control);
 }
 
 .curveActive {
-  border-color: var(--accent);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .curve svg {
@@ -138,10 +139,10 @@
 
 .primary {
   min-height: 40px;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--accent-primary);
   border-radius: 8px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-primary);
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -156,10 +157,10 @@
 .tool,
 .moreBtn {
   min-height: 36px;
-  border: 1px solid #4a4e51;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-panel);
-  color: var(--text);
+  color: var(--text-primary);
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -167,14 +168,15 @@
 }
 
 .toolActive {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .notice {
   margin: 0;
   font-size: 11px;
-  color: #8aa58a;
+  color: var(--positive);
 }
 
 .sheet {
@@ -183,8 +185,8 @@
   gap: 8px;
   padding: 10px;
   border-radius: 10px;
-  background: #151717;
-  border: 1px solid #2c2f31;
+  background: var(--bg-control);
+  border: 1px solid var(--border-subtle);
 }
 
 .sheet label {
@@ -195,7 +197,7 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .silence {
@@ -204,7 +206,7 @@
   gap: 6px;
   align-items: center;
   font-size: 12px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 @media (max-width: 820px) {

@@ -1,0 +1,255 @@
+/* Semantic design tokens. Components must use these names, not raw palettes. */
+
+:root,
+[data-theme='studio-dark'] {
+  color-scheme: dark;
+
+  --bg-app: #151616;
+  --bg-panel: #191b1b;
+  --bg-panel-elevated: #202222;
+  --bg-control: #292c2d;
+  --bg-control-hover: #333637;
+  --bg-control-active: #3b3527;
+
+  --border-subtle: #292c2c;
+  --border-default: #3b3e3e;
+  --border-strong: #555858;
+
+  --text-primary: #e8e6df;
+  --text-secondary: #aaa9a4;
+  --text-muted: #737570;
+  --text-disabled: #50524f;
+  --text-on-accent: #151616;
+
+  --accent-primary: #e6ad48;
+  --accent-primary-hover: #f2c064;
+  --accent-secondary: #b98534;
+  --accent-soft: rgba(230, 173, 72, 0.15);
+
+  --waveform-primary: #b5b9b6;
+  --waveform-secondary: #858a87;
+  --waveform-selected: #ddd5c2;
+
+  --selection-fill: rgba(230, 173, 72, 0.2);
+  --selection-border: #e6ad48;
+  --playhead: #f0b74e;
+
+  --spectrum-fill: #aeb5b6;
+  --spectrum-line: #d6d9d8;
+
+  --eq-curve: #e6ad48;
+  --eq-node: #f2c064;
+
+  --meter-low: #67b36d;
+  --meter-mid: #d1c65b;
+  --meter-high: #df9447;
+  --meter-clip: #df5b52;
+
+  --positive: #67b36d;
+  --warning: #d1c65b;
+  --danger: #df5b52;
+
+  --scrim: rgba(5, 6, 6, 0.55);
+}
+
+[data-theme='midnight-blue'] {
+  color-scheme: dark;
+
+  --bg-app: #0d1117;
+  --bg-panel: #121821;
+  --bg-panel-elevated: #18212c;
+  --bg-control: #202b37;
+  --bg-control-hover: #293746;
+  --bg-control-active: #26394a;
+
+  --border-subtle: #202b36;
+  --border-default: #314252;
+  --border-strong: #4b6072;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #a8b4bf;
+  --text-muted: #6f7d89;
+  --text-disabled: #48535e;
+  --text-on-accent: #0d1117;
+
+  --accent-primary: #63b3d1;
+  --accent-primary-hover: #82c7df;
+  --accent-secondary: #3d819d;
+  --accent-soft: rgba(99, 179, 209, 0.14);
+
+  --waveform-primary: #afc3ce;
+  --waveform-secondary: #738995;
+  --waveform-selected: #d3e5eb;
+
+  --selection-fill: rgba(70, 160, 200, 0.2);
+  --selection-border: #63b3d1;
+  --playhead: #77c9e6;
+
+  --spectrum-fill: #819ca9;
+  --spectrum-line: #bbd2dc;
+
+  --eq-curve: #63b3d1;
+  --eq-node: #a1d9ea;
+}
+
+[data-theme='oxide'] {
+  color-scheme: dark;
+
+  --bg-app: #181411;
+  --bg-panel: #201a16;
+  --bg-panel-elevated: #29211b;
+  --bg-control: #342a23;
+  --bg-control-hover: #41342a;
+  --bg-control-active: #493125;
+
+  --border-subtle: #332921;
+  --border-default: #4b3b30;
+  --border-strong: #675044;
+
+  --text-primary: #efe4d2;
+  --text-secondary: #bbaa96;
+  --text-muted: #817264;
+  --text-disabled: #5b5047;
+  --text-on-accent: #181411;
+
+  --accent-primary: #d97845;
+  --accent-primary-hover: #e99461;
+  --accent-secondary: #a85031;
+  --accent-soft: rgba(217, 120, 69, 0.16);
+
+  --waveform-primary: #c2b5a3;
+  --waveform-secondary: #8e8171;
+  --waveform-selected: #e5ceaf;
+
+  --selection-fill: rgba(217, 120, 69, 0.2);
+  --selection-border: #d97845;
+  --playhead: #ea8a55;
+
+  --spectrum-fill: #a79582;
+  --spectrum-line: #d3c1aa;
+
+  --eq-curve: #e07d48;
+  --eq-node: #f0a16f;
+}
+
+[data-theme='forest'] {
+  color-scheme: dark;
+
+  --bg-app: #101512;
+  --bg-panel: #151c18;
+  --bg-panel-elevated: #1c2520;
+  --bg-control: #253029;
+  --bg-control-hover: #303d35;
+  --bg-control-active: #294034;
+
+  --border-subtle: #263029;
+  --border-default: #38473d;
+  --border-strong: #536559;
+
+  --text-primary: #e3e9e4;
+  --text-secondary: #a5b0a8;
+  --text-muted: #707e74;
+  --text-disabled: #4c5850;
+  --text-on-accent: #101512;
+
+  --accent-primary: #72b98a;
+  --accent-primary-hover: #91cda3;
+  --accent-secondary: #4b8c61;
+  --accent-soft: rgba(114, 185, 138, 0.15);
+
+  --waveform-primary: #adc0b2;
+  --waveform-secondary: #74887a;
+  --waveform-selected: #d3e0d6;
+
+  --selection-fill: rgba(114, 185, 138, 0.18);
+  --selection-border: #72b98a;
+  --playhead: #8bd0a1;
+
+  --spectrum-fill: #849a8a;
+  --spectrum-line: #b7cabd;
+
+  --eq-curve: #72b98a;
+  --eq-node: #a3d9b2;
+}
+
+[data-theme='light-studio'] {
+  color-scheme: light;
+
+  --bg-app: #e7e7e3;
+  --bg-panel: #f0f0ec;
+  --bg-panel-elevated: #f8f8f5;
+  --bg-control: #ddddd8;
+  --bg-control-hover: #d2d2cc;
+  --bg-control-active: #e6d5b6;
+
+  --border-subtle: #d2d2cc;
+  --border-default: #bcbcb5;
+  --border-strong: #92938d;
+
+  --text-primary: #202321;
+  --text-secondary: #555a56;
+  --text-muted: #7d827e;
+  --text-disabled: #aaaca8;
+  --text-on-accent: #f8f8f5;
+
+  --accent-primary: #a96e13;
+  --accent-primary-hover: #8c590b;
+  --accent-secondary: #c18a34;
+  --accent-soft: rgba(169, 110, 19, 0.12);
+
+  --waveform-primary: #555d59;
+  --waveform-secondary: #7c8580;
+  --waveform-selected: #343a37;
+
+  --selection-fill: rgba(190, 135, 45, 0.2);
+  --selection-border: #a96e13;
+  --playhead: #b97814;
+
+  --spectrum-fill: #7c8580;
+  --spectrum-line: #4d5551;
+
+  --eq-curve: #a96e13;
+  --eq-node: #89580e;
+
+  --scrim: rgba(32, 35, 33, 0.38);
+}
+
+[data-theme='oled'] {
+  color-scheme: dark;
+
+  --bg-app: #050606;
+  --bg-panel: #090b0b;
+  --bg-panel-elevated: #0e1111;
+  --bg-control: #171a1a;
+  --bg-control-hover: #202424;
+  --bg-control-active: #252219;
+
+  --border-subtle: #171a1a;
+  --border-default: #292d2d;
+  --border-strong: #414646;
+
+  --text-primary: #e7e9e8;
+  --text-secondary: #969c99;
+  --text-muted: #606663;
+  --text-disabled: #3c4140;
+  --text-on-accent: #050606;
+
+  --accent-primary: #dfaf55;
+  --accent-primary-hover: #edc470;
+  --accent-secondary: #a67a31;
+  --accent-soft: rgba(223, 175, 85, 0.13);
+
+  --waveform-primary: #a8aeab;
+  --waveform-secondary: #686f6c;
+  --waveform-selected: #d8d5c9;
+
+  --selection-fill: rgba(223, 175, 85, 0.16);
+  --selection-border: #dfaf55;
+  --playhead: #edb95a;
+
+  --spectrum-fill: #7a807c;
+  --spectrum-line: #b4bab7;
+
+  --eq-curve: #dfaf55;
+  --eq-node: #edc470;
+}
