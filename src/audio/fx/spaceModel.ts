@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { equalPowerDryWet, safeFeedbackGain } from './dryWet'
+import { safeFeedbackGain } from './dryWet'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
@@ -42,7 +42,7 @@ export function delayTaps(
   bpm: number,
   now = 0,
 ): DelayTap[] {
-  const mix = Math.max(equalPowerDryWet(params.spaceMix / 100).wet, 0.18)
+  const mix = Math.max(params.delayWet / 100, 0.18)
   const time = Math.max(0.001, delayTimeSeconds(params, bpm))
   const fb = safeFeedbackGain(params.delayFeedback)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100
@@ -127,7 +127,7 @@ export function reverbTail(
   type: ReverbType,
   bpm: number,
 ): ReverbTail {
-  const mix = equalPowerDryWet(params.reverb / 100).wet
+  const mix = params.reverbWet / 100
   const pre =
     params.reverbSync > 0.5
       ? syncedDelayMs(bpm, noteDivisionAt(params.reverbNote), noteKindAt(params.reverbNoteKind)) / 1000

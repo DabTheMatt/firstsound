@@ -1533,6 +1533,10 @@ export class AudioEngine {
             : wetLevel(mod.type, this.params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
+      if (mod.type === 'delay' || mod.type === 'reverb') {
+        const out = bypassed ? 1 : wetDryFor(mod.type, this.params).out
+        rampGainExact(slot.output.gain, out, now, smoothing)
+      }
     }
   }
 

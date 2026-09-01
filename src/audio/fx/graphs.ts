@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import { fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayTimeSeconds } from './spaceModel'
 import { syncedDelayMs } from './sync'
@@ -237,7 +237,10 @@ export function createDelayGraph(
   reverse.connect(reverseMix)
   reverseDirect.connect(pan)
   reverseMix.connect(pan)
-  const widthSide = connectMidSide(ctx, pan, out)
+  const duckGain = ctx.createGain()
+  duckGain.gain.value = 1
+  const widthSide = connectMidSide(ctx, pan, duckGain)
+  duckGain.connect(out)
   out.connect(output)
 
   const abs = ctx.createWaveShaper()
@@ -249,7 +252,7 @@ export function createDelayGraph(
   dryTap.connect(abs)
   abs.connect(env)
   env.connect(duckAmt)
-  duckAmt.connect(out.gain)
+  duckAmt.connect(duckGain.gain)
 
   lfo.connect(lfoGain)
   wow.connect(wowGain)
@@ -377,6 +380,7 @@ export function applyDelayGraph(
   g.pitchLfo.frequency.setTargetAtTime(3 + Math.abs(params.delayPitch) * 0.35, now, smoothing)
   g.pitchDepth.gain.setTargetAtTime(params.delayPitch === 0 && type !== 'pitch' ? 0 : 0.012, now, smoothing)
 
+  g.out.gain.setTargetAtTime(1, now, smoothing)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.7) : params.delayReverse / 100
   g.reverseMix.gain.setTargetAtTime(reverseAmt * 0.85, now, smoothing)
   g.reverseDirect.gain.setTargetAtTime(1 - reverseAmt * 0.7, now, smoothing)
@@ -486,7 +490,10 @@ export function createReverbGraph(
   shimmerDelay.connect(shimmerMix)
   shimmerMix.connect(conv)
   drive.connect(gate)
-  const widthSide = connectMidSide(ctx, gate, out)
+  const duckGain = ctx.createGain()
+  duckGain.gain.value = 1
+  const widthSide = connectMidSide(ctx, gate, duckGain)
+  duckGain.connect(out)
   out.connect(output)
   lfo.connect(lfoGain)
   lfoGain.connect(predelay.delayTime)
@@ -501,7 +508,7 @@ export function createReverbGraph(
   dryTap.connect(abs)
   abs.connect(env)
   env.connect(duckAmt)
-  duckAmt.connect(out.gain)
+  duckAmt.connect(duckGain.gain)
 
   try {
     lfo.start()
@@ -613,6 +620,7 @@ export function applyReverbGraph(
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
   g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
+  g.out.gain.setTargetAtTime(1, now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
   g.lfoGain.gain.setTargetAtTime((params.reverbModDepth / 100) * 0.012, now, smoothing)
@@ -637,9 +645,13 @@ export function applyReverbGraph(
   }
 }
 
-export function wetDryFor(type: 'delay' | 'reverb', params: Record<ParamId, number>): { dry: number; wet: number } {
-  const mix = type === 'delay' ? params.spaceMix / 100 : params.reverb / 100
-  return equalPowerDryWet(mix)
+export function wetDryFor(
+  type: 'delay' | 'reverb',
+  params: Record<ParamId, number>,
+): { dry: number; wet: number; out: number } {
+  return type === 'delay'
+    ? fxSendLevels(params.delayDry, params.delayWet, params.delayOutput)
+    : fxSendLevels(params.reverbDry, params.reverbWet, params.reverbOutput)
 }
 
 function instantGain(param: AudioParam, now: number, value = 0): void {

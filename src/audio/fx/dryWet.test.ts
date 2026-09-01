@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import { defaultParamValues } from '../parameters/definitions'
+import { equalPowerDryWet, fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import { wetDryFor } from './graphs'
 
 describe('equalPowerDryWet', () => {
   it('keeps near-unity power at 50%', () => {
@@ -13,6 +15,34 @@ describe('equalPowerDryWet', () => {
     expect(equalPowerDryWet(0.001)).toEqual({ dry: 1, wet: 0 })
     expect(equalPowerDryWet(1).wet).toBe(1)
     expect(equalPowerDryWet(1).dry).toBe(0)
+  })
+})
+
+describe('fxSendLevels', () => {
+  it('keeps dry at unity while wet is added', () => {
+    const { dry, wet, out } = fxSendLevels(100, 40, 100)
+    expect(dry).toBe(1)
+    expect(wet).toBeCloseTo(0.4)
+    expect(out).toBe(1)
+  })
+
+  it('can mute dry without touching wet', () => {
+    const { dry, wet } = fxSendLevels(0, 80, 100)
+    expect(dry).toBe(0)
+    expect(wet).toBeCloseTo(0.8)
+  })
+})
+
+describe('wetDryFor', () => {
+  it('does not attenuate dry when wet is raised', () => {
+    const p = defaultParamValues()
+    p.delayDry = 100
+    p.delayWet = 50
+    p.delayOutput = 100
+    const delay = wetDryFor('delay', p)
+    expect(delay.dry).toBe(1)
+    expect(delay.wet).toBeCloseTo(0.5)
+    expect(delay.out).toBe(1)
   })
 })
 

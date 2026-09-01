@@ -15,7 +15,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
   source: ['speed', 'pitch', 'gain'],
   grain: ['grainSize', 'density', 'position', 'scatter', 'grainPitch', 'pitchSpread'],
   motion: ['motionDepth', 'motionRate', 'motionJitter', 'position'],
-  space: ['spaceMix', 'delayTime', 'delayFeedback', 'reverb'],
+  space: ['delayDry', 'delayWet', 'delayOutput', 'delayTime', 'delayFeedback', 'reverbDry', 'reverbWet', 'reverbOutput'],
   filter: ['filterCutoff', 'filterReso'],
   output: ['gain'],
 }
@@ -24,7 +24,7 @@ export const TAB_NOTES: Record<ModuleTab, string | null> = {
   source: 'Region player — speed also transposes, like tape. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
-      space: 'Delay + reverb. Macros first; Advanced unlocks filters, modulation, freeze, and presets.',
+      space: 'Delay + reverb. Dry, Wet and Output are independent — Wet adds the effect without muting Dry.',
   filter: 'Pick a type to engage the filter, then sweep cutoff and resonance.',
   output: 'Limiter is always on. Recording lands in a later milestone.',
 }

@@ -49,7 +49,9 @@ describe('mapping', () => {
   it('formats space params', () => {
     expect(formatParamValue(300, PARAMS.delayTime)).toBe('300 ms')
     expect(formatParamValue(35, PARAMS.delayFeedback)).toBe('35 %')
-    expect(formatParamValue(0, PARAMS.spaceMix)).toBe('0 %')
+    expect(formatParamValue(0, PARAMS.delayWet)).toBe('0 %')
+    expect(formatParamValue(100, PARAMS.delayDry)).toBe('100 %')
+    expect(formatParamValue(100, PARAMS.delayOutput)).toBe('100 %')
     expect(formatParamValue(1.6, PARAMS.reverbDecay)).toBe('1.60 s')
   })
 

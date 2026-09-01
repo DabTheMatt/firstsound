@@ -41,7 +41,7 @@ export function delayMacroNormalized(id: DelayMacro, params: Record<ParamId, num
         params.delayModDepth / 100 * 0.5 + params.delayWow / 200 + params.delayFlutter / 200,
       )
     case 'mix':
-      return params.spaceMix / 100
+      return params.delayWet / 100
   }
 }
 
@@ -58,7 +58,7 @@ export function reverbMacroNormalized(id: ReverbMacro, params: Record<ParamId, n
     case 'mod':
       return Math.min(1, params.reverbModDepth / 100 * 0.7 + params.reverbShimmer / 300)
     case 'mix':
-      return params.reverb / 100
+      return params.reverbWet / 100
   }
 }
 
@@ -93,7 +93,7 @@ export function applyDelayMacro(
         delayModRate: fromNormalized(0.2 + t * 0.35, PARAMS.delayModRate),
       }
     case 'mix':
-      return { spaceMix: t * 100 }
+      return { delayWet: t * 100 }
   }
 }
 
@@ -128,6 +128,6 @@ export function applyReverbMacro(
         reverbModRate: fromNormalized(0.25 + t * 0.4, PARAMS.reverbModRate),
       }
     case 'mix':
-      return { reverb: t * 100 }
+      return { reverbWet: t * 100 }
   }
 }

@@ -124,13 +124,30 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'log',
     step: 0.01,
   },
-  spaceMix: {
-    id: 'spaceMix',
-    label: 'Mix',
+  delayDry: {
+    id: 'delayDry',
+    label: 'Dry',
     min: 0,
     max: 100,
-    // Off by default so the dry signal is unchanged until Space is dialed in.
+    defaultValue: 100,
+    unit: '%',
+    mapping: 'linear',
+  },
+  delayWet: {
+    id: 'delayWet',
+    label: 'Wet',
+    min: 0,
+    max: 100,
     defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  delayOutput: {
+    id: 'delayOutput',
+    label: 'Output',
+    min: 0,
+    max: 200,
+    defaultValue: 100,
     unit: '%',
     mapping: 'linear',
   },
@@ -152,12 +169,30 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: '%',
     mapping: 'linear',
   },
-  reverb: {
-    id: 'reverb',
-    label: 'Reverb',
+  reverbDry: {
+    id: 'reverbDry',
+    label: 'Dry',
+    min: 0,
+    max: 100,
+    defaultValue: 100,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbWet: {
+    id: 'reverbWet',
+    label: 'Wet',
     min: 0,
     max: 100,
     defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbOutput: {
+    id: 'reverbOutput',
+    label: 'Output',
+    min: 0,
+    max: 200,
+    defaultValue: 100,
     unit: '%',
     mapping: 'linear',
   },
@@ -685,9 +720,25 @@ export const GRAIN_KNOBS: ParamId[] = [
   'pitchSpread',
 ]
 export const MOTION_KNOBS: ParamId[] = ['motionDepth', 'motionRate', 'motionJitter', 'position']
-export const SPACE_KNOBS: ParamId[] = ['spaceMix', 'delayTime', 'delayFeedback', 'reverb']
-export const DELAY_MAIN_KNOBS: ParamId[] = ['delayTime', 'delayFeedback', 'spaceMix']
-export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbSize', 'reverbDecay', 'reverbPredelay', 'reverb']
+export const SPACE_KNOBS: ParamId[] = [
+  'delayDry',
+  'delayWet',
+  'delayOutput',
+  'delayTime',
+  'delayFeedback',
+  'reverbDry',
+  'reverbWet',
+  'reverbOutput',
+]
+export const DELAY_MAIN_KNOBS: ParamId[] = ['delayDry', 'delayWet', 'delayOutput', 'delayTime', 'delayFeedback']
+export const REVERB_MAIN_KNOBS: ParamId[] = [
+  'reverbDry',
+  'reverbWet',
+  'reverbOutput',
+  'reverbSize',
+  'reverbDecay',
+  'reverbPredelay',
+]
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
