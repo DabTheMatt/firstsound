@@ -41,38 +41,21 @@ export type LimiterGraph = {
   comp: DynamicsCompressorNode
   makeup: GainNode
   ceiling: DynamicsCompressorNode
-  analyserPre: AnalyserNode
-  analyserPost: AnalyserNode
 }
 
-function makeTimeAnalyser(ctx: AudioContext): AnalyserNode {
-  const node = ctx.createAnalyser()
-  node.fftSize = 2048
-  node.smoothingTimeConstant = 0
-  return node
-}
-
-/**
- * Always processes from `input` so the inspector waveform can show in vs out
- * even when the module is bypassed (wet gain is 0).
- */
 export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
   const inputGain = ctx.createGain()
   const comp = ctx.createDynamicsCompressor()
   const makeup = ctx.createGain()
   const ceiling = ctx.createDynamicsCompressor()
-  const analyserPre = makeTimeAnalyser(ctx)
-  const analyserPost = makeTimeAnalyser(ctx)
 
-  input.connect(analyserPre)
-  analyserPre.connect(inputGain)
+  input.connect(inputGain)
   inputGain.connect(comp)
   comp.connect(makeup)
   makeup.connect(ceiling)
-  ceiling.connect(analyserPost)
-  analyserPost.connect(wet)
+  ceiling.connect(wet)
 
-  return { inputGain, comp, makeup, ceiling, analyserPre, analyserPost }
+  return { inputGain, comp, makeup, ceiling }
 }
 
 export function applyLimiterGraph(

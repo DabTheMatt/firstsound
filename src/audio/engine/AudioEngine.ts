@@ -228,6 +228,8 @@ export class AudioEngine {
   private analyser: AnalyserNode | null = null
   private analyserPre: AnalyserNode | null = null
   private analyserEq: AnalyserNode | null = null
+  private analyserLimiterPre: AnalyserNode | null = null
+  private analyserLimiterPost: AnalyserNode | null = null
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
   private spaceLatched = false
@@ -342,12 +344,8 @@ export class AudioEngine {
   getAnalyser(tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' = 'post'): AnalyserNode | null {
     if (tap === 'pre') return this.analyserPre ?? this.analyser
     if (tap === 'eq') return this.analyserEq ?? this.analyserPre ?? this.analyser
-    if (tap === 'limiterPre' || tap === 'limiterPost') {
-      const slot = [...this.slots.values()].find((s) => s.type === 'limiter')
-      return tap === 'limiterPre'
-        ? (slot?.limiterFx?.analyserPre ?? null)
-        : (slot?.limiterFx?.analyserPost ?? null)
-    }
+    if (tap === 'limiterPre') return this.analyserLimiterPre
+    if (tap === 'limiterPost') return this.analyserLimiterPost
     return this.analyser
   }
 
@@ -1551,6 +1549,12 @@ export class AudioEngine {
     this.analyserEq = ctx.createAnalyser()
     this.analyserEq.fftSize = 4096
     this.analyserEq.smoothingTimeConstant = 0.7
+    this.analyserLimiterPre = ctx.createAnalyser()
+    this.analyserLimiterPost = ctx.createAnalyser()
+    this.analyserLimiterPre.fftSize = 2048
+    this.analyserLimiterPost.fftSize = 2048
+    this.analyserLimiterPre.smoothingTimeConstant = 0
+    this.analyserLimiterPost.smoothingTimeConstant = 0
     this.analyserL = ctx.createAnalyser()
     this.analyserR = ctx.createAnalyser()
     this.analyserL.fftSize = 2048
@@ -1650,7 +1654,15 @@ export class AudioEngine {
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
+<<<<<<< HEAD
     if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
+=======
+    const limSlot = ordered.find((s) => s.type === 'limiter')
+    if (limSlot) {
+      if (this.analyserLimiterPre) limSlot.input.connect(this.analyserLimiterPre)
+      if (this.analyserLimiterPost) limSlot.output.connect(this.analyserLimiterPost)
+    }
+>>>>>>> 4b7f3db (Tap limiter In/Out analysers the same way as EQ.)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
