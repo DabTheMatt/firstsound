@@ -45,12 +45,27 @@ export const METER_SWEET_LO = -12
 export const METER_SWEET_HI = -6
 
 export function meterScaleTicks(minDb: number): number[] {
-  const ticks: number[] = []
-  for (let db = 0; db >= minDb - 1e-6; db -= db <= -24 ? 6 : 3) {
-    ticks.push(Math.round(db))
+  return meterScaleMarks(minDb).filter((m) => m.label).map((m) => m.db)
+}
+
+export type MeterScaleMark = {
+  db: number
+  label: boolean
+}
+
+/** 1 dB marks; numbers every 3 dB down to −24, then every 6 dB. */
+export function meterScaleMarks(minDb: number): MeterScaleMark[] {
+  const out: MeterScaleMark[] = []
+  for (let db = 0; db >= minDb - 1e-6; db -= 1) {
+    const v = Math.round(db)
+    const labeled =
+      v === 0 ||
+      v === minDb ||
+      (v >= -24 && v % 3 === 0) ||
+      (v < -24 && v % 6 === 0)
+    out.push({ db: v, label: labeled })
   }
-  if (ticks[ticks.length - 1] !== minDb) ticks.push(minDb)
-  return ticks
+  return out
 }
 
 export function meterSweetBand(minDb: number): { bottom: number; height: number } {

@@ -63,20 +63,42 @@
 .scale {
   position: relative;
   flex: none;
-  width: 26px;
+  width: 28px;
   min-height: 0;
 }
 
 .scale span,
 .tick {
   position: absolute;
-  right: 0;
+  right: 5px;
   font-size: 7px;
   line-height: 1;
   letter-spacing: 0;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+
+.tick::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  height: 1px;
+  background: var(--border-default);
+}
+
+.major::after {
+  width: 5px;
+}
+
+.minor::after {
+  width: 3px;
+  background: var(--border-subtle);
+}
+
+.minor {
+  color: transparent;
 }
 
 .mid {
@@ -111,6 +133,31 @@
   background: var(--bg-app);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
+}
+
+.hashes {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.hashMajor,
+.hashMinor {
+  position: absolute;
+  left: 0;
+  display: block;
+  height: 1px;
+  background: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+
+.hashMajor {
+  width: 55%;
+}
+
+.hashMinor {
+  width: 28%;
+  opacity: 0.7;
 }
 
 .zone {
