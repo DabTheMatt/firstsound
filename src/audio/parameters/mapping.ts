@@ -98,6 +98,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'pitchSpread':
       return `${value.toFixed(2)} st`
     case 'gain':
+    case 'outputGain':
       return `${value.toFixed(1)} dB`
     case 'grainSize':
       return `${Math.round(value)} ms`
@@ -110,12 +111,17 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverb':
     case 'motionDepth':
     case 'motionJitter':
+    case 'saturation':
+    case 'reverbSize':
+    case 'reverbDecay':
       return `${Math.round(value)} %`
     case 'delayTime':
+    case 'reverbPredelay':
       return `${Math.round(value)} ms`
     case 'motionRate':
       return `${value.toFixed(2)} Hz`
     case 'filterCutoff':
+    case 'reverbDamping':
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`
         : `${Math.round(value)} Hz`

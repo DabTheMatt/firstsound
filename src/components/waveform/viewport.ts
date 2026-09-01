@@ -17,6 +17,13 @@ export function fitView(duration: number): View {
   return { start: 0, end: Math.max(duration, MIN_SPAN) }
 }
 
+/** Display zoom vs the whole sample. 100% = the full file is in view. */
+export function zoomPercent(view: View, duration: number): number {
+  if (duration <= 0) return 100
+  const span = Math.max(view.end - view.start, MIN_SPAN)
+  return (duration / span) * 100
+}
+
 /** Fraction [0..1] of the viewport width at time `t` (may be <0 or >1 if offscreen). */
 export function timeToFrac(t: number, view: View): number {
   const span = view.end - view.start

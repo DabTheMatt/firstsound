@@ -21,8 +21,22 @@ export type ParamId =
   | 'motionDepth'
   | 'motionRate'
   | 'motionJitter'
+  | 'outputGain'
+  | 'saturation'
+  | 'reverbSize'
+  | 'reverbDecay'
+  | 'reverbPredelay'
+  | 'reverbDamping'
 
-export type FilterType = 'off' | 'lowpass' | 'highpass' | 'bandpass'
+export type FilterType =
+  | 'off'
+  | 'lowpass'
+  | 'highpass'
+  | 'bandpass'
+  | 'lowshelf'
+  | 'highshelf'
+  | 'peaking'
+  | 'notch'
 
 export type ParamDef = {
   id: ParamId
@@ -42,6 +56,9 @@ export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
 /** Where transport scrubbing (ring drag / wheel) is allowed to land. */
 export type ScrubMode = 'region' | 'sample'
 
+import type { ChainModule } from '../chain/chain'
+import type { EqBand } from '../engine/eqBands'
+
 export type PresetV1 = {
   instrument: 'field'
   version: 1
@@ -53,4 +70,7 @@ export type PresetV1 = {
   direction?: PlaybackDirection
   // Legacy flag kept for reading presets saved before ping-pong existed.
   reverse?: boolean
+  chain?: ChainModule[]
+  eqBands?: EqBand[]
+  muted?: boolean
 }

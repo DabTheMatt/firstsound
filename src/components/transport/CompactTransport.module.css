@@ -1,0 +1,97 @@
+.bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  flex: none;
+  padding: 4px 0 0;
+}
+
+.compact {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon,
+.loop,
+.jumps button,
+.export {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 1px solid #3a3e41;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.loop.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.times {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.times strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.jumps {
+  display: flex;
+  gap: 6px;
+}
+
+.cta {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.compact .jumps,
+.compact .cta {
+  grid-column: 1 / -1;
+}
+
+.compact .cta {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+}
+
+.use {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.use:disabled,
+.export:disabled {
+  opacity: 0.4;
+}

@@ -1,3 +1,12 @@
+import {
+  defaultChain,
+  normalizeChain,
+  parseChain,
+  reorderChain,
+  setBypassed,
+  type ChainModule,
+  type ModuleType,
+} from '../chain/chain'
 import { defaultParamValues, PARAMS } from '../parameters/definitions'
 import {
   applyParamValue,
@@ -29,7 +38,7 @@ import {
   detectSilence,
   encodeWav,
   exportFileName,
-  findZeroCrossing,
+  findZeroCrossing as snapFindZero,
   isTrimmed,
   nextVariationName,
   pcmDuration,
@@ -50,14 +59,20 @@ import {
 } from '../samplePrep'
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
+import { defaultEqBands, parseEqBands, type EqBand, type EqFilterType } from './eqBands'
+import { type FadeCurve } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
+import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
+import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
 
 export type EngineSnapshot = {
   fileName: string
   duration: number
+  sampleRate: number
+  channelCount: number
   sampleLoaded: boolean
   playing: boolean
   loop: boolean
@@ -67,6 +82,10 @@ export type EngineSnapshot = {
   audioStatus: AudioStatus
   scrubMode: ScrubMode
   params: Record<ParamId, number>
+  chain: ChainModule[]
+  eqBands: EqBand[]
+  muted: boolean
+  hasSource: boolean
   prep: SamplePrepState
   canUndoPrep: boolean
   canRedoPrep: boolean
@@ -86,6 +105,7 @@ type Listener = () => void
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
 const MIN_REGION = 0.05
+const RAMP = 0.008
 
 function createContext(): AudioContext {
   const Ctor =
@@ -98,7 +118,6 @@ function createContext(): AudioContext {
 
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
 
-/** Route audio through the "playback" category so iOS ignores the silent switch. */
 function setPlaybackAudioSession(): void {
   try {
     const nav = navigator as AudioSessionNavigator
@@ -110,28 +129,39 @@ function setPlaybackAudioSession(): void {
   }
 }
 
+type Slot = {
+  instanceId: string
+  type: ModuleType
+  input: GainNode
+  output: GainNode
+  dry: GainNode
+  wet: GainNode
+  eq?: BiquadFilterNode[]
+  shaper?: WaveShaperNode
+  delay?: DelayNode
+  delayFb?: GainNode
+  convolver?: ConvolverNode
+  predelay?: DelayNode
+  damp?: BiquadFilterNode
+}
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
  */
 export class AudioEngine {
   private ctx: AudioContext | null = null
-  private master: GainNode | null = null
-  private filter: BiquadFilterNode | null = null
-  private spaceSend: GainNode | null = null
-  private delay: DelayNode | null = null
-  private delayFeedback: GainNode | null = null
-  private reverb: ConvolverNode | null = null
-  private reverbGain: GainNode | null = null
+  private voiceBus: GainNode | null = null
+  private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
+  private analyser: AnalyserNode | null = null
+  private analyserL: AnalyserNode | null = null
+  private analyserR: AnalyserNode | null = null
+  private slots = new Map<string, Slot>()
   private buffer: AudioBuffer | null = null
-  // Original decoded file — sample prep stays non-destructive until render/export.
   private sourceBuffer: AudioBuffer | null = null
-  // Time-reversed copy of `buffer`; Web Audio can't play a source backwards, so
-  // reverse playback plays this forward instead.
   private reversed: AudioBuffer | null = null
   private mono: Float32Array | null = null
-  private sourceMono: Float32Array | null = null
   private fileName = ''
   private playing = false
   private loop = true
@@ -140,7 +170,10 @@ export class AudioEngine {
   private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private scrubMode: ScrubMode = 'region'
+  private muted = false
   private params: Record<ParamId, number> = defaultParamValues()
+  private chain: ChainModule[] = defaultChain()
+  private eqBands: EqBand[] = defaultEqBands()
   private listeners = new Set<Listener>()
   private snapshot: EngineSnapshot
   private source: AudioBufferSourceNode | null = null
@@ -150,10 +183,12 @@ export class AudioEngine {
   private schedulerId = 0
   private visibilityBound = false
   private unlocked = false
-  // Motion modulation state (grain-position drift): smoothed random-walk value.
   private motionRandCur = 0
   private motionRandTarget = 0
   private motionClock = 0
+  private reconnecting = false
+  private sourceMono: Float32Array | null = null
+  private sourceMips: PeakMip[][] = []
   private prep: SamplePrepState = defaultPrep(0)
   private prepHistory: History<SamplePrepState> = createHistory(this.prep)
   private prepGestureOrigin: SamplePrepState | null = null
@@ -162,12 +197,8 @@ export class AudioEngine {
   private previewPlaying = false
   private previewSource: AudioBufferSourceNode | null = null
   private previewGain: GainNode | null = null
-  private previewStartedAt = 0
-  private previewOffset = 0
-  private previewDuration = 0
   private zeroNotice: string | null = null
   private silenceProposal: SilenceProposal | null = null
-  private sourceMips: PeakMip[][] = []
   private variations: SampleVariation[] = []
   private variationSeq = 0
 
@@ -200,15 +231,6 @@ export class AudioEngine {
     return this.sourceMono
   }
 
-  getSourceChannels(): Float32Array[] {
-    if (!this.sourceBuffer) return []
-    const out: Float32Array[] = []
-    for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
-      out.push(this.sourceBuffer.getChannelData(c))
-    }
-    return out
-  }
-
   getSourceMips(): PeakMip[][] {
     return this.sourceMips
   }
@@ -217,15 +239,15 @@ export class AudioEngine {
     return this.prep
   }
 
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser
+  }
+
+  getChannelAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
+    return { left: this.analyserL, right: this.analyserR }
+  }
+
   getPlayheadSeconds(): number {
-    if (this.previewPlaying && this.ctx) {
-      const elapsed = this.ctx.currentTime - this.previewStartedAt
-      const span = this.previewDuration
-      if (span <= 0) return this.prep.selectionStart
-      const t = this.previewOffset + elapsed
-      const phase = this.previewLoop ? t % span : Math.min(t, span)
-      return this.prep.selectionStart + phase
-    }
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
@@ -233,7 +255,6 @@ export class AudioEngine {
       return clamp(this.playOffset, 0, duration)
     }
     if (this.engineMode === 'grain') {
-      // Reflect motion drift in the playhead so modulation is visible.
       const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
       return start + p * (end - start)
     }
@@ -241,13 +262,11 @@ export class AudioEngine {
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
     const span = Math.max(end - start, MIN_REGION)
     if (this.direction === 'pingpong') {
-      // Bounce start -> end -> start over a 2*span cycle.
       const cycle = 2 * span
       const phase = this.loop ? elapsed % cycle : Math.min(elapsed, cycle)
       return phase <= span ? start + phase : end - (phase - span)
     }
     if (this.loop) {
-      // Reverse counts the playhead down from `end`, wrapping back to `end`.
       if (this.direction === 'reverse') return end - (elapsed % span)
       const rel = (this.playOffset - start + elapsed) % span
       return start + (rel < 0 ? rel + span : rel)
@@ -282,7 +301,7 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.fileName = 'field_demo.wav'
-    this.applyLoadedBuffer(buffer)
+    this.applyLoadedBuffer(buffer, true)
   }
 
   async loadArrayBuffer(data: ArrayBuffer, fileName: string): Promise<void> {
@@ -293,14 +312,13 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.fileName = fileName
-    this.applyLoadedBuffer(decoded)
+    this.applyLoadedBuffer(decoded, true)
   }
 
   async play(): Promise<void> {
     await this.ensureContext()
     if (!this.ctx || !this.buffer) return
     if (this.audioStatus === 'blocked') return
-    this.stopPreview()
     this.stopVoices()
     this.playing = true
     const duration = this.buffer.duration
@@ -335,10 +353,6 @@ export class AudioEngine {
     else this.emit()
   }
 
-  /**
-   * Move the playhead to an absolute time in the sample.
-   * `region` clamps to the loop selection; `sample` allows the full file.
-   */
   seekSeconds(time: number, mode: ScrubMode = this.scrubMode): void {
     const duration = this.buffer?.duration ?? 0
     if (duration <= 0) return
@@ -368,7 +382,6 @@ export class AudioEngine {
     }
   }
 
-  /** Nudge the playhead by `delta` seconds, honoring the active scrub mode. */
   nudgePlayhead(delta: number, mode: ScrubMode = this.scrubMode): void {
     this.seekSeconds(this.getPlayheadSeconds() + delta, mode)
   }
@@ -394,6 +407,9 @@ export class AudioEngine {
   setEngineMode(mode: EngineMode): void {
     if (this.engineMode === mode) return
     this.engineMode = mode
+    this.chain = this.chain.map((mod) =>
+      mod.type === 'grain' ? { ...mod, bypassed: mode === 'playback' } : mod,
+    )
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -405,6 +421,12 @@ export class AudioEngine {
     else this.emit()
   }
 
+  setMuted(muted: boolean): void {
+    this.muted = muted
+    this.rampSafety(muted ? 0.0001 : 1)
+    this.emit()
+  }
+
   setParam(id: ParamId, value: number): void {
     const duration = this.buffer?.duration ?? 0
     if (id === 'start' || id === 'end') {
@@ -412,12 +434,6 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
-      if (!this.prepApplied) {
-        this.prep = clampPrep(
-          { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
-          this.sourceDuration(),
-        )
-      }
       this.applyRegionChange()
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
@@ -446,15 +462,6 @@ export class AudioEngine {
     this.emit()
   }
 
-  /** Ping-pong bakes the region into a buffer, so a region change rebuilds it. */
-  private applyRegionChange(): void {
-    if (this.playing && this.engineMode === 'playback' && this.direction === 'pingpong') {
-      void this.play()
-    } else {
-      this.applyLiveAudio()
-    }
-  }
-
   private sourceDuration(): number {
     return this.sourceBuffer?.duration ?? 0
   }
@@ -472,9 +479,7 @@ export class AudioEngine {
     const origin = this.prepGestureOrigin
     this.prepGestureOrigin = null
     if (!origin) return
-    if (this.prep.fadeAuto) {
-      this.prep = applyAutoFades(this.prep)
-    }
+    if (this.prep.fadeAuto) this.prep = applyAutoFades(this.prep)
     this.prepHistory = commit({ ...this.prepHistory, current: origin }, this.prep, prepEqual)
     this.syncInstrumentRegionFromPrep()
     this.emit()
@@ -519,10 +524,15 @@ export class AudioEngine {
   }
 
   snapZero(which: 'start' | 'end'): void {
-    const channels = this.getSourceChannels()
+    const channels: Float32Array[] = []
+    if (this.sourceBuffer) {
+      for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+        channels.push(this.sourceBuffer.getChannelData(c))
+      }
+    }
     const sr = this.sourceBuffer?.sampleRate ?? 0
     const t = which === 'start' ? this.prep.selectionStart : this.prep.selectionEnd
-    const hit = findZeroCrossing(channels, sr, t, ZERO_SEARCH_SEC, ZERO_WARN_SEC)
+    const hit = snapFindZero(channels, sr, t, ZERO_SEARCH_SEC, ZERO_WARN_SEC)
     this.zeroNotice = null
     if (!hit) {
       this.zeroNotice = 'No clean zero crossing nearby'
@@ -541,19 +551,25 @@ export class AudioEngine {
   }
 
   trimToSelection(): void {
-    const next = applyAutoFades(
-      {
-        ...this.prep,
-        windowStart: this.prep.selectionStart,
-        windowEnd: this.prep.selectionEnd,
-      },
-      false,
+    this.commitPrep(
+      applyAutoFades(
+        {
+          ...this.prep,
+          windowStart: this.prep.selectionStart,
+          windowEnd: this.prep.selectionEnd,
+        },
+        false,
+      ),
     )
-    this.commitPrep(next)
   }
 
   detectSilenceMarkers(): void {
-    const channels = this.getSourceChannels()
+    const channels: Float32Array[] = []
+    if (this.sourceBuffer) {
+      for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+        channels.push(this.sourceBuffer.getChannelData(c))
+      }
+    }
     const sr = this.sourceBuffer?.sampleRate ?? 0
     this.silenceProposal = detectSilence(channels, sr)
     this.emit()
@@ -612,9 +628,6 @@ export class AudioEngine {
     }
     this.previewSource = src
     this.previewPlaying = true
-    this.previewStartedAt = this.ctx.currentTime
-    this.previewOffset = 0
-    this.previewDuration = pcmDuration(pcm)
     this.emit()
   }
 
@@ -638,9 +651,6 @@ export class AudioEngine {
     }
     this.previewSource = src
     this.previewPlaying = true
-    this.previewStartedAt = this.ctx.currentTime
-    this.previewOffset = offset
-    this.previewDuration = buffer.duration
     this.emit()
   }
 
@@ -663,25 +673,6 @@ export class AudioEngine {
   toggleSelectionPlayback(): void {
     if (this.previewPlaying) this.stopPreview()
     else void this.playSelection()
-  }
-
-  async useAsSample(): Promise<void> {
-    await this.ensureContext()
-    if (!this.ctx || !this.sourceBuffer) return
-    this.stopPreview()
-    this.stopVoices()
-    this.playing = false
-    const pcm = this.renderCurrent({ ...defaultRenderOptions(this.prep), sampleRate: 'original' })
-    const buffer = this.pcmToBuffer(pcm)
-    if (!buffer) return
-    this.buffer = buffer
-    this.reversed = this.buildReversed(buffer)
-    this.mono = mixToMono(buffer)
-    this.params.start = 0
-    this.params.end = buffer.duration
-    this.playOffset = 0
-    this.prepApplied = true
-    this.emit()
   }
 
   saveVariation(name?: string): void {
@@ -725,7 +716,7 @@ export class AudioEngine {
 
   exportWav(settings: ExportSettings): { filename: string; blob: Blob; duration: number } | null {
     if (!this.sourceBuffer) return null
-    const options = {
+    const pcm = this.renderCurrent({
       applyFades: settings.applyFades,
       applyGain: settings.applyGain,
       applyReverse: settings.applyReverse,
@@ -733,10 +724,10 @@ export class AudioEngine {
       applyDc: this.prep.removeDc,
       applyChannels: true,
       sampleRate: settings.sampleRate,
-    }
-    const pcm = this.renderCurrent(options)
+    })
     const bytes = encodeWav(pcm, settings.bitDepth)
-    const partial = isTrimmed(this.prep, this.sourceDuration()) ||
+    const partial =
+      isTrimmed(this.prep, this.sourceDuration()) ||
       this.prep.selectionStart > this.prep.windowStart + 0.001 ||
       this.prep.selectionEnd < this.prep.windowEnd - 0.001
     const filename = settings.name || exportFileName(this.fileName, partial, this.prep.clipName)
@@ -767,6 +758,27 @@ export class AudioEngine {
     return buffer
   }
 
+  snapToZero(which: 'start' | 'end'): void {
+    if (!this.buffer) return
+    const time = which === 'start' ? this.params.start : this.params.end
+    const channels: Float32Array[] = []
+    for (let c = 0; c < this.buffer.numberOfChannels; c++) {
+      channels.push(this.buffer.getChannelData(c))
+    }
+    const idx = secondsToIndex(time, this.buffer.sampleRate, this.buffer.length)
+    const radius = Math.round(this.buffer.sampleRate * 0.08)
+    const found = findZeroCrossing(channels, idx, radius)
+    this.setParam(which, indexToSeconds(found, this.buffer.sampleRate))
+  }
+
+  private applyRegionChange(): void {
+    if (this.playing && this.engineMode === 'playback' && this.direction === 'pingpong') {
+      void this.play()
+    } else {
+      this.applyLiveAudio()
+    }
+  }
+
   resetParam(id: ParamId): void {
     if (id === 'start') {
       this.setParam('start', 0)
@@ -788,7 +800,36 @@ export class AudioEngine {
     this.engineMode = 'playback'
     this.direction = 'forward'
     this.filterType = 'off'
+    this.eqBands = defaultEqBands()
+    this.chain = defaultChain()
+    this.muted = false
+    void this.rebuildGraph()
     this.applyLiveAudio()
+    this.emit()
+  }
+
+  reorderModules(fromIndex: number, toIndex: number): void {
+    const next = reorderChain(this.chain, fromIndex, toIndex)
+    if (next === this.chain || modulesEqual(next, this.chain)) return
+    this.chain = next
+    void this.rebuildGraph()
+  }
+
+  setModuleBypass(instanceId: string, bypassed: boolean): void {
+    this.chain = setBypassed(this.chain, instanceId, bypassed)
+    const grain = this.chain.find((m) => m.instanceId === instanceId && m.type === 'grain')
+    if (grain) this.engineMode = grain.bypassed ? 'playback' : 'grain'
+    this.applyBypassRamps()
+    if (grain && this.playing) void this.play()
+    else this.emit()
+  }
+
+  setEqBand(index: number, patch: Partial<EqBand>): void {
+    const band = this.eqBands[index]
+    if (!band) return
+    this.eqBands = this.eqBands.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    this.filterType = this.eqBands[0]?.type ?? 'off'
+    this.applyEq(0.03)
     this.emit()
   }
 
@@ -799,10 +840,12 @@ export class AudioEngine {
       loop: this.loop,
       engineMode: this.engineMode,
       direction: this.direction,
-      // Legacy field so older builds still read a sensible value.
       reverse: this.direction === 'reverse',
       filterType: this.filterType,
       params: { ...this.params },
+      chain: this.chain.map((m) => ({ ...m })),
+      eqBands: this.eqBands.map((b) => ({ ...b })),
+      muted: this.muted,
     }
   }
 
@@ -811,6 +854,7 @@ export class AudioEngine {
     this.engineMode = preset.engineMode
     this.direction = preset.direction ?? (preset.reverse ? 'reverse' : 'forward')
     this.filterType = preset.filterType ?? 'off'
+    this.muted = preset.muted ?? false
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = preset.params[id]
       if (typeof value === 'number') {
@@ -821,39 +865,133 @@ export class AudioEngine {
     const region = clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
-    if (this.playing) void this.play()
-    else {
-      this.applyLiveAudio()
-      this.emit()
+    const parsedChain = parseChain(preset.chain)
+    if (parsedChain) this.chain = parsedChain
+    const parsedEq = parseEqBands(preset.eqBands)
+    if (parsedEq) this.eqBands = parsedEq
+    else if (this.filterType !== 'off') {
+      const first = this.eqBands[0]
+      if (first) {
+        this.eqBands = [
+          {
+            ...first,
+            type: this.filterType as EqFilterType,
+            frequency: this.params.filterCutoff,
+            q: this.params.filterReso,
+          },
+          ...this.eqBands.slice(1),
+        ]
+      }
     }
+    void this.rebuildGraph().then(() => {
+      if (this.playing) void this.play()
+      else this.emit()
+    })
   }
 
-  private applyLoadedBuffer(buffer: AudioBuffer): void {
-    this.sourceBuffer = buffer
+  /** Bake the current edit into the working buffer and load it as the instrument sample. */
+  async useAsSample(edit?: {
+    fadeIn: number
+    fadeOut: number
+    fadeCurve: FadeCurve
+    reverse: boolean
+    normalize: boolean
+  }): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx) return
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    if (edit && this.buffer) {
+      const peak = peakOfBuffer(this.buffer, this.params.start, this.params.end)
+      const gain = edit.normalize ? peakNormalizeGain(peak, -1) : 1
+      const rendered = renderRegion(this.buffer, this.ctx, {
+        start: this.params.start,
+        end: this.params.end,
+        reverse: edit.reverse,
+        fadeIn: edit.fadeIn,
+        fadeOut: edit.fadeOut,
+        fadeCurve: edit.fadeCurve,
+        gain,
+      })
+      this.fileName = stemName(this.fileName) + '_sample.wav'
+      this.applyLoadedBuffer(rendered, false)
+      return
+    }
+    if (!this.sourceBuffer) return
+    const pcm = this.renderCurrent({ ...defaultRenderOptions(this.prep), sampleRate: 'original' })
+    const buffer = this.pcmToBuffer(pcm)
+    if (!buffer) return
     this.buffer = buffer
     this.reversed = this.buildReversed(buffer)
     this.mono = mixToMono(buffer)
-    this.sourceMono = this.mono
-    this.sourceMips = []
-    if (this.sourceBuffer) {
-      for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
-        this.sourceMips.push(buildPeakMips(this.sourceBuffer.getChannelData(c)))
+    this.params.start = 0
+    this.params.end = buffer.duration
+    this.playOffset = 0
+    this.prepApplied = true
+    this.emit()
+  }
+
+  revertToSource(): void {
+    if (!this.sourceBuffer) return
+    this.stopVoices()
+    this.playing = false
+    this.applyLoadedBuffer(this.sourceBuffer, false)
+  }
+
+  renderEdit(edit: {
+    fadeIn: number
+    fadeOut: number
+    fadeCurve: FadeCurve
+    reverse: boolean
+    normalize: boolean
+  }): AudioBuffer | null {
+    if (!this.ctx || !this.buffer) return null
+    const peak = peakOfBuffer(this.buffer, this.params.start, this.params.end)
+    const gain = edit.normalize ? peakNormalizeGain(peak, -1) : 1
+    return renderRegion(this.buffer, this.ctx, {
+      start: this.params.start,
+      end: this.params.end,
+      reverse: edit.reverse,
+      fadeIn: edit.fadeIn,
+      fadeOut: edit.fadeOut,
+      fadeCurve: edit.fadeCurve,
+      gain,
+    })
+  }
+
+  private applyLoadedBuffer(buffer: AudioBuffer, asSource: boolean): void {
+    this.buffer = buffer
+    if (asSource) this.sourceBuffer = buffer
+    this.reversed = this.buildReversed(buffer)
+    this.mono = mixToMono(buffer)
+    if (asSource) {
+      this.sourceMono = this.mono
+      this.sourceMips = []
+      if (this.sourceBuffer) {
+        for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+          this.sourceMips.push(buildPeakMips(this.sourceBuffer.getChannelData(c)))
+        }
       }
+      this.variations = []
+      this.variationSeq = 0
+      this.prepApplied = false
+      this.prep = defaultPrep(buffer.duration)
+      this.prepHistory = resetHistory(this.prep)
+      this.silenceProposal = null
+      this.zeroNotice = null
+      this.stopPreview()
+      this.params = {
+        ...this.params,
+        start: this.prep.selectionStart,
+        end: this.prep.selectionEnd,
+      }
+      this.playOffset = this.params.start
+    } else {
+      const region = defaultPlayRegion(buffer.duration, MIN_REGION)
+      this.params = { ...this.params, start: region.start, end: region.end }
+      this.playOffset = region.start
     }
-    this.variations = []
-    this.variationSeq = 0
-    this.prepApplied = false
-    this.prep = defaultPrep(buffer.duration)
-    this.prepHistory = resetHistory(this.prep)
-    this.silenceProposal = null
-    this.zeroNotice = null
-    this.stopPreview()
-    const region = {
-      start: this.prep.selectionStart,
-      end: this.prep.selectionEnd,
-    }
-    this.params = { ...this.params, start: region.start, end: region.end }
-    this.playOffset = region.start
     this.emit()
   }
 
@@ -870,7 +1008,6 @@ export class AudioEngine {
     return rev
   }
 
-  /** Buffer feeding the voices — reversed copy when playing backwards. */
   private activeBuffer(): AudioBuffer | null {
     return this.direction === 'reverse' && this.reversed ? this.reversed : this.buffer
   }
@@ -893,61 +1030,217 @@ export class AudioEngine {
   }
 
   private async ensureContext(): Promise<void> {
-    // iOS Safari plays Web Audio through the "ambient" session by default, which
-    // the hardware silent switch mutes. Opt into "playback" so sound is audible
-    // regardless of the mute switch (iOS 16.4+). Must run inside a user gesture.
     setPlaybackAudioSession()
     if (!this.ctx) {
       this.ctx = createContext()
-      this.master = this.ctx.createGain()
-      this.filter = this.ctx.createBiquadFilter()
-      this.limiter = this.ctx.createDynamicsCompressor()
-      this.limiter.threshold.value = -6
-      this.limiter.knee.value = 6
-      this.limiter.ratio.value = 12
-      this.limiter.attack.value = 0.003
-      this.limiter.release.value = 0.12
-      // Dry path: voices -> master gain -> filter -> limiter -> output.
-      // Space send (parallel): filter -> spaceSend -> delay(+feedback) & reverb -> limiter.
-      this.spaceSend = this.ctx.createGain()
-      this.delay = this.ctx.createDelay(2)
-      this.delayFeedback = this.ctx.createGain()
-      this.reverb = this.ctx.createConvolver()
-      this.reverb.buffer = this.buildReverbImpulse()
-      this.reverbGain = this.ctx.createGain()
-      this.master.connect(this.filter)
-      this.filter.connect(this.limiter)
-      this.filter.connect(this.spaceSend)
-      this.spaceSend.connect(this.delay)
-      this.delay.connect(this.delayFeedback)
-      this.delayFeedback.connect(this.delay)
-      this.delay.connect(this.limiter)
-      this.spaceSend.connect(this.reverb)
-      this.reverb.connect(this.reverbGain)
-      this.reverbGain.connect(this.limiter)
-      this.limiter.connect(this.ctx.destination)
-      this.previewGain = this.ctx.createGain()
-      this.previewGain.gain.value = 1
-      this.previewGain.connect(this.limiter)
-      this.master.gain.value = dbToGain(this.params.gain)
-      // Initialise space params directly; live changes are smoothed in applySpace.
-      this.spaceSend.gain.value = this.params.spaceMix / 100
-      this.delay.delayTime.value = this.params.delayTime / 1000
-      this.delayFeedback.gain.value = Math.min(0.95, this.params.delayFeedback / 100)
-      this.reverbGain.gain.value = this.params.reverb / 100
-      this.applyFilter(0)
+      this.buildSlots()
+      this.connectSlots()
       this.bindVisibility()
     }
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume()
     }
-    // Older iOS needs a source started from the gesture to fully unlock output.
     if (!this.unlocked && this.ctx.state === 'running') {
       this.primeOutput()
       this.unlocked = true
     }
     this.audioStatus = this.ctx.state === 'running' ? 'running' : 'blocked'
     this.emit()
+  }
+
+  private buildSlots(): void {
+    if (!this.ctx) return
+    const ctx = this.ctx
+    this.voiceBus = ctx.createGain()
+    this.voiceBus.gain.value = 1
+    this.safetyGain = ctx.createGain()
+    this.safetyGain.gain.value = this.muted ? 0.0001 : 1
+    this.limiter = ctx.createDynamicsCompressor()
+    this.limiter.threshold.value = -6
+    this.limiter.knee.value = 6
+    this.limiter.ratio.value = 12
+    this.limiter.attack.value = 0.003
+    this.limiter.release.value = 0.12
+    this.analyser = ctx.createAnalyser()
+    this.analyser.fftSize = 4096
+    this.analyser.smoothingTimeConstant = 0.7
+    this.analyserL = ctx.createAnalyser()
+    this.analyserR = ctx.createAnalyser()
+    this.analyserL.fftSize = 2048
+    this.analyserR.fftSize = 2048
+    this.analyserL.smoothingTimeConstant = 0.4
+    this.analyserR.smoothingTimeConstant = 0.4
+    this.previewGain = ctx.createGain()
+    this.previewGain.gain.value = 1
+
+    for (const mod of normalizeChain(this.chain)) {
+      this.slots.set(mod.instanceId, this.createSlot(mod))
+    }
+    this.applyLiveAudio()
+    this.applyBypassRamps(0)
+  }
+
+  private createSlot(mod: ChainModule): Slot {
+    const ctx = this.ctx!
+    const input = ctx.createGain()
+    const output = ctx.createGain()
+    const dry = ctx.createGain()
+    const wet = ctx.createGain()
+    input.connect(dry)
+    dry.connect(output)
+    const slot: Slot = {
+      instanceId: mod.instanceId,
+      type: mod.type,
+      input,
+      output,
+      dry,
+      wet,
+    }
+    if (mod.type === 'gain' || mod.type === 'output' || mod.type === 'grain') {
+      wet.gain.value = 0
+      dry.gain.value = 1
+      return slot
+    }
+    if (mod.type === 'eq') {
+      const bands: BiquadFilterNode[] = []
+      for (let i = 0; i < 4; i++) bands.push(ctx.createBiquadFilter())
+      input.connect(wet)
+      wet.connect(bands[0]!)
+      for (let i = 0; i < bands.length - 1; i++) bands[i]!.connect(bands[i + 1]!)
+      bands.at(-1)!.connect(output)
+      slot.eq = bands
+    }
+    if (mod.type === 'saturation') {
+      const shaper = ctx.createWaveShaper()
+      shaper.curve = makeTanhCurve(0)
+      shaper.oversample = '2x'
+      input.connect(wet)
+      wet.connect(shaper)
+      shaper.connect(output)
+      slot.shaper = shaper
+    }
+    if (mod.type === 'delay') {
+      const delay = ctx.createDelay(2)
+      const fb = ctx.createGain()
+      input.connect(wet)
+      wet.connect(delay)
+      delay.connect(fb)
+      fb.connect(delay)
+      delay.connect(output)
+      slot.delay = delay
+      slot.delayFb = fb
+    }
+    if (mod.type === 'reverb') {
+      const pre = ctx.createDelay(0.2)
+      const conv = ctx.createConvolver()
+      conv.buffer = this.buildReverbImpulse()
+      const damp = ctx.createBiquadFilter()
+      damp.type = 'lowpass'
+      input.connect(wet)
+      wet.connect(pre)
+      pre.connect(conv)
+      conv.connect(damp)
+      damp.connect(output)
+      slot.predelay = pre
+      slot.convolver = conv
+      slot.damp = damp
+    }
+    return slot
+  }
+
+  private connectSlots(): void {
+    if (!this.ctx || !this.voiceBus || !this.safetyGain || !this.limiter || !this.analyser) return
+    const ordered = this.chain
+      .map((m) => this.slots.get(m.instanceId))
+      .filter((s): s is Slot => Boolean(s))
+    if (ordered.length === 0) return
+    this.voiceBus.connect(ordered[0]!.input)
+    for (let i = 0; i < ordered.length - 1; i++) {
+      ordered[i]!.output.connect(ordered[i + 1]!.input)
+    }
+    const last = ordered.at(-1)!
+    last.output.connect(this.limiter)
+    this.limiter.connect(this.safetyGain)
+    this.safetyGain.connect(this.ctx.destination)
+    this.limiter.connect(this.analyser)
+    if (this.previewGain) this.previewGain.connect(this.limiter)
+    const split = this.ctx.createChannelSplitter(2)
+    this.limiter.connect(split)
+    if (this.analyserL) split.connect(this.analyserL, 0)
+    if (this.analyserR) split.connect(this.analyserR, 1)
+  }
+
+  private disconnectSlots(): void {
+    for (const slot of this.slots.values()) {
+      try {
+        slot.output.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+    try {
+      this.voiceBus?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.limiter?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.safetyGain?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  private async rebuildGraph(): Promise<void> {
+    if (!this.ctx || this.reconnecting) {
+      this.emit()
+      return
+    }
+    this.reconnecting = true
+    this.rampSafety(0.0001)
+    await waitMs(28)
+    if (!this.ctx) {
+      this.reconnecting = false
+      return
+    }
+    this.disconnectSlots()
+    for (const mod of this.chain) {
+      if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
+    }
+    this.connectSlots()
+    this.applyLiveAudio()
+    this.applyBypassRamps(0.01)
+    this.rampSafety(this.muted ? 0.0001 : 1)
+    this.reconnecting = false
+    this.emit()
+  }
+
+  private rampSafety(value: number): void {
+    if (!this.ctx || !this.safetyGain) return
+    const now = this.ctx.currentTime
+    this.safetyGain.gain.cancelScheduledValues(now)
+    this.safetyGain.gain.setTargetAtTime(value, now, RAMP)
+  }
+
+  private applyBypassRamps(smoothing = 0.01): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    for (const mod of this.chain) {
+      const slot = this.slots.get(mod.instanceId)
+      if (!slot) continue
+      if (mod.type === 'gain' || mod.type === 'output' || mod.type === 'grain') {
+        slot.dry.gain.setTargetAtTime(1, now, smoothing)
+        slot.wet.gain.setTargetAtTime(0, now, smoothing)
+        continue
+      }
+      const bypassed = mod.bypassed
+      slot.dry.gain.setTargetAtTime(bypassed ? 1 : dryLevel(mod.type, this.params), now, smoothing)
+      slot.wet.gain.setTargetAtTime(bypassed ? 0 : wetLevel(mod.type, this.params), now, smoothing)
+    }
   }
 
   private primeOutput(): void {
@@ -962,7 +1255,6 @@ export class AudioEngine {
   private bindVisibility(): void {
     if (this.visibilityBound || typeof document === 'undefined') return
     this.visibilityBound = true
-    // iOS suspends AudioContext in the background; resume on return.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible' || !this.ctx) return
       void this.ctx.resume().then(() => {
@@ -973,75 +1265,66 @@ export class AudioEngine {
   }
 
   setFilterType(type: FilterType): void {
-    if (this.filterType === type) return
-    this.filterType = type
-    this.applyFilter(0.02)
-    this.emit()
+    this.setEqBand(0, { type: type as EqFilterType })
   }
 
-  /**
-   * Configure the biquad from current params. When `off` we keep the node in the
-   * graph but make it transparent (open low-pass, no resonance) instead of
-   * reconnecting the graph, which would risk clicks mid-playback.
-   */
-  private applyFilter(smoothing: number): void {
-    if (!this.ctx || !this.filter) return
+  private applyEq(smoothing: number): void {
+    if (!this.ctx) return
     const now = this.ctx.currentTime
     const nyquist = this.ctx.sampleRate / 2
-    if (this.filterType === 'off') {
-      this.filter.type = 'lowpass'
-      this.filter.frequency.setTargetAtTime(Math.min(20000, nyquist), now, smoothing)
-      this.filter.Q.setTargetAtTime(0.0001, now, smoothing)
-      return
+    const eqSlot = [...this.slots.values()].find((s) => s.type === 'eq')
+    const filters = eqSlot?.eq
+    if (!filters) return
+    for (let i = 0; i < filters.length; i++) {
+      const band = this.eqBands[i]
+      const node = filters[i]
+      if (!band || !node) continue
+      if (band.type === 'off') {
+        node.type = 'allpass'
+        node.frequency.setTargetAtTime(1000, now, smoothing)
+        node.Q.setTargetAtTime(0.0001, now, smoothing)
+        node.gain.setTargetAtTime(0, now, smoothing)
+        continue
+      }
+      node.type = band.type
+      node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
+      node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, band.q)), now, smoothing)
+      node.gain.setTargetAtTime(band.gain, now, smoothing)
     }
-    this.filter.type = this.filterType
-    const cutoff = Math.min(this.params.filterCutoff, nyquist * 0.99)
-    this.filter.frequency.setTargetAtTime(cutoff, now, smoothing)
-    this.filter.Q.setTargetAtTime(this.params.filterReso, now, smoothing)
   }
 
-  /** Exponentially decaying stereo noise — a lightweight synthetic reverb tail. */
   private buildReverbImpulse(): AudioBuffer | null {
     if (!this.ctx) return null
     const sr = this.ctx.sampleRate
-    const len = Math.floor(sr * 2.2)
+    const size = this.params.reverbSize / 100
+    const decayAmt = this.params.reverbDecay / 100
+    const seconds = 0.6 + size * 2.4
+    const len = Math.floor(sr * seconds)
     const ir = this.ctx.createBuffer(2, len, sr)
+    const exp = 1.6 + (1 - decayAmt) * 3
     for (let ch = 0; ch < 2; ch++) {
       const data = ir.getChannelData(ch)
       for (let i = 0; i < len; i++) {
-        const decay = (1 - i / len) ** 2.5
+        const decay = (1 - i / len) ** exp
         data[i] = (Math.random() * 2 - 1) * decay
       }
     }
     return ir
   }
 
-  private applySpace(smoothing: number): void {
-    if (!this.ctx || !this.spaceSend || !this.delay || !this.delayFeedback || !this.reverbGain) {
-      return
-    }
-    const now = this.ctx.currentTime
-    this.spaceSend.gain.setTargetAtTime(this.params.spaceMix / 100, now, smoothing)
-    this.delay.delayTime.setTargetAtTime(this.params.delayTime / 1000, now, smoothing)
-    // Clamp feedback below unity so the delay tail always decays.
-    this.delayFeedback.gain.setTargetAtTime(
-      Math.min(0.95, this.params.delayFeedback / 100),
-      now,
-      smoothing,
-    )
-    this.reverbGain.gain.setTargetAtTime(this.params.reverb / 100, now, smoothing)
-  }
-
   private applyLiveAudio(): void {
-    if (!this.ctx || !this.master) return
+    if (!this.ctx) return
     const now = this.ctx.currentTime
-    this.master.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
-    this.applyFilter(0.03)
-    this.applySpace(0.03)
+    const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
+    const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
+    if (gainSlot) gainSlot.output.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+    if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(this.params.outputGain), now, 0.03)
+    this.applyEq(0.03)
+    this.applyFxParams(0.03)
+    this.applyBypassRamps(0.03)
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
       this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
-      // Ping-pong loops the whole baked buffer, so its loop points stay fixed.
       if (this.direction !== 'pingpong') {
         const duration = this.buffer?.duration ?? 0
         const { start, end } = this.region(duration)
@@ -1051,22 +1334,47 @@ export class AudioEngine {
     }
   }
 
+  private applyFxParams(smoothing: number): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    for (const slot of this.slots.values()) {
+      if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
+      if (slot.delay) {
+        slot.delay.delayTime.setTargetAtTime(this.params.delayTime / 1000, now, smoothing)
+      }
+      if (slot.delayFb) {
+        slot.delayFb.gain.setTargetAtTime(
+          Math.min(0.92, this.params.delayFeedback / 100),
+          now,
+          smoothing,
+        )
+      }
+      if (slot.predelay) {
+        slot.predelay.delayTime.setTargetAtTime(this.params.reverbPredelay / 1000, now, smoothing)
+      }
+      if (slot.damp) {
+        slot.damp.frequency.setTargetAtTime(this.params.reverbDamping, now, smoothing)
+      }
+      if (slot.convolver) {
+        // Rebuild only when size/decay moved a lot — cheap enough at live apply if flagged.
+      }
+    }
+  }
+
   private startBufferVoice(offset: number): void {
     const buffer = this.activeBuffer()
-    if (!this.ctx || !this.master || !buffer) return
+    if (!this.ctx || !this.voiceBus || !buffer) return
     const duration = buffer.duration
     const { start, end } = this.region(duration)
     const reverse = this.direction === 'reverse'
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = this.loop
-    // Reversed buffer: mirror the region so the same forward-time window plays.
     src.loopStart = reverse ? reverseTime(end, duration) : start
     src.loopEnd = reverse ? reverseTime(start, duration) : end
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
-    src.connect(this.master)
+    src.connect(this.voiceBus)
     const mapped = reverse ? reverseTime(offset, duration) : offset
-    // Allow sample-mode seeks outside the loop region; still stay in the buffer.
     const clamped = Math.min(Math.max(mapped, 0), Math.max(0, duration - 0.001))
     src.start(this.ctx.currentTime, clamped)
     if (!this.loop) {
@@ -1078,7 +1386,7 @@ export class AudioEngine {
   }
 
   private startPingPongVoice(): void {
-    if (!this.ctx || !this.master || !this.buffer) return
+    if (!this.ctx || !this.voiceBus || !this.buffer) return
     const { start, end } = this.region(this.buffer.duration)
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
@@ -1088,7 +1396,7 @@ export class AudioEngine {
     src.loopStart = 0
     src.loopEnd = buffer.duration
     src.playbackRate.value = playbackRate(this.params.speed, this.params.pitch)
-    src.connect(this.master)
+    src.connect(this.voiceBus)
     src.start(this.ctx.currentTime, 0)
     if (!this.loop) {
       src.onended = () => {
@@ -1098,7 +1406,6 @@ export class AudioEngine {
     this.source = src
   }
 
-  /** Slow drift applied to the grain position: sine LFO blended with a random walk. */
   private motionOffset(t: number): number {
     return motionValue(
       this.params.motionDepth,
@@ -1109,7 +1416,6 @@ export class AudioEngine {
     )
   }
 
-  /** Step the motion random-walk once per scheduler tick toward a new target. */
   private advanceMotion(): void {
     if (this.params.motionDepth <= 0 || this.params.motionJitter <= 0) return
     const dt = SCHEDULER_MS / 1000
@@ -1124,7 +1430,7 @@ export class AudioEngine {
 
   private scheduleGrains(): void {
     const buffer = this.activeBuffer()
-    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.master) {
+    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.voiceBus) {
       return
     }
     const ctx = this.ctx
@@ -1160,9 +1466,8 @@ export class AudioEngine {
       gain.gain.linearRampToValueAtTime(amp, t + releaseStart)
       gain.gain.linearRampToValueAtTime(0, t + grainDur)
       src.connect(gain)
-      gain.connect(this.master)
+      gain.connect(this.voiceBus)
       const dur = Math.min(grainDur, Math.max(0.01, duration - offset))
-      // Mirror the grain window so each grain also plays backwards when reversed.
       const grainOffset =
         this.direction === 'reverse' ? Math.max(0, duration - offset - dur) : offset
       src.start(t, grainOffset, dur)
@@ -1192,6 +1497,8 @@ export class AudioEngine {
     return {
       fileName: this.fileName,
       duration: this.buffer?.duration ?? 0,
+      sampleRate: this.buffer?.sampleRate ?? this.ctx?.sampleRate ?? 0,
+      channelCount: this.buffer?.numberOfChannels ?? 0,
       sampleLoaded: Boolean(this.buffer),
       playing: this.playing,
       loop: this.loop,
@@ -1201,6 +1508,10 @@ export class AudioEngine {
       audioStatus: this.audioStatus,
       scrubMode: this.scrubMode,
       params: { ...this.params },
+      chain: this.chain.map((m) => ({ ...m })),
+      eqBands: this.eqBands.map((b) => ({ ...b })),
+      muted: this.muted,
+      hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,
       prep: { ...this.prep },
       canUndoPrep: canUndo(this.prepHistory),
       canRedoPrep: canRedo(this.prepHistory),
@@ -1223,3 +1534,49 @@ export class AudioEngine {
 }
 
 export const engine = new AudioEngine()
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function makeTanhCurve(amount: number): Float32Array<ArrayBuffer> {
+  const n = 1024
+  const curve = new Float32Array(new ArrayBuffer(n * 4))
+  const k = 1 + amount * 10
+  const denom = Math.tanh(k)
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1
+    curve[i] = denom === 0 ? x : Math.tanh(k * x) / denom
+  }
+  return curve
+}
+
+function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
+  if (type === 'delay') return params.spaceMix / 100
+  if (type === 'reverb') return params.reverb / 100
+  if (type === 'saturation') return params.saturation > 0 ? 1 : 0
+  if (type === 'eq') return 1
+  return 0
+}
+
+function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
+  if (type === 'delay') return 1 - params.spaceMix / 100
+  if (type === 'reverb') return 1 - params.reverb / 100
+  if (type === 'saturation') return params.saturation > 0 ? 0 : 1
+  if (type === 'eq') return 0
+  return 1
+}
+
+function modulesEqual(a: ChainModule[], b: ChainModule[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every(
+    (m, i) =>
+      m.instanceId === b[i]?.instanceId &&
+      m.type === b[i]?.type &&
+      m.bypassed === b[i]?.bypassed,
+  )
+}
+
+function stemName(fileName: string): string {
+  return fileName.replace(/\.[^/.]+$/, '') || 'sample'
+}
