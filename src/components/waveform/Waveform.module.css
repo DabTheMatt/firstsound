@@ -132,25 +132,21 @@
   overflow: visible;
 }
 
-.fadeFill {
-  fill: color-mix(in srgb, var(--bg-app) 70%, transparent);
-}
-
 .fadeLine {
   fill: none;
-  stroke: var(--accent-primary);
+  stroke: var(--envelope);
   stroke-width: 1.75;
   vector-effect: non-scaling-stroke;
 }
 
 .fadeHandle {
   position: absolute;
-  top: 24px;
+  top: 26px;
   bottom: auto;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   transform: translateX(-50%) rotate(45deg);
-  background: var(--accent-primary);
+  background: var(--envelope);
   pointer-events: auto;
   z-index: 5;
   cursor: ew-resize;

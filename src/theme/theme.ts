@@ -78,6 +78,7 @@ const CUSTOM_STYLE_PROPS = [
   '--spectrum-line',
   '--eq-curve',
   '--eq-node',
+  '--envelope',
   '--scrim',
 ] as const
 
@@ -166,6 +167,7 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--spectrum-line', mixCssColor(custom.spectrum, paper, 0.35))
   root.style.setProperty('--eq-curve', custom.accent)
   root.style.setProperty('--eq-node', mixCssColor(custom.accent, paper, 0.2))
+  root.style.setProperty('--envelope', mixCssColor('#5ec8c0', custom.accent, 0.28))
   root.style.setProperty('--scrim', colorWithAlpha(custom.bgApp, 0.55))
 }
 

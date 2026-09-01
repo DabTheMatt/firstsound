@@ -39,6 +39,7 @@
 
   --eq-curve: #e6ad48;
   --eq-node: #f2c064;
+  --envelope: #5ec8c0;
 
   --meter-low: #67b36d;
   --meter-mid: #d1c65b;
@@ -90,6 +91,7 @@
 
   --eq-curve: #63b3d1;
   --eq-node: #a1d9ea;
+  --envelope: #e8a06a;
 }
 
 [data-theme='oxide'] {
@@ -130,6 +132,7 @@
 
   --eq-curve: #e07d48;
   --eq-node: #f0a16f;
+  --envelope: #6eb8c8;
 }
 
 [data-theme='forest'] {
@@ -170,6 +173,7 @@
 
   --eq-curve: #72b98a;
   --eq-node: #a3d9b2;
+  --envelope: #e0b15a;
 }
 
 [data-theme='light-studio'] {
@@ -210,6 +214,7 @@
 
   --eq-curve: #a96e13;
   --eq-node: #89580e;
+  --envelope: #2a7a86;
 
   --scrim: rgba(32, 35, 33, 0.38);
 }
@@ -252,6 +257,7 @@
 
   --eq-curve: #dfaf55;
   --eq-node: #edc470;
+  --envelope: #5ec8c0;
 }
 
 [data-theme='custom'] {

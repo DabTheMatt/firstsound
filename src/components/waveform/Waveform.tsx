@@ -30,7 +30,6 @@ import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import { rulerMarks } from './rulerTicks'
-import { insetHandleFrac } from './handleLayout'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
 
@@ -109,7 +108,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const playheadRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
-  const [overlayW, setOverlayW] = useState(400)
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
   const splitDrag = useRef<{ y: number; share: number } | null>(null)
@@ -133,16 +131,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   useEffect(() => {
     handlePx.current = window.matchMedia('(pointer: coarse)').matches ? 44 : 22
-  }, [])
-
-  useEffect(() => {
-    const overlay = overlayRef.current
-    if (!overlay) return
-    const measure = () => setOverlayW(Math.max(1, overlay.getBoundingClientRect().width))
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(overlay)
-    return () => ro.disconnect()
   }, [])
 
   useImperativeHandle(ref, () => ({
@@ -493,9 +481,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const regionRight = Math.max(0, Math.min(100, endPct))
   const fadeInPct = pct(start + fadeIn)
   const fadeOutPct = pct(end - fadeOut)
-  const minHandleFrac = 22 / Math.max(120, overlayW)
-  const fadeInHandlePct = insetHandleFrac(startPct / 100, fadeInPct / 100, minHandleFrac, 1) * 100
-  const fadeOutHandlePct = insetHandleFrac(endPct / 100, fadeOutPct / 100, minHandleFrac, -1) * 100
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
@@ -540,19 +525,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     curve={fadeCurve}
                     side="out"
                   />
-                  {fadeInHandlePct >= 0 && fadeInHandlePct <= 100 ? (
+                  {startPct >= 0 && startPct <= 100 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="in"
-                      style={{ left: `${fadeInHandlePct}%` }}
+                      style={{ left: `${startPct}%` }}
                       aria-label="Fade in"
                     />
                   ) : null}
-                  {fadeOutHandlePct >= 0 && fadeOutHandlePct <= 100 ? (
+                  {endPct >= 0 && endPct <= 100 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="out"
-                      style={{ left: `${fadeOutHandlePct}%` }}
+                      style={{ left: `${endPct}%` }}
                       aria-label="Fade out"
                     />
                   ) : null}
@@ -686,6 +671,7 @@ function FadePlot({
     fill.push(`${x},${y}`)
   }
   fill.push('100,100')
+  const gradId = side === 'in' ? 'field-fade-in' : 'field-fade-out'
   return (
     <svg
       className={styles.fadeSvg}
@@ -694,7 +680,13 @@ function FadePlot({
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <polygon points={fill.join(' ')} className={styles.fadeFill} />
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.42 : 0} />
+          <stop offset="100%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0 : 0.42} />
+        </linearGradient>
+      </defs>
+      <polygon points={fill.join(' ')} fill={`url(#${gradId})`} />
       <polyline points={line.join(' ')} className={styles.fadeLine} />
     </svg>
   )
