@@ -10,6 +10,8 @@ import {
   formatParamValue,
   fromNormalized,
   playbackRate,
+  sampleOriginSeconds,
+  snapPlayheadToRegion,
   toNormalized,
 } from './mapping'
 
@@ -85,6 +87,18 @@ describe('clampRegion', () => {
     const r = clampRegion(-1, 99, 2)
     expect(r.start).toBe(0)
     expect(r.end).toBe(2)
+  })
+})
+
+describe('stop playhead', () => {
+  it('parks at the start of the sample', () => {
+    expect(sampleOriginSeconds()).toBe(0)
+  })
+
+  it('snaps back into the region when play starts from the sample origin', () => {
+    expect(snapPlayheadToRegion(0, 18, 65, false)).toBe(18)
+    expect(snapPlayheadToRegion(0, 18, 65, true)).toBe(65)
+    expect(snapPlayheadToRegion(20, 18, 65, false)).toBe(20)
   })
 })
 

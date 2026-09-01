@@ -72,6 +72,22 @@ export function clampScrubTime(
   return clamp(time, min, max)
 }
 
+/** Stop parks the playhead at the start of the loaded sample buffer. */
+export function sampleOriginSeconds(): number {
+  return 0
+}
+
+/** Play starts inside the region so the transport clock matches the voice. */
+export function snapPlayheadToRegion(
+  time: number,
+  start: number,
+  end: number,
+  reverse: boolean,
+): number {
+  if (time < start || time > end) return reverse ? end : start
+  return time
+}
+
 /** Inset region so start/end handles are visible, like the FIELD mockup. */
 export function defaultPlayRegion(
   duration: number,
