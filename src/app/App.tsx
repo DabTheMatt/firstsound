@@ -212,9 +212,6 @@ export default function App() {
           })
       }}
       knobs={mode !== 'sheet'}
-      zoomLabel={zoomLabel}
-      onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
-      onZoomOut={() => waveRef.current?.zoomBy(1.4)}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
   ) : null

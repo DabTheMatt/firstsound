@@ -23,7 +23,6 @@ export type ViewAction =
 
 const TOOLS: { id: WaveTool; label: string }[] = [
   { id: 'select', label: 'Select' },
-  { id: 'pan', label: 'Pan' },
   { id: 'fade', label: 'Fade' },
   { id: 'zero', label: 'Zero' },
 ]

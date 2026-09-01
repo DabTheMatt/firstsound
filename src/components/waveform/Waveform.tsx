@@ -256,11 +256,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const fadeInX = timeToFrac(start + fadeIn, viewRef.current) * width
     const fadeOutX = timeToFrac(end - fadeOut, viewRef.current) * width
 
-    let mode: DragMode = tool === 'pan' || event.altKey || event.button === 1 ? 'pan' : 'move'
+    let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : 'move'
     if (tool === 'fade' && mode !== 'pan') {
       if (Math.abs(x - fadeInX) < hit || Math.abs(x - startX) < hit) mode = 'fadeIn'
       else if (Math.abs(x - fadeOutX) < hit || Math.abs(x - endX) < hit) mode = 'fadeOut'
-    } else if (tool !== 'pan') {
+    } else if (mode !== 'pan') {
       if (Math.abs(x - startX) < hit) mode = 'start'
       else if (Math.abs(x - endX) < hit) mode = 'end'
       else if (x < startX || x > endX) {
@@ -369,7 +369,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <canvas ref={canvasRef} className={styles.canvas} />
             <div
               ref={overlayRef}
-              className={`${styles.overlay} ${loaded && tool === 'pan' ? styles.overlayPan : ''} ${panning ? styles.grabbing : ''}`}
+              className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
               onPointerDown={loaded ? onPointerDown : undefined}
               onPointerMove={loaded ? onPointerMove : undefined}
               onPointerUp={loaded ? endPointer : undefined}
@@ -400,7 +400,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   {tool === 'fade' && fadeOutPct >= 0 && fadeOutPct <= 100 ? (
                     <div className={styles.fadeHandle} style={{ left: `${fadeOutPct}%` }} />
                   ) : null}
-                  {tool !== 'pan' && startPct >= 0 && startPct <= 100 ? (
+                  {!panning && startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"
                       className={styles.handle}
@@ -408,7 +408,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       aria-label="Region start"
                     />
                   ) : null}
-                  {tool !== 'pan' && endPct >= 0 && endPct <= 100 ? (
+                  {!panning && endPct >= 0 && endPct <= 100 ? (
                     <button
                       type="button"
                       className={styles.handle}

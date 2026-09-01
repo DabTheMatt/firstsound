@@ -1,7 +1,7 @@
 import type { FadeCurve } from '../audio/engine/fades'
 import type { ModuleType } from '../audio/chain/chain'
 
-export type WaveTool = 'select' | 'pan' | 'fade' | 'zero'
+export type WaveTool = 'select' | 'fade' | 'zero'
 export type VizMode = 'waveform' | 'spectrum' | 'split'
 export type MeterRange = 'normal' | 'field' | 'full'
 export type MeterMode = 'peak'
