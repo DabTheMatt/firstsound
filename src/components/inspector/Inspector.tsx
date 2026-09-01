@@ -15,7 +15,7 @@ import {
   type FilterSlope,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
+import { LIMITER_ADV_KNOBS, LIMITER_MAIN_KNOBS, PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
 import { parseTypedRange } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
@@ -26,6 +26,7 @@ import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { InspectorEye } from './InspectorEye'
+import { LimiterWave } from './LimiterWave'
 import { SpaceInspector } from './SpaceInspector'
 import styles from './Inspector.module.css'
 
@@ -389,6 +390,7 @@ function ModuleInspector({
       {type === 'saturation' ? params(SAT_IDS) : null}
       {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} /> : null}
       {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} /> : null}
+      {type === 'limiter' ? <LimiterEditor snap={snap} variant={variant} /> : null}
       {type === 'output' ? (
         <>
           {params(OUT_IDS)}
@@ -396,6 +398,44 @@ function ModuleInspector({
         </>
       ) : null}
     </>
+  )
+}
+
+function LimiterEditor({
+  snap,
+  variant,
+}: {
+  snap: EngineSnapshot
+  variant: 'knob' | 'slider'
+}) {
+  const params = (ids: ParamId[]) =>
+    variant === 'knob' ? (
+      <div className={styles.knobs}>
+        {ids.map((id) => (
+          <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
+        ))}
+      </div>
+    ) : (
+      ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
+    )
+  return (
+    <div className={styles.eq}>
+      <div className={styles.eqViz}>
+        <LimiterWave />
+      </div>
+      {params(LIMITER_MAIN_KNOBS)}
+      <details className={styles.band}>
+        <summary>Advanced</summary>
+        <Toggle
+          pressed={snap.params.limiterAutoMakeup > 0.5}
+          label="Auto makeup"
+          onToggle={() =>
+            engine.setParam('limiterAutoMakeup', snap.params.limiterAutoMakeup > 0.5 ? 0 : 1)
+          }
+        />
+        {params(LIMITER_ADV_KNOBS)}
+      </details>
+    </div>
   )
 }
 

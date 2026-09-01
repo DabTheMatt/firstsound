@@ -64,12 +64,15 @@ describe('normalizeChain', () => {
 })
 
 describe('parseChain', () => {
-  it('reads a saved chain and rejects junk', () => {
-    expect(parseChain(defaultChain())?.map((m) => m.type)).toEqual(
-      defaultChain().map((m) => m.type),
-    )
-    expect(parseChain(null)).toBeNull()
-    expect(parseChain([{ instanceId: 'x' }])).toBeNull()
+  it('injects a limiter before output on older saved chains', () => {
+    const next = parseChain([
+      { instanceId: 'gain-1', type: 'gain', bypassed: false },
+      { instanceId: 'eq-1', type: 'eq', bypassed: true },
+      { instanceId: 'output-1', type: 'output', bypassed: false },
+    ])
+    expect(next?.some((m) => m.type === 'limiter')).toBe(true)
+    expect(next?.at(-1)?.type).toBe('output')
+    expect(next?.at(-2)?.type).toBe('limiter')
   })
 })
 

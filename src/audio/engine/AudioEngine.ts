@@ -52,6 +52,12 @@ import {
   type DelayGraph,
   type ReverbGraph,
 } from '../fx/graphs'
+import {
+  applyLimiterGraph,
+  createLimiterGraph,
+  limiterReductionDb,
+  type LimiterGraph,
+} from '../fx/limiter'
 import { migrateSpaceParams } from '../fx/migrate'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
@@ -138,6 +144,7 @@ export type EngineSnapshot = {
   eqPlotBands: EqBand[]
   comb: CombFilterState
   eqListen: EqListenMode
+  limiterReduction: number
   recording: boolean
   recordError: string | null
   muted: boolean
@@ -205,6 +212,7 @@ type Slot = {
   damp?: BiquadFilterNode
   delayFx?: DelayGraph
   reverbFx?: ReverbGraph
+  limiterFx?: LimiterGraph
   stereo?: StereoStage
 }
 
@@ -331,10 +339,21 @@ export class AudioEngine {
     return this.prep
   }
 
-  getAnalyser(tap: 'pre' | 'post' | 'eq' = 'post'): AnalyserNode | null {
+  getAnalyser(tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' = 'post'): AnalyserNode | null {
     if (tap === 'pre') return this.analyserPre ?? this.analyser
     if (tap === 'eq') return this.analyserEq ?? this.analyserPre ?? this.analyser
+    if (tap === 'limiterPre' || tap === 'limiterPost') {
+      const slot = [...this.slots.values()].find((s) => s.type === 'limiter')
+      return tap === 'limiterPre'
+        ? (slot?.limiterFx?.analyserPre ?? null)
+        : (slot?.limiterFx?.analyserPost ?? null)
+    }
     return this.analyser
+  }
+
+  getLimiterReduction(): number {
+    const slot = [...this.slots.values()].find((s) => s.type === 'limiter')
+    return limiterReductionDb(slot?.limiterFx)
   }
 
   setRegionFades(fadeIn: number, fadeOut: number, curve: FadeCurve): void {
@@ -1518,11 +1537,11 @@ export class AudioEngine {
     this.safetyGain = ctx.createGain()
     this.safetyGain.gain.value = this.muted ? 0.0001 : 1
     this.limiter = ctx.createDynamicsCompressor()
-    this.limiter.threshold.value = -6
-    this.limiter.knee.value = 6
-    this.limiter.ratio.value = 12
-    this.limiter.attack.value = 0.003
-    this.limiter.release.value = 0.12
+    this.limiter.threshold.value = -0.1
+    this.limiter.knee.value = 0
+    this.limiter.ratio.value = 20
+    this.limiter.attack.value = 0.001
+    this.limiter.release.value = 0.05
     this.analyser = ctx.createAnalyser()
     this.analyser.fftSize = 4096
     this.analyser.smoothingTimeConstant = 0.7
@@ -1607,6 +1626,10 @@ export class AudioEngine {
     if (mod.type === 'reverb') {
       input.connect(wet)
       slot.reverbFx = createReverbGraph(ctx, wet, output, input)
+    }
+    if (mod.type === 'limiter') {
+      slot.limiterFx = createLimiterGraph(ctx, input, wet)
+      wet.connect(output)
     }
     return slot
   }
@@ -1744,7 +1767,9 @@ export class AudioEngine {
         slot.wet.gain.setTargetAtTime(0, now, smoothing)
         continue
       }
-      const bypassed = this.eqListen === 'filters' && (mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'saturation')
+      const bypassed =
+        this.eqListen === 'filters' &&
+        (mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'saturation' || mod.type === 'limiter')
         ? true
         : this.eqListen === 'filters' && mod.type === 'eq'
           ? false
@@ -1894,6 +1919,7 @@ export class AudioEngine {
     const bpm = this.params.bpm
     for (const slot of this.slots.values()) {
       if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
+      if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, this.params, now, smoothing)
       if (slot.delayFx) {
         if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
         else applyDelayGraph(slot.delayFx, this.params, this.delayType, bpm, now, smoothing, this.ctx)
@@ -2184,6 +2210,7 @@ export class AudioEngine {
       eqPlotBands: this.plotEqBands(),
       comb: { ...this.comb },
       eqListen: this.eqListen,
+      limiterReduction: this.getLimiterReduction(),
       recording: this.recording,
       recordError: this.recordError,
       muted: this.muted,
@@ -2302,7 +2329,7 @@ function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
   if (type === 'saturation') return params.saturation > 0 ? 1 : 0
-  if (type === 'eq') return 1
+  if (type === 'eq' || type === 'limiter') return 1
   return 0
 }
 
@@ -2310,7 +2337,7 @@ function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
   if (type === 'saturation') return params.saturation > 0 ? 0 : 1
-  if (type === 'eq') return 0
+  if (type === 'eq' || type === 'limiter') return 0
   return 1
 }
 

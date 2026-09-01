@@ -67,6 +67,13 @@ describe('mapping', () => {
     expect(formatParamValue(1.6, PARAMS.reverbDecay)).toBe('1.60 s')
   })
 
+  it('formats limiter params', () => {
+    expect(formatParamValue(-6, PARAMS.limiterThreshold)).toBe('-6.0 dB')
+    expect(formatParamValue(120, PARAMS.limiterRelease)).toBe('120 ms')
+    expect(formatParamValue(12, PARAMS.limiterRatio)).toBe('12.0:1')
+    expect(formatParamValue(1, PARAMS.limiterAutoMakeup)).toBe('On')
+  })
+
   it('clamps to def range', () => {
     expect(applyParamValue(99, PARAMS.speed)).toBe(PARAMS.speed.max)
     expect(applyParamValue(-2, PARAMS.speed)).toBe(PARAMS.speed.min)

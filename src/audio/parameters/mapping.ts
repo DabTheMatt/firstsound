@@ -162,6 +162,11 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'channelGainR':
     case 'reverbGateThres':
     case 'reverbLimit':
+    case 'limiterThreshold':
+    case 'limiterCeiling':
+    case 'limiterKnee':
+    case 'limiterMakeup':
+    case 'limiterInput':
       return `${value.toFixed(1)} dB`
     case 'grainSize':
       return `${Math.round(value)} ms`
@@ -172,6 +177,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbGateAttack':
     case 'reverbGateHold':
     case 'reverbGateRelease':
+    case 'limiterRelease':
+    case 'limiterAttack':
       return value < 10 ? `${value.toFixed(1)} ms` : `${Math.round(value)} ms`
     case 'reverbDecay':
       return value < 10 ? `${value.toFixed(2)} s` : `${value.toFixed(1)} s`
@@ -198,6 +205,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbFreeze':
     case 'makeMono':
     case 'invertPhase':
+    case 'limiterAutoMakeup':
       return value > 0.5 ? 'On' : 'Off'
     case 'pan':
       if (Math.abs(value) < 0.5) return 'C'
@@ -206,6 +214,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
       if (def.unit === '%') return `${Math.round(value)} %`
       if (def.unit === 'ms') return `${Math.round(value)} ms`
       if (def.unit === 'Hz') return `${value.toFixed(2)} Hz`
+      if (def.unit === ':1') return `${value.toFixed(1)}:1`
       return String(value)
   }
 }

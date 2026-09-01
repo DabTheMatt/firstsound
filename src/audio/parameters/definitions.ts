@@ -747,6 +747,94 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: '%',
     mapping: 'linear',
   },
+  limiterThreshold: {
+    id: 'limiterThreshold',
+    label: 'Threshold',
+    min: -48,
+    max: 0,
+    defaultValue: -6,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterCeiling: {
+    id: 'limiterCeiling',
+    label: 'Ceiling',
+    min: -12,
+    max: 0,
+    defaultValue: -0.3,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterRelease: {
+    id: 'limiterRelease',
+    label: 'Release',
+    min: 10,
+    max: 2000,
+    defaultValue: 120,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  limiterAttack: {
+    id: 'limiterAttack',
+    label: 'Attack',
+    min: 0.1,
+    max: 50,
+    defaultValue: 3,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  limiterKnee: {
+    id: 'limiterKnee',
+    label: 'Knee',
+    min: 0,
+    max: 40,
+    defaultValue: 6,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterRatio: {
+    id: 'limiterRatio',
+    label: 'Ratio',
+    min: 1,
+    max: 20,
+    defaultValue: 12,
+    unit: ':1',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterMakeup: {
+    id: 'limiterMakeup',
+    label: 'Makeup',
+    min: -12,
+    max: 24,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterInput: {
+    id: 'limiterInput',
+    label: 'Input',
+    min: -12,
+    max: 24,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  limiterAutoMakeup: {
+    id: 'limiterAutoMakeup',
+    label: 'Auto Makeup',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
 }
 
 /** Filter type options, in UI order. `off` bypasses the filter entirely. */
@@ -797,6 +885,14 @@ export const REVERB_MAIN_KNOBS: ParamId[] = [
   'reverbLimit',
 ]
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
+export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterThreshold', 'limiterCeiling', 'limiterRelease']
+export const LIMITER_ADV_KNOBS: ParamId[] = [
+  'limiterInput',
+  'limiterAttack',
+  'limiterKnee',
+  'limiterRatio',
+  'limiterMakeup',
+]
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {
