@@ -163,10 +163,10 @@
 
 .power {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 14px;
-  height: 14px;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
   margin: 0;
   padding: 0;
   display: grid;

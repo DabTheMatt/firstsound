@@ -40,6 +40,7 @@ export type ThemeColors = {
   textMuted: string
   textPrimary: string
   bgApp: string
+  envelope: string
 }
 
 const THEME_CHANGE = 'field-theme-change'
@@ -118,6 +119,7 @@ export function computeThemeColors(root: HTMLElement = document.documentElement)
     textMuted: readVar(styles, '--text-muted'),
     textPrimary: readVar(styles, '--text-primary'),
     bgApp: readVar(styles, '--bg-app'),
+    envelope: readVar(styles, '--envelope') || readVar(styles, '--accent-primary'),
   }
 }
 

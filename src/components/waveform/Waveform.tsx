@@ -213,6 +213,28 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         }
         if (lane === 0) peaksRef.current = { min, max }
       }
+      const span = Math.max(0.0001, view.end - view.start)
+      const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
+        if (!(to > from + 1e-6)) return
+        ctx.beginPath()
+        ctx.strokeStyle = colors.envelope
+        ctx.lineWidth = Math.max(1, dpr)
+        ctx.setLineDash([3 * dpr, 3 * dpr])
+        const n = Math.max(20, Math.floor(((to - from) / span) * width))
+        for (let i = 0; i <= n; i++) {
+          const u = i / n
+          const t = from + u * (to - from)
+          const x = ((t - view.start) / span) * width
+          const g = side === 'in' ? fadeGain(u, fadeCurve, bend) : fadeGain(1 - u, fadeCurve, bend)
+          const y = (1 - g) * height
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+      strokeFade(start, start + fadeIn, 'in', fadeInBend)
+      strokeFade(end - fadeOut, end, 'out', fadeOutBend)
     }
     draw()
     const ro = new ResizeObserver(draw)
@@ -222,7 +244,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend])
 
   useEffect(() => {
     let frame = 0
@@ -503,8 +525,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const endPct = pct(end)
   const regionLeft = Math.max(0, Math.min(100, startPct))
   const regionRight = Math.max(0, Math.min(100, endPct))
-  const fadeInPct = pct(start + fadeIn)
-  const fadeOutPct = pct(end - fadeOut)
   const fadeHandleStyle = (side: 'in' | 'out') => {
     const layout = fadeDiamondLayout({
       side,
@@ -548,20 +568,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   <div
                     className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
-                  />
-                  <FadePlot
-                    left={regionLeft}
-                    width={Math.max(0, fadeInPct - regionLeft)}
-                    curve={fadeCurve}
-                    bend={fadeInBend}
-                    side="in"
-                  />
-                  <FadePlot
-                    left={fadeOutPct}
-                    width={Math.max(0, regionRight - fadeOutPct)}
-                    curve={fadeCurve}
-                    bend={fadeOutBend}
-                    side="out"
                   />
                   {startPct >= 0 && startPct <= 100 && fadeIn > 0.0008 ? (
                     <div
@@ -684,39 +690,3 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     </div>
   )
 })
-
-function FadePlot({
-  left,
-  width,
-  curve,
-  bend,
-  side,
-}: {
-  left: number
-  width: number
-  curve: FadeCurve
-  bend: number
-  side: 'in' | 'out'
-}) {
-  if (width <= 0.08) return null
-  const n = 40
-  const line: string[] = []
-  for (let i = 0; i <= n; i++) {
-    const t = i / n
-    const g = side === 'in' ? fadeGain(t, curve, bend) : fadeGain(1 - t, curve, bend)
-    const x = t * 100
-    const y = (1 - g) * 100
-    line.push(`${x},${y}`)
-  }
-  return (
-    <svg
-      className={styles.fadeSvg}
-      style={{ left: `${left}%`, width: `${width}%` }}
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <polyline points={line.join(' ')} className={styles.fadeLine} />
-    </svg>
-  )
-}

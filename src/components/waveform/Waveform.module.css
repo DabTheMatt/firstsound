@@ -118,26 +118,9 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--selection-fill);
+  background: color-mix(in srgb, var(--selection-fill) 45%, transparent);
   border-left: 1.5px solid var(--selection-border);
   border-right: 1.5px solid var(--selection-border);
-}
-
-.fadeSvg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.fadeLine {
-  fill: none;
-  stroke: var(--envelope);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-  vector-effect: non-scaling-stroke;
 }
 
 .fadeHandle {

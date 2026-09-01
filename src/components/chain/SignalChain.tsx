@@ -157,7 +157,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
                     engine.setModuleBypass(mod.instanceId, !mod.bypassed)
                   }}
                 >
-                  <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true">
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
                     <path
                       d="M8 2.5v5.2"
                       fill="none"
