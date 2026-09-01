@@ -73,11 +73,19 @@ export function LimiterWave() {
       ctx.lineTo(width, height / 2)
       ctx.stroke()
 
-      const pad = height * 0.08
+      const pad = height * 0.1
       const amp = (height - pad * 2) / 2
       const mid = height / 2
-      drawTrace(ctx, historyIn, width, mid, amp, colorWithAlpha(colors.waveform || colors.textMuted, 0.9), Math.max(1.2, dpr))
-      drawTrace(ctx, historyOut, width, mid, amp, colors.eqCurve || colors.accent, Math.max(1.6, dpr * 1.25))
+      drawTrace(
+        ctx,
+        historyIn,
+        width,
+        mid,
+        amp,
+        colorWithAlpha(colors.waveform || colors.textMuted, 0.95),
+        Math.max(2, dpr * 1.6),
+      )
+      drawTrace(ctx, historyOut, width, mid, amp, colors.eqCurve || colors.accent, Math.max(2.4, dpr * 2))
 
       const gr = engine.getLimiterReduction()
       ctx.font = `${Math.round(10 * dpr)}px ui-sans-serif, system-ui, sans-serif`

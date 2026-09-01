@@ -59,6 +59,10 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
   makeup.connect(ceiling)
   ceiling.connect(analyserPost)
   analyserPost.connect(wet)
+  const keepAlive = ctx.createGain()
+  keepAlive.gain.value = 0
+  analyserPost.connect(keepAlive)
+  keepAlive.connect(ctx.destination)
 
   return { inputGain, comp, makeup, ceiling, analyserPost }
 }
