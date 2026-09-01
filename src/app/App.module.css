@@ -29,7 +29,32 @@
   flex-direction: column;
 }
 
-.waveZone > * {
+.editMode .waveZone {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+.editMode .lower {
+  display: none;
+}
+
+.editChrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.editChrome h1 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.waveZone > :first-child {
   flex: 1;
   min-height: 0;
 }
@@ -295,6 +320,12 @@
     flex: 0 1 32%;
     min-height: 96px;
     max-height: 36%;
+  }
+
+  .editMode .waveZone {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
   }
 
   .lower {

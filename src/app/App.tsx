@@ -5,6 +5,8 @@ import { Knob } from '../components/controls/Knob'
 import { Segmented } from '../components/controls/Segmented'
 import { Toggle } from '../components/controls/Toggle'
 import { TransportDock } from '../components/controls/TransportDock'
+import { EditBar } from '../components/samplePrep/EditBar'
+import { ExportDialog } from '../components/samplePrep/ExportDialog'
 import { Waveform } from '../components/waveform/Waveform'
 import { downloadJson, parsePreset, readAudioFile } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
@@ -16,6 +18,9 @@ export default function App() {
   const [tab, setTab] = useState<ModuleTab>('grain')
   const [menuOpen, setMenuOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
 
@@ -25,11 +30,14 @@ export default function App() {
       const tag = (event.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON') return
       event.preventDefault()
-      void engine.unlock().then(() => engine.togglePlay())
+      void engine.unlock().then(() => {
+        if (editMode) engine.toggleSelectionPlayback()
+        else engine.togglePlay()
+      })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [editMode])
 
   const loadSample = async (file: File) => {
     await engine.unlock()
@@ -42,12 +50,25 @@ export default function App() {
     if (file) void loadSample(file)
   }
 
+  const enterEdit = () => {
+    engine.enterSampleEdit()
+    setEditMode(true)
+    setMoreOpen(false)
+  }
+
+  const leaveEdit = () => {
+    engine.stopPreview()
+    setEditMode(false)
+    setExportOpen(false)
+    setMoreOpen(false)
+  }
+
   const knobs = TAB_KNOBS[tab]
   const note = TAB_NOTES[tab]
 
   return (
     <div
-      className={styles.page}
+      className={`${styles.page} ${editMode ? styles.editMode : ''}`}
       onDragOver={(event) => {
         event.preventDefault()
         setDragging(true)
@@ -62,84 +83,96 @@ export default function App() {
     >
       <main className={`${styles.shell} ${dragging ? styles.drop : ''}`}>
         <header className={styles.header}>
-          <div className={styles.fileMeta}>
-            <span className={styles.wordmark}>Field</span>
-            <span className={styles.fileName}>
-              {snap.fileName || 'No sample loaded'}
-            </span>
-          </div>
-          <div className={styles.duration}>
-            {snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.ghost}
-              onClick={() => sampleInput.current?.click()}
-            >
-              Load
-            </button>
-            <button
-              type="button"
-              className={styles.ghost}
-              onClick={() => downloadJson('field-preset.json', engine.toPreset())}
-            >
-              Save
-            </button>
-            <div className={styles.menuWrap}>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                aria-label="More"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                ···
+          {editMode ? (
+            <div className={styles.editChrome} style={{ gridColumn: '1 / -1' }}>
+              <button type="button" className={styles.ghost} onClick={leaveEdit}>
+                Done
               </button>
-              {menuOpen ? (
-                <div className={styles.menu}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void engine.unlock().then(() => engine.loadDemoTone())
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Load demo tone
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      presetInput.current?.click()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Load preset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      engine.resetAll()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    Reset all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      engine.setEngineMode(
-                        snap.engineMode === 'grain' ? 'playback' : 'grain',
-                      )
-                      setMenuOpen(false)
-                    }}
-                  >
-                    {snap.engineMode === 'grain' ? 'Use region player' : 'Use grain engine'}
-                  </button>
-                </div>
-              ) : null}
+              <h1>Edit sample</h1>
+              <span />
             </div>
-          </div>
+          ) : (
+            <>
+              <div className={styles.fileMeta}>
+                <span className={styles.wordmark}>Field</span>
+                <span className={styles.fileName}>
+                  {snap.fileName || 'No sample loaded'}
+                </span>
+              </div>
+              <div className={styles.duration}>
+                {snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}
+              </div>
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  onClick={() => sampleInput.current?.click()}
+                >
+                  Load
+                </button>
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  onClick={() => downloadJson('field-preset.json', engine.toPreset())}
+                >
+                  Save
+                </button>
+                <div className={styles.menuWrap}>
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    aria-label="More"
+                    aria-expanded={menuOpen}
+                    onClick={() => setMenuOpen((open) => !open)}
+                  >
+                    ···
+                  </button>
+                  {menuOpen ? (
+                    <div className={styles.menu}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void engine.unlock().then(() => engine.loadDemoTone())
+                          setMenuOpen(false)
+                        }}
+                      >
+                        Load demo tone
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          presetInput.current?.click()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        Load preset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          engine.resetAll()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        Reset all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          engine.setEngineMode(
+                            snap.engineMode === 'grain' ? 'playback' : 'grain',
+                          )
+                          setMenuOpen(false)
+                        }}
+                      >
+                        {snap.engineMode === 'grain' ? 'Use region player' : 'Use grain engine'}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          )}
         </header>
 
         {snap.audioStatus === 'blocked' ? (
@@ -155,10 +188,22 @@ export default function App() {
             start={snap.params.start}
             end={snap.params.end}
             loaded={snap.sampleLoaded}
+            editMode={editMode}
+            onEnterEdit={enterEdit}
             onLoadDemo={() => {
               void engine.unlock().then(() => engine.loadDemoTone())
             }}
           />
+          {editMode && snap.sampleLoaded ? (
+            <EditBar
+              snap={snap}
+              viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
+              moreOpen={moreOpen}
+              onToggleMore={() => setMoreOpen((o) => !o)}
+              onExport={() => setExportOpen(true)}
+              onDone={leaveEdit}
+            />
+          ) : null}
         </div>
 
         <div className={styles.lower}>
@@ -267,6 +312,7 @@ export default function App() {
           }}
         />
       </main>
+      {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
     </div>
   )
 }

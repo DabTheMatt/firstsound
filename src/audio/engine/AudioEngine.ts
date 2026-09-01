@@ -16,6 +16,37 @@ import type {
   PresetV1,
   ScrubMode,
 } from '../parameters/types'
+import {
+  applyAutoFades,
+  canRedo,
+  canUndo,
+  clampPrep,
+  clonePcmFromBuffer,
+  commit,
+  createHistory,
+  defaultPrep,
+  defaultRenderOptions,
+  detectSilence,
+  encodeWav,
+  exportFileName,
+  findZeroCrossing,
+  isTrimmed,
+  pcmDuration,
+  prepEqual,
+  renderPrep,
+  resetHistory,
+  type ExportSettings,
+  type History,
+  type Pcm,
+  type RenderOptions,
+  type SamplePrepState,
+  undo as undoHistory,
+  redo as redoHistory,
+  PREP_MIN_REGION,
+  ZERO_SEARCH_SEC,
+  ZERO_WARN_SEC,
+} from '../samplePrep'
+import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseTime } from './buffers'
 import { motionValue } from './motion'
 import { mixToMono } from './peaks'
@@ -34,6 +65,17 @@ export type EngineSnapshot = {
   audioStatus: AudioStatus
   scrubMode: ScrubMode
   params: Record<ParamId, number>
+  prep: SamplePrepState
+  canUndoPrep: boolean
+  canRedoPrep: boolean
+  previewPlaying: boolean
+  previewLoop: boolean
+  sourceDuration: number
+  sourceSampleRate: number
+  sourceChannels: number
+  prepApplied: boolean
+  zeroNotice: string | null
+  silenceProposal: SilenceProposal | null
 }
 
 type Listener = () => void
@@ -80,10 +122,13 @@ export class AudioEngine {
   private reverbGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private buffer: AudioBuffer | null = null
+  // Original decoded file — sample prep stays non-destructive until render/export.
+  private sourceBuffer: AudioBuffer | null = null
   // Time-reversed copy of `buffer`; Web Audio can't play a source backwards, so
   // reverse playback plays this forward instead.
   private reversed: AudioBuffer | null = null
   private mono: Float32Array | null = null
+  private sourceMono: Float32Array | null = null
   private fileName = ''
   private playing = false
   private loop = true
@@ -106,6 +151,19 @@ export class AudioEngine {
   private motionRandCur = 0
   private motionRandTarget = 0
   private motionClock = 0
+  private prep: SamplePrepState = defaultPrep(0)
+  private prepHistory: History<SamplePrepState> = createHistory(this.prep)
+  private prepGestureOrigin: SamplePrepState | null = null
+  private prepApplied = false
+  private previewLoop = true
+  private previewPlaying = false
+  private previewSource: AudioBufferSourceNode | null = null
+  private previewGain: GainNode | null = null
+  private previewStartedAt = 0
+  private previewOffset = 0
+  private previewDuration = 0
+  private zeroNotice: string | null = null
+  private silenceProposal: SilenceProposal | null = null
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -128,7 +186,36 @@ export class AudioEngine {
     return this.mono
   }
 
+  getSourceBuffer(): AudioBuffer | null {
+    return this.sourceBuffer
+  }
+
+  getSourceMono(): Float32Array | null {
+    return this.sourceMono
+  }
+
+  getSourceChannels(): Float32Array[] {
+    if (!this.sourceBuffer) return []
+    const out: Float32Array[] = []
+    for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+      out.push(this.sourceBuffer.getChannelData(c))
+    }
+    return out
+  }
+
+  getPrep(): SamplePrepState {
+    return this.prep
+  }
+
   getPlayheadSeconds(): number {
+    if (this.previewPlaying && this.ctx) {
+      const elapsed = this.ctx.currentTime - this.previewStartedAt
+      const span = this.previewDuration
+      if (span <= 0) return this.prep.selectionStart
+      const t = this.previewOffset + elapsed
+      const phase = this.previewLoop ? t % span : Math.min(t, span)
+      return this.prep.selectionStart + phase
+    }
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
@@ -203,6 +290,7 @@ export class AudioEngine {
     await this.ensureContext()
     if (!this.ctx || !this.buffer) return
     if (this.audioStatus === 'blocked') return
+    this.stopPreview()
     this.stopVoices()
     this.playing = true
     const duration = this.buffer.duration
@@ -314,6 +402,12 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
+      if (!this.prepApplied) {
+        this.prep = clampPrep(
+          { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
+          this.sourceDuration(),
+        )
+      }
       this.applyRegionChange()
     } else {
       this.params[id] = applyParamValue(value, PARAMS[id])
@@ -332,6 +426,12 @@ export class AudioEngine {
     const region = clampRegion(start, end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
+    if (!this.prepApplied) {
+      this.prep = clampPrep(
+        { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
+        this.sourceDuration(),
+      )
+    }
     this.applyRegionChange()
     this.emit()
   }
@@ -343,6 +443,292 @@ export class AudioEngine {
     } else {
       this.applyLiveAudio()
     }
+  }
+
+  private sourceDuration(): number {
+    return this.sourceBuffer?.duration ?? 0
+  }
+
+  beginPrepGesture(): void {
+    this.prepGestureOrigin = { ...this.prep }
+  }
+
+  setPrepLive(patch: Partial<SamplePrepState>): void {
+    this.prep = clampPrep({ ...this.prep, ...patch }, this.sourceDuration())
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
+  endPrepGesture(): void {
+    const origin = this.prepGestureOrigin
+    this.prepGestureOrigin = null
+    if (!origin) return
+    if (this.prep.fadeAuto) {
+      this.prep = applyAutoFades(this.prep)
+    }
+    this.prepHistory = commit({ ...this.prepHistory, current: origin }, this.prep, prepEqual)
+    this.emit()
+  }
+
+  commitPrep(patch: Partial<SamplePrepState>): void {
+    const next = clampPrep({ ...this.prep, ...patch }, this.sourceDuration())
+    this.prepHistory = commit(this.prepHistory, next, prepEqual)
+    this.prep = this.prepHistory.current
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
+  undoPrep(): void {
+    if (!canUndo(this.prepHistory)) return
+    this.prepHistory = undoHistory(this.prepHistory)
+    this.prep = this.prepHistory.current
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
+  redoPrep(): void {
+    if (!canRedo(this.prepHistory)) return
+    this.prepHistory = redoHistory(this.prepHistory)
+    this.prep = this.prepHistory.current
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
+  private syncInstrumentRegionFromPrep(): void {
+    if (this.prepApplied) return
+    const duration = this.buffer?.duration ?? 0
+    const region = clampRegion(
+      this.prep.selectionStart,
+      this.prep.selectionEnd,
+      duration,
+      Math.min(MIN_REGION, Math.max(PREP_MIN_REGION, duration)),
+    )
+    this.params.start = region.start
+    this.params.end = region.end
+    this.applyRegionChange()
+  }
+
+  snapZero(which: 'start' | 'end'): void {
+    const channels = this.getSourceChannels()
+    const sr = this.sourceBuffer?.sampleRate ?? 0
+    const t = which === 'start' ? this.prep.selectionStart : this.prep.selectionEnd
+    const hit = findZeroCrossing(channels, sr, t, ZERO_SEARCH_SEC, ZERO_WARN_SEC)
+    this.zeroNotice = null
+    if (!hit) {
+      this.zeroNotice = 'No clean zero crossing nearby'
+      this.emit()
+      return
+    }
+    if (hit.far) {
+      this.zeroNotice = `Nearest zero is ${Math.round(hit.distanceSec * 1000)} ms away — not moved`
+      this.emit()
+      return
+    }
+    const patch =
+      which === 'start' ? { selectionStart: hit.seconds } : { selectionEnd: hit.seconds }
+    const clean = hit.score < 0.08
+    this.commitPrep(this.prep.fadeAuto ? applyAutoFades({ ...this.prep, ...patch }, clean) : patch)
+  }
+
+  trimToSelection(): void {
+    const next = applyAutoFades(
+      {
+        ...this.prep,
+        windowStart: this.prep.selectionStart,
+        windowEnd: this.prep.selectionEnd,
+      },
+      false,
+    )
+    this.commitPrep(next)
+  }
+
+  detectSilenceMarkers(): void {
+    const channels = this.getSourceChannels()
+    const sr = this.sourceBuffer?.sampleRate ?? 0
+    this.silenceProposal = detectSilence(channels, sr)
+    this.emit()
+  }
+
+  applySilenceProposal(): void {
+    if (!this.silenceProposal) return
+    const { startSec, endSec } = this.silenceProposal
+    this.silenceProposal = null
+    this.commitPrep(
+      applyAutoFades(
+        {
+          ...this.prep,
+          windowStart: startSec,
+          windowEnd: endSec,
+          selectionStart: startSec,
+          selectionEnd: endSec,
+        },
+        false,
+      ),
+    )
+  }
+
+  dismissSilenceProposal(): void {
+    this.silenceProposal = null
+    this.emit()
+  }
+
+  clearZeroNotice(): void {
+    this.zeroNotice = null
+    this.emit()
+  }
+
+  setPreviewLoop(loop: boolean): void {
+    this.previewLoop = loop
+    if (this.previewPlaying) void this.playSelection()
+    else this.emit()
+  }
+
+  async playSelection(): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx || !this.sourceBuffer) return
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const pcm = this.renderCurrent({ ...defaultRenderOptions(this.prep), sampleRate: 'original' })
+    const buffer = this.pcmToBuffer(pcm)
+    if (!buffer || !this.previewGain) return
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.loop = this.previewLoop
+    src.connect(this.previewGain)
+    src.start(0)
+    src.onended = () => {
+      if (this.previewSource === src) this.stopPreview()
+    }
+    this.previewSource = src
+    this.previewPlaying = true
+    this.previewStartedAt = this.ctx.currentTime
+    this.previewOffset = 0
+    this.previewDuration = pcmDuration(pcm)
+    this.emit()
+  }
+
+  async playAudition(edge: 'start' | 'end'): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx || !this.sourceBuffer || !this.previewGain) return
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const pcm = this.renderCurrent({ ...defaultRenderOptions(this.prep), sampleRate: 'original' })
+    const buffer = this.pcmToBuffer(pcm)
+    if (!buffer) return
+    const windowSec = Math.min(0.35, Math.max(0.08, buffer.duration * 0.2))
+    const offset = edge === 'start' ? 0 : Math.max(0, buffer.duration - windowSec)
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.connect(this.previewGain)
+    src.start(0, offset, windowSec)
+    src.onended = () => {
+      if (this.previewSource === src) this.stopPreview()
+    }
+    this.previewSource = src
+    this.previewPlaying = true
+    this.previewStartedAt = this.ctx.currentTime
+    this.previewOffset = offset
+    this.previewDuration = buffer.duration
+    this.emit()
+  }
+
+  stopPreview(): void {
+    if (this.previewSource) {
+      try {
+        this.previewSource.onended = null
+        this.previewSource.stop()
+      } catch {
+        /* already stopped */
+      }
+      this.previewSource.disconnect()
+      this.previewSource = null
+    }
+    const was = this.previewPlaying
+    this.previewPlaying = false
+    if (was) this.emit()
+  }
+
+  toggleSelectionPlayback(): void {
+    if (this.previewPlaying) this.stopPreview()
+    else void this.playSelection()
+  }
+
+  async useAsSample(): Promise<void> {
+    await this.ensureContext()
+    if (!this.ctx || !this.sourceBuffer) return
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const pcm = this.renderCurrent({ ...defaultRenderOptions(this.prep), sampleRate: 'original' })
+    const buffer = this.pcmToBuffer(pcm)
+    if (!buffer) return
+    this.buffer = buffer
+    this.reversed = this.buildReversed(buffer)
+    this.mono = mixToMono(buffer)
+    this.params.start = 0
+    this.params.end = buffer.duration
+    this.playOffset = 0
+    this.prepApplied = true
+    this.emit()
+  }
+
+  enterSampleEdit(): void {
+    if (!this.sourceBuffer) return
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    this.buffer = this.sourceBuffer
+    this.reversed = this.buildReversed(this.sourceBuffer)
+    this.mono = this.sourceMono
+    this.prepApplied = false
+    this.syncInstrumentRegionFromPrep()
+    this.emit()
+  }
+
+  exportWav(settings: ExportSettings): { filename: string; blob: Blob; duration: number } | null {
+    if (!this.sourceBuffer) return null
+    const options = {
+      applyFades: settings.applyFades,
+      applyGain: settings.applyGain,
+      applyReverse: settings.applyReverse,
+      applyNormalize: settings.applyNormalize,
+      applyDc: this.prep.removeDc,
+      applyChannels: true,
+      sampleRate: settings.sampleRate,
+    }
+    const pcm = this.renderCurrent(options)
+    const bytes = encodeWav(pcm, settings.bitDepth)
+    const partial = isTrimmed(this.prep, this.sourceDuration()) ||
+      this.prep.selectionStart > this.prep.windowStart + 0.001 ||
+      this.prep.selectionEnd < this.prep.windowEnd - 0.001
+    const filename = settings.name || exportFileName(this.fileName, partial)
+    return {
+      filename: filename.endsWith('.wav') ? filename : `${filename}.wav`,
+      blob: new Blob([bytes], { type: 'audio/wav' }),
+      duration: pcmDuration(pcm),
+    }
+  }
+
+  renderCurrent(options?: RenderOptions): Pcm {
+    if (!this.sourceBuffer) return { sampleRate: 44100, channels: [new Float32Array()] }
+    return renderPrep(
+      clonePcmFromBuffer(this.sourceBuffer),
+      this.prep,
+      options ?? defaultRenderOptions(this.prep),
+    )
+  }
+
+  private pcmToBuffer(pcm: Pcm): AudioBuffer | null {
+    if (!this.ctx) return null
+    const frames = pcm.channels[0]?.length ?? 0
+    if (frames < 1) return null
+    const buffer = this.ctx.createBuffer(Math.max(1, pcm.channels.length), frames, pcm.sampleRate)
+    for (let c = 0; c < pcm.channels.length; c++) {
+      buffer.getChannelData(c).set(pcm.channels[c] ?? new Float32Array(frames))
+    }
+    return buffer
   }
 
   resetParam(id: ParamId): void {
@@ -407,10 +793,21 @@ export class AudioEngine {
   }
 
   private applyLoadedBuffer(buffer: AudioBuffer): void {
+    this.sourceBuffer = buffer
     this.buffer = buffer
     this.reversed = this.buildReversed(buffer)
     this.mono = mixToMono(buffer)
-    const region = defaultPlayRegion(buffer.duration, MIN_REGION)
+    this.sourceMono = this.mono
+    this.prepApplied = false
+    this.prep = defaultPrep(buffer.duration)
+    this.prepHistory = resetHistory(this.prep)
+    this.silenceProposal = null
+    this.zeroNotice = null
+    this.stopPreview()
+    const region = {
+      start: this.prep.selectionStart,
+      end: this.prep.selectionEnd,
+    }
     this.params = { ...this.params, start: region.start, end: region.end }
     this.playOffset = region.start
     this.emit()
@@ -485,6 +882,9 @@ export class AudioEngine {
       this.reverb.connect(this.reverbGain)
       this.reverbGain.connect(this.limiter)
       this.limiter.connect(this.ctx.destination)
+      this.previewGain = this.ctx.createGain()
+      this.previewGain.gain.value = 1
+      this.previewGain.connect(this.limiter)
       this.master.gain.value = dbToGain(this.params.gain)
       // Initialise space params directly; live changes are smoothed in applySpace.
       this.spaceSend.gain.value = this.params.spaceMix / 100
@@ -757,6 +1157,17 @@ export class AudioEngine {
       audioStatus: this.audioStatus,
       scrubMode: this.scrubMode,
       params: { ...this.params },
+      prep: { ...this.prep },
+      canUndoPrep: canUndo(this.prepHistory),
+      canRedoPrep: canRedo(this.prepHistory),
+      previewPlaying: this.previewPlaying,
+      previewLoop: this.previewLoop,
+      sourceDuration: this.sourceBuffer?.duration ?? 0,
+      sourceSampleRate: this.sourceBuffer?.sampleRate ?? 0,
+      sourceChannels: this.sourceBuffer?.numberOfChannels ?? 0,
+      prepApplied: this.prepApplied,
+      zeroNotice: this.zeroNotice,
+      silenceProposal: this.silenceProposal,
     }
   }
 
