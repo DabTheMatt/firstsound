@@ -3,5 +3,6 @@
   width: 100%;
   height: 88px;
   border-radius: 8px;
-  background: #151717;
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
 }

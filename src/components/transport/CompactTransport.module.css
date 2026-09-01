@@ -26,18 +26,26 @@
   min-height: 44px;
   min-width: 44px;
   padding: 0 12px;
-  border: 1px solid #3a3e41;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: transparent;
-  color: var(--text);
+  background: var(--bg-control);
+  color: var(--text-primary);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
+.icon:hover,
+.loop:hover,
+.jumps button:hover,
+.export:hover {
+  background: var(--bg-control-hover);
+}
+
 .loop.on {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .times {
@@ -47,13 +55,13 @@
   margin: 0;
   min-width: 0;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .times strong {
-  color: var(--accent);
+  color: var(--accent-primary);
   font-weight: 500;
 }
 
@@ -83,16 +91,22 @@
   padding: 0 16px;
   border: 0;
   border-radius: 8px;
-  background: var(--accent);
-  color: #1a1a1a;
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
+.use:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
 .use:disabled,
 .export:disabled,
 .icon:disabled {
-  opacity: 0.4;
+  color: var(--text-disabled);
+  background: var(--bg-control);
+  opacity: 1;
 }

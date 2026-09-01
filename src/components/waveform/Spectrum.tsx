@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import { engine } from '../../hooks/useEngine'
+import { readThemeColors } from '../../theme'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -36,13 +37,14 @@ export function Spectrum({ active }: Props) {
       }
       const ctx = canvas.getContext('2d')
       if (ctx) {
+        const colors = readThemeColors()
         ctx.clearRect(0, 0, width, height)
         const nyquist = (snap.sampleRate || 44100) / 2
         const freqs = logFreqAxis(width, 20, nyquist)
         if (analyser) {
           const bins = new Float32Array(analyser.frequencyBinCount)
           analyser.getFloatFrequencyData(bins)
-          ctx.fillStyle = '#9aa0a3'
+          ctx.fillStyle = colors.spectrum
           for (let x = 0; x < width; x++) {
             const hz = freqs[x] ?? 20
             const bin = Math.min(bins.length - 1, Math.round((hz / nyquist) * bins.length))
@@ -53,7 +55,7 @@ export function Spectrum({ active }: Props) {
           }
         }
         ctx.beginPath()
-        ctx.strokeStyle = '#c4a574'
+        ctx.strokeStyle = colors.eqCurve
         ctx.lineWidth = Math.max(1.5, dpr)
         const sr = snap.sampleRate || 48000
         for (let x = 0; x < width; x++) {
