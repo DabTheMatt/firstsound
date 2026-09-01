@@ -184,6 +184,10 @@
   cursor: grabbing;
 }
 
+.nodeOff {
+  opacity: 0.35;
+}
+
 .cursorReadout {
   position: absolute;
   z-index: 4;

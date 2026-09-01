@@ -14,7 +14,7 @@ import {
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import { bandPeakDb, logBandEdgesHz } from '../../audio/engine/spectrumBands'
 import { engine } from '../../hooks/useEngine'
-import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
+import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   sampleRate: number
   selectedBand?: number
   comb?: CombFilterState
+  toneIndex?: number
   onSelectBand?: (index: number) => void
   onDragBand?: (index: number, patch: Partial<EqBand>) => void
 }
@@ -33,6 +34,7 @@ export function EqCurve({
   sampleRate,
   selectedBand = 0,
   comb,
+  toneIndex = 0,
   onSelectBand,
   onDragBand,
 }: Props) {
@@ -100,8 +102,9 @@ export function EqCurve({
       ctx.stroke()
       const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
       const freqs = logFreqAxis(width, EQ_MIN_HZ, EQ_MAX_HZ)
+      const tone = eqTone(toneIndex, colors)
       ctx.beginPath()
-      ctx.strokeStyle = colors.eqCurve
+      ctx.strokeStyle = tone.curve
       ctx.lineWidth = Math.max(1.5, dpr)
       for (let x = 0; x < width; x++) {
         const db = eqMagnitudeDb(plotBands, freqs[x] ?? EQ_MIN_HZ, sr)
@@ -123,7 +126,7 @@ export function EqCurve({
       cancelAnimationFrame(frame)
       unsub()
     }
-  }, [bands, sr, selectedBand, comb])
+  }, [bands, sr, selectedBand, comb, toneIndex])
 
   const onNodePointerDown = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -169,12 +172,18 @@ export function EqCurve({
         const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
         const yPct = dbToY(nodeDisplayDb(band), 1) * 100
         const selected = index === selectedBand
+        const tone = eqTone(toneIndex, readThemeColors())
         return (
           <button
             key={index}
             type="button"
-            className={`${styles.node} ${selected ? styles.nodeOn : ''}`}
-            style={{ left: `${xPct}%`, top: `${yPct}%` }}
+            className={`${styles.node} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
+            style={{
+              left: `${xPct}%`,
+              top: `${yPct}%`,
+              background: band.bypassed ? undefined : tone.node,
+              borderColor: tone.curve,
+            }}
             aria-label={`EQ band ${index + 1} ${band.type}`}
             onPointerDown={(event) => onNodePointerDown(index, event)}
             onPointerMove={onNodePointerMove}

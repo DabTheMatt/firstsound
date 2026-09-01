@@ -17,6 +17,11 @@ export type EqBand = {
   gain: number
   q: number
   slope: FilterSlope
+  bypassed?: boolean
+}
+
+export function bandIsActive(band: EqBand): boolean {
+  return band.type !== 'off' && !band.bypassed
 }
 
 export const EQ_FILTER_TYPES: { value: EqFilterType; label: string; short: string }[] = [
@@ -59,10 +64,10 @@ export function qFromBandwidth(frequency: number, widthHz: number): number {
 
 export function defaultEqBands(): EqBand[] {
   return [
-    { type: 'off', frequency: 80, gain: 0, q: 0.7, slope: 12 },
-    { type: 'off', frequency: 400, gain: 0, q: 1, slope: 12 },
-    { type: 'off', frequency: 2500, gain: 0, q: 1, slope: 12 },
-    { type: 'off', frequency: 12000, gain: 0, q: 0.7, slope: 12 },
+    { type: 'off', frequency: 80, gain: 0, q: 0.7, slope: 12, bypassed: false },
+    { type: 'off', frequency: 400, gain: 0, q: 1, slope: 12, bypassed: false },
+    { type: 'off', frequency: 2500, gain: 0, q: 1, slope: 12, bypassed: false },
+    { type: 'off', frequency: 12000, gain: 0, q: 0.7, slope: 12, bypassed: false },
   ]
 }
 
@@ -80,7 +85,7 @@ export function parseFilterSlope(raw: unknown): FilterSlope {
 }
 
 export function filterStageCount(band: EqBand): number {
-  if (band.type === 'off') return 0
+  if (!bandIsActive(band)) return 0
   if (bandUsesSlope(band.type)) return Math.min(EQ_MAX_STAGES, band.slope / 12)
   return 1
 }
@@ -105,6 +110,7 @@ export function parseEqBands(raw: unknown): EqBand[] | null {
       gain: typeof rec.gain === 'number' ? rec.gain : 0,
       q: rec.q,
       slope: parseFilterSlope(rec.slope),
+      bypassed: Boolean(rec.bypassed),
     })
   }
   return bands

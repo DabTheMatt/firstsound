@@ -9,6 +9,8 @@ export type RenderEdit = {
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
+  fadeInBend?: number
+  fadeOutBend?: number
   /** Extra linear gain (peak-normalize, trim gain, etc). */
   gain: number
 }
@@ -34,7 +36,7 @@ export function renderRegion(
     if (gain !== 1) {
       for (let i = 0; i < slice.length; i++) slice[i] = (slice[i] ?? 0) * gain
     }
-    applyFades(slice, sr, edit.fadeIn, edit.fadeOut, edit.fadeCurve)
+    applyFades(slice, sr, edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend)
     out.getChannelData(ch).set(slice)
   }
   return out

@@ -21,7 +21,7 @@ export type ChainModule = {
 }
 
 export const MODULE_LABELS: Record<ModuleType, string> = {
-  gain: 'Main',
+  gain: 'Input/Gain',
   grain: 'Grain',
   eq: 'EQ',
   saturation: 'Saturation',
@@ -31,7 +31,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   output: 'Output',
 }
 
-/** Modules that can be inserted between Main and Output. */
+/** Modules that can be inserted between Input/Gain and Output. */
 export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb']
 
 export const MAX_CHAIN_MIDDLE = 12
@@ -116,6 +116,14 @@ export function moduleLabel(mod: ChainModule, chain: readonly ChainModule[]): st
   if (same.length <= 1) return base
   const n = same.findIndex((m) => m.instanceId === mod.instanceId) + 1
   return `${base} ${n}`
+}
+
+/** 0-based index among EQ modules, used to pick a distinct curve color. */
+export function eqColorIndex(chain: readonly ChainModule[], instanceId: string): number {
+  return Math.max(
+    0,
+    chain.filter((m) => m.type === 'eq').findIndex((m) => m.instanceId === instanceId),
+  )
 }
 
 /** Insert `type` after `afterIndex` (the module to the left of the +). */

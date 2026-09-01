@@ -9,6 +9,7 @@ import {
   removeChainModule,
   reorderChain,
   setBypassed,
+  eqColorIndex,
 } from './chain'
 
 describe('reorderChain', () => {
@@ -88,12 +89,15 @@ describe('insertChainModule', () => {
     expect(next.at(-1)?.type).toBe('output')
   })
 
-  it('refuses Main/Output and numbers extra labels', () => {
+  it('refuses Input/Gain/Output and numbers extra labels', () => {
     const chain = insertChainModule(defaultChain(), 'eq', 2)
     expect(insertChainModule(chain, 'gain', 0)).toEqual(chain)
     expect(nextInstanceId('eq', chain)).toBe('eq-3')
     const second = chain.find((m) => m.instanceId === 'eq-2')!
     expect(moduleLabel(second, chain)).toBe('EQ 2')
+    expect(moduleLabel(chain[0]!, chain)).toBe('Input/Gain')
+    expect(eqColorIndex(chain, 'eq-2')).toBe(1)
+    expect(eqColorIndex(chain, 'eq-1')).toBe(0)
   })
 
   it('removes a middle module but keeps endpoints', () => {

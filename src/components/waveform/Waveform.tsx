@@ -7,8 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import type { FadeCurve } from '../../audio/engine/fades'
-import { fadeGain } from '../../audio/engine/fades'
+import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax } from '../../audio/engine/peaks'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine } from '../../hooks/useEngine'
@@ -29,6 +28,7 @@ import {
 import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
+import { fadeDiamondLayout, fadeLengthFromDiamondTime } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
@@ -43,13 +43,20 @@ type Props = {
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
+  fadeInBend?: number
+  fadeOutBend?: number
   autoSnap: boolean
   normalizeView: boolean
   onNormalizeView: (value: boolean) => void
   onZoomLabel: (label: string) => void
   onLoadDemo: () => void
   onRegionCommit: () => void
-  onFades: (patch: { fadeIn?: number; fadeOut?: number }) => void
+  onFades: (patch: {
+    fadeIn?: number
+    fadeOut?: number
+    fadeInBend?: number
+    fadeOutBend?: number
+  }) => void
   onFadesCommit?: () => void
   contentRev?: number
   fxMode?: 'delay' | 'reverb' | null
@@ -88,6 +95,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     fadeIn,
     fadeOut,
     fadeCurve,
+    fadeInBend = 0.5,
+    fadeOutBend = 0.5,
     autoSnap,
     normalizeView,
     onNormalizeView,
@@ -204,6 +213,28 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         }
         if (lane === 0) peaksRef.current = { min, max }
       }
+      const span = Math.max(0.0001, view.end - view.start)
+      const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
+        if (!(to > from + 1e-6)) return
+        ctx.beginPath()
+        ctx.strokeStyle = colors.envelope
+        ctx.lineWidth = Math.max(1, dpr)
+        ctx.setLineDash([3 * dpr, 3 * dpr])
+        const n = Math.max(20, Math.floor(((to - from) / span) * width))
+        for (let i = 0; i <= n; i++) {
+          const u = i / n
+          const t = from + u * (to - from)
+          const x = ((t - view.start) / span) * width
+          const g = side === 'in' ? fadeGain(u, fadeCurve, bend) : fadeGain(1 - u, fadeCurve, bend)
+          const y = (1 - g) * height
+          if (i === 0) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+      strokeFade(start, start + fadeIn, 'in', fadeInBend)
+      strokeFade(end - fadeOut, end, 'out', fadeOutBend)
     }
     draw()
     const ro = new ResizeObserver(draw)
@@ -213,7 +244,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend])
 
   useEffect(() => {
     let frame = 0
@@ -434,8 +465,23 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
     if (mode === 'start') engine.setParam('start', next)
     else if (mode === 'end') engine.setParam('end', next)
-    else if (mode === 'fadeIn') onFades({ fadeIn: Math.max(0, Math.min(end - start, next - start)) })
-    else if (mode === 'fadeOut') onFades({ fadeOut: Math.max(0, Math.min(end - start, end - next)) })
+    else if (mode === 'fadeIn') {
+      onFades({
+        fadeIn: fadeLengthFromDiamondTime('in', start, end, next),
+        fadeInBend: fadeBendFromMidGain(
+          1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / Math.max(1, rect.height))),
+          fadeCurve,
+        ),
+      })
+    } else if (mode === 'fadeOut') {
+      onFades({
+        fadeOut: fadeLengthFromDiamondTime('out', start, end, next),
+        fadeOutBend: fadeBendFromMidGain(
+          1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / Math.max(1, rect.height))),
+          fadeCurve,
+        ),
+      })
+    }
     else if (mode === 'playhead') engine.seekSeconds(next, 'sample')
     else if (mode === 'move') {
       const delta = next - originT
@@ -479,8 +525,18 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const endPct = pct(end)
   const regionLeft = Math.max(0, Math.min(100, startPct))
   const regionRight = Math.max(0, Math.min(100, endPct))
-  const fadeInPct = pct(start + fadeIn)
-  const fadeOutPct = pct(end - fadeOut)
+  const fadeHandleStyle = (side: 'in' | 'out') => {
+    const layout = fadeDiamondLayout({
+      side,
+      start,
+      end,
+      fadeIn,
+      fadeOut,
+      curve: fadeCurve,
+      bend: side === 'in' ? fadeInBend : fadeOutBend,
+    })
+    return { left: `${pct(layout.time)}%`, top: `${layout.y * 100}%` }
+  }
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
@@ -513,31 +569,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
-                  <FadePlot
-                    left={regionLeft}
-                    width={Math.max(0, fadeInPct - regionLeft)}
-                    curve={fadeCurve}
-                    side="in"
-                  />
-                  <FadePlot
-                    left={fadeOutPct}
-                    width={Math.max(0, regionRight - fadeOutPct)}
-                    curve={fadeCurve}
-                    side="out"
-                  />
-                  {startPct >= 0 && startPct <= 100 ? (
+                  {startPct >= 0 && startPct <= 100 && fadeIn > 0.0008 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="in"
-                      style={{ left: `${startPct}%` }}
+                      style={fadeHandleStyle('in')}
                       aria-label="Fade in"
                     />
                   ) : null}
-                  {endPct >= 0 && endPct <= 100 ? (
+                  {endPct >= 0 && endPct <= 100 && fadeOut > 0.0008 ? (
                     <div
                       className={styles.fadeHandle}
                       data-fade="out"
-                      style={{ left: `${endPct}%` }}
+                      style={fadeHandleStyle('out')}
                       aria-label="Fade out"
                     />
                   ) : null}
@@ -646,48 +690,3 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     </div>
   )
 })
-
-function FadePlot({
-  left,
-  width,
-  curve,
-  side,
-}: {
-  left: number
-  width: number
-  curve: FadeCurve
-  side: 'in' | 'out'
-}) {
-  if (width <= 0.08) return null
-  const n = 40
-  const line: string[] = []
-  const fill: string[] = ['0,100']
-  for (let i = 0; i <= n; i++) {
-    const t = i / n
-    const g = side === 'in' ? fadeGain(t, curve) : fadeGain(1 - t, curve)
-    const x = t * 100
-    const y = (1 - g) * 100
-    line.push(`${x},${y}`)
-    fill.push(`${x},${y}`)
-  }
-  fill.push('100,100')
-  const gradId = side === 'in' ? 'field-fade-in' : 'field-fade-out'
-  return (
-    <svg
-      className={styles.fadeSvg}
-      style={{ left: `${left}%`, width: `${width}%` }}
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.55 : 0.04} />
-          <stop offset="100%" stopColor="var(--envelope)" stopOpacity={side === 'in' ? 0.04 : 0.55} />
-        </linearGradient>
-      </defs>
-      <polygon points={fill.join(' ')} fill={`url(#${gradId})`} />
-      <polyline points={line.join(' ')} className={styles.fadeLine} />
-    </svg>
-  )
-}

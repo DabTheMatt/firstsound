@@ -118,39 +118,22 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  background: transparent;
+  background: color-mix(in srgb, var(--selection-fill) 45%, transparent);
   border-left: 1.5px solid var(--selection-border);
   border-right: 1.5px solid var(--selection-border);
 }
 
-.fadeSvg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.fadeLine {
-  fill: none;
-  stroke: var(--envelope);
-  stroke-width: 1.75;
-  vector-effect: non-scaling-stroke;
-}
-
 .fadeHandle {
   position: absolute;
-  top: 26px;
-  bottom: auto;
-  width: 12px;
-  height: 12px;
-  transform: translateX(-50%) rotate(45deg);
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%) rotate(45deg);
   background: var(--envelope);
   pointer-events: auto;
   z-index: 5;
-  cursor: ew-resize;
-  box-shadow: 0 0 0 2px var(--bg-app);
+  cursor: move;
+  box-shadow: 0 0 0 1.5px var(--bg-app);
 }
 
 .handle {
