@@ -1,6 +1,5 @@
 import { MODULE_LABELS, type ModuleType } from '../../audio/chain/chain'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { FADE_CURVES } from '../../audio/engine/fades'
 import { bandUsesGain, EQ_FILTER_TYPES } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
@@ -202,6 +201,7 @@ function ToolInspector({
               now={Math.round(edit.fadeIn * 1000)}
               onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
               onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
+              onGestureEnd={onCommit}
             />
             <ValueKnob
               label="Fade Out"
@@ -212,6 +212,7 @@ function ToolInspector({
               now={Math.round(edit.fadeOut * 1000)}
               onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
               onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
+              onGestureEnd={onCommit}
             />
           </div>
         ) : (
@@ -241,7 +242,12 @@ function ToolInspector({
         <Segmented
           label="Curve"
           value={edit.fadeCurve}
-          options={FADE_CURVES}
+          options={[
+            { value: 'linear', label: 'Lin', title: 'Linear' },
+            { value: 'equalPower', label: 'EqPow', title: 'Equal Power' },
+            { value: 'exponential', label: 'Exp', title: 'Exponential' },
+            { value: 'sCurve', label: 'S', title: 'S-Curve' },
+          ]}
           wrap
           onChange={(fadeCurve) => {
             onEdit({ fadeCurve })

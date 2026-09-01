@@ -8,6 +8,7 @@ type Props = {
   normalized: number
   onChange: (normalized: number) => void
   onReset?: () => void
+  onGestureEnd?: () => void
   min?: number
   max?: number
   now?: number
@@ -21,6 +22,7 @@ export function ValueKnob({
   normalized,
   onChange,
   onReset,
+  onGestureEnd,
   min = 0,
   max = 1,
   now,
@@ -65,6 +67,7 @@ export function ValueKnob({
       target.removeEventListener('pointerup', up)
       target.removeEventListener('pointercancel', up)
       target.removeEventListener('lostpointercapture', up)
+      if (upEvent.type === 'pointerup') onGestureEnd?.()
       if (
         upEvent.type === 'pointerup' &&
         upEvent.timeStamp - started < 220 &&

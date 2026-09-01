@@ -363,7 +363,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               {loaded && duration > 0 ? (
                 <>
                   <div
-                    className={styles.region}
+                    className={tool === 'fade' ? styles.regionFrame : styles.region}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
                   <FadePlot

@@ -58,6 +58,15 @@
   border-right: 1.5px solid var(--accent);
 }
 
+.regionFrame {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: transparent;
+  border-left: 1.5px solid var(--accent);
+  border-right: 1.5px solid var(--accent);
+}
+
 .fadeSvg {
   position: absolute;
   top: 0;
