@@ -552,6 +552,21 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
           label="Comb filter"
           onToggle={() => engine.setComb({ enabled: !comb.enabled })}
         />
+        <Segmented
+          label="Comb spacing"
+          value={comb.spacingMode}
+          options={[
+            { value: 'linear', label: 'Lin', title: 'Linear Hz spacing' },
+            { value: 'log', label: 'Log', title: 'Logarithmic ratio spacing' },
+          ]}
+          wrap
+          onChange={(spacingMode) =>
+            engine.setComb({
+              spacingMode,
+              spacing: defaultSpacingForMode(spacingMode),
+            })
+          }
+        />
         {knobs ? (
           <div className={styles.knobs}>
             <ValueKnob
@@ -637,21 +652,6 @@ function EqEditor({ snap, knobs }: { snap: EngineSnapshot; knobs: boolean }) {
             />
           </div>
         ) : null}
-        <Segmented
-          label="Comb spacing"
-          value={comb.spacingMode}
-          options={[
-            { value: 'linear', label: 'Lin', title: 'Linear Hz spacing' },
-            { value: 'log', label: 'Log', title: 'Logarithmic ratio spacing' },
-          ]}
-          wrap
-          onChange={(spacingMode) =>
-            engine.setComb({
-              spacingMode,
-              spacing: defaultSpacingForMode(spacingMode),
-            })
-          }
-        />
       </details>
     </div>
   )
