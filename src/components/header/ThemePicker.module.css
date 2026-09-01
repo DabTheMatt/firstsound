@@ -124,3 +124,76 @@
   background: transparent;
   cursor: pointer;
 }
+
+.help {
+  margin: 0;
+  padding: 0 6px 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.saveRow {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.save {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.save:hover {
+  background: var(--bg-control-hover);
+}
+
+.savedRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.savedRow .option {
+  flex: 1;
+  min-width: 0;
+}
+
+.delete {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.delete:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
