@@ -22,6 +22,7 @@ export type ParamId =
   | 'reverbDry'
   | 'reverbWet'
   | 'reverbOutput'
+  | 'reverbLimit'
   | 'motionDepth'
   | 'motionRate'
   | 'motionJitter'

@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayTimeSeconds } from './spaceModel'
 import { syncedDelayMs } from './sync'
@@ -62,6 +62,7 @@ export type ReverbGraph = {
   drive: WaveShaperNode
   duckAmt: GainNode
   gate: DynamicsCompressorNode
+  limit: DynamicsCompressorNode
   widthSide: GainNode
   out: GainNode
   lfo: OscillatorNode
@@ -455,6 +456,7 @@ export function createReverbGraph(
   const duckAmt = ctx.createGain()
   duckAmt.gain.value = 0
   const gate = ctx.createDynamicsCompressor()
+  const limit = ctx.createDynamicsCompressor()
   const out = ctx.createGain()
   out.gain.value = 1
   const lfo = ctx.createOscillator()
@@ -490,9 +492,10 @@ export function createReverbGraph(
   shimmerDelay.connect(shimmerMix)
   shimmerMix.connect(conv)
   drive.connect(gate)
+  gate.connect(limit)
   const duckGain = ctx.createGain()
   duckGain.gain.value = 1
-  const widthSide = connectMidSide(ctx, gate, duckGain)
+  const widthSide = connectMidSide(ctx, limit, duckGain)
   duckGain.connect(out)
   out.connect(output)
   lfo.connect(lfoGain)
@@ -533,6 +536,7 @@ export function createReverbGraph(
     drive,
     duckAmt,
     gate,
+    limit,
     widthSide,
     out,
     lfo,
@@ -643,15 +647,27 @@ export function applyReverbGraph(
     g.gate.release.setTargetAtTime(params.reverbGateRelease / 1000, now, smoothing)
     g.gate.knee.setTargetAtTime(2, now, smoothing)
   }
+
+  const limDb = Math.max(0, params.reverbLimit ?? 0)
+  if (limDb < 0.5) {
+    g.limit.threshold.setTargetAtTime(0, now, smoothing)
+    g.limit.ratio.setTargetAtTime(1, now, smoothing)
+  } else {
+    g.limit.threshold.setTargetAtTime(-limDb, now, smoothing)
+    g.limit.ratio.setTargetAtTime(20, now, smoothing)
+    g.limit.attack.setTargetAtTime(0.003, now, smoothing)
+    g.limit.release.setTargetAtTime(0.08, now, smoothing)
+    g.limit.knee.setTargetAtTime(3, now, smoothing)
+  }
 }
 
 export function wetDryFor(
   type: 'delay' | 'reverb',
   params: Record<ParamId, number>,
 ): { dry: number; wet: number; out: number } {
-  return type === 'delay'
-    ? fxSendLevels(params.delayDry, params.delayWet, params.delayOutput)
-    : fxSendLevels(params.reverbDry, params.reverbWet, params.reverbOutput)
+  const mix = type === 'delay' ? params.delayWet : params.reverbWet
+  const { dry, wet } = equalPowerDryWet(mix / 100)
+  return { dry, wet, out: 1 }
 }
 
 function instantGain(param: AudioParam, now: number, value = 0): void {

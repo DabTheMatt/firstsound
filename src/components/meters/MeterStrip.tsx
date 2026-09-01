@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { engine } from '../../hooks/useEngine'
+import { engine, useEngine } from '../../hooks/useEngine'
+import { Knob } from '../controls/Knob'
 import {
   dbToMeterPct,
   meterDbMin,
@@ -16,6 +17,7 @@ type Props = {
 }
 
 export function MeterStrip({ channels, range, onRange }: Props) {
+  const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
@@ -50,16 +52,18 @@ export function MeterStrip({ channels, range, onRange }: Props) {
 
   return (
     <div className={styles.strip}>
-      <button
-        type="button"
-        className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
-        aria-label="Reset clip"
-        title="Reset clip indicator"
-        onClick={() => setClipped(false)}
-      >
-        <span className={styles.led} aria-hidden="true" />
-        <span className={styles.clipLabel}>Clip</span>
-      </button>
+      <div className={styles.clipRow}>
+        <button
+          type="button"
+          className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
+          aria-label="Reset clip"
+          title="Reset clip indicator"
+          onClick={() => setClipped(false)}
+        >
+          <span className={styles.led} aria-hidden="true" />
+          <span className={styles.clipLabel}>Clip</span>
+        </button>
+      </div>
       <div className={styles.body}>
         <div className={styles.scale} aria-hidden="true">
           {ticks.map((db) => {
@@ -97,6 +101,9 @@ export function MeterStrip({ channels, range, onRange }: Props) {
             </div>
           ) : null}
         </div>
+      </div>
+      <div className={styles.outKnob}>
+        <Knob id="outputGain" value={snap.params.outputGain} />
       </div>
       <select
         className={styles.select}

@@ -30,9 +30,10 @@ export function delayMacroNormalized(id: DelayMacro, params: Record<ParamId, num
     case 'feedback':
       return toNormalized(params.delayFeedback, PARAMS.delayFeedback)
     case 'color':
-      return (toNormalized(params.delayLp, PARAMS.delayLp) * 0.55 +
-        (1 - toNormalized(params.delayHp, PARAMS.delayHp)) * 0.25 +
-        (1 - params.delayDrive / 100) * 0.2)
+      return Math.min(
+        1,
+        Math.max(0, (toNormalized(params.delayLp, PARAMS.delayLp) - 0.35) / 0.65),
+      )
     case 'space':
       return (params.delayWidth / 200) * 0.5 + (params.delayDiffusion / 100) * 0.5
     case 'mod':

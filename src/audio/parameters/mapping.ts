@@ -124,6 +124,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'gain':
     case 'outputGain':
     case 'reverbGateThres':
+    case 'reverbLimit':
       return `${value.toFixed(1)} dB`
     case 'grainSize':
       return `${Math.round(value)} ms`

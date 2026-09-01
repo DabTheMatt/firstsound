@@ -47,6 +47,18 @@ export function CompactTransport({
           type="button"
           className={styles.icon}
           disabled={disabled}
+          aria-label="Play from start of sample"
+          title="Play from the start of the sample, not the selection"
+          onClick={() => {
+            void engine.unlock().then(() => engine.playFromStart())
+          }}
+        >
+          |◀
+        </button>
+        <button
+          type="button"
+          className={styles.icon}
+          disabled={disabled}
           aria-label="Stop"
           onClick={() => engine.stop()}
         >

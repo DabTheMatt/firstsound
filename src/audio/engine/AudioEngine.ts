@@ -239,6 +239,7 @@ export class AudioEngine {
   private source: AudioBufferSourceNode | null = null
   private playCtxTime = 0
   private playOffset = 0
+  private playFullSample = false
   private nextGrainTime = 0
   private schedulerId = 0
   private visibilityBound = false
@@ -415,12 +416,16 @@ export class AudioEngine {
     const duration = this.buffer.duration
     const { start, end } = this.region(duration)
     this.playCtxTime = this.ctx.currentTime
-    this.playOffset = snapPlayheadToRegion(
-      clamp(this.playOffset, 0, duration),
-      start,
-      end,
-      this.direction === 'reverse',
-    )
+    if (this.playFullSample) {
+      this.playOffset = 0
+    } else {
+      this.playOffset = snapPlayheadToRegion(
+        clamp(this.playOffset, 0, duration),
+        start,
+        end,
+        this.direction === 'reverse',
+      )
+    }
     if (this.engineMode === 'grain') {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -445,12 +450,20 @@ export class AudioEngine {
       this.params.position = applyParamValue(0, PARAMS.position)
     }
     this.killFx('all')
+    this.playFullSample = false
     this.emit()
   }
 
   togglePlay(): void {
     if (this.playing) this.stop()
     else void this.play()
+  }
+
+  playFromStart(): void {
+    this.playFullSample = true
+    this.playOffset = 0
+    this.params.position = applyParamValue(0, PARAMS.position)
+    void this.play()
   }
 
   setLoop(loop: boolean): void {
@@ -1667,10 +1680,11 @@ export class AudioEngine {
     const duration = buffer.duration
     const { start, end } = this.region(duration)
     const reverse = this.direction === 'reverse'
-    const loopStart = reverse ? reverseTime(end, duration) : start
-    const loopEnd = reverse ? reverseTime(start, duration) : end
+    const full = this.playFullSample
+    const loopStart = full ? 0 : reverse ? reverseTime(end, duration) : start
+    const loopEnd = full ? duration : reverse ? reverseTime(start, duration) : end
     const span = Math.max(loopEnd - loopStart, MIN_REGION)
-    const mapped = reverse ? reverseTime(offset, duration) : offset
+    const mapped = reverse && !full ? reverseTime(offset, duration) : offset
     const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
     const fromRel = Math.max(0, clamped - loopStart)
     const remaining = Math.max(0.01, loopEnd - clamped)
@@ -1685,7 +1699,7 @@ export class AudioEngine {
       if (this.source !== src || !this.playing) return
       if (this.loop) {
         this.source = null
-        this.playOffset = reverse ? end : start
+        this.playOffset = full ? 0 : reverse ? end : start
         this.playCtxTime = this.ctx?.currentTime ?? 0
         this.startBufferVoice(this.playOffset)
         return

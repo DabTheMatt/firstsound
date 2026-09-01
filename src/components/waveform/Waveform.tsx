@@ -63,6 +63,18 @@ export type WaveformHandle = {
   zoomBy: (factor: number) => void
 }
 
+const SPLIT_PREF = 'field.splitWave'
+
+function loadSplitShare(): number {
+  try {
+    const n = Number(localStorage.getItem(SPLIT_PREF))
+    if (Number.isFinite(n) && n >= 0.28 && n <= 0.82) return n
+  } catch {
+    /* private mode */
+  }
+  return 0.64
+}
+
 type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | 'fx' | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
@@ -96,6 +108,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const playheadRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
+  const [waveShare, setWaveShare] = useState(loadSplitShare)
+  const splitDrag = useRef<{ y: number; share: number } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -475,8 +489,42 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   return (
     <div className={styles.editor}>
-      <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
-        <div className={styles.wrap} hidden={!showWave}>
+      <div
+        className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}
+        onPointerMove={(event) => {
+          const drag = splitDrag.current
+          const stage = event.currentTarget
+          if (!drag) return
+          const h = stage.getBoundingClientRect().height
+          if (h < 80) return
+          const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
+          setWaveShare(next)
+        }}
+        onPointerUp={() => {
+          if (!splitDrag.current) return
+          splitDrag.current = null
+          try {
+            localStorage.setItem(SPLIT_PREF, String(waveShare))
+          } catch {
+            /* private mode */
+          }
+        }}
+        onPointerLeave={() => {
+          if (splitDrag.current) {
+            try {
+              localStorage.setItem(SPLIT_PREF, String(waveShare))
+            } catch {
+              /* private mode */
+            }
+            splitDrag.current = null
+          }
+        }}
+      >
+        <div
+          className={styles.wrap}
+          hidden={!showWave}
+          style={viz === 'split' ? { flex: waveShare } : undefined}
+        >
             <canvas ref={canvasRef} className={styles.canvas} />
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} />
             <div
@@ -545,8 +593,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               ))}
             </div>
           </div>
+        {viz === 'split' && showWave && showSpec ? (
+          <button
+            type="button"
+            className={styles.splitHandle}
+            aria-label="Resize waveform and FFT"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId)
+              splitDrag.current = { y: event.clientY, share: waveShare }
+            }}
+          />
+        ) : null}
         {showSpec ? (
-          <div className={styles.spec}>
+          <div className={styles.spec} style={viz === 'split' ? { flex: 1 - waveShare } : undefined}>
             <Spectrum active={showSpec} />
           </div>
         ) : null}
