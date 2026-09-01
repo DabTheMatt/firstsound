@@ -19,6 +19,7 @@ export function Knob({ id, value }: Props) {
       min={def.min}
       max={def.max}
       now={Number(value.toFixed(3))}
+      bipolar={id === 'pan'}
       onChange={(n) => engine.setParam(id, fromNormalized(n, def))}
       onReset={() => engine.resetParam(id)}
       onTypedValue={(text) => {
