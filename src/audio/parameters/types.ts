@@ -81,6 +81,15 @@ export type ParamId =
   | 'reverbFreeze'
   | 'reverbColor'
   | 'reverbDistance'
+  | 'limiterThreshold'
+  | 'limiterCeiling'
+  | 'limiterRelease'
+  | 'limiterAttack'
+  | 'limiterKnee'
+  | 'limiterRatio'
+  | 'limiterMakeup'
+  | 'limiterInput'
+  | 'limiterAutoMakeup'
 
 export type FilterType =
   | 'off'

@@ -11,6 +11,7 @@ export type ModuleType =
   | 'saturation'
   | 'delay'
   | 'reverb'
+  | 'limiter'
   | 'output'
 
 export type ChainModule = {
@@ -26,6 +27,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   saturation: 'Saturation',
   delay: 'Delay',
   reverb: 'Reverb',
+  limiter: 'Limiter',
   output: 'Output',
 }
 
@@ -42,6 +44,7 @@ export function defaultChain(): ChainModule[] {
     { instanceId: 'saturation-1', type: 'saturation', bypassed: true },
     { instanceId: 'delay-1', type: 'delay', bypassed: true },
     { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
+    { instanceId: 'limiter-1', type: 'limiter', bypassed: true },
     { instanceId: 'output-1', type: 'output', bypassed: false },
   ]
 }
@@ -89,11 +92,14 @@ export function setBypassed(
 
 /** Drop illegal orders and restore missing fixed endpoints. */
 export function normalizeChain(chain: readonly ChainModule[]): ChainModule[] {
-  const gain =
-    chain.find((m) => m.type === 'gain') ?? defaultChain()[0]!
-  const output =
-    chain.find((m) => m.type === 'output') ?? defaultChain().at(-1)!
+  const defaults = defaultChain()
+  const gain = chain.find((m) => m.type === 'gain') ?? defaults[0]!
+  const output = chain.find((m) => m.type === 'output') ?? defaults.at(-1)!
   const middle = chain.filter((m) => m.type !== 'gain' && m.type !== 'output')
+  if (!middle.some((m) => m.type === 'limiter')) {
+    const limiter = defaults.find((m) => m.type === 'limiter')!
+    middle.push({ ...limiter })
+  }
   return [{ ...gain, bypassed: false }, ...middle, { ...output, bypassed: false }]
 }
 
@@ -164,6 +170,7 @@ function isModuleType(value: unknown): value is ModuleType {
     value === 'saturation' ||
     value === 'delay' ||
     value === 'reverb' ||
+    value === 'limiter' ||
     value === 'output'
   )
 }
