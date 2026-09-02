@@ -100,6 +100,25 @@
   background: var(--bg-control-hover);
 }
 
+.remove {
+  flex: none;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.remove:hover {
+  border-color: var(--border-default);
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
 .fine span {
   text-align: center;
   color: var(--text-muted);

@@ -4,6 +4,7 @@ import {
   amplitudeToDb,
   autoMakeupDb,
   compressorGainDb,
+  downsampleScope,
   limiterOutputDb,
   limiterSettings,
 } from './limiter'
@@ -75,5 +76,15 @@ describe('limiterOutputDb', () => {
   it('converts amplitude to dB', () => {
     expect(amplitudeToDb(1)).toBeCloseTo(0)
     expect(amplitudeToDb(0.5)).toBeCloseTo(-6.02, 1)
+  })
+})
+
+describe('downsampleScope', () => {
+  it('keeps the signed peak of each bucket', () => {
+    const samples = new Float32Array([0.1, -0.9, 0.2, 0.4, -0.3, 0.05])
+    const out = new Float32Array(2)
+    downsampleScope(samples, 2, out)
+    expect(Math.abs(out[0] ?? 0)).toBeGreaterThan(0.8)
+    expect(Math.abs(out[1] ?? 0)).toBeGreaterThan(0.3)
   })
 })

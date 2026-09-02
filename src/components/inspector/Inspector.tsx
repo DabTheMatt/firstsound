@@ -370,7 +370,8 @@ function ModuleInspector({
           {mod && !isFixedType(mod.type) ? (
             <button
               type="button"
-              className={styles.ghost}
+              className={styles.remove}
+              aria-label={`Remove ${MODULE_LABELS[mod.type]}`}
               onClick={() => engine.removeModule(instanceId)}
             >
               Remove

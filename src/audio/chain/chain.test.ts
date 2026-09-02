@@ -65,15 +65,14 @@ describe('normalizeChain', () => {
 })
 
 describe('parseChain', () => {
-  it('injects a limiter before output on older saved chains', () => {
+  it('keeps a saved chain that has no limiter', () => {
     const next = parseChain([
       { instanceId: 'gain-1', type: 'gain', bypassed: false },
       { instanceId: 'eq-1', type: 'eq', bypassed: true },
       { instanceId: 'output-1', type: 'output', bypassed: false },
     ])
-    expect(next?.some((m) => m.type === 'limiter')).toBe(true)
+    expect(next?.some((m) => m.type === 'limiter')).toBe(false)
     expect(next?.at(-1)?.type).toBe('output')
-    expect(next?.at(-2)?.type).toBe('limiter')
   })
 })
 
@@ -105,5 +104,14 @@ describe('insertChainModule', () => {
     expect(gone.some((m) => m.type === 'eq')).toBe(false)
     expect(gone[0]?.type).toBe('gain')
     expect(removeChainModule(gone, 'gain-1')[0]?.type).toBe('gain')
+  })
+
+  it('removes the limiter and does not put it back', () => {
+    const gone = removeChainModule(defaultChain(), 'limiter-1')
+    expect(gone.some((m) => m.type === 'limiter')).toBe(false)
+    expect(gone.at(-1)?.type).toBe('output')
+    expect(insertChainModule(gone, 'limiter', gone.length - 2).some((m) => m.type === 'limiter')).toBe(
+      true,
+    )
   })
 })

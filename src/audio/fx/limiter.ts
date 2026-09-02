@@ -135,3 +135,37 @@ export function limiterOutputDb(inputDb: number, s: LimiterSettings): number {
   const after = driven + compressorGainDb(driven, s.threshold, s.ratio, s.knee) + (Number.isFinite(makeupDb) ? makeupDb : 0)
   return Math.min(s.ceiling, after)
 }
+
+/** Display columns in the limiter inspector scope. Coarse enough to stay readable. */
+export const LIMITER_SCOPE_POINTS = 72
+
+/** Analyser samples to fold into those columns (~2–3 cycles around mid-band). */
+export const LIMITER_SCOPE_WINDOW = 360
+
+/** Keep the signed peak of each bucket so flattened tops stay visible. */
+export function downsampleScope(samples: Float32Array, points: number, out: Float32Array): void {
+  const n = Math.max(0, Math.min(points, out.length))
+  if (n === 0) return
+  if (samples.length === 0) {
+    out.fill(0, 0, n)
+    return
+  }
+  const window = Math.min(samples.length, Math.max(n, LIMITER_SCOPE_WINDOW))
+  const start = samples.length - window
+  for (let i = 0; i < n; i++) {
+    const a = start + Math.floor((i / n) * window)
+    const b = start + Math.floor(((i + 1) / n) * window)
+    let peak = 0
+    for (let s = a; s < Math.max(a + 1, b); s++) {
+      const v = samples[s] ?? 0
+      if (Math.abs(v) >= Math.abs(peak)) peak = v
+    }
+    out[i] = peak
+  }
+  if (out.length > n) out.fill(0, n)
+}
+
+export function dbToAmplitude(db: number): number {
+  if (!Number.isFinite(db)) return 0
+  return 10 ** (db / 20)
+}
