@@ -1,5 +1,6 @@
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, parseTypedParam, toNormalized } from '../../audio/parameters/mapping'
+import { lfoRangeNormalized } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ValueKnob } from './ValueKnob'
@@ -8,19 +9,22 @@ type Props = {
   id: ParamId
   value: number
   liveValue?: number
+  lfoDepth?: number
 }
 
-export function Knob({ id, value, liveValue }: Props) {
+export function Knob({ id, value, liveValue, lfoDepth }: Props) {
   const def = PARAMS[id]
   const live = liveValue ?? value
-  const modulated = liveValue != null && liveValue !== value
+  const mapped = liveValue != null
+  const baseN = toNormalized(value, def)
   return (
     <ValueKnob
       label={def.label}
       valueText={formatParamValue(value, def)}
-      visualValueText={modulated || liveValue != null ? formatParamValue(live, def) : undefined}
-      normalized={toNormalized(value, def)}
-      visualNormalized={liveValue != null ? toNormalized(live, def) : undefined}
+      visualValueText={mapped ? formatParamValue(live, def) : undefined}
+      normalized={baseN}
+      visualNormalized={mapped ? toNormalized(live, def) : undefined}
+      lfoRange={mapped && lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}
       min={def.min}
       max={def.max}
       now={Number(live.toFixed(3))}

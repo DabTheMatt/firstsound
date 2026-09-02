@@ -7,6 +7,7 @@ import {
   defaultLfoHold,
   isFxLfoTarget,
   lfoPhase,
+  lfoRangeNormalized,
   lfoWave,
   modulateParam,
   parseFxLfos,
@@ -46,6 +47,13 @@ describe('modulateParam', () => {
     const down = modulateParam(50, 'delayWet', -1, 100)
     expect(up).toBe(100)
     expect(down).toBe(0)
+  })
+
+  it('treats depth as plus/minus percent of the full range', () => {
+    expect(modulateParam(50, 'delayWet', 1, 20)).toBe(70)
+    expect(modulateParam(50, 'delayWet', -1, 20)).toBe(30)
+    expect(modulateParam(45, 'saturation', 1, 20)).toBe(65)
+    expect(modulateParam(45, 'saturation', -1, 20)).toBe(25)
   })
 
   it('clamps past the parameter range', () => {
@@ -108,6 +116,16 @@ describe('parseFxLfos', () => {
     expect(parsed.delay.target).toBe('delayTime')
     expect(parsed.reverb.target).toBeNull()
     expect(parseFxLfos({ delay: { target: 'gain' } }).delay.target).toBeNull()
+  })
+})
+
+describe('lfoRangeNormalized', () => {
+  it('spans plus/minus depth around the stored zero', () => {
+    expect(lfoRangeNormalized(0.45, 20)).toEqual({ min: 0.25, max: 0.65 })
+  })
+
+  it('clamps to the knob range', () => {
+    expect(lfoRangeNormalized(0.05, 20)).toEqual({ min: 0, max: 0.25 })
   })
 })
 

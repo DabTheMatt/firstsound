@@ -2014,9 +2014,9 @@ export class AudioEngine {
     const active = anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
-        this.applyLiveAudio(0.008)
+        this.applyLiveAudio(0.003)
         this.emit()
-      }, 32)
+      }, 16)
     }
     if (!active && this.lfoTimer) {
       window.clearInterval(this.lfoTimer)

@@ -203,13 +203,21 @@ export function snhHoldIndex(timeSec: number, rateHz: number): number {
   return Math.floor(Math.max(0, timeSec) * clampLfoRate(rateHz))
 }
 
-/** Offset a stored parameter by LFO in normalized space so log params sweep evenly. */
+/** Offset a stored parameter by LFO in normalized space so log params sweep evenly.
+ *  The stored value is oscillator zero. Depth is ± that much of the full range. */
 export function modulateParam(base: number, id: ParamId, bipolar: number, depthPct: number): number {
   const def = PARAMS[id]
   const depth = clampLfoDepth(depthPct) / 100
   if (depth <= 0) return applyParamValue(base, def)
-  const n = toNormalized(base, def) + bipolar * depth * 0.5
+  const n = clamp(toNormalized(base, def) + bipolar * depth, 0, 1)
   return applyParamValue(fromNormalized(n, def), def)
+}
+
+/** Normalized min/max the LFO can reach around a stored (zero) value. */
+export function lfoRangeNormalized(baseN: number, depthPct: number): { min: number; max: number } {
+  const depth = clampLfoDepth(depthPct) / 100
+  const c = clamp(baseN, 0, 1)
+  return { min: clamp(c - depth, 0, 1), max: clamp(c + depth, 0, 1) }
 }
 
 export type LfoHoldState = Record<FxLfoKind, { index: number; value: number }>

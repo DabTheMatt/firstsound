@@ -7,9 +7,10 @@ type Props = {
   label: string
   valueText: string
   normalized: number
-  /** When set, the needle and readout follow this value (LFO) while drag still uses `normalized`. */
   visualNormalized?: number
   visualValueText?: string
+  /** Thin outer ring showing LFO ±depth around the stored zero. */
+  lfoRange?: { min: number; max: number }
   onChange: (normalized: number) => void
   onReset?: () => void
   onGestureEnd?: () => void
@@ -28,6 +29,7 @@ export function ValueKnob({
   normalized,
   visualNormalized,
   visualValueText,
+  lfoRange,
   onChange,
   onReset,
   onGestureEnd,
@@ -113,15 +115,18 @@ export function ValueKnob({
   const shown = visualNormalized ?? normalized
   const shownText = visualValueText ?? valueText
   const r = 26
+  const rangeR = 31
   const cx = 36
   const cy = 36
   const tipDeg = knobAngleDeg(shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
-  const valueArc = knobValueArc(shown, bipolar)
+  const valueArc = knobValueArc(lfoRange ? normalized : shown, bipolar)
   const fill = arcPath(cx, cy, r, valueArc.startDeg, valueArc.endDeg)
-  const baseTick =
-    visualNormalized != null ? polar(cx, cy, r - 2, knobAngleDeg(normalized)) : null
+  const rangeArc = lfoRange
+    ? arcPath(cx, cy, rangeR, knobAngleDeg(lfoRange.min), knobAngleDeg(lfoRange.max))
+    : ''
+  const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
 
   return (
     <div className={styles.knob}>
@@ -156,8 +161,18 @@ export function ValueKnob({
               strokeLinecap="round"
             />
           ) : null}
-          {baseTick ? (
-            <circle cx={baseTick.x} cy={baseTick.y} r="2" fill="var(--text-muted)" />
+          {rangeArc ? (
+            <path
+              d={rangeArc}
+              fill="none"
+              stroke="var(--accent-primary)"
+              strokeWidth="1.25"
+              strokeLinecap="round"
+              opacity="0.85"
+            />
+          ) : null}
+          {zeroTick ? (
+            <circle cx={zeroTick.x} cy={zeroTick.y} r="1.75" fill="var(--accent-primary)" />
           ) : null}
           <line
             x1={cx}

@@ -113,8 +113,8 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
     <section className={styles.lfo} data-lfo-kind={kind}>
       <h3 className={styles.sub}>Modulation / LFO</h3>
       <p className={styles.help}>
-        Connect pins this LFO to a knob on this effect. Rate is frequency, shape is the waveform,
-        depth is how far the target moves around the stored value.
+        Connect pins this LFO to a knob on this effect. The stored value is oscillator
+        zero. Depth is how far it swings up and down (20% = ±20% of the parameter range).
       </p>
       <Segmented
         label="LFO shape"

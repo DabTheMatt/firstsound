@@ -45,7 +45,12 @@ export function ParamControl({ id, value, variant }: Props) {
       {variant === 'slider' ? (
         <ParamSlider id={id} value={value} liveValue={mapped ? live : undefined} />
       ) : (
-        <Knob id={id} value={value} liveValue={mapped ? live : undefined} />
+        <Knob
+          id={id}
+          value={value}
+          liveValue={mapped ? live : undefined}
+          lfoDepth={mapped && kind ? snap.fxLfos[kind].depth : undefined}
+        />
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { knobAngleDeg, knobValueArc, polar } from './knobGeom'
+import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
 
 describe('knobAngleDeg', () => {
   it('puts min at 7:30 and max at 4:30', () => {
@@ -35,5 +35,14 @@ describe('knobValueArc', () => {
     const left = knobValueArc(0, true)
     expect(left.startDeg).toBe(135)
     expect(left.endDeg).toBe(270)
+  })
+})
+
+describe('LFO range ring', () => {
+  it('covers a 20% depth window around the stored zero', () => {
+    const start = knobAngleDeg(0.25)
+    const end = knobAngleDeg(0.65)
+    expect(end - start).toBeCloseTo(0.4 * 270)
+    expect(arcPath(36, 36, 31, start, end).startsWith('M ')).toBe(true)
   })
 })
