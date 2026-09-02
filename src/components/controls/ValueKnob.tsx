@@ -115,7 +115,7 @@ export function ValueKnob({
   const shown = visualNormalized ?? normalized
   const shownText = visualValueText ?? valueText
   const r = 26
-  const rangeR = 31
+  const rangeR = 32
   const cx = 36
   const cy = 36
   const tipDeg = knobAngleDeg(shown)
@@ -123,9 +123,11 @@ export function ValueKnob({
   const track = arcPath(cx, cy, r, 135, 405)
   const valueArc = knobValueArc(lfoRange ? normalized : shown, bipolar)
   const fill = arcPath(cx, cy, r, valueArc.startDeg, valueArc.endDeg)
-  const rangeArc = lfoRange
-    ? arcPath(cx, cy, rangeR, knobAngleDeg(lfoRange.min), knobAngleDeg(lfoRange.max))
-    : ''
+  const rangeStartDeg = lfoRange ? knobAngleDeg(lfoRange.min) : 0
+  const rangeEndDeg = lfoRange ? knobAngleDeg(lfoRange.max) : 0
+  const rangeArc = lfoRange ? arcPath(cx, cy, rangeR, rangeStartDeg, rangeEndDeg) : ''
+  const rangeStart = lfoRange ? polar(cx, cy, rangeR, rangeStartDeg) : null
+  const rangeEnd = lfoRange ? polar(cx, cy, rangeR, rangeEndDeg) : null
   const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
 
   return (
@@ -161,18 +163,28 @@ export function ValueKnob({
               strokeLinecap="round"
             />
           ) : null}
+          {lfoRange ? (
+            <path
+              d={arcPath(cx, cy, rangeR, 135, 405)}
+              fill="none"
+              stroke="var(--border-default)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          ) : null}
           {rangeArc ? (
             <path
               d={rangeArc}
               fill="none"
               stroke="var(--accent-primary)"
-              strokeWidth="1.25"
+              strokeWidth="2"
               strokeLinecap="round"
-              opacity="0.85"
             />
           ) : null}
+          {rangeStart ? <circle cx={rangeStart.x} cy={rangeStart.y} r="2" fill="var(--accent-primary)" /> : null}
+          {rangeEnd ? <circle cx={rangeEnd.x} cy={rangeEnd.y} r="2" fill="var(--accent-primary)" /> : null}
           {zeroTick ? (
-            <circle cx={zeroTick.x} cy={zeroTick.y} r="1.75" fill="var(--accent-primary)" />
+            <circle cx={zeroTick.x} cy={zeroTick.y} r="2.25" fill="var(--text-primary)" />
           ) : null}
           <line
             x1={cx}

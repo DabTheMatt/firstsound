@@ -6,7 +6,7 @@
   width: 100%;
   max-width: 96px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
