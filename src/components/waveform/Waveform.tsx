@@ -28,7 +28,13 @@ import {
 import { SPACE_HANDLE_TOP_PX, hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
-import { fadeDiamondLayout, fadeLengthFromDiamondTime, fadeShapeHandleLayout } from './handleLayout'
+import {
+  clampFadeLengthToLoop,
+  fadeDiamondLayout,
+  fadeLengthFromDiamondTime,
+  fadeOriginTime,
+  fadeShapeHandleLayout,
+} from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
@@ -247,8 +253,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         ctx.stroke()
         ctx.setLineDash([])
       }
-      strokeFade(start, start + fadeIn, 'in', fadeInBend)
-      strokeFade(end - fadeOut, end, 'out', fadeOutBend)
+      const inDur = clampFadeLengthToLoop(fadeIn, start, end)
+      const outDur = clampFadeLengthToLoop(fadeOut, start, end)
+      strokeFade(fadeOriginTime('in', start, end), start + inDur, 'in', fadeInBend)
+      strokeFade(end - outDur, fadeOriginTime('out', start, end), 'out', fadeOutBend)
     }
     draw()
     const ro = new ResizeObserver(draw)

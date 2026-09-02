@@ -7,6 +7,17 @@ export function fadeHandleAtLoopFrac(loopEdgeFrac: number): number {
   return loopEdgeFrac
 }
 
+/** Fade-in always starts on loop start; fade-out always ends on loop end. */
+export function fadeOriginTime(side: 'in' | 'out', start: number, end: number): number {
+  return side === 'in' ? start : end
+}
+
+/** Fade length stays inside the loop; origin cannot leave the loop edge. */
+export function clampFadeLengthToLoop(length: number, start: number, end: number): number {
+  const span = Math.max(0, end - start)
+  return Math.min(span, Math.max(0, length))
+}
+
 /** Diamond sits at the fade knee (end of fade-in / start of fade-out). */
 export function fadeDiamondLayout(opts: {
   side: 'in' | 'out'
@@ -41,11 +52,11 @@ export function fadeShapeHandleLayout(opts: {
   return { time, progress: 0.5 }
 }
 
-/** Pointer X at the fade diamond maps 1:1 to fade length. */
+/** Pointer X at the fade diamond maps 1:1 to fade length, origin pinned to the loop. */
 export function fadeLengthFromDiamondTime(side: 'in' | 'out', start: number, end: number, t: number): number {
-  const span = Math.max(0, end - start)
-  if (side === 'in') return Math.max(0, Math.min(span, t - start))
-  return Math.max(0, Math.min(span, end - t))
+  const origin = fadeOriginTime(side, start, end)
+  if (side === 'in') return clampFadeLengthToLoop(t - origin, start, end)
+  return clampFadeLengthToLoop(origin - t, start, end)
 }
 
 /** Knob travel covers the region, and at least 8 s so short loops still have room. */

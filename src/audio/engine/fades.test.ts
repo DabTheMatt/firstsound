@@ -33,6 +33,14 @@ describe('fadeGain', () => {
     expect(fadeGain(0.5, 'linear', 0)).toBeLessThan(0.2)
   })
 
+  it('keeps a bent fade inside the selected curve family', () => {
+    const bend = 0.78
+    expect(fadeGain(0.5, 'equalPower', bend)).toBeGreaterThan(fadeGain(0.5, 'linear', bend))
+    expect(fadeGain(0.5, 'exponential', bend)).toBeLessThan(fadeGain(0.5, 'linear', bend))
+    expect(fadeGain(0, 'sCurve', bend)).toBeCloseTo(0)
+    expect(fadeGain(1, 'sCurve', bend)).toBeCloseTo(1)
+  })
+
   it('maps bend 0.5 to Q 1 and inverts Q back to bend', () => {
     expect(fadeQFromBend(0.5)).toBeCloseTo(1)
     expect(fadeQFromBend(0)).toBeCloseTo(0.25)

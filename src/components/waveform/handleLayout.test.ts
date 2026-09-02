@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   FADE_DIAMOND_TOP_PX,
+  clampFadeLengthToLoop,
   fadeDiamondLayout,
   fadeHandleAtLoopFrac,
   fadeKnobMaxSec,
   fadeLengthFromDiamondTime,
+  fadeOriginTime,
   fadeShapeHandleLayout,
 } from './handleLayout'
 
@@ -74,5 +76,13 @@ describe('fadeLengthFromDiamondTime', () => {
     expect(fadeLengthFromDiamondTime('out', 1, 5, 3)).toBeCloseTo(2)
     expect(fadeLengthFromDiamondTime('in', 1, 5, 0)).toBe(0)
     expect(fadeLengthFromDiamondTime('out', 1, 5, 8)).toBe(0)
+  })
+
+  it('pins the fade origin to the loop edge', () => {
+    expect(fadeOriginTime('in', 1, 5)).toBe(1)
+    expect(fadeOriginTime('out', 1, 5)).toBe(5)
+    expect(clampFadeLengthToLoop(9, 1, 5)).toBe(4)
+    expect(fadeLengthFromDiamondTime('in', 1, 5, 0.2)).toBe(0)
+    expect(fadeLengthFromDiamondTime('out', 1, 5, 6)).toBe(0)
   })
 })

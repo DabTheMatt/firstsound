@@ -269,8 +269,9 @@ function ToolInspector({
         }}
       />
       <p className={styles.help}>
-        Q bends the selected {edit.fadeFocus === 'out' ? 'fade-out' : 'fade-in'} (circle on the
-        envelope). Higher Q pulls the knee earlier.
+        The circle warps the selected {edit.fadeFocus === 'out' ? 'fade-out' : 'fade-in'} inside
+        the Lin / EqPow / Exp / S law. Fade starts on the loop edge. Higher Q pulls the knee
+        earlier.
       </p>
       <button
         type="button"

@@ -21,22 +21,20 @@ function shape(x: number, curve: FadeCurve): number {
 }
 
 /**
- * bend < 0.5 slows the start, bend > 0.5 speeds it up. 0.5 keeps the named curve.
- * Extreme bends lean almost fully on the power curve so the diamond can reshape
- * the envelope across most of the amplitude range.
+ * Warp progress through the selected curve. bend 0.5 is the named law;
+ * lower bend lingers at the start, higher bend reaches the knee sooner.
  */
-function mixBend(x: number, shaped: number, bend: number): number {
+export function bendProgress(x: number, bend: number): number {
+  const t = Math.min(1, Math.max(0, x))
+  if (Math.abs(bend - 0.5) < 0.001) return t
   const power = bend < 0.5 ? 1 + (0.5 - bend) * 8 : 1 / (1 + (bend - 0.5) * 8)
-  const bent = x ** power
-  return shaped * 0.08 + bent * 0.92
+  return t ** power
 }
 
 /** Gain at progress `t` in [0,1] for a fade-in. Fade-out is `gainAt(1 - t)`. */
 export function fadeGain(t: number, curve: FadeCurve, bend = 0.5): number {
   const x = Math.min(1, Math.max(0, t))
-  const shaped = shape(x, curve)
-  if (Math.abs(bend - 0.5) < 0.001) return shaped
-  return mixBend(x, shaped, bend)
+  return shape(bendProgress(x, bend), curve)
 }
 
 /** Invert the midpoint handle so dragging Y follows the envelope diamond. */
