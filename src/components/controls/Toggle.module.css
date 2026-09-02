@@ -12,6 +12,13 @@
   touch-action: manipulation;
 }
 
+.compact {
+  min-height: 24px;
+  padding: 0 10px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
 .loop:hover {
   background: var(--bg-control-hover);
   color: var(--text-secondary);

@@ -88,3 +88,28 @@
 .settings:hover {
   background: var(--bg-control-hover);
 }
+
+.lfo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.lfo:hover,
+.lfoOn {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.lfoOn,
+.lfoLive {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}

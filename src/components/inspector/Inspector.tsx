@@ -30,7 +30,6 @@ import { EqCurve } from './EqCurve'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
-import { FxLfoConnectProvider } from './FxLfoConnect'
 import { FxLfoSection } from './FxLfoSection'
 import styles from './Inspector.module.css'
 
@@ -74,7 +73,6 @@ export function Inspector({
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
-    <FxLfoConnectProvider>
     <div className={`${styles.panel} ${sheet ? styles.sheet : ''}`}>
       {focus.kind === 'tool' ? (
         <ToolInspector
@@ -97,7 +95,6 @@ export function Inspector({
         />
       )}
     </div>
-    </FxLfoConnectProvider>
   )
 }
 
@@ -590,14 +587,17 @@ function EqEditor({
           }}
         >
           <summary>
-            Band {index + 1}
-            {band.bypassed ? ' · bypass' : ''}
+            <span className={styles.bandTitle}>
+              Band {index + 1}
+              {band.bypassed ? ' · bypass' : ''}
+            </span>
+            <Toggle
+              compact
+              pressed={!band.bypassed}
+              label={band.bypassed ? 'Bypassed' : 'Active'}
+              onToggle={() => setBand(index, { bypassed: !band.bypassed })}
+            />
           </summary>
-          <Toggle
-            pressed={!band.bypassed}
-            label={band.bypassed ? 'Bypassed' : 'Active'}
-            onToggle={() => setBand(index, { bypassed: !band.bypassed })}
-          />
           <Segmented
             label={`Band ${index + 1} type`}
             value={band.type}

@@ -1,6 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { ParamId } from '../../audio/parameters/types'
-import { fxLfoKindForParam, isFxLfoTarget } from '../../audio/fx/lfo'
+import { fxLfoKindForParam, isFxLfoTarget, lfoBinding } from '../../audio/fx/lfo'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useFxLfoConnect } from '../inspector/FxLfoConnect'
 import { Knob } from './Knob'
@@ -17,14 +17,15 @@ export function ParamControl({ id, value, variant }: Props) {
   const snap = useEngine()
   const { armed, setArmed } = useFxLfoConnect()
   const kind = fxLfoKindForParam(id)
-  const pickable = Boolean(armed && kind && armed === kind && isFxLfoTarget(kind, id))
-  const mapped = Boolean(kind && snap.fxLfos[kind].target === id)
+  const pickable = Boolean(armed && kind && armed.kind === kind && isFxLfoTarget(kind, id))
+  const binding = lfoBinding(snap.fxLfos, id)
+  const mapped = Boolean(binding)
   const live = mapped ? snap.liveParams[id] : value
   const onPickCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!pickable || !kind) return
+    if (!pickable || !kind || !armed) return
     event.preventDefault()
     event.stopPropagation()
-    engine.setFxLfoTarget(kind, id)
+    engine.setFxLfoTarget(kind, armed.slot, id)
     setArmed(null)
   }
   const className = [
@@ -49,7 +50,7 @@ export function ParamControl({ id, value, variant }: Props) {
           id={id}
           value={value}
           liveValue={mapped ? live : undefined}
-          lfoDepth={mapped && kind ? snap.fxLfos[kind].depth : undefined}
+          lfoDepth={mapped ? binding?.lfo.depth : undefined}
         />
       )}
     </div>

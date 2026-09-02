@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 
+export type ArmedLfo = { kind: FxLfoKind; slot: number }
+
 type Ctx = {
-  armed: FxLfoKind | null
-  setArmed: (kind: FxLfoKind | null) => void
+  armed: ArmedLfo | null
+  setArmed: (next: ArmedLfo | null) => void
 }
 
 const FxLfoConnectContext = createContext<Ctx>({
@@ -12,7 +14,7 @@ const FxLfoConnectContext = createContext<Ctx>({
 })
 
 export function FxLfoConnectProvider({ children }: { children: ReactNode }) {
-  const [armed, setArmed] = useState<FxLfoKind | null>(null)
+  const [armed, setArmed] = useState<ArmedLfo | null>(null)
   useEffect(() => {
     if (!armed) return
     const onKey = (event: KeyboardEvent) => {

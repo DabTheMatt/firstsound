@@ -177,7 +177,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
       {kind === 'delay'
         ? params(['delayWet', 'delayTime', 'delayFeedback'])
-        : params(['reverbWet', 'reverbSize', 'reverbDecay', 'reverbLimit'])}
+        : params(['reverbWet', 'reverbSize', 'reverbDecay'])}
 
       <p className={styles.help}>
         Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.

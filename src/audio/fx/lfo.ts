@@ -23,6 +23,18 @@ export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
 
 export const FX_LFO_KINDS: FxLfoKind[] = ['delay', 'reverb', 'limiter', 'saturation']
 
+export const FX_LFO_SLOTS = 3
+
+export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
+  delay: 'Delay',
+  reverb: 'Reverb',
+  limiter: 'Limiter',
+  saturation: 'Saturation',
+}
+
+export type FxLfoBank = FxLfo[]
+export type FxLfoMap = Record<FxLfoKind, FxLfoBank>
+
 export const LFO_RATE_MIN = 0.05
 export const LFO_RATE_MAX = 20
 export const LFO_RATE_DEFAULT = 0.6
@@ -121,13 +133,25 @@ export function defaultFxLfo(): FxLfo {
   }
 }
 
-export function defaultFxLfos(): Record<FxLfoKind, FxLfo> {
+export function defaultFxLfoBank(): FxLfoBank {
+  return Array.from({ length: FX_LFO_SLOTS }, () => defaultFxLfo())
+}
+
+export function defaultFxLfos(): FxLfoMap {
   return {
-    delay: defaultFxLfo(),
-    reverb: defaultFxLfo(),
-    limiter: defaultFxLfo(),
-    saturation: defaultFxLfo(),
+    delay: defaultFxLfoBank(),
+    reverb: defaultFxLfoBank(),
+    limiter: defaultFxLfoBank(),
+    saturation: defaultFxLfoBank(),
   }
+}
+
+export function cloneFxLfos(lfos: FxLfoMap): FxLfoMap {
+  const next = defaultFxLfos()
+  for (const kind of FX_LFO_KINDS) {
+    next[kind] = lfos[kind].map((lfo) => ({ ...lfo }))
+  }
+  return next
 }
 
 export function isLfoShape(value: unknown): value is LfoShape {
@@ -168,12 +192,50 @@ export function parseFxLfo(raw: unknown, kind: FxLfoKind): FxLfo {
   return next
 }
 
-export function parseFxLfos(raw: unknown): Record<FxLfoKind, FxLfo> {
+export function parseFxLfoBank(raw: unknown, kind: FxLfoKind): FxLfoBank {
+  const bank = defaultFxLfoBank()
+  if (Array.isArray(raw)) {
+    for (let i = 0; i < FX_LFO_SLOTS; i++) bank[i] = parseFxLfo(raw[i], kind)
+    return bank
+  }
+  if (raw && typeof raw === 'object') bank[0] = parseFxLfo(raw, kind)
+  return bank
+}
+
+export function parseFxLfos(raw: unknown): FxLfoMap {
   const next = defaultFxLfos()
   if (!raw || typeof raw !== 'object') return next
   const rec = raw as Partial<Record<FxLfoKind, unknown>>
-  for (const kind of FX_LFO_KINDS) next[kind] = parseFxLfo(rec[kind], kind)
+  for (const kind of FX_LFO_KINDS) next[kind] = parseFxLfoBank(rec[kind], kind)
   return next
+}
+
+export function clampLfoSlot(slot: number): number {
+  return Math.min(FX_LFO_SLOTS - 1, Math.max(0, Math.round(slot)))
+}
+
+export function lfoBinding(
+  lfos: FxLfoMap,
+  id: ParamId,
+): { kind: FxLfoKind; slot: number; lfo: FxLfo } | null {
+  const kind = fxLfoKindForParam(id)
+  if (!kind) return null
+  const slot = lfos[kind].findIndex((lfo) => lfo.target === id)
+  if (slot < 0) return null
+  return { kind, slot, lfo: lfos[kind][slot]! }
+}
+
+export function usedLfoSlots(bank: FxLfoBank): number {
+  let last = 0
+  for (let i = 0; i < bank.length; i++) {
+    if (bank[i]?.target) last = i + 1
+  }
+  return Math.max(1, last)
+}
+
+export function nextFreeLfoSlot(bank: FxLfoBank): number | null {
+  const idx = bank.findIndex((lfo) => !lfo.target)
+  return idx < 0 ? null : idx
 }
 
 /** Bipolar oscillator output in [-1, 1]. `hold` is the current sample-and-hold value. */
@@ -203,31 +265,44 @@ export function snhHoldIndex(timeSec: number, rateHz: number): number {
   return Math.floor(Math.max(0, timeSec) * clampLfoRate(rateHz))
 }
 
+/** Shrink depth so a sine never parks against 0 or 1. */
+export function fittedLfoDepth(baseN: number, depthPct: number): number {
+  const want = clampLfoDepth(depthPct) / 100
+  const room = Math.min(clamp(baseN, 0, 1), 1 - clamp(baseN, 0, 1))
+  return Math.min(want, room)
+}
+
 /** Offset a stored parameter by LFO in normalized space so log params sweep evenly.
- *  The stored value is oscillator zero. Depth is ± that much of the full range. */
+ *  The stored value is oscillator zero. Depth is ± that much of the full range,
+ *  fitted so the waveform never dwells on the rails. */
 export function modulateParam(base: number, id: ParamId, bipolar: number, depthPct: number): number {
   const def = PARAMS[id]
-  const depth = clampLfoDepth(depthPct) / 100
+  const n0 = toNormalized(base, def)
+  const depth = fittedLfoDepth(n0, depthPct)
   if (depth <= 0) return applyParamValue(base, def)
-  const n = clamp(toNormalized(base, def) + bipolar * depth, 0, 1)
-  return applyParamValue(fromNormalized(n, def), def)
+  return applyParamValue(fromNormalized(n0 + bipolar * depth, def), def)
 }
 
 /** Normalized min/max the LFO can reach around a stored (zero) value. */
 export function lfoRangeNormalized(baseN: number, depthPct: number): { min: number; max: number } {
-  const depth = clampLfoDepth(depthPct) / 100
   const c = clamp(baseN, 0, 1)
-  return { min: clamp(c - depth, 0, 1), max: clamp(c + depth, 0, 1) }
+  const depth = fittedLfoDepth(c, depthPct)
+  return { min: c - depth, max: c + depth }
 }
 
-export type LfoHoldState = Record<FxLfoKind, { index: number; value: number }>
+export type LfoHoldSlot = { index: number; value: number }
+export type LfoHoldState = Record<FxLfoKind, LfoHoldSlot[]>
+
+function emptyHold(): LfoHoldSlot {
+  return { index: -1, value: 0 }
+}
 
 export function defaultLfoHold(): LfoHoldState {
   return {
-    delay: { index: -1, value: 0 },
-    reverb: { index: -1, value: 0 },
-    limiter: { index: -1, value: 0 },
-    saturation: { index: -1, value: 0 },
+    delay: [emptyHold(), emptyHold(), emptyHold()],
+    reverb: [emptyHold(), emptyHold(), emptyHold()],
+    limiter: [emptyHold(), emptyHold(), emptyHold()],
+    saturation: [emptyHold(), emptyHold(), emptyHold()],
   }
 }
 
@@ -235,32 +310,38 @@ export function fxLfoIsActive(lfo: FxLfo): boolean {
   return lfo.target != null && lfo.depth > 0
 }
 
-export function anyFxLfoActive(lfos: Record<FxLfoKind, FxLfo>): boolean {
-  return FX_LFO_KINDS.some((kind) => fxLfoIsActive(lfos[kind]))
+export function anyFxLfoActive(lfos: FxLfoMap): boolean {
+  return FX_LFO_KINDS.some((kind) => lfos[kind].some(fxLfoIsActive))
 }
 
 export function applyFxLfos(
   params: Record<ParamId, number>,
-  lfos: Record<FxLfoKind, FxLfo>,
+  lfos: FxLfoMap,
   timeSec: number,
   hold: LfoHoldState,
   rand: () => number = Math.random,
 ): Record<ParamId, number> {
   const next = { ...params }
+  const claimed = new Set<ParamId>()
   for (const kind of FX_LFO_KINDS) {
-    const lfo = lfos[kind]
-    const target = lfo.target
-    if (!target || !isFxLfoTarget(kind, target) || lfo.depth <= 0) continue
-    if (lfo.shape === 'snh') {
-      const index = snhHoldIndex(timeSec, lfo.rateHz)
-      const slot = hold[kind]
-      if (slot.index !== index) {
-        slot.index = index
-        slot.value = rand() * 2 - 1
+    for (let i = 0; i < FX_LFO_SLOTS; i++) {
+      const lfo = lfos[kind][i]
+      const target = lfo?.target
+      if (!lfo || !target || !isFxLfoTarget(kind, target) || lfo.depth <= 0) continue
+      if (claimed.has(target)) continue
+      claimed.add(target)
+      const slotHold = hold[kind][i] ?? emptyHold()
+      hold[kind][i] = slotHold
+      if (lfo.shape === 'snh') {
+        const index = snhHoldIndex(timeSec, lfo.rateHz)
+        if (slotHold.index !== index) {
+          slotHold.index = index
+          slotHold.value = rand() * 2 - 1
+        }
       }
+      const wave = lfoWave(lfoPhase(timeSec, lfo.rateHz), lfo.shape, slotHold.value)
+      next[target] = modulateParam(params[target], target, wave, lfo.depth)
     }
-    const wave = lfoWave(lfoPhase(timeSec, lfo.rateHz), lfo.shape, hold[kind].value)
-    next[target] = modulateParam(params[target], target, wave, lfo.depth)
   }
   return next
 }

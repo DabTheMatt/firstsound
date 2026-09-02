@@ -33,13 +33,19 @@ import type {
 import {
   anyFxLfoActive,
   applyFxLfos,
+  clampLfoSlot,
+  cloneFxLfos,
+  defaultFxLfo,
   defaultFxLfos,
   defaultLfoHold,
+  FX_LFO_SLOTS,
   isFxLfoKind,
   isFxLfoTarget,
   parseFxLfos,
+  usedLfoSlots,
   type FxLfo,
   type FxLfoKind,
+  type FxLfoMap,
 } from '../fx/lfo'
 import {
   combAsEqBands,
@@ -169,7 +175,8 @@ export type EngineSnapshot = {
   muted: boolean
   delayType: DelayType
   reverbType: ReverbType
-  fxLfos: Record<FxLfoKind, FxLfo>
+  fxLfos: FxLfoMap
+  lfoShown: Record<FxLfoKind, number>
   spacePresetId: string | null
   hasSource: boolean
   prep: SamplePrepState
@@ -289,6 +296,9 @@ export class AudioEngine {
   private fxLfos = defaultFxLfos()
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
+  private lfoClockSec = 0
+  private lfoWallMs = 0
+  private lfoShown: Record<FxLfoKind, number> = { delay: 1, reverb: 1, limiter: 1, saturation: 1 }
   private reverbIrKey = ''
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
@@ -490,6 +500,8 @@ export class AudioEngine {
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
+    this.lfoWallMs = typeof performance !== 'undefined' ? performance.now() : 0
+    this.syncLfoClock()
     if (this.spaceLatched) {
       this.spaceLatched = false
       this.applyLiveAudio()
@@ -517,6 +529,8 @@ export class AudioEngine {
   stop(): void {
     this.stopVoices()
     this.playing = false
+    this.lfoWallMs = 0
+    this.syncLfoClock()
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
     this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
@@ -525,6 +539,7 @@ export class AudioEngine {
     }
     this.killFx('all')
     this.playFullSample = false
+    this.applyLiveAudio()
     this.emit()
   }
 
@@ -669,22 +684,39 @@ export class AudioEngine {
     this.emit()
   }
 
-  setFxLfo(kind: FxLfoKind, patch: Partial<FxLfo>): void {
+  setFxLfo(kind: FxLfoKind, slot: number, patch: Partial<FxLfo>): void {
     if (!isFxLfoKind(kind)) return
-    const cur = this.fxLfos[kind]
+    const i = clampLfoSlot(slot)
+    const cur = this.fxLfos[kind][i] ?? defaultFxLfo()
     const next: FxLfo = { ...cur, ...patch }
     if (patch.target !== undefined) {
       next.target = patch.target && isFxLfoTarget(kind, patch.target) ? patch.target : null
+      if (next.target) {
+        for (let s = 0; s < FX_LFO_SLOTS; s++) {
+          const other = this.fxLfos[kind][s]
+          if (s !== i && other?.target === next.target) other.target = null
+        }
+      }
     }
-    this.fxLfos[kind] = parseFxLfos({ ...this.fxLfos, [kind]: next })[kind]
+    this.fxLfos[kind][i] = next
     this.syncLfoClock()
     this.applyLiveAudio(0.01)
     this.emit()
     if (anyFxLfoActive(this.fxLfos)) void this.ensureContext()
   }
 
-  setFxLfoTarget(kind: FxLfoKind, target: ParamId | null): void {
-    this.setFxLfo(kind, { target })
+  setFxLfoTarget(kind: FxLfoKind, slot: number, target: ParamId | null): void {
+    this.setFxLfo(kind, slot, { target })
+  }
+
+  addFxLfo(kind: FxLfoKind): number | null {
+    if (!isFxLfoKind(kind)) return null
+    if (this.lfoShown[kind] >= FX_LFO_SLOTS) return null
+    const slot = this.lfoShown[kind]
+    this.fxLfos[kind][slot] = defaultFxLfo()
+    this.lfoShown[kind] = slot + 1
+    this.emit()
+    return slot
   }
 
   applySpacePreset(preset: SpacePreset | string): void {
@@ -1113,6 +1145,9 @@ export class AudioEngine {
     this.reverbType = 'hall'
     this.fxLfos = defaultFxLfos()
     this.lfoHold = defaultLfoHold()
+    this.lfoShown = { delay: 1, reverb: 1, limiter: 1, saturation: 1 }
+    this.lfoClockSec = 0
+    this.lfoWallMs = 0
     this.reverbIrKey = ''
     this.eqById = new Map()
     this.eqBands = defaultEqBands()
@@ -1296,12 +1331,7 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
-      fxLfos: {
-        delay: { ...this.fxLfos.delay },
-        reverb: { ...this.fxLfos.reverb },
-        limiter: { ...this.fxLfos.limiter },
-        saturation: { ...this.fxLfos.saturation },
-      },
+      fxLfos: cloneFxLfos(this.fxLfos),
     }
   }
 
@@ -1315,6 +1345,12 @@ export class AudioEngine {
     this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
     this.fxLfos = parseFxLfos(preset.fxLfos)
     this.lfoHold = defaultLfoHold()
+    this.lfoShown = {
+      delay: usedLfoSlots(this.fxLfos.delay),
+      reverb: usedLfoSlots(this.fxLfos.reverb),
+      limiter: usedLfoSlots(this.fxLfos.limiter),
+      saturation: usedLfoSlots(this.fxLfos.saturation),
+    }
     this.reverbIrKey = ''
     const migrated = migrateSpaceParams(preset.params)
     for (const id of Object.keys(this.params) as ParamId[]) {
@@ -2002,7 +2038,14 @@ export class AudioEngine {
   }
 
   private lfoTime(): number {
-    return typeof performance !== 'undefined' ? performance.now() / 1000 : 0
+    const now = typeof performance !== 'undefined' ? performance.now() : 0
+    if (this.playing) {
+      if (this.lfoWallMs > 0) this.lfoClockSec += (now - this.lfoWallMs) / 1000
+      this.lfoWallMs = now
+    } else {
+      this.lfoWallMs = 0
+    }
+    return this.lfoClockSec
   }
 
   private liveParams(): Record<ParamId, number> {
@@ -2011,7 +2054,7 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const active = anyFxLfoActive(this.fxLfos)
+    const active = this.playing && anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.003)
@@ -2389,12 +2432,8 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
-      fxLfos: {
-        delay: { ...this.fxLfos.delay },
-        reverb: { ...this.fxLfos.reverb },
-        limiter: { ...this.fxLfos.limiter },
-        saturation: { ...this.fxLfos.saturation },
-      },
+      fxLfos: cloneFxLfos(this.fxLfos),
+      lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,
       prep: { ...this.prep },

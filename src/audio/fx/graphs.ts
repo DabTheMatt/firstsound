@@ -648,17 +648,9 @@ export function applyReverbGraph(
     g.gate.knee.setTargetAtTime(2, now, smoothing)
   }
 
-  const limDb = Math.max(0, params.reverbLimit ?? 0)
-  if (limDb < 0.5) {
-    g.limit.threshold.setTargetAtTime(0, now, smoothing)
-    g.limit.ratio.setTargetAtTime(1, now, smoothing)
-  } else {
-    g.limit.threshold.setTargetAtTime(-limDb, now, smoothing)
-    g.limit.ratio.setTargetAtTime(20, now, smoothing)
-    g.limit.attack.setTargetAtTime(0.003, now, smoothing)
-    g.limit.release.setTargetAtTime(0.08, now, smoothing)
-    g.limit.knee.setTargetAtTime(3, now, smoothing)
-  }
+  // Limit was removed from the reverb UI; keep the brickwall bypassed.
+  g.limit.threshold.setTargetAtTime(0, now, smoothing)
+  g.limit.ratio.setTargetAtTime(1, now, smoothing)
 }
 
 export function wetDryFor(
