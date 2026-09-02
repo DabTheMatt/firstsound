@@ -114,10 +114,10 @@ export function ValueKnob({
 
   const shown = visualNormalized ?? normalized
   const shownText = visualValueText ?? valueText
-  const r = 26
-  const rangeR = 32
-  const cx = 36
-  const cy = 36
+  const cx = 42
+  const cy = 42
+  const r = 24
+  const rangeR = 36
   const tipDeg = knobAngleDeg(shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
@@ -145,7 +145,7 @@ export function ValueKnob({
         onPointerDown={onPointerDown}
         onDoubleClick={() => onReset?.()}
       >
-        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+        <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
           <path
             d={track}
