@@ -16,7 +16,9 @@ import {
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { GRAIN_KNOBS, LIMITER_ADV_KNOBS, LIMITER_MAIN_KNOBS, MOTION_KNOBS, PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
+import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
+import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
@@ -115,7 +117,10 @@ function ToolInspector({
   onHideInspector?: () => void
 }) {
   const length = Math.max(0, snap.params.end - snap.params.start)
-  const maxMs = 2000
+  const fadeMaxSec = fadeKnobMaxSec(length)
+  const maxMs = Math.round(fadeMaxSec * 1000)
+  const shapeBend = edit.fadeFocus === 'out' ? edit.fadeOutBend : edit.fadeInBend
+  const shapeQ = fadeQFromBend(shapeBend)
   return (
     <>
       <div className={styles.head}>
@@ -169,34 +174,56 @@ function ToolInspector({
           <ValueKnob
             label="Fade In"
             valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
-            normalized={Math.min(1, edit.fadeIn / 2)}
+            normalized={Math.min(1, edit.fadeIn / fadeMaxSec)}
             min={0}
             max={maxMs}
             now={Math.round(edit.fadeIn * 1000)}
-            onChange={(n) => onEdit({ fadeIn: n * 2, fadeAuto: false })}
-            onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false })}
+            onChange={(n) => onEdit({ fadeIn: n * fadeMaxSec, fadeAuto: false, fadeFocus: 'in' })}
+            onReset={() => onEdit({ fadeIn: 0.01, fadeAuto: false, fadeFocus: 'in' })}
             onGestureEnd={onCommit}
             onTypedValue={(text) => {
-              const next = parseTypedRange(text, 0, 2000, 'ms')
+              const next = parseTypedRange(text, 0, maxMs, 'ms')
               if (next == null) return false
-              onEdit({ fadeIn: next / 1000, fadeAuto: false })
+              onEdit({ fadeIn: next / 1000, fadeAuto: false, fadeFocus: 'in' })
               return true
             }}
           />
           <ValueKnob
             label="Fade Out"
             valueText={`${Math.round(edit.fadeOut * 1000)} ms`}
-            normalized={Math.min(1, edit.fadeOut / 2)}
+            normalized={Math.min(1, edit.fadeOut / fadeMaxSec)}
             min={0}
             max={maxMs}
             now={Math.round(edit.fadeOut * 1000)}
-            onChange={(n) => onEdit({ fadeOut: n * 2, fadeAuto: false })}
-            onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false })}
+            onChange={(n) => onEdit({ fadeOut: n * fadeMaxSec, fadeAuto: false, fadeFocus: 'out' })}
+            onReset={() => onEdit({ fadeOut: 0.01, fadeAuto: false, fadeFocus: 'out' })}
             onGestureEnd={onCommit}
             onTypedValue={(text) => {
-              const next = parseTypedRange(text, 0, 2000, 'ms')
+              const next = parseTypedRange(text, 0, maxMs, 'ms')
               if (next == null) return false
-              onEdit({ fadeOut: next / 1000, fadeAuto: false })
+              onEdit({ fadeOut: next / 1000, fadeAuto: false, fadeFocus: 'out' })
+              return true
+            }}
+          />
+          <ValueKnob
+            label="Q"
+            valueText={shapeQ.toFixed(2)}
+            normalized={Math.min(1, Math.max(0, shapeBend))}
+            min={0.25}
+            max={4}
+            now={shapeQ}
+            onChange={(n) =>
+              onEdit(edit.fadeFocus === 'out' ? { fadeOutBend: n } : { fadeInBend: n })
+            }
+            onReset={() =>
+              onEdit(edit.fadeFocus === 'out' ? { fadeOutBend: 0.5 } : { fadeInBend: 0.5 })
+            }
+            onGestureEnd={onCommit}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 0.25, 4)
+              if (next == null) return false
+              const bend = fadeBendFromQ(next)
+              onEdit(edit.fadeFocus === 'out' ? { fadeOutBend: bend } : { fadeInBend: bend })
               return true
             }}
           />
@@ -207,20 +234,20 @@ function ToolInspector({
             className={styles.range}
             type="range"
             min={0}
-            max={2000}
+            max={maxMs}
             value={Math.round(edit.fadeIn * 1000)}
             aria-label="Fade in"
-            onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false })}
+            onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false, fadeFocus: 'in' })}
             onPointerUp={onCommit}
           />
           <input
             className={styles.range}
             type="range"
             min={0}
-            max={2000}
+            max={maxMs}
             value={Math.round(edit.fadeOut * 1000)}
             aria-label="Fade out"
-            onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false })}
+            onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false, fadeFocus: 'out' })}
             onPointerUp={onCommit}
           />
         </>
@@ -240,6 +267,10 @@ function ToolInspector({
           onCommit?.()
         }}
       />
+      <p className={styles.help}>
+        Q bends the selected {edit.fadeFocus === 'out' ? 'fade-out' : 'fade-in'} (circle on the
+        envelope). Higher Q pulls the knee earlier.
+      </p>
       <button
         type="button"
         className={styles.ghost}

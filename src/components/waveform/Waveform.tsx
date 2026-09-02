@@ -28,7 +28,7 @@ import {
 import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
-import { fadeDiamondLayout, fadeLengthFromDiamondTime } from './handleLayout'
+import { fadeDiamondLayout, fadeLengthFromDiamondTime, fadeShapeHandleLayout } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
@@ -45,6 +45,7 @@ type Props = {
   fadeCurve: FadeCurve
   fadeInBend?: number
   fadeOutBend?: number
+  fadeFocus?: 'in' | 'out'
   autoSnap: boolean
   normalizeView: boolean
   onNormalizeView: (value: boolean) => void
@@ -56,6 +57,7 @@ type Props = {
     fadeOut?: number
     fadeInBend?: number
     fadeOutBend?: number
+    fadeFocus?: 'in' | 'out'
   }) => void
   onFadesCommit?: () => void
   contentRev?: number
@@ -82,7 +84,18 @@ function loadSplitShare(): number {
   return 0.64
 }
 
-type DragMode = 'start' | 'end' | 'move' | 'pan' | 'fadeIn' | 'fadeOut' | 'fx' | 'playhead' | null
+type DragMode =
+  | 'start'
+  | 'end'
+  | 'move'
+  | 'pan'
+  | 'fadeIn'
+  | 'fadeOut'
+  | 'fadeInShape'
+  | 'fadeOutShape'
+  | 'fx'
+  | 'playhead'
+  | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   {
@@ -97,6 +110,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     fadeCurve,
     fadeInBend = 0.5,
     fadeOutBend = 0.5,
+    fadeFocus = 'in',
     autoSnap,
     normalizeView,
     onNormalizeView,
@@ -399,16 +413,21 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
+    const fadeRole = fadeAttr?.dataset.fadeRole
 
     let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
     if (mode !== 'pan') {
-      if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
+      if (fadeAttr?.dataset.fade === 'in' && fadeRole === 'shape') mode = 'fadeInShape'
+      else if (fadeAttr?.dataset.fade === 'out' && fadeRole === 'shape') mode = 'fadeOutShape'
+      else if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
       else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
       else if (handleAttr?.dataset.edge === 'start') mode = 'start'
       else if (handleAttr?.dataset.edge === 'end') mode = 'end'
       else if (Math.abs(x - startX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'start'
       else if (Math.abs(x - endX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'end'
     }
+    if (mode === 'fadeIn' || mode === 'fadeInShape') onFades({ fadeFocus: 'in' })
+    else if (mode === 'fadeOut' || mode === 'fadeOutShape') onFades({ fadeFocus: 'out' })
     if (mode === 'playhead') engine.seekSeconds(t, 'sample')
     drag.current = {
       mode,
@@ -468,14 +487,24 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     else if (mode === 'fadeIn') {
       onFades({
         fadeIn: fadeLengthFromDiamondTime('in', start, end, next),
+        fadeFocus: 'in',
+      })
+    } else if (mode === 'fadeOut') {
+      onFades({
+        fadeOut: fadeLengthFromDiamondTime('out', start, end, next),
+        fadeFocus: 'out',
+      })
+    } else if (mode === 'fadeInShape') {
+      onFades({
+        fadeFocus: 'in',
         fadeInBend: fadeBendFromMidGain(
           1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / Math.max(1, rect.height))),
           fadeCurve,
         ),
       })
-    } else if (mode === 'fadeOut') {
+    } else if (mode === 'fadeOutShape') {
       onFades({
-        fadeOut: fadeLengthFromDiamondTime('out', start, end, next),
+        fadeFocus: 'out',
         fadeOutBend: fadeBendFromMidGain(
           1 - Math.min(1, Math.max(0, (event.clientY - rect.top) / Math.max(1, rect.height))),
           fadeCurve,
@@ -510,7 +539,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         }
         onRegionCommit()
       }
-      if (mode === 'fadeIn' || mode === 'fadeOut') onFadesCommit?.()
+      if (
+        mode === 'fadeIn' ||
+        mode === 'fadeOut' ||
+        mode === 'fadeInShape' ||
+        mode === 'fadeOutShape'
+      ) {
+        onFadesCommit?.()
+      }
     }
   }
 
@@ -535,6 +571,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     })
     const left = Math.min(100, Math.max(0, pct(layout.time)))
     return { left: `${left}%` }
+  }
+
+  const fadeShapeStyle = (side: 'in' | 'out') => {
+    const layout = fadeShapeHandleLayout({ side, start, end, fadeIn, fadeOut })
+    if (!layout) return null
+    const bend = side === 'in' ? fadeInBend : fadeOutBend
+    const gain = fadeGain(layout.progress, fadeCurve, bend)
+    return {
+      left: `${Math.min(100, Math.max(0, pct(layout.time)))}%`,
+      top: `${(1 - gain) * 100}%`,
+    }
   }
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
@@ -569,17 +616,37 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
                   <div
-                    className={styles.fadeHandle}
+                    className={`${styles.fadeHandle} ${fadeFocus === 'in' ? styles.fadeHandleOn : ''}`}
                     data-fade="in"
+                    data-fade-role="length"
                     style={fadeHandleStyle('in')}
                     aria-label="Fade in"
-                  />
+                  >
+                    <FadeArcIcon side="in" />
+                  </div>
                   <div
-                    className={styles.fadeHandle}
+                    className={`${styles.fadeHandle} ${fadeFocus === 'out' ? styles.fadeHandleOn : ''}`}
                     data-fade="out"
+                    data-fade-role="length"
                     style={fadeHandleStyle('out')}
                     aria-label="Fade out"
-                  />
+                  >
+                    <FadeArcIcon side="out" />
+                  </div>
+                  {(['in', 'out'] as const).map((side) => {
+                    const style = fadeShapeStyle(side)
+                    if (!style) return null
+                    return (
+                      <div
+                        key={side}
+                        className={`${styles.fadeShape} ${fadeFocus === side ? styles.fadeShapeOn : ''}`}
+                        data-fade={side}
+                        data-fade-role="shape"
+                        style={style}
+                        aria-label={side === 'in' ? 'Fade in shape' : 'Fade out shape'}
+                      />
+                    )
+                  })}
                   {!panning && startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"
@@ -685,3 +752,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     </div>
   )
 })
+
+function FadeArcIcon({ side }: { side: 'in' | 'out' }) {
+  const d = side === 'in' ? 'M2 11 Q5 11 10 3' : 'M2 3 Q7 3 10 11'
+  return (
+    <svg className={styles.fadeIcon} viewBox="0 0 12 12" aria-hidden="true">
+      <path d={d} fill="none" stroke="var(--bg-app)" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  )
+}

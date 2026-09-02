@@ -56,6 +56,25 @@ export function clampFadeBend(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
+const FADE_Q_MIN = 0.25
+const FADE_Q_MAX = 4
+const FADE_Q_SPAN = Math.log(FADE_Q_MAX / FADE_Q_MIN)
+
+/** Q 0.25…4, default 1 at bend 0.5 — tighter Q pulls the fade knee sooner. */
+export function fadeQFromBend(bend: number): number {
+  const n = Math.min(1, Math.max(0, bend))
+  return FADE_Q_MIN * (FADE_Q_MAX / FADE_Q_MIN) ** n
+}
+
+export function fadeBendFromQ(q: number): number {
+  const clamped = Math.min(FADE_Q_MAX, Math.max(FADE_Q_MIN, q))
+  return Math.log(clamped / FADE_Q_MIN) / FADE_Q_SPAN
+}
+
+export function fadeQNormalized(q: number): number {
+  return fadeBendFromQ(q)
+}
+
 /** Gain at `rel` seconds into a region of length `span`. */
 export function regionFadeGain(
   rel: number,

@@ -419,6 +419,7 @@ export default function App() {
               fadeCurve={edit.fadeCurve}
               fadeInBend={edit.fadeInBend}
               fadeOutBend={edit.fadeOutBend}
+              fadeFocus={edit.fadeFocus}
               autoSnap={edit.autoSnap}
               normalizeView={normalizeView}
               onNormalizeView={setNormalizeView}

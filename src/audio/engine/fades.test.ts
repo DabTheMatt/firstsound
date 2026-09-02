@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   applyFades,
   fadeBendFromMidGain,
+  fadeBendFromQ,
   fadeGain,
+  fadeQFromBend,
   pingPongFadeCurve,
   pingPongFadeCurveFrom,
   pingPongRegionRel,
@@ -29,6 +31,14 @@ describe('fadeGain', () => {
   it('lets extreme bends reach most of the amplitude range', () => {
     expect(fadeGain(0.5, 'linear', 1)).toBeGreaterThan(0.8)
     expect(fadeGain(0.5, 'linear', 0)).toBeLessThan(0.2)
+  })
+
+  it('maps bend 0.5 to Q 1 and inverts Q back to bend', () => {
+    expect(fadeQFromBend(0.5)).toBeCloseTo(1)
+    expect(fadeQFromBend(0)).toBeCloseTo(0.25)
+    expect(fadeQFromBend(1)).toBeCloseTo(4)
+    expect(fadeBendFromQ(1)).toBeCloseTo(0.5)
+    expect(fadeBendFromQ(fadeQFromBend(0.72))).toBeCloseTo(0.72, 5)
   })
 
   it('inverts midpoint gain back to a matching bend', () => {

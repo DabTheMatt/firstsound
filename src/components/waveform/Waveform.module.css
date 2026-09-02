@@ -125,15 +125,52 @@
 
 .fadeHandle {
   position: absolute;
-  top: 13px;
-  width: 13px;
-  height: 13px;
-  transform: translateX(-50%) rotate(45deg);
-  background: var(--envelope);
+  top: 20px;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%);
+  background: transparent;
   pointer-events: auto;
   z-index: 7;
-  cursor: move;
+  cursor: ew-resize;
+}
+
+.fadeHandle::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  transform: rotate(45deg);
+  background: var(--envelope);
   box-shadow: 0 0 0 1.5px var(--bg-app);
+}
+
+.fadeHandleOn::before {
+  box-shadow: 0 0 0 1.5px var(--bg-app), 0 0 0 3px var(--accent-primary);
+}
+
+.fadeIcon {
+  position: absolute;
+  inset: 2px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+
+.fadeShape {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--envelope);
+  border: 1.5px solid var(--bg-app);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  z-index: 5;
+  cursor: ns-resize;
+}
+
+.fadeShapeOn {
+  box-shadow: 0 0 0 2px var(--accent-primary);
 }
 
 .handle {

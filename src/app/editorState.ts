@@ -9,12 +9,15 @@ export type InspectorFocus =
   | { kind: 'module'; instanceId: string; type: ModuleType }
   | { kind: 'tool'; tool: WaveTool }
 
+export type FadeFocus = 'in' | 'out'
+
 export type EditState = {
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
   fadeInBend: number
   fadeOutBend: number
+  fadeFocus: FadeFocus
   autoSnap: boolean
   fadeAuto: boolean
   normalizeOnUse: boolean
@@ -26,6 +29,7 @@ export const DEFAULT_EDIT: EditState = {
   fadeCurve: 'equalPower',
   fadeInBend: 0.5,
   fadeOutBend: 0.5,
+  fadeFocus: 'in',
   autoSnap: true,
   fadeAuto: true,
   normalizeOnUse: false,
