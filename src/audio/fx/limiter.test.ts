@@ -4,8 +4,11 @@ import {
   amplitudeToDb,
   autoMakeupDb,
   compressorGainDb,
+  crushSample,
+  downsampleScope,
   limiterOutputDb,
   limiterSettings,
+  peakAmplitude,
 } from './limiter'
 
 describe('autoMakeupDb', () => {
@@ -75,5 +78,35 @@ describe('limiterOutputDb', () => {
   it('converts amplitude to dB', () => {
     expect(amplitudeToDb(1)).toBeCloseTo(0)
     expect(amplitudeToDb(0.5)).toBeCloseTo(-6.02, 1)
+  })
+})
+
+describe('downsampleScope', () => {
+  it('keeps the signed peak of each bucket', () => {
+    const samples = new Float32Array([0.1, -0.9, 0.2, 0.4, -0.3, 0.05])
+    const out = new Float32Array(2)
+    downsampleScope(samples, 2, out)
+    expect(Math.abs(out[0] ?? 0)).toBeGreaterThan(0.8)
+    expect(Math.abs(out[1] ?? 0)).toBeGreaterThan(0.3)
+  })
+})
+
+describe('crushSample', () => {
+  it('passes through below threshold and flattens above it', () => {
+    expect(crushSample(0.1, 0.3, 12)).toBeCloseTo(0.1)
+    expect(Math.abs(crushSample(0.9, 0.3, 20))).toBeLessThan(0.4)
+    expect(Math.abs(crushSample(-0.9, 0.3, 20))).toBeLessThan(0.4)
+  })
+
+  it('flattens a hot sine so peaks sit near the threshold', () => {
+    const n = 48
+    const hot = new Float32Array(n)
+    const crushed = new Float32Array(n)
+    const thresh = 0.2
+    for (let i = 0; i < n; i++) hot[i] = 0.95 * Math.sin((i / n) * Math.PI * 4)
+    for (let i = 0; i < n; i++) crushed[i] = crushSample(hot[i]!, thresh, 20)
+    expect(peakAmplitude(hot)).toBeGreaterThan(thresh * 2)
+    expect(peakAmplitude(crushed)).toBeLessThan(thresh * 1.2)
+    expect(peakAmplitude(crushed)).toBeGreaterThan(thresh * 0.9)
   })
 })

@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { fallHoldDb } from '../../app/editorState'
 import {
-  amplitudeToDb,
-  LIMITER_PLOT_MAX_DB,
-  LIMITER_PLOT_MIN_DB,
-  limiterOutputDb,
+  crushSample,
+  dbToAmplitude,
+  downsampleScope,
+  LIMITER_SCOPE_POINTS,
   limiterSettings,
   peakAmplitude,
 } from '../../audio/fx/limiter'
@@ -12,7 +11,7 @@ import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors } from '../../theme'
 import styles from './EqCurve.module.css'
 
-const GR_MAX = 24
+const LIVE_FLOOR = 0.02
 
 export function LimiterPlot() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -21,20 +20,10 @@ export function LimiterPlot() {
     const canvas = canvasRef.current
     if (!canvas) return
     let frame = 0
-    let last = performance.now()
-    let holdIn = Number.NEGATIVE_INFINITY
-    let holdOut = Number.NEGATIVE_INFINITY
-    let holdGr = 0
+    const scopeIn = new Float32Array(LIMITER_SCOPE_POINTS)
+    const scopeOut = new Float32Array(LIMITER_SCOPE_POINTS)
 
-    const readPeakDb = (tap: 'limiterPre' | 'limiterPost'): number => {
-      const analyser = engine.getAnalyser(tap)
-      if (!analyser) return Number.NEGATIVE_INFINITY
-      const buf = new Float32Array(analyser.fftSize)
-      analyser.getFloatTimeDomainData(buf)
-      return amplitudeToDb(peakAmplitude(buf))
-    }
-
-    const draw = (now: number) => {
+    const draw = () => {
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
@@ -50,110 +39,93 @@ export function LimiterPlot() {
         frame = requestAnimationFrame(draw)
         return
       }
-      const dt = Math.min(0.08, Math.max(0, (now - last) / 1000))
-      last = now
+
       const snap = engine.getSnapshot()
       const settings = limiterSettings(snap.params)
-      holdIn = fallHoldDb(holdIn, readPeakDb('limiterPre'), dt, 18)
-      holdOut = fallHoldDb(holdOut, readPeakDb('limiterPost'), dt, 18)
-      holdGr = fallHoldDb(holdGr, Math.max(0, -engine.getLimiterReduction()), dt, 24)
+      const thresh = Math.min(0.98, dbToAmplitude(settings.threshold))
+      const live = readLiveInput()
+      if (peakAmplitude(live) >= LIVE_FLOOR) {
+        downsampleScope(live, LIMITER_SCOPE_POINTS, scopeIn)
+      } else {
+        fillPreviewSine(scopeIn, 0.9)
+      }
+
+      const limiterOn = snap.chain.some((m) => m.type === 'limiter' && !m.bypassed)
+      for (let i = 0; i < scopeIn.length; i++) {
+        const x = scopeIn[i] ?? 0
+        scopeOut[i] = limiterOn ? crushSample(x, thresh, settings.ratio) : x
+      }
+
+      const inPeak = Math.max(peakAmplitude(scopeIn), thresh * 1.15, 0.12)
+      const scale = 1 / inPeak
+      const gr = limiterOn ? Math.max(0, -engine.getLimiterReduction()) : 0
 
       const colors = readThemeColors()
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
 
-      const padL = 22 * dpr
-      const padR = 16 * dpr
+      const padX = 8 * dpr
       const padT = 16 * dpr
-      const padB = 14 * dpr
-      const grW = 8 * dpr
-      const plotW = Math.max(8, width - padL - padR - grW - 6 * dpr)
+      const padB = 8 * dpr
+      const plotW = Math.max(8, width - padX * 2)
       const plotH = Math.max(8, height - padT - padB)
-      const left = padL
-      const top = padT
-      const grX = left + plotW + 5 * dpr
-
-      const xOf = (db: number) => left + dbToT(db) * plotW
-      const yOf = (db: number) => top + (1 - dbToT(db)) * plotH
+      const left = padX
+      const mid = padT + plotH / 2
+      const amp = (plotH / 2) * 0.92 * scale
 
       ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.45)
       ctx.lineWidth = Math.max(1, dpr * 0.6)
-      for (const db of [0, -6, -12, -24, -36]) {
-        ctx.beginPath()
-        ctx.moveTo(xOf(db), top)
-        ctx.lineTo(xOf(db), top + plotH)
-        ctx.moveTo(left, yOf(db))
-        ctx.lineTo(left + plotW, yOf(db))
-        ctx.stroke()
-      }
-
-      ctx.strokeStyle = colorWithAlpha(colors.textMuted, 0.45)
-      ctx.setLineDash([3 * dpr, 3 * dpr])
       ctx.beginPath()
-      ctx.moveTo(xOf(LIMITER_PLOT_MIN_DB), yOf(LIMITER_PLOT_MIN_DB))
-      ctx.lineTo(xOf(LIMITER_PLOT_MAX_DB), yOf(LIMITER_PLOT_MAX_DB))
+      ctx.moveTo(left, mid)
+      ctx.lineTo(left + plotW, mid)
       ctx.stroke()
 
-      ctx.strokeStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.55)
+      const yTh = thresh * amp
+      ctx.strokeStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.75)
+      ctx.setLineDash([5 * dpr, 4 * dpr])
       ctx.beginPath()
-      ctx.moveTo(xOf(settings.threshold), top)
-      ctx.lineTo(xOf(settings.threshold), top + plotH)
-      ctx.moveTo(left, yOf(settings.ceiling))
-      ctx.lineTo(left + plotW, yOf(settings.ceiling))
+      ctx.moveTo(left, mid - yTh)
+      ctx.lineTo(left + plotW, mid - yTh)
+      ctx.moveTo(left, mid + yTh)
+      ctx.lineTo(left + plotW, mid + yTh)
       ctx.stroke()
       ctx.setLineDash([])
 
-      ctx.strokeStyle = colors.eqCurve || colors.accent
-      ctx.lineWidth = Math.max(1.6, dpr * 1.4)
-      ctx.beginPath()
-      const steps = Math.max(32, Math.floor(plotW))
-      for (let i = 0; i <= steps; i++) {
-        const db =
-          LIMITER_PLOT_MIN_DB + (i / steps) * (LIMITER_PLOT_MAX_DB - LIMITER_PLOT_MIN_DB)
-        const x = xOf(db)
-        const y = yOf(limiterOutputDb(db, settings))
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      }
-      ctx.stroke()
-
-      if (Number.isFinite(holdIn)) {
-        const inX = xOf(holdIn)
-        const outY = yOf(Number.isFinite(holdOut) ? holdOut : limiterOutputDb(holdIn, settings))
-        ctx.strokeStyle = colorWithAlpha(colors.waveform || colors.textMuted, 0.55)
-        ctx.lineWidth = Math.max(1, dpr * 0.7)
-        ctx.beginPath()
-        ctx.moveTo(inX, top)
-        ctx.lineTo(inX, top + plotH)
-        ctx.moveTo(left, outY)
-        ctx.lineTo(left + plotW, outY)
-        ctx.stroke()
-        ctx.fillStyle = colors.eqCurve || colors.accent
-        ctx.beginPath()
-        ctx.arc(inX, outY, 3.4 * dpr, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      ctx.fillStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.35)
-      ctx.fillRect(grX, top, grW, plotH)
-      const grT = Math.min(1, Math.max(0, holdGr / GR_MAX))
-      const grH = plotH * grT
-      ctx.fillStyle = colors.eqCurve || colors.accent
-      ctx.fillRect(grX, top + plotH - grH, grW, grH)
+      drawWave(
+        ctx,
+        scopeIn,
+        left,
+        plotW,
+        mid,
+        amp,
+        colorWithAlpha(colors.waveform || colors.textMuted, 0.5),
+        Math.max(1.2, dpr),
+      )
+      drawWave(
+        ctx,
+        scopeOut,
+        left,
+        plotW,
+        mid,
+        amp,
+        colors.eqCurve || colors.accent,
+        Math.max(1.8, dpr * 1.4),
+      )
 
       ctx.font = `${Math.round(9 * dpr)}px ui-sans-serif, system-ui, sans-serif`
       ctx.textBaseline = 'top'
       ctx.fillStyle = colors.textMuted
       ctx.textAlign = 'left'
-      ctx.fillText('In →', left, 3 * dpr)
-      ctx.textAlign = 'right'
+      ctx.fillText('In', left, 3 * dpr)
       ctx.fillStyle = colors.eqCurve || colors.accent
-      ctx.fillText(`${(-engine.getLimiterReduction()).toFixed(1)} dB GR`, width - 4 * dpr, 3 * dpr)
+      ctx.fillText('Out', left + 22 * dpr, 3 * dpr)
+      ctx.textAlign = 'right'
       ctx.fillStyle = colors.textMuted
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText('Out ↑', left, height - 2 * dpr)
+      ctx.fillText(`${gr.toFixed(1)} dB GR`, width - padX, 3 * dpr)
+      ctx.fillStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.85)
+      ctx.font = `${Math.round(8 * dpr)}px ui-sans-serif, system-ui, sans-serif`
+      ctx.fillText(`${settings.threshold.toFixed(0)} dB`, width - padX, padT + 2 * dpr)
 
       frame = requestAnimationFrame(draw)
     }
@@ -166,13 +138,54 @@ export function LimiterPlot() {
       <canvas
         ref={canvasRef}
         className={styles.canvas}
-        aria-label="Limiter input-output curve and gain reduction"
+        aria-label="Limiter waveform crushed at threshold"
       />
     </div>
   )
 }
 
-function dbToT(db: number): number {
-  const v = Math.min(LIMITER_PLOT_MAX_DB, Math.max(LIMITER_PLOT_MIN_DB, db))
-  return (v - LIMITER_PLOT_MIN_DB) / (LIMITER_PLOT_MAX_DB - LIMITER_PLOT_MIN_DB)
+function readLiveInput(): Float32Array {
+  const taps = ['limiterPre', 'pre', 'eq', 'post'] as const
+  for (const tap of taps) {
+    const analyser = engine.getAnalyser(tap)
+    if (!analyser) continue
+    const buf = new Float32Array(analyser.fftSize)
+    analyser.getFloatTimeDomainData(buf)
+    if (peakAmplitude(buf) >= LIVE_FLOOR) return buf
+  }
+  return new Float32Array(0)
+}
+
+/** Two coarse cycles so crushed tops stay obvious without a busy scope. */
+function fillPreviewSine(out: Float32Array, amp: number): void {
+  const n = out.length
+  for (let i = 0; i < n; i++) {
+    out[i] = amp * Math.sin((i / Math.max(1, n)) * Math.PI * 4)
+  }
+}
+
+function drawWave(
+  ctx: CanvasRenderingContext2D,
+  samples: Float32Array,
+  left: number,
+  plotW: number,
+  mid: number,
+  amp: number,
+  color: string,
+  lineWidth: number,
+): void {
+  const n = samples.length
+  if (n < 2) return
+  ctx.strokeStyle = color
+  ctx.lineWidth = Math.max(1, lineWidth)
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (let i = 0; i < n; i++) {
+    const x = left + (i / (n - 1)) * plotW
+    const y = mid - (samples[i] ?? 0) * amp
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.stroke()
 }

@@ -1,0 +1,30 @@
+.wrap {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  border-radius: 10px;
+  position: relative;
+}
+
+.pickable {
+  outline: 1px dashed var(--accent-primary);
+  outline-offset: 2px;
+  background: var(--accent-soft);
+  cursor: crosshair;
+}
+
+.mapped {
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.mapped::after {
+  content: 'LFO';
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--accent-primary);
+  pointer-events: none;
+}

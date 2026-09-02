@@ -100,6 +100,25 @@
   background: var(--bg-control-hover);
 }
 
+.remove {
+  flex: none;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.remove:hover {
+  border-color: var(--border-default);
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
 .fine span {
   text-align: center;
   color: var(--text-muted);
@@ -278,4 +297,12 @@
 
 .paneTab:hover {
   color: var(--text-secondary);
+}
+
+.lfo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }

@@ -32,7 +32,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
 }
 
 /** Modules that can be inserted between Input and Output. */
-export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb']
+export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb', 'limiter']
 
 export const MAX_CHAIN_MIDDLE = 12
 
@@ -96,10 +96,6 @@ export function normalizeChain(chain: readonly ChainModule[]): ChainModule[] {
   const gain = chain.find((m) => m.type === 'gain') ?? defaults[0]!
   const output = chain.find((m) => m.type === 'output') ?? defaults.at(-1)!
   const middle = chain.filter((m) => m.type !== 'gain' && m.type !== 'output')
-  if (!middle.some((m) => m.type === 'limiter')) {
-    const limiter = defaults.find((m) => m.type === 'limiter')!
-    middle.push({ ...limiter })
-  }
   return [{ ...gain, bypassed: false }, ...middle, { ...output, bypassed: false }]
 }
 

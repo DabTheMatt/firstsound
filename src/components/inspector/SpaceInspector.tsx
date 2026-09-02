@@ -21,6 +21,7 @@ import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
+import { FxLfoSection } from './FxLfoSection'
 import styles from './Inspector.module.css'
 
 type Props = {
@@ -102,6 +103,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         {params(['bpm'])}
       </details>
       {params(kind === 'delay' ? DELAY_ADV : REVERB_ADV)}
+      <FxLfoSection snap={snap} kind={kind} variant={variant} />
     </>
   ) : (
     <>
@@ -212,6 +214,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
           />
         </label>
       )}
+      <FxLfoSection snap={snap} kind={kind} variant={variant} />
     </>
   )
 }
