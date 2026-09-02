@@ -155,6 +155,8 @@ export type EngineSnapshot = {
   audioStatus: AudioStatus
   scrubMode: ScrubMode
   params: Record<ParamId, number>
+  /** Parameter values after LFO; same as `params` when no LFO is running. */
+  liveParams: Record<ParamId, number>
   chain: ChainModule[]
   eqBands: EqBand[]
   eqById: Record<string, { bands: EqBand[]; comb: CombFilterState }>
@@ -678,6 +680,7 @@ export class AudioEngine {
     this.syncLfoClock()
     this.applyLiveAudio(0.01)
     this.emit()
+    if (anyFxLfoActive(this.fxLfos)) void this.ensureContext()
   }
 
   setFxLfoTarget(kind: FxLfoKind, target: ParamId | null): void {
@@ -1998,17 +2001,21 @@ export class AudioEngine {
     }
   }
 
+  private lfoTime(): number {
+    return typeof performance !== 'undefined' ? performance.now() / 1000 : 0
+  }
+
   private liveParams(): Record<ParamId, number> {
     if (!anyFxLfoActive(this.fxLfos)) return this.params
-    const t = this.ctx?.currentTime ?? 0
-    return applyFxLfos(this.params, this.fxLfos, t, this.lfoHold)
+    return applyFxLfos(this.params, this.fxLfos, this.lfoTime(), this.lfoHold)
   }
 
   private syncLfoClock(): void {
     const active = anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
-        this.applyLiveAudio(0.01)
+        this.applyLiveAudio(0.008)
+        this.emit()
       }, 32)
     }
     if (!active && this.lfoTimer) {
@@ -2369,6 +2376,7 @@ export class AudioEngine {
       audioStatus: this.audioStatus,
       scrubMode: this.scrubMode,
       params: { ...this.params },
+      liveParams: { ...this.liveParams() },
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
       eqById: this.snapshotEqById(),

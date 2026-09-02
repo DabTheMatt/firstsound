@@ -8,11 +8,14 @@ import styles from './ParamSlider.module.css'
 type Props = {
   id: ParamId
   value: number
+  liveValue?: number
 }
 
-export function ParamSlider({ id, value }: Props) {
+export function ParamSlider({ id, value, liveValue }: Props) {
   const def = PARAMS[id]
   const n = toNormalized(value, def)
+  const shown = toNormalized(liveValue ?? value, def)
+  const shownValue = liveValue ?? value
   const trackRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function ParamSlider({ id, value }: Props) {
     <div className={styles.row}>
       <div className={styles.meta}>
         <span className={styles.label}>{def.label}</span>
-        <span className={styles.value}>{formatParamValue(value, def)}</span>
+        <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
       </div>
       <div
         ref={trackRef}
@@ -73,12 +76,12 @@ export function ParamSlider({ id, value }: Props) {
         aria-label={def.label}
         aria-valuemin={def.min}
         aria-valuemax={def.max}
-        aria-valuenow={Number(value.toFixed(3))}
-        aria-valuetext={formatParamValue(value, def)}
+        aria-valuenow={Number(shownValue.toFixed(3))}
+        aria-valuetext={formatParamValue(shownValue, def)}
         onPointerDown={onPointerDown}
         onDoubleClick={() => engine.resetParam(id)}
       >
-        <span className={styles.fill} style={{ width: `${n * 100}%` }} />
+        <span className={styles.fill} style={{ width: `${shown * 100}%` }} />
       </div>
     </div>
   )
