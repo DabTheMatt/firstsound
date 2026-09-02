@@ -143,4 +143,5 @@ export type PresetV1 = {
   delayType?: DelayType
   reverbType?: ReverbType
   comb?: CombFilterState
+  fxLfos?: unknown
 }

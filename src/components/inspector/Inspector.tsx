@@ -28,6 +28,8 @@ import { EqCurve } from './EqCurve'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
+import { FxLfoConnectProvider } from './FxLfoConnect'
+import { FxLfoSection } from './FxLfoSection'
 import styles from './Inspector.module.css'
 
 type Props = {
@@ -70,6 +72,7 @@ export function Inspector({
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
+    <FxLfoConnectProvider>
     <div className={`${styles.panel} ${sheet ? styles.sheet : ''}`}>
       {focus.kind === 'tool' ? (
         <ToolInspector
@@ -92,6 +95,7 @@ export function Inspector({
         />
       )}
     </div>
+    </FxLfoConnectProvider>
   )
 }
 
@@ -422,7 +426,12 @@ function ModuleInspector({
       {type === 'eq' ? (
         <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
       ) : null}
-      {type === 'saturation' ? params(SAT_IDS) : null}
+      {type === 'saturation' ? (
+        <>
+          {params(SAT_IDS)}
+          <FxLfoSection snap={snap} kind="saturation" variant={variant} />
+        </>
+      ) : null}
       {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} pane={pane} /> : null}
       {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} pane={pane} /> : null}
       {type === 'limiter' ? <LimiterEditor snap={snap} variant={variant} pane={pane} /> : null}
@@ -463,6 +472,7 @@ function LimiterEditor({
             <LimiterPlot />
           </div>
           {params(LIMITER_MAIN_KNOBS)}
+          <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
       ) : (
         <>
@@ -474,6 +484,7 @@ function LimiterEditor({
             }
           />
           {params(LIMITER_ADV_KNOBS)}
+          <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
       )}
     </div>

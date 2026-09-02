@@ -279,3 +279,11 @@
 .paneTab:hover {
   color: var(--text-secondary);
 }
+
+.lfo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
