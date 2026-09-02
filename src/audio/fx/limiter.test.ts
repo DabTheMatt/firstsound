@@ -4,9 +4,11 @@ import {
   amplitudeToDb,
   autoMakeupDb,
   compressorGainDb,
+  crushSample,
   downsampleScope,
   limiterOutputDb,
   limiterSettings,
+  peakAmplitude,
 } from './limiter'
 
 describe('autoMakeupDb', () => {
@@ -86,5 +88,25 @@ describe('downsampleScope', () => {
     downsampleScope(samples, 2, out)
     expect(Math.abs(out[0] ?? 0)).toBeGreaterThan(0.8)
     expect(Math.abs(out[1] ?? 0)).toBeGreaterThan(0.3)
+  })
+})
+
+describe('crushSample', () => {
+  it('passes through below threshold and flattens above it', () => {
+    expect(crushSample(0.1, 0.3, 12)).toBeCloseTo(0.1)
+    expect(Math.abs(crushSample(0.9, 0.3, 20))).toBeLessThan(0.4)
+    expect(Math.abs(crushSample(-0.9, 0.3, 20))).toBeLessThan(0.4)
+  })
+
+  it('flattens a hot sine so peaks sit near the threshold', () => {
+    const n = 48
+    const hot = new Float32Array(n)
+    const crushed = new Float32Array(n)
+    const thresh = 0.2
+    for (let i = 0; i < n; i++) hot[i] = 0.95 * Math.sin((i / n) * Math.PI * 4)
+    for (let i = 0; i < n; i++) crushed[i] = crushSample(hot[i]!, thresh, 20)
+    expect(peakAmplitude(hot)).toBeGreaterThan(thresh * 2)
+    expect(peakAmplitude(crushed)).toBeLessThan(thresh * 1.2)
+    expect(peakAmplitude(crushed)).toBeGreaterThan(thresh * 0.9)
   })
 })

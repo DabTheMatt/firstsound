@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react'
 import {
+  crushSample,
   dbToAmplitude,
   downsampleScope,
   LIMITER_SCOPE_POINTS,
   limiterSettings,
+  peakAmplitude,
 } from '../../audio/fx/limiter'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors } from '../../theme'
 import styles from './EqCurve.module.css'
+
+const LIVE_FLOOR = 0.02
 
 export function LimiterPlot() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -18,17 +22,6 @@ export function LimiterPlot() {
     let frame = 0
     const scopeIn = new Float32Array(LIMITER_SCOPE_POINTS)
     const scopeOut = new Float32Array(LIMITER_SCOPE_POINTS)
-
-    const readScope = (tap: 'limiterPre' | 'limiterPost', dest: Float32Array) => {
-      const analyser = engine.getAnalyser(tap)
-      if (!analyser) {
-        dest.fill(0)
-        return
-      }
-      const buf = new Float32Array(analyser.fftSize)
-      analyser.getFloatTimeDomainData(buf)
-      downsampleScope(buf, dest.length, dest)
-    }
 
     const draw = () => {
       const canvas = canvasRef.current
@@ -46,11 +39,26 @@ export function LimiterPlot() {
         frame = requestAnimationFrame(draw)
         return
       }
-      readScope('limiterPre', scopeIn)
-      readScope('limiterPost', scopeOut)
-      const settings = limiterSettings(engine.getSnapshot().params)
+
+      const snap = engine.getSnapshot()
+      const settings = limiterSettings(snap.params)
       const thresh = Math.min(0.98, dbToAmplitude(settings.threshold))
-      const gr = engine.getLimiterReduction()
+      const live = readLiveInput()
+      if (peakAmplitude(live) >= LIVE_FLOOR) {
+        downsampleScope(live, LIMITER_SCOPE_POINTS, scopeIn)
+      } else {
+        fillPreviewSine(scopeIn, 0.9)
+      }
+
+      const limiterOn = snap.chain.some((m) => m.type === 'limiter' && !m.bypassed)
+      for (let i = 0; i < scopeIn.length; i++) {
+        const x = scopeIn[i] ?? 0
+        scopeOut[i] = limiterOn ? crushSample(x, thresh, settings.ratio) : x
+      }
+
+      const inPeak = Math.max(peakAmplitude(scopeIn), thresh * 1.15, 0.12)
+      const scale = 1 / inPeak
+      const gr = limiterOn ? Math.max(0, -engine.getLimiterReduction()) : 0
 
       const colors = readThemeColors()
       ctx.clearRect(0, 0, width, height)
@@ -64,9 +72,9 @@ export function LimiterPlot() {
       const plotH = Math.max(8, height - padT - padB)
       const left = padX
       const mid = padT + plotH / 2
-      const amp = (plotH / 2) * 0.92
+      const amp = (plotH / 2) * 0.92 * scale
 
-      ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.55)
+      ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.45)
       ctx.lineWidth = Math.max(1, dpr * 0.6)
       ctx.beginPath()
       ctx.moveTo(left, mid)
@@ -74,8 +82,8 @@ export function LimiterPlot() {
       ctx.stroke()
 
       const yTh = thresh * amp
-      ctx.strokeStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.7)
-      ctx.setLineDash([4 * dpr, 3 * dpr])
+      ctx.strokeStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.75)
+      ctx.setLineDash([5 * dpr, 4 * dpr])
       ctx.beginPath()
       ctx.moveTo(left, mid - yTh)
       ctx.lineTo(left + plotW, mid - yTh)
@@ -84,8 +92,26 @@ export function LimiterPlot() {
       ctx.stroke()
       ctx.setLineDash([])
 
-      drawWave(ctx, scopeIn, left, plotW, mid, amp, colorWithAlpha(colors.waveform || colors.textMuted, 0.55), dpr)
-      drawWave(ctx, scopeOut, left, plotW, mid, amp, colors.eqCurve || colors.accent, Math.max(1.6, dpr * 1.35))
+      drawWave(
+        ctx,
+        scopeIn,
+        left,
+        plotW,
+        mid,
+        amp,
+        colorWithAlpha(colors.waveform || colors.textMuted, 0.5),
+        Math.max(1.2, dpr),
+      )
+      drawWave(
+        ctx,
+        scopeOut,
+        left,
+        plotW,
+        mid,
+        amp,
+        colors.eqCurve || colors.accent,
+        Math.max(1.8, dpr * 1.4),
+      )
 
       ctx.font = `${Math.round(9 * dpr)}px ui-sans-serif, system-ui, sans-serif`
       ctx.textBaseline = 'top'
@@ -95,7 +121,8 @@ export function LimiterPlot() {
       ctx.fillStyle = colors.eqCurve || colors.accent
       ctx.fillText('Out', left + 22 * dpr, 3 * dpr)
       ctx.textAlign = 'right'
-      ctx.fillText(`${(-gr).toFixed(1)} dB GR`, width - padX, 3 * dpr)
+      ctx.fillStyle = colors.textMuted
+      ctx.fillText(`${gr.toFixed(1)} dB GR`, width - padX, 3 * dpr)
       ctx.fillStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.85)
       ctx.font = `${Math.round(8 * dpr)}px ui-sans-serif, system-ui, sans-serif`
       ctx.fillText(`${settings.threshold.toFixed(0)} dB`, width - padX, padT + 2 * dpr)
@@ -115,6 +142,26 @@ export function LimiterPlot() {
       />
     </div>
   )
+}
+
+function readLiveInput(): Float32Array {
+  const taps = ['limiterPre', 'pre', 'eq', 'post'] as const
+  for (const tap of taps) {
+    const analyser = engine.getAnalyser(tap)
+    if (!analyser) continue
+    const buf = new Float32Array(analyser.fftSize)
+    analyser.getFloatTimeDomainData(buf)
+    if (peakAmplitude(buf) >= LIVE_FLOOR) return buf
+  }
+  return new Float32Array(0)
+}
+
+/** Two coarse cycles so crushed tops stay obvious without a busy scope. */
+function fillPreviewSine(out: Float32Array, amp: number): void {
+  const n = out.length
+  for (let i = 0; i < n; i++) {
+    out[i] = amp * Math.sin((i / Math.max(1, n)) * Math.PI * 4)
+  }
 }
 
 function drawWave(

@@ -1723,7 +1723,13 @@ export class AudioEngine {
     }
     if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
     const limSlot = ordered.find((s) => s.type === 'limiter')
-    if (limSlot && this.analyserLimiterPre) limSlot.input.connect(this.analyserLimiterPre)
+    if (limSlot && this.analyserLimiterPre) {
+      limSlot.input.connect(this.analyserLimiterPre)
+      const silent = this.ctx.createGain()
+      silent.gain.value = 0
+      this.analyserLimiterPre.connect(silent)
+      silent.connect(this.ctx.destination)
+    }
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
@@ -1759,6 +1765,11 @@ export class AudioEngine {
     }
     try {
       this.safetyGain?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.analyserLimiterPre?.disconnect()
     } catch {
       /* already disconnected */
     }

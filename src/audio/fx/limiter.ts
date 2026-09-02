@@ -137,10 +137,10 @@ export function limiterOutputDb(inputDb: number, s: LimiterSettings): number {
 }
 
 /** Display columns in the limiter inspector scope. Coarse enough to stay readable. */
-export const LIMITER_SCOPE_POINTS = 72
+export const LIMITER_SCOPE_POINTS = 48
 
 /** Analyser samples to fold into those columns (~2–3 cycles around mid-band). */
-export const LIMITER_SCOPE_WINDOW = 360
+export const LIMITER_SCOPE_WINDOW = 320
 
 /** Keep the signed peak of each bucket so flattened tops stay visible. */
 export function downsampleScope(samples: Float32Array, points: number, out: Float32Array): void {
@@ -168,4 +168,13 @@ export function downsampleScope(samples: Float32Array, points: number, out: Floa
 export function dbToAmplitude(db: number): number {
   if (!Number.isFinite(db)) return 0
   return 10 ** (db / 20)
+}
+
+/** Soft-flatten samples that exceed the threshold, for the inspector scope. */
+export function crushSample(x: number, thresholdAmp: number, ratio: number): number {
+  const t = Math.max(1e-6, thresholdAmp)
+  const r = Math.max(1, ratio)
+  const a = Math.abs(x)
+  if (a <= t) return x
+  return Math.sign(x) * (t + (a - t) / r)
 }
