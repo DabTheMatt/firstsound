@@ -25,7 +25,7 @@ import {
   zoomToSelection,
   type View,
 } from './viewport'
-import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
+import { SPACE_HANDLE_TOP_PX, hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import { fadeDiamondLayout, fadeLengthFromDiamondTime, fadeShapeHandleLayout } from './handleLayout'
@@ -379,37 +379,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
     const hit = handlePx.current
-
-    if (fxMode && tool === 'select') {
-      const snap = engine.getSnapshot()
-      const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm)
-      const tail = reverbTail(snap.params, snap.reverbType, snap.params.bpm)
-      const spaceHit = hitSpaceOverlay(
-        x,
-        event.clientY - rect.top,
-        width,
-        rect.height,
-        viewRef.current.start,
-        viewRef.current.end,
-        start,
-        fxMode,
-        taps,
-        tail,
-      )
-      if (spaceHit) {
-        drag.current = {
-          mode: 'fx',
-          span: end - start,
-          originT: t,
-          originY: event.clientY - rect.top,
-          originX: event.clientX,
-          originView: { ...viewRef.current },
-          origin: { start, end },
-          fx: spaceHit,
-        }
-        return
-      }
-    }
+    const y = event.clientY - rect.top
 
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
@@ -423,9 +393,50 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
       else if (handleAttr?.dataset.edge === 'start') mode = 'start'
       else if (handleAttr?.dataset.edge === 'end') mode = 'end'
-      else if (Math.abs(x - startX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'start'
-      else if (Math.abs(x - endX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'end'
+      else if (Math.abs(x - startX) < hit && y < hit * 1.6) mode = 'start'
+      else if (Math.abs(x - endX) < hit && y < hit * 1.6) mode = 'end'
     }
+
+    const usingRegionHandle =
+      mode === 'fadeIn' ||
+      mode === 'fadeOut' ||
+      mode === 'fadeInShape' ||
+      mode === 'fadeOutShape' ||
+      mode === 'start' ||
+      mode === 'end'
+
+    if (!usingRegionHandle && fxMode && tool === 'select') {
+      const snap = engine.getSnapshot()
+      const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm)
+      const tail = reverbTail(snap.params, snap.reverbType, snap.params.bpm)
+      const spaceHit = hitSpaceOverlay(
+        x,
+        y,
+        width,
+        rect.height,
+        viewRef.current.start,
+        viewRef.current.end,
+        start,
+        fxMode,
+        taps,
+        tail,
+        { xs: [startX, endX], radius: hit, top: SPACE_HANDLE_TOP_PX },
+      )
+      if (spaceHit) {
+        drag.current = {
+          mode: 'fx',
+          span: end - start,
+          originT: t,
+          originY: y,
+          originX: event.clientX,
+          originView: { ...viewRef.current },
+          origin: { start, end },
+          fx: spaceHit,
+        }
+        return
+      }
+    }
+
     if (mode === 'fadeIn' || mode === 'fadeInShape') onFades({ fadeFocus: 'in' })
     else if (mode === 'fadeOut' || mode === 'fadeOutShape') onFades({ fadeFocus: 'out' })
     if (mode === 'playhead') engine.seekSeconds(t, 'sample')

@@ -10,6 +10,22 @@ export type SpaceHit =
   | { kind: 'reverbSize' }
   | { kind: 'reverbWidth' }
 
+/** Loop / fade handles keep this band and these X corridors. */
+export type SpaceHitReserve = {
+  xs?: number[]
+  radius?: number
+  top?: number
+}
+
+export const SPACE_HANDLE_TOP_PX = 42
+
+function reservedForHandles(x: number, y: number, reserve?: SpaceHitReserve): boolean {
+  if (!reserve) return false
+  if (reserve.top != null && y < reserve.top) return true
+  const radius = reserve.radius ?? 22
+  return (reserve.xs ?? []).some((rx) => Math.abs(x - rx) < radius)
+}
+
 export function hitSpaceOverlay(
   x: number,
   y: number,
@@ -21,7 +37,9 @@ export function hitSpaceOverlay(
   mode: 'delay' | 'reverb',
   taps: DelayTap[],
   tail: ReverbTail,
+  reserve?: SpaceHitReserve,
 ): SpaceHit | null {
+  if (reservedForHandles(x, y, reserve)) return null
   const span = Math.max(0.0001, viewEnd - viewStart)
   const timeX = (t: number) => ((regionStart + t - viewStart) / span) * width
   if (mode === 'delay') {
@@ -44,7 +62,8 @@ export function hitSpaceOverlay(
   const endX = timeX(tail.predelay + Math.min(span * 0.9, tail.duration))
   if (Math.abs(x - preX) < 16) return { kind: 'reverbPredelay' }
   if (Math.abs(x - endX) < 18) return { kind: 'reverbDecay' }
-  if (y < height * 0.22 || y > height * 0.78) return { kind: 'reverbWidth' }
+  // Width lives on the bottom band only — the top used to steal loop / fade diamonds.
+  if (y > height * 0.78) return { kind: 'reverbWidth' }
   if (x > preX && x < endX) return { kind: 'reverbSize' }
   return null
 }
