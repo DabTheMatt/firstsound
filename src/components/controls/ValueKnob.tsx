@@ -7,6 +7,9 @@ type Props = {
   label: string
   valueText: string
   normalized: number
+  /** When set, the needle and readout follow this value (LFO) while drag still uses `normalized`. */
+  visualNormalized?: number
+  visualValueText?: string
   onChange: (normalized: number) => void
   onReset?: () => void
   onGestureEnd?: () => void
@@ -23,6 +26,8 @@ export function ValueKnob({
   label,
   valueText,
   normalized,
+  visualNormalized,
+  visualValueText,
   onChange,
   onReset,
   onGestureEnd,
@@ -105,14 +110,18 @@ export function ValueKnob({
     target.addEventListener('lostpointercapture', up)
   }
 
+  const shown = visualNormalized ?? normalized
+  const shownText = visualValueText ?? valueText
   const r = 26
   const cx = 36
   const cy = 36
-  const tipDeg = knobAngleDeg(normalized)
+  const tipDeg = knobAngleDeg(shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
-  const valueArc = knobValueArc(normalized, bipolar)
+  const valueArc = knobValueArc(shown, bipolar)
   const fill = arcPath(cx, cy, r, valueArc.startDeg, valueArc.endDeg)
+  const baseTick =
+    visualNormalized != null ? polar(cx, cy, r - 2, knobAngleDeg(normalized)) : null
 
   return (
     <div className={styles.knob}>
@@ -121,11 +130,11 @@ export function ValueKnob({
         ref={dialRef}
         type="button"
         className={styles.dial}
-        aria-label={`${label} ${valueText}`}
+        aria-label={`${label} ${shownText}`}
         aria-valuemin={min}
         aria-valuemax={max}
-        aria-valuenow={now ?? Number(normalized.toFixed(3))}
-        aria-valuetext={valueText}
+        aria-valuenow={now ?? Number(shown.toFixed(3))}
+        aria-valuetext={shownText}
         onPointerDown={onPointerDown}
         onDoubleClick={() => onReset?.()}
       >
@@ -146,6 +155,9 @@ export function ValueKnob({
               strokeWidth="3"
               strokeLinecap="round"
             />
+          ) : null}
+          {baseTick ? (
+            <circle cx={baseTick.x} cy={baseTick.y} r="2" fill="var(--text-muted)" />
           ) : null}
           <line
             x1={cx}
@@ -183,12 +195,12 @@ export function ValueKnob({
           onDoubleClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            setDraft(valueText)
+            setDraft(shownText)
             setEditing(true)
           }}
           title="Double-click to type a value"
         >
-          {valueText}
+          {shownText}
         </p>
       )}
     </div>

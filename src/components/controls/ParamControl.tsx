@@ -19,6 +19,7 @@ export function ParamControl({ id, value, variant }: Props) {
   const kind = fxLfoKindForParam(id)
   const pickable = Boolean(armed && kind && armed === kind && isFxLfoTarget(kind, id))
   const mapped = Boolean(kind && snap.fxLfos[kind].target === id)
+  const live = mapped ? snap.liveParams[id] : value
   const onPickCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!pickable || !kind) return
     event.preventDefault()
@@ -41,7 +42,11 @@ export function ParamControl({ id, value, variant }: Props) {
       data-lfo-mapped={mapped ? 'true' : 'false'}
       onPointerDownCapture={onPickCapture}
     >
-      {variant === 'slider' ? <ParamSlider id={id} value={value} /> : <Knob id={id} value={value} />}
+      {variant === 'slider' ? (
+        <ParamSlider id={id} value={value} liveValue={mapped ? live : undefined} />
+      ) : (
+        <Knob id={id} value={value} liveValue={mapped ? live : undefined} />
+      )}
     </div>
   )
 }
