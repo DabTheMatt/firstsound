@@ -402,10 +402,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
     if (mode !== 'pan') {
-      if (handleAttr?.dataset.edge === 'start') mode = 'start'
-      else if (handleAttr?.dataset.edge === 'end') mode = 'end'
-      else if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
+      if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
       else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
+      else if (handleAttr?.dataset.edge === 'start') mode = 'start'
+      else if (handleAttr?.dataset.edge === 'end') mode = 'end'
       else if (Math.abs(x - startX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'start'
       else if (Math.abs(x - endX) < hit && event.clientY - rect.top < hit * 1.6) mode = 'end'
     }
@@ -532,10 +532,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       end,
       fadeIn,
       fadeOut,
-      curve: fadeCurve,
-      bend: side === 'in' ? fadeInBend : fadeOutBend,
     })
-    return { left: `${pct(layout.time)}%`, top: `${layout.y * 100}%` }
+    const left = Math.min(100, Math.max(0, pct(layout.time)))
+    return { left: `${left}%` }
   }
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
@@ -569,22 +568,18 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
-                  {startPct >= 0 && startPct <= 100 && fadeIn > 0.0008 ? (
-                    <div
-                      className={styles.fadeHandle}
-                      data-fade="in"
-                      style={fadeHandleStyle('in')}
-                      aria-label="Fade in"
-                    />
-                  ) : null}
-                  {endPct >= 0 && endPct <= 100 && fadeOut > 0.0008 ? (
-                    <div
-                      className={styles.fadeHandle}
-                      data-fade="out"
-                      style={fadeHandleStyle('out')}
-                      aria-label="Fade out"
-                    />
-                  ) : null}
+                  <div
+                    className={styles.fadeHandle}
+                    data-fade="in"
+                    style={fadeHandleStyle('in')}
+                    aria-label="Fade in"
+                  />
+                  <div
+                    className={styles.fadeHandle}
+                    data-fade="out"
+                    style={fadeHandleStyle('out')}
+                    aria-label="Fade out"
+                  />
                   {!panning && startPct >= 0 && startPct <= 100 ? (
                     <button
                       type="button"

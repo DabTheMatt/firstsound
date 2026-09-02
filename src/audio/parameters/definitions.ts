@@ -60,7 +60,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   channelGainL: {
     id: 'channelGainL',
-    label: 'Left',
+    label: 'Balance L',
     min: -24,
     max: 6,
     defaultValue: 0,
@@ -70,7 +70,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   channelGainR: {
     id: 'channelGainR',
-    label: 'Right',
+    label: 'Balance R',
     min: -24,
     max: 6,
     defaultValue: 0,

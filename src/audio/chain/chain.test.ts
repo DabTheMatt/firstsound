@@ -89,13 +89,13 @@ describe('insertChainModule', () => {
     expect(next.at(-1)?.type).toBe('output')
   })
 
-  it('refuses Input/Gain/Output and numbers extra labels', () => {
+  it('refuses Input/Output and numbers extra labels', () => {
     const chain = insertChainModule(defaultChain(), 'eq', 2)
     expect(insertChainModule(chain, 'gain', 0)).toEqual(chain)
     expect(nextInstanceId('eq', chain)).toBe('eq-3')
     const second = chain.find((m) => m.instanceId === 'eq-2')!
     expect(moduleLabel(second, chain)).toBe('EQ 2')
-    expect(moduleLabel(chain[0]!, chain)).toBe('Input/Gain')
+    expect(moduleLabel(chain[0]!, chain)).toBe('Input')
     expect(eqColorIndex(chain, 'eq-2')).toBe(1)
     expect(eqColorIndex(chain, 'eq-1')).toBe(0)
   })

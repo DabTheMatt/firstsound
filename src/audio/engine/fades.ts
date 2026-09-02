@@ -22,11 +22,13 @@ function shape(x: number, curve: FadeCurve): number {
 
 /**
  * bend < 0.5 slows the start, bend > 0.5 speeds it up. 0.5 keeps the named curve.
+ * Extreme bends lean almost fully on the power curve so the diamond can reshape
+ * the envelope across most of the amplitude range.
  */
 function mixBend(x: number, shaped: number, bend: number): number {
-  const power = bend < 0.5 ? 1 + (0.5 - bend) * 3 : 1 / (1 + (bend - 0.5) * 3)
+  const power = bend < 0.5 ? 1 + (0.5 - bend) * 8 : 1 / (1 + (bend - 0.5) * 8)
   const bent = x ** power
-  return shaped * 0.35 + bent * 0.65
+  return shaped * 0.08 + bent * 0.92
 }
 
 /** Gain at progress `t` in [0,1] for a fade-in. Fade-out is `gainAt(1 - t)`. */
@@ -125,6 +127,33 @@ export function pingPongFadeCurve(
   const out = new Float32Array(n)
   for (let i = 0; i < n; i++) {
     const t = (total * i) / (n - 1)
+    const rel = pingPongRegionRel(t, regionSpan)
+    out[i] = Math.max(
+      0.0001,
+      regionFadeGain(rel, regionSpan, fadeInSec, fadeOutSec, curve, fadeInBend, fadeOutBend),
+    )
+  }
+  return out
+}
+
+/** Remaining ping-pong envelope from an elapsed buffer time, for live fade edits. */
+export function pingPongFadeCurveFrom(
+  fromElapsed: number,
+  regionSpan: number,
+  fadeInSec: number,
+  fadeOutSec: number,
+  curve: FadeCurve,
+  durationSec: number,
+  samples = 96,
+  fadeInBend = 0.5,
+  fadeOutBend = 0.5,
+): Float32Array {
+  const n = Math.max(2, samples)
+  const out = new Float32Array(n)
+  const startT = Math.max(0, fromElapsed)
+  const span = Math.max(0, durationSec)
+  for (let i = 0; i < n; i++) {
+    const t = startT + (span * i) / (n - 1)
     const rel = pingPongRegionRel(t, regionSpan)
     out[i] = Math.max(
       0.0001,

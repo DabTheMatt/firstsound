@@ -115,7 +115,13 @@ import {
   type EqBand,
   type EqFilterType,
 } from './eqBands'
-import { pingPongFadeCurve, regionFadeCurveFrom, regionFadeGain, type FadeCurve } from './fades'
+import {
+  pingPongFadeCurve,
+  pingPongFadeCurveFrom,
+  regionFadeCurveFrom,
+  regionFadeGain,
+  type FadeCurve,
+} from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
@@ -248,7 +254,8 @@ export class AudioEngine {
     fadeOutBend: 0.5,
   }
   private voiceGain: GainNode | null = null
-  private fadeRestartId = 0
+  private voiceFadeUntil = 0
+  private voiceFadePingPong = false
   private slots = new Map<string, Slot>()
   private buffer: AudioBuffer | null = null
   private sourceBuffer: AudioBuffer | null = null
@@ -385,15 +392,7 @@ export class AudioEngine {
     if (same) return
     this.regionFade = next
     this.emit()
-    if (this.playing && this.engineMode === 'playback') {
-      if (this.fadeRestartId) window.clearTimeout(this.fadeRestartId)
-      this.fadeRestartId = window.setTimeout(() => {
-        this.fadeRestartId = 0
-        if (!this.playing || this.engineMode !== 'playback') return
-        this.playOffset = this.getPlayheadSeconds()
-        void this.play()
-      }, 70)
-    }
+    if (this.playing && this.engineMode === 'playback') this.retargetPlayingFade()
   }
 
   getChannelAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
@@ -499,10 +498,6 @@ export class AudioEngine {
   }
 
   stop(): void {
-    if (this.fadeRestartId) {
-      window.clearTimeout(this.fadeRestartId)
-      this.fadeRestartId = 0
-    }
     this.stopVoices()
     this.playing = false
     const duration = this.buffer?.duration ?? 0
@@ -2112,10 +2107,62 @@ export class AudioEngine {
           this.regionFade.fadeInBend,
           this.regionFade.fadeOutBend,
         )
-    gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, Math.max(0.008, durationSec))
+    const held = Math.max(0.008, durationSec)
+    gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, held)
     src.connect(gain)
     gain.connect(this.voiceBus)
     this.voiceGain = gain
+    this.voiceFadeUntil = this.ctx.currentTime + held
+    this.voiceFadePingPong = pingPong
+  }
+
+  private retargetPlayingFade(): void {
+    if (!this.ctx || !this.voiceGain || !this.playing || !this.buffer) return
+    const now = this.ctx.currentTime
+    const remaining = this.voiceFadeUntil - now
+    if (remaining < 0.02) return
+    const duration = this.buffer.duration
+    const { start, end } = this.playbackRegion(duration)
+    const span = Math.max(end - start, MIN_REGION)
+    const rate = playbackRate(this.params.speed, this.params.pitch)
+    const fade = this.regionFade
+    let curve: Float32Array
+    if (this.voiceFadePingPong) {
+      const elapsed = Math.max(0, (now - this.playCtxTime) * rate)
+      curve = pingPongFadeCurveFrom(
+        elapsed,
+        span,
+        fade.fadeIn,
+        fade.fadeOut,
+        fade.curve,
+        remaining * rate,
+        96,
+        fade.fadeInBend,
+        fade.fadeOutBend,
+      )
+    } else {
+      const head = this.getPlayheadSeconds()
+      const fromRel =
+        this.direction === 'reverse'
+          ? Math.min(span, Math.max(0, end - head))
+          : Math.min(span, Math.max(0, head - start))
+      curve = regionFadeCurveFrom(
+        fromRel,
+        span,
+        fade.fadeIn,
+        fade.fadeOut,
+        fade.curve,
+        96,
+        fade.fadeInBend,
+        fade.fadeOutBend,
+      )
+    }
+    try {
+      this.voiceGain.gain.cancelScheduledValues(now)
+      this.voiceGain.gain.setValueCurveAtTime(curve, now, remaining)
+    } catch {
+      /* overlap with a finishing curve */
+    }
   }
 
   private disconnectVoiceGain(): void {
@@ -2126,6 +2173,8 @@ export class AudioEngine {
       /* already disconnected */
     }
     this.voiceGain = null
+    this.voiceFadeUntil = 0
+    this.voiceFadePingPong = false
   }
 
   private motionOffset(t: number): number {

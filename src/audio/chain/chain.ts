@@ -21,7 +21,7 @@ export type ChainModule = {
 }
 
 export const MODULE_LABELS: Record<ModuleType, string> = {
-  gain: 'Input/Gain',
+  gain: 'Input',
   grain: 'Grain',
   eq: 'EQ',
   saturation: 'Saturation',
@@ -31,7 +31,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   output: 'Output',
 }
 
-/** Modules that can be inserted between Input/Gain and Output. */
+/** Modules that can be inserted between Input and Output. */
 export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb']
 
 export const MAX_CHAIN_MIDDLE = 12

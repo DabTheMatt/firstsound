@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { applyFades, fadeBendFromMidGain, fadeGain, pingPongFadeCurve, pingPongRegionRel, regionFadeGain } from './fades'
+import {
+  applyFades,
+  fadeBendFromMidGain,
+  fadeGain,
+  pingPongFadeCurve,
+  pingPongFadeCurveFrom,
+  pingPongRegionRel,
+  regionFadeGain,
+} from './fades'
 
 describe('fadeGain', () => {
   it('starts at 0 and ends at 1 for fade-in', () => {
@@ -16,6 +24,11 @@ describe('fadeGain', () => {
   it('raising the midpoint bend increases gain at t=0.5', () => {
     expect(fadeGain(0.5, 'linear', 0.8)).toBeGreaterThan(fadeGain(0.5, 'linear', 0.5))
     expect(fadeGain(0.5, 'linear', 0.2)).toBeLessThan(fadeGain(0.5, 'linear', 0.5))
+  })
+
+  it('lets extreme bends reach most of the amplitude range', () => {
+    expect(fadeGain(0.5, 'linear', 1)).toBeGreaterThan(0.8)
+    expect(fadeGain(0.5, 'linear', 0)).toBeLessThan(0.2)
   })
 
   it('inverts midpoint gain back to a matching bend', () => {
@@ -41,6 +54,13 @@ describe('pingPongFadeCurve', () => {
     expect(curve[5]).toBeCloseTo(1)
     expect(curve[15]).toBeCloseTo(1)
     expect(curve[20]).toBeCloseTo(0.0001)
+  })
+
+  it('continues a live ping-pong envelope from the current elapsed time', () => {
+    const full = pingPongFadeCurve(1, 0.2, 0.2, 'linear', 21)
+    const mid = pingPongFadeCurveFrom(1, 1, 0.2, 0.2, 'linear', 1, 11)
+    expect(mid[0]).toBeCloseTo(full[10] ?? 0, 4)
+    expect(mid[10]).toBeCloseTo(full[20] ?? 0, 4)
   })
 
   it('maps ping-pong time back into the original region', () => {

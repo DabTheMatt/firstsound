@@ -290,9 +290,13 @@ function ToolInspector({
 function InspectorTabs({
   value,
   onChange,
+  mainLabel = 'Main',
+  advancedLabel = 'Advanced',
 }: {
   value: 'main' | 'advanced'
   onChange: (next: 'main' | 'advanced') => void
+  mainLabel?: string
+  advancedLabel?: string
 }) {
   return (
     <div className={styles.paneTabs} role="tablist" aria-label="Effect settings">
@@ -303,7 +307,7 @@ function InspectorTabs({
         className={value === 'main' ? styles.paneTabOn : styles.paneTab}
         onClick={() => onChange('main')}
       >
-        Main
+        {mainLabel}
       </button>
       <button
         type="button"
@@ -312,7 +316,7 @@ function InspectorTabs({
         className={value === 'advanced' ? styles.paneTabOn : styles.paneTab}
         onClick={() => onChange('advanced')}
       >
-        Advanced
+        {advancedLabel}
       </button>
     </div>
   )
@@ -371,7 +375,14 @@ function ModuleInspector({
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
-      {hasAdvanced ? <InspectorTabs value={pane} onChange={setPane} /> : null}
+      {hasAdvanced ? (
+        <InspectorTabs
+          value={pane}
+          onChange={setPane}
+          mainLabel={type === 'gain' ? 'Gain' : 'Main'}
+          advancedLabel={type === 'gain' ? 'Panning' : 'Advanced'}
+        />
+      ) : null}
       {type === 'gain' && pane === 'main' ? (
         <>
           <Segmented
@@ -386,10 +397,10 @@ function ModuleInspector({
       ) : null}
       {type === 'gain' && pane === 'advanced' ? (
         <>
-          <h3 className={styles.sub}>Panorama</h3>
           <p className={styles.help}>
-            Pan is stereo balance. Left/Right set channel levels. Make mono sums both sides. Invert
-            phase flips polarity.
+            Pan moves the stereo image with equal-power, so loudness stays even as the image shifts.
+            Balance L/R trims each channel’s level without that image law. Make mono sums both sides.
+            Invert phase flips polarity.
           </p>
           {params(PAN_IDS)}
           <div className={styles.row}>
