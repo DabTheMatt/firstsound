@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamDef } from '../../audio/parameters/types'
 import {
+  FX_LFO_SLOTS,
   LFO_RATE_DEFAULT,
   LFO_RATE_MAX,
   LFO_RATE_MIN,
@@ -32,14 +34,19 @@ type Props = {
 }
 
 export function FxLfoSection({ snap, kind, variant }: Props) {
-  const lfo = snap.fxLfos[kind]
+  const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
+  const [slot, setSlot] = useState(0)
+  const activeSlot = Math.min(slot, shown - 1)
+  const lfo = snap.fxLfos[kind][activeSlot] ?? snap.fxLfos[kind][0]
   const { armed, setArmed } = useFxLfoConnect()
-  const connecting = armed === kind
-  const targetLabel = lfo.target ? PARAMS[lfo.target].label : 'None'
-  const rateText = `${lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz`
+  const connecting = armed?.kind === kind && armed.slot === activeSlot
+  const targetLabel = lfo?.target ? PARAMS[lfo.target].label : 'None'
+  const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
+  const depth = lfo?.depth ?? 0
+  const rateText = `${rateHz < 10 ? rateHz.toFixed(2) : rateHz.toFixed(1)} Hz`
 
-  const setRate = (hz: number) => engine.setFxLfo(kind, { rateHz: hz })
-  const setDepth = (depth: number) => engine.setFxLfo(kind, { depth })
+  const setRate = (hz: number) => engine.setFxLfo(kind, activeSlot, { rateHz: hz })
+  const setDepth = (next: number) => engine.setFxLfo(kind, activeSlot, { depth: next })
 
   const knobs =
     variant === 'knob' ? (
@@ -47,10 +54,10 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
         <ValueKnob
           label="Rate"
           valueText={rateText}
-          normalized={toNormalized(lfo.rateHz, RATE_DEF)}
+          normalized={toNormalized(rateHz, RATE_DEF)}
           min={LFO_RATE_MIN}
           max={LFO_RATE_MAX}
-          now={lfo.rateHz}
+          now={rateHz}
           onChange={(n) => setRate(fromNormalized(n, RATE_DEF))}
           onReset={() => setRate(LFO_RATE_DEFAULT)}
           onTypedValue={(text) => {
@@ -62,11 +69,11 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
         />
         <ValueKnob
           label="Depth"
-          valueText={`${Math.round(lfo.depth)} %`}
-          normalized={lfo.depth / 100}
+          valueText={`${Math.round(depth)} %`}
+          normalized={depth / 100}
           min={0}
           max={100}
-          now={lfo.depth}
+          now={depth}
           onChange={(n) => setDepth(n * 100)}
           onReset={() => setDepth(35)}
           onTypedValue={(text) => {
@@ -87,7 +94,7 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
             min={0}
             max={1}
             step={0.001}
-            value={toNormalized(lfo.rateHz, RATE_DEF)}
+            value={toNormalized(rateHz, RATE_DEF)}
             aria-label="LFO rate"
             onChange={(e) => setRate(fromNormalized(Number(e.target.value), RATE_DEF))}
           />
@@ -100,11 +107,11 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
             type="range"
             min={0}
             max={100}
-            value={Math.round(lfo.depth)}
+            value={Math.round(depth)}
             aria-label="LFO depth"
             onChange={(e) => setDepth(Number(e.target.value))}
           />
-          <span>{Math.round(lfo.depth)} %</span>
+          <span>{Math.round(depth)} %</span>
         </label>
       </>
     )
@@ -115,13 +122,37 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
       <p className={styles.help}>
         Connect pins this LFO to a knob on this effect. The stored value is oscillator
         zero. Depth is how far it swings up and down (20% = ±20% of the parameter range).
+        Up to {FX_LFO_SLOTS} LFOs per effect.
       </p>
+      <div className={styles.row}>
+        <Segmented
+          label="LFO slot"
+          value={String(activeSlot)}
+          options={Array.from({ length: shown }, (_, i) => ({
+            value: String(i),
+            label: `LFO ${i + 1}`,
+          }))}
+          onChange={(value) => setSlot(Number(value))}
+        />
+        {shown < FX_LFO_SLOTS ? (
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => {
+              const next = engine.addFxLfo(kind)
+              if (next != null) setSlot(next)
+            }}
+          >
+            Add LFO
+          </button>
+        ) : null}
+      </div>
       <Segmented
         label="LFO shape"
-        value={lfo.shape}
+        value={lfo?.shape ?? 'sine'}
         options={LFO_SHAPES}
         wrap
-        onChange={(shape) => engine.setFxLfo(kind, { shape })}
+        onChange={(shape) => engine.setFxLfo(kind, activeSlot, { shape })}
       />
       {knobs}
       <div className={styles.row}>
@@ -129,12 +160,16 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
           type="button"
           className={`${styles.ghost} ${connecting ? styles.presetOn : ''}`}
           aria-pressed={connecting}
-          onClick={() => setArmed(connecting ? null : kind)}
+          onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
         >
           {connecting ? 'Click a parameter' : 'Connect'}
         </button>
-        {lfo.target ? (
-          <button type="button" className={styles.ghost} onClick={() => engine.setFxLfoTarget(kind, null)}>
+        {lfo?.target ? (
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => engine.setFxLfoTarget(kind, activeSlot, null)}
+          >
             Disconnect
           </button>
         ) : null}

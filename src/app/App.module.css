@@ -126,6 +126,13 @@
   border-radius: 10px;
 }
 
+.lfoFly {
+  left: 12px;
+  right: auto;
+  min-width: min(420px, calc(100vw - 24px));
+  max-width: min(480px, calc(100vw - 24px));
+}
+
 .moreMenu {
   display: flex;
   flex-direction: column;

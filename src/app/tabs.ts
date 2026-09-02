@@ -15,7 +15,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
   source: ['speed', 'pitch', 'gain'],
   grain: ['grainSize', 'density', 'position', 'scatter', 'grainPitch', 'pitchSpread'],
   motion: ['motionDepth', 'motionRate', 'motionJitter', 'position'],
-  space: ['delayWet', 'delayTime', 'delayFeedback', 'reverbWet', 'reverbSize', 'reverbDecay', 'reverbLimit'],
+  space: ['delayWet', 'delayTime', 'delayFeedback', 'reverbWet', 'reverbSize', 'reverbDecay'],
   filter: ['filterCutoff', 'filterReso'],
   output: ['gain', 'outputGain'],
 }

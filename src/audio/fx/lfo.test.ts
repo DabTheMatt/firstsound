@@ -75,9 +75,9 @@ describe('applyFxLfos', () => {
     params.delayWet = 50
     params.reverbWet = 20
     const lfos = defaultFxLfos()
-    lfos.delay.target = 'delayWet'
-    lfos.delay.depth = 100
-    lfos.delay.rateHz = 1
+    lfos.delay[0]!.target = 'delayWet'
+    lfos.delay[0]!.depth = 100
+    lfos.delay[0]!.rateHz = 1
     const hold = defaultLfoHold()
     const t = 0.25
     expect(lfoPhase(t, 1)).toBeCloseTo(0.25)
@@ -86,14 +86,30 @@ describe('applyFxLfos', () => {
     expect(next.reverbWet).toBe(20)
   })
 
+  it('lets a second slot modulate another parameter on the same effect', () => {
+    const params = defaultParamValues()
+    params.delayWet = 50
+    params.delayDry = 50
+    const lfos = defaultFxLfos()
+    lfos.delay[0]!.target = 'delayWet'
+    lfos.delay[0]!.depth = 20
+    lfos.delay[1]!.target = 'delayDry'
+    lfos.delay[1]!.depth = 20
+    lfos.delay[0]!.rateHz = 1
+    lfos.delay[1]!.rateHz = 1
+    const next = applyFxLfos(params, lfos, 0.25, defaultLfoHold())
+    expect(next.delayWet).toBe(70)
+    expect(next.delayDry).toBe(70)
+  })
+
   it('advances sample-and-hold when the hold index changes', () => {
     const params = defaultParamValues()
     params.delayWet = 50
     const lfos = defaultFxLfos()
-    lfos.delay.target = 'delayWet'
-    lfos.delay.shape = 'snh'
-    lfos.delay.depth = 100
-    lfos.delay.rateHz = 1
+    lfos.delay[0]!.target = 'delayWet'
+    lfos.delay[0]!.shape = 'snh'
+    lfos.delay[0]!.depth = 100
+    lfos.delay[0]!.rateHz = 1
     const hold = defaultLfoHold()
     let n = 0
     const rand = () => {
@@ -111,11 +127,11 @@ describe('applyFxLfos', () => {
 describe('parseFxLfos', () => {
   it('keeps defaults for missing or invalid payload', () => {
     const parsed = parseFxLfos({ delay: { rateHz: 4, shape: 'square', depth: 80, target: 'delayTime' } })
-    expect(parsed.delay.rateHz).toBe(4)
-    expect(parsed.delay.shape).toBe('square')
-    expect(parsed.delay.target).toBe('delayTime')
-    expect(parsed.reverb.target).toBeNull()
-    expect(parseFxLfos({ delay: { target: 'gain' } }).delay.target).toBeNull()
+    expect(parsed.delay[0]!.rateHz).toBe(4)
+    expect(parsed.delay[0]!.shape).toBe('square')
+    expect(parsed.delay[0]!.target).toBe('delayTime')
+    expect(parsed.reverb[0]!.target).toBeNull()
+    expect(parseFxLfos({ delay: { target: 'gain' } }).delay[0]!.target).toBeNull()
   })
 })
 
@@ -124,8 +140,19 @@ describe('lfoRangeNormalized', () => {
     expect(lfoRangeNormalized(0.45, 20)).toEqual({ min: 0.25, max: 0.65 })
   })
 
-  it('clamps to the knob range', () => {
-    expect(lfoRangeNormalized(0.05, 20)).toEqual({ min: 0, max: 0.25 })
+  it('fits depth so a sine never dwells on the rails', () => {
+    expect(lfoRangeNormalized(0.05, 20)).toEqual({ min: 0, max: 0.1 })
+  })
+})
+
+describe('fitted sine', () => {
+  it('touches the floor only at the trough', () => {
+    const lo = modulateParam(10, 'delayWet', -1, 40)
+    const mid = modulateParam(10, 'delayWet', 0, 40)
+    const hi = modulateParam(10, 'delayWet', 1, 40)
+    expect(lo).toBe(0)
+    expect(mid).toBe(10)
+    expect(hi).toBe(20)
   })
 })
 

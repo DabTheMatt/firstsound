@@ -875,15 +875,9 @@ export const SPACE_KNOBS: ParamId[] = [
   'reverbWet',
   'reverbSize',
   'reverbDecay',
-  'reverbLimit',
 ]
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = [
-  'reverbWet',
-  'reverbSize',
-  'reverbDecay',
-  'reverbLimit',
-]
+export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterThreshold', 'limiterCeiling', 'limiterRelease']
 export const LIMITER_ADV_KNOBS: ParamId[] = [

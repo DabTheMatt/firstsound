@@ -179,9 +179,15 @@
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  min-height: 36px;
+  min-height: 32px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bandTitle {
+  min-width: 0;
 }
 
 .band[open] {

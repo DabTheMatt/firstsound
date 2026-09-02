@@ -11,6 +11,8 @@ import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
+import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
+import { LfoCenter } from '../components/inspector/LfoCenter'
 import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
 import { MeterStrip } from '../components/meters/MeterStrip'
@@ -53,6 +55,7 @@ export default function App() {
   const snap = useEngine()
   const { mode, width: viewportWidth } = useLayoutMode()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
   const [viz, setViz] = useState<VizMode>('waveform')
@@ -324,6 +327,7 @@ export default function App() {
   )
 
   return (
+    <FxLfoConnectProvider>
     <div
       className={styles.page}
       onDragOver={(event) => {
@@ -349,7 +353,15 @@ export default function App() {
         <AppHeader
           snap={snap}
           settingsOpen={moreOpen}
-          onToggleSettings={() => setMenuOpen((v) => !v)}
+          lfoCenterOpen={lfoCenterOpen}
+          onToggleSettings={() => {
+            setMenuOpen((v) => !v)
+            setLfoCenterOpen(false)
+          }}
+          onToggleLfoCenter={() => {
+            setLfoCenterOpen((v) => !v)
+            setMenuOpen(false)
+          }}
           onLoadSample={() => sampleInput.current?.click()}
           onRecord={() => {
             void engine.unlock().then(() => {
@@ -359,6 +371,19 @@ export default function App() {
           }}
           compact={sheet}
         />
+        {lfoCenterOpen ? (
+          <>
+            <button
+              type="button"
+              className={styles.settingsScrim}
+              aria-label="Close LFO center"
+              onClick={() => setLfoCenterOpen(false)}
+            />
+            <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
+              <LfoCenter snap={snap} />
+            </div>
+          </>
+        ) : null}
         {moreOpen ? (
           <>
             <button
@@ -523,5 +548,6 @@ export default function App() {
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
     </div>
+    </FxLfoConnectProvider>
   )
 }
