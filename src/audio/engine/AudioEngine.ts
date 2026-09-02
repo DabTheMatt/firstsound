@@ -31,6 +31,17 @@ import type {
   ScrubMode,
 } from '../parameters/types'
 import {
+  anyFxLfoActive,
+  applyFxLfos,
+  defaultFxLfos,
+  defaultLfoHold,
+  isFxLfoKind,
+  isFxLfoTarget,
+  parseFxLfos,
+  type FxLfo,
+  type FxLfoKind,
+} from '../fx/lfo'
+import {
   combAsEqBands,
   defaultCombFilter,
   parseCombFilter,
@@ -156,6 +167,7 @@ export type EngineSnapshot = {
   muted: boolean
   delayType: DelayType
   reverbType: ReverbType
+  fxLfos: Record<FxLfoKind, FxLfo>
   spacePresetId: string | null
   hasSource: boolean
   prep: SamplePrepState
@@ -272,6 +284,9 @@ export class AudioEngine {
   private muted = false
   private delayType: DelayType = 'digital'
   private reverbType: ReverbType = 'hall'
+  private fxLfos = defaultFxLfos()
+  private lfoHold = defaultLfoHold()
+  private lfoTimer = 0
   private reverbIrKey = ''
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
@@ -650,6 +665,23 @@ export class AudioEngine {
     this.reverbIrKey = ''
     this.applyLiveAudio()
     this.emit()
+  }
+
+  setFxLfo(kind: FxLfoKind, patch: Partial<FxLfo>): void {
+    if (!isFxLfoKind(kind)) return
+    const cur = this.fxLfos[kind]
+    const next: FxLfo = { ...cur, ...patch }
+    if (patch.target !== undefined) {
+      next.target = patch.target && isFxLfoTarget(kind, patch.target) ? patch.target : null
+    }
+    this.fxLfos[kind] = parseFxLfos({ ...this.fxLfos, [kind]: next })[kind]
+    this.syncLfoClock()
+    this.applyLiveAudio(0.01)
+    this.emit()
+  }
+
+  setFxLfoTarget(kind: FxLfoKind, target: ParamId | null): void {
+    this.setFxLfo(kind, { target })
   }
 
   applySpacePreset(preset: SpacePreset | string): void {
@@ -1076,6 +1108,8 @@ export class AudioEngine {
     this.filterType = 'off'
     this.delayType = 'digital'
     this.reverbType = 'hall'
+    this.fxLfos = defaultFxLfos()
+    this.lfoHold = defaultLfoHold()
     this.reverbIrKey = ''
     this.eqById = new Map()
     this.eqBands = defaultEqBands()
@@ -1085,6 +1119,7 @@ export class AudioEngine {
     this.chain = defaultChain()
     this.seedEqStates()
     this.muted = false
+    this.syncLfoClock()
     void this.rebuildGraph()
     this.applyLiveAudio()
     this.emit()
@@ -1258,6 +1293,12 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
+      fxLfos: {
+        delay: { ...this.fxLfos.delay },
+        reverb: { ...this.fxLfos.reverb },
+        limiter: { ...this.fxLfos.limiter },
+        saturation: { ...this.fxLfos.saturation },
+      },
     }
   }
 
@@ -1269,6 +1310,8 @@ export class AudioEngine {
     this.muted = preset.muted ?? false
     this.delayType = parseDelayType(preset.delayType) ?? 'digital'
     this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
+    this.fxLfos = parseFxLfos(preset.fxLfos)
+    this.lfoHold = defaultLfoHold()
     this.reverbIrKey = ''
     const migrated = migrateSpaceParams(preset.params)
     for (const id of Object.keys(this.params) as ParamId[]) {
@@ -1307,6 +1350,7 @@ export class AudioEngine {
     this.seedEqStates()
     this.eqById.set(this.primaryEqId(), cloneEqState(savedBands, savedComb))
     this.syncPrimaryEq()
+    this.syncLfoClock()
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1545,6 +1589,7 @@ export class AudioEngine {
       this.unlocked = true
     }
     this.audioStatus = this.ctx.state === 'running' ? 'running' : 'blocked'
+    this.syncLfoClock()
     this.emit()
   }
 
@@ -1787,6 +1832,7 @@ export class AudioEngine {
   private applyBypassRamps(smoothing = 0.01): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
+    const params = this.liveParams()
     for (const mod of this.chain) {
       const slot = this.slots.get(mod.instanceId)
       if (!slot) continue
@@ -1802,17 +1848,17 @@ export class AudioEngine {
         : this.eqListen === 'filters' && mod.type === 'eq'
           ? false
           : mod.bypassed
-      const dry = bypassed ? 1 : dryLevel(mod.type, this.params)
+      const dry = bypassed ? 1 : dryLevel(mod.type, params)
       const wet =
         this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
           ? 0
           : bypassed
             ? 0
-            : wetLevel(mod.type, this.params)
+            : wetLevel(mod.type, params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
       if (mod.type === 'delay' || mod.type === 'reverb') {
-        const out = bypassed ? 1 : wetDryFor(mod.type, this.params).out
+        const out = bypassed ? 1 : wetDryFor(mod.type, params).out
         rampGainExact(slot.output.gain, out, now, smoothing)
       }
     }
@@ -1941,33 +1987,53 @@ export class AudioEngine {
     }
   }
 
+  private liveParams(): Record<ParamId, number> {
+    if (!anyFxLfoActive(this.fxLfos)) return this.params
+    const t = this.ctx?.currentTime ?? 0
+    return applyFxLfos(this.params, this.fxLfos, t, this.lfoHold)
+  }
+
+  private syncLfoClock(): void {
+    const active = anyFxLfoActive(this.fxLfos)
+    if (active && !this.lfoTimer) {
+      this.lfoTimer = window.setInterval(() => {
+        this.applyLiveAudio(0.01)
+      }, 32)
+    }
+    if (!active && this.lfoTimer) {
+      window.clearInterval(this.lfoTimer)
+      this.lfoTimer = 0
+    }
+  }
+
   private applyFxParams(smoothing: number): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    const bpm = this.params.bpm
+    const params = this.liveParams()
+    const bpm = params.bpm
     for (const slot of this.slots.values()) {
-      if (slot.shaper) slot.shaper.curve = makeTanhCurve(this.params.saturation / 100)
-      if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, this.params, now, smoothing)
+      if (slot.shaper) slot.shaper.curve = makeTanhCurve(params.saturation / 100)
+      if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
       if (slot.delayFx) {
         if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
-        else applyDelayGraph(slot.delayFx, this.params, this.delayType, bpm, now, smoothing, this.ctx)
+        else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
       }
       if (slot.reverbFx) {
         if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
         else {
-          applyReverbGraph(slot.reverbFx, this.params, this.reverbType, bpm, now, smoothing)
-          const key = reverbImpulseKey(this.params, this.reverbType)
+          applyReverbGraph(slot.reverbFx, params, this.reverbType, bpm, now, smoothing)
+          const key = reverbImpulseKey(params, this.reverbType)
           if (key !== this.reverbIrKey) {
             this.reverbIrKey = key
             if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
             const fx = slot.reverbFx
             if (!fx.conv.buffer) {
-              fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
+              fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
             } else {
               this.reverbIrTimer = window.setTimeout(() => {
                 this.reverbIrTimer = 0
                 if (!this.ctx || !fx) return
-                fx.conv.buffer = buildReverbBuffer(this.ctx, this.params, this.reverbType)
+                fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
               }, 40)
             }
           }
@@ -1976,7 +2042,7 @@ export class AudioEngine {
     }
   }
 
-  private applyLiveAudio(): void {
+  private applyLiveAudio(smoothing = 0.03): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
@@ -1999,9 +2065,9 @@ export class AudioEngine {
       gainSlot.output.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
     }
     if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(this.params.outputGain), now, 0.03)
-    this.applyEq(0.03)
-    this.applyFxParams(0.03)
-    this.applyBypassRamps(0.03)
+    this.applyEq(smoothing)
+    this.applyFxParams(smoothing)
+    this.applyBypassRamps(smoothing)
     this.syncEqListen()
     if (this.source && this.engineMode === 'playback') {
       const rate = playbackRate(this.params.speed, this.params.pitch)
@@ -2304,6 +2370,12 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
+      fxLfos: {
+        delay: { ...this.fxLfos.delay },
+        reverb: { ...this.fxLfos.reverb },
+        limiter: { ...this.fxLfos.limiter },
+        saturation: { ...this.fxLfos.saturation },
+      },
       spacePresetId: this.spacePresetId,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,
       prep: { ...this.prep },
