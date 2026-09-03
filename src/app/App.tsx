@@ -54,6 +54,7 @@ function histKey(
 export default function App() {
   const snap = useEngine()
   const { mode, width: viewportWidth } = useLayoutMode()
+  const isPhoneLayout = mode === 'sheet' && viewportWidth <= 430
   const [menuOpen, setMenuOpen] = useState(false)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -225,6 +226,7 @@ export default function App() {
   const dockRight = mode === 'dock-right'
   const sheet = mode === 'sheet'
   const compact = mode !== 'dock-right'
+  const activeSheetLevel = isPhoneLayout && sheetLevel === 'medium' ? 'collapsed' : sheetLevel
 
   const moreOpen = menuOpen
 
@@ -233,7 +235,7 @@ export default function App() {
       snap={snap}
       focus={resolvedFocus}
       edit={edit}
-      sheet={sheet && sheetLevel !== 'expanded'}
+      sheet={sheet && activeSheetLevel !== 'expanded'}
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
       onCommit={commit}
       onTrim={() => {
@@ -428,7 +430,7 @@ export default function App() {
           }}
         />
 
-        <div className={styles.work}>
+        <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
           <div className={styles.waveCol}>
             <Waveform
               ref={waveRef}
@@ -470,20 +472,23 @@ export default function App() {
           ) : null}
         </div>
 
-        <CompactTransport
-          playing={snap.playing}
-          loop={snap.loop}
-          start={snap.params.start}
-          end={snap.params.end}
-          disabled={!snap.sampleLoaded}
-          compact={compact}
-          canUndo={history.past.length > 0}
-          canRedo={history.future.length > 0}
-          onUndo={() => applyHistory(undoHistory(history))}
-          onRedo={() => applyHistory(redoHistory(history))}
-          onExport={() => setExportOpen(true)}
-          onUseSample={onUseSample}
-        />
+        <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`}>
+          <CompactTransport
+            playing={snap.playing}
+            loop={snap.loop}
+            start={snap.params.start}
+            end={snap.params.end}
+            disabled={!snap.sampleLoaded}
+            compact={compact}
+            minimal={isPhoneLayout}
+            canUndo={history.past.length > 0}
+            canRedo={history.future.length > 0}
+            onUndo={() => applyHistory(undoHistory(history))}
+            onRedo={() => applyHistory(redoHistory(history))}
+            onExport={() => setExportOpen(true)}
+            onUseSample={onUseSample}
+          />
+        </div>
 
         {editMode && snap.sampleLoaded ? (
           <EditBar
@@ -501,21 +506,19 @@ export default function App() {
         ) : null}
 
         {!dockRight && inspectorOpen ? (
-          <div className={`${styles.bottom} ${styles[sheetLevel]}`}>
+          <div className={`${styles.bottom} ${styles[activeSheetLevel]}`}>
             {sheet ? (
               <button
                 type="button"
                 className={styles.sheetHandle}
                 onClick={() =>
-                  setSheetLevel((s) =>
-                    s === 'collapsed' ? 'medium' : s === 'medium' ? 'expanded' : 'collapsed',
-                  )
+                  setSheetLevel((s) => (s === 'collapsed' ? 'expanded' : s === 'expanded' ? 'collapsed' : 'expanded'))
                 }
               >
                 Inspector
               </button>
             ) : null}
-            {sheetLevel !== 'collapsed' || !sheet ? inspector : null}
+            {activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
           </div>
         ) : null}
 

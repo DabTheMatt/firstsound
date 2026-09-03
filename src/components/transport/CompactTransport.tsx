@@ -11,6 +11,7 @@ type Props = {
   end: number
   disabled: boolean
   compact: boolean
+  minimal?: boolean
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -26,6 +27,7 @@ export function CompactTransport({
   end,
   disabled,
   compact,
+  minimal = false,
   canUndo,
   canRedo,
   onUndo,
@@ -45,7 +47,7 @@ export function CompactTransport({
     return () => cancelAnimationFrame(frame)
   }, [])
   return (
-    <div className={`${styles.bar} ${compact ? styles.compact : ''}`}>
+    <div className={`${styles.bar} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
       <div className={styles.transport}>
         <TransportButton
           playing={playing}
@@ -66,24 +68,28 @@ export function CompactTransport({
         >
           |◀
         </button>
-        <button
-          type="button"
-          className={styles.icon}
-          disabled={disabled}
-          aria-label="Stop"
-          onClick={() => engine.stop()}
-        >
-          ■
-        </button>
-        <button
-          type="button"
-          className={styles.icon}
-          aria-label="Kill effects"
-          title="Kill delay and reverb tails"
-          onClick={() => engine.killFx('all')}
-        >
-          Kill FX
-        </button>
+        {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            disabled={disabled}
+            aria-label="Stop"
+            onClick={() => engine.stop()}
+          >
+            ■
+          </button>
+        ) : null}
+        {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            aria-label="Kill effects"
+            title="Kill delay and reverb tails"
+            onClick={() => engine.killFx('all')}
+          >
+            Kill FX
+          </button>
+        ) : null}
         <button
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
@@ -92,46 +98,56 @@ export function CompactTransport({
         >
           Loop
         </button>
-        <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
-          Undo
-        </button>
-        <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
-          Redo
-        </button>
+        {!minimal ? (
+          <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
+            Undo
+          </button>
+        ) : null}
+        {!minimal ? (
+          <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
+            Redo
+          </button>
+        ) : null}
       </div>
       <p className={styles.times}>
         <span className={styles.head} ref={playheadRef} title="Playhead">
           {formatTimecode(start)}
         </span>
-        <span className={styles.selRange} title="Selection">
-          {formatTimecode(start)} — {formatTimecode(end)}
-        </span>
+        {!minimal ? (
+          <span className={styles.selRange} title="Selection">
+            {formatTimecode(start)} — {formatTimecode(end)}
+          </span>
+        ) : null}
         <strong>{length.toFixed(3)} s</strong>
       </p>
-      <div className={styles.jumps}>
-        <button
-          type="button"
-          disabled={disabled}
-          title="Jump the playhead to the start of the selection (loop in)"
-          aria-label="Selection start"
-          onClick={() => engine.seekSeconds(start, 'region')}
-        >
-          Sel start
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          title="Jump the playhead to the end of the selection (loop out)"
-          aria-label="Selection end"
-          onClick={() => engine.seekSeconds(end, 'region')}
-        >
-          Sel end
-        </button>
-      </div>
+      {!minimal ? (
+        <div className={styles.jumps}>
+          <button
+            type="button"
+            disabled={disabled}
+            title="Jump the playhead to the start of the selection (loop in)"
+            aria-label="Selection start"
+            onClick={() => engine.seekSeconds(start, 'region')}
+          >
+            Sel start
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            title="Jump the playhead to the end of the selection (loop out)"
+            aria-label="Selection end"
+            onClick={() => engine.seekSeconds(end, 'region')}
+          >
+            Sel end
+          </button>
+        </div>
+      ) : null}
       <div className={styles.cta}>
-        <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
-          Export
-        </button>
+        {!minimal ? (
+          <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
+            Export
+          </button>
+        ) : null}
         <button
           type="button"
           className={styles.use}
@@ -143,9 +159,7 @@ export function CompactTransport({
           Use as Sample
         </button>
       </div>
-      <p className={styles.useHint}>
-        Bakes this selection (with fades) into the working sample.
-      </p>
+      {!minimal ? <p className={styles.useHint}>Bakes this selection (with fades) into the working sample.</p> : null}
     </div>
   )
 }

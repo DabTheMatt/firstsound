@@ -95,6 +95,30 @@
   grid-template-columns: 1fr 1.4fr;
 }
 
+.minimal {
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.minimal .transport {
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.minimal .times {
+  font-size: 11px;
+}
+
+.minimal .cta {
+  grid-column: 1 / -1;
+  display: block;
+}
+
+.minimal .use {
+  width: 100%;
+}
+
 .use {
   min-height: 44px;
   padding: 0 18px;

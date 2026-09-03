@@ -31,6 +31,10 @@
   position: relative;
 }
 
+.phoneWork {
+  padding-bottom: calc(154px + env(safe-area-inset-bottom));
+}
+
 .dock-right .work {
   grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 72px;
 }
@@ -69,6 +73,20 @@
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.transportWrap {
+  flex: none;
+}
+
+.transportPinned {
+  position: sticky;
+  bottom: 0;
+  z-index: 9;
+  margin: 0 -14px calc(-12px - env(safe-area-inset-bottom));
+  padding: 6px 14px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--bg-app) 92%, black 8%);
 }
 
 .sheetHandle {
