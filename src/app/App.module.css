@@ -91,7 +91,9 @@
   margin-right: -8px;
   padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-app) 92%, black 8%);
+  /* Panel fill must include the home-indicator inset, otherwise the padding
+     reads as a black gap under the controls in standalone PWA. */
+  background: var(--bg-panel);
 }
 
 /* Phone overrides must come after base .shell/.work/.bottom so they win. */
