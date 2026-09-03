@@ -156,7 +156,7 @@ export function CompactTransport({
           aria-label="Use as sample: bake the selection into the working clip"
           onClick={onUseSample}
         >
-          Use as Sample
+          {minimal ? 'Use' : 'Use as Sample'}
         </button>
       </div>
       {!minimal ? <p className={styles.useHint}>Bakes this selection (with fades) into the working sample.</p> : null}
