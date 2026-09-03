@@ -31,33 +31,6 @@
   position: relative;
 }
 
-.phoneShell {
-  padding: 6px 8px 0;
-  gap: 4px;
-}
-
-.phoneWork {
-  flex: none;
-  height: 28vh;
-  min-height: 168px;
-  max-height: 240px;
-}
-
-.phoneWork .waveCol,
-.phoneWork .waveCol > * {
-  height: 100%;
-  min-height: 0;
-}
-
-.phoneBottom {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
 .dock-right .work {
   grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 72px;
 }
@@ -104,12 +77,41 @@
 
 .transportPinned {
   flex: none;
+  flex-shrink: 0;
   position: relative;
   z-index: 9;
   margin: 0 -8px 0;
   padding: 4px 8px calc(6px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--bg-app) 92%, black 8%);
+}
+
+/* Phone overrides must come after base .shell/.work/.bottom so they win. */
+.phoneShell {
+  padding: 6px 8px 0;
+  gap: 4px;
+}
+
+.phoneWork {
+  flex: none;
+  height: 28vh;
+  min-height: 168px;
+  max-height: 240px;
+}
+
+.phoneWork .waveCol,
+.phoneWork .waveCol > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.phoneBottom {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sheetHandle {

@@ -314,13 +314,15 @@
 }
 
 .compact {
-  flex: 1 1 auto;
+  /* Occupy remaining column space and scroll overflow (flex height:0 trick). */
+  flex: 1 1 0;
   gap: 4px;
   padding: 4px 8px 12px;
-  height: auto;
+  height: 0;
   max-height: none;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
