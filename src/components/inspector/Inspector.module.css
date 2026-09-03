@@ -314,23 +314,30 @@
 }
 
 .compact {
-  flex: none;
+  flex: 1 1 auto;
   gap: 4px;
-  padding: 4px 8px 4px;
+  padding: 4px 8px 12px;
   height: auto;
   max-height: none;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .compact .head {
-  position: static;
-  margin: -6px -8px 0;
+  position: sticky;
+  top: -4px;
+  z-index: 3;
+  margin: -4px -8px 0;
   padding: 6px 8px 4px;
 }
 
 .compact .paneTabs {
-  position: static;
+  position: sticky;
+  top: 28px;
+  z-index: 2;
   margin: 0 -8px;
   padding: 0 8px;
 }

@@ -37,12 +37,24 @@
 }
 
 .phoneWork {
-  min-height: 120px;
+  flex: none;
+  height: 28vh;
+  min-height: 168px;
+  max-height: 240px;
+}
+
+.phoneWork .waveCol,
+.phoneWork .waveCol > * {
+  height: 100%;
+  min-height: 0;
 }
 
 .phoneBottom {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: none;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
