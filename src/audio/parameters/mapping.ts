@@ -107,8 +107,19 @@ export function dbToGain(db: number): number {
   return 10 ** (db / 20)
 }
 
+/** Transpose ratio. 12 st → 2×, independent of playback speed. */
+export function pitchRatio(semitones: number): number {
+  return 2 ** (semitones / 12)
+}
+
+/** True when BufferSource tape-rate would couple speed and pitch. */
+export function playbackNeedsStretch(speed: number, pitchSemitones: number): boolean {
+  return Math.abs(speed - 1) > 0.01 || Math.abs(pitchSemitones) > 0.05
+}
+
+/** Legacy tape rate (speed × transpose). Playback/grain now keep them separate. */
 export function playbackRate(speed: number, pitchSemitones: number): number {
-  return speed * 2 ** (pitchSemitones / 12)
+  return speed * pitchRatio(pitchSemitones)
 }
 
 /** Parse a typed knob readout (`2k`, `12 dB`, `80ms`) into a parameter value. */

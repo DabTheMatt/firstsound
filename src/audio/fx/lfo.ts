@@ -4,7 +4,7 @@ import type { ParamId } from '../parameters/types'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
-export type FxLfoKind = 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'eqcf'
+export type FxLfoKind = 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'eqcf' | 'input'
 
 export type FxLfo = {
   rateHz: number
@@ -21,7 +21,16 @@ export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
   { value: 'snh', label: 'S&H' },
 ]
 
-export const FX_LFO_KINDS: FxLfoKind[] = ['delay', 'reverb', 'limiter', 'saturation', 'grain', 'eq', 'eqcf']
+export const FX_LFO_KINDS: FxLfoKind[] = [
+  'delay',
+  'reverb',
+  'limiter',
+  'saturation',
+  'grain',
+  'eq',
+  'eqcf',
+  'input',
+]
 
 export const FX_LFO_SLOTS = 3
 
@@ -33,6 +42,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   grain: 'Grain',
   eq: 'EQ',
   eqcf: 'EQ comb',
+  input: 'Input',
 }
 
 export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
@@ -43,6 +53,7 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   grain: 'g',
   eq: 'eq',
   eqcf: 'eqcf',
+  input: 'i',
 }
 
 export function fxLfoSlotName(kind: FxLfoKind, slot: number): string {
@@ -58,6 +69,7 @@ export function defaultLfoShown(): Record<FxLfoKind, number> {
     grain: 1,
     eq: 1,
     eqcf: 1,
+    input: 1,
   }
 }
 
@@ -159,6 +171,8 @@ const EQ_TARGETS: ParamId[] = EQ_BAND_LFO_IDS.flatMap((ids) => [ids.freq, ids.ga
 
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
 
+const INPUT_TARGETS: ParamId[] = ['gain', 'speed', 'pitch', 'pan', 'channelGainL', 'channelGainR']
+
 export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   delay: DELAY_TARGETS,
   reverb: REVERB_TARGETS,
@@ -167,6 +181,7 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   grain: GRAIN_TARGETS,
   eq: EQ_TARGETS,
   eqcf: EQCF_TARGETS,
+  input: INPUT_TARGETS,
 }
 
 const TARGET_KIND = (() => {
@@ -201,13 +216,14 @@ export function defaultFxLfos(): FxLfoMap {
     grain: defaultFxLfoBank(),
     eq: defaultFxLfoBank(),
     eqcf: defaultFxLfoBank(),
+    input: defaultFxLfoBank(),
   }
 }
 
 export function cloneFxLfos(lfos: FxLfoMap): FxLfoMap {
   const next = defaultFxLfos()
   for (const kind of FX_LFO_KINDS) {
-    next[kind] = lfos[kind].map((lfo) => ({ ...lfo }))
+    next[kind] = (lfos[kind] ?? defaultFxLfoBank()).map((lfo) => ({ ...lfo }))
   }
   return next
 }
@@ -217,15 +233,7 @@ export function isLfoShape(value: unknown): value is LfoShape {
 }
 
 export function isFxLfoKind(value: unknown): value is FxLfoKind {
-  return (
-    value === 'delay' ||
-    value === 'reverb' ||
-    value === 'limiter' ||
-    value === 'saturation' ||
-    value === 'grain' ||
-    value === 'eq' ||
-    value === 'eqcf'
-  )
+  return typeof value === 'string' && (FX_LFO_KINDS as string[]).includes(value)
 }
 
 export function fxLfoKindForParam(id: ParamId): FxLfoKind | null {
@@ -378,6 +386,7 @@ export function defaultLfoHold(): LfoHoldState {
     grain: [emptyHold(), emptyHold(), emptyHold()],
     eq: [emptyHold(), emptyHold(), emptyHold()],
     eqcf: [emptyHold(), emptyHold(), emptyHold()],
+    input: [emptyHold(), emptyHold(), emptyHold()],
   }
 }
 
@@ -389,12 +398,19 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
   return FX_LFO_KINDS.some((kind) => lfos[kind].some(fxLfoIsActive))
 }
 
-export function moduleTypeForLfoKind(kind: FxLfoKind): 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' {
-  return kind === 'eqcf' ? 'eq' : kind
+export function moduleTypeForLfoKind(
+  kind: FxLfoKind,
+): 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
+  if (kind === 'eqcf') return 'eq'
+  if (kind === 'input') return 'gain'
+  return kind
 }
 
 export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'main' | 'advanced' {
   if (kind === 'eqcf') return 'advanced'
+  if (kind === 'input' && target && (target === 'pan' || target === 'channelGainL' || target === 'channelGainR')) {
+    return 'advanced'
+  }
   if (kind === 'grain' && target && (target === 'motionDepth' || target === 'motionRate' || target === 'motionJitter')) {
     return 'advanced'
   }
@@ -402,6 +418,15 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
     return 'advanced'
   }
   return 'main'
+}
+
+export function lfoConnectCopy(connecting: boolean, targetLabel: string | null): {
+  label: string
+  detail: string | null
+} {
+  if (connecting) return { label: 'Click a parameter', detail: null }
+  if (targetLabel) return { label: 'Connected', detail: targetLabel }
+  return { label: 'Connect', detail: null }
 }
 
 export function applyFxLfos(

@@ -76,6 +76,7 @@ export function AppHeader({
         </p>
       ) : null}
       <div className={styles.trailing}>
+        {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
           <button
             type="button"

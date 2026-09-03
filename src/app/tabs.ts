@@ -21,7 +21,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
 }
 
 export const TAB_NOTES: Record<ModuleTab, string | null> = {
-  source: 'Region player — speed also transposes, like tape. Reverse and Ping-Pong set direction.',
+  source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
       space: 'Delay + reverb. Mix is a single dry/wet control. Feedback stays below unity so repeats fade.',

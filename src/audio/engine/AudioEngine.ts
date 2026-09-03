@@ -18,8 +18,9 @@ import {
   dbToGain,
   defaultPlayRegion,
   fullPlayRegion,
-  playbackRate,
   parkPlayheadOnStop,
+  pitchRatio,
+  playbackNeedsStretch,
 } from '../parameters/mapping'
 import type {
   EngineMode,
@@ -200,6 +201,8 @@ type Listener = () => void
 
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
+const STRETCH_GRAIN = 0.07
+const STRETCH_HOP = 0.018
 const MIN_REGION = 0.05
 const RAMP = 0.008
 
@@ -326,6 +329,8 @@ export class AudioEngine {
   private playFullSample = false
   private nextGrainTime = 0
   private schedulerId = 0
+  private stretchHead = 0
+  private stretchDir = 1
   private visibilityBound = false
   private unlocked = false
   private motionRandCur = 0
@@ -439,8 +444,8 @@ export class AudioEngine {
       const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
       return start + p * (end - start)
     }
-    const rate = playbackRate(this.params.speed, this.params.pitch)
-    const elapsed = (this.ctx.currentTime - this.playCtxTime) * rate
+    const tempo = Math.max(0.01, this.liveParams().speed)
+    const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
     const span = Math.max(end - start, MIN_REGION)
     if (this.direction === 'pingpong') {
       const cycle = 2 * span
@@ -520,10 +525,8 @@ export class AudioEngine {
       this.nextGrainTime = this.ctx.currentTime
       this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
       this.scheduleGrains()
-    } else if (this.direction === 'pingpong') {
-      this.startPingPongVoice()
     } else {
-      this.startBufferVoice(this.playOffset)
+      this.startRegionPlayback()
     }
     this.emit()
   }
@@ -580,9 +583,9 @@ export class AudioEngine {
       return
     }
     if (this.playing) {
-      if (this.direction === 'forward') {
+      if (this.direction === 'forward' && this.engineMode === 'playback') {
         this.stopVoices()
-        this.startBufferVoice(offset)
+        this.startRegionPlayback()
         this.emit()
       } else {
         void this.play()
@@ -2149,36 +2152,44 @@ export class AudioEngine {
     const now = this.ctx.currentTime
     const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
     const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
+    const live = this.liveParams()
     if (gainSlot?.stereo) {
       applyStereoStage(
         gainSlot.stereo,
         {
-          gainDb: this.params.gain,
-          pan: this.params.pan,
-          leftDb: this.params.channelGainL,
-          rightDb: this.params.channelGainR,
-          mono: this.params.makeMono > 0.5,
-          invert: this.params.invertPhase > 0.5,
+          gainDb: live.gain,
+          pan: live.pan,
+          leftDb: live.channelGainL,
+          rightDb: live.channelGainR,
+          mono: live.makeMono > 0.5,
+          invert: live.invertPhase > 0.5,
         },
         now,
         0.03,
       )
     } else if (gainSlot) {
-      gainSlot.output.gain.setTargetAtTime(dbToGain(this.params.gain), now, 0.03)
+      gainSlot.output.gain.setTargetAtTime(dbToGain(live.gain), now, 0.03)
     }
-    if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(this.params.outputGain), now, 0.03)
+    if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(live.outputGain), now, 0.03)
     this.applyEq(smoothing)
     this.applyFxParams(smoothing)
     this.applyBypassRamps(smoothing)
     this.syncEqListen()
-    if (this.source && this.engineMode === 'playback') {
-      const rate = playbackRate(this.params.speed, this.params.pitch)
-      this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
-      if (this.direction !== 'pingpong') {
-        const duration = this.buffer?.duration ?? 0
-        const { start, end } = this.playbackRegion(duration)
-        this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
-        this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
+    if (this.playing && this.engineMode === 'playback') {
+      if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
+        const pos = this.getPlayheadSeconds()
+        this.stopVoices()
+        this.playOffset = pos
+        this.playCtxTime = now
+        this.startStretchPlayback()
+      } else if (this.source && !this.schedulerId) {
+        this.source.playbackRate.setTargetAtTime(1, now, 0.03)
+        if (this.direction !== 'pingpong') {
+          const duration = this.buffer?.duration ?? 0
+          const { start, end } = this.playbackRegion(duration)
+          this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
+          this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
+        }
       }
     }
   }
@@ -2197,12 +2208,11 @@ export class AudioEngine {
     const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
     const fromRel = Math.max(0, clamped - loopStart)
     const remaining = Math.max(0.01, loopEnd - clamped)
-    const rate = playbackRate(this.params.speed, this.params.pitch)
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = false
-    src.playbackRate.value = rate
-    this.connectFadedVoice(src, fromRel, span, remaining / rate)
+    src.playbackRate.value = 1
+    this.connectFadedVoice(src, fromRel, span, remaining)
     src.start(this.ctx.currentTime, clamped, remaining)
     src.onended = () => {
       if (this.source !== src || !this.playing) return
@@ -2224,12 +2234,11 @@ export class AudioEngine {
     const buffer = this.buildPingPong(start, end)
     if (!buffer) return
     const regionSpan = Math.max(end - start, MIN_REGION)
-    const rate = playbackRate(this.params.speed, this.params.pitch)
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = false
-    src.playbackRate.value = rate
-    this.connectFadedVoice(src, 0, regionSpan, buffer.duration / rate, true)
+    src.playbackRate.value = 1
+    this.connectFadedVoice(src, 0, regionSpan, buffer.duration, true)
     src.start(this.ctx.currentTime, 0)
     src.onended = () => {
       if (this.source !== src || !this.playing) return
@@ -2285,25 +2294,25 @@ export class AudioEngine {
   }
 
   private retargetPlayingFade(): void {
-    if (!this.ctx || !this.voiceGain || !this.playing || !this.buffer) return
+    if (!this.ctx || !this.voiceGain || !this.playing || !this.buffer || this.schedulerId) return
     const now = this.ctx.currentTime
     const remaining = this.voiceFadeUntil - now
     if (remaining < 0.02) return
     const duration = this.buffer.duration
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
-    const rate = playbackRate(this.params.speed, this.params.pitch)
+    const tempo = Math.max(0.01, this.liveParams().speed)
     const fade = this.regionFade
     let curve: Float32Array
     if (this.voiceFadePingPong) {
-      const elapsed = Math.max(0, (now - this.playCtxTime) * rate)
+      const elapsed = Math.max(0, (now - this.playCtxTime) * tempo)
       curve = pingPongFadeCurveFrom(
         elapsed,
         span,
         fade.fadeIn,
         fade.fadeOut,
         fade.curve,
-        remaining * rate,
+        remaining * tempo,
         96,
         fade.fadeInBend,
         fade.fadeOutBend,
@@ -2367,6 +2376,111 @@ export class AudioEngine {
     this.motionRandCur += (this.motionRandTarget - this.motionRandCur) * Math.min(1, dt * 4)
   }
 
+  private startRegionPlayback(): void {
+    const live = this.liveParams()
+    if (playbackNeedsStretch(live.speed, live.pitch)) {
+      this.startStretchPlayback()
+      return
+    }
+    if (this.direction === 'pingpong') this.startPingPongVoice()
+    else this.startBufferVoice(this.playOffset)
+  }
+
+  private startStretchPlayback(): void {
+    if (!this.ctx) return
+    this.nextGrainTime = this.ctx.currentTime
+    this.stretchHead = this.playOffset
+    this.stretchDir = this.direction === 'reverse' ? -1 : 1
+    this.schedulerId = window.setInterval(() => this.scheduleStretch(), SCHEDULER_MS)
+    this.scheduleStretch()
+  }
+
+  private wrapStretchHead(head: number, start: number, end: number): number | null {
+    const span = Math.max(end - start, MIN_REGION)
+    if (this.direction === 'pingpong') {
+      let h = head
+      for (let i = 0; i < 8; i++) {
+        if (h > end) {
+          h = end - (h - end)
+          this.stretchDir = -1
+        } else if (h < start) {
+          h = start + (start - h)
+          this.stretchDir = 1
+        } else break
+      }
+      return clamp(h, start, end)
+    }
+    if (this.loop) {
+      if (head >= end) return start + ((head - start) % span)
+      if (head < start) {
+        const back = (start - head) % span
+        return end - (back === 0 ? span : back)
+      }
+      return head
+    }
+    if (head >= end || head < start) return null
+    return head
+  }
+
+  private scheduleStretch(): void {
+    const buffer = this.buffer
+    if (!this.playing || this.engineMode !== 'playback' || !this.ctx || !buffer || !this.voiceBus) {
+      return
+    }
+    const ctx = this.ctx
+    const duration = buffer.duration
+    const horizon = ctx.currentTime + LOOKAHEAD
+    const live = this.liveParams()
+    const speed = Math.max(0.05, live.speed)
+    const rate = Math.max(0.05, pitchRatio(live.pitch))
+    const { start, end } = this.playbackRegion(duration)
+    const span = Math.max(end - start, MIN_REGION)
+    const reverse = this.direction === 'reverse'
+    const playBuffer = reverse && this.reversed ? this.reversed : buffer
+
+    while (this.nextGrainTime < horizon) {
+      const t = Math.max(this.nextGrainTime, ctx.currentTime)
+      const wrapped = this.wrapStretchHead(this.stretchHead, start, end)
+      if (wrapped == null) {
+        this.stop()
+        return
+      }
+      this.stretchHead = wrapped
+      const mapped = reverse ? reverseTime(this.stretchHead, duration) : this.stretchHead
+      const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
+      const grainDur = STRETCH_GRAIN
+      const srcDur = Math.min(grainDur * rate + 0.01, Math.max(0.01, playBuffer.duration - offset))
+      const playbackRel =
+        this.direction === 'reverse'
+          ? Math.max(0, end - this.stretchHead)
+          : Math.max(0, this.stretchHead - start)
+      const fadeAmp = regionFadeGain(
+        playbackRel,
+        span,
+        this.regionFade.fadeIn,
+        this.regionFade.fadeOut,
+        this.regionFade.curve,
+        this.regionFade.fadeInBend,
+        this.regionFade.fadeOutBend,
+      )
+      const src = ctx.createBufferSource()
+      src.buffer = playBuffer
+      src.playbackRate.value = rate
+      const gain = ctx.createGain()
+      const attack = grainDur * 0.5
+      const peak = 0.55 * fadeAmp
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(peak, t + attack)
+      gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      src.connect(gain)
+      gain.connect(this.voiceBus)
+      src.start(t, offset, srcDur)
+      src.stop(t + grainDur + 0.02)
+      this.stretchHead += STRETCH_HOP * speed * this.stretchDir
+      this.nextGrainTime += STRETCH_HOP
+    }
+  }
+
   private scheduleGrains(): void {
     const buffer = this.activeBuffer()
     if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.voiceBus) {
@@ -2376,7 +2490,7 @@ export class AudioEngine {
     const duration = buffer.duration
     const horizon = ctx.currentTime + LOOKAHEAD
     const live = this.liveParams()
-    const density = Math.max(live.density, 0.5)
+    const density = Math.max(live.density * Math.max(live.speed, 0.25), 0.5)
     const interval = 1 / density
     const grainDur = live.grainSize / 1000
     const { start, end } = this.playbackRegion(duration)
@@ -2393,7 +2507,7 @@ export class AudioEngine {
       offset = Math.min(Math.max(offset, start), Math.max(start, end - grainDur * 0.25))
       const grainPitch =
         live.grainPitch + (Math.random() * 2 - 1) * live.pitchSpread
-      const rate = playbackRate(live.speed, live.pitch + grainPitch)
+      const rate = pitchRatio(live.pitch + grainPitch)
 
       const playbackRel =
         this.direction === 'reverse' ? Math.max(0, end - offset) : Math.max(0, offset - start)

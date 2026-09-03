@@ -13,6 +13,8 @@ import {
   parseTypedNumber,
   parseTypedParam,
   parseTypedRange,
+  pitchRatio,
+  playbackNeedsStretch,
   playbackRate,
   snapPlayheadToRegion,
   toNormalized,
@@ -93,6 +95,18 @@ describe('mapping', () => {
   it('combines speed and pitch into playbackRate', () => {
     expect(playbackRate(1, 12)).toBeCloseTo(2)
     expect(playbackRate(0.5, 0)).toBeCloseTo(0.5)
+  })
+
+  it('keeps pitch ratio independent of speed', () => {
+    expect(pitchRatio(12)).toBeCloseTo(2)
+    expect(pitchRatio(0)).toBeCloseTo(1)
+    expect(pitchRatio(-12)).toBeCloseTo(0.5)
+  })
+
+  it('needs granular stretch when speed or pitch leave unity', () => {
+    expect(playbackNeedsStretch(1, 0)).toBe(false)
+    expect(playbackNeedsStretch(2, 0)).toBe(true)
+    expect(playbackNeedsStretch(1, 7)).toBe(true)
   })
 
   it('formats pan as L/C/R', () => {

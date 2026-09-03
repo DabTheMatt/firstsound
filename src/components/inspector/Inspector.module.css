@@ -100,6 +100,27 @@
   background: var(--bg-control-hover);
 }
 
+.connectBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.connectBtn small {
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--accent-primary);
+}
+
 .remove {
   flex: none;
   min-height: 22px;

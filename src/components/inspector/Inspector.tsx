@@ -438,6 +438,7 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
+          <FxLfoSection snap={snap} kind="input" variant={variant} />
         </>
       ) : null}
       {type === 'gain' && pane === 'advanced' ? (
@@ -460,6 +461,7 @@ function ModuleInspector({
               onToggle={() => engine.setParam('invertPhase', snap.params.invertPhase > 0.5 ? 0 : 1)}
             />
           </div>
+          <FxLfoSection snap={snap} kind="input" variant={variant} />
         </>
       ) : null}
       {type === 'grain' && pane === 'main' ? (
@@ -783,9 +785,11 @@ function EqEditor({
               )}
             </>
           )}
+          {openBand === index ? (
+            <FxLfoSection snap={snap} kind="eq" variant={knobs ? 'knob' : 'slider'} />
+          ) : null}
         </details>
       ))}
-      <FxLfoSection snap={snap} kind="eq" variant={knobs ? 'knob' : 'slider'} />
         </>
       ) : (
         <>

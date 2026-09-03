@@ -10,7 +10,7 @@ import {
 } from '../../theme'
 import styles from './ThemePicker.module.css'
 
-export function ThemePicker() {
+export function ThemePicker({ compact = false }: { compact?: boolean }) {
   const {
     preference,
     setPreference,
@@ -46,7 +46,7 @@ export function ThemePicker() {
       : (THEME_OPTIONS.find((opt) => opt.id === preference) ?? THEME_OPTIONS[1]!).preview
 
   return (
-    <div className={styles.wrap} ref={wrapRef}>
+    <div className={`${styles.wrap} ${compact ? styles.compact : ''}`} ref={wrapRef}>
       <button
         type="button"
         className={styles.trigger}

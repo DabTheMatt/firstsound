@@ -6,6 +6,7 @@ import {
   LFO_SHAPES,
   fxLfoIsActive,
   fxLfoSlotName,
+  lfoConnectCopy,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
@@ -73,7 +74,8 @@ function KindBlock({
           if (!lfo) return null
           const connecting = armed?.kind === kind && armed.slot === slot
           const shape = LFO_SHAPES.find((s) => s.value === lfo.shape)?.label ?? lfo.shape
-          const target = lfo.target ? PARAMS[lfo.target].label : 'Unassigned'
+          const target = lfo.target ? PARAMS[lfo.target].label : null
+          const connect = lfoConnectCopy(connecting, target)
           const running = fxLfoIsActive(lfo)
           const name = fxLfoSlotName(kind, slot)
           return (
@@ -88,16 +90,17 @@ function KindBlock({
                   {shape} · {lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz ·{' '}
                   {Math.round(lfo.depth)}%
                 </span>
-                <em>{running ? `→ ${target}` : target}</em>
+                <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>
               </button>
               <div className={styles.actions}>
                 <button
                   type="button"
-                  className={connecting ? styles.ghostOn : styles.ghost}
+                  className={connecting || target ? styles.ghostOn : styles.ghost}
                   aria-pressed={connecting}
                   onClick={() => setArmed(connecting ? null : { kind, slot })}
                 >
-                  {connecting ? 'Click a knob' : 'Connect'}
+                  <span>{connect.label}</span>
+                  {connect.detail ? <small className={styles.connectDetail}>{connect.detail}</small> : null}
                 </button>
                 {lfo.target ? (
                   <button

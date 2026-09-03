@@ -9,6 +9,7 @@ import {
   LFO_RATE_MIN,
   LFO_SHAPES,
   fxLfoSlotName,
+  lfoConnectCopy,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
@@ -41,7 +42,8 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
   const lfo = snap.fxLfos[kind][activeSlot] ?? snap.fxLfos[kind][0]
   const { armed, setArmed } = useFxLfoConnect()
   const connecting = armed?.kind === kind && armed.slot === activeSlot
-  const targetLabel = lfo?.target ? PARAMS[lfo.target].label : 'None'
+  const targetLabel = lfo?.target ? PARAMS[lfo.target].label : null
+  const connect = lfoConnectCopy(connecting, targetLabel)
   const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
   const depth = lfo?.depth ?? 0
   const rateText = `${rateHz < 10 ? rateHz.toFixed(2) : rateHz.toFixed(1)} Hz`
@@ -159,11 +161,12 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
       <div className={styles.row}>
         <button
           type="button"
-          className={`${styles.ghost} ${connecting ? styles.presetOn : ''}`}
+          className={`${styles.ghost} ${styles.connectBtn} ${connecting || lfo?.target ? styles.presetOn : ''}`}
           aria-pressed={connecting}
           onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
         >
-          {connecting ? 'Click a parameter' : 'Connect'}
+          <span>{connect.label}</span>
+          {connect.detail ? <small>{connect.detail}</small> : null}
         </button>
         {lfo?.target ? (
           <button
@@ -176,8 +179,7 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
         ) : null}
       </div>
       <p className={styles.help}>
-        Target: {targetLabel}
-        {connecting ? ' — click a knob on this effect, or press Escape to cancel.' : ''}
+        {connecting ? 'Click a knob on this effect, or press Escape to cancel.' : connect.detail ? `Target: ${connect.detail}` : 'No target yet.'}
       </p>
     </section>
   )

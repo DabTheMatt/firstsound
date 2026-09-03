@@ -197,3 +197,19 @@
   background: var(--bg-control-hover);
   color: var(--text-primary);
 }
+
+.compact .trigger {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+}
+
+.compact .triggerLabel {
+  display: none;
+}
+
+.compact .menu {
+  left: auto;
+  right: 0;
+  min-width: min(240px, calc(100vw - 24px));
+}

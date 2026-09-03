@@ -6,7 +6,9 @@ import {
   defaultFxLfos,
   defaultLfoHold,
   fxLfoSlotName,
+  inspectorPaneForLfo,
   isFxLfoTarget,
+  lfoConnectCopy,
   lfoPhase,
   lfoRangeNormalized,
   lfoWave,
@@ -87,6 +89,16 @@ describe('applyFxLfos', () => {
     expect(next.reverbWet).toBe(20)
   })
 
+  it('modulates input gain from the input LFO bank', () => {
+    const params = defaultParamValues()
+    params.gain = -3
+    const lfos = defaultFxLfos()
+    lfos.input[0]!.target = 'gain'
+    lfos.input[0]!.depth = 20
+    lfos.input[0]!.rateHz = 1
+    const next = applyFxLfos(params, lfos, 0.25, defaultLfoHold())
+    expect(next.gain).not.toBe(-3)
+  })
   it('lets a second slot modulate another parameter on the same effect', () => {
     const params = defaultParamValues()
     params.delayWet = 50
@@ -133,6 +145,7 @@ describe('parseFxLfos', () => {
     expect(parsed.delay[0]!.target).toBe('delayTime')
     expect(parsed.reverb[0]!.target).toBeNull()
     expect(parseFxLfos({ delay: { target: 'gain' } }).delay[0]!.target).toBeNull()
+    expect(parseFxLfos({ input: { target: 'gain' } }).input[0]!.target).toBe('gain')
   })
 })
 
@@ -165,6 +178,24 @@ describe('targets', () => {
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
     expect(isFxLfoTarget('eq', 'eq2Freq')).toBe(true)
     expect(isFxLfoTarget('eqcf', 'eqcfGain')).toBe(true)
+    expect(isFxLfoTarget('input', 'gain')).toBe(true)
+    expect(isFxLfoTarget('input', 'pan')).toBe(true)
+    expect(isFxLfoTarget('input', 'delayWet')).toBe(false)
+  })
+})
+
+describe('lfoConnectCopy', () => {
+  it('shows Connected plus the target label', () => {
+    expect(lfoConnectCopy(false, null)).toEqual({ label: 'Connect', detail: null })
+    expect(lfoConnectCopy(true, 'Gain')).toEqual({ label: 'Click a parameter', detail: null })
+    expect(lfoConnectCopy(false, 'EQ 1 Freq')).toEqual({ label: 'Connected', detail: 'EQ 1 Freq' })
+  })
+})
+
+describe('inspectorPaneForLfo', () => {
+  it('opens panning for input pan targets', () => {
+    expect(inspectorPaneForLfo('input', 'gain')).toBe('main')
+    expect(inspectorPaneForLfo('input', 'pan')).toBe('advanced')
   })
 })
 
@@ -175,5 +206,6 @@ describe('fxLfoSlotName', () => {
     expect(fxLfoSlotName('grain', 0)).toBe('g1')
     expect(fxLfoSlotName('limiter', 0)).toBe('l1')
     expect(fxLfoSlotName('delay', 1)).toBe('d2')
+    expect(fxLfoSlotName('input', 0)).toBe('i1')
   })
 })
