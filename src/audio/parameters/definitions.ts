@@ -835,6 +835,22 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 1,
   },
+  eq1Freq: { id: 'eq1Freq', label: 'EQ 1 Freq', min: 10, max: 25000, defaultValue: 80, unit: 'Hz', mapping: 'log' },
+  eq1Gain: { id: 'eq1Gain', label: 'EQ 1 Gain', min: -18, max: 18, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
+  eq1Q: { id: 'eq1Q', label: 'EQ 1 Q', min: 0.1, max: 20, defaultValue: 0.7, unit: '', mapping: 'log' },
+  eq2Freq: { id: 'eq2Freq', label: 'EQ 2 Freq', min: 10, max: 25000, defaultValue: 400, unit: 'Hz', mapping: 'log' },
+  eq2Gain: { id: 'eq2Gain', label: 'EQ 2 Gain', min: -18, max: 18, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
+  eq2Q: { id: 'eq2Q', label: 'EQ 2 Q', min: 0.1, max: 20, defaultValue: 1, unit: '', mapping: 'log' },
+  eq3Freq: { id: 'eq3Freq', label: 'EQ 3 Freq', min: 10, max: 25000, defaultValue: 2500, unit: 'Hz', mapping: 'log' },
+  eq3Gain: { id: 'eq3Gain', label: 'EQ 3 Gain', min: -18, max: 18, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
+  eq3Q: { id: 'eq3Q', label: 'EQ 3 Q', min: 0.1, max: 20, defaultValue: 1, unit: '', mapping: 'log' },
+  eq4Freq: { id: 'eq4Freq', label: 'EQ 4 Freq', min: 10, max: 25000, defaultValue: 12000, unit: 'Hz', mapping: 'log' },
+  eq4Gain: { id: 'eq4Gain', label: 'EQ 4 Gain', min: -18, max: 18, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
+  eq4Q: { id: 'eq4Q', label: 'EQ 4 Q', min: 0.1, max: 20, defaultValue: 0.7, unit: '', mapping: 'log' },
+  eqcfTeeth: { id: 'eqcfTeeth', label: 'Comb Teeth', min: 2, max: 16, defaultValue: 5, unit: '', mapping: 'linear', step: 1 },
+  eqcfGain: { id: 'eqcfGain', label: 'Comb Gain', min: -18, max: 18, defaultValue: 6, unit: 'dB', mapping: 'linear', step: 0.1 },
+  eqcfSpacing: { id: 'eqcfSpacing', label: 'Comb Spacing', min: 10, max: 4000, defaultValue: 200, unit: 'Hz', mapping: 'log' },
+  eqcfFreq: { id: 'eqcfFreq', label: 'Comb Base', min: 10, max: 25000, defaultValue: 110, unit: 'Hz', mapping: 'log' },
 }
 
 /** Filter type options, in UI order. `off` bypasses the filter entirely. */

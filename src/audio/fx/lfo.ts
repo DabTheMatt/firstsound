@@ -4,7 +4,7 @@ import type { ParamId } from '../parameters/types'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
-export type FxLfoKind = 'delay' | 'reverb' | 'limiter' | 'saturation'
+export type FxLfoKind = 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'eqcf'
 
 export type FxLfo = {
   rateHz: number
@@ -21,7 +21,7 @@ export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
   { value: 'snh', label: 'S&H' },
 ]
 
-export const FX_LFO_KINDS: FxLfoKind[] = ['delay', 'reverb', 'limiter', 'saturation']
+export const FX_LFO_KINDS: FxLfoKind[] = ['delay', 'reverb', 'limiter', 'saturation', 'grain', 'eq', 'eqcf']
 
 export const FX_LFO_SLOTS = 3
 
@@ -30,6 +30,35 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   reverb: 'Reverb',
   limiter: 'Limiter',
   saturation: 'Saturation',
+  grain: 'Grain',
+  eq: 'EQ',
+  eqcf: 'EQ comb',
+}
+
+export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
+  delay: 'd',
+  reverb: 'r',
+  limiter: 'l',
+  saturation: 's',
+  grain: 'g',
+  eq: 'eq',
+  eqcf: 'eqcf',
+}
+
+export function fxLfoSlotName(kind: FxLfoKind, slot: number): string {
+  return `${FX_LFO_SLOT_PREFIX[kind]}${slot + 1}`
+}
+
+export function defaultLfoShown(): Record<FxLfoKind, number> {
+  return {
+    delay: 1,
+    reverb: 1,
+    limiter: 1,
+    saturation: 1,
+    grain: 1,
+    eq: 1,
+    eqcf: 1,
+  }
 }
 
 export type FxLfoBank = FxLfo[]
@@ -107,11 +136,37 @@ const LIMITER_TARGETS: ParamId[] = [
 
 const SATURATION_TARGETS: ParamId[] = ['saturation']
 
+const GRAIN_TARGETS: ParamId[] = [
+  'grainSize',
+  'density',
+  'position',
+  'scatter',
+  'grainPitch',
+  'pitchSpread',
+  'motionDepth',
+  'motionRate',
+  'motionJitter',
+]
+
+export const EQ_BAND_LFO_IDS: { freq: ParamId; gain: ParamId; q: ParamId }[] = [
+  { freq: 'eq1Freq', gain: 'eq1Gain', q: 'eq1Q' },
+  { freq: 'eq2Freq', gain: 'eq2Gain', q: 'eq2Q' },
+  { freq: 'eq3Freq', gain: 'eq3Gain', q: 'eq3Q' },
+  { freq: 'eq4Freq', gain: 'eq4Gain', q: 'eq4Q' },
+]
+
+const EQ_TARGETS: ParamId[] = EQ_BAND_LFO_IDS.flatMap((ids) => [ids.freq, ids.gain, ids.q])
+
+const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
+
 export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   delay: DELAY_TARGETS,
   reverb: REVERB_TARGETS,
   limiter: LIMITER_TARGETS,
   saturation: SATURATION_TARGETS,
+  grain: GRAIN_TARGETS,
+  eq: EQ_TARGETS,
+  eqcf: EQCF_TARGETS,
 }
 
 const TARGET_KIND = (() => {
@@ -143,6 +198,9 @@ export function defaultFxLfos(): FxLfoMap {
     reverb: defaultFxLfoBank(),
     limiter: defaultFxLfoBank(),
     saturation: defaultFxLfoBank(),
+    grain: defaultFxLfoBank(),
+    eq: defaultFxLfoBank(),
+    eqcf: defaultFxLfoBank(),
   }
 }
 
@@ -159,7 +217,15 @@ export function isLfoShape(value: unknown): value is LfoShape {
 }
 
 export function isFxLfoKind(value: unknown): value is FxLfoKind {
-  return value === 'delay' || value === 'reverb' || value === 'limiter' || value === 'saturation'
+  return (
+    value === 'delay' ||
+    value === 'reverb' ||
+    value === 'limiter' ||
+    value === 'saturation' ||
+    value === 'grain' ||
+    value === 'eq' ||
+    value === 'eqcf'
+  )
 }
 
 export function fxLfoKindForParam(id: ParamId): FxLfoKind | null {
@@ -233,6 +299,12 @@ export function usedLfoSlots(bank: FxLfoBank): number {
   return Math.max(1, last)
 }
 
+export function lfoShownFromMap(lfos: FxLfoMap): Record<FxLfoKind, number> {
+  const next = defaultLfoShown()
+  for (const kind of FX_LFO_KINDS) next[kind] = usedLfoSlots(lfos[kind])
+  return next
+}
+
 export function nextFreeLfoSlot(bank: FxLfoBank): number | null {
   const idx = bank.findIndex((lfo) => !lfo.target)
   return idx < 0 ? null : idx
@@ -303,6 +375,9 @@ export function defaultLfoHold(): LfoHoldState {
     reverb: [emptyHold(), emptyHold(), emptyHold()],
     limiter: [emptyHold(), emptyHold(), emptyHold()],
     saturation: [emptyHold(), emptyHold(), emptyHold()],
+    grain: [emptyHold(), emptyHold(), emptyHold()],
+    eq: [emptyHold(), emptyHold(), emptyHold()],
+    eqcf: [emptyHold(), emptyHold(), emptyHold()],
   }
 }
 
@@ -312,6 +387,21 @@ export function fxLfoIsActive(lfo: FxLfo): boolean {
 
 export function anyFxLfoActive(lfos: FxLfoMap): boolean {
   return FX_LFO_KINDS.some((kind) => lfos[kind].some(fxLfoIsActive))
+}
+
+export function moduleTypeForLfoKind(kind: FxLfoKind): 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' {
+  return kind === 'eqcf' ? 'eq' : kind
+}
+
+export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'main' | 'advanced' {
+  if (kind === 'eqcf') return 'advanced'
+  if (kind === 'grain' && target && (target === 'motionDepth' || target === 'motionRate' || target === 'motionJitter')) {
+    return 'advanced'
+  }
+  if (kind === 'limiter' && target && target !== 'limiterThreshold' && target !== 'limiterCeiling' && target !== 'limiterRelease') {
+    return 'advanced'
+  }
+  return 'main'
 }
 
 export function applyFxLfos(

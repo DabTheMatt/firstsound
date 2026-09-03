@@ -8,6 +8,7 @@ import {
   LFO_RATE_MAX,
   LFO_RATE_MIN,
   LFO_SHAPES,
+  fxLfoSlotName,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
@@ -130,7 +131,7 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
           value={String(activeSlot)}
           options={Array.from({ length: shown }, (_, i) => ({
             value: String(i),
-            label: `LFO ${i + 1}`,
+            label: fxLfoSlotName(kind, i),
           }))}
           onChange={(value) => setSlot(Number(value))}
         />

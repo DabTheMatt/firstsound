@@ -6,7 +6,7 @@ export type VizMode = 'waveform' | 'spectrum' | 'split'
 export type MeterRange = 'normal' | 'field' | 'full'
 export type MeterMode = 'peak'
 export type InspectorFocus =
-  | { kind: 'module'; instanceId: string; type: ModuleType }
+  | { kind: 'module'; instanceId: string; type: ModuleType; pane?: 'main' | 'advanced' }
   | { kind: 'tool'; tool: WaveTool }
 
 export type FadeFocus = 'in' | 'out'

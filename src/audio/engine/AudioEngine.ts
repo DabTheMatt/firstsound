@@ -38,11 +38,13 @@ import {
   defaultFxLfo,
   defaultFxLfos,
   defaultLfoHold,
+  defaultLfoShown,
+  EQ_BAND_LFO_IDS,
   FX_LFO_SLOTS,
   isFxLfoKind,
   isFxLfoTarget,
+  lfoShownFromMap,
   parseFxLfos,
-  usedLfoSlots,
   type FxLfo,
   type FxLfoKind,
   type FxLfoMap,
@@ -298,7 +300,7 @@ export class AudioEngine {
   private lfoTimer = 0
   private lfoClockSec = 0
   private lfoWallMs = 0
-  private lfoShown: Record<FxLfoKind, number> = { delay: 1, reverb: 1, limiter: 1, saturation: 1 }
+  private lfoShown: Record<FxLfoKind, number> = defaultLfoShown()
   private reverbIrKey = ''
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
@@ -1145,7 +1147,7 @@ export class AudioEngine {
     this.reverbType = 'hall'
     this.fxLfos = defaultFxLfos()
     this.lfoHold = defaultLfoHold()
-    this.lfoShown = { delay: 1, reverb: 1, limiter: 1, saturation: 1 }
+    this.lfoShown = defaultLfoShown()
     this.lfoClockSec = 0
     this.lfoWallMs = 0
     this.reverbIrKey = ''
@@ -1209,6 +1211,7 @@ export class AudioEngine {
     st.bands = st.bands.map((item, i) => (i === index ? { ...item, ...patch } : item))
     this.eqById.set(id, st)
     this.syncPrimaryEq()
+    this.syncEqLfoParams(id)
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
     this.emit()
@@ -1220,6 +1223,7 @@ export class AudioEngine {
     st.comb = { ...st.comb, ...patch }
     this.eqById.set(id, st)
     this.syncPrimaryEq()
+    this.syncEqLfoParams(id)
     this.applyEq(0.03)
     this.emit()
   }
@@ -1345,12 +1349,7 @@ export class AudioEngine {
     this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
     this.fxLfos = parseFxLfos(preset.fxLfos)
     this.lfoHold = defaultLfoHold()
-    this.lfoShown = {
-      delay: usedLfoSlots(this.fxLfos.delay),
-      reverb: usedLfoSlots(this.fxLfos.reverb),
-      limiter: usedLfoSlots(this.fxLfos.limiter),
-      saturation: usedLfoSlots(this.fxLfos.saturation),
-    }
+    this.lfoShown = lfoShownFromMap(this.fxLfos)
     this.reverbIrKey = ''
     const migrated = migrateSpaceParams(preset.params)
     for (const id of Object.keys(this.params) as ParamId[]) {
@@ -1389,6 +1388,7 @@ export class AudioEngine {
     this.seedEqStates()
     this.eqById.set(this.primaryEqId(), cloneEqState(savedBands, savedComb))
     this.syncPrimaryEq()
+    this.syncEqLfoParams(this.primaryEqId())
     this.syncLfoClock()
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
@@ -1943,11 +1943,52 @@ export class AudioEngine {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const nyquist = this.ctx.sampleRate / 2
+    const live = this.liveParams()
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
-      this.writeEqFilters(slot.eq, st.bands, st.comb, now, smoothing, nyquist)
+      this.writeEqFilters(slot.eq, this.liveEqBands(st.bands, live), this.liveComb(st.comb, live), now, smoothing, nyquist)
     }
+  }
+
+  private liveEqBands(bands: EqBand[], live: Record<ParamId, number>): EqBand[] {
+    return bands.map((band, index) => {
+      const ids = EQ_BAND_LFO_IDS[index]
+      if (!ids) return band
+      return {
+        ...band,
+        frequency: live[ids.freq] ?? band.frequency,
+        gain: live[ids.gain] ?? band.gain,
+        q: live[ids.q] ?? band.q,
+      }
+    })
+  }
+
+  private liveComb(comb: CombFilterState, live: Record<ParamId, number>): CombFilterState {
+    return {
+      ...comb,
+      teeth: live.eqcfTeeth ?? comb.teeth,
+      gain: live.eqcfGain ?? comb.gain,
+      spacing: live.eqcfSpacing ?? comb.spacing,
+      frequency: live.eqcfFreq ?? comb.frequency,
+    }
+  }
+
+  private syncEqLfoParams(instanceId: string): void {
+    if (instanceId !== this.primaryEqId()) return
+    const st = this.eqState(instanceId)
+    for (let i = 0; i < EQ_BAND_LFO_IDS.length; i++) {
+      const band = st.bands[i]
+      const ids = EQ_BAND_LFO_IDS[i]
+      if (!band || !ids) continue
+      this.params[ids.freq] = band.frequency
+      this.params[ids.gain] = band.gain
+      this.params[ids.q] = band.q
+    }
+    this.params.eqcfTeeth = st.comb.teeth
+    this.params.eqcfGain = st.comb.gain
+    this.params.eqcfSpacing = st.comb.spacing
+    this.params.eqcfFreq = st.comb.frequency
   }
 
   private writeEqFilters(
@@ -2334,9 +2375,10 @@ export class AudioEngine {
     const ctx = this.ctx
     const duration = buffer.duration
     const horizon = ctx.currentTime + LOOKAHEAD
-    const density = Math.max(this.params.density, 0.5)
+    const live = this.liveParams()
+    const density = Math.max(live.density, 0.5)
     const interval = 1 / density
-    const grainDur = this.params.grainSize / 1000
+    const grainDur = live.grainSize / 1000
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const amp = 0.35 / Math.sqrt(density / 8)
@@ -2344,14 +2386,14 @@ export class AudioEngine {
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
-      const scatter = this.params.scatter / 100
-      const pos = clamp(this.params.position / 100 + this.motionOffset(t) * 0.5, 0, 1)
+      const scatter = live.scatter / 100
+      const pos = clamp(live.position / 100 + this.motionOffset(t) * 0.5, 0, 1)
       const jitter = (Math.random() * 2 - 1) * scatter * span * 0.5
       let offset = start + pos * span + jitter
       offset = Math.min(Math.max(offset, start), Math.max(start, end - grainDur * 0.25))
       const grainPitch =
-        this.params.grainPitch + (Math.random() * 2 - 1) * this.params.pitchSpread
-      const rate = playbackRate(this.params.speed, this.params.pitch + grainPitch)
+        live.grainPitch + (Math.random() * 2 - 1) * live.pitchSpread
+      const rate = playbackRate(live.speed, live.pitch + grainPitch)
 
       const playbackRel =
         this.direction === 'reverse' ? Math.max(0, end - offset) : Math.max(0, offset - start)

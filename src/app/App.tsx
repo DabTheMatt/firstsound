@@ -15,6 +15,7 @@ import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
 import { LfoCenter } from '../components/inspector/LfoCenter'
 import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
+import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
@@ -184,11 +185,20 @@ export default function App() {
     }))
   }
 
-  const selectModule = (instanceId: string) => {
+  const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
     const mod = snap.chain.find((m) => m.instanceId === instanceId)
     if (!mod) return
-    setFocus({ kind: 'module', instanceId, type: mod.type })
+    setFocus({ kind: 'module', instanceId, type: mod.type, pane })
     if (mode === 'sheet') setSheetLevel('medium')
+  }
+
+  const revealLfo = (kind: Parameters<typeof moduleTypeForLfoKind>[0], slot: number) => {
+    const target = snap.fxLfos[kind][slot]?.target ?? null
+    const type = moduleTypeForLfoKind(kind)
+    const mod = snap.chain.find((m) => m.type === type)
+    setLfoCenterOpen(false)
+    if (!mod) return
+    selectModule(mod.instanceId, inspectorPaneForLfo(kind, target))
   }
 
   const resolvedFocus: InspectorFocus =
@@ -384,7 +394,7 @@ export default function App() {
               onClick={() => setLfoCenterOpen(false)}
             />
             <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
-              <LfoCenter snap={snap} />
+              <LfoCenter snap={snap} onReveal={revealLfo} />
             </div>
           </>
         ) : null}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MODULE_LABELS, eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
@@ -20,7 +20,9 @@ import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
+import { EQ_BAND_LFO_IDS } from '../../audio/fx/lfo'
 import { engine } from '../../hooks/useEngine'
+import { LfoParamShell } from '../controls/LfoParamShell'
 import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
@@ -93,6 +95,7 @@ export function Inspector({
           type={focus.type}
           instanceId={focus.instanceId}
           variant={variant}
+          paneHint={focus.pane}
           onHideInspector={onHideInspector}
         />
       )}
@@ -362,17 +365,23 @@ function ModuleInspector({
   type,
   instanceId,
   variant,
+  paneHint,
   onHideInspector,
 }: {
   snap: EngineSnapshot
   type: ModuleType
   instanceId: string
   variant: 'knob' | 'slider'
+  paneHint?: 'main' | 'advanced'
   onHideInspector?: () => void
 }) {
   const [paneById, setPaneById] = useState<Record<string, 'main' | 'advanced'>>({})
   const mod = snap.chain.find((m) => m.instanceId === instanceId)
-  const pane = paneById[instanceId] ?? 'main'
+  useEffect(() => {
+    if (!paneHint) return
+    setPaneById((prev) => (prev[instanceId] === paneHint ? prev : { ...prev, [instanceId]: paneHint }))
+  }, [paneHint, instanceId])
+  const pane = paneById[instanceId] ?? paneHint ?? 'main'
   const setPane = (next: 'main' | 'advanced') =>
     setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
   const hasAdvanced = type !== 'saturation' && type !== 'output'
@@ -463,9 +472,15 @@ function ModuleInspector({
             }
           />
           {params(GRAIN_MAIN_IDS)}
+          <FxLfoSection snap={snap} kind="grain" variant={variant} />
         </>
       ) : null}
-      {type === 'grain' && pane === 'advanced' ? params(GRAIN_ADV_IDS) : null}
+      {type === 'grain' && pane === 'advanced' ? (
+        <>
+          {params(GRAIN_ADV_IDS)}
+          <FxLfoSection snap={snap} kind="grain" variant={variant} />
+        </>
+      ) : null}
       {type === 'eq' ? (
         <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
       ) : null}
@@ -626,72 +641,83 @@ function EqEditor({
           ) : null}
           {knobs ? (
             <div className={styles.knobs}>
-              <ValueKnob
-                label="Freq"
-                valueText={formatHz(band.frequency)}
-                normalized={freqToN(band.frequency)}
-                min={EQ_MIN_HZ}
-                max={EQ_MAX_HZ}
-                now={band.frequency}
-                onChange={(n) => setBand(index, { frequency: nToFreq(n) })}
-                onTypedValue={(text) => {
-                  const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
-                  if (next == null) return false
-                  setBand(index, { frequency: next })
-                  return true
-                }}
-              />
-              {bandUsesGain(band.type) ? (
+              <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.freq}>
                 <ValueKnob
-                  label="Gain"
-                  valueText={`${band.gain.toFixed(1)} dB`}
-                  normalized={(band.gain + 18) / 36}
-                  min={-18}
-                  max={18}
-                  now={band.gain}
-                  onChange={(n) => setBand(index, { gain: n * 36 - 18 })}
+                  label="Freq"
+                  valueText={formatHz(snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency)}
+                  normalized={freqToN(band.frequency)}
+                  visualNormalized={freqToN(snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency)}
+                  min={EQ_MIN_HZ}
+                  max={EQ_MAX_HZ}
+                  now={band.frequency}
+                  onChange={(n) => setBand(index, { frequency: nToFreq(n) })}
                   onTypedValue={(text) => {
-                    const next = parseTypedRange(text, -18, 18, 'dB')
+                    const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
                     if (next == null) return false
-                    setBand(index, { gain: next })
+                    setBand(index, { frequency: next })
                     return true
                   }}
                 />
+              </LfoParamShell>
+              {bandUsesGain(band.type) ? (
+                <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.gain}>
+                  <ValueKnob
+                    label="Gain"
+                    valueText={`${(snap.liveParams[EQ_BAND_LFO_IDS[index]!.gain] ?? band.gain).toFixed(1)} dB`}
+                    normalized={(band.gain + 18) / 36}
+                    visualNormalized={((snap.liveParams[EQ_BAND_LFO_IDS[index]!.gain] ?? band.gain) + 18) / 36}
+                    min={-18}
+                    max={18}
+                    now={band.gain}
+                    onChange={(n) => setBand(index, { gain: n * 36 - 18 })}
+                    onTypedValue={(text) => {
+                      const next = parseTypedRange(text, -18, 18, 'dB')
+                      if (next == null) return false
+                      setBand(index, { gain: next })
+                      return true
+                    }}
+                  />
+                </LfoParamShell>
               ) : null}
               {bandUsesWidth(band.type) ? (
-                <ValueKnob
-                  label="Width"
-                  valueText={formatHz(bandwidthHz(band.frequency, band.q))}
-                  normalized={widthToN(bandwidthHz(band.frequency, band.q))}
-                  min={10}
-                  max={10000}
-                  now={bandwidthHz(band.frequency, band.q)}
-                  onChange={(n) =>
-                    setBand(index, { q: qFromBandwidth(band.frequency, nToWidth(n)) })
-                  }
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 10, 10000, 'Hz')
-                    if (next == null) return false
-                    setBand(index, { q: qFromBandwidth(band.frequency, next) })
-                    return true
-                  }}
-                />
+                <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.q}>
+                  <ValueKnob
+                    label="Width"
+                    valueText={formatHz(bandwidthHz(band.frequency, band.q))}
+                    normalized={widthToN(bandwidthHz(band.frequency, band.q))}
+                    min={10}
+                    max={10000}
+                    now={bandwidthHz(band.frequency, band.q)}
+                    onChange={(n) =>
+                      setBand(index, { q: qFromBandwidth(band.frequency, nToWidth(n)) })
+                    }
+                    onTypedValue={(text) => {
+                      const next = parseTypedRange(text, 10, 10000, 'Hz')
+                      if (next == null) return false
+                      setBand(index, { q: qFromBandwidth(band.frequency, next) })
+                      return true
+                    }}
+                  />
+                </LfoParamShell>
               ) : (
-                <ValueKnob
-                  label="Q"
-                  valueText={band.q.toFixed(2)}
-                  normalized={qToN(band.q)}
-                  min={0.1}
-                  max={20}
-                  now={band.q}
-                  onChange={(n) => setBand(index, { q: nToQ(n) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 0.1, 20)
-                    if (next == null) return false
-                    setBand(index, { q: next })
-                    return true
-                  }}
-                />
+                <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.q}>
+                  <ValueKnob
+                    label="Q"
+                    valueText={(snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q).toFixed(2)}
+                    normalized={qToN(band.q)}
+                    visualNormalized={qToN(snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q)}
+                    min={0.1}
+                    max={20}
+                    now={band.q}
+                    onChange={(n) => setBand(index, { q: nToQ(n) })}
+                    onTypedValue={(text) => {
+                      const next = parseTypedRange(text, 0.1, 20)
+                      if (next == null) return false
+                      setBand(index, { q: next })
+                      return true
+                    }}
+                  />
+                </LfoParamShell>
               )}
             </div>
           ) : (
@@ -759,6 +785,7 @@ function EqEditor({
           )}
         </details>
       ))}
+      <FxLfoSection snap={snap} kind="eq" variant={knobs ? 'knob' : 'slider'} />
         </>
       ) : (
         <>
@@ -784,9 +811,10 @@ function EqEditor({
         />
         {knobs ? (
           <div className={styles.knobs}>
+            <LfoParamShell id="eqcfTeeth">
             <ValueKnob
               label="Teeth"
-              valueText={`${Math.round(comb.teeth)}`}
+              valueText={`${Math.round(snap.liveParams.eqcfTeeth ?? comb.teeth)}`}
               normalized={(comb.teeth - 2) / 14}
               min={2}
               max={16}
@@ -799,9 +827,11 @@ function EqEditor({
                 return true
               }}
             />
+            </LfoParamShell>
+            <LfoParamShell id="eqcfGain">
             <ValueKnob
               label="Gain"
-              valueText={`${comb.gain.toFixed(1)} dB`}
+              valueText={`${(snap.liveParams.eqcfGain ?? comb.gain).toFixed(1)} dB`}
               normalized={(comb.gain + 18) / 36}
               min={-18}
               max={18}
@@ -814,9 +844,11 @@ function EqEditor({
                 return true
               }}
             />
+            </LfoParamShell>
+            <LfoParamShell id="eqcfFreq">
             <ValueKnob
               label="Base"
-              valueText={formatHz(comb.frequency)}
+              valueText={formatHz(snap.liveParams.eqcfFreq ?? comb.frequency)}
               normalized={freqToN(comb.frequency)}
               min={EQ_MIN_HZ}
               max={EQ_MAX_HZ}
@@ -829,6 +861,8 @@ function EqEditor({
                 return true
               }}
             />
+            </LfoParamShell>
+            <LfoParamShell id="eqcfSpacing">
             <ValueKnob
               label="Spacing"
               valueText={
@@ -865,8 +899,10 @@ function EqEditor({
                 return true
               }}
             />
+            </LfoParamShell>
           </div>
         ) : null}
+        <FxLfoSection snap={snap} kind="eqcf" variant={knobs ? 'knob' : 'slider'} />
         </>
       )}
     </div>

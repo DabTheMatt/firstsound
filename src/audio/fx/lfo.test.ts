@@ -5,6 +5,7 @@ import {
   applyFxLfos,
   defaultFxLfos,
   defaultLfoHold,
+  fxLfoSlotName,
   isFxLfoTarget,
   lfoPhase,
   lfoRangeNormalized,
@@ -161,5 +162,18 @@ describe('targets', () => {
     expect(isFxLfoTarget('delay', 'reverbWet')).toBe(false)
     expect(isFxLfoTarget('delay', 'delayWet')).toBe(true)
     expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
+    expect(isFxLfoTarget('grain', 'density')).toBe(true)
+    expect(isFxLfoTarget('eq', 'eq2Freq')).toBe(true)
+    expect(isFxLfoTarget('eqcf', 'eqcfGain')).toBe(true)
+  })
+})
+
+describe('fxLfoSlotName', () => {
+  it('uses unique prefixes per effect', () => {
+    expect(fxLfoSlotName('eq', 0)).toBe('eq1')
+    expect(fxLfoSlotName('eqcf', 0)).toBe('eqcf1')
+    expect(fxLfoSlotName('grain', 0)).toBe('g1')
+    expect(fxLfoSlotName('limiter', 0)).toBe('l1')
+    expect(fxLfoSlotName('delay', 1)).toBe('d2')
   })
 })

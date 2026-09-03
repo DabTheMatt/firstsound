@@ -73,6 +73,12 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
 }
 
 .meta strong {

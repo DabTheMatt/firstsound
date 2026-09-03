@@ -11,6 +11,13 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -135,4 +142,10 @@
   min-height: 28px;
   min-width: 28px;
   padding: 0 8px;
+}
+
+.minimal .rec {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 9px;
 }
