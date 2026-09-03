@@ -345,7 +345,7 @@ export default function App() {
       }}
     >
       <main
-        className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden}`}
+        className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         style={
           mode === 'dock-right' && inspectorOpen
             ? ({ '--inspector-col': `${inspectorWidth(mode, viewportWidth)}px` } as CSSProperties)
@@ -372,6 +372,7 @@ export default function App() {
             })
           }}
           compact={sheet}
+          minimal={isPhoneLayout}
         />
         {lfoCenterOpen ? (
           <>
@@ -410,6 +411,7 @@ export default function App() {
           selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
           onSelect={selectModule}
           touch={compact}
+          minimal={isPhoneLayout}
         />
 
         <WaveformToolbar
@@ -428,6 +430,7 @@ export default function App() {
             if (action === 'normalize-view') setNormalizeView((n) => !n)
             if (action === 'reset-zoom') waveRef.current?.resetZoom()
           }}
+          minimal={isPhoneLayout}
         />
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>

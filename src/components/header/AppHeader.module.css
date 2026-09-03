@@ -113,3 +113,26 @@
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
+
+.minimal {
+  min-height: 28px;
+  gap: 8px;
+}
+
+.minimal .brand {
+  gap: 6px;
+}
+
+.minimal .wordmark {
+  font-size: 10px;
+}
+
+.minimal .file {
+  font-size: 12px;
+}
+
+.minimal .settings {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 8px;
+}

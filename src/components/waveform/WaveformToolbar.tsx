@@ -12,6 +12,7 @@ type Props = {
   onZoomOut: () => void
   onView: (action: ViewAction) => void
   normalizeView: boolean
+  minimal?: boolean
 }
 
 export type ViewAction =
@@ -33,45 +34,56 @@ export function WaveformToolbar({
   onZoomOut,
   onView,
   normalizeView,
+  minimal = false,
 }: Props) {
   const tools = TOOLS
 
   return (
-    <div className={styles.bar}>
-      <div className={styles.tools}>
-        {tools.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`${styles.tool} ${tool === item.id ? styles.active : ''}`}
-            aria-pressed={tool === item.id}
-            onClick={() => onTool(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`}>
+      {!minimal ? (
+        <div className={styles.tools}>
+          {tools.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`${styles.tool} ${tool === item.id ? styles.active : ''}`}
+              aria-pressed={tool === item.id}
+              onClick={() => onTool(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className={styles.views}>
         <IconButton label="Fit sample" caption="Fit" onClick={() => onView('fit-sample')}>
           <FitIcon />
         </IconButton>
-        <IconButton label="Fit selection" caption="Sel" onClick={() => onView('fit-selection')}>
-          <FitSelIcon />
-        </IconButton>
-        <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
-          <ZoomSelIcon />
-        </IconButton>
-        <IconButton
-          label="Normalize view"
-          caption="Norm"
-          pressed={normalizeView}
-          onClick={() => onView('normalize-view')}
-        >
-          <NormIcon />
-        </IconButton>
-        <IconButton label="Reset zoom" caption="Reset" onClick={() => onView('reset-zoom')}>
-          <ResetIcon />
-        </IconButton>
+        {!minimal ? (
+          <IconButton label="Fit selection" caption="Sel" onClick={() => onView('fit-selection')}>
+            <FitSelIcon />
+          </IconButton>
+        ) : null}
+        {!minimal ? (
+          <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
+            <ZoomSelIcon />
+          </IconButton>
+        ) : null}
+        {!minimal ? (
+          <IconButton
+            label="Normalize view"
+            caption="Norm"
+            pressed={normalizeView}
+            onClick={() => onView('normalize-view')}
+          >
+            <NormIcon />
+          </IconButton>
+        ) : null}
+        {!minimal ? (
+          <IconButton label="Reset zoom" caption="Reset" onClick={() => onView('reset-zoom')}>
+            <ResetIcon />
+          </IconButton>
+        ) : null}
         <IconButton
           label="Waveform"
           caption="Wave"
@@ -88,34 +100,38 @@ export function WaveformToolbar({
         >
           <SpecIcon />
         </IconButton>
-        <IconButton
-          label="Split view"
-          caption="Split"
-          pressed={viz === 'split'}
-          onClick={() => onViz('split')}
-        >
-          <SplitIcon />
-        </IconButton>
+        {!minimal ? (
+          <IconButton
+            label="Split view"
+            caption="Split"
+            pressed={viz === 'split'}
+            onClick={() => onViz('split')}
+          >
+            <SplitIcon />
+          </IconButton>
+        ) : null}
       </div>
-      <div className={styles.zoom}>
-        <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>
-          −
-        </button>
-        <span
-          title="Scroll to zoom"
-          onWheel={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            if (event.deltaY > 0) onZoomOut()
-            else onZoomIn()
-          }}
-        >
-          {zoomLabel}
-        </span>
-        <button type="button" className={styles.icon} aria-label="Zoom in" onClick={onZoomIn}>
-          +
-        </button>
-      </div>
+      {!minimal ? (
+        <div className={styles.zoom}>
+          <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>
+            −
+          </button>
+          <span
+            title="Scroll to zoom"
+            onWheel={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              if (event.deltaY > 0) onZoomOut()
+              else onZoomIn()
+            }}
+          >
+            {zoomLabel}
+          </span>
+          <button type="button" className={styles.icon} aria-label="Zoom in" onClick={onZoomIn}>
+            +
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

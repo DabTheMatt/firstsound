@@ -17,9 +17,10 @@ type Props = {
   selectedId: string
   onSelect: (instanceId: string) => void
   touch: boolean
+  minimal?: boolean
 }
 
-export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
+export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false }: Props) {
   const [reorder, setReorder] = useState(false)
   const [openAdd, setOpenAdd] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -48,7 +49,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch }: Props) {
   }
 
   return (
-    <nav className={`${styles.chain} ${reorder ? styles.reordering : ''}`} aria-label="Signal chain">
+    <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label="Signal chain">
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
         const active = mod.instanceId === selectedId
