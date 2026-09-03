@@ -32,9 +32,8 @@
 }
 
 .phoneShell {
-  padding: 6px 8px 8px;
+  padding: 6px 8px 0;
   gap: 4px;
-  padding-bottom: calc(52px + env(safe-area-inset-bottom));
 }
 
 .phoneWork {
@@ -42,7 +41,7 @@
 }
 
 .phoneBottom {
-  flex: none;
+  flex: 0 0 auto;
   max-height: none;
   overflow: hidden;
 }
@@ -92,13 +91,11 @@
 }
 
 .transportPinned {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex: none;
+  position: relative;
   z-index: 9;
-  margin: 0;
-  padding: 4px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  margin: 0 -8px 0;
+  padding: 4px 8px calc(6px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--bg-app) 92%, black 8%);
 }

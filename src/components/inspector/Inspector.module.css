@@ -314,10 +314,12 @@
 }
 
 .compact {
-  gap: 6px;
-  padding: 6px 8px 8px;
+  flex: none;
+  gap: 4px;
+  padding: 4px 8px 4px;
   height: auto;
   max-height: none;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -342,8 +344,8 @@
 .compact .knobs,
 .compact .macros {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px 6px;
-  padding-top: 2px;
+  gap: 0 4px;
+  padding-top: 0;
 }
 
 .compact .help {

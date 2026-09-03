@@ -54,7 +54,7 @@ function histKey(
 export default function App() {
   const snap = useEngine()
   const { mode, width: viewportWidth } = useLayoutMode()
-  const isPhoneLayout = mode === 'sheet' && viewportWidth <= 430
+  const isPhoneLayout = mode === 'sheet'
   const [menuOpen, setMenuOpen] = useState(false)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
