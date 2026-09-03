@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="FIELD" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <meta
       name="description"
       content="FIELD — a browser instrument for sample manipulation."
@@ -31,7 +32,9 @@
         try {
           var h = window.innerHeight
           var v = window.visualViewport && window.visualViewport.height
+          var c = document.documentElement.clientHeight
           if (v && v > h) h = v
+          if (c && c > h) h = c
           document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px')
         } catch (e) {}
         try {

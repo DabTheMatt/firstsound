@@ -57,6 +57,7 @@ import {
   type CombFilterState,
 } from './comb'
 import { createPinkNoiseBuffer } from './pinkNoise'
+import { micAccessMessage } from './micAccess'
 import {
   applyDelayGraph,
   applyReverbGraph,
@@ -225,6 +226,15 @@ function setPlaybackAudioSession(): void {
     }
   } catch {
     /* audioSession unsupported — Web Audio still works elsewhere. */
+  }
+}
+
+function setPlayAndRecordAudioSession(): void {
+  try {
+    const nav = navigator as AudioSessionNavigator
+    if (nav.audioSession) nav.audioSession.type = 'play-and-record'
+  } catch {
+    /* optional */
   }
 }
 
@@ -1242,13 +1252,43 @@ export class AudioEngine {
   }
 
   async startMicRecord(): Promise<void> {
-    await this.ensureContext()
-    if (!this.ctx || this.recording) return
+    if (this.recording) return
     this.recordError = null
+    this.emit()
+
+    // iOS Safari / standalone PWA invalidate user-activation across awaits.
+    // Request the mic first, before ensureContext() yields the gesture.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.recordError = 'Microphone API is unavailable in this browser.'
+      this.emit()
+      return
+    }
+
+    let stream: MediaStream
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       })
+    } catch (err) {
+      this.recordError = micAccessMessage(err)
+      this.emit()
+      return
+    }
+
+    try {
+      await this.ensureContext()
+      if (!this.ctx) {
+        stream.getTracks().forEach((t) => t.stop())
+        this.recordError = 'Audio engine failed to start.'
+        this.emit()
+        return
+      }
+      // Prefer speaker playback while the mic is open (iOS play-and-record).
+      setPlayAndRecordAudioSession()
       this.recStream = stream
       this.recChunks = []
       const src = this.ctx.createMediaStreamSource(stream)
@@ -1268,7 +1308,8 @@ export class AudioEngine {
       this.recording = true
       this.emit()
     } catch {
-      this.recordError = 'Microphone access was denied or is unavailable.'
+      stream.getTracks().forEach((t) => t.stop())
+      this.recordError = 'Microphone opened, but recording could not start.'
       this.emit()
     }
   }
@@ -1298,6 +1339,7 @@ export class AudioEngine {
     this.recMute = null
     this.recStream?.getTracks().forEach((t) => t.stop())
     this.recStream = null
+    setPlaybackAudioSession()
     if (!this.ctx || chunks.length === 0) {
       this.emit()
       return

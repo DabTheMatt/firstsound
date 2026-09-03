@@ -3,7 +3,8 @@ import { appViewportHeightPx, resolveLayoutMode, type LayoutMode } from './layou
 
 function readBox() {
   const visual = window.visualViewport?.height
-  const height = appViewportHeightPx(window.innerHeight, visual)
+  const client = document.documentElement.clientHeight
+  const height = appViewportHeightPx(window.innerHeight, visual, client)
   document.documentElement.style.setProperty('--app-height', `${height}px`)
   return { width: window.innerWidth, height }
 }

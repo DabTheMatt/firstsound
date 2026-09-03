@@ -33,9 +33,10 @@ describe('inspectorWidth', () => {
 })
 
 describe('appViewportHeightPx', () => {
-  it('uses inner height when the visual viewport is missing or smaller', () => {
+  it('uses the largest of inner, visual, and client heights', () => {
     expect(appViewportHeightPx(844)).toBe(844)
     expect(appViewportHeightPx(844, 700)).toBe(844)
+    expect(appViewportHeightPx(720, 800, 844)).toBe(844)
   })
 
   it('grows to the visual viewport so standalone PWA does not leave a bottom gap', () => {

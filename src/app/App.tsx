@@ -280,10 +280,8 @@ export default function App() {
         <button
           type="button"
           onClick={() => {
-            void engine.unlock().then(() => {
-              if (engine.getSnapshot().recording) engine.stopMicRecord()
-              else void engine.startMicRecord()
-            })
+            if (engine.getSnapshot().recording) engine.stopMicRecord()
+            else void engine.startMicRecord()
           }}
         >
           {snap.recording ? 'Stop recording' : 'Record microphone'}
@@ -342,7 +340,7 @@ export default function App() {
   return (
     <FxLfoConnectProvider>
     <div
-      className={styles.page}
+      className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}
       onDragOver={(event) => {
         event.preventDefault()
         setDragging(true)
@@ -377,10 +375,8 @@ export default function App() {
           }}
           onLoadSample={() => sampleInput.current?.click()}
           onRecord={() => {
-            void engine.unlock().then(() => {
-              if (engine.getSnapshot().recording) engine.stopMicRecord()
-              else void engine.startMicRecord()
-            })
+            if (engine.getSnapshot().recording) engine.stopMicRecord()
+            else void engine.startMicRecord()
           }}
           compact={sheet}
           minimal={isPhoneLayout}

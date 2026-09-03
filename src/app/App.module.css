@@ -15,6 +15,26 @@
     env(safe-area-inset-left, 0px);
 }
 
+/* Phone + standalone: pin the shell to the screen so a stale
+   --app-height cannot leave a black band under the transport. */
+.phonePage {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-height: none;
+}
+
+@media all and (display-mode: standalone), all and (display-mode: fullscreen) {
+  .page {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-height: none;
+  }
+}
+
 .shell {
   flex: 1;
   width: 100%;
@@ -89,7 +109,8 @@
   z-index: 9;
   margin-left: -8px;
   margin-right: -8px;
-  padding: 4px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  /* Keep only the home-indicator inset — extra padding read as wasted black space. */
+  padding: 2px 8px max(2px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border-subtle);
   /* Panel fill must include the home-indicator inset, otherwise the padding
      reads as a black gap under the controls in standalone PWA. */
@@ -100,6 +121,12 @@
 .phoneShell {
   padding: 6px 8px 0;
   gap: 4px;
+}
+
+.phoneShell .transportPinned {
+  margin-left: -8px;
+  margin-right: -8px;
+  margin-bottom: 0;
 }
 
 .phoneWork {
