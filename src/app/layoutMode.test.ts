@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inspectorWidth, resolveLayoutMode } from './layoutMode'
+import { appViewportHeightPx, inspectorWidth, resolveLayoutMode } from './layoutMode'
 
 describe('resolveLayoutMode', () => {
   it('uses bottom sheets on phone-width viewports', () => {
@@ -29,5 +29,16 @@ describe('inspectorWidth', () => {
   it('narrows on compact landscape', () => {
     expect(inspectorWidth('dock-right', 1100)).toBe(280)
     expect(inspectorWidth('dock-right', 1440)).toBe(360)
+  })
+})
+
+describe('appViewportHeightPx', () => {
+  it('uses inner height when the visual viewport is missing or smaller', () => {
+    expect(appViewportHeightPx(844)).toBe(844)
+    expect(appViewportHeightPx(844, 700)).toBe(844)
+  })
+
+  it('grows to the visual viewport so standalone PWA does not leave a bottom gap', () => {
+    expect(appViewportHeightPx(720, 844)).toBe(844)
   })
 })

@@ -1,20 +1,30 @@
 import { useEffect, useState } from 'react'
-import { resolveLayoutMode, type LayoutMode } from './layoutMode'
+import { appViewportHeightPx, resolveLayoutMode, type LayoutMode } from './layoutMode'
+
+function readBox() {
+  const visual = window.visualViewport?.height
+  const height = appViewportHeightPx(window.innerHeight, visual)
+  document.documentElement.style.setProperty('--app-height', `${height}px`)
+  return { width: window.innerWidth, height }
+}
 
 export function useLayoutMode(): { mode: LayoutMode; width: number; height: number } {
-  const [box, setBox] = useState(() => ({
-    width: typeof window === 'undefined' ? 1280 : window.innerWidth,
-    height: typeof window === 'undefined' ? 800 : window.innerHeight,
-  }))
+  const [box, setBox] = useState(() =>
+    typeof window === 'undefined'
+      ? { width: 1280, height: 800 }
+      : readBox(),
+  )
 
   useEffect(() => {
-    const update = () => setBox({ width: window.innerWidth, height: window.innerHeight })
+    const update = () => setBox(readBox())
     update()
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
+    window.visualViewport?.addEventListener('resize', update)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('orientationchange', update)
+      window.visualViewport?.removeEventListener('resize', update)
     }
   }, [])
 
