@@ -37,6 +37,7 @@ import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { EQ_BAND_LFO_IDS, eqBandLfoKind, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -253,7 +254,16 @@ export function Spectrum({ active }: Props) {
           if (!st) continue
           const hasShape = st.bands.some((b) => b.type !== 'off') || st.comb.enabled
           if (!hasShape) continue
-          const plotBands = [...st.bands, ...combAsEqBands(st.comb)]
+          const plotBands = [
+            ...liveEqBandsFromParams(st.bands, live.liveParams),
+            ...combAsEqBands({
+              ...st.comb,
+              teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
+              gain: live.liveParams.eqcfGain ?? st.comb.gain,
+              spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
+              frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
+            }),
+          ]
           const tone = eqTone(ei, colors)
           ctx.beginPath()
           ctx.strokeStyle = colorWithAlpha(tone.curve, mod.bypassed ? 0.28 : 1)
@@ -436,8 +446,9 @@ export function Spectrum({ active }: Props) {
       >
         {eqMods.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []
+          const liveBands = liveEqBandsFromParams(bands, snap.liveParams)
           const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
-          return bands.map((band, index) => {
+          return liveBands.map((band, index) => {
           if (band.type === 'off') return null
           const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
           const yPct =
@@ -445,11 +456,19 @@ export function Spectrum({ active }: Props) {
           const selected =
             selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
           const dim = mod.bypassed || band.bypassed
+          const ids = EQ_BAND_LFO_IDS[index]
+          const bank = snap.fxLfos[eqBandLfoKind(index)]
+          const mapped = Boolean(
+            ids &&
+              bank?.some(
+                (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
+              ),
+          )
           return (
             <button
               key={`${mod.instanceId}-${index}`}
               type="button"
-              className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''}`}
+              className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
               style={{
                 left: `${xPct}%`,
                 top: `${Math.min(100, Math.max(0, yPct))}%`,

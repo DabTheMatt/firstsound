@@ -15,7 +15,18 @@
 }
 
 .mapped {
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  box-shadow:
+    0 0 0 1.5px var(--accent-primary),
+    0 0 0 4px color-mix(in srgb, var(--accent-primary) 28%, transparent);
+}
+
+.mapped::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  pointer-events: none;
 }
 
 .lfoTag {

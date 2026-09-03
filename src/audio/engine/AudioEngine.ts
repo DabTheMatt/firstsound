@@ -454,6 +454,10 @@ export class AudioEngine {
       const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
       return start + p * (end - start)
     }
+    // Stretch scheduler owns the head — don't reconstruct from wall clock.
+    if (this.schedulerId && this.engineMode === 'playback') {
+      return clamp(this.stretchHead, start, end)
+    }
     const tempo = Math.max(0.01, this.liveParams().speed)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
     const span = Math.max(end - start, MIN_REGION)
@@ -2219,11 +2223,7 @@ export class AudioEngine {
     this.syncEqListen()
     if (this.playing && this.engineMode === 'playback') {
       if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
-        const pos = this.getPlayheadSeconds()
-        this.stopVoices()
-        this.playOffset = pos
-        this.playCtxTime = now
-        this.startStretchPlayback()
+        this.handoffToStretch(now)
       } else if (this.source && !this.schedulerId) {
         this.source.playbackRate.setTargetAtTime(1, now, 0.03)
         if (this.direction !== 'pingpong') {
@@ -2234,6 +2234,53 @@ export class AudioEngine {
         }
       }
     }
+  }
+
+  /** Soft-fade the buffer voice before starting grain stretch (avoids clicks on speed/pitch). */
+  private handoffToStretch(now: number): void {
+    if (!this.ctx) return
+    const pos = this.getPlayheadSeconds()
+    const fadeSec = 0.028
+    const oldSrc = this.source
+    const oldGain = this.voiceGain
+    if (oldGain) {
+      try {
+        const g = oldGain.gain
+        const cur = Math.max(0.0001, g.value)
+        g.cancelScheduledValues(now)
+        g.setValueAtTime(cur, now)
+        g.linearRampToValueAtTime(0.0001, now + fadeSec)
+      } catch {
+        /* finishing curve */
+      }
+    }
+    if (oldSrc) oldSrc.onended = null
+    this.source = null
+    this.voiceGain = null
+    const releaseAt = now + fadeSec
+    window.setTimeout(
+      () => {
+        try {
+          oldSrc?.stop()
+        } catch {
+          /* already stopped */
+        }
+        try {
+          oldSrc?.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        try {
+          oldGain?.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+      },
+      Math.max(8, (releaseAt - (this.ctx?.currentTime ?? now)) * 1000 + 12),
+    )
+    this.playOffset = pos
+    this.playCtxTime = now
+    this.startStretchPlayback()
   }
 
   private startBufferVoice(offset: number): void {

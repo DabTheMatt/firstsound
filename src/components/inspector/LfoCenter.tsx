@@ -7,6 +7,7 @@ import {
   fxLfoIsActive,
   fxLfoSlotName,
   lfoConnectCopy,
+  type FxLfo,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
@@ -19,8 +20,26 @@ type Props = {
   onReveal?: (kind: FxLfoKind, slot: number) => void
 }
 
+function lfoConnectScore(lfo: FxLfo | undefined): number {
+  if (!lfo) return 0
+  // Connected first, then running modulators.
+  return (lfo.target ? 2 : 0) + (fxLfoIsActive(lfo) ? 1 : 0)
+}
+
+function kindConnectScore(snap: EngineSnapshot, kind: FxLfoKind): number {
+  const bank = snap.fxLfos[kind] ?? []
+  let best = 0
+  for (const lfo of bank) best = Math.max(best, lfoConnectScore(lfo))
+  return best
+}
+
 export function LfoCenter({ snap, onReveal }: Props) {
   const { armed, setArmed } = useFxLfoConnect()
+  const kinds = [...FX_LFO_KINDS].sort((a, b) => {
+    const diff = kindConnectScore(snap, b) - kindConnectScore(snap, a)
+    if (diff !== 0) return diff
+    return FX_LFO_KINDS.indexOf(a) - FX_LFO_KINDS.indexOf(b)
+  })
   return (
     <div className={styles.panel} role="dialog" aria-label="LFO control center">
       <header className={styles.head}>
@@ -29,7 +48,7 @@ export function LfoCenter({ snap, onReveal }: Props) {
           Running modulators and their targets. Up to {FX_LFO_SLOTS} LFOs on each effect.
         </p>
       </header>
-      {FX_LFO_KINDS.map((kind) => (
+      {kinds.map((kind) => (
         <KindBlock
           key={kind}
           kind={kind}
@@ -69,52 +88,58 @@ function KindBlock({
         ) : null}
       </div>
       <ul className={styles.list}>
-        {Array.from({ length: shown }, (_, slot) => {
-          const lfo = snap.fxLfos[kind][slot]
-          if (!lfo) return null
-          const connecting = armed?.kind === kind && armed.slot === slot
-          const shape = LFO_SHAPES.find((s) => s.value === lfo.shape)?.label ?? lfo.shape
-          const target = lfo.target ? PARAMS[lfo.target].label : null
-          const connect = lfoConnectCopy(connecting, target)
-          const running = fxLfoIsActive(lfo)
-          const name = fxLfoSlotName(kind, slot)
-          return (
-            <li key={slot} className={running ? styles.rowOn : styles.row}>
-              <button
-                type="button"
-                className={styles.meta}
-                onClick={() => onReveal?.(kind, slot)}
-              >
-                <strong>{name}</strong>
-                <span>
-                  {shape} · {lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz ·{' '}
-                  {Math.round(lfo.depth)}%
-                </span>
-                <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>
-              </button>
-              <div className={styles.actions}>
+        {Array.from({ length: shown }, (_, slot) => slot)
+          .sort((a, b) => {
+            const la = snap.fxLfos[kind][a]
+            const lb = snap.fxLfos[kind][b]
+            return lfoConnectScore(lb) - lfoConnectScore(la) || a - b
+          })
+          .map((slot) => {
+            const lfo = snap.fxLfos[kind][slot]
+            if (!lfo) return null
+            const connecting = armed?.kind === kind && armed.slot === slot
+            const shape = LFO_SHAPES.find((s) => s.value === lfo.shape)?.label ?? lfo.shape
+            const target = lfo.target ? PARAMS[lfo.target].label : null
+            const connect = lfoConnectCopy(connecting, target)
+            const running = fxLfoIsActive(lfo)
+            const name = fxLfoSlotName(kind, slot)
+            return (
+              <li key={slot} className={running ? styles.rowOn : styles.row}>
                 <button
                   type="button"
-                  className={connecting || target ? styles.ghostOn : styles.ghost}
-                  aria-pressed={connecting}
-                  onClick={() => setArmed(connecting ? null : { kind, slot })}
+                  className={styles.meta}
+                  onClick={() => onReveal?.(kind, slot)}
                 >
-                  <span>{connect.label}</span>
-                  {connect.detail ? <small className={styles.connectDetail}>{connect.detail}</small> : null}
+                  <strong>{name}</strong>
+                  <span>
+                    {shape} · {lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz ·{' '}
+                    {Math.round(lfo.depth)}%
+                  </span>
+                  <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>
                 </button>
-                {lfo.target ? (
+                <div className={styles.actions}>
                   <button
                     type="button"
-                    className={styles.ghost}
-                    onClick={() => engine.setFxLfoTarget(kind, slot, null)}
+                    className={connecting || target ? styles.ghostOn : styles.ghost}
+                    aria-pressed={connecting}
+                    onClick={() => setArmed(connecting ? null : { kind, slot })}
                   >
-                    Disconnect
+                    <span>{connect.label}</span>
+                    {connect.detail ? <small className={styles.connectDetail}>{connect.detail}</small> : null}
                   </button>
-                ) : null}
-              </div>
-            </li>
-          )
-        })}
+                  {lfo.target ? (
+                    <button
+                      type="button"
+                      className={styles.ghost}
+                      onClick={() => engine.setFxLfoTarget(kind, slot, null)}
+                    >
+                      Disconnect
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            )
+          })}
       </ul>
     </section>
   )

@@ -4,7 +4,19 @@ import type { ParamId } from '../parameters/types'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
-export type FxLfoKind = 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'eqcf' | 'input'
+/** Per-EQ-band LFO banks use eq1…eq4 so slot names read eq1b1, eq2b3, etc. */
+export type FxLfoKind =
+  | 'delay'
+  | 'reverb'
+  | 'limiter'
+  | 'saturation'
+  | 'grain'
+  | 'eq1'
+  | 'eq2'
+  | 'eq3'
+  | 'eq4'
+  | 'eqcf'
+  | 'input'
 
 export type FxLfo = {
   rateHz: number
@@ -21,13 +33,18 @@ export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
   { value: 'snh', label: 'S&H' },
 ]
 
+export const EQ_BAND_LFO_KINDS: FxLfoKind[] = ['eq1', 'eq2', 'eq3', 'eq4']
+
 export const FX_LFO_KINDS: FxLfoKind[] = [
   'delay',
   'reverb',
   'limiter',
   'saturation',
   'grain',
-  'eq',
+  'eq1',
+  'eq2',
+  'eq3',
+  'eq4',
   'eqcf',
   'input',
 ]
@@ -40,7 +57,10 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   limiter: 'Limiter',
   saturation: 'Saturation',
   grain: 'Grain',
-  eq: 'EQ',
+  eq1: 'EQ band 1',
+  eq2: 'EQ band 2',
+  eq3: 'EQ band 3',
+  eq4: 'EQ band 4',
   eqcf: 'EQ comb',
   input: 'Input',
 }
@@ -51,13 +71,20 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   limiter: 'l',
   saturation: 's',
   grain: 'g',
-  eq: 'eq',
+  eq1: 'eq1b',
+  eq2: 'eq2b',
+  eq3: 'eq3b',
+  eq4: 'eq4b',
   eqcf: 'eqcf',
   input: 'i',
 }
 
 export function fxLfoSlotName(kind: FxLfoKind, slot: number): string {
   return `${FX_LFO_SLOT_PREFIX[kind]}${slot + 1}`
+}
+
+export function eqBandLfoKind(bandIndex: number): FxLfoKind {
+  return EQ_BAND_LFO_KINDS[clamp(Math.round(bandIndex), 0, 3)] ?? 'eq1'
 }
 
 export function defaultLfoShown(): Record<FxLfoKind, number> {
@@ -67,7 +94,10 @@ export function defaultLfoShown(): Record<FxLfoKind, number> {
     limiter: 1,
     saturation: 1,
     grain: 1,
-    eq: 1,
+    eq1: 1,
+    eq2: 1,
+    eq3: 1,
+    eq4: 1,
     eqcf: 1,
     input: 1,
   }
@@ -167,8 +197,6 @@ export const EQ_BAND_LFO_IDS: { freq: ParamId; gain: ParamId; q: ParamId }[] = [
   { freq: 'eq4Freq', gain: 'eq4Gain', q: 'eq4Q' },
 ]
 
-const EQ_TARGETS: ParamId[] = EQ_BAND_LFO_IDS.flatMap((ids) => [ids.freq, ids.gain, ids.q])
-
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
 
 const INPUT_TARGETS: ParamId[] = ['gain', 'speed', 'pitch', 'pan', 'channelGainL', 'channelGainR']
@@ -179,7 +207,10 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   limiter: LIMITER_TARGETS,
   saturation: SATURATION_TARGETS,
   grain: GRAIN_TARGETS,
-  eq: EQ_TARGETS,
+  eq1: [EQ_BAND_LFO_IDS[0]!.freq, EQ_BAND_LFO_IDS[0]!.gain, EQ_BAND_LFO_IDS[0]!.q],
+  eq2: [EQ_BAND_LFO_IDS[1]!.freq, EQ_BAND_LFO_IDS[1]!.gain, EQ_BAND_LFO_IDS[1]!.q],
+  eq3: [EQ_BAND_LFO_IDS[2]!.freq, EQ_BAND_LFO_IDS[2]!.gain, EQ_BAND_LFO_IDS[2]!.q],
+  eq4: [EQ_BAND_LFO_IDS[3]!.freq, EQ_BAND_LFO_IDS[3]!.gain, EQ_BAND_LFO_IDS[3]!.q],
   eqcf: EQCF_TARGETS,
   input: INPUT_TARGETS,
 }
@@ -214,7 +245,10 @@ export function defaultFxLfos(): FxLfoMap {
     limiter: defaultFxLfoBank(),
     saturation: defaultFxLfoBank(),
     grain: defaultFxLfoBank(),
-    eq: defaultFxLfoBank(),
+    eq1: defaultFxLfoBank(),
+    eq2: defaultFxLfoBank(),
+    eq3: defaultFxLfoBank(),
+    eq4: defaultFxLfoBank(),
     eqcf: defaultFxLfoBank(),
     input: defaultFxLfoBank(),
   }
@@ -279,8 +313,25 @@ export function parseFxLfoBank(raw: unknown, kind: FxLfoKind): FxLfoBank {
 export function parseFxLfos(raw: unknown): FxLfoMap {
   const next = defaultFxLfos()
   if (!raw || typeof raw !== 'object') return next
-  const rec = raw as Partial<Record<FxLfoKind, unknown>>
+  const rec = raw as Partial<Record<FxLfoKind | 'eq', unknown>>
   for (const kind of FX_LFO_KINDS) next[kind] = parseFxLfoBank(rec[kind], kind)
+  // Migrate legacy single `eq` bank onto band 1 (and redistribute targets when possible).
+  if (rec.eq != null) {
+    const legacy = parseFxLfoBank(rec.eq, 'eq1')
+    for (let i = 0; i < FX_LFO_SLOTS; i++) {
+      const lfo = legacy[i]
+      if (!lfo?.target) {
+        if (!next.eq1[i]?.target) next.eq1[i] = lfo ?? defaultFxLfo()
+        continue
+      }
+      const kind = fxLfoKindForParam(lfo.target) ?? 'eq1'
+      if (EQ_BAND_LFO_KINDS.includes(kind)) {
+        const slot = next[kind].findIndex((s) => !s.target)
+        const at = slot >= 0 ? slot : 0
+        next[kind][at] = { ...lfo }
+      }
+    }
+  }
   return next
 }
 
@@ -384,7 +435,10 @@ export function defaultLfoHold(): LfoHoldState {
     limiter: [emptyHold(), emptyHold(), emptyHold()],
     saturation: [emptyHold(), emptyHold(), emptyHold()],
     grain: [emptyHold(), emptyHold(), emptyHold()],
-    eq: [emptyHold(), emptyHold(), emptyHold()],
+    eq1: [emptyHold(), emptyHold(), emptyHold()],
+    eq2: [emptyHold(), emptyHold(), emptyHold()],
+    eq3: [emptyHold(), emptyHold(), emptyHold()],
+    eq4: [emptyHold(), emptyHold(), emptyHold()],
     eqcf: [emptyHold(), emptyHold(), emptyHold()],
     input: [emptyHold(), emptyHold(), emptyHold()],
   }
@@ -401,7 +455,7 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
 ): 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
-  if (kind === 'eqcf') return 'eq'
+  if (kind === 'eqcf' || kind === 'eq1' || kind === 'eq2' || kind === 'eq3' || kind === 'eq4') return 'eq'
   if (kind === 'input') return 'gain'
   return kind
 }
@@ -459,4 +513,21 @@ export function applyFxLfos(
     }
   }
   return next
+}
+
+/** Overlay live (LFO-modulated) freq/gain/Q onto stored EQ bands for plots. */
+export function liveEqBandsFromParams<T extends { frequency: number; gain: number; q: number }>(
+  bands: T[],
+  live: Record<ParamId, number>,
+): T[] {
+  return bands.map((band, index) => {
+    const ids = EQ_BAND_LFO_IDS[index]
+    if (!ids) return band
+    return {
+      ...band,
+      frequency: live[ids.freq] ?? band.frequency,
+      gain: live[ids.gain] ?? band.gain,
+      q: live[ids.q] ?? band.q,
+    }
+  })
 }

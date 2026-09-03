@@ -176,7 +176,9 @@ describe('targets', () => {
     expect(isFxLfoTarget('delay', 'delayWet')).toBe(true)
     expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
-    expect(isFxLfoTarget('eq', 'eq2Freq')).toBe(true)
+    expect(isFxLfoTarget('eq1', 'eq1Freq')).toBe(true)
+    expect(isFxLfoTarget('eq2', 'eq2Freq')).toBe(true)
+    expect(isFxLfoTarget('eq2', 'eq1Freq')).toBe(false)
     expect(isFxLfoTarget('eqcf', 'eqcfGain')).toBe(true)
     expect(isFxLfoTarget('input', 'gain')).toBe(true)
     expect(isFxLfoTarget('input', 'pan')).toBe(true)
@@ -201,7 +203,9 @@ describe('inspectorPaneForLfo', () => {
 
 describe('fxLfoSlotName', () => {
   it('uses unique prefixes per effect', () => {
-    expect(fxLfoSlotName('eq', 0)).toBe('eq1')
+    expect(fxLfoSlotName('eq1', 0)).toBe('eq1b1')
+    expect(fxLfoSlotName('eq2', 2)).toBe('eq2b3')
+    expect(fxLfoSlotName('eq4', 1)).toBe('eq4b2')
     expect(fxLfoSlotName('eqcf', 0)).toBe('eqcf1')
     expect(fxLfoSlotName('grain', 0)).toBe('g1')
     expect(fxLfoSlotName('limiter', 0)).toBe('l1')

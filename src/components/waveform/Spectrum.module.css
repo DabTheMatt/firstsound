@@ -188,6 +188,21 @@
   opacity: 0.35;
 }
 
+.nodeLfo {
+  box-shadow:
+    0 0 0 1.5px var(--accent-primary),
+    0 0 0 4px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+}
+
+.nodeLfo::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  pointer-events: none;
+}
+
 .cursorReadout {
   position: absolute;
   z-index: 4;
