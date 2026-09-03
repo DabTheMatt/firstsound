@@ -55,3 +55,22 @@
   color: var(--accent-primary);
   box-shadow: inset 0 0 0 1px var(--accent-primary);
 }
+
+@media (max-width: 430px) {
+  .group {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .segment {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 9px;
+  }
+
+  .wrap .segment {
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+}

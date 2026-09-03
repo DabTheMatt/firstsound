@@ -312,3 +312,44 @@
   padding-top: 8px;
   border-top: 1px solid var(--border-subtle);
 }
+
+.compact {
+  gap: 6px;
+  padding: 6px 8px 8px;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
+}
+
+.compact .head {
+  position: static;
+  margin: -6px -8px 0;
+  padding: 6px 8px 4px;
+}
+
+.compact .paneTabs {
+  position: static;
+  margin: 0 -8px;
+  padding: 0 8px;
+}
+
+.compact .paneTab,
+.compact .paneTabOn {
+  min-height: 26px;
+  padding: 0 8px;
+}
+
+.compact .knobs,
+.compact .macros {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 6px;
+  padding-top: 2px;
+}
+
+.compact .help {
+  display: none;
+}
+
+.compact .sub {
+  margin: 4px 0 0;
+}

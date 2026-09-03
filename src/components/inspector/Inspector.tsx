@@ -43,6 +43,7 @@ type Props = {
   onTrim?: () => void
   sheet?: boolean
   knobs?: boolean
+  compact?: boolean
   onHideInspector?: () => void
 }
 
@@ -69,11 +70,12 @@ export function Inspector({
   onTrim,
   sheet,
   knobs = true,
+  compact = false,
   onHideInspector,
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
-    <div className={`${styles.panel} ${sheet ? styles.sheet : ''}`}>
+    <div className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''}`}>
       {focus.kind === 'tool' ? (
         <ToolInspector
           snap={snap}

@@ -235,7 +235,7 @@ export default function App() {
       snap={snap}
       focus={resolvedFocus}
       edit={edit}
-      sheet={sheet && activeSheetLevel !== 'expanded'}
+      sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
       onCommit={commit}
       onTrim={() => {
@@ -253,7 +253,8 @@ export default function App() {
             commit()
           })
       }}
-      knobs={mode !== 'sheet'}
+      knobs={mode !== 'sheet' || isPhoneLayout}
+      compact={isPhoneLayout}
       onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
@@ -475,6 +476,40 @@ export default function App() {
           ) : null}
         </div>
 
+        {!dockRight && inspectorOpen ? (
+          <div className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}>
+            {sheet && !isPhoneLayout ? (
+              <button
+                type="button"
+                className={styles.sheetHandle}
+                onClick={() =>
+                  setSheetLevel((s) =>
+                    s === 'collapsed' ? 'medium' : s === 'medium' ? 'expanded' : 'collapsed',
+                  )
+                }
+              >
+                Inspector
+              </button>
+            ) : null}
+            {isPhoneLayout || activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
+          </div>
+        ) : null}
+
+        {editMode && snap.sampleLoaded ? (
+          <EditBar
+            snap={snap}
+            viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
+            moreOpen={false}
+            onToggleMore={() => undefined}
+            onExport={() => setExportOpen(true)}
+            onDone={() => {
+              engine.stopPreview()
+              setEditMode(false)
+              setExportOpen(false)
+            }}
+          />
+        ) : null}
+
         <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`}>
           <CompactTransport
             playing={snap.playing}
@@ -492,38 +527,6 @@ export default function App() {
             onUseSample={onUseSample}
           />
         </div>
-
-        {editMode && snap.sampleLoaded ? (
-          <EditBar
-            snap={snap}
-            viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
-            moreOpen={false}
-            onToggleMore={() => undefined}
-            onExport={() => setExportOpen(true)}
-            onDone={() => {
-              engine.stopPreview()
-              setEditMode(false)
-              setExportOpen(false)
-            }}
-          />
-        ) : null}
-
-        {!dockRight && inspectorOpen ? (
-          <div className={`${styles.bottom} ${styles[activeSheetLevel]}`}>
-            {sheet ? (
-              <button
-                type="button"
-                className={styles.sheetHandle}
-                onClick={() =>
-                  setSheetLevel((s) => (s === 'collapsed' ? 'expanded' : s === 'expanded' ? 'collapsed' : 'expanded'))
-                }
-              >
-                Inspector
-              </button>
-            ) : null}
-            {activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
-          </div>
-        ) : null}
 
         <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>
 
