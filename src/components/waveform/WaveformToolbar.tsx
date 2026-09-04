@@ -64,11 +64,9 @@ export function WaveformToolbar({
             <FitSelIcon />
           </IconButton>
         ) : null}
-        {!minimal ? (
-          <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
-            <ZoomSelIcon />
-          </IconButton>
-        ) : null}
+        <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
+          <ZoomSelIcon />
+        </IconButton>
         {!minimal ? (
           <IconButton
             label="Normalize view"
