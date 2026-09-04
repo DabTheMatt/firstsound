@@ -136,6 +136,22 @@ export function limiterReductionDb(g: LimiterGraph | null | undefined): number {
 export const LIMITER_PLOT_MIN_DB = -48
 export const LIMITER_PLOT_MAX_DB = 6
 
+/** Soft-knee input range around threshold (DynamicsCompressor half-width). */
+export function compressorKneeRange(
+  threshold: number,
+  knee: number,
+): { lo: number; hi: number; width: number } {
+  const width = Math.max(0, knee)
+  const half = width / 2
+  return { lo: threshold - half, hi: threshold + half, width }
+}
+
+/** Map a dB value onto the limiter transfer-curve plot [0, 1]. */
+export function limiterPlotT(db: number): number {
+  const v = Math.min(LIMITER_PLOT_MAX_DB, Math.max(LIMITER_PLOT_MIN_DB, db))
+  return (v - LIMITER_PLOT_MIN_DB) / (LIMITER_PLOT_MAX_DB - LIMITER_PLOT_MIN_DB)
+}
+
 export function amplitudeToDb(amp: number): number {
   if (!(amp > 0) || !Number.isFinite(amp)) return Number.NEGATIVE_INFINITY
   return 20 * Math.log10(amp)

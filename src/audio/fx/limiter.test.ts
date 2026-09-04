@@ -5,10 +5,14 @@ import {
   autoMakeupDb,
   buildLimiterWavePreview,
   compressorGainDb,
+  compressorKneeRange,
   crushSample,
+  LIMITER_PLOT_MAX_DB,
+  LIMITER_PLOT_MIN_DB,
   LIMITER_PREVIEW_SECONDS,
   limitSample,
   limiterOutputDb,
+  limiterPlotT,
   limiterSettings,
   makeLimiterTransferCurve,
   peakAmplitude,
@@ -59,6 +63,21 @@ describe('compressorGainDb', () => {
     const hard = compressorGainDb(0, -6, 20, 0)
     expect(hard).toBeLessThan(soft)
     expect(soft).toBeLessThan(0)
+  })
+})
+
+describe('compressorKneeRange', () => {
+  it('centers the soft-knee band on threshold', () => {
+    expect(compressorKneeRange(-6, 6)).toEqual({ lo: -9, hi: -3, width: 6 })
+    expect(compressorKneeRange(-12, 0)).toEqual({ lo: -12, hi: -12, width: 0 })
+  })
+})
+
+describe('limiterPlotT', () => {
+  it('maps the plot edges to 0 and 1', () => {
+    expect(limiterPlotT(LIMITER_PLOT_MIN_DB)).toBe(0)
+    expect(limiterPlotT(LIMITER_PLOT_MAX_DB)).toBe(1)
+    expect(limiterPlotT((LIMITER_PLOT_MIN_DB + LIMITER_PLOT_MAX_DB) / 2)).toBeCloseTo(0.5)
   })
 })
 

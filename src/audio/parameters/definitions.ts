@@ -895,14 +895,14 @@ export const SPACE_KNOBS: ParamId[] = [
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
 export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
-export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterThreshold', 'limiterCeiling', 'limiterRelease']
-export const LIMITER_ADV_KNOBS: ParamId[] = [
-  'limiterInput',
-  'limiterAttack',
-  'limiterKnee',
+/** Threshold / ratio / knee sit in the Compressor band on the main pane. */
+export const LIMITER_COMPRESSOR_KNOBS: ParamId[] = [
+  'limiterThreshold',
   'limiterRatio',
-  'limiterMakeup',
+  'limiterKnee',
 ]
+export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterCeiling', 'limiterRelease']
+export const LIMITER_ADV_KNOBS: ParamId[] = ['limiterInput', 'limiterAttack', 'limiterMakeup']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {

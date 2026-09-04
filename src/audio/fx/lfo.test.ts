@@ -199,6 +199,13 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('input', 'gain')).toBe('main')
     expect(inspectorPaneForLfo('input', 'pan')).toBe('advanced')
   })
+
+  it('keeps compressor knobs on the limiter main pane', () => {
+    expect(inspectorPaneForLfo('limiter', 'limiterThreshold')).toBe('main')
+    expect(inspectorPaneForLfo('limiter', 'limiterRatio')).toBe('main')
+    expect(inspectorPaneForLfo('limiter', 'limiterKnee')).toBe('main')
+    expect(inspectorPaneForLfo('limiter', 'limiterAttack')).toBe('advanced')
+  })
 })
 
 describe('fxLfoSlotName', () => {
