@@ -61,13 +61,13 @@ export function LimiterPlot() {
         settings.ratio,
         settings.makeupGain,
         settings.ceiling,
+        limiterOn ? 'on' : 'off',
       ].join('|')
 
       if (!mono || mono.length === 0) {
         preview = null
         cacheKey = ''
       } else if (key !== cacheKey) {
-        // Always predict the limited shape so knobs stay useful while bypassed.
         preview = buildLimiterWavePreview(
           mono,
           sampleRate,
@@ -75,7 +75,7 @@ export function LimiterPlot() {
           LIMITER_PREVIEW_SECONDS,
           buckets,
           settings,
-          true,
+          limiterOn,
         )
         cacheKey = key
       }

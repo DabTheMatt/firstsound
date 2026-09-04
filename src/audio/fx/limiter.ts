@@ -36,61 +36,101 @@ export function limiterSettings(params: Record<ParamId, number>): LimiterSetting
   }
 }
 
+export const LIMITER_CURVE_POINTS = 2048
+
 export type LimiterGraph = {
   inputGain: GainNode
-  comp: DynamicsCompressorNode
-  makeup: GainNode
-  ceiling: DynamicsCompressorNode
+  shaper: WaveShaperNode
   analyserPost: AnalyserNode
+  curveKey: string
+  lastSettings: LimiterSettings
+}
+
+/**
+ * Sample-accurate transfer matching `limitSample` / the inspector overlay.
+ * DynamicsCompressor lets grains through; this curve does not.
+ */
+export function makeLimiterTransferCurve(
+  s: LimiterSettings,
+  points = LIMITER_CURVE_POINTS,
+): Float32Array<ArrayBuffer> {
+  const n = Math.max(2, points)
+  const curve = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1
+    curve[i] = limitSample(x, s)
+  }
+  return curve
+}
+
+export function limiterSettingsKey(s: LimiterSettings): string {
+  return [
+    s.inputGain,
+    s.threshold,
+    s.knee,
+    s.ratio,
+    s.makeupGain,
+    s.ceiling,
+  ].join('|')
 }
 
 export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
   const inputGain = ctx.createGain()
-  const comp = ctx.createDynamicsCompressor()
-  const makeup = ctx.createGain()
-  const ceiling = ctx.createDynamicsCompressor()
+  const shaper = ctx.createWaveShaper()
+  shaper.oversample = '2x'
   const analyserPost = ctx.createAnalyser()
   analyserPost.fftSize = 2048
   analyserPost.smoothingTimeConstant = 0
 
+  const lastSettings: LimiterSettings = {
+    inputGain: 1,
+    threshold: -6,
+    knee: 0,
+    ratio: 20,
+    attack: 0.001,
+    release: 0.05,
+    makeupGain: 1,
+    ceiling: -0.3,
+  }
+  shaper.curve = makeLimiterTransferCurve(lastSettings)
+
   input.connect(inputGain)
-  inputGain.connect(comp)
-  comp.connect(makeup)
-  makeup.connect(ceiling)
-  ceiling.connect(analyserPost)
+  // Drive stays inside the curve so peaks above 0 dBFS still follow limitSample.
+  inputGain.gain.value = 1
+  inputGain.connect(shaper)
+  shaper.connect(analyserPost)
   analyserPost.connect(wet)
   const keepAlive = ctx.createGain()
   keepAlive.gain.value = 0
   analyserPost.connect(keepAlive)
   keepAlive.connect(ctx.destination)
 
-  return { inputGain, comp, makeup, ceiling, analyserPost }
+  return {
+    inputGain,
+    shaper,
+    analyserPost,
+    curveKey: limiterSettingsKey(lastSettings),
+    lastSettings,
+  }
 }
 
 export function applyLimiterGraph(
   g: LimiterGraph,
   params: Record<ParamId, number>,
-  now: number,
-  smoothing: number,
+  _now: number,
+  _smoothing: number,
 ): void {
   const s = limiterSettings(params)
-  g.inputGain.gain.setTargetAtTime(s.inputGain, now, smoothing)
-  g.comp.threshold.setTargetAtTime(s.threshold, now, smoothing)
-  g.comp.knee.setTargetAtTime(s.knee, now, smoothing)
-  g.comp.ratio.setTargetAtTime(s.ratio, now, smoothing)
-  g.comp.attack.setTargetAtTime(s.attack, now, smoothing)
-  g.comp.release.setTargetAtTime(s.release, now, smoothing)
-  g.makeup.gain.setTargetAtTime(s.makeupGain, now, smoothing)
-  g.ceiling.threshold.setTargetAtTime(s.ceiling, now, smoothing)
-  g.ceiling.ratio.setTargetAtTime(20, now, smoothing)
-  g.ceiling.knee.setTargetAtTime(0, now, smoothing)
-  g.ceiling.attack.setTargetAtTime(0.001, now, smoothing)
-  g.ceiling.release.setTargetAtTime(0.05, now, smoothing)
+  const key = limiterSettingsKey(s)
+  if (key === g.curveKey) return
+  g.shaper.curve = makeLimiterTransferCurve(s)
+  g.curveKey = key
+  g.lastSettings = s
 }
 
 export function limiterReductionDb(g: LimiterGraph | null | undefined): number {
-  const gr = g?.comp.reduction
-  return typeof gr === 'number' && Number.isFinite(gr) ? gr : 0
+  if (!g?.lastSettings) return 0
+  return Math.min(0, limiterOutputDb(0, g.lastSettings))
 }
 
 export const LIMITER_PLOT_MIN_DB = -48

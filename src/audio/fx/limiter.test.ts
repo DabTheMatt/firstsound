@@ -10,6 +10,7 @@ import {
   limitSample,
   limiterOutputDb,
   limiterSettings,
+  makeLimiterTransferCurve,
   peakAmplitude,
 } from './limiter'
 
@@ -114,6 +115,21 @@ describe('buildLimiterWavePreview', () => {
     expect(preview.durationSec).toBeCloseTo(1, 5)
     expect(preview.outMax[0]).toBe(preview.inMax[0])
     expect(preview.outMin[1]).toBe(preview.inMin[1])
+  })
+})
+
+describe('makeLimiterTransferCurve', () => {
+  it('matches limitSample so the live path crushes like the preview', () => {
+    const s = limiterSettings(defaultParamValues())
+    s.threshold = -18
+    s.ratio = 20
+    s.makeupGain = 1
+    const curve = makeLimiterTransferCurve(s, 5)
+    expect(curve).toHaveLength(5)
+    expect(curve[2]).toBeCloseTo(0, 5)
+    expect(curve[4]).toBeCloseTo(limitSample(1, s), 5)
+    expect(curve[0]).toBeCloseTo(limitSample(-1, s), 5)
+    expect(Math.abs(curve[4] ?? 0)).toBeLessThan(0.2)
   })
 })
 
