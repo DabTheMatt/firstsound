@@ -136,45 +136,91 @@ export function limiterOutputDb(inputDb: number, s: LimiterSettings): number {
   return Math.min(s.ceiling, after)
 }
 
-/** Display columns in the limiter inspector scope. Coarse enough to stay readable. */
-export const LIMITER_SCOPE_POINTS = 48
-
-/** Analyser samples to fold into those columns (~2–3 cycles around mid-band). */
-export const LIMITER_SCOPE_WINDOW = 320
-
-/** Keep the signed peak of each bucket so flattened tops stay visible. */
-export function downsampleScope(samples: Float32Array, points: number, out: Float32Array): void {
-  const n = Math.max(0, Math.min(points, out.length))
-  if (n === 0) return
-  if (samples.length === 0) {
-    out.fill(0, 0, n)
-    return
-  }
-  const window = Math.min(samples.length, Math.max(n, LIMITER_SCOPE_WINDOW))
-  const start = samples.length - window
-  for (let i = 0; i < n; i++) {
-    const a = start + Math.floor((i / n) * window)
-    const b = start + Math.floor(((i + 1) / n) * window)
-    let peak = 0
-    for (let s = a; s < Math.max(a + 1, b); s++) {
-      const v = samples[s] ?? 0
-      if (Math.abs(v) >= Math.abs(peak)) peak = v
-    }
-    out[i] = peak
-  }
-  if (out.length > n) out.fill(0, n)
-}
+/** Sample lookahead shown in the limiter inspector. */
+export const LIMITER_PREVIEW_SECONDS = 10
 
 export function dbToAmplitude(db: number): number {
   if (!Number.isFinite(db)) return 0
   return 10 ** (db / 20)
 }
 
-/** Soft-flatten samples that exceed the threshold, for the inspector scope. */
+/**
+ * Predict a bipolar sample after input drive, compression, makeup, and ceiling.
+ * Instantaneous (no attack/release) — enough for a static shape overlay.
+ */
+export function limitSample(x: number, s: LimiterSettings): number {
+  if (!Number.isFinite(x) || x === 0) return 0
+  const outDb = limiterOutputDb(amplitudeToDb(Math.abs(x)), s)
+  if (!Number.isFinite(outDb)) return 0
+  return Math.sign(x) * dbToAmplitude(outDb)
+}
+
+/** Soft-flatten samples that exceed the threshold (legacy scope helper / tests). */
 export function crushSample(x: number, thresholdAmp: number, ratio: number): number {
   const t = Math.max(1e-6, thresholdAmp)
   const r = Math.max(1, ratio)
   const a = Math.abs(x)
   if (a <= t) return x
   return Math.sign(x) * (t + (a - t) / r)
+}
+
+export type LimiterWavePreview = {
+  inMin: Float32Array
+  inMax: Float32Array
+  outMin: Float32Array
+  outMax: Float32Array
+  /** Max abs across original and limited envelopes (for vertical scale). */
+  peak: number
+  /** Seconds actually covered (shorter near EOF). */
+  durationSec: number
+}
+
+/**
+ * Min/max envelopes for the next `windowSec` of `mono` starting at `startSec`,
+ * plus the same buckets after the static limiter transfer curve.
+ */
+export function buildLimiterWavePreview(
+  mono: Float32Array,
+  sampleRate: number,
+  startSec: number,
+  windowSec: number,
+  buckets: number,
+  settings: LimiterSettings,
+  applyLimit: boolean,
+): LimiterWavePreview {
+  const n = Math.max(1, Math.floor(buckets))
+  const inMin = new Float32Array(n)
+  const inMax = new Float32Array(n)
+  const outMin = new Float32Array(n)
+  const outMax = new Float32Array(n)
+  const rate = Math.max(1, sampleRate)
+  const startIdx = Math.max(0, Math.min(mono.length, Math.floor(Math.max(0, startSec) * rate)))
+  const want = Math.max(0, Math.floor(Math.max(0, windowSec) * rate))
+  const endIdx = Math.min(mono.length, startIdx + want)
+  const len = endIdx - startIdx
+  const durationSec = len / rate
+  let peak = 0
+  if (len <= 0) return { inMin, inMax, outMin, outMax, peak, durationSec }
+
+  const bucketWidth = len / n
+  for (let i = 0; i < n; i++) {
+    const from = startIdx + Math.floor(i * bucketWidth)
+    const to = Math.min(endIdx, startIdx + Math.floor((i + 1) * bucketWidth))
+    const end = to > from ? to : Math.min(endIdx, from + 1)
+    let mn = mono[from] ?? 0
+    let mx = mn
+    for (let j = from + 1; j < end; j++) {
+      const v = mono[j] ?? 0
+      if (v < mn) mn = v
+      if (v > mx) mx = v
+    }
+    inMin[i] = mn
+    inMax[i] = mx
+    const oMn = applyLimit ? limitSample(mn, settings) : mn
+    const oMx = applyLimit ? limitSample(mx, settings) : mx
+    outMin[i] = oMn
+    outMax[i] = oMx
+    peak = Math.max(peak, Math.abs(mn), Math.abs(mx), Math.abs(oMn), Math.abs(oMx))
+  }
+  return { inMin, inMax, outMin, outMax, peak, durationSec }
 }
