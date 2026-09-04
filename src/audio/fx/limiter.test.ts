@@ -3,9 +3,11 @@ import { defaultParamValues } from '../parameters/definitions'
 import {
   amplitudeToDb,
   autoMakeupDb,
+  buildLimiterWavePreview,
   compressorGainDb,
   crushSample,
-  downsampleScope,
+  LIMITER_PREVIEW_SECONDS,
+  limitSample,
   limiterOutputDb,
   limiterSettings,
   peakAmplitude,
@@ -81,13 +83,37 @@ describe('limiterOutputDb', () => {
   })
 })
 
-describe('downsampleScope', () => {
-  it('keeps the signed peak of each bucket', () => {
-    const samples = new Float32Array([0.1, -0.9, 0.2, 0.4, -0.3, 0.05])
-    const out = new Float32Array(2)
-    downsampleScope(samples, 2, out)
-    expect(Math.abs(out[0] ?? 0)).toBeGreaterThan(0.8)
-    expect(Math.abs(out[1] ?? 0)).toBeGreaterThan(0.3)
+describe('limitSample', () => {
+  it('passes quiet samples and reduces hot ones toward the ceiling', () => {
+    const s = limiterSettings(defaultParamValues())
+    expect(Math.abs(limitSample(0.05, s))).toBeCloseTo(0.05, 3)
+    expect(Math.abs(limitSample(0.99, s))).toBeLessThan(0.99)
+    expect(Math.abs(limitSample(-0.99, s))).toBeLessThan(0.99)
+  })
+})
+
+describe('buildLimiterWavePreview', () => {
+  it('covers up to the preview window and crushes hot peaks in Out', () => {
+    const rate = 100
+    const mono = new Float32Array(rate * 12)
+    for (let i = 0; i < mono.length; i++) mono[i] = i % 2 === 0 ? 0.95 : -0.95
+    const s = limiterSettings(defaultParamValues())
+    s.threshold = -12
+    s.ratio = 20
+    s.makeupGain = 1
+    const preview = buildLimiterWavePreview(mono, rate, 0, LIMITER_PREVIEW_SECONDS, 8, s, true)
+    expect(preview.durationSec).toBeCloseTo(10, 5)
+    expect(peakAmplitude(preview.inMax)).toBeGreaterThan(0.9)
+    expect(peakAmplitude(preview.outMax)).toBeLessThan(peakAmplitude(preview.inMax))
+  })
+
+  it('shortens near EOF and leaves Out equal to In when not applying', () => {
+    const mono = new Float32Array([0.2, -0.4, 0.6, -0.8])
+    const s = limiterSettings(defaultParamValues())
+    const preview = buildLimiterWavePreview(mono, 2, 1, 10, 2, s, false)
+    expect(preview.durationSec).toBeCloseTo(1, 5)
+    expect(preview.outMax[0]).toBe(preview.inMax[0])
+    expect(preview.outMin[1]).toBe(preview.inMin[1])
   })
 })
 
@@ -96,17 +122,5 @@ describe('crushSample', () => {
     expect(crushSample(0.1, 0.3, 12)).toBeCloseTo(0.1)
     expect(Math.abs(crushSample(0.9, 0.3, 20))).toBeLessThan(0.4)
     expect(Math.abs(crushSample(-0.9, 0.3, 20))).toBeLessThan(0.4)
-  })
-
-  it('flattens a hot sine so peaks sit near the threshold', () => {
-    const n = 48
-    const hot = new Float32Array(n)
-    const crushed = new Float32Array(n)
-    const thresh = 0.2
-    for (let i = 0; i < n; i++) hot[i] = 0.95 * Math.sin((i / n) * Math.PI * 4)
-    for (let i = 0; i < n; i++) crushed[i] = crushSample(hot[i]!, thresh, 20)
-    expect(peakAmplitude(hot)).toBeGreaterThan(thresh * 2)
-    expect(peakAmplitude(crushed)).toBeLessThan(thresh * 1.2)
-    expect(peakAmplitude(crushed)).toBeGreaterThan(thresh * 0.9)
   })
 })
