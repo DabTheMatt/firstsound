@@ -32,7 +32,10 @@ export function LimiterPlot() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [mode, setMode] = useState<LimiterPlotMode>('curve')
   const modeRef = useRef(mode)
-  modeRef.current = mode
+
+  useEffect(() => {
+    modeRef.current = mode
+  }, [mode])
 
   useEffect(() => {
     const canvas = canvasRef.current
