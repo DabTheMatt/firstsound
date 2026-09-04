@@ -468,7 +468,15 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
   if (kind === 'grain' && target && (target === 'motionDepth' || target === 'motionRate' || target === 'motionJitter')) {
     return 'advanced'
   }
-  if (kind === 'limiter' && target && target !== 'limiterThreshold' && target !== 'limiterCeiling' && target !== 'limiterRelease') {
+  if (
+    kind === 'limiter' &&
+    target &&
+    target !== 'limiterThreshold' &&
+    target !== 'limiterRatio' &&
+    target !== 'limiterKnee' &&
+    target !== 'limiterCeiling' &&
+    target !== 'limiterRelease'
+  ) {
     return 'advanced'
   }
   return 'main'

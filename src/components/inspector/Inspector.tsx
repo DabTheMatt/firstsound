@@ -15,7 +15,14 @@ import {
   type FilterSlope,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import { GRAIN_KNOBS, LIMITER_ADV_KNOBS, LIMITER_MAIN_KNOBS, MOTION_KNOBS, PLAYBACK_DIRECTIONS } from '../../audio/parameters/definitions'
+import {
+  GRAIN_KNOBS,
+  LIMITER_ADV_KNOBS,
+  LIMITER_COMPRESSOR_KNOBS,
+  LIMITER_MAIN_KNOBS,
+  MOTION_KNOBS,
+  PLAYBACK_DIRECTIONS,
+} from '../../audio/parameters/definitions'
 import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
@@ -528,9 +535,15 @@ function LimiterEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
-          <div className={styles.eqViz}>
-            <LimiterPlot />
-          </div>
+          <details className={styles.band} open>
+            <summary>
+              <span className={styles.bandTitle}>Compressor</span>
+            </summary>
+            <div className={styles.eqViz}>
+              <LimiterPlot />
+            </div>
+            {params(LIMITER_COMPRESSOR_KNOBS)}
+          </details>
           {params(LIMITER_MAIN_KNOBS)}
           <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
