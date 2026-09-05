@@ -121,6 +121,56 @@
   color: var(--accent-primary);
 }
 
+.connectTile {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.connectTile .connectBtn {
+  width: 100%;
+  padding-right: 22px;
+}
+
+.plug {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.plugOn {
+  color: var(--accent-primary);
+}
+
+.plugOff {
+  color: var(--text-disabled);
+}
+
+.plug:hover {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.slotRow {
+  width: 100%;
+}
+
+.addLfoHold {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .remove {
   flex: none;
   min-height: 22px;
@@ -386,14 +436,56 @@
 }
 
 .lfoCompact {
+  display: grid;
+  grid-template-rows: 16px 32px 32px minmax(92px, auto) 40px;
+  align-content: start;
   gap: 6px;
   padding-top: 6px;
   margin-top: auto;
   width: 100%;
 }
 
+.lfoCompact .sub {
+  margin: 0;
+  line-height: 16px;
+}
+
+.lfoCompact .slotRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  flex-wrap: nowrap;
+}
+
+.lfoCompact .addLfo {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .lfoCompact .knobs {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding-top: 0;
+  min-height: 92px;
+}
+
+.lfoCompact .connectRow {
+  flex-wrap: nowrap;
+  min-height: 40px;
+  width: 100%;
+}
+
+.lfoCompact .ghost {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 9px;
+}
+
+.lfoCompact .connectBtn {
+  min-height: 36px;
 }

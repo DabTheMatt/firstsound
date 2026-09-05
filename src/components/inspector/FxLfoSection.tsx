@@ -15,6 +15,7 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
 import { Segmented } from '../controls/Segmented'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
+import { PlugGlyph } from '../controls/PlugGlyph'
 import { ValueKnob } from '../controls/ValueKnob'
 import { useFxLfoConnect } from './FxLfoConnect'
 import styles from './Inspector.module.css'
@@ -132,7 +133,7 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
         Up to {FX_LFO_SLOTS} LFOs per effect.
       </p>
       )}
-      <div className={styles.row}>
+      <div className={`${styles.row} ${styles.slotRow}`}>
         <Segmented
           label="LFO slot"
           value={String(activeSlot)}
@@ -142,18 +143,18 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
           }))}
           onChange={(value) => setSlot(Number(value))}
         />
-        {shown < FX_LFO_SLOTS ? (
-          <button
-            type="button"
-            className={styles.ghost}
-            onClick={() => {
-              const next = engine.addFxLfo(kind)
-              if (next != null) setSlot(next)
-            }}
-          >
-            Add LFO
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={`${styles.ghost} ${styles.addLfo} ${shown >= FX_LFO_SLOTS ? styles.addLfoHold : ''}`}
+          tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
+          aria-hidden={shown >= FX_LFO_SLOTS}
+          onClick={() => {
+            const next = engine.addFxLfo(kind)
+            if (next != null) setSlot(next)
+          }}
+        >
+          {compact ? '+' : 'Add LFO'}
+        </button>
       </div>
       <LfoShapePicker
         value={lfo?.shape ?? 'sine'}
@@ -161,25 +162,31 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
         onChange={(shape) => engine.setFxLfo(kind, activeSlot, { shape })}
       />
       {knobs}
-      <div className={styles.row}>
-        <button
-          type="button"
-          className={`${styles.ghost} ${styles.connectBtn} ${connecting || lfo?.target ? styles.presetOn : ''}`}
-          aria-pressed={connecting}
-          onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
-        >
-          <span>{connect.label}</span>
-          {connect.detail ? <small>{connect.detail}</small> : null}
-        </button>
-        {lfo?.target ? (
+      <div className={`${styles.row} ${styles.connectRow}`}>
+        <div className={styles.connectTile}>
           <button
             type="button"
-            className={styles.ghost}
-            onClick={() => engine.setFxLfoTarget(kind, activeSlot, null)}
+            className={`${styles.ghost} ${styles.connectBtn} ${connecting || lfo?.target ? styles.presetOn : ''}`}
+            aria-pressed={connecting}
+            onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
           >
-            Disconnect
+            <span>{connect.label}</span>
+            {connect.detail ? <small>{connect.detail}</small> : null}
           </button>
-        ) : null}
+          <button
+            type="button"
+            className={`${styles.plug} ${lfo?.target ? styles.plugOn : styles.plugOff}`}
+            aria-label={lfo?.target ? 'Disconnect LFO' : 'Connect LFO'}
+            title={lfo?.target ? 'Disconnect' : 'Connect'}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (lfo?.target) engine.setFxLfoTarget(kind, activeSlot, null)
+              else setArmed(connecting ? null : { kind, slot: activeSlot })
+            }}
+          >
+            <PlugGlyph />
+          </button>
+        </div>
       </div>
       {compact ? null : (
       <p className={styles.help}>
