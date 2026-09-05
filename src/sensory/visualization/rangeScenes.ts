@@ -76,7 +76,16 @@ export function canyonSliceCount(height: number): number {
   return Math.max(16, Math.min(42, Math.round(height / 24)))
 }
 
-/** Perspective map: depth 0 is the near edge of the screen, 1 is the vanishing point. */
+/** Horizontal baseline for a depth slice. Depth 0 is the bottom edge; 1 is near the top. */
+export function canyonSliceY(depth01: number, height: number): number {
+  const t = Math.min(1, Math.max(0, depth01))
+  return height * (0.98 - t * 0.86)
+}
+
+/**
+ * Axis-aligned canyon: x follows the sample left-to-right, y is depth + amplitude.
+ * No vanishing-point scale, so ridges stay parallel to the screen edges.
+ */
 export function canyonProject(
   x01: number,
   depth01: number,
@@ -85,13 +94,8 @@ export function canyonProject(
   height: number,
 ): { x: number; y: number; floorY: number; scale: number } {
   const t = Math.min(1, Math.max(0, depth01))
-  const ease = t * t * (3 - 2 * t)
-  const vanishX = width * 0.5
-  const vanishY = height * 0.05
-  const nearY = height * 0.99
-  const scale = 1 - ease * 0.9
-  const floorY = nearY + (vanishY - nearY) * ease
-  const x = vanishX + (Math.min(1, Math.max(0, x01)) - 0.5) * width * scale
-  const lift = Math.min(1, Math.max(0, amp01)) * (floorY - vanishY) * 0.92
-  return { x, y: floorY - lift, floorY, scale }
+  const x = Math.min(1, Math.max(0, x01)) * width
+  const floorY = canyonSliceY(t, height)
+  const lift = Math.min(1, Math.max(0, amp01)) * height * (0.2 - t * 0.08)
+  return { x, y: floorY - lift, floorY, scale: 1 }
 }

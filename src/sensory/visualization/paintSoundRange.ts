@@ -198,7 +198,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const env = layers[0]
   if (!env) return
   const slices = canyonSliceCount(height)
-  const step = Math.max(2, Math.floor(width / 140))
+  const step = Math.max(2, Math.floor(width / 180))
   const spec0: MountainLayerSpec = specs[0] ?? { scale: 1, alpha: 1, blur: 0, drop: 0 }
 
   const sky = ctx.createLinearGradient(0, 0, 0, height)
@@ -207,43 +207,35 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, width, height)
 
-  const farFloor = canyonProject(0.5, 1, 0, width, height)
-  const nearL = canyonProject(0, 0, 0, width, height)
-  const nearR = canyonProject(1, 0, 0, width, height)
-  ctx.beginPath()
-  ctx.moveTo(nearL.x, nearL.floorY)
-  ctx.lineTo(nearR.x, nearR.floorY)
-  ctx.lineTo(canyonProject(1, 1, 0, width, height).x, farFloor.floorY)
-  ctx.lineTo(canyonProject(0, 1, 0, width, height).x, farFloor.floorY)
-  ctx.closePath()
-  const floor = ctx.createLinearGradient(width / 2, farFloor.floorY, width / 2, nearL.floorY)
-  floor.addColorStop(0, 'rgba(64, 42, 28, 0.4)')
-  floor.addColorStop(1, 'rgba(12, 8, 6, 0.7)')
+  const nearY = canyonProject(0, 0, 0, width, height).floorY
+  const farY = canyonProject(0, 1, 0, width, height).floorY
+  const floor = ctx.createLinearGradient(0, farY, 0, nearY)
+  floor.addColorStop(0, 'rgba(64, 42, 28, 0.35)')
+  floor.addColorStop(1, 'rgba(12, 8, 6, 0.55)')
   ctx.fillStyle = floor
-  ctx.fill()
+  ctx.fillRect(0, farY, width, Math.max(1, nearY - farY))
 
   for (let i = slices - 1; i >= 0; i--) {
     const d = i / Math.max(1, slices - 1)
     const li = Math.min(specs.length - 1, Math.floor((1 - d) * specs.length))
     const spec = specs[li] ?? spec0
     const layerEnv = layers[li] ?? env
-    const leftFloor = canyonProject(0, d, 0, width, height)
-    const rightFloor = canyonProject(1, d, 0, width, height)
+    const floorY = canyonProject(0, d, 0, width, height).floorY
     ctx.beginPath()
-    ctx.moveTo(leftFloor.x, leftFloor.floorY)
+    ctx.moveTo(0, floorY)
     for (let x = 0; x <= width; x += step) {
       const xi = Math.min(width - 1, x)
       const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale)
       const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
       ctx.lineTo(p.x, p.y)
     }
-    ctx.lineTo(rightFloor.x, rightFloor.floorY)
+    ctx.lineTo(width, floorY)
     ctx.closePath()
-    const shade = 0.35 + (1 - d) * 0.55
-    ctx.fillStyle = rgbCss(mixRgb(ink, { r: 255, g: 168, b: 88 }, d * 0.22), shade * (0.55 + visual.glow * 0.3))
+    const shade = 0.28 + (1 - d) * 0.5
+    ctx.fillStyle = rgbCss(mixRgb(ink, { r: 255, g: 168, b: 88 }, d * 0.18), shade * (0.5 + visual.glow * 0.28))
     ctx.fill()
-    ctx.strokeStyle = rgbCss(ink, 0.28 + (1 - d) * 0.45)
-    ctx.lineWidth = Math.max(1, dpr * (0.6 + (1 - d)))
+    ctx.strokeStyle = rgbCss(ink, 0.32 + (1 - d) * 0.4)
+    ctx.lineWidth = Math.max(1, dpr * (0.7 + (1 - d) * 0.5))
     ctx.beginPath()
     for (let x = 0; x <= width; x += step) {
       const xi = Math.min(width - 1, x)
@@ -255,20 +247,19 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
     ctx.stroke()
   }
 
-  const px = Math.min(1, Math.max(0, playFrac))
-  const peak = env[Math.round(px * (width - 1))] ?? 0
-  const far = canyonProject(px, 1, peak, width, height)
-  const near = canyonProject(px, 0, peak, width, height)
+  const px = Math.min(1, Math.max(0, playFrac)) * (width - 1)
   ctx.strokeStyle = play
   ctx.lineWidth = Math.max(1.4, dpr * 1.4)
   ctx.globalAlpha = 0.9
   ctx.beginPath()
-  ctx.moveTo(far.x, far.y)
-  ctx.lineTo(near.x, near.y)
+  ctx.moveTo(px, 0)
+  ctx.lineTo(px, height)
   ctx.stroke()
+  const peak = env[Math.round(px)] ?? 0
+  const tip = canyonProject(px / Math.max(1, width - 1), 0, peak, width, height)
   ctx.fillStyle = play
   ctx.beginPath()
-  ctx.arc(near.x, near.y, 3.4 * dpr, 0, Math.PI * 2)
+  ctx.arc(tip.x, tip.y, 3.4 * dpr, 0, Math.PI * 2)
   ctx.fill()
   ctx.globalAlpha = 1
 }

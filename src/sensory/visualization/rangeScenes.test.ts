@@ -39,15 +39,18 @@ describe('rangeScenes', () => {
     expect(layout.dir).toBe(-1)
   })
 
-  it('projects canyon slices from a full-width near plane to a vanishing point', () => {
+  it('keeps canyon slices axis-aligned: x follows time, baselines stay parallel', () => {
     const near = canyonProject(0, 0, 0, 1000, 800)
     const far = canyonProject(0, 1, 0, 1000, 800)
-    const peak = canyonProject(0.5, 0, 1, 1000, 800)
-    expect(near.x).toBeLessThan(20)
-    expect(far.x).toBeGreaterThan(400)
+    const midNear = canyonProject(0.5, 0, 0, 1000, 800)
+    const midFar = canyonProject(0.5, 1, 0, 1000, 800)
+    expect(near.x).toBeCloseTo(0)
+    expect(far.x).toBeCloseTo(0)
+    expect(midNear.x).toBeCloseTo(500)
+    expect(midFar.x).toBeCloseTo(500)
     expect(near.floorY).toBeGreaterThan(far.floorY)
-    expect(near.scale).toBeGreaterThan(far.scale)
-    expect(peak.y).toBeLessThan(120)
+    expect(near.scale).toBe(1)
+    expect(far.scale).toBe(1)
     expect(canyonSliceCount(800)).toBeGreaterThan(16)
   })
 
