@@ -692,7 +692,9 @@ export class AudioEngine {
       this.params.end = region.end
       this.applyRegionChange()
     } else {
+      const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
       this.params[id] = applyParamValue(value, PARAMS[id])
+      if (turningStereoOn) this.copyDelayLeftToRight()
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
     }
@@ -714,6 +716,13 @@ export class AudioEngine {
     this.syncTimeFromClock('bpm')
     this.applyLiveAudio()
     this.emit()
+  }
+
+  private copyDelayLeftToRight(): void {
+    this.params.delayTimeR = this.params.delayTime
+    this.params.delaySyncR = this.params.delaySync
+    this.params.delayNoteR = this.params.delayNote
+    this.params.delayNoteKindR = this.params.delayNoteKind
   }
 
   setDelayType(type: DelayType): void {
@@ -820,6 +829,7 @@ export class AudioEngine {
 
   private syncTimeFromClock(id: ParamId): void {
     if (id === 'delayTime' && this.params.delaySync > 0.5) this.params.delaySync = 0
+    if (id === 'delayTimeR' && this.params.delaySyncR > 0.5) this.params.delaySyncR = 0
     if (id === 'reverbPredelay' && this.params.reverbSync > 0.5) this.params.reverbSync = 0
     if (
       this.params.delaySync > 0.5 &&
@@ -828,6 +838,15 @@ export class AudioEngine {
       this.params.delayTime = applyParamValue(
         syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNote), noteKindAt(this.params.delayNoteKind)),
         PARAMS.delayTime,
+      )
+    }
+    if (
+      this.params.delaySyncR > 0.5 &&
+      (id === 'bpm' || id === 'delayNoteR' || id === 'delayNoteKindR' || id === 'delaySyncR')
+    ) {
+      this.params.delayTimeR = applyParamValue(
+        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNoteR), noteKindAt(this.params.delayNoteKindR)),
+        PARAMS.delayTimeR,
       )
     }
     if (

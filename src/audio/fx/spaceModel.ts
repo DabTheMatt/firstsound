@@ -29,7 +29,25 @@ export type ReverbTail = {
   mix: number
 }
 
+export function isDelayStereo(params: Record<ParamId, number>): boolean {
+  return params.delayStereo > 0.5
+}
+
 export function delayTimeSeconds(params: Record<ParamId, number>, bpm: number): number {
+  return delayChannelTimeSeconds(params, bpm, 'L')
+}
+
+export function delayChannelTimeSeconds(
+  params: Record<ParamId, number>,
+  bpm: number,
+  channel: 'L' | 'R',
+): number {
+  if (channel === 'R' && isDelayStereo(params)) {
+    if (params.delaySyncR > 0.5) {
+      return syncedDelayMs(bpm, noteDivisionAt(params.delayNoteR), noteKindAt(params.delayNoteKindR)) / 1000
+    }
+    return params.delayTimeR / 1000
+  }
   if (params.delaySync > 0.5) {
     return syncedDelayMs(bpm, noteDivisionAt(params.delayNote), noteKindAt(params.delayNoteKind)) / 1000
   }

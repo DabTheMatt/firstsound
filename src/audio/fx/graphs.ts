@@ -10,7 +10,7 @@ import {
 } from './delayLoop'
 import { equalPowerDryWet, makeAbsCurve, sideGainFromWidth } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
-import { delayTimeSeconds } from './spaceModel'
+import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo } from './spaceModel'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
@@ -389,10 +389,13 @@ export function applyDelayGraph(
   smoothing: number,
   ctx: AudioContext,
 ): void {
+  const stereo = isDelayStereo(params)
+  const timeL = delayChannelTimeSeconds(params, bpm, 'L')
+  const timeR = stereo ? delayChannelTimeSeconds(params, bpm, 'R') : timeL
   const time = delayTimeSeconds(params, bpm)
-  const offset = (params.delayOffset / 100) * time * 0.85
-  const tL = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, time - offset))
-  const tR = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, time + offset))
+  const offset = stereo ? 0 : (params.delayOffset / 100) * time * 0.85
+  const tL = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, timeL - offset))
+  const tR = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, timeR + offset))
   g.delayL.delayTime.setTargetAtTime(tL, now, smoothing)
   g.delayR.delayTime.setTargetAtTime(tR, now, smoothing)
   g.tapA.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.5), now, smoothing)
@@ -403,13 +406,14 @@ export function applyDelayGraph(
 
   const freeze = params.delayFreeze > 0.5
   g.freezeIn.gain.setTargetAtTime(freeze ? 0.0001 : 1, now, smoothing)
-  const fb = delayFeedbackGains(params.delayFeedback, type, freeze, params.delayPitch)
+  const loopType = stereo ? type : type === 'pingPong' ? 'digital' : type
+  const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch)
   g.fbL.gain.setTargetAtTime(fb.fbL, now, smoothing)
   g.fbR.gain.setTargetAtTime(fb.fbR, now, smoothing)
   g.pingToL.gain.setTargetAtTime(fb.pingToL, now, smoothing)
   g.pingToR.gain.setTargetAtTime(fb.pingToR, now, smoothing)
-  g.pitchMixL.gain.setTargetAtTime(type === 'pingPong' ? 0 : fb.pitchMix, now, smoothing)
-  g.pitchMixR.gain.setTargetAtTime(type === 'pingPong' ? fb.pitchMix : 0, now, smoothing)
+  g.pitchMixL.gain.setTargetAtTime(loopType === 'pingPong' ? 0 : fb.pitchMix, now, smoothing)
+  g.pitchMixR.gain.setTargetAtTime(loopType === 'pingPong' ? fb.pitchMix : 0, now, smoothing)
 
   const loop = delayLoopFilters(params.delayHp, params.delayLp, params.delayFeedback, type)
   g.hpL.frequency.setTargetAtTime(loop.hp, now, smoothing)
@@ -431,7 +435,7 @@ export function applyDelayGraph(
   g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.01, now, smoothing)
 
   g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.delayPan / 100)), now, smoothing)
-  g.widthSide.gain.setTargetAtTime(sideGainFromWidth(params.delayWidth), now, smoothing)
+  g.widthSide.gain.setTargetAtTime(stereo ? sideGainFromWidth(params.delayWidth) : 0, now, smoothing)
   g.duckAmt.gain.setTargetAtTime(-(params.delayDuck / 100) * 0.92, now, smoothing)
   g.pitchLfo.frequency.setTargetAtTime(3 + Math.abs(params.delayPitch) * 0.35, now, smoothing)
   g.pitchDepth.gain.setTargetAtTime(fb.pitchMix > 0.001 ? 0.01 : 0, now, smoothing)

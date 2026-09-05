@@ -121,6 +121,7 @@ const DELAY_TARGETS: ParamId[] = [
   'delayWet',
   'delayOutput',
   'delayTime',
+  'delayTimeR',
   'delayFeedback',
   'delayHp',
   'delayLp',

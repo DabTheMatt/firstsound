@@ -77,8 +77,12 @@ export const PRESET_HINTS: Record<string, string> = {
 }
 
 function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId, number>> {
-  return {
+  const next: Partial<Record<ParamId, number>> = {
     delaySync: 0,
+    delaySyncR: 0,
+    delayNoteR: 4,
+    delayNoteKindR: 0,
+    delayStereo: 1,
     delayFreeze: 0,
     delayReverse: 0,
     delayPitch: 0,
@@ -98,8 +102,14 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
     delayWet: 28,
     delayOutput: 100,
     delayFeedback: 28,
+    delayTimeR: 300,
     ...patch,
   }
+  if (patch.delayTime != null && patch.delayTimeR == null) next.delayTimeR = patch.delayTime
+  if (patch.delaySync != null && patch.delaySyncR == null) next.delaySyncR = patch.delaySync
+  if (patch.delayNote != null && patch.delayNoteR == null) next.delayNoteR = patch.delayNote
+  if (patch.delayNoteKind != null && patch.delayNoteKindR == null) next.delayNoteKindR = patch.delayNoteKind
+  return next
 }
 
 function reverbP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId, number>> {
@@ -131,8 +141,8 @@ export const SPACE_PRESETS: SpacePreset[] = [
   { id: 'dly-1-4', name: '1/4 Note Delay', kind: 'delay', category: 'Rhythmic', delayType: 'digital', params: delayP({ delaySync: 1, delayNote: 4, delayNoteKind: 0, delayFeedback: 32, delayWet: 28 }) },
   { id: 'dly-1-8', name: '1/8 Note Delay', kind: 'delay', category: 'Rhythmic', delayType: 'digital', params: delayP({ delaySync: 1, delayNote: 3, delayNoteKind: 0, delayFeedback: 30, delayWet: 26 }) },
   { id: 'dly-dot-8', name: 'Dotted 1/8 Delay', kind: 'delay', category: 'Rhythmic', delayType: 'digital', params: delayP({ delaySync: 1, delayNote: 3, delayNoteKind: 1, delayFeedback: 32, delayWet: 28 }) },
-  { id: 'dly-ping', name: 'Ping-Pong Delay', kind: 'delay', category: 'Stereo', delayType: 'pingPong', params: delayP({ delaySync: 1, delayNote: 3, delayNoteKind: 0, delayFeedback: 36, delayWidth: 150, delayWet: 30 }) },
-  { id: 'dly-haas', name: 'Stereo Widening / Haas', kind: 'delay', category: 'Stereo', delayType: 'stereo', params: delayP({ delayTime: 18, delayFeedback: 0, delayOffset: 55, delayWidth: 180, delayWet: 40 }) },
+  { id: 'dly-ping', name: 'Ping-Pong Delay', kind: 'delay', category: 'Stereo', delayType: 'pingPong', params: delayP({ delaySync: 1, delayNote: 3, delayNoteKind: 0, delaySyncR: 1, delayNoteR: 3, delayNoteKindR: 1, delayFeedback: 36, delayWidth: 150, delayWet: 30 }) },
+  { id: 'dly-haas', name: 'Stereo Widening / Haas', kind: 'delay', category: 'Stereo', delayType: 'stereo', params: delayP({ delayTime: 18, delayTimeR: 32, delayFeedback: 0, delayWidth: 180, delayWet: 40 }) },
   { id: 'dly-analog', name: 'Dark Analog Delay', kind: 'delay', category: 'Analog/Tape', delayType: 'analog', params: delayP({ delayTime: 380, delayFeedback: 36, delayHp: 160, delayLp: 4000, delayDrive: 8, delayWet: 28 }) },
   { id: 'dly-tape', name: 'Tape Echo', kind: 'delay', category: 'Analog/Tape', delayType: 'tape', params: delayP({ delayTime: 310, delayFeedback: 34, delayDrive: 10, delayWow: 14, delayFlutter: 8, delayLp: 5200, delayWet: 30 }) },
   { id: 'dly-dub', name: 'Dub Delay', kind: 'delay', category: 'Experimental', delayType: 'analog', params: delayP({ delayTime: 520, delayFeedback: 52, delayHp: 180, delayLp: 3600, delayDrive: 10, delayWet: 32 }) },
