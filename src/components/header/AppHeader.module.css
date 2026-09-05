@@ -16,6 +16,8 @@
   align-items: center;
   gap: 6px;
   flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .brand {

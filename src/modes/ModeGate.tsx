@@ -1,3 +1,4 @@
+import { RuntimeStatus } from '../components/chrome/RuntimeStatus'
 import styles from './ModeGate.module.css'
 import type { UiMode } from './uiMode'
 
@@ -21,6 +22,7 @@ export function ModeGate({ onChoose }: Props) {
             <span className={styles.choiceCopy}>Shape sound by parameters.</span>
           </button>
         </div>
+        <RuntimeStatus variant="gate" />
       </div>
     </div>
   )
