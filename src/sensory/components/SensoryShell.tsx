@@ -7,7 +7,7 @@ import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
-import { activeFeelingId } from '../sensoryFeelings'
+import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import type { SensoryValues } from '../sensoryState'
 import { lensWindowSeconds } from '../visualization/lensWindow'
@@ -79,15 +79,15 @@ export function SensoryShell({
   const [placesOpen, setPlacesOpen] = useState(false)
   const [windowAmount, setWindowAmount] = useState(0)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
-  const [feelingId, setFeelingId] = useState<string | null>(null)
+  const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }, [])
-  const visual = sensoryVisualState(values, reduced)
+  const visual = sensoryVisualState(values, reduced, feelingId)
   const cssVars = visualCssVars(visual)
   const windowSec = lensWindowSeconds(windowAmount, snap.duration)
-  const activeId = activeFeelingId(values, feelingId)
+  const activeId = feelingId
   const range = scene === 'range'
 
   const chooseScene = (next: SensorySceneId) => {
@@ -200,7 +200,7 @@ export function SensoryShell({
         activeId={activeId}
         onActive={(id) => {
           onMoodLabel(null)
-          setFeelingId(id)
+          setFeelingId(id && SENSORY_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
         }}
         onValues={(next) => {
           onMoodLabel(null)

@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import {
-  applyDelayMacro,
-  applyReverbMacro,
-  delayMacroNormalized,
-  reverbMacroNormalized,
-} from '../../audio/fx/macros'
+import { applyReverbMacro, reverbMacroNormalized } from '../../audio/fx/macros'
 import {
   DELAY_PRESET_CATEGORIES,
   defaultPresetFor,
@@ -15,6 +10,7 @@ import {
   type FxPresetCategory,
 } from '../../audio/fx/presets'
 import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, REVERB_TYPES } from '../../audio/fx/types'
+import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
@@ -79,6 +75,8 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
   const [category, setCategory] = useState<FxPresetCategory>('Vocals')
   const cats = kind === 'delay' ? DELAY_PRESET_CATEGORIES : REVERB_PRESET_CATEGORIES
   const presets = useMemo(() => presetsFor(kind, category), [kind, category])
+  const delayStereo = isDelayStereo(snap.params)
+  const reverbStereo = isReverbStereo(snap.params)
   const params = (ids: ParamId[]) =>
     variant === 'knob' ? (
       <div className={styles.knobs}>
@@ -90,15 +88,20 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
     )
 
-  const colorNorm =
-    kind === 'delay' ? delayMacroNormalized('color', snap.params) : reverbMacroNormalized('color', snap.params)
+  const colorNorm = reverbMacroNormalized('color', snap.params)
 
   return pane === 'advanced' ? (
     <>
       <details className={styles.band} open>
         <summary>Tempo sync</summary>
         {kind === 'delay' ? (
-          <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+          <>
+            <p className={styles.help}>{delayStereo ? 'Left and right can sync to different notes.' : 'One time for both channels.'}</p>
+            <SyncRow snap={snap} label={delayStereo ? 'Left' : 'Delay'} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+            {delayStereo ? (
+              <SyncRow snap={snap} label="Right" syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+            ) : null}
+          </>
         ) : (
           <SyncRow snap={snap} syncId="reverbSync" noteId="reverbNote" kindId="reverbNoteKind" />
         )}
@@ -130,8 +133,8 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
         {kind === 'delay'
-          ? 'Categories load a starting sound. Mix is a single dry/wet control. Feedback stays below unity so each delay repeat is quieter than the last.'
-          : 'Categories load a starting space. Mix is dry/wet. Width 0% makes the tail mono; 200% pushes it wide. Stereo In 0% sums the sample before the tank (clean stereo from a mono file); 100% keeps the stereo image.'}
+          ? 'Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Mix. Feedback stays below unity so each repeat fades.'
+          : 'Categories load a starting space. Mix is dry/wet. Mono collapses the tail; Stereo keeps Width, L/R offset, and a stereo tank. Stereo In 0% sums the sample first (clean space from a mono file).'}
       </p>
       <Segmented
         label="Preset category"
@@ -178,44 +181,77 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         )}
       </div>
 
-      {kind === 'delay'
-        ? params(['delayWet', 'delayTime', 'delayFeedback'])
-        : params(['reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth'])}
-
-      <p className={styles.help}>
-        Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.
-      </p>
-      {variant === 'knob' ? (
-        <div className={styles.knobs}>
-          <ValueKnob
-            label="Color"
-            valueText={`${Math.round(colorNorm * 100)} %`}
-            normalized={colorNorm}
-            onChange={(n) =>
-              engine.setParams(
-                kind === 'delay' ? applyDelayMacro('color', n, snap.params) : applyReverbMacro('color', n, snap.params),
-              )
-            }
+      {kind === 'delay' ? (
+        <>
+          {params(['delayWet', 'delayFeedback'])}
+          <Segmented
+            label="Channels"
+            value={delayStereo ? 'stereo' : 'mono'}
+            options={[
+              { value: 'mono', label: 'Mono' },
+              { value: 'stereo', label: 'Stereo' },
+            ]}
+            onChange={(v) => engine.setParam('delayStereo', v === 'stereo' ? 1 : 0)}
           />
-        </div>
+          {delayStereo ? (
+            <>
+              <h3 className={styles.sub}>Left</h3>
+              {params(['delayTime'])}
+              <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+              <h3 className={styles.sub}>Right</h3>
+              {params(['delayTimeR'])}
+              <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+            </>
+          ) : (
+            <>
+              {params(['delayTime'])}
+              <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+            </>
+          )}
+        </>
       ) : (
-        <label className={styles.field}>
-          Color
-          <input
-            className={styles.range}
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(colorNorm * 100)}
-            aria-label="Color"
-            onChange={(e) => {
-              const n = Number(e.target.value) / 100
-              engine.setParams(
-                kind === 'delay' ? applyDelayMacro('color', n, snap.params) : applyReverbMacro('color', n, snap.params),
-              )
-            }}
+        <>
+          {params(['reverbWet', 'reverbSize', 'reverbDecay'])}
+          <Segmented
+            label="Channels"
+            value={reverbStereo ? 'stereo' : 'mono'}
+            options={[
+              { value: 'mono', label: 'Mono' },
+              { value: 'stereo', label: 'Stereo' },
+            ]}
+            onChange={(v) => engine.setParam('reverbStereo', v === 'stereo' ? 1 : 0)}
           />
-        </label>
+          {reverbStereo ? params(['reverbWidth']) : null}
+          <p className={styles.help}>
+            Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.
+          </p>
+          {variant === 'knob' ? (
+            <div className={styles.knobs}>
+              <ValueKnob
+                label="Color"
+                valueText={`${Math.round(colorNorm * 100)} %`}
+                normalized={colorNorm}
+                onChange={(n) => engine.setParams(applyReverbMacro('color', n, snap.params))}
+              />
+            </div>
+          ) : (
+            <label className={styles.field}>
+              Color
+              <input
+                className={styles.range}
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(colorNorm * 100)}
+                aria-label="Color"
+                onChange={(e) => {
+                  const n = Number(e.target.value) / 100
+                  engine.setParams(applyReverbMacro('color', n, snap.params))
+                }}
+              />
+            </label>
+          )}
+        </>
       )}
       <FxLfoSection snap={snap} kind={kind} variant={variant} />
     </>
@@ -224,19 +260,25 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
 function SyncRow({
   snap,
+  label,
   syncId,
   noteId,
   kindId,
 }: {
   snap: EngineSnapshot
-  syncId: 'delaySync' | 'reverbSync'
-  noteId: 'delayNote' | 'reverbNote'
-  kindId: 'delayNoteKind' | 'reverbNoteKind'
+  label?: string
+  syncId: 'delaySync' | 'delaySyncR' | 'reverbSync'
+  noteId: 'delayNote' | 'delayNoteR' | 'reverbNote'
+  kindId: 'delayNoteKind' | 'delayNoteKindR' | 'reverbNoteKind'
 }) {
   const on = snap.params[syncId] > 0.5
   return (
     <>
-      <Toggle pressed={on} label="BPM Sync" onToggle={() => engine.setParam(syncId, on ? 0 : 1)} />
+      <Toggle
+        pressed={on}
+        label={label ? `${label} BPM Sync` : 'BPM Sync'}
+        onToggle={() => engine.setParam(syncId, on ? 0 : 1)}
+      />
       {on ? (
         <>
           <Segmented

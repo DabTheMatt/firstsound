@@ -4,6 +4,9 @@ import { defaultEqBands } from '../../audio/engine/eqBands'
 import { defaultChain } from '../../audio/chain/chain'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
 import { mapSensoryToDsp, snapshotFromEngine } from './mappingEngine'
+import { SENSORY_SAFETY } from './safety'
+import { interpolateMorphStop } from './morph'
+import { EFFECT_MORPHS } from './effectMorphs'
 
 function baseDsp() {
   return snapshotFromEngine({
@@ -13,6 +16,15 @@ function baseDsp() {
   })
 }
 
+describe('interpolateMorphStop', () => {
+  it('lerps numeric params between designed stops', () => {
+    const space = EFFECT_MORPHS.find((m) => m.axis === 'space')!
+    const mid = interpolateMorphStop(space.stops, 0.5)
+    expect(mid.params?.reverbWet).toBeGreaterThan(20)
+    expect(mid.params?.reverbWet).toBeLessThan(50)
+  })
+})
+
 describe('mapSensoryToDsp', () => {
   it('is identity at rest', () => {
     const base = baseDsp()
@@ -21,78 +33,115 @@ describe('mapSensoryToDsp', () => {
     expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
     expect(mapped.params.saturation).toBeCloseTo(base.params.saturation)
     expect(mapped.eqBands[3]?.gain).toBeCloseTo(0)
+    expect(mapped.bypass.eq).toBe(true)
+    expect(mapped.params.start).toBe(base.params.start)
   })
 
-  it('uses mostly EQ at modest brightness', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', 0.2))
+  it('character morphs EQ only', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'character', 0.7))
     expect(mapped.eqBands[3]?.type).toBe('highshelf')
-    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(1.5)
-    expect(mapped.eqBands[3]?.gain).toBeLessThan(6)
-    expect(mapped.params.saturation).toBeCloseTo(0)
+    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(2)
+    expect(mapped.eqBands[3]?.gain).toBeLessThanOrEqual(SENSORY_SAFETY.eqGain)
+    expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
+    expect(mapped.params.delayWet).toBeCloseTo(base.params.delayWet)
+    expect(mapped.params.saturation).toBeCloseTo(base.params.saturation)
     expect(mapped.bypass.eq).toBe(false)
-    expect(mapped.params.eq4Gain).toBeGreaterThan(1.5)
+    expect(mapped.bypass.reverb).toBe(true)
   })
 
-  it('opens shimmer and saturation at high brightness', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', 0.75))
-    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(6)
-    expect(mapped.params.saturation).toBeGreaterThan(2)
-    expect(mapped.params.reverbShimmer).toBeGreaterThan(20)
-    expect(mapped.bypass.reverb).toBe(false)
-    expect(mapped.bypass.saturation).toBe(false)
+  it('tight character uses a darker, boxed EQ and leaves reverb dry', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'character', -0.8))
+    expect(mapped.eqBands[0]?.type).toBe('highpass')
+    expect(mapped.eqBands[3]?.gain).toBeLessThan(-3)
+    expect(mapped.params.reverbWet).toBe(0)
   })
 
-  it('cuts highs and lifts lows when darker', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', -0.7))
-    expect(mapped.eqBands[3]?.gain).toBeLessThan(-5)
-    expect(mapped.eqBands[0]?.gain).toBeGreaterThan(4)
+  it('space morphs reverb only from subtle to vast without 100% wet', () => {
+    const base = baseDsp()
+    const subtle = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 0.2))
+    const vast = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 1))
+    expect(subtle.params.reverbWet).toBeGreaterThan(8)
+    expect(subtle.params.reverbWet).toBeLessThan(20)
+    expect(vast.params.reverbWet).toBeGreaterThan(subtle.params.reverbWet)
+    expect(vast.params.reverbWet).toBeLessThanOrEqual(SENSORY_SAFETY.reverbWet)
+    expect(vast.params.reverbDecay).toBeLessThanOrEqual(SENSORY_SAFETY.reverbDecay)
+    expect(vast.eqBands[3]?.gain).toBeCloseTo(base.eqBands[3]!.gain)
+    expect(vast.params.delayWet).toBeCloseTo(base.params.delayWet)
+    expect(vast.bypass.reverb).toBe(false)
   })
 
-  it('opens space and width when moving further', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'distance', 0.6))
-    expect(mapped.params.reverbWet).toBeGreaterThan(40)
-    expect(mapped.params.reverbSize).toBeGreaterThan(50)
-    expect(mapped.params.reverbWidth).toBeGreaterThan(130)
-    expect(mapped.bypass.reverb).toBe(false)
+  it('echo morphs delay only and caps feedback', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'echo', 1))
+    expect(mapped.params.delayWet).toBeGreaterThan(40)
+    expect(mapped.params.delayWet).toBeLessThanOrEqual(SENSORY_SAFETY.delayWet)
+    expect(mapped.params.delayFeedback).toBeLessThanOrEqual(SENSORY_SAFETY.delayFeedback)
+    expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
+    expect(mapped.bypass.delay).toBe(false)
   })
 
-  it('narrows the image when closer', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'distance', -0.7))
-    expect(mapped.params.reverbWidth).toBeLessThan(70)
-    expect(mapped.params.delayWidth).toBeLessThan(70)
-  })
-
-  it('engages grain layers and modulation on pulse', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'wildness', 0.65))
-    expect(mapped.params.motionDepth).toBeGreaterThan(30)
-    expect(mapped.params.density).toBeGreaterThan(25)
-    expect(mapped.params.scatter).toBeGreaterThan(55)
+  it('grain morphs grain params only and leaves motion still', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'grain', 0.8))
+    expect(mapped.params.density).toBeGreaterThan(base.params.density)
+    expect(mapped.params.density).toBeLessThanOrEqual(SENSORY_SAFETY.density)
+    expect(mapped.params.motionDepth).toBeCloseTo(base.params.motionDepth)
+    expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
     expect(mapped.bypass.grain).toBe(false)
   })
 
-  it('treats bright+wild as more than bright alone', () => {
-    const bright = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', 0.7))
+  it('mod morphs grain motion only', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'mod', 0.8))
+    expect(mapped.params.motionDepth).toBeGreaterThan(base.params.motionDepth)
+    expect(mapped.params.density).toBeCloseTo(base.params.density)
+    expect(mapped.bypass.grain).toBe(false)
+  })
+
+  it('drift opens a stereo delay image without eating the echo wet', () => {
+    const base = baseDsp()
+    const drifted = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 1))
+    expect(drifted.params.delayWidth).toBeGreaterThan(150)
+    expect(drifted.params.delayTimeR).toBeGreaterThan(drifted.params.delayTime)
+    expect(drifted.params.delayWet).toBeLessThanOrEqual(24)
+    expect(drifted.bypass.delay).toBe(false)
     const both = mapSensoryToDsp(
-      baseDsp(),
-      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'brightness', 0.7), 'wildness', 0.7),
+      base,
+      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'echo', 0.8), 'drift', 1),
     )
-    expect(both.params.reverbShimmer).toBeGreaterThan(bright.params.reverbShimmer)
-    expect(both.params.reverbModDepth).toBeGreaterThan(bright.params.reverbModDepth)
+    expect(both.params.delayWet).toBeGreaterThan(drifted.params.delayWet)
+    expect(both.params.delayWidth).toBeGreaterThan(150)
+  })
+
+  it('dirt morphs saturation only', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'dirt', 1))
+    expect(mapped.params.saturation).toBeGreaterThan(20)
+    expect(mapped.params.saturation).toBeLessThanOrEqual(SENSORY_SAFETY.saturation)
+    expect(mapped.eqBands[0]?.type).toBe(base.eqBands[0]?.type)
+  })
+
+  it('tight morphs compressor only', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'tight', 0.9))
+    expect(mapped.params.compressorThreshold).toBeLessThan(base.params.compressorThreshold)
+    expect(mapped.params.compressorMakeup).toBeLessThanOrEqual(SENSORY_SAFETY.compressorMakeup)
+    expect(mapped.params.saturation).toBeCloseTo(base.params.saturation)
+    expect(mapped.bypass.compressor).toBe(false)
   })
 
   it('does not rewrite start and end', () => {
     const base = baseDsp()
     base.params.start = 0.4
     base.params.end = 1.2
-    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'warmth', 0.5))
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 0.5))
     expect(mapped.params.start).toBe(0.4)
     expect(mapped.params.end).toBe(1.2)
   })
 
-  it('opens delay echoes when turning toward echo', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'echo', 0.7))
-    expect(mapped.params.delayWet).toBeGreaterThan(40)
-    expect(mapped.params.delayFeedback).toBeGreaterThan(40)
-    expect(mapped.bypass.delay).toBe(false)
+  it('protects with the limiter on extreme space', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.9))
+    expect(mapped.bypass.limiter).toBe(false)
   })
 })

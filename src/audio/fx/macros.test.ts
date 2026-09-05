@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { applyDelayMacro, delayMacroNormalized } from './macros'
+import { applyDelayMacro, applyReverbMacro, delayMacroNormalized, reverbMacroNormalized } from './macros'
 import { migrateSpaceParams } from './migrate'
 import { defaultPresetFor, findSpacePreset, SPACE_PRESETS } from './presets'
 
@@ -14,12 +14,10 @@ describe('macros', () => {
     expect(delayMacroNormalized('mix', { ...p, delayWet: 40 })).toBeCloseTo(0.4)
   })
 
-  it('lets Color reach 0%', () => {
+  it('lets reverb Color reach the dark end', () => {
     const p = defaultParamValues()
-    const dark = applyDelayMacro('color', 0, p)
-    expect(delayMacroNormalized('color', { ...p, ...dark })).toBeCloseTo(0)
-    const bright = applyDelayMacro('color', 1, p)
-    expect(delayMacroNormalized('color', { ...p, ...bright })).toBeCloseTo(1)
+    const dark = applyReverbMacro('color', 0, p)
+    expect(reverbMacroNormalized('color', { ...p, ...dark })).toBeCloseTo(0)
   })
 })
 
@@ -53,6 +51,7 @@ describe('presets', () => {
     expect(SPACE_PRESETS.some((p) => p.id === 'rv-stereo-spread')).toBe(true)
     expect(findSpacePreset('dly-ping')?.delayType).toBe('pingPong')
     expect(findSpacePreset('rv-mono')?.params.reverbWidth).toBe(0)
+    expect(findSpacePreset('rv-mono')?.params.reverbStereo).toBe(0)
     expect(findSpacePreset('rv-stereo-spread')?.params.reverbInput).toBe(0)
     expect(findSpacePreset('rv-haas')?.params.reverbWidth).toBe(200)
     expect(findSpacePreset('rv-bloom')?.reverbType).toBe('bloom')

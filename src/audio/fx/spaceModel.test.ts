@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { delayTaps, reverbTail } from './spaceModel'
+import { delayChannelTimeSeconds, delayTaps, isDelayStereo, isReverbStereo, reverbTail } from './spaceModel'
 
 describe('delayTaps', () => {
   it('places the first echo at delay time', () => {
@@ -13,6 +13,7 @@ describe('delayTaps', () => {
     expect(taps[0]?.time).toBeCloseTo(0.25, 3)
     expect(taps.length).toBeGreaterThan(1)
     expect(taps[1]!.gain).toBeLessThan(taps[0]!.gain)
+    expect(taps[taps.length - 1]!.gain).toBeLessThan(taps[0]!.gain * 0.2)
   })
 
   it('ping-pong alternates L/R', () => {
@@ -32,6 +33,43 @@ describe('delayTaps', () => {
     p.bpm = 120
     const taps = delayTaps(p, 'digital', 120)
     expect(taps[0]?.time).toBeCloseTo(0.5, 3)
+  })
+})
+
+describe('delay channel times', () => {
+  it('lets L and R sync to different notes in stereo', () => {
+    const p = defaultParamValues()
+    p.delayStereo = 1
+    p.bpm = 120
+    p.delaySync = 1
+    p.delayNote = 4
+    p.delayNoteKind = 0
+    p.delaySyncR = 1
+    p.delayNoteR = 3
+    p.delayNoteKindR = 1
+    expect(isDelayStereo(p)).toBe(true)
+    expect(delayChannelTimeSeconds(p, 120, 'L')).toBeCloseTo(0.5, 3)
+    expect(delayChannelTimeSeconds(p, 120, 'R')).toBeCloseTo(0.375, 3)
+  })
+
+  it('uses one time for both channels in mono', () => {
+    const p = defaultParamValues()
+    p.delayStereo = 0
+    p.delaySync = 0
+    p.delayTime = 200
+    p.delayTimeR = 800
+    expect(delayChannelTimeSeconds(p, 120, 'L')).toBeCloseTo(0.2, 3)
+    expect(delayChannelTimeSeconds(p, 120, 'R')).toBeCloseTo(0.2, 3)
+  })
+})
+
+describe('isReverbStereo', () => {
+  it('follows the stereo switch', () => {
+    const p = defaultParamValues()
+    p.reverbStereo = 1
+    expect(isReverbStereo(p)).toBe(true)
+    p.reverbStereo = 0
+    expect(isReverbStereo(p)).toBe(false)
   })
 })
 
