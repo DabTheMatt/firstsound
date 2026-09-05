@@ -715,6 +715,7 @@ export default function App() {
             loop={snap.loop}
             start={snap.params.start}
             end={snap.params.end}
+            bpm={snap.params.bpm}
             disabled={!snap.sampleLoaded}
             compact={compact}
             minimal={isPhoneLayout}

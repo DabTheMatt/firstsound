@@ -452,6 +452,7 @@ function ModuleInspector({
             Interp densifies the overlap-add used when Speed or Pitch leave 1× / 0 st. Sparse is
             lighter; dense eases tempo and transpose moves so they do not click.
           </p>
+          <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />
         </>
       ) : null}
@@ -997,6 +998,68 @@ function EqEditor({
         <FxLfoSection snap={snap} kind="eqcf" variant={knobs ? 'knob' : 'slider'} />
         </>
       )}
+    </div>
+  )
+}
+
+function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' | 'slider' }) {
+  const source =
+    snap.tempoSource === 'detected'
+      ? 'detected'
+      : snap.tempoSource === 'tapped'
+        ? 'tap'
+        : snap.tempoSource === 'manual'
+          ? 'manual'
+          : 'default 120'
+  return (
+    <div className={styles.tempo}>
+      <h3 className={styles.sub}>Sample tempo</h3>
+      <p className={styles.help}>
+        Delay and reverb BPM sync use this tempo. Detect it from transients, mark hits on the waveform, or tap along while
+        the sample plays.
+      </p>
+      {variant === 'knob' ? (
+        <div className={styles.knobs}>
+          <ParamControl id="bpm" value={snap.params.bpm} variant={variant} />
+        </div>
+      ) : (
+        <ParamControl id="bpm" value={snap.params.bpm} variant={variant} />
+      )}
+      <div className={styles.tempoActions}>
+        <button
+          type="button"
+          className={styles.ghost}
+          disabled={!snap.sampleLoaded}
+          onClick={() => engine.detectSampleTempo()}
+        >
+          Detect tempo
+        </button>
+        <Toggle
+          pressed={snap.showTransients}
+          label="Mark transients"
+          onToggle={() => engine.setShowTransients(!snap.showTransients)}
+        />
+        <button
+          type="button"
+          className={styles.ghost}
+          disabled={!snap.sampleLoaded}
+          onPointerDown={() => engine.tapSampleTempo()}
+          onClick={() => engine.tapSampleTempo()}
+        >
+          Tap tempo
+        </button>
+      </div>
+      <div className={styles.readout}>
+        <span>Source</span>
+        <strong>{source}</strong>
+      </div>
+      {snap.tapCount > 0 ? (
+        <div className={styles.readout}>
+          <span>Taps</span>
+          <strong>{snap.tapCount}</strong>
+        </div>
+      ) : null}
+      {snap.tempoNotice ? <p className={styles.help}>{snap.tempoNotice}</p> : null}
     </div>
   )
 }

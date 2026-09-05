@@ -11,6 +11,7 @@ import { defaultSensoryValues } from '../sensoryState'
 import { EFFECT_MORPHS } from './effectMorphs'
 import { applyMorphStopToBands, interpolateMorphStop, MORPH_GATE } from './morph'
 import { applySensorySafety } from './safety'
+import { applySensoryStacking } from './stacking'
 
 export type DspSnapshot = {
   params: Record<ParamId, number>
@@ -126,22 +127,8 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     if (id === 'pan') applyPanLfo(dsp, t)
     touched = true
   }
-  if (Math.abs(values.echo) >= MORPH_GATE && Math.abs(values.drift) >= MORPH_GATE) {
-    const echoMorph = morphFor('echo')
-    if (echoMorph) {
-      const echoStop = interpolateMorphStop(echoMorph.stops, values.echo)
-      if (echoStop.params?.delayWet != null) {
-        dsp.params.delayWet = applyParamValue(echoStop.params.delayWet, PARAMS.delayWet)
-      }
-      if (echoStop.params?.delayFeedback != null) {
-        dsp.params.delayFeedback = applyParamValue(echoStop.params.delayFeedback, PARAMS.delayFeedback)
-      }
-      if (echoStop.params?.delayTime != null) {
-        dsp.params.delayTime = applyParamValue(echoStop.params.delayTime, PARAMS.delayTime)
-      }
-    }
-  }
   if (touched) {
+    applySensoryStacking(dsp, values)
     applySensorySafety(dsp)
     const protect =
       values.space > 0.55 || values.dirt > 0.45 || values.echo > 0.6 || Math.abs(values.character) > 0.85

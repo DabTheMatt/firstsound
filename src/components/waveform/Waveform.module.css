@@ -225,15 +225,27 @@
   transform: translateX(-50%);
 }
 
-.playhead {
+.transient {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1.5px;
-  background: var(--playhead);
-  transition: none;
+  width: 1px;
+  background: color-mix(in srgb, var(--accent-primary) 72%, transparent);
   transform: translateX(-50%);
   pointer-events: none;
+  z-index: 4;
+}
+
+.transient::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--accent-primary);
+  transform: translateX(-50%);
 }
 
 .sensory .playhead {

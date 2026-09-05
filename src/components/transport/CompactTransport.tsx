@@ -9,6 +9,7 @@ type Props = {
   loop: boolean
   start: number
   end: number
+  bpm: number
   disabled: boolean
   compact: boolean
   minimal?: boolean
@@ -25,6 +26,7 @@ export function CompactTransport({
   loop,
   start,
   end,
+  bpm,
   disabled,
   compact,
   minimal = false,
@@ -119,6 +121,9 @@ export function CompactTransport({
           </span>
         ) : null}
         <strong>{length.toFixed(3)} s</strong>
+        <span className={styles.bpm} title="Sample tempo used by delay/reverb sync">
+          {bpm.toFixed(1)} BPM
+        </span>
       </p>
       {!minimal ? (
         <div className={styles.jumps}>

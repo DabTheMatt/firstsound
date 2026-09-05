@@ -94,6 +94,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
     <>
       <details className={styles.band} open>
         <summary>Tempo sync</summary>
+        <p className={styles.help}>Uses the sample tempo from Input. Detect or tap it there, then sync delay notes to it.</p>
         {kind === 'delay' ? (
           <>
             <p className={styles.help}>{delayStereo ? 'Left and right can sync to different notes.' : 'One time for both channels.'}</p>

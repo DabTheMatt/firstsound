@@ -30,9 +30,9 @@ describe('delayTaps', () => {
     p.delaySync = 1
     p.delayNote = 4
     p.delayNoteKind = 0
-    p.bpm = 120
-    const taps = delayTaps(p, 'digital', 120)
-    expect(taps[0]?.time).toBeCloseTo(0.5, 3)
+    p.bpm = 90
+    const taps = delayTaps(p, 'digital', p.bpm)
+    expect(taps[0]?.time).toBeCloseTo(60 / 90, 3)
   })
 })
 

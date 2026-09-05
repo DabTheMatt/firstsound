@@ -100,6 +100,11 @@
   background: var(--bg-control-hover);
 }
 
+.ghost:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .connectBtn {
   display: inline-flex;
   flex-direction: column;
@@ -293,11 +298,24 @@
   justify-items: center;
 }
 
-.row {
+.tempo {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tempoActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.tempoActions > * {
+  min-width: 0;
+  width: 100%;
 }
 
 .sub {
