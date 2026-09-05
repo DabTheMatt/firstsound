@@ -140,6 +140,7 @@ import {
   filterStageCount,
   parseEqBands,
   stageQ,
+  bandIsActive,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
@@ -1286,6 +1287,12 @@ export class AudioEngine {
     this.syncEqLfoParams(id)
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
+    const mod = this.chain.find((m) => m.instanceId === id)
+    const engaged = st.bands.some(bandIsActive)
+    if (engaged && mod?.bypassed) {
+      this.setModuleBypass(id, false)
+      return
+    }
     this.emit()
   }
 
