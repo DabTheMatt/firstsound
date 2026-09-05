@@ -86,6 +86,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { makeTanhCurve, saturationDryWet } from '../fx/saturation'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
@@ -768,6 +769,7 @@ export class AudioEngine {
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
+      if (id === 'reverbWet') this.engageReverbFromMix()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -786,7 +788,14 @@ export class AudioEngine {
     }
     this.syncTimeFromClock('bpm')
     this.applyLiveAudio()
+    this.engageReverbFromMix()
     this.emit()
+  }
+
+  private engageReverbFromMix(): void {
+    if (!reverbMixEngagesModule(this.params.reverbWet)) return
+    const reverb = this.chain.find((m) => m.type === 'reverb')
+    if (reverb?.bypassed) this.setModuleBypass(reverb.instanceId, false)
   }
 
   private copyDelayLeftToRight(): void {
@@ -1586,6 +1595,15 @@ export class AudioEngine {
     this.applyBypassRamps()
     if (grain && this.playing) void this.play()
     else this.emit()
+  }
+
+  toggleModuleBypass(instanceId: string): void {
+    const mod = this.chain.find((m) => m.instanceId === instanceId)
+    if (!mod) return
+    if (mod.bypassed && mod.type === 'reverb') {
+      this.params.reverbWet = mixWhenEnablingReverb(this.params.reverbWet)
+    }
+    this.setModuleBypass(instanceId, !mod.bypassed)
   }
 
   setEqBand(index: number, patch: Partial<EqBand>, instanceId?: string): void {
@@ -2729,23 +2747,21 @@ export class AudioEngine {
         else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
       }
       if (slot.reverbFx) {
-        if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
-        else {
-          applyReverbGraph(slot.reverbFx, params, this.reverbType, bpm, now, smoothing)
-          const key = reverbImpulseKey(params, this.reverbType)
-          if (key !== this.reverbIrKey) {
-            this.reverbIrKey = key
-            if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
-            const fx = slot.reverbFx
-            if (!fx.conv.buffer) {
-              fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
-            } else {
-              this.reverbIrTimer = window.setTimeout(() => {
-                this.reverbIrTimer = 0
-                if (!this.ctx || !fx) return
-                fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
-              }, 40)
-            }
+        const fx = slot.reverbFx
+        if (this.spaceLatched) silenceReverbGraph(fx, now)
+        else applyReverbGraph(fx, params, this.reverbType, bpm, now, smoothing)
+        const key = reverbImpulseKey(params, this.reverbType)
+        if (key !== this.reverbIrKey || !fx.conv.buffer) {
+          this.reverbIrKey = key
+          if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+          if (!fx.conv.buffer) {
+            fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
+          } else {
+            this.reverbIrTimer = window.setTimeout(() => {
+              this.reverbIrTimer = 0
+              if (!this.ctx || !fx) return
+              fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
+            }, 40)
           }
         }
       }

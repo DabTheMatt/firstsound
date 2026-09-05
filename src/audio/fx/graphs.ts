@@ -564,7 +564,8 @@ export function createReverbGraph(
   const early = ctx.createDelay(0.25)
   const earlyGain = ctx.createGain()
   const conv = ctx.createConvolver()
-  conv.normalize = true
+  // Scale the IR in fillReverbImpulse. Browser normalize crushes long halls.
+  conv.normalize = false
   const tankSplit = ctx.createChannelSplitter(2)
   const tankDelayL = ctx.createDelay(0.45)
   const tankDelayR = ctx.createDelay(0.45)
