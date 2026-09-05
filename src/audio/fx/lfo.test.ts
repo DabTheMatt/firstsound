@@ -13,6 +13,7 @@ import {
   lfoRangeNormalized,
   lfoWave,
   modulateParam,
+  moduleTypeForLfoKind,
   parseFxLfos,
 } from './lfo'
 
@@ -200,11 +201,21 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('input', 'pan')).toBe('advanced')
   })
 
-  it('keeps compressor knobs on the limiter main pane', () => {
-    expect(inspectorPaneForLfo('limiter', 'limiterThreshold')).toBe('main')
-    expect(inspectorPaneForLfo('limiter', 'limiterRatio')).toBe('main')
-    expect(inspectorPaneForLfo('limiter', 'limiterKnee')).toBe('main')
+  it('keeps compressor main knobs on the main pane', () => {
+    expect(inspectorPaneForLfo('compressor', 'compressorThreshold')).toBe('main')
+    expect(inspectorPaneForLfo('compressor', 'compressorRatio')).toBe('main')
+    expect(inspectorPaneForLfo('compressor', 'compressorKnee')).toBe('main')
+    expect(inspectorPaneForLfo('compressor', 'compressorRelease')).toBe('main')
+    expect(inspectorPaneForLfo('compressor', 'compressorAttack')).toBe('advanced')
+    expect(inspectorPaneForLfo('compressor', 'compressorInput')).toBe('advanced')
+    expect(inspectorPaneForLfo('compressor', 'compressorMakeup')).toBe('advanced')
+  })
+
+  it('keeps brickwall knobs on the limiter main pane', () => {
+    expect(inspectorPaneForLfo('limiter', 'limiterCeiling')).toBe('main')
+    expect(inspectorPaneForLfo('limiter', 'limiterRelease')).toBe('main')
     expect(inspectorPaneForLfo('limiter', 'limiterAttack')).toBe('advanced')
+    expect(inspectorPaneForLfo('limiter', 'limiterInput')).toBe('advanced')
   })
 })
 
@@ -215,8 +226,17 @@ describe('fxLfoSlotName', () => {
     expect(fxLfoSlotName('eq4', 1)).toBe('eq4b2')
     expect(fxLfoSlotName('eqcf', 0)).toBe('eqcf1')
     expect(fxLfoSlotName('grain', 0)).toBe('g1')
+    expect(fxLfoSlotName('compressor', 0)).toBe('c1')
     expect(fxLfoSlotName('limiter', 0)).toBe('l1')
     expect(fxLfoSlotName('delay', 1)).toBe('d2')
     expect(fxLfoSlotName('input', 0)).toBe('i1')
+  })
+})
+
+describe('moduleTypeForLfoKind', () => {
+  it('maps compressor and limiter kinds to chain modules', () => {
+    expect(moduleTypeForLfoKind('compressor')).toBe('compressor')
+    expect(moduleTypeForLfoKind('limiter')).toBe('limiter')
+    expect(moduleTypeForLfoKind('input')).toBe('gain')
   })
 })

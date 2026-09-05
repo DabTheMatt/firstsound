@@ -11,6 +11,7 @@ export type ModuleType =
   | 'saturation'
   | 'delay'
   | 'reverb'
+  | 'compressor'
   | 'limiter'
   | 'output'
 
@@ -27,12 +28,21 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   saturation: 'Saturation',
   delay: 'Delay',
   reverb: 'Reverb',
+  compressor: 'Compressor',
   limiter: 'Limiter',
   output: 'Output',
 }
 
 /** Modules that can be inserted between Input and Output. */
-export const INSERTABLE_TYPES: ModuleType[] = ['grain', 'eq', 'saturation', 'delay', 'reverb', 'limiter']
+export const INSERTABLE_TYPES: ModuleType[] = [
+  'grain',
+  'eq',
+  'saturation',
+  'delay',
+  'reverb',
+  'compressor',
+  'limiter',
+]
 
 export const MAX_CHAIN_MIDDLE = 12
 
@@ -44,6 +54,7 @@ export function defaultChain(): ChainModule[] {
     { instanceId: 'saturation-1', type: 'saturation', bypassed: true },
     { instanceId: 'delay-1', type: 'delay', bypassed: true },
     { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
+    { instanceId: 'compressor-1', type: 'compressor', bypassed: true },
     { instanceId: 'limiter-1', type: 'limiter', bypassed: true },
     { instanceId: 'output-1', type: 'output', bypassed: false },
   ]
@@ -174,6 +185,7 @@ function isModuleType(value: unknown): value is ModuleType {
     value === 'saturation' ||
     value === 'delay' ||
     value === 'reverb' ||
+    value === 'compressor' ||
     value === 'limiter' ||
     value === 'output'
   )

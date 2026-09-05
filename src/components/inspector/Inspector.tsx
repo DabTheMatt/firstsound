@@ -16,9 +16,10 @@ import {
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import {
+  COMPRESSOR_ADV_KNOBS,
+  COMPRESSOR_MAIN_KNOBS,
   GRAIN_KNOBS,
   LIMITER_ADV_KNOBS,
-  LIMITER_COMPRESSOR_KNOBS,
   LIMITER_MAIN_KNOBS,
   MOTION_KNOBS,
   PLAYBACK_DIRECTIONS,
@@ -501,6 +502,7 @@ function ModuleInspector({
       ) : null}
       {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} pane={pane} /> : null}
       {type === 'reverb' ? <SpaceInspector snap={snap} kind="reverb" variant={variant} pane={pane} /> : null}
+      {type === 'compressor' ? <CompressorEditor snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'limiter' ? <LimiterEditor snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'output' ? (
         <>
@@ -509,6 +511,52 @@ function ModuleInspector({
         </>
       ) : null}
     </>
+  )
+}
+
+function CompressorEditor({
+  snap,
+  variant,
+  pane,
+}: {
+  snap: EngineSnapshot
+  variant: 'knob' | 'slider'
+  pane: 'main' | 'advanced'
+}) {
+  const params = (ids: ParamId[]) =>
+    variant === 'knob' ? (
+      <div className={styles.knobs}>
+        {ids.map((id) => (
+          <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
+        ))}
+      </div>
+    ) : (
+      ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
+    )
+  return (
+    <div className={styles.eq}>
+      {pane === 'main' ? (
+        <>
+          <div className={styles.eqViz}>
+            <LimiterPlot kind="compressor" />
+          </div>
+          {params(COMPRESSOR_MAIN_KNOBS)}
+          <FxLfoSection snap={snap} kind="compressor" variant={variant} />
+        </>
+      ) : (
+        <>
+          <Toggle
+            pressed={snap.params.compressorAutoMakeup > 0.5}
+            label="Auto makeup"
+            onToggle={() =>
+              engine.setParam('compressorAutoMakeup', snap.params.compressorAutoMakeup > 0.5 ? 0 : 1)
+            }
+          />
+          {params(COMPRESSOR_ADV_KNOBS)}
+          <FxLfoSection snap={snap} kind="compressor" variant={variant} />
+        </>
+      )}
+    </div>
   )
 }
 
@@ -535,27 +583,11 @@ function LimiterEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
-          <details className={styles.band} open>
-            <summary>
-              <span className={styles.bandTitle}>Compressor</span>
-            </summary>
-            <div className={styles.eqViz}>
-              <LimiterPlot />
-            </div>
-            {params(LIMITER_COMPRESSOR_KNOBS)}
-          </details>
           {params(LIMITER_MAIN_KNOBS)}
           <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
       ) : (
         <>
-          <Toggle
-            pressed={snap.params.limiterAutoMakeup > 0.5}
-            label="Auto makeup"
-            onToggle={() =>
-              engine.setParam('limiterAutoMakeup', snap.params.limiterAutoMakeup > 0.5 ? 0 : 1)
-            }
-          />
           {params(LIMITER_ADV_KNOBS)}
           <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>

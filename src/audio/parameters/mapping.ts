@@ -178,6 +178,10 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'limiterKnee':
     case 'limiterMakeup':
     case 'limiterInput':
+    case 'compressorThreshold':
+    case 'compressorKnee':
+    case 'compressorMakeup':
+    case 'compressorInput':
       return `${value.toFixed(1)} dB`
     case 'grainSize':
       return `${Math.round(value)} ms`
@@ -190,6 +194,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbGateRelease':
     case 'limiterRelease':
     case 'limiterAttack':
+    case 'compressorRelease':
+    case 'compressorAttack':
       return value < 10 ? `${value.toFixed(1)} ms` : `${Math.round(value)} ms`
     case 'reverbDecay':
       return value < 10 ? `${value.toFixed(2)} s` : `${value.toFixed(1)} s`
@@ -217,6 +223,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'makeMono':
     case 'invertPhase':
     case 'limiterAutoMakeup':
+    case 'compressorAutoMakeup':
       return value > 0.5 ? 'On' : 'Off'
     case 'pan':
       if (Math.abs(value) < 0.5) return 'C'

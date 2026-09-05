@@ -64,6 +64,16 @@ describe('normalizeChain', () => {
   })
 })
 
+describe('defaultChain', () => {
+  it('places a bypassed compressor just before the limiter', () => {
+    const chain = defaultChain()
+    const types = chain.map((m) => m.type)
+    expect(types.indexOf('compressor')).toBeLessThan(types.indexOf('limiter'))
+    expect(chain.find((m) => m.type === 'compressor')?.bypassed).toBe(true)
+    expect(chain.find((m) => m.type === 'limiter')?.bypassed).toBe(true)
+  })
+})
+
 describe('parseChain', () => {
   it('keeps a saved chain that has no limiter', () => {
     const next = parseChain([
@@ -73,6 +83,15 @@ describe('parseChain', () => {
     ])
     expect(next?.some((m) => m.type === 'limiter')).toBe(false)
     expect(next?.at(-1)?.type).toBe('output')
+  })
+
+  it('accepts compressor modules', () => {
+    const next = parseChain([
+      { instanceId: 'gain-1', type: 'gain', bypassed: false },
+      { instanceId: 'compressor-1', type: 'compressor', bypassed: true },
+      { instanceId: 'output-1', type: 'output', bypassed: false },
+    ])
+    expect(next?.some((m) => m.type === 'compressor')).toBe(true)
   })
 })
 

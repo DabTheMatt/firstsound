@@ -10,11 +10,11 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  padding-top: 8px;
+  padding-top: 12px;
 }
 
 .label {
-  margin: 0;
+  margin: 2px 0 0;
   width: 100%;
   padding: 0 4px;
   font-size: 9px;
@@ -83,7 +83,7 @@
 
 @media (max-width: 430px) {
   .knob {
-    padding-top: 2px;
+    padding-top: 8px;
     max-width: 72px;
   }
 

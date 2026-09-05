@@ -43,8 +43,8 @@
   flex: none;
   position: relative;
   z-index: 2;
-  gap: 4px;
-  margin: 0 8px;
+  gap: 2px;
+  margin: 0 4px;
 }
 
 .arrow {

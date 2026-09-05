@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { fallHoldDb } from '../../app/editorState'
+import { compressorSettings } from '../../audio/fx/compressor'
 import {
   amplitudeToDb,
   buildLimiterWavePreview,
@@ -8,10 +9,11 @@ import {
   LIMITER_PLOT_MAX_DB,
   LIMITER_PLOT_MIN_DB,
   LIMITER_PREVIEW_SECONDS,
+  limiterBrickwallSettings,
   limiterOutputDb,
   limiterPlotT,
-  limiterSettings,
   peakAmplitude,
+  type LimiterSettings,
   type LimiterWavePreview,
 } from '../../audio/fx/limiter'
 import { engine } from '../../hooks/useEngine'
@@ -22,20 +24,26 @@ import styles from './EqCurve.module.css'
 const GR_MAX = 24
 
 export type LimiterPlotMode = 'curve' | 'wave'
+export type LimiterPlotKind = 'compressor' | 'limiter'
 
 const PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
   { value: 'curve', label: 'Curve', title: 'Compressor transfer curve with knee' },
   { value: 'wave', label: 'Wave', title: 'Next 10 seconds of sample with threshold overlay' },
 ]
 
-export function LimiterPlot() {
+export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [mode, setMode] = useState<LimiterPlotMode>('curve')
   const modeRef = useRef(mode)
+  const kindRef = useRef(kind)
 
   useEffect(() => {
     modeRef.current = mode
   }, [mode])
+
+  useEffect(() => {
+    kindRef.current = kind
+  }, [kind])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -48,13 +56,29 @@ export function LimiterPlot() {
     let cacheKey = ''
     let preview: LimiterWavePreview | null = null
 
-    const readPeakDb = (tap: 'limiterPre' | 'limiterPost'): number => {
+    const preTap = (): 'compressorPre' | 'limiterPre' =>
+      kindRef.current === 'compressor' ? 'compressorPre' : 'limiterPre'
+    const postTap = (): 'compressorPost' | 'limiterPost' =>
+      kindRef.current === 'compressor' ? 'compressorPost' : 'limiterPost'
+
+    const readPeakDb = (
+      tap: 'compressorPre' | 'limiterPre' | 'compressorPost' | 'limiterPost',
+    ): number => {
       const analyser = engine.getAnalyser(tap)
       if (!analyser) return Number.NEGATIVE_INFINITY
       const buf = new Float32Array(analyser.fftSize)
       analyser.getFloatTimeDomainData(buf)
       return amplitudeToDb(peakAmplitude(buf))
     }
+
+    const settingsFor = (params: Parameters<typeof compressorSettings>[0]): LimiterSettings =>
+      kindRef.current === 'compressor' ? compressorSettings(params) : limiterBrickwallSettings(params)
+
+    const moduleOn = (snap: ReturnType<typeof engine.getSnapshot>): boolean =>
+      snap.chain.some((m) => m.type === kindRef.current && !m.bypassed)
+
+    const reductionDb = (): number =>
+      kindRef.current === 'compressor' ? engine.getCompressorReduction() : engine.getLimiterReduction()
 
     const draw = (now: number) => {
       const canvas = canvasRef.current
@@ -74,8 +98,8 @@ export function LimiterPlot() {
       }
 
       const snap = engine.getSnapshot()
-      const settings = limiterSettings(snap.params)
-      const limiterOn = snap.chain.some((m) => m.type === 'limiter' && !m.bypassed)
+      const settings = settingsFor(snap.params)
+      const active = moduleOn(snap)
       const colors = readThemeColors()
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
@@ -84,9 +108,9 @@ export function LimiterPlot() {
       if (modeRef.current === 'curve') {
         const dt = Math.min(0.08, Math.max(0, (now - last) / 1000))
         last = now
-        holdIn = fallHoldDb(holdIn, readPeakDb('limiterPre'), dt, 18)
-        holdOut = fallHoldDb(holdOut, readPeakDb('limiterPost'), dt, 18)
-        holdGr = fallHoldDb(holdGr, Math.max(0, -engine.getLimiterReduction()), dt, 24)
+        holdIn = fallHoldDb(holdIn, readPeakDb(preTap()), dt, 18)
+        holdOut = fallHoldDb(holdOut, readPeakDb(postTap()), dt, 18)
+        holdGr = fallHoldDb(holdGr, Math.max(0, -reductionDb()), dt, 24)
         drawCompressorCurve(ctx, width, height, dpr, settings, holdIn, holdOut, holdGr, colors)
       } else {
         last = now
@@ -96,10 +120,11 @@ export function LimiterPlot() {
           height,
           dpr,
           settings,
-          limiterOn,
+          active,
           colors,
           preview,
           cacheKey,
+          reductionDb,
         )
         preview = result.preview
         cacheKey = result.cacheKey
@@ -111,17 +136,19 @@ export function LimiterPlot() {
     return () => cancelAnimationFrame(frame)
   }, [])
 
+  const label = kind === 'compressor' ? 'Compressor preview' : 'Limiter preview'
+
   return (
     <div className={styles.plotStack}>
-      <Segmented label="Limiter preview" value={mode} options={PLOT_MODES} onChange={setMode} />
+      <Segmented label={label} value={mode} options={PLOT_MODES} onChange={setMode} />
       <div className={styles.wrap}>
         <canvas
           ref={canvasRef}
           className={styles.canvas}
           aria-label={
             mode === 'curve'
-              ? 'Compressor transfer curve with soft-knee region'
-              : 'Next 10 seconds of sample with limiter threshold overlay'
+              ? 'Transfer curve with soft-knee region'
+              : 'Next 10 seconds of sample with threshold overlay'
           }
         />
       </div>
@@ -134,7 +161,7 @@ function drawCompressorCurve(
   width: number,
   height: number,
   dpr: number,
-  settings: ReturnType<typeof limiterSettings>,
+  settings: LimiterSettings,
   holdIn: number,
   holdOut: number,
   holdGr: number,
@@ -262,11 +289,12 @@ function drawWavePreview(
   width: number,
   height: number,
   dpr: number,
-  settings: ReturnType<typeof limiterSettings>,
-  limiterOn: boolean,
+  settings: LimiterSettings,
+  moduleOn: boolean,
   colors: ReturnType<typeof readThemeColors>,
   preview: LimiterWavePreview | null,
   cacheKey: string,
+  reductionDb: () => number,
 ): { preview: LimiterWavePreview | null; cacheKey: string } {
   const snap = engine.getSnapshot()
   const mono = engine.getMono()
@@ -289,7 +317,7 @@ function drawWavePreview(
     settings.ratio,
     settings.makeupGain,
     settings.ceiling,
-    limiterOn ? 'on' : 'off',
+    moduleOn ? 'on' : 'off',
   ].join('|')
 
   let nextPreview = preview
@@ -305,7 +333,7 @@ function drawWavePreview(
       LIMITER_PREVIEW_SECONDS,
       buckets,
       settings,
-      limiterOn,
+      moduleOn,
     )
     nextKey = key
   }
@@ -323,7 +351,7 @@ function drawWavePreview(
   const inPeak = Math.max(nextPreview?.peak ?? 0, threshAmp * 1.15, ceilingAmp * 1.15, 0.12)
   const scale = 1 / inPeak
   const amp = (plotH / 2) * 0.92 * scale
-  const gr = limiterOn ? Math.max(0, -engine.getLimiterReduction()) : 0
+  const gr = moduleOn ? Math.max(0, -reductionDb()) : 0
 
   ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.45)
   ctx.lineWidth = Math.max(1, dpr * 0.6)
