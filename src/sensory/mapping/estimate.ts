@@ -8,19 +8,19 @@ import type { DspSnapshot } from './mappingEngine'
 export function estimateSensoryFromDsp(dsp: DspSnapshot): SensoryValues {
   const p = dsp.params
   const high = dsp.eqBands[3]
-  const low = dsp.eqBands[0] ?? dsp.eqBands[1]
-  const brightGain = high && (high.type === 'highshelf' || high.type === 'peaking') ? high.gain / 8 : 0
-  const warmGain = low && low.type === 'lowshelf' ? low.gain / 6 : 0
+  const low = dsp.eqBands[0]
+  const openAir = high && high.type === 'highshelf' ? high.gain / 6 : 0
+  const tightHp = low && low.type === 'highpass' ? -Math.min(1, (low.frequency - 20) / 200) : 0
   return {
     ...defaultSensoryValues(),
-    brightness: clampSensoryValue(brightGain + (p.reverbShimmer / 100) * 0.2),
-    warmth: clampSensoryValue(warmGain + (p.reverbColor / 100) * 0.4 + (p.saturation / 200)),
-    distance: clampSensoryValue(toNormalized(p.reverbWet, PARAMS.reverbWet) * 2 - 0.15),
-    hardness: clampSensoryValue((PARAMS.compressorAttack.defaultValue - p.compressorAttack) / 10),
-    fullness: clampSensoryValue((p.reverbWidth - 100) / 120 + (low?.gain ?? 0) / 10),
-    wildness: clampSensoryValue(p.motionDepth / 80 + p.reverbModDepth / 200),
-    motion: clampSensoryValue(p.motionDepth / 70),
-    strangeness: clampSensoryValue(p.delayReverse / 80 + p.reverbShimmer / 140 + Math.abs(p.delayPitch) / 24),
-    echo: clampSensoryValue(p.delayWet / 80),
+    character: clampSensoryValue('character', openAir + tightHp),
+    space: clampSensoryValue('space', toNormalized(p.reverbWet, PARAMS.reverbWet)),
+    echo: clampSensoryValue('echo', p.delayWet / 56),
+    grain: clampSensoryValue('grain', (p.density - 18) / 60),
+    dirt: clampSensoryValue('dirt', p.saturation / 34),
+    tight: clampSensoryValue('tight', (PARAMS.compressorThreshold.defaultValue - p.compressorThreshold) / 20),
+    mod: clampSensoryValue('mod', p.motionDepth / 72),
+    drift: clampSensoryValue('drift', (p.delayWidth - 100) / 90 + p.delayModDepth / 80),
+    pan: clampSensoryValue('pan', (dsp.fxLfos.input[0]?.target === 'pan' ? (dsp.fxLfos.input[0].depth - 16) / 70 : 0)),
   }
 }

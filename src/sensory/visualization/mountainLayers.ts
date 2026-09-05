@@ -5,17 +5,28 @@ export type MountainLayerSpec = {
   drop: number
 }
 
-export function mountainLayerSpecs(mass: number, motion: number): readonly MountainLayerSpec[] {
+export function mountainLayerSpecs(mass: number, motion: number, space = 0): readonly MountainLayerSpec[] {
   const m = Math.min(1, Math.max(0, mass))
-  const extra = motion > 0.28
+  const s = Math.min(1, Math.max(0, space))
+  const near = 1 - s
+  const far = motion > 0.28 || s > 0.22
+  const vast = s > 0.55
   const layers: MountainLayerSpec[] = [
-    { scale: 0.9 + m * 0.14, blur: 1, alpha: 0.28, drop: 0 },
-    { scale: 0.68 + m * 0.08, blur: 7, alpha: 0.18, drop: 0.07 },
-    { scale: 0.46, blur: 16, alpha: 0.12, drop: 0.14 },
-    { scale: 0.28, blur: 26, alpha: 0.08, drop: 0.2 },
+    { scale: 1.02 + near * 0.38 + m * 0.1, blur: 1, alpha: 0.34 + near * 0.16, drop: 0 },
+    { scale: 0.72 + m * 0.08, blur: 7 + s * 8, alpha: 0.18, drop: 0.07 + s * 0.04 },
+    { scale: 0.46, blur: 16 + s * 12, alpha: 0.12 + s * 0.04, drop: 0.14 + s * 0.06 },
+    { scale: 0.28, blur: 26 + s * 14, alpha: 0.08 + s * 0.05, drop: 0.2 + s * 0.07 },
   ]
-  if (extra) layers.push({ scale: 0.18, blur: 34, alpha: 0.05, drop: 0.26 })
+  if (far) layers.push({ scale: 0.16, blur: 34 + s * 12, alpha: 0.05 + s * 0.05, drop: 0.26 + s * 0.08 })
+  if (vast) layers.push({ scale: 0.1, blur: 48, alpha: 0.045, drop: 0.34 })
   return layers
+}
+
+/** How many vertical grain strips to draw. Rest is a single solid ridge. */
+export function grainBandCount(grain: number): number {
+  const g = Math.min(1, Math.max(0, grain))
+  if (g < 0.04) return 1
+  return Math.min(18, 3 + Math.round(g * 15))
 }
 
 /** Horizontal box blur of an absolute envelope. */

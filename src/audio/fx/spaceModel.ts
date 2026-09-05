@@ -29,7 +29,29 @@ export type ReverbTail = {
   mix: number
 }
 
+export function isDelayStereo(params: Record<ParamId, number>): boolean {
+  return params.delayStereo > 0.5
+}
+
+export function isReverbStereo(params: Record<ParamId, number>): boolean {
+  return params.reverbStereo > 0.5
+}
+
 export function delayTimeSeconds(params: Record<ParamId, number>, bpm: number): number {
+  return delayChannelTimeSeconds(params, bpm, 'L')
+}
+
+export function delayChannelTimeSeconds(
+  params: Record<ParamId, number>,
+  bpm: number,
+  channel: 'L' | 'R',
+): number {
+  if (channel === 'R' && isDelayStereo(params)) {
+    if (params.delaySyncR > 0.5) {
+      return syncedDelayMs(bpm, noteDivisionAt(params.delayNoteR), noteKindAt(params.delayNoteKindR)) / 1000
+    }
+    return params.delayTimeR / 1000
+  }
   if (params.delaySync > 0.5) {
     return syncedDelayMs(bpm, noteDivisionAt(params.delayNote), noteKindAt(params.delayNoteKind)) / 1000
   }
@@ -135,7 +157,7 @@ export function reverbTail(
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
   const reverse = type === 'reverse' || params.reverbReverse > 50
   const size = params.reverbSize / 100
-  const decay = freeze ? 8 : params.reverbDecay * (0.6 + size * 1.1)
+  const decay = freeze ? 12 : params.reverbDecay * (0.7 + size * 1.35)
   const earlyN = 3 + Math.round((params.reverbEarly / 100) * 5)
   const early: number[] = []
   for (let i = 0; i < earlyN; i++) early.push(pre + 0.008 + i * (0.012 + size * 0.02))

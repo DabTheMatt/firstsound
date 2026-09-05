@@ -2,22 +2,19 @@ import { useMemo, useState, type CSSProperties, type ReactNode, type RefObject }
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
-import { Waveform } from '../../components/waveform/Waveform'
 import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
-import { activeFeelingId } from '../sensoryFeelings'
+import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import type { SensoryValues } from '../sensoryState'
-import { lensWindowSeconds } from '../visualization/lensWindow'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
 import { OverviewStrip } from './OverviewStrip'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
-import { SoundLens } from './SoundLens'
 import { SoundRange } from './SoundRange'
 import styles from './SensoryShell.module.css'
 
@@ -51,8 +48,8 @@ type Props = {
 
 export function SensoryShell({
   snap,
-  edit,
-  waveRef,
+  edit: _edit,
+  waveRef: _waveRef,
   menuOpen,
   onToggleMenu,
   menu,
@@ -64,9 +61,9 @@ export function SensoryShell({
   onLoadDemo,
   onSave: _onSave,
   onRecord: _onRecord,
-  onRegionCommit,
-  onFades,
-  onFadesCommit,
+  onRegionCommit: _onRegionCommit,
+  onFades: _onFades,
+  onFadesCommit: _onFadesCommit,
   mode,
   onMode,
   values,
@@ -77,18 +74,17 @@ export function SensoryShell({
   sampleInput = null,
 }: Props) {
   const [placesOpen, setPlacesOpen] = useState(false)
-  const [windowAmount, setWindowAmount] = useState(0)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
-  const [feelingId, setFeelingId] = useState<string | null>(null)
+  const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }, [])
-  const visual = sensoryVisualState(values, reduced)
+  const visual = sensoryVisualState(values, reduced, feelingId)
   const cssVars = visualCssVars(visual)
-  const windowSec = lensWindowSeconds(windowAmount, snap.duration)
-  const activeId = activeFeelingId(values, feelingId)
-  const range = scene === 'range'
+  const activeId = feelingId
+  const sceneClass =
+    scene === 'mirror' ? styles.mirror : scene === 'canyon' ? styles.canyon : scene === 'gleam' ? styles.gleam : ''
 
   const chooseScene = (next: SensorySceneId) => {
     setScene(next)
@@ -97,7 +93,7 @@ export function SensoryShell({
 
   return (
     <div
-      className={`${styles.page} ${range ? styles.rangePage : ''} ${dragging ? styles.drop : ''}`}
+      className={`${styles.page} ${styles.rangePage} ${sceneClass} ${dragging ? styles.drop : ''}`}
       style={cssVars as CSSProperties}
       onDragOver={(event) => {
         event.preventDefault()
@@ -133,74 +129,24 @@ export function SensoryShell({
       </header>
       {menuOpen ? menu : null}
 
-      {range ? (
-        <SoundRange
-          duration={snap.duration}
-          loaded={snap.sampleLoaded}
-          visual={visual}
-          contentRev={snap.bufferRev}
-          onTogglePlay={() => {
-            void engine.unlock().then(() => engine.togglePlay())
-          }}
-          onLoadDemo={onLoadDemo}
-        />
-      ) : (
-        <>
-          <div className={styles.world} aria-hidden={!snap.sampleLoaded}>
-            <Waveform
-              ref={waveRef}
-              key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}:sensory`}
-              duration={snap.duration}
-              start={snap.params.start}
-              end={snap.params.end}
-              loaded={snap.sampleLoaded}
-              tool="select"
-              viz="waveform"
-              fadeIn={edit.fadeIn}
-              fadeOut={edit.fadeOut}
-              fadeCurve={edit.fadeCurve}
-              fadeInBend={edit.fadeInBend}
-              fadeOutBend={edit.fadeOutBend}
-              fadeFocus={edit.fadeFocus}
-              autoSnap={edit.autoSnap}
-              normalizeView={false}
-              onNormalizeView={() => undefined}
-              onZoomLabel={() => undefined}
-              onLoadDemo={onLoadDemo}
-              onRegionCommit={onRegionCommit}
-              onFades={onFades}
-              onFadesCommit={onFadesCommit}
-              contentRev={snap.bufferRev}
-              appearance="sensory"
-              followPlayhead
-              emptyLabel=""
-            />
-            <div className={styles.vignette} aria-hidden="true" />
-          </div>
-          <div className={styles.lensWrap}>
-            <SoundLens
-              duration={snap.duration}
-              loaded={snap.sampleLoaded}
-              visual={visual}
-              loop={snap.loop}
-              windowSec={windowSec}
-              windowAmount={windowAmount}
-              onWindowAmount={setWindowAmount}
-              onWindowCommit={() => undefined}
-              onTogglePlay={() => {
-                void engine.unlock().then(() => engine.togglePlay())
-              }}
-            />
-          </div>
-        </>
-      )}
+      <SoundRange
+        duration={snap.sourceDuration || snap.duration}
+        loaded={snap.sampleLoaded}
+        visual={visual}
+        contentRev={snap.bufferRev}
+        scene={scene}
+        onTogglePlay={() => {
+          void engine.unlock().then(() => engine.togglePlay())
+        }}
+        onLoadDemo={onLoadDemo}
+      />
 
       <FeelingRail
         values={values}
         activeId={activeId}
         onActive={(id) => {
           onMoodLabel(null)
-          setFeelingId(id)
+          setFeelingId(id && SENSORY_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
@@ -225,8 +171,8 @@ export function SensoryShell({
             <span className={styles.tri} aria-hidden="true" />
           )}
         </button>
-        <OverviewStrip duration={snap.duration} loaded={snap.sampleLoaded} contentRev={snap.bufferRev} />
-        <PlayheadClock duration={snap.duration} compact={range} />
+        <OverviewStrip duration={snap.sourceDuration || snap.duration} loaded={snap.sampleLoaded} contentRev={snap.bufferRev} />
+        <PlayheadClock duration={snap.duration} compact />
       </div>
 
       <EmotionalStates

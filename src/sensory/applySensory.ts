@@ -1,6 +1,7 @@
 import type { AudioEngine } from '../audio/engine/AudioEngine'
+import { FX_LFO_SLOTS } from '../audio/fx/lfo'
 import type { DspSnapshot } from './mapping/mappingEngine'
-import { mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
+import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
 import type { SensoryValues } from './sensoryState'
 
 export function captureDsp(engine: AudioEngine): DspSnapshot {
@@ -26,6 +27,18 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   const eq = engine.getSnapshot().chain.find((m) => m.type === 'eq')
   if (eq && dsp.bypass.eq === false && eq.bypassed) {
     engine.setModuleBypass(eq.instanceId, false)
+  }
+  const live = engine.getSnapshot().fxLfos.input
+  for (let slot = 0; slot < FX_LFO_SLOTS; slot++) {
+    const want = dsp.fxLfos.input[slot]
+    if (!want) continue
+    if (!fxLfoSlotChanged(live[slot], want)) continue
+    engine.setFxLfo('input', slot, {
+      target: want.target,
+      shape: want.shape,
+      depth: want.depth,
+      rateHz: want.rateHz,
+    })
   }
 }
 

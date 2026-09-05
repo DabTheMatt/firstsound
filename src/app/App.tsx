@@ -27,6 +27,7 @@ import { persistUiMode, readStoredUiMode, type UiMode } from '../modes/uiMode'
 import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
+import { cloneFxLfos } from '../audio/fx/lfo'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import styles from './App.module.css'
@@ -51,6 +52,7 @@ function cloneDsp(dsp: DspSnapshot): DspSnapshot {
     params: { ...dsp.params },
     eqBands: dsp.eqBands.map((b) => ({ ...b })),
     bypass: { ...dsp.bypass },
+    fxLfos: cloneFxLfos(dsp.fxLfos),
   }
 }
 
@@ -627,6 +629,7 @@ export default function App() {
             if (action === 'normalize-view') setNormalizeView((n) => !n)
             if (action === 'reset-zoom') waveRef.current?.resetZoom()
           }}
+          onTrim={() => engine.trimToSelection()}
           minimal={isPhoneLayout}
         />
 

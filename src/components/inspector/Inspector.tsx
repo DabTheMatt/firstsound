@@ -59,7 +59,7 @@ type Props = {
   onHideInspector?: () => void
 }
 
-const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch']
+const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
@@ -448,6 +448,10 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
+          <p className={styles.help}>
+            Interp densifies the overlap-add used when Speed or Pitch leave 1× / 0 st. Sparse is
+            lighter; dense eases tempo and transpose moves so they do not click.
+          </p>
           <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />
         </>

@@ -22,8 +22,8 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   speed: {
     id: 'speed',
     label: 'Speed',
-    min: 0.25,
-    max: 4,
+    min: 0.05,
+    max: 8,
     defaultValue: 1,
     unit: 'x',
     mapping: 'log',
@@ -31,12 +31,22 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   pitch: {
     id: 'pitch',
     label: 'Pitch',
-    min: -24,
-    max: 24,
+    min: -48,
+    max: 48,
     defaultValue: 0,
     unit: 'st',
     mapping: 'linear',
     step: 0.01,
+  },
+  stretchInterp: {
+    id: 'stretchInterp',
+    label: 'Interp',
+    min: 0,
+    max: 100,
+    defaultValue: 62,
+    unit: '%',
+    mapping: 'linear',
+    step: 1,
   },
   gain: {
     id: 'gain',
@@ -210,6 +220,25 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: 'ms',
     mapping: 'log',
   },
+  delayTimeR: {
+    id: 'delayTimeR',
+    label: 'Time R',
+    min: 1,
+    max: 10000,
+    defaultValue: 300,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  delayStereo: {
+    id: 'delayStereo',
+    label: 'Stereo',
+    min: 0,
+    max: 1,
+    defaultValue: 1,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
   delayFeedback: {
     id: 'delayFeedback',
     label: 'Feedback',
@@ -372,6 +401,36 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   delayNoteKind: {
     id: 'delayNoteKind',
     label: 'Feel',
+    min: 0,
+    max: 2,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  delaySyncR: {
+    id: 'delaySyncR',
+    label: 'Sync R',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  delayNoteR: {
+    id: 'delayNoteR',
+    label: 'Note R',
+    min: 0,
+    max: 7,
+    defaultValue: 4,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  delayNoteKindR: {
+    id: 'delayNoteKindR',
+    label: 'Feel R',
     min: 0,
     max: 2,
     defaultValue: 0,
@@ -605,9 +664,46 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Width',
     min: 0,
     max: 200,
+    defaultValue: 125,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbPan: {
+    id: 'reverbPan',
+    label: 'Pan',
+    min: -100,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbOffset: {
+    id: 'reverbOffset',
+    label: 'L/R Offset',
+    min: -100,
+    max: 100,
+    defaultValue: 18,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbInput: {
+    id: 'reverbInput',
+    label: 'Stereo In',
+    min: 0,
+    max: 100,
     defaultValue: 100,
     unit: '%',
     mapping: 'linear',
+  },
+  reverbStereo: {
+    id: 'reverbStereo',
+    label: 'Stereo',
+    min: 0,
+    max: 1,
+    defaultValue: 1,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
   },
   reverbModRate: {
     id: 'reverbModRate',
@@ -623,7 +719,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Mod Depth',
     min: 0,
     max: 100,
-    defaultValue: 8,
+    defaultValue: 14,
     unit: '%',
     mapping: 'linear',
   },
@@ -952,7 +1048,7 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
-export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain', 'pan']
+export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'stretchInterp', 'gain', 'pan']
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',
@@ -969,9 +1065,10 @@ export const SPACE_KNOBS: ParamId[] = [
   'reverbWet',
   'reverbSize',
   'reverbDecay',
+  'reverbWidth',
 ]
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay']
+export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
   'compressorThreshold',

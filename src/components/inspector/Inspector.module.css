@@ -130,6 +130,7 @@
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .connectTile .connectBtn {
@@ -139,10 +140,11 @@
 
 .plug {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  top: 0;
+  right: 5px;
+  bottom: 0;
   width: 16px;
-  height: 16px;
+  height: auto;
   margin: 0;
   padding: 0;
   display: grid;
@@ -165,6 +167,11 @@
 .plug:hover {
   color: var(--accent-primary);
   background: var(--accent-soft);
+}
+
+.plug svg {
+  display: block;
+  transform: translateY(2px);
 }
 
 .slotRow {
@@ -565,11 +572,11 @@
 }
 
 .lfoCompact .plug {
-  top: 50%;
+  top: 0;
+  bottom: 0;
   left: 4px;
   right: auto;
   width: 20px;
-  height: 20px;
-  transform: translateY(-50%);
+  height: auto;
   z-index: 2;
 }

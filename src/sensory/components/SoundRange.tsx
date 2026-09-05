@@ -3,6 +3,8 @@ import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
+import type { SensorySceneId } from '../sensoryScene'
+import { paintSoundRange } from '../visualization/paintSoundRange'
 import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from '../visualization/sensoryVisualState'
 import { absEnvelope, blurEnvelope, mountainLayerSpecs } from '../visualization/mountainLayers'
 import styles from './SoundRange.module.css'
@@ -12,6 +14,7 @@ type Props = {
   loaded: boolean
   visual: SensoryVisualState
   contentRev: number
+  scene: SensorySceneId
   onTogglePlay: () => void
   onLoadDemo: () => void
 }
@@ -19,10 +22,26 @@ type Props = {
 function themeInk(visual: SensoryVisualState): Rgb {
   const parsed = parseCssColor(readThemeColors().waveform)
   if (!parsed) return visual.ink
-  return mixRgb({ r: parsed.r, g: parsed.g, b: parsed.b }, visual.ink, 0.45 + visual.warmth * 0.25)
+  return mixRgb({ r: parsed.r, g: parsed.g, b: parsed.b }, visual.ink, 0.55 + visual.warmth * 0.3)
 }
 
-export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay, onLoadDemo }: Props) {
+function sourceView() {
+  const source = engine.getSourceBuffer() ?? engine.getBuffer()
+  const working = engine.getBuffer()
+  const prep = engine.getPrep()
+  const sourceDur = source?.duration ?? 0
+  const workDur = working?.duration ?? 0
+  const trimmed = Boolean(source && working && source !== working)
+  const windowStart = trimmed ? prep.windowStart : 0
+  const windowEnd = trimmed ? prep.windowEnd : sourceDur
+  const snap = engine.getSnapshot()
+  const regionStart = windowStart + snap.params.start
+  const regionEnd = windowStart + snap.params.end
+  const head = engine.getPlayheadSeconds() + windowStart
+  return { source, sourceDur, workDur, windowStart, windowEnd, regionStart, regionEnd, head }
+}
+
+export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogglePlay, onLoadDemo }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -50,75 +69,45 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
         return
       }
       ctx.clearRect(0, 0, width, height)
-      const buffer = engine.getBuffer()
+      const view = sourceView()
       const ink = themeInk(visual)
       const play = readThemeColors().playhead || rgbCss(ink, 1)
-      if (buffer && duration > 0) {
+      const buffer = view.source
+      const sourceDur = view.sourceDur || duration
+      if (buffer && sourceDur > 0) {
         const data = buffer.getChannelData(0)
-        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.motion.toFixed(2)}`
+        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
             ? computeMinMaxCached(data, mips, 0, data.length, width)
             : computeMinMax(data, 0, data.length, width)
           const abs = absEnvelope(min, max)
-          const specs = mountainLayerSpecs(visual.mass, visual.motion)
+          const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
+          const dirtBlur = 1 - visual.dirt * 0.72
           cache = {
             key,
-            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr)),
+            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr * dirtBlur)),
           }
         }
-        const specs = mountainLayerSpecs(visual.mass, visual.motion)
-        const base = height * (0.58 + visual.depth * 0.08)
-        const amp = height * (0.42 + visual.mass * 0.12)
-        const sway = reduced ? 0 : visual.motion * 10 * dpr * Math.sin(performance.now() / 1400)
-        specs.forEach((spec, li) => {
-          const env = cache?.layers[li]
-          if (!env) return
-          const drop = spec.drop * height
-          ctx.beginPath()
-          ctx.moveTo(0, height)
-          for (let x = 0; x < width; x++) {
-            const h = (env[x] ?? 0) * amp * spec.scale
-            const y = base + drop - h + sway * (li + 1) * 0.15
-            ctx.lineTo(x, y)
-          }
-          ctx.lineTo(width, height)
-          ctx.closePath()
-          const echoShift = visual.echo * 22 * dpr * (li % 2 === 0 ? 1 : -1)
-          ctx.fillStyle = rgbCss(ink, spec.alpha * (0.65 + visual.glow * 0.5))
-          ctx.fill()
-          if (visual.echo > 0.1) {
-            ctx.beginPath()
-            ctx.moveTo(echoShift, height)
-            for (let x = 0; x < width; x++) {
-              const h = (env[x] ?? 0) * amp * spec.scale * 0.85
-              const y = base + drop - h + sway * (li + 1) * 0.15
-              ctx.lineTo(x + echoShift, y)
-            }
-            ctx.lineTo(width + echoShift, height)
-            ctx.closePath()
-            ctx.fillStyle = rgbCss(ink, spec.alpha * visual.echo * 0.45)
-            ctx.fill()
-          }
+        const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
+        paintSoundRange({
+          ctx,
+          width,
+          height,
+          dpr,
+          visual,
+          ink,
+          play,
+          layers: cache.layers,
+          specs,
+          nowMs: performance.now(),
+          reduced,
+          playFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.head / sourceDur)) : 0,
+          windowStartFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionStart / sourceDur)) : 0,
+          windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
+          scene,
         })
-        const now = engine.getPlayheadSeconds()
-        const frac = duration > 0 ? Math.min(1, Math.max(0, now / duration)) : 0
-        const px = frac * (width - 1)
-        const peak = cache?.layers[0]?.[Math.round(px)] ?? 0
-        const peakY = base - peak * amp * (specs[0]?.scale ?? 1)
-        ctx.strokeStyle = play
-        ctx.lineWidth = Math.max(1, dpr)
-        ctx.globalAlpha = 0.9
-        ctx.beginPath()
-        ctx.moveTo(px, 0)
-        ctx.lineTo(px, height)
-        ctx.stroke()
-        ctx.fillStyle = play
-        ctx.beginPath()
-        ctx.arc(px, peakY, 3.2 * dpr, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.globalAlpha = 1
       }
       frame = requestAnimationFrame(tick)
     }
@@ -127,7 +116,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
       cancelAnimationFrame(frame)
       unsub()
     }
-  }, [duration, loaded, visual, contentRev])
+  }, [duration, loaded, visual, contentRev, scene])
 
   return (
     <div className={styles.range}>

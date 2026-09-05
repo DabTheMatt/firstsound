@@ -188,6 +188,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'density':
       return `${value.toFixed(1)} Hz`
     case 'delayTime':
+    case 'delayTimeR':
     case 'reverbPredelay':
     case 'reverbGateAttack':
     case 'reverbGateHold':
@@ -217,6 +218,9 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'filterReso':
       return `${value.toFixed(2)} Q`
     case 'delaySync':
+    case 'delaySyncR':
+    case 'delayStereo':
+    case 'reverbStereo':
     case 'reverbSync':
     case 'delayFreeze':
     case 'reverbFreeze':
@@ -226,6 +230,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'compressorAutoMakeup':
       return value > 0.5 ? 'On' : 'Off'
     case 'pan':
+    case 'reverbPan':
       if (Math.abs(value) < 0.5) return 'C'
       return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
     default:

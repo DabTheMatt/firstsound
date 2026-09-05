@@ -161,14 +161,17 @@
 .connectTile {
   position: relative;
   min-width: 7.5em;
+  overflow: hidden;
+  border-radius: 999px;
 }
 
 .plug {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  top: 0;
+  right: 5px;
+  bottom: 0;
   width: 16px;
-  height: 16px;
+  height: auto;
   margin: 0;
   padding: 0;
   display: grid;
@@ -191,4 +194,9 @@
 .plug:hover {
   color: var(--accent-primary);
   background: var(--accent-soft);
+}
+
+.plug svg {
+  display: block;
+  transform: translateY(2px);
 }

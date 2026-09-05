@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   bandwidthHz,
+  bandIsActive,
   defaultEqBands,
   filterStageCount,
   formatEqHz,
@@ -58,6 +59,15 @@ describe('stageQ', () => {
     const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
     expect(stageQ(band, 0)).toBe(4)
     expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  })
+})
+
+describe('bandIsActive', () => {
+  it('treats a typed, non-bypassed band as engaging the module', () => {
+    const [off, peaking] = defaultEqBands()
+    expect(bandIsActive({ ...off!, type: 'off' })).toBe(false)
+    expect(bandIsActive({ ...peaking!, type: 'peaking', bypassed: true })).toBe(false)
+    expect(bandIsActive({ ...peaking!, type: 'lowshelf', bypassed: false })).toBe(true)
   })
 })
 

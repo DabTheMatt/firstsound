@@ -1,11 +1,11 @@
 export const SENSORY_SCENE_STORAGE_KEY = 'firstsound.sensoryScene'
 
-export const SENSORY_SCENE_IDS = ['range', 'glass'] as const
+export const SENSORY_SCENE_IDS = ['range', 'mirror', 'canyon', 'gleam'] as const
 
 export type SensorySceneId = (typeof SENSORY_SCENE_IDS)[number]
 
 export function parseSensoryScene(raw: string | null | undefined): SensorySceneId {
-  if (raw === 'range' || raw === 'glass') return raw
+  if (raw === 'mirror' || raw === 'canyon' || raw === 'gleam' || raw === 'range') return raw
   return 'range'
 }
 

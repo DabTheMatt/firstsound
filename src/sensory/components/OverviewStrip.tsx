@@ -38,10 +38,13 @@ export function OverviewStrip({ duration, loaded, contentRev }: Props) {
         return
       }
       ctx.clearRect(0, 0, width, height)
-      const buffer = engine.getBuffer()
+      const source = engine.getSourceBuffer() ?? engine.getBuffer()
+      const working = engine.getBuffer()
+      const prep = engine.getPrep()
       const colors = readThemeColors()
-      if (buffer && duration > 0) {
-        const data = buffer.getChannelData(0)
+      const sourceDur = source?.duration || duration
+      if (source && sourceDur > 0) {
+        const data = source.getChannelData(0)
         const key = `${contentRev}:${width}`
         if (!peaks || peakKey !== key) {
           const mips = engine.getSourceMips()[0] ?? []
@@ -58,8 +61,18 @@ export function OverviewStrip({ duration, loaded, contentRev }: Props) {
           const lo = peaks.min[x] ?? 0
           ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
         }
-        const now = engine.getPlayheadSeconds()
-        const px = duration > 0 ? (now / duration) * width : 0
+        const trimmed = Boolean(source && working && source !== working)
+        const windowStart = trimmed ? prep.windowStart : 0
+        const snap = engine.getSnapshot()
+        const sel0 = ((windowStart + snap.params.start) / sourceDur) * width
+        const sel1 = ((windowStart + snap.params.end) / sourceDur) * width
+        if (sel1 - sel0 < width - 2) {
+          ctx.fillStyle = 'rgba(0,0,0,0.35)'
+          ctx.fillRect(0, 0, sel0, height)
+          ctx.fillRect(sel1, 0, width - sel1, height)
+        }
+        const now = engine.getPlayheadSeconds() + windowStart
+        const px = (now / sourceDur) * width
         ctx.fillStyle = colors.playhead
         ctx.fillRect(px, 0, Math.max(1, dpr), height)
       }
@@ -74,9 +87,17 @@ export function OverviewStrip({ duration, loaded, contentRev }: Props) {
 
   const onPointer = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!loaded || duration <= 0) return
+    const source = engine.getSourceBuffer() ?? engine.getBuffer()
+    const working = engine.getBuffer()
+    const sourceDur = source?.duration || duration
+    const workDur = working?.duration || duration
+    const prep = engine.getPrep()
+    const trimmed = Boolean(source && working && source !== working)
+    const windowStart = trimmed ? prep.windowStart : 0
     const rect = event.currentTarget.getBoundingClientRect()
-    const t = ((event.clientX - rect.left) / Math.max(1, rect.width)) * duration
-    engine.seekSeconds(t)
+    const srcT = ((event.clientX - rect.left) / Math.max(1, rect.width)) * sourceDur
+    const local = Math.min(workDur, Math.max(0, srcT - windowStart))
+    engine.seekSeconds(local)
   }
 
   return (

@@ -14,6 +14,18 @@
   background: #050506;
 }
 
+.mirror {
+  background: #07090e;
+}
+
+.canyon {
+  background: #100c0a;
+}
+
+.gleam {
+  background: #061018;
+}
+
 .drop {
   outline: 1px dashed color-mix(in srgb, var(--accent-primary) 40%, transparent);
 }

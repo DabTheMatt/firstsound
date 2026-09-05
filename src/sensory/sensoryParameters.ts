@@ -1,19 +1,24 @@
 export const SENSORY_AXIS_IDS = [
-  'brightness',
-  'warmth',
-  'distance',
-  'hardness',
-  'fullness',
-  'wildness',
-  'motion',
-  'strangeness',
+  'character',
+  'space',
   'echo',
+  'grain',
+  'dirt',
+  'tight',
+  'mod',
+  'drift',
+  'pan',
 ] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
 
+export type SensoryAxisKind = 'bipolar' | 'unipolar'
+
 export type SensoryAxisDef = {
   id: SensoryAxisId
+  kind: SensoryAxisKind
+  /** DSP module this control owns. */
+  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'saturation' | 'compressor' | 'gain'
   negativeLabel: string
   positiveLabel: string
   ariaLabel: string
@@ -21,74 +26,102 @@ export type SensoryAxisDef = {
 }
 
 export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
-  brightness: {
-    id: 'brightness',
-    negativeLabel: 'darker',
-    positiveLabel: 'brighter',
-    ariaLabel: 'Brightness, darker to brighter',
-    hint: 'more light',
+  character: {
+    id: 'character',
+    kind: 'bipolar',
+    module: 'eq',
+    negativeLabel: 'tight',
+    positiveLabel: 'open',
+    ariaLabel: 'Character, tight to open. Morphs EQ only.',
+    hint: 'shape the tone',
   },
-  warmth: {
-    id: 'warmth',
-    negativeLabel: 'colder',
-    positiveLabel: 'warmer',
-    ariaLabel: 'Warmth, colder to warmer',
-    hint: 'make it warmer',
-  },
-  distance: {
-    id: 'distance',
-    negativeLabel: 'closer',
-    positiveLabel: 'further',
-    ariaLabel: 'Distance, closer to further',
-    hint: 'push it further',
-  },
-  hardness: {
-    id: 'hardness',
-    negativeLabel: 'softer',
-    positiveLabel: 'harder',
-    ariaLabel: 'Touch, softer to harder',
-    hint: 'shape the attack',
-  },
-  fullness: {
-    id: 'fullness',
-    negativeLabel: 'thinner',
-    positiveLabel: 'fuller',
-    ariaLabel: 'Body, thinner to fuller',
-    hint: 'give it more body',
-  },
-  wildness: {
-    id: 'wildness',
-    negativeLabel: 'calmer',
-    positiveLabel: 'wilder',
-    ariaLabel: 'Energy, calmer to wilder',
-    hint: 'let it breathe',
-  },
-  motion: {
-    id: 'motion',
-    negativeLabel: 'still',
-    positiveLabel: 'moving',
-    ariaLabel: 'Motion, still to moving',
-    hint: 'let it move',
-  },
-  strangeness: {
-    id: 'strangeness',
-    negativeLabel: 'natural',
-    positiveLabel: 'strange',
-    ariaLabel: 'Character, natural to strange',
-    hint: 'let it wander',
+  space: {
+    id: 'space',
+    kind: 'unipolar',
+    module: 'reverb',
+    negativeLabel: 'close',
+    positiveLabel: 'vast',
+    ariaLabel: 'Space, close to vast. Morphs reverb only.',
+    hint: 'open the room',
   },
   echo: {
     id: 'echo',
+    kind: 'unipolar',
+    module: 'delay',
     negativeLabel: 'dry',
     positiveLabel: 'echo',
-    ariaLabel: 'Echo, dry to echo',
+    ariaLabel: 'Echo, dry to echo. Morphs delay only.',
     hint: 'let it repeat',
+  },
+  grain: {
+    id: 'grain',
+    kind: 'unipolar',
+    module: 'grain',
+    negativeLabel: 'solid',
+    positiveLabel: 'grain',
+    ariaLabel: 'Grain, solid to layered. Morphs grain only.',
+    hint: 'break into grains',
+  },
+  dirt: {
+    id: 'dirt',
+    kind: 'unipolar',
+    module: 'saturation',
+    negativeLabel: 'clean',
+    positiveLabel: 'dirt',
+    ariaLabel: 'Dirt, clean to grit. Morphs saturation only.',
+    hint: 'add grit',
+  },
+  tight: {
+    id: 'tight',
+    kind: 'unipolar',
+    module: 'compressor',
+    negativeLabel: 'open',
+    positiveLabel: 'tight',
+    ariaLabel: 'Tight, open to compressed. Morphs compressor only.',
+    hint: 'squeeze it closer',
+  },
+  mod: {
+    id: 'mod',
+    kind: 'unipolar',
+    module: 'grain',
+    negativeLabel: 'still',
+    positiveLabel: 'mod',
+    ariaLabel: 'Mod, still to modulated. Morphs grain motion only.',
+    hint: 'let it breathe',
+  },
+  drift: {
+    id: 'drift',
+    kind: 'unipolar',
+    module: 'delay',
+    negativeLabel: 'center',
+    positiveLabel: 'drift',
+    ariaLabel: 'Drift, centered to moving stereo. Morphs delay image only.',
+    hint: 'move it in the panorama',
+  },
+  pan: {
+    id: 'pan',
+    kind: 'unipolar',
+    module: 'gain',
+    negativeLabel: 'still',
+    positiveLabel: 'pan',
+    ariaLabel: 'Pan, still to orbiting. Morphs input pan LFO only.',
+    hint: 'swing left and right',
   },
 }
 
-export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = ['brightness', 'warmth', 'distance', 'echo', 'wildness']
+export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
+  'character',
+  'space',
+  'echo',
+  'grain',
+  'dirt',
+  'tight',
+  'mod',
+  'drift',
+  'pan',
+]
 
-export const SECONDARY_FIELD_AXES: SensoryAxisId[] = ['hardness', 'fullness', 'motion', 'strangeness']
+export const SECONDARY_FIELD_AXES: SensoryAxisId[] = []
 
 export type SensoryDialPole = 'pos' | 'neg'
 
@@ -104,40 +137,29 @@ export type SensoryDialSpec = {
   ariaLabel?: string
 }
 
-/** Feeling dials. Each control is a from–to pair. */
+/** Feeling dials. Each control is a from–to pair owned by one effect. */
 export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
   {
-    axis: 'brightness',
+    axis: 'character',
     pole: 'pos',
     kind: 'bipolar',
-    label: 'light',
-    negativeLabel: 'darker',
-    positiveLabel: 'brighter',
-    whisper: 'darker to brighter',
+    label: 'character',
+    negativeLabel: 'tight',
+    positiveLabel: 'open',
+    whisper: 'tight to open',
     tone: 'warm',
-    ariaLabel: 'Light, darker to brighter',
+    ariaLabel: 'Character, tight to open',
   },
   {
-    axis: 'warmth',
+    axis: 'space',
     pole: 'pos',
-    kind: 'bipolar',
-    label: 'warmth',
-    negativeLabel: 'colder',
-    positiveLabel: 'warmer',
-    tone: 'warm',
-    whisper: 'colder to warmer',
-    ariaLabel: 'Warmth, colder to warmer',
-  },
-  {
-    axis: 'distance',
-    pole: 'pos',
-    kind: 'bipolar',
-    label: 'distance',
-    negativeLabel: 'closer',
-    positiveLabel: 'further',
-    whisper: 'closer to further',
+    kind: 'unipolar',
+    label: 'space',
+    negativeLabel: 'close',
+    positiveLabel: 'vast',
+    whisper: 'close to vast',
     tone: 'cool',
-    ariaLabel: 'Distance, closer to further',
+    ariaLabel: 'Space, close to vast',
   },
   {
     axis: 'echo',
@@ -151,25 +173,69 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     ariaLabel: 'Echo, dry to echo',
   },
   {
-    axis: 'wildness',
+    axis: 'grain',
     pole: 'pos',
-    kind: 'bipolar',
-    label: 'pulse',
-    negativeLabel: 'still',
-    positiveLabel: 'pulse',
-    whisper: 'still to pulse',
+    kind: 'unipolar',
+    label: 'grain',
+    negativeLabel: 'solid',
+    positiveLabel: 'grain',
+    whisper: 'solid to grain',
     tone: 'cool',
-    ariaLabel: 'Pulse, still to pulse',
+    ariaLabel: 'Grain, solid to layered',
   },
   {
-    axis: 'hardness',
+    axis: 'dirt',
     pole: 'pos',
-    kind: 'bipolar',
-    label: 'touch',
-    negativeLabel: 'softer',
-    positiveLabel: 'harder',
-    whisper: 'softer to harder',
+    kind: 'unipolar',
+    label: 'dirt',
+    negativeLabel: 'clean',
+    positiveLabel: 'dirt',
+    whisper: 'clean to dirt',
     tone: 'warm',
-    ariaLabel: 'Touch, softer to harder',
+    ariaLabel: 'Dirt, clean to grit',
+  },
+  {
+    axis: 'tight',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'tight',
+    negativeLabel: 'open',
+    positiveLabel: 'tight',
+    whisper: 'open to tight',
+    tone: 'warm',
+    ariaLabel: 'Tight, open to compressed',
+  },
+  {
+    axis: 'mod',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'mod',
+    negativeLabel: 'still',
+    positiveLabel: 'mod',
+    whisper: 'still to modulated',
+    tone: 'cool',
+    ariaLabel: 'Mod, still to modulated',
+  },
+  {
+    axis: 'drift',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'drift',
+    negativeLabel: 'center',
+    positiveLabel: 'drift',
+    whisper: 'center to panorama',
+    tone: 'cool',
+    ariaLabel: 'Drift, centered to moving stereo',
+  },
+  {
+    axis: 'pan',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'pan',
+    negativeLabel: 'still',
+    positiveLabel: 'pan',
+    whisper: 'still to orbiting pan',
+    tone: 'cool',
+    ariaLabel: 'Pan, still to orbiting',
   },
 ]
