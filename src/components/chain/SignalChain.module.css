@@ -18,6 +18,19 @@
   flex: none;
 }
 
+.fxTarget {
+  flex: none;
+  margin-right: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 999px;
+  color: var(--accent-primary);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .kill {
   min-width: 28px;
   min-height: 28px;

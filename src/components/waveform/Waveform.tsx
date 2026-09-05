@@ -75,6 +75,7 @@ type Props = {
   appearance?: 'studio' | 'sensory'
   followPlayhead?: boolean
   emptyLabel?: string
+  onViz?: (viz: VizMode) => void
 }
 
 export type WaveformHandle = {
@@ -149,6 +150,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     appearance = 'studio',
     followPlayhead = false,
     emptyLabel = 'Load a sample to begin',
+    onViz,
   },
   ref,
 ) {
@@ -722,6 +724,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     onClick={() => engine.selectTrack(track.id)}
                   >
                     <span>{track.name}</span>
+                    {on ? <span className={styles.trackTabFile}>FX</span> : null}
                     {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
                   </button>
                 )
@@ -869,7 +872,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         </div>
         {showMultiWave ? (
           <div className={styles.multiWave}>
-            <TrackLanes variant="editor" />
+            <TrackLanes variant="editor" onOpenWave={() => onViz?.('waveform')} />
           </div>
         ) : null}
         {viz === 'split' && showWave && showSpec ? (
@@ -956,7 +959,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         {showMixConsole ? (
             <div className={styles.mixDesk}>
               <div className={styles.trackLanes}>
-                <TrackLanes />
+                <TrackLanes onOpenWave={() => onViz?.('waveform')} />
               </div>
               <div className={styles.mixStrips}>
                 <MixConsole />

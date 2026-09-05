@@ -604,6 +604,7 @@ export default function App() {
           onSelect={selectModule}
           touch={compact}
           minimal={isPhoneLayout}
+          fxTrackName={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? 'Track'}
         />
 
         <WaveformToolbar
@@ -659,6 +660,7 @@ export default function App() {
               onFadesCommit={commit}
               onRegionCommit={commit}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
+              onViz={setViz}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}
