@@ -18,12 +18,16 @@ describe('rangeScenes', () => {
     expect(gleamRayCount(1)).toBeGreaterThan(gleamRayCount(0))
   })
 
-  it('leaves an open band between the two mirror ridges', () => {
+  it('aims mirror peaks at each other and leaves air between the tips', () => {
     const layout = mirrorLayout(1000)
-    expect(layout.lowerBase - layout.upperBase).toBeCloseTo(layout.gap)
-    expect(layout.gap).toBeGreaterThan(200)
-    expect(layout.upperBase).toBeLessThan(500)
-    expect(layout.lowerBase).toBeGreaterThan(500)
+    expect(layout.upperDir).toBe(1)
+    expect(layout.lowerDir).toBe(-1)
+    const upperTip = layout.upperBase + layout.amp * layout.upperDir
+    const lowerTip = layout.lowerBase + layout.amp * layout.lowerDir
+    expect(upperTip).toBeGreaterThan(layout.upperBase)
+    expect(lowerTip).toBeLessThan(layout.lowerBase)
+    expect(lowerTip).toBeGreaterThan(upperTip)
+    expect(lowerTip - upperTip).toBeGreaterThan(120)
   })
 
   it('puts canyon relief on the walls, nearer samples larger', () => {

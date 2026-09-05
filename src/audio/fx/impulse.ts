@@ -91,7 +91,7 @@ export function fillReverbImpulse(
   for (let k = 0; k < earlyCount; k++) {
     const t = (0.003 + k * (0.005 + spec.size * 0.016) + hash(k + 3) * 0.01) * spec.sampleRate
     const idx = Math.min(n - 1, Math.floor(t))
-    const g = (0.42 + hash(k + 11) * 0.45) * Math.max(0.35, earlyAmt) * (1 - k / (earlyCount + 1))
+    const g = (0.78 + hash(k + 11) * 0.48) * Math.max(0.45, earlyAmt) * (1 - k / (earlyCount + 1))
     const leftLead = hash(k + 21) > 0.5
     const near = 0.1 + (1 - spread) * 0.35
     left[idx]! += g * (leftLead ? 1 : near)
@@ -101,7 +101,8 @@ export function fillReverbImpulse(
     right[echo]! += g * (leftLead ? 0.55 : 0.18) * spread
   }
 
-  const step = Math.max(1, Math.floor((1.02 - density) * 3.5))
+  const step = Math.max(1, Math.floor((1.02 - density) * 8))
+  const noiseAmt = (0.14 + density * 0.2) * (cloud ? 0.85 : 0.62)
   for (let i = 0; i < n; i += step) {
     const t = i / n
     let env = (1 - t) ** exp
@@ -113,9 +114,9 @@ export function fillReverbImpulse(
     }
     if (reverseAmt > 0.01) env = env * (1 - reverseAmt) + t ** 0.85 * reverseAmt
     if (cloud) env *= 0.82 + diffusion * 0.38
-    const noiseL = (hash(i * 2 + 1) * 2 - 1) * env
-    const noiseR = (hash(i * 2 + 17) * 2 - 1) * env
-    const noiseR2 = (hash(i * 2 + 41) * 2 - 1) * env
+    const noiseL = (hash(i * 2 + 1) * 2 - 1) * env * noiseAmt
+    const noiseR = (hash(i * 2 + 17) * 2 - 1) * env * noiseAmt
+    const noiseR2 = (hash(i * 2 + 41) * 2 - 1) * env * noiseAmt
     let l = noiseL
     let r = noiseL * (1 - spread) + (noiseR * 0.55 + noiseR2 * 0.45) * spread
     if (plate) {
@@ -156,7 +157,7 @@ export function fillReverbImpulse(
     for (let i = 0; i < n; i++) {
       const src = Math.floor(i * ratio)
       if (src < 0 || src >= n) continue
-      const g = shimmer * 0.48 * (1 - i / n)
+      const g = shimmer * 0.16 * (1 - i / n)
       const hipass = i / n
       left[i]! += (left[src] ?? 0) * g * (0.4 + hipass)
       right[i]! += (right[Math.min(n - 1, src + stepSh)] ?? 0) * g * (0.4 + hipass)

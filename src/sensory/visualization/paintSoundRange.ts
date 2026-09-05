@@ -329,8 +329,8 @@ export function paintSoundRange(args: RangePaintArgs) {
     const amp = layout.amp * zoom * (1 - visual.tight * 0.45)
     paintWash(ctx, args, height * 0.5)
     withGrainBands(args, () => {
-      paintChromaStacks(ctx, args, layout.upperBase, amp, sway, -1)
-      paintChromaStacks(ctx, args, layout.lowerBase, amp, sway, 1)
+      paintChromaStacks(ctx, args, layout.upperBase, amp, sway, layout.upperDir)
+      paintChromaStacks(ctx, args, layout.lowerBase, amp, sway, layout.lowerDir)
     })
     const haze = ctx.createLinearGradient(0, layout.upperBase, 0, layout.lowerBase)
     haze.addColorStop(0, 'rgba(8,12,20,0)')
@@ -339,7 +339,10 @@ export function paintSoundRange(args: RangePaintArgs) {
     ctx.fillStyle = haze
     ctx.fillRect(0, layout.upperBase, width, layout.gap)
     paintSelection(ctx, args)
-    paintPlayheadPair(ctx, args, [layout.upperBase, layout.lowerBase], amp, [-1, 1])
+    paintPlayheadPair(ctx, args, [layout.upperBase, layout.lowerBase], amp, [
+      layout.upperDir,
+      layout.lowerDir,
+    ])
     return
   }
 

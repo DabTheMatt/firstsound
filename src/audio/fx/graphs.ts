@@ -521,6 +521,7 @@ export function createReverbGraph(
   const early = ctx.createDelay(0.25)
   const earlyGain = ctx.createGain()
   const conv = ctx.createConvolver()
+  conv.normalize = false
   const tankSplit = ctx.createChannelSplitter(2)
   const tankDelayL = ctx.createDelay(0.45)
   const tankDelayR = ctx.createDelay(0.45)
@@ -600,7 +601,7 @@ export function createReverbGraph(
   tiltHigh.connect(drive)
   tiltHigh.connect(shimmerDelay)
   shimmerDelay.connect(shimmerMix)
-  shimmerMix.connect(conv)
+  shimmerMix.connect(pan)
   drive.connect(gate)
   gate.connect(limit)
   limit.connect(pan)
