@@ -107,6 +107,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           windowStartFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionStart / sourceDur)) : 0,
           windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
           scene,
+          livePan: engine.getSnapshot().liveParams.pan,
         })
       }
       frame = requestAnimationFrame(tick)

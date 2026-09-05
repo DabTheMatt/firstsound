@@ -8,7 +8,7 @@ import {
   rangeLayout,
 } from './rangeScenes'
 import { grainBandCount, type MountainLayerSpec } from './mountainLayers'
-import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from './sensoryVisualState'
+import { mixRgb, panNorm, rgbCss, type Rgb, type SensoryVisualState } from './sensoryVisualState'
 
 export type RangePaintArgs = {
   ctx: CanvasRenderingContext2D
@@ -26,6 +26,7 @@ export type RangePaintArgs = {
   windowStartFrac: number
   windowEndFrac: number
   scene: SensorySceneId
+  livePan: number
 }
 
 function ridgeY(
@@ -87,7 +88,7 @@ function paintWash(ctx: CanvasRenderingContext2D, args: RangePaintArgs, focusY: 
     { c: visual.inkRight, a: visual.drift * 0.16, x: width * 0.72, r: width * 0.3 },
     { c: mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.6), a: visual.echo * 0.14, x: width * 0.62, r: width * 0.28 },
     { c: mixRgb(ink, { r: 140, g: 255, b: 176 }, 0.5), a: visual.grain * 0.12, x: width * 0.4, r: width * 0.22 },
-    { c: mixRgb(ink, { r: 255, g: 214, b: 120 }, 0.5), a: visual.pan * 0.14, x: width * (0.5 + Math.sin(args.nowMs / 900) * 0.2), r: width * 0.24 },
+    { c: mixRgb(ink, { r: 255, g: 214, b: 120 }, 0.5), a: Math.abs(panNorm(args.livePan)) * 0.28 + visual.pan * 0.06, x: width * (0.5 + panNorm(args.livePan) * 0.42), r: width * 0.28 },
   ]
   for (const blob of blobs) {
     if (blob.a < 0.02) continue
@@ -119,11 +120,11 @@ function paintChromaStacks(
   sway: number,
   dir: 1 | -1,
 ) {
-  const { visual, ink, dpr, reduced } = args
+  const { visual, ink, dpr } = args
   const grit = visual.dirt
   const echoShift = visual.echo * 28 * dpr
   const chroma = chromaticShift(visual.drift, dpr)
-  const panSwing = reduced ? 0 : Math.sin(args.nowMs / 520) * visual.pan * 42 * dpr
+  const panSwing = panNorm(args.livePan) * args.width * 0.32
   const draw = (xOff: number, fill: Rgb, alpha: number) => {
     strokeStack(ctx, args, xOff + panSwing, fill, alpha, base, amp, sway, grit, dir)
   }
@@ -225,7 +226,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
     ctx.moveTo(0, floorY)
     for (let x = 0; x <= width; x += step) {
       const xi = Math.min(width - 1, x)
-      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.55 + visual.space * 0.7))
       const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
       ctx.lineTo(p.x, p.y)
     }
@@ -239,7 +240,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
     ctx.beginPath()
     for (let x = 0; x <= width; x += step) {
       const xi = Math.min(width - 1, x)
-      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.55 + visual.space * 0.7))
       const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
       if (x === 0) ctx.moveTo(p.x, p.y)
       else ctx.lineTo(p.x, p.y)
@@ -308,7 +309,7 @@ export function paintSoundRange(args: RangePaintArgs) {
   }
 
   if (scene === 'mirror') {
-    const layout = mirrorLayout(height)
+    const layout = mirrorLayout(height, visual.space)
     const amp = layout.amp * (1 - visual.tight * 0.22)
     paintWash(ctx, args, height * 0.5)
     withGrainBands(args, () => {
@@ -329,7 +330,7 @@ export function paintSoundRange(args: RangePaintArgs) {
     return
   }
 
-  const layout = rangeLayout(height)
+  const layout = rangeLayout(height, visual.space)
   const amp = layout.amp * (1 - visual.tight * 0.22)
   paintWash(ctx, args, layout.base)
   withGrainBands(args, () => {

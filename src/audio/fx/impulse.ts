@@ -184,8 +184,8 @@ export function fillReverbImpulse(
     l1 += (Math.abs(l) + Math.abs(r)) * 0.5
   }
   // L1 bound: a full-scale impulse through this IR stays below ~0.35 peak.
-  const l1Gain = 0.35 / Math.max(l1, 1e-8)
-  const peakGain = 0.4 / peak
+  const l1Gain = 0.5 / Math.max(l1, 1e-8)
+  const peakGain = 0.55 / peak
   const gain = Math.min(l1Gain, peakGain)
   for (let i = 0; i < n; i++) {
     left[i]! *= gain

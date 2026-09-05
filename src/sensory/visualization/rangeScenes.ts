@@ -42,17 +42,21 @@ export function chromaticShift(drift: number, dpr: number): { r: number; g: numb
   return { r: -mag, g: mag * 0.12, b: mag }
 }
 
-/** Range mountain sits on the bottom edge and reaches the top of the frame. */
-export function rangeLayout(height: number): { base: number; amp: number; dir: -1 } {
+/** Range mountain grows with space: rest is mid-height, vast fills the frame. */
+export function rangeLayout(height: number, space01 = 0): { base: number; amp: number; dir: -1 } {
+  const fill = 0.46 + Math.min(1, Math.max(0, space01)) * 0.48
   return {
     base: height * 0.985,
-    amp: height * 0.94,
+    amp: height * fill,
     dir: -1,
   }
 }
 
-/** Dual-ridge mirror: bases on the top and bottom edges, peaks toward the middle. */
-export function mirrorLayout(height: number): {
+/** Dual-ridge mirror: bases on the edges; amp grows with space toward the middle. */
+export function mirrorLayout(
+  height: number,
+  space01 = 0,
+): {
   gap: number
   upperBase: number
   lowerBase: number
@@ -66,7 +70,7 @@ export function mirrorLayout(height: number): {
     gap: lowerBase - upperBase,
     upperBase,
     lowerBase,
-    amp: height * 0.44,
+    amp: height * (0.22 + Math.min(1, Math.max(0, space01)) * 0.22),
     upperDir: 1,
     lowerDir: -1,
   }

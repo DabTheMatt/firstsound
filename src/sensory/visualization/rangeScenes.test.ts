@@ -31,12 +31,13 @@ describe('rangeScenes', () => {
     expect(lowerTip).toBeGreaterThan(upperTip)
   })
 
-  it('fills the range frame from the bottom edge to the top', () => {
-    const layout = rangeLayout(1000)
-    expect(layout.base).toBeGreaterThan(970)
-    expect(layout.amp).toBeGreaterThan(900)
-    expect(layout.base - layout.amp).toBeLessThan(80)
-    expect(layout.dir).toBe(-1)
+  it('grows the range mountain as space opens', () => {
+    const rest = rangeLayout(1000, 0)
+    const vast = rangeLayout(1000, 1)
+    expect(vast.amp).toBeGreaterThan(rest.amp)
+    expect(rest.amp).toBeLessThan(550)
+    expect(vast.amp).toBeGreaterThan(900)
+    expect(rest.dir).toBe(-1)
   })
 
   it('keeps canyon slices axis-aligned: x follows time, baselines stay parallel', () => {

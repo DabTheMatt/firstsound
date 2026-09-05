@@ -7,8 +7,8 @@ export function equalPowerDryWet(mix01: number): { dry: number; wet: number } {
   return { dry: Math.cos(a), wet: Math.sin(a) }
 }
 
-/** Parallel send: dry stays at unity; wet is a quiet room around the source. */
-export const REVERB_SEND_MAX = 0.28
+/** Parallel send: dry stays at unity; wet is the room around the source. */
+export const REVERB_SEND_MAX = 0.7
 
 export function reverbDryWet(mix01: number): { dry: number; wet: number; out: number } {
   const t = Math.min(1, Math.max(0, mix01))

@@ -48,11 +48,12 @@ describe('wetDryFor', () => {
     p.reverbWet = 100
     const full = wetDryFor('reverb', p)
     expect(full.dry).toBe(1)
-    expect(full.wet).toBeLessThanOrEqual(0.28)
-    p.reverbWet = 16
+    expect(full.wet).toBeCloseTo(0.7)
+    p.reverbWet = 36
     const mild = wetDryFor('reverb', p)
     expect(mild.dry).toBe(1)
-    expect(mild.wet).toBeLessThan(0.06)
+    expect(mild.wet).toBeGreaterThan(0.2)
+    expect(mild.wet).toBeLessThan(0.3)
   })
 })
 

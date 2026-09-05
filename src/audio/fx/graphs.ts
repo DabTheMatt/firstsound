@@ -767,7 +767,7 @@ export function applyReverbGraph(
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
   g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
-  g.out.gain.setTargetAtTime(0.55, now, smoothing)
+  g.out.gain.setTargetAtTime(1, now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
   const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)

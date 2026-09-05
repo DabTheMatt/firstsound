@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   applyFeelingAmount,
   feelingAmount,
@@ -6,7 +6,9 @@ import {
   SENSORY_FEELINGS,
   type SensoryFeeling,
 } from '../sensoryFeelings'
+import { engine } from '../../hooks/useEngine'
 import { defaultSensoryValues, type SensoryValues } from '../sensoryState'
+import { panNorm } from '../visualization/sensoryVisualState'
 import styles from './FeelingRail.module.css'
 
 type Props = {
@@ -37,7 +39,7 @@ function levelText(feeling: SensoryFeeling, amount: number): string {
   return pct === 0 ? 'rest' : `${pct}`
 }
 
-function EffectMeter({ feeling, amount }: { feeling: SensoryFeeling; amount: number }) {
+function EffectMeter({ feeling, amount, livePanPct }: { feeling: SensoryFeeling; amount: number; livePanPct: number }) {
   const a = fill01(feeling, amount)
   if (feeling.visual === 'character') {
     const y = 52 - a * 44
@@ -125,12 +127,12 @@ function EffectMeter({ feeling, amount }: { feeling: SensoryFeeling; amount: num
     )
   }
   if (feeling.visual === 'pan') {
-    const x = 14 + a * 8
+    const x = 14 + panNorm(livePanPct) * 10
     return (
       <svg className={styles.meter} viewBox="0 0 28 56" aria-hidden="true">
         <path d="M6 28 H22" className={styles.waveSoft} />
         <circle cx={x} cy="28" r={5 + a * 2} className={styles.knob} />
-        <circle cx={14 - a * 8} cy="28" r="3" className={styles.track} />
+        <circle cx="14" cy="28" r="2.2" className={styles.track} />
       </svg>
     )
   }
@@ -150,6 +152,18 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
     feeling: SensoryFeeling
   } | null>(null)
   const focused = Boolean(activeId)
+  const [livePanPct, setLivePanPct] = useState(0)
+
+  useEffect(() => {
+    if (values.pan < 0.02) return
+    let frame = 0
+    const tick = () => {
+      setLivePanPct(engine.getSnapshot().liveParams.pan)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [values.pan])
 
   const end = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const state = drag.current
@@ -252,7 +266,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
               if (event.key.startsWith('Arrow') || event.key === 'Home') onCommit()
             }}
           >
-            <EffectMeter feeling={feeling} amount={amount} />
+            <EffectMeter feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
             <span className={styles.copy}>
               <span className={styles.label}>{feeling.label}</span>
               <span className={styles.rangeHint}>
