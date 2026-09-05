@@ -36,6 +36,13 @@
   padding: 3px;
   gap: 2px;
   border-radius: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.compact::-webkit-scrollbar {
+  display: none;
 }
 
 .compact .btn {

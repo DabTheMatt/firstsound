@@ -30,6 +30,10 @@
   border-right: 1px solid var(--border-subtle);
 }
 
+.strip :global([data-lfo-kind]) {
+  flex: none;
+}
+
 .strip:last-child {
   border-right: 0;
 }
