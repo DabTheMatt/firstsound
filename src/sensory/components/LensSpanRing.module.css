@@ -1,0 +1,44 @@
+.ring {
+  position: absolute;
+  inset: -1.5%;
+  width: 103%;
+  height: 103%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-primary) 22%, transparent);
+  stroke-width: 1.15;
+  pointer-events: none;
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 7;
+  pointer-events: stroke;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ring:active .hit,
+.hit:active {
+  cursor: grabbing;
+}
+
+.thumb {
+  fill: color-mix(in srgb, rgb(var(--lens-ink-r), var(--lens-ink-g), var(--lens-ink-b)) 88%, white);
+  filter: drop-shadow(0 0 3px rgba(232, 184, 96, 0.45));
+  pointer-events: none;
+}
+
+.ring:focus-visible {
+  outline: none;
+}
+
+.ring:focus-visible .track {
+  stroke: color-mix(in srgb, #e0b56a 70%, white);
+}

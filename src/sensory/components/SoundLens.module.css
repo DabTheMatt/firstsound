@@ -1,22 +1,24 @@
 .lens {
-  --lens-size: min(52vh, 54vw, 480px);
+  --lens-size: min(100vw, 100vh);
   position: relative;
   width: var(--lens-size);
   height: var(--lens-size);
+  max-width: 100%;
+  max-height: 100%;
   pointer-events: none;
 }
 
 .halo {
   position: absolute;
-  inset: -22%;
+  inset: -8%;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, #e0b56a calc(var(--lens-glow) * 22%), transparent) 0%,
-    transparent 70%
+    rgb(var(--lens-ink-r) var(--lens-ink-g) var(--lens-ink-b) / calc(var(--lens-glow) * 0.28)) 0%,
+    transparent 68%
   );
-  filter: blur(10px);
-  opacity: calc(0.4 + var(--lens-haze) * 0.35);
+  filter: blur(14px);
+  opacity: calc(0.35 + var(--lens-haze) * 0.2);
 }
 
 .glass {
@@ -25,23 +27,38 @@
   border-radius: 50%;
   overflow: hidden;
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.22), transparent 42%),
-    radial-gradient(circle at 70% 78%, rgba(0, 0, 0, 0.35), transparent 55%),
-    color-mix(in srgb, #0c0c0d 55%, transparent);
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.16), transparent 42%),
+    radial-gradient(
+      circle at 50% 50%,
+      color-mix(
+          in srgb,
+          rgb(var(--lens-ink-r), var(--lens-ink-g), var(--lens-ink-b)) calc(var(--lens-warm) * 28%),
+          transparent
+        )
+        0%,
+      transparent 62%
+    ),
+    radial-gradient(circle at 70% 78%, rgba(0, 0, 0, 0.42), transparent 55%),
+    color-mix(in srgb, #070708 42%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-    inset 0 -22px 36px rgba(0, 0, 0, 0.28),
-    0 18px 50px rgba(0, 0, 0, 0.35),
-    0 0 48px color-mix(in srgb, #e0b56a calc(var(--lens-glow) * 22%), transparent);
-  backdrop-filter: blur(8px);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 -28px 48px rgba(0, 0, 0, 0.35),
+    0 0 80px rgb(var(--lens-ink-r) var(--lens-ink-g) var(--lens-ink-b) / 0.18);
+  backdrop-filter: blur(2px);
 }
 
 .shine {
   position: absolute;
-  inset: 8%;
+  inset: 6%;
   border-radius: 50%;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 42%, transparent 58%, rgba(255, 255, 255, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14),
+    transparent 42%,
+    transparent 58%,
+    rgba(255, 255, 255, 0.04)
+  );
 }
 
 .canvas {
@@ -70,14 +87,8 @@
     opacity: 0.5;
   }
   50% {
-    transform: scale(1.04);
-    opacity: 0.72;
-  }
-}
-
-@media (max-width: 720px) {
-  .lens {
-    --lens-size: min(72vw, 48vh, 380px);
+    transform: scale(1.03);
+    opacity: 0.7;
   }
 }
 

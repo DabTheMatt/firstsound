@@ -7,6 +7,7 @@ export const SENSORY_AXIS_IDS = [
   'wildness',
   'motion',
   'strangeness',
+  'echo',
 ] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
@@ -76,9 +77,16 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
     ariaLabel: 'Character, natural to strange',
     hint: 'let it wander',
   },
+  echo: {
+    id: 'echo',
+    negativeLabel: 'dry',
+    positiveLabel: 'echo',
+    ariaLabel: 'Echo, dry to echo',
+    hint: 'let it repeat',
+  },
 }
 
-export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = ['brightness', 'warmth', 'distance', 'wildness']
+export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = ['brightness', 'warmth', 'distance', 'echo', 'wildness']
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = ['hardness', 'fullness', 'motion', 'strangeness']
 
@@ -96,11 +104,30 @@ export type SensoryDialSpec = {
   ariaLabel?: string
 }
 
-/** Feeling dials. Distance is bipolar: closer — further. */
+/** Feeling dials. Each control is a from–to pair. */
 export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
-  { axis: 'brightness', pole: 'neg', label: 'darker', whisper: 'more depth', tone: 'warm' },
-  { axis: 'warmth', pole: 'pos', label: 'warmer', whisper: 'more soul', tone: 'warm' },
-  { axis: 'hardness', pole: 'neg', label: 'softer', whisper: 'more air', tone: 'warm' },
+  {
+    axis: 'brightness',
+    pole: 'pos',
+    kind: 'bipolar',
+    label: 'light',
+    negativeLabel: 'darker',
+    positiveLabel: 'brighter',
+    whisper: 'darker to brighter',
+    tone: 'warm',
+    ariaLabel: 'Light, darker to brighter',
+  },
+  {
+    axis: 'warmth',
+    pole: 'pos',
+    kind: 'bipolar',
+    label: 'warmth',
+    negativeLabel: 'colder',
+    positiveLabel: 'warmer',
+    tone: 'warm',
+    whisper: 'colder to warmer',
+    ariaLabel: 'Warmth, colder to warmer',
+  },
   {
     axis: 'distance',
     pole: 'pos',
@@ -108,10 +135,41 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     label: 'distance',
     negativeLabel: 'closer',
     positiveLabel: 'further',
-    whisper: 'narrow / vast',
+    whisper: 'closer to further',
     tone: 'cool',
     ariaLabel: 'Distance, closer to further',
   },
-  { axis: 'wildness', pole: 'pos', label: 'pulse', whisper: 'tremor / grain', tone: 'cool' },
-  { axis: 'brightness', pole: 'pos', label: 'brighter', whisper: 'more light', tone: 'cool' },
+  {
+    axis: 'echo',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'echo',
+    negativeLabel: 'dry',
+    positiveLabel: 'echo',
+    whisper: 'dry to echo',
+    tone: 'cool',
+    ariaLabel: 'Echo, dry to echo',
+  },
+  {
+    axis: 'wildness',
+    pole: 'pos',
+    kind: 'bipolar',
+    label: 'pulse',
+    negativeLabel: 'still',
+    positiveLabel: 'pulse',
+    whisper: 'still to pulse',
+    tone: 'cool',
+    ariaLabel: 'Pulse, still to pulse',
+  },
+  {
+    axis: 'hardness',
+    pole: 'pos',
+    kind: 'bipolar',
+    label: 'touch',
+    negativeLabel: 'softer',
+    positiveLabel: 'harder',
+    whisper: 'softer to harder',
+    tone: 'warm',
+    ariaLabel: 'Touch, softer to harder',
+  },
 ]

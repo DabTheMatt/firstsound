@@ -278,10 +278,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           const bottom = mid - lo * half
           if (appearance === 'sensory') {
             const amp = Math.max(Math.abs(hi), Math.abs(lo))
-            ctx.globalAlpha = selected ? 0.22 : 0.1
+            ctx.globalAlpha = selected ? 0.1 : 0.045
             ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
-            ctx.globalAlpha = selected ? 0.7 : 0.32
-            const grains = 1 + Math.floor(amp * 4)
+            ctx.globalAlpha = selected ? 0.28 : 0.1
+            const grains = 1 + Math.floor(amp * 3)
             for (let g = 0; g < grains; g++) {
               const h = (x * 13 + g * 97 + lane * 31) % 1000
               const u = h / 1000

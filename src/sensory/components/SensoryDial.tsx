@@ -28,6 +28,8 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
   const bipolar = spec.kind === 'bipolar'
   const amount = bipolar ? (axisValue + 1) / 2 : dialAmount(axisValue, spec.pole)
   const angle = START_DEG + amount * SWEEP
+  const from = spec.negativeLabel ?? spec.label
+  const to = spec.positiveLabel ?? spec.label
 
   const applyAmount = (nextAmount: number) => {
     const a = clamp01(nextAmount)
@@ -90,13 +92,8 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
   }
 
   const valueNow = bipolar ? Math.round(axisValue * 100) : Math.round(amount * 100)
-  const valueText = bipolar
-    ? axisValue > 0.06
-      ? spec.positiveLabel ?? spec.label
-      : axisValue < -0.06
-        ? spec.negativeLabel ?? spec.label
-        : 'balanced'
-    : spec.label
+  const valueText =
+    amount < 0.08 ? from : amount > 0.92 ? to : `${from} to ${to}`
 
   return (
     <div className={`${styles.wrap} ${styles[spec.tone]}`}>
@@ -104,7 +101,7 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
         className={`${styles.dial} ${held ? styles.held : ''}`}
         role="slider"
         tabIndex={0}
-        aria-label={spec.ariaLabel ?? `${spec.label}, ${spec.whisper}`}
+        aria-label={spec.ariaLabel ?? `${from} to ${to}`}
         aria-valuemin={bipolar ? -100 : 0}
         aria-valuemax={100}
         aria-valuenow={valueNow}
@@ -127,16 +124,11 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
         <span className={styles.ring} aria-hidden="true" />
         <span className={styles.dot} style={{ transform: `rotate(${angle}deg)` }} aria-hidden="true" />
       </div>
-      {bipolar ? (
-        <p className={styles.pair}>
-          <span>{spec.negativeLabel}</span>
-          <span className={styles.dash}>—</span>
-          <span>{spec.positiveLabel}</span>
-        </p>
-      ) : (
-        <p className={styles.label}>{spec.label}</p>
-      )}
-      <p className={styles.whisper}>{spec.whisper}</p>
+      <p className={styles.pair}>
+        <span>{from}</span>
+        <span className={styles.dash}>—</span>
+        <span>{to}</span>
+      </p>
     </div>
   )
 }

@@ -21,5 +21,6 @@ export function estimateSensoryFromDsp(dsp: DspSnapshot): SensoryValues {
     wildness: clampSensoryValue(p.motionDepth / 80 + p.reverbModDepth / 200),
     motion: clampSensoryValue(p.motionDepth / 70),
     strangeness: clampSensoryValue(p.delayReverse / 80 + p.reverbShimmer / 140 + Math.abs(p.delayPitch) / 24),
+    echo: clampSensoryValue(p.delayWet / 80),
   }
 }

@@ -77,7 +77,7 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
     { kind: 'param', target: 'pitchSpread', amount: 10, curve: 'easeIn', polarity: 'pos', gate: 0.12 },
     { kind: 'param', target: 'grainSize', amount: -55, curve: 'linear', polarity: 'pos', gate: 0.12 },
     { kind: 'param', target: 'reverbModDepth', amount: 48, curve: 'easeOut', polarity: 'pos' },
-    { kind: 'param', target: 'delayWet', amount: 28, curve: 'easeIn', polarity: 'pos', gate: 0.12 },
+    { kind: 'param', target: 'delayWet', amount: 10, curve: 'easeIn', polarity: 'pos', gate: 0.28 },
     { kind: 'param', target: 'delayModDepth', amount: 42, curve: 'easeIn', polarity: 'pos', gate: 0.1 },
     { kind: 'param', target: 'delayDrift', amount: 32, curve: 'exponential', polarity: 'pos', gate: 0.2 },
     { kind: 'param', target: 'delayWow', amount: 26, curve: 'easeIn', polarity: 'pos', gate: 0.22 },
@@ -105,6 +105,13 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
     { kind: 'param', target: 'scatter', amount: 22, curve: 'easeIn', polarity: 'pos', gate: 0.35 },
     { kind: 'param', target: 'filterReso', amount: 4, curve: 'easeIn', polarity: 'pos', gate: 0.45 },
     { kind: 'eq', band: 2, type: 'notch', frequency: 1400, gain: 0, q: 4, curve: 'exponential', polarity: 'pos', gate: 0.62 },
+  ],
+  echo: [
+    { kind: 'param', target: 'delayWet', amount: 78, curve: 'easeOut', polarity: 'pos' },
+    { kind: 'param', target: 'delayFeedback', amount: 42, curve: 'easeOut', polarity: 'pos' },
+    { kind: 'param', target: 'delayTime', amount: 620, curve: 'easeIn', polarity: 'pos' },
+    { kind: 'param', target: 'delayWidth', amount: 36, curve: 'linear', polarity: 'pos' },
+    { kind: 'param', target: 'delayDiffusion', amount: 22, curve: 'easeIn', polarity: 'pos', gate: 0.2 },
   ],
 }
 

@@ -10,9 +10,9 @@ import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues
 import { SENSORY_DIALS, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
 import { patchSensoryValue } from '../sensoryState'
+import { lensWindowSeconds } from '../visualization/lensWindow'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
-import { PlayheadClock } from './PlayheadClock'
 import { SensoryDial } from './SensoryDial'
 import { SoundLens } from './SoundLens'
 import styles from './SensoryShell.module.css'
@@ -73,6 +73,7 @@ export function SensoryShell({
   sampleInput = null,
 }: Props) {
   const [placesOpen, setPlacesOpen] = useState(false)
+  const [windowAmount, setWindowAmount] = useState(0)
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -81,6 +82,7 @@ export function SensoryShell({
   const cssVars = visualCssVars(visual)
   const leftDials = SENSORY_DIALS.slice(0, 3)
   const rightDials = SENSORY_DIALS.slice(3)
+  const windowSec = lensWindowSeconds(windowAmount, snap.duration)
 
   const setAxis = (id: SensoryAxisId, value: number) => {
     onMoodLabel(null)
@@ -104,10 +106,6 @@ export function SensoryShell({
     >
       <header className={styles.top}>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
-        <div className={styles.brand}>
-          <p className={styles.mark}>Firstsound</p>
-          <p className={styles.tag}>Same sound. A deeper you.</p>
-        </div>
         <div className={styles.tools}>
           <button type="button" className={styles.textBtn} onClick={onLoadSample}>
             Open
@@ -129,7 +127,7 @@ export function SensoryShell({
       </header>
       {menuOpen ? menu : null}
 
-      <div className={styles.stage}>
+      <div className={styles.world} aria-hidden={!snap.sampleLoaded}>
         <Waveform
           ref={waveRef}
           key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}:sensory`}
@@ -156,20 +154,25 @@ export function SensoryShell({
           contentRev={snap.bufferRev}
           appearance="sensory"
           followPlayhead
-          emptyLabel="Drop a sample. Listen closer."
+          emptyLabel=""
         />
-        <div className={styles.lensWrap}>
-          <SoundLens
-            duration={snap.duration}
-            loaded={snap.sampleLoaded}
-            visual={visual}
-            loop={snap.loop}
-            onTogglePlay={() => {
-              void engine.unlock().then(() => engine.togglePlay())
-            }}
-          />
-          <PlayheadClock duration={snap.duration} />
-        </div>
+        <div className={styles.vignette} aria-hidden="true" />
+      </div>
+
+      <div className={styles.lensWrap}>
+        <SoundLens
+          duration={snap.duration}
+          loaded={snap.sampleLoaded}
+          visual={visual}
+          loop={snap.loop}
+          windowSec={windowSec}
+          windowAmount={windowAmount}
+          onWindowAmount={setWindowAmount}
+          onWindowCommit={() => undefined}
+          onTogglePlay={() => {
+            void engine.unlock().then(() => engine.togglePlay())
+          }}
+        />
       </div>
 
       <div className={styles.controls}>
@@ -211,11 +214,6 @@ export function SensoryShell({
       </div>
 
       <footer className={styles.foot}>
-        <p className={styles.guide}>
-          Drag. Listen. Feel.
-          <span>Shape the sound, not the settings.</span>
-        </p>
-        <p className={styles.script}>sound is a feeling</p>
         <div className={styles.links}>
           <button type="button" className={styles.textBtn} onClick={onLoadSample}>
             Samples
