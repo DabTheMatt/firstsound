@@ -3,7 +3,9 @@ import type { DelayTap, ReverbTail } from './spaceModel'
 
 export type SpaceHit =
   | { kind: 'delayTime' }
+  | { kind: 'delayTimeR' }
   | { kind: 'delayFeedback' }
+  | { kind: 'delayFeedbackR' }
   | { kind: 'delayOffset' }
   | { kind: 'reverbPredelay' }
   | { kind: 'reverbDecay' }
@@ -43,18 +45,19 @@ export function hitSpaceOverlay(
   const span = Math.max(0.0001, viewEnd - viewStart)
   const timeX = (t: number) => ((regionStart + t - viewStart) / span) * width
   if (mode === 'delay') {
-    const first = taps[0]
-    if (first) {
-      const fx = timeX(first.time)
-      if (Math.abs(x - fx) < 18) return { kind: 'delayTime' }
-      const left = taps.find((t) => t.channel === 'L')
-      const right = taps.find((t) => t.channel === 'R')
-      if (left && Math.abs(x - timeX(left.time)) < 14 && y < height * 0.45) return { kind: 'delayOffset' }
-      if (right && Math.abs(x - timeX(right.time)) < 14 && y > height * 0.55) return { kind: 'delayOffset' }
-    }
+    const firstL = taps.find((t) => t.channel === 'L') ?? taps.find((t) => t.channel === 'C')
+    const firstR = taps.find((t) => t.channel === 'R')
+    if (firstL && Math.abs(x - timeX(firstL.time)) < 18 && y <= height * 0.52) return { kind: 'delayTime' }
+    if (firstR && Math.abs(x - timeX(firstR.time)) < 18 && y >= height * 0.48) return { kind: 'delayTimeR' }
+    const laterL = taps.filter((t) => t.channel === 'L' || t.channel === 'C')[1]
+    const laterR = taps.filter((t) => t.channel === 'R')[1]
+    if (laterL && Math.abs(x - timeX(laterL.time)) < 22 && y <= height * 0.52) return { kind: 'delayFeedback' }
+    if (laterR && Math.abs(x - timeX(laterR.time)) < 22 && y >= height * 0.48) return { kind: 'delayFeedbackR' }
     if (taps.length >= 2) {
       const last = taps[Math.min(taps.length - 1, 4)]!
-      if (Math.abs(x - timeX(last.time)) < 22) return { kind: 'delayFeedback' }
+      if (Math.abs(x - timeX(last.time)) < 22) {
+        return last.channel === 'R' ? { kind: 'delayFeedbackR' } : { kind: 'delayFeedback' }
+      }
     }
     return null
   }
@@ -85,8 +88,15 @@ export function dragSpaceOverlay(
         delayTime: Math.max(1, params.delayTime + dt * 1000),
         delaySync: 0,
       }
+    case 'delayTimeR':
+      return {
+        delayTimeR: Math.max(1, params.delayTimeR + dt * 1000),
+        delaySyncR: 0,
+      }
     case 'delayFeedback':
       return { delayFeedback: params.delayFeedback + dt * 40 + dy * 30 }
+    case 'delayFeedbackR':
+      return { delayFeedbackR: params.delayFeedbackR + dt * 40 + dy * 30 }
     case 'delayOffset':
       return { delayOffset: params.delayOffset + dt * 80 }
     case 'reverbPredelay':

@@ -24,6 +24,13 @@ describe('delayLoopGain', () => {
 })
 
 describe('delayFeedbackGains', () => {
+  it('lets L and R use different feedback', () => {
+    const g = delayFeedbackGains(20, 'digital', false, 0, 60)
+    expect(g.fbR).toBeGreaterThan(g.fbL)
+    expect(g.fbL + g.pitchMix).toBeLessThan(1)
+    expect(g.fbR + g.pitchMix).toBeLessThan(1)
+  })
+
   it('uses independent self-feedback for digital / stereo', () => {
     const g = delayFeedbackGains(40, 'digital', false)
     expect(g.fbL).toBeGreaterThan(0)

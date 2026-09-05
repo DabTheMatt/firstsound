@@ -41,14 +41,18 @@ export function delayFeedbackGains(
   type: DelayType,
   freeze: boolean,
   delayPitch = 0,
+  feedbackPctR = feedbackPct,
 ): DelayFeedbackGains {
-  const g = freeze ? Math.min(0.86, DELAY_FB_CEILING + 0.06) : delayLoopGain(feedbackPct, type)
+  const gL = freeze ? Math.min(0.86, DELAY_FB_CEILING + 0.06) : delayLoopGain(feedbackPct, type)
+  const gR = freeze ? Math.min(0.86, DELAY_FB_CEILING + 0.06) : delayLoopGain(feedbackPctR, type)
   const pitchMix = freeze ? 0 : pitchLoopMix(type, delayPitch)
-  const regen = g * (1 - pitchMix)
+  const regenL = gL * (1 - pitchMix)
+  const regenR = gR * (1 - pitchMix)
+  const pitchAmt = pitchMix * Math.max(gL, gR)
   if (type === 'pingPong') {
-    return { fbL: 0, fbR: 0, pingToL: regen, pingToR: regen, pitchMix: pitchMix * g }
+    return { fbL: 0, fbR: 0, pingToL: regenR, pingToR: regenL, pitchMix: pitchAmt }
   }
-  return { fbL: regen, fbR: regen, pingToL: 0, pingToR: 0, pitchMix: pitchMix * g }
+  return { fbL: regenL, fbR: regenR, pingToL: 0, pingToR: 0, pitchMix: pitchAmt }
 }
 
 export function delayLoopFilters(

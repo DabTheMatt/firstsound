@@ -13,19 +13,31 @@ export function drawDelayOverlay(
 ): void {
   const colors = readThemeColors()
   const span = Math.max(0.0001, viewEnd - viewStart)
+  const mid = height / 2
   for (const tap of taps) {
     const x = ((regionStart + tap.time - viewStart) / span) * width
     if (x < -4 || x > width + 4) continue
     const alpha = Math.max(0.14, Math.min(0.9, tap.gain * 1.05))
-    ctx.strokeStyle = colorWithAlpha(colors.accent, alpha)
-    ctx.lineWidth = tap.channel === 'C' ? 1.6 : 1.2
+    const left = tap.channel === 'L'
+    const right = tap.channel === 'R'
+    const color = right ? colors.eqCurve2 : colors.accent
+    ctx.strokeStyle = colorWithAlpha(color, alpha)
+    ctx.lineWidth = tap.channel === 'C' ? 1.6 : 1.35
     ctx.beginPath()
-    ctx.moveTo(x, 6)
-    ctx.lineTo(x, height - 6)
+    if (left) {
+      ctx.moveTo(x, 6)
+      ctx.lineTo(x, mid - 2)
+    } else if (right) {
+      ctx.moveTo(x, mid + 2)
+      ctx.lineTo(x, height - 6)
+    } else {
+      ctx.moveTo(x, 6)
+      ctx.lineTo(x, height - 6)
+    }
     ctx.stroke()
-    const tickH = 9
-    const tickY = tap.channel === 'R' ? height - 6 - tickH : 6
-    ctx.fillStyle = colorWithAlpha(colors.spectrumLine, alpha)
+    const tickH = 8
+    const tickY = right ? height - 6 - tickH : 6
+    ctx.fillStyle = colorWithAlpha(color, alpha)
     ctx.fillRect(x - 1.5, tickY, 3, tickH)
   }
 }

@@ -108,8 +108,10 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
     delayOffset: 0,
     delayDry: 100,
     delayWet: 28,
+    delayWetR: 28,
     delayOutput: 100,
     delayFeedback: 28,
+    delayFeedbackR: 28,
     delayTimeR: 300,
     ...patch,
   }
@@ -117,6 +119,8 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
   if (patch.delaySync != null && patch.delaySyncR == null) next.delaySyncR = patch.delaySync
   if (patch.delayNote != null && patch.delayNoteR == null) next.delayNoteR = patch.delayNote
   if (patch.delayNoteKind != null && patch.delayNoteKindR == null) next.delayNoteKindR = patch.delayNoteKind
+  if (patch.delayWet != null && patch.delayWetR == null) next.delayWetR = patch.delayWet
+  if (patch.delayFeedback != null && patch.delayFeedbackR == null) next.delayFeedbackR = patch.delayFeedback
   return next
 }
 
