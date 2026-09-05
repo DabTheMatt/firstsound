@@ -2134,13 +2134,13 @@ export class AudioEngine {
     this.limiter.attack.value = 0.001
     this.limiter.release.value = 0.05
     this.analyser = ctx.createAnalyser()
-    this.analyser.fftSize = 4096
+    this.analyser.fftSize = 8192
     this.analyser.smoothingTimeConstant = 0.7
     this.analyserPre = ctx.createAnalyser()
-    this.analyserPre.fftSize = 4096
+    this.analyserPre.fftSize = 8192
     this.analyserPre.smoothingTimeConstant = 0.7
     this.analyserEq = ctx.createAnalyser()
-    this.analyserEq.fftSize = 4096
+    this.analyserEq.fftSize = 8192
     this.analyserEq.smoothingTimeConstant = 0.7
     this.analyserLimiterPre = ctx.createAnalyser()
     this.analyserLimiterPost = ctx.createAnalyser()
