@@ -1021,7 +1021,7 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
       ) : (
         <ParamControl id="bpm" value={snap.params.bpm} variant={variant} />
       )}
-      <div className={styles.row}>
+      <div className={styles.tempoActions}>
         <button
           type="button"
           className={styles.ghost}
@@ -1045,13 +1045,19 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
             engine.tapSampleTempo()
           }}
         >
-          Tap tempo{snap.tapCount > 0 ? ` · ${snap.tapCount}` : ''}
+          Tap tempo
         </button>
       </div>
       <div className={styles.readout}>
         <span>Source</span>
         <strong>{source}</strong>
       </div>
+      {snap.tapCount > 0 ? (
+        <div className={styles.readout}>
+          <span>Taps</span>
+          <strong>{snap.tapCount}</strong>
+        </div>
+      ) : null}
       {snap.tempoNotice ? <p className={styles.help}>{snap.tempoNotice}</p> : null}
     </div>
   )

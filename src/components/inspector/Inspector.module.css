@@ -299,6 +299,18 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.tempoActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.tempoActions > * {
+  min-width: 0;
+  width: 100%;
+}
+
 .sub {
   margin: 10px 0 4px;
   font-size: 10px;
