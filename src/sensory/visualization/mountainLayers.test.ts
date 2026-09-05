@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absEnvelope, blurEnvelope, grainBandCount, mountainLayerSpecs } from './mountainLayers'
+import { absEnvelope, blurEnvelope, grainBandCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
 
 describe('mountainLayerSpecs', () => {
   it('adds a far ridge when there is motion', () => {
@@ -35,5 +35,14 @@ describe('absEnvelope', () => {
     const min = new Float32Array([0, -0.8])
     const max = new Float32Array([0.2, 0.1])
     expect(absEnvelope(min, max)[1]).toBeCloseTo(0.8)
+  })
+})
+
+describe('normalizeEnvelopePeak', () => {
+  it('scales the loudest bin to 1', () => {
+    const src = new Float32Array([0.1, 0.2, 0.05])
+    const out = normalizeEnvelopePeak(src)
+    expect(out[1]).toBeCloseTo(1)
+    expect(out[0]).toBeCloseTo(0.5)
   })
 })

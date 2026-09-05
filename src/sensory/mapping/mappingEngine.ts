@@ -131,7 +131,7 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     applySensoryStacking(dsp, values)
     applySensorySafety(dsp)
     const protect =
-      values.space > 0.18 ||
+      values.space > 0.05 ||
       values.dirt > 0.35 ||
       values.echo > 0.22 ||
       values.grain > 0.55 ||

@@ -11,6 +11,7 @@ import {
 import {
   equalPowerDryWet,
   makeAbsCurve,
+  reverbDryWet,
   sideGainFromWidth,
   stereoInputMix,
 } from './dryWet'
@@ -584,7 +585,6 @@ export function createReverbGraph(
   predelayR.connect(preMerge, 0, 1)
   preMerge.connect(early)
   early.connect(earlyGain)
-  earlyGain.connect(conv)
   preMerge.connect(conv)
   conv.connect(tankSplit)
   tankSplit.connect(tankDelayL, 0)
@@ -737,7 +737,7 @@ export function applyReverbGraph(
   g.predelayL.delayTime.setTargetAtTime(Math.max(0.0002, basePre - offset), now, smoothing)
   g.predelayR.delayTime.setTargetAtTime(Math.max(0.0002, Math.min(1.95, basePre + offset)), now, smoothing)
   g.early.delayTime.setTargetAtTime(0.01 + dist * 0.035 + params.reverbSize / 3500, now, smoothing)
-  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * (1.15 - dist * 0.45), now, smoothing)
+  g.earlyGain.gain.setTargetAtTime(0, now, smoothing)
 
   const input = stereoInputMix(stereo ? params.reverbInput : 0)
   g.inKeepL.gain.setTargetAtTime(input.keep, now, smoothing)
@@ -767,7 +767,7 @@ export function applyReverbGraph(
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
   g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
-  g.out.gain.setTargetAtTime(1, now, smoothing)
+  g.out.gain.setTargetAtTime(0.55, now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
   const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)
@@ -805,8 +805,8 @@ export function wetDryFor(
   type: 'delay' | 'reverb',
   params: Record<ParamId, number>,
 ): { dry: number; wet: number; out: number } {
-  const mix = type === 'delay' ? params.delayWet : params.reverbWet
-  const { dry, wet } = equalPowerDryWet(mix / 100)
+  if (type === 'reverb') return reverbDryWet(params.reverbWet / 100)
+  const { dry, wet } = equalPowerDryWet(params.delayWet / 100)
   return { dry, wet, out: 1 }
 }
 

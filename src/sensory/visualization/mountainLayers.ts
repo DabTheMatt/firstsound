@@ -56,3 +56,13 @@ export function absEnvelope(min: Float32Array, max: Float32Array): Float32Array 
   }
   return out
 }
+
+/** Scale an envelope so the loudest bin reaches 1. */
+export function normalizeEnvelopePeak(values: Float32Array): Float32Array {
+  let peak = 1e-6
+  for (let i = 0; i < values.length; i++) peak = Math.max(peak, values[i]!)
+  const out = new Float32Array(values.length)
+  const g = 1 / peak
+  for (let i = 0; i < values.length; i++) out[i] = (values[i] ?? 0) * g
+  return out
+}

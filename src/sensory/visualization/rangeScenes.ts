@@ -42,7 +42,16 @@ export function chromaticShift(drift: number, dpr: number): { r: number; g: numb
   return { r: -mag, g: mag * 0.12, b: mag }
 }
 
-/** Dual-ridge mirror: peaks hang into the gap toward each other, with air left. */
+/** Range mountain sits on the bottom edge and reaches the top of the frame. */
+export function rangeLayout(height: number): { base: number; amp: number; dir: -1 } {
+  return {
+    base: height * 0.985,
+    amp: height * 0.94,
+    dir: -1,
+  }
+}
+
+/** Dual-ridge mirror: bases on the top and bottom edges, peaks toward the middle. */
 export function mirrorLayout(height: number): {
   gap: number
   upperBase: number
@@ -51,14 +60,42 @@ export function mirrorLayout(height: number): {
   upperDir: 1
   lowerDir: -1
 } {
-  const upperBase = height * 0.22
-  const lowerBase = height * 0.78
+  const upperBase = height * 0.02
+  const lowerBase = height * 0.98
   return {
     gap: lowerBase - upperBase,
     upperBase,
     lowerBase,
-    amp: height * 0.2,
+    amp: height * 0.44,
     upperDir: 1,
     lowerDir: -1,
   }
+}
+
+export function canyonSliceCount(height: number): number {
+  return Math.max(16, Math.min(42, Math.round(height / 24)))
+}
+
+/** Horizontal baseline for a depth slice. Depth 0 is the bottom edge; 1 is near the top. */
+export function canyonSliceY(depth01: number, height: number): number {
+  const t = Math.min(1, Math.max(0, depth01))
+  return height * (0.98 - t * 0.86)
+}
+
+/**
+ * Axis-aligned canyon: x follows the sample left-to-right, y is depth + amplitude.
+ * No vanishing-point scale, so ridges stay parallel to the screen edges.
+ */
+export function canyonProject(
+  x01: number,
+  depth01: number,
+  amp01: number,
+  width: number,
+  height: number,
+): { x: number; y: number; floorY: number; scale: number } {
+  const t = Math.min(1, Math.max(0, depth01))
+  const x = Math.min(1, Math.max(0, x01)) * width
+  const floorY = canyonSliceY(t, height)
+  const lift = Math.min(1, Math.max(0, amp01)) * height * (0.2 - t * 0.08)
+  return { x, y: floorY - lift, floorY, scale: 1 }
 }
