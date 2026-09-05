@@ -415,7 +415,7 @@ function ModuleInspector({
             <Toggle
               pressed={!mod?.bypassed}
               label={mod?.bypassed ? 'Bypassed' : 'Active'}
-              onToggle={() => engine.setModuleBypass(instanceId, !mod?.bypassed)}
+              onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
           {mod && !isFixedType(mod.type) ? (

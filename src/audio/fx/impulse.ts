@@ -175,14 +175,40 @@ export function fillReverbImpulse(
     }
   }
 
+  scaleReverbImpulse(left, right, spec.sampleRate)
+}
+
+/** First 80 ms of the IR — the part Mix has to make audible against dry. */
+export const IR_EARLY_SEC = 0.08
+export const IR_TARGET_EARLY_RMS = 0.1
+export const IR_PEAK_LIMIT = 0.92
+
+/**
+ * ConvolverNode.normalize uses Chrome's 0.00125 GainCalibration, which turns a
+ * peak-normalized hall into ~-36 dB wet. We scale ourselves and keep
+ * normalize = false. Match early-window RMS so long cathedrals stay as loud as
+ * short rooms, then peak-limit so a 0 dBFS hit cannot clip the send.
+ */
+export function scaleReverbImpulse(
+  left: Float32Array,
+  right: Float32Array,
+  sampleRate: number,
+): void {
+  const n = Math.min(left.length, right.length)
+  if (n === 0) return
+  const earlyN = Math.min(n, Math.max(1, Math.floor(sampleRate * IR_EARLY_SEC)))
+  let energy = 0
   let peak = 1e-6
   for (let i = 0; i < n; i++) {
-    peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
+    const l = left[i]!
+    const r = right[i]!
+    peak = Math.max(peak, Math.abs(l), Math.abs(r))
+    if (i < earlyN) energy += l * l + r * r
   }
-  // Peak-normalize only. ConvolverNode.normalize = true then applies the
-  // browser equal-power scale. L1-bounding a multi-second hall crushed every
-  // sample to ~1e-6 and made Mix inaudible with normalize = false.
-  const gain = 0.88 / peak
+  const earlyRms = Math.sqrt(energy / (2 * earlyN))
+  const rmsGain = IR_TARGET_EARLY_RMS / Math.max(earlyRms, 1e-8)
+  const peakGain = IR_PEAK_LIMIT / peak
+  const gain = Math.min(rmsGain, peakGain)
   for (let i = 0; i < n; i++) {
     left[i]! *= gain
     right[i]! *= gain
