@@ -708,27 +708,28 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           hidden={!showWave}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
-          {!sensory && snap.tracks.length > 0 ? (
-            <div className={styles.trackTabs} role="tablist" aria-label="Tracks">
-              {snap.tracks.map((track) => {
-                const on = track.id === snap.selectedTrackId
-                return (
-                  <button
-                    key={track.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    className={`${styles.trackTab} ${on ? styles.trackTabOn : ''}`}
-                    onClick={() => engine.selectTrack(track.id)}
-                  >
-                    <span>{track.name}</span>
-                    {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
           <div className={styles.wavePane}>
+            {!sensory && snap.tracks.length > 0 ? (
+              <div className={styles.trackTabs} role="tablist" aria-label="Tracks">
+                {snap.tracks.map((track) => {
+                  const on = track.id === snap.selectedTrackId
+                  return (
+                    <button
+                      key={track.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      title={track.fileName || track.name}
+                      className={`${styles.trackTab} ${on ? styles.trackTabOn : ''}`}
+                      onClick={() => engine.selectTrack(track.id)}
+                    >
+                      <span>{track.name}</span>
+                      {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
             <canvas ref={canvasRef} className={styles.canvas} />
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
             <div
