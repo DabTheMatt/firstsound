@@ -1,4 +1,4 @@
-import type { FilterType, ParamDef, ParamId, PlaybackDirection } from './types'
+import type { FilterType, ParamDef, ParamId, PlaybackDirection, StretchAlgo } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
   start: {
@@ -40,11 +40,41 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   stretchInterp: {
     id: 'stretchInterp',
-    label: 'Interp',
+    label: 'Smooth',
     min: 0,
     max: 100,
     defaultValue: 62,
     unit: '%',
+    mapping: 'linear',
+    step: 1,
+  },
+  stretchEnable: {
+    id: 'stretchEnable',
+    label: 'Interp',
+    min: 0,
+    max: 1,
+    defaultValue: 1,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  stretchDensity: {
+    id: 'stretchDensity',
+    label: 'Density',
+    min: 0,
+    max: 100,
+    defaultValue: 62,
+    unit: '%',
+    mapping: 'linear',
+    step: 1,
+  },
+  stretchAlgo: {
+    id: 'stretchAlgo',
+    label: 'Window',
+    min: 0,
+    max: 2,
+    defaultValue: 0,
+    unit: '',
     mapping: 'linear',
     step: 1,
   },
@@ -1046,9 +1076,23 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
   { value: 'pingpong', label: 'Ping-Pong' },
 ]
 
+/** Overlap-add windows for independent speed/pitch stretch. */
+export const STRETCH_ALGOS: { value: StretchAlgo; label: string; index: number }[] = [
+  { value: 'hann', label: 'Hann', index: 0 },
+  { value: 'triangle', label: 'Triangle', index: 1 },
+  { value: 'blackman', label: 'Blackman', index: 2 },
+]
+
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
-export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'stretchInterp', 'gain', 'pan']
+export const SOURCE_KNOBS: ParamId[] = [
+  'speed',
+  'pitch',
+  'stretchInterp',
+  'stretchDensity',
+  'gain',
+  'pan',
+]
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',

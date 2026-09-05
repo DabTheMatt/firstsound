@@ -117,6 +117,20 @@ export function playbackNeedsStretch(speed: number, pitchSemitones: number): boo
   return Math.abs(speed - 1) > 0.01 || Math.abs(pitchSemitones) > 0.05
 }
 
+/** Independent speed/pitch uses grain stretch only while interpolation is on. */
+export function usesGrainStretch(
+  speed: number,
+  pitchSemitones: number,
+  stretchEnable: number,
+): boolean {
+  return stretchEnable > 0.5 && playbackNeedsStretch(speed, pitchSemitones)
+}
+
+/** Tape-style BufferSource rate. Used when interpolation is off. */
+export function tapePlaybackRate(speed: number, pitchSemitones: number): number {
+  return Math.max(0.01, playbackRate(speed, pitchSemitones))
+}
+
 /** Legacy tape rate (speed × transpose). Playback/grain now keep them separate. */
 export function playbackRate(speed: number, pitchSemitones: number): number {
   return speed * pitchRatio(pitchSemitones)
@@ -217,6 +231,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
         : `${Math.round(value)} Hz`
     case 'filterReso':
       return `${value.toFixed(2)} Q`
+    case 'stretchAlgo':
+      return value < 0.5 ? 'Hann' : value < 1.5 ? 'Triangle' : 'Blackman'
     case 'delaySync':
     case 'delaySyncR':
     case 'delayStereo':
@@ -224,6 +240,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbSync':
     case 'delayFreeze':
     case 'reverbFreeze':
+    case 'stretchEnable':
     case 'makeMono':
     case 'invertPhase':
     case 'limiterAutoMakeup':

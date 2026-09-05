@@ -24,9 +24,11 @@ import {
   LIMITER_MAIN_KNOBS,
   MOTION_KNOBS,
   PLAYBACK_DIRECTIONS,
+  STRETCH_ALGOS,
 } from '../../audio/parameters/definitions'
 import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
+import { stretchAlgoFromParam } from '../../audio/engine/stretch'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
@@ -59,7 +61,7 @@ type Props = {
   onHideInspector?: () => void
 }
 
-const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
+const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp', 'stretchDensity']
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
@@ -447,10 +449,30 @@ function ModuleInspector({
             wrap
             onChange={(d) => engine.setDirection(d)}
           />
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.params.stretchEnable > 0.5}
+              label="Interp"
+              onToggle={() =>
+                engine.setParam('stretchEnable', snap.params.stretchEnable > 0.5 ? 0 : 1)
+              }
+            />
+          </div>
+          <Segmented
+            label="Window"
+            value={stretchAlgoFromParam(snap.params.stretchAlgo)}
+            options={STRETCH_ALGOS}
+            wrap
+            onChange={(algo) => {
+              const found = STRETCH_ALGOS.find((item) => item.value === algo)
+              engine.setParam('stretchAlgo', found?.index ?? 0)
+            }}
+          />
           {params(GAIN_IDS)}
           <p className={styles.help}>
-            Interp densifies the overlap-add used when Speed or Pitch leave 1× / 0 st. Sparse is
-            lighter; dense eases tempo and transpose moves so they do not click.
+            Interp on keeps Speed and Pitch independent via overlap-add. Off is tape: speed and
+            transpose share one rate. Smooth sets grain length; Density sets hop overlap. Hann,
+            Triangle, and Blackman change the grain window.
           </p>
           <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />
