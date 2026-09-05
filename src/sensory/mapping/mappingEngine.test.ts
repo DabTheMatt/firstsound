@@ -91,8 +91,8 @@ describe('mapSensoryToDsp', () => {
 
   it('opens delay echoes when turning toward echo', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'echo', 0.7))
-    expect(mapped.params.delayWet).toBeGreaterThan(40)
-    expect(mapped.params.delayFeedback).toBeGreaterThan(40)
+    expect(mapped.params.delayWet).toBeGreaterThan(25)
+    expect(mapped.params.delayFeedback).toBeGreaterThan(20)
     expect(mapped.bypass.delay).toBe(false)
   })
 })

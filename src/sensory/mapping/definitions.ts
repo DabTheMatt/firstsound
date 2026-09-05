@@ -107,11 +107,11 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
     { kind: 'eq', band: 2, type: 'notch', frequency: 1400, gain: 0, q: 4, curve: 'exponential', polarity: 'pos', gate: 0.62 },
   ],
   echo: [
-    { kind: 'param', target: 'delayWet', amount: 78, curve: 'easeOut', polarity: 'pos' },
-    { kind: 'param', target: 'delayFeedback', amount: 42, curve: 'easeOut', polarity: 'pos' },
-    { kind: 'param', target: 'delayTime', amount: 620, curve: 'easeIn', polarity: 'pos' },
-    { kind: 'param', target: 'delayWidth', amount: 36, curve: 'linear', polarity: 'pos' },
-    { kind: 'param', target: 'delayDiffusion', amount: 22, curve: 'easeIn', polarity: 'pos', gate: 0.2 },
+    { kind: 'param', target: 'delayWet', amount: 48, curve: 'easeOut', polarity: 'pos' },
+    { kind: 'param', target: 'delayFeedback', amount: 36, curve: 'easeOut', polarity: 'pos' },
+    { kind: 'param', target: 'delayTime', amount: 380, curve: 'easeIn', polarity: 'pos' },
+    { kind: 'param', target: 'delayWidth', amount: 28, curve: 'linear', polarity: 'pos' },
+    { kind: 'param', target: 'delayDiffusion', amount: 8, curve: 'easeIn', polarity: 'pos', gate: 0.35 },
   ],
 }
 
