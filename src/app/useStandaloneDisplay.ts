@@ -10,7 +10,7 @@ const DISPLAY_QUERIES = [
 function readStandalone(): boolean {
   if (typeof window === 'undefined') return false
   const nav = window.navigator as Navigator & { standalone?: boolean }
-  return isStandaloneDisplay(nav, (query) => window.matchMedia(query))
+  return isStandaloneDisplay(nav, (query) => window.matchMedia(query), window.location.search)
 }
 
 export function useStandaloneDisplay(): boolean {

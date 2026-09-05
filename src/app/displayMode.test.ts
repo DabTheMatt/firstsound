@@ -14,4 +14,8 @@ describe('isStandaloneDisplay', () => {
   it('is false in a normal browser tab', () => {
     expect(isStandaloneDisplay({}, () => ({ matches: false }))).toBe(false)
   })
+
+  it('treats ?pwa=1 as an installed-app preview', () => {
+    expect(isStandaloneDisplay({}, () => ({ matches: false }), '?pwa=1')).toBe(true)
+  })
 })
