@@ -2,6 +2,7 @@ import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
+import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { ThemePicker } from './ThemePicker'
 import styles from './AppHeader.module.css'
 
@@ -79,6 +80,7 @@ export function AppHeader({
         </p>
       ) : null}
       <div className={styles.trailing}>
+        <RuntimeStatus />
         {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
         {minimal ? (

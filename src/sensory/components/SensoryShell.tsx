@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode, type RefObject }
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
+import { RuntimeStatus } from '../../components/chrome/RuntimeStatus'
 import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
@@ -117,6 +118,7 @@ export function SensoryShell({
         </div>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
+          <RuntimeStatus variant="editorial" />
           <button
             type="button"
             className={styles.menuBtn}
