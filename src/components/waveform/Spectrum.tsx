@@ -400,7 +400,8 @@ export function Spectrum({ active }: Props) {
   if (!active) return null
   return (
     <div className={styles.wrap}>
-      <div className={styles.chrome}>
+      <div className={styles.stage}>
+      <div className={styles.chrome} style={{ top: SPECTRUM_PLOT_PAD.top }}>
         <div className={styles.chromeLeft}>
           <label className={styles.bands}>
             Layer
@@ -516,7 +517,6 @@ export function Spectrum({ active }: Props) {
           </button>
         </div>
       </div>
-      <div className={styles.stage}>
         {prefs.legendOpen ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (

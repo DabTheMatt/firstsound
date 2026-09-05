@@ -155,23 +155,27 @@
   gap: 1px;
   line-height: 1.15;
   width: 100%;
-  padding-right: 22px;
+  padding-right: 8px;
 }
 
 .connectTile {
-  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   min-width: 7.5em;
   overflow: hidden;
   border-radius: 999px;
 }
 
 .plug {
-  position: absolute;
-  top: 0;
-  right: 5px;
-  bottom: 0;
-  width: 16px;
-  height: auto;
+  flex: none;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: 20px;
+  height: 100%;
+  min-height: 22px;
   margin: 0;
   padding: 0;
   display: grid;
@@ -198,5 +202,4 @@
 
 .plug svg {
   display: block;
-  transform: translateY(2px);
 }
