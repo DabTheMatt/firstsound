@@ -10,12 +10,14 @@
 .chrome {
   flex: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 2px 4px 0;
+  padding: 4px 6px 6px;
   z-index: 2;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .chromeLeft,
@@ -101,7 +103,7 @@
 
 .legendDock {
   position: absolute;
-  top: 6px;
+  top: 22px;
   right: 8px;
   z-index: 3;
   display: flex;

@@ -59,7 +59,7 @@ type Layer = 'pre' | 'post' | 'both'
 const SPECTRUM_PREF_KEY = 'field.spectrum'
 
 /** Matches canvas padding so EQ nodes sit on the plotted curve. */
-export const SPECTRUM_PLOT_PAD = { left: 36, right: 10, top: 18, bottom: 28 }
+export const SPECTRUM_PLOT_PAD = { left: 36, right: 10, top: 22, bottom: 28 }
 
 type SpectrumPrefs = {
   layer: Layer
