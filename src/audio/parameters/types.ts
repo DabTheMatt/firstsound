@@ -184,4 +184,5 @@ export type PresetV1 = {
   tracks?: MixTrack[]
   /** Legacy parallel mix-layer snapshots; parsed as tracks. */
   mixLayers?: unknown
+  masterMix?: number
 }

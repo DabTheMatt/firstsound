@@ -4,38 +4,43 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './TrackLanes.module.css'
 
-export function TrackLanes() {
+export function TrackLanes({ variant = 'mixer' }: { variant?: 'mixer' | 'editor' }) {
   const snap = useEngine()
   const tracks = snap.tracks
   const selectedId = snap.selectedTrackId
-  const duration = snap.duration
+  const editor = variant === 'editor'
 
   return (
-    <div className={styles.lanes} aria-label="Tracks">
+    <div className={`${styles.lanes} ${editor ? styles.lanesEditor : ''}`} aria-label="Tracks">
       <header className={styles.head}>
-        <h2 className={styles.title}>Tracks</h2>
-        <p className={styles.lead}>Click a lane to select it. The mixer strip follows.</p>
+        <h2 className={styles.title}>{editor ? 'Multi-track' : 'Tracks'}</h2>
+        <p className={styles.lead}>
+          {editor
+            ? 'Each lane is its own sample. Click a lane to edit that track.'
+            : 'Click a lane to select it. The mixer strip follows.'}
+        </p>
       </header>
       <div className={styles.list}>
         {tracks.map((track) => (
           <button
             key={track.id}
             type="button"
-            className={`${styles.lane} ${track.id === selectedId ? styles.laneOn : ''} ${track.muted ? styles.laneMuted : ''}`}
+            className={`${styles.lane} ${editor ? styles.laneTall : ''} ${track.id === selectedId ? styles.laneOn : ''} ${track.muted ? styles.laneMuted : ''}`}
             aria-pressed={track.id === selectedId}
             onClick={() => engine.selectTrack(track.id)}
           >
             <span className={styles.meta}>
               <span className={styles.name}>{track.name}</span>
+              <span className={styles.file}>{track.fileName ?? 'No sample'}</span>
               <span className={styles.flags}>
                 {track.muted ? 'M' : ''}
                 {track.solo ? 'S' : ''}
               </span>
             </span>
             <LaneWave
+              trackId={track.id}
               start={track.start}
               end={track.end}
-              duration={duration}
               selected={track.id === selectedId}
               contentRev={snap.bufferRev}
             />
@@ -47,15 +52,15 @@ export function TrackLanes() {
 }
 
 function LaneWave({
+  trackId,
   start,
   end,
-  duration,
   selected,
   contentRev,
 }: {
+  trackId: string
   start: number
   end: number
-  duration: number
   selected: boolean
   contentRev: number
 }) {
@@ -65,7 +70,8 @@ function LaneWave({
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
-      const buffer = engine.getBuffer()
+      const buffer = engine.getTrackBuffer(trackId)
+      const duration = buffer?.duration ?? 0
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -112,7 +118,7 @@ function LaneWave({
       unsub()
       ro.disconnect()
     }
-  }, [start, end, duration, selected, contentRev])
+  }, [trackId, start, end, selected, contentRev])
 
   return <canvas ref={canvasRef} className={styles.wave} aria-hidden />
 }

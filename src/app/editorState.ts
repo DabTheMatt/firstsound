@@ -2,7 +2,7 @@ import type { FadeCurve } from '../audio/engine/fades'
 import type { ModuleType } from '../audio/chain/chain'
 
 export type WaveTool = 'select'
-export type VizMode = 'waveform' | 'spectrum' | 'split' | 'eq-split' | 'mix-split'
+export type VizMode = 'waveform' | 'waveform-multi' | 'spectrum' | 'split' | 'eq-split' | 'mix-split'
 export type MeterRange = 'normal' | 'field' | 'full'
 export type MeterMode = 'peak'
 export type InspectorFocus =

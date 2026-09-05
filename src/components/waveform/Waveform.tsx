@@ -694,6 +694,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
   const showWave = viz === 'waveform' || viz === 'split'
+  const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
   const showMixConsole = viz === 'mix-split'
@@ -707,6 +708,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           hidden={!showWave}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
+          {!sensory && snap.tracks.length > 0 ? (
+            <div className={styles.trackTabs} role="tablist" aria-label="Tracks">
+              {snap.tracks.map((track) => {
+                const on = track.id === snap.selectedTrackId
+                return (
+                  <button
+                    key={track.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    className={`${styles.trackTab} ${on ? styles.trackTabOn : ''}`}
+                    onClick={() => engine.selectTrack(track.id)}
+                  >
+                    <span>{track.name}</span>
+                    {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
           <div className={styles.wavePane}>
             <canvas ref={canvasRef} className={styles.canvas} />
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
@@ -846,6 +867,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           ) : null}
         </div>
+        {showMultiWave ? (
+          <div className={styles.multiWave}>
+            <TrackLanes variant="editor" />
+          </div>
+        ) : null}
         {viz === 'split' && showWave && showSpec ? (
           <button
             type="button"
