@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   SPECTRUM_BAND_COUNT,
   bandPeakDb,
+  capBandByExpected,
+  capBandsByEqGain,
   clampSpectrumBandCount,
   clampSpectrumFollowMode,
+  fftDbAtHz,
+  fftFirstBinHz,
   fftPeakDbInHzRange,
   followEnvelope,
   logBandEdgesHz,
@@ -33,6 +37,40 @@ describe('bandPeakDb', () => {
     const peakBand = [...bands].indexOf(Math.max(...bands))
     expect(bands[peakBand]).toBeCloseTo(-12)
     expect(bands.filter((d) => d > -80).length).toBeLessThan(4)
+  })
+
+  it('does not smear one low FFT bin across the sub-bass log bands', () => {
+    const bins = new Float32Array(2048)
+    bins.fill(-90)
+    bins[1] = -40
+    const bands = bandPeakDb(bins, 44100, 256, 10)
+    const hot = bands.filter((d) => d > -50)
+    expect(hot.length).toBeLessThan(3)
+    expect(bands[0]).toBeLessThan(-80)
+  })
+})
+
+describe('fftDbAtHz', () => {
+  it('returns the floor below the first bin', () => {
+    const bins = new Float32Array(512)
+    bins.fill(-30)
+    expect(fftFirstBinHz(44100, 512)).toBeCloseTo(44100 / 1024)
+    expect(fftDbAtHz(bins, 44100, 5)).toBe(-100)
+  })
+})
+
+describe('capBandByExpected', () => {
+  it('hides FFT leakage below a steep high-pass', () => {
+    expect(capBandByExpected(-40, -10 + -90)).toBe(-100)
+    expect(capBandByExpected(-12, -12 + 0)).toBe(-12)
+    expect(capBandByExpected(-20, -30 + 6)).toBe(-24)
+  })
+
+  it('caps a post band array in place', () => {
+    const post = new Float32Array([-40, -12])
+    capBandsByEqGain(post, [-8, -12], [-80, 0])
+    expect(post[0]).toBe(-88)
+    expect(post[1]).toBe(-12)
   })
 })
 
