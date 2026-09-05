@@ -33,6 +33,8 @@ export const FAST_RELEASE = 0.28
 export const SLOW_ATTACK = 0.07
 export const SLOW_RELEASE = 0.045
 
+export const SPECTRUM_FLOOR_DB = -100
+
 export function logBandEdgesHz(minHz: number, maxHz: number, bandCount: number = SPECTRUM_BAND_COUNT): Float32Array {
   const n = Math.max(1, bandCount)
   const lo = Math.max(1, minHz)
@@ -45,6 +47,32 @@ export function logBandEdgesHz(minHz: number, maxHz: number, bandCount: number =
   return edges
 }
 
+/** First non-DC bin frequency. Energy below this is not resolved by the FFT. */
+export function fftFirstBinHz(sampleRate: number, binCount: number): number {
+  if (!(sampleRate > 0) || binCount < 2) return Infinity
+  return sampleRate / (binCount * 2)
+}
+
+/** Linear interpolation between FFT bins at `hz`. Below bin 1 → floor. */
+export function fftDbAtHz(
+  binsDb: ArrayLike<number>,
+  sampleRate: number,
+  hz: number,
+  floorDb = SPECTRUM_FLOOR_DB,
+): number {
+  const n = binsDb.length
+  if (n < 2 || !(sampleRate > 0) || !(hz > 0)) return floorDb
+  const fftSize = n * 2
+  const pos = (hz * fftSize) / sampleRate
+  if (pos < 1) return floorDb
+  if (pos >= n - 1) return binsDb[n - 1] ?? floorDb
+  const i0 = Math.floor(pos)
+  const frac = pos - i0
+  const a = binsDb[i0] ?? floorDb
+  const b = binsDb[i0 + 1] ?? floorDb
+  return a + (b - a) * frac
+}
+
 /** Peak dB in each log band. `binsDb` is AnalyserNode.getFloatFrequencyData. */
 export function bandPeakDb(
   binsDb: ArrayLike<number>,
@@ -54,24 +82,63 @@ export function bandPeakDb(
 ): Float32Array {
   const n = binsDb.length
   const out = new Float32Array(bandCount)
-  out.fill(-100)
+  out.fill(SPECTRUM_FLOOR_DB)
   if (n < 2 || !(sampleRate > 0)) return out
   const fftSize = n * 2
   const nyquist = sampleRate / 2
+  const firstHz = fftFirstBinHz(sampleRate, n)
   const edges = logBandEdgesHz(minHz, nyquist, bandCount)
   for (let b = 0; b < bandCount; b++) {
     const loHz = edges[b] ?? minHz
     const hiHz = edges[b + 1] ?? nyquist
-    const i0 = Math.max(1, Math.floor((loHz * fftSize) / sampleRate))
-    const i1 = Math.min(n - 1, Math.ceil((hiHz * fftSize) / sampleRate))
-    let peak = -100
-    for (let i = i0; i <= i1; i++) {
-      const db = binsDb[i] ?? -100
-      if (db > peak) peak = db
+    const center = Math.sqrt(Math.max(1, loHz) * Math.max(loHz, hiHz))
+    if (hiHz <= firstHz || center < firstHz) {
+      out[b] = SPECTRUM_FLOOR_DB
+      continue
     }
-    out[b] = peak
+    // Only bins whose center frequency sits inside the band — avoids painting
+    // one coarse LF bin across a wide log-frequency plateau (10–25 Hz shelf).
+    const i0 = Math.max(1, Math.ceil((loHz * fftSize) / sampleRate))
+    const i1 = Math.min(n - 1, Math.floor((hiHz * fftSize) / sampleRate - 1e-9))
+    if (i1 >= i0) {
+      let peak = SPECTRUM_FLOOR_DB
+      for (let i = i0; i <= i1; i++) {
+        const db = binsDb[i] ?? SPECTRUM_FLOOR_DB
+        if (db > peak) peak = db
+      }
+      out[b] = peak
+    } else {
+      out[b] = SPECTRUM_FLOOR_DB
+    }
   }
   return out
+}
+
+/** Keep measured post-EQ FFT from exceeding pre + filter gain (kills LF leakage). */
+export function capBandByExpected(
+  measuredDb: number,
+  expectedDb: number,
+  floorDb = SPECTRUM_FLOOR_DB,
+): number {
+  const measured = Number.isFinite(measuredDb) ? measuredDb : floorDb
+  const expected = Number.isFinite(expectedDb) ? expectedDb : measured
+  return Math.max(floorDb, Math.min(measured, expected))
+}
+
+export function capBandsByEqGain(
+  measured: Float32Array,
+  pre: ArrayLike<number>,
+  eqGainDb: ArrayLike<number>,
+  floorDb = SPECTRUM_FLOOR_DB,
+): void {
+  const n = measured.length
+  for (let i = 0; i < n; i++) {
+    measured[i] = capBandByExpected(
+      measured[i] ?? floorDb,
+      (pre[i] ?? floorDb) + (eqGainDb[i] ?? 0),
+      floorDb,
+    )
+  }
 }
 
 /** Peak FFT bin dB between two frequencies (AnalyserNode.getFloatFrequencyData). */
