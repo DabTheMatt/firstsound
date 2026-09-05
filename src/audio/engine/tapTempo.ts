@@ -19,7 +19,7 @@ export function addTap(
   gapResetSec = TAP_GAP_RESET_SEC,
 ): { state: TapTempoState; bpm: number | null } {
   const last = state.times[state.times.length - 1]
-  if (last !== undefined && nowSec - last < 0.08) {
+  if (last !== undefined && nowSec - last < 0.12) {
     return { state, bpm: bpmFromTaps(state.times) }
   }
   const times =

@@ -1039,11 +1039,8 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
           type="button"
           className={styles.ghost}
           disabled={!snap.sampleLoaded}
-          onPointerDown={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            engine.tapSampleTempo()
-          }}
+          onPointerDown={() => engine.tapSampleTempo()}
+          onClick={() => engine.tapSampleTempo()}
         >
           Tap tempo
         </button>

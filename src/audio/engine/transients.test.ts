@@ -71,7 +71,7 @@ describe('tapTempo', () => {
 
   it('ignores a double-click bounce', () => {
     const first = addTap(emptyTapTempo(), 1)
-    const bounce = addTap(first.state, 1.02)
+    const bounce = addTap(first.state, 1.1)
     expect(bounce.state.times).toEqual([1])
   })
 })
