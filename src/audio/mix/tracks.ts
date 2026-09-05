@@ -10,6 +10,7 @@ export type MixTrack = {
   solo: boolean
   start: number
   end: number
+  fileName: string | null
 }
 
 export function defaultTracks(start = 0, end = 0): MixTrack[] {
@@ -25,6 +26,7 @@ export function createTrack(n: number, start: number, end: number, name?: string
     solo: false,
     start,
     end,
+    fileName: null,
   }
 }
 
@@ -39,6 +41,10 @@ export function cloneTracks(tracks: readonly MixTrack[]): MixTrack[] {
 export function clampMix(value: number): number {
   if (!Number.isFinite(value)) return 100
   return Math.min(TRACK_MIX_MAX, Math.max(TRACK_MIX_MIN, value))
+}
+
+export function outputMixGain(mix: number): number {
+  return clampMix(mix) / 100
 }
 
 export function nextTrackId(tracks: readonly MixTrack[]): string {
@@ -79,6 +85,7 @@ export function addTrack(tracks: readonly MixTrack[], start: number, end: number
     solo: false,
     start,
     end,
+    fileName: null,
   })
   return next
 }
@@ -116,6 +123,8 @@ export function patchTrack(
     if (typeof patch.solo === 'boolean') next.solo = patch.solo
     if (typeof patch.start === 'number' && Number.isFinite(patch.start)) next.start = patch.start
     if (typeof patch.end === 'number' && Number.isFinite(patch.end)) next.end = patch.end
+    if (patch.fileName === null) next.fileName = null
+    else if (typeof patch.fileName === 'string') next.fileName = patch.fileName.slice(0, 80)
     return next
   })
 }
@@ -147,9 +156,17 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
       solo: Boolean(rec.solo),
       start: typeof rec.start === 'number' && Number.isFinite(rec.start) ? rec.start : 0,
       end: typeof rec.end === 'number' && Number.isFinite(rec.end) ? rec.end : 0,
+      fileName: typeof rec.fileName === 'string' && rec.fileName.trim() ? rec.fileName.trim().slice(0, 80) : null,
     })
   }
   return parsed.length ? parsed : null
+}
+
+/** Tracks that should sound in parallel with the selected (engine) track. */
+export function companionTrackIds(tracks: readonly MixTrack[], selectedId: string | null): string[] {
+  return tracks
+    .filter((track) => track.id !== selectedId && trackMixGain(track, tracks) > 0)
+    .map((track) => track.id)
 }
 
 export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boolean {
@@ -164,7 +181,8 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       track.muted === other.muted &&
       track.solo === other.solo &&
       track.start === other.start &&
-      track.end === other.end
+      track.end === other.end &&
+      track.fileName === other.fileName
     )
   })
 }

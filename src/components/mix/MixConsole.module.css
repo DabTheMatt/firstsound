@@ -86,6 +86,43 @@
   border-right: 0;
 }
 
+.stripMaster {
+  margin-left: 6px;
+  border-left: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-control) 55%, transparent);
+}
+
+.sampleName,
+.masterHint {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.masterHint {
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.masterName {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.sampleRow {
+  display: flex;
+  justify-content: center;
+}
+
 .stripOff {
   opacity: 0.5;
 }

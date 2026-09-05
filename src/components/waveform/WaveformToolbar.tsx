@@ -90,13 +90,23 @@ export function WaveformToolbar({
           </IconButton>
         ) : null}
         <IconButton
-          label="Waveform"
+          label="Single-track waveform"
           caption="Wave"
           pressed={viz === 'waveform'}
           onClick={() => onViz('waveform')}
         >
           <WaveIcon />
         </IconButton>
+        {!minimal ? (
+          <IconButton
+            label="Multi-track waveform"
+            caption="Multi"
+            pressed={viz === 'waveform-multi'}
+            onClick={() => onViz('waveform-multi')}
+          >
+            <MultiWaveIcon />
+          </IconButton>
+        ) : null}
         <IconButton
           label="Spectrum"
           caption="FFT"
@@ -250,6 +260,16 @@ function WaveIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <path d="M1 9c2-6 3 6 5 0s3 6 5 0 3 6 6 0" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function MultiWaveIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M2 5c1.5-3 2.2 3 3.6 0s2.2 3 3.6 0" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 9c1.5-3 2.2 3 3.6 0s2.2 3 3.6 0" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 13c1.5-3 2.2 3 3.6 0s2.2 3 3.6 0" fill="none" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   )
 }

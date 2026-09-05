@@ -36,6 +36,23 @@
   min-height: 0;
 }
 
+.lanesEditor .laneTall {
+  min-height: 88px;
+}
+
+.lanesEditor .wave {
+  height: 76px;
+}
+
+.file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
 .lane {
   display: grid;
   grid-template-columns: 88px 1fr;

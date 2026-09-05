@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   addTrack,
+  companionTrackIds,
   defaultTracks,
   duplicateTrack,
   MAX_TRACKS,
+  outputMixGain,
   parseTracks,
   patchTrack,
   removeTrack,
@@ -77,5 +79,27 @@ describe('mix tracks', () => {
   it('rejects a malformed desk', () => {
     expect(parseTracks([{ name: 'x' }])).toBeNull()
     expect(parseTracks([])).toBeNull()
+  })
+
+  it('maps the output strip to a linear gain', () => {
+    expect(outputMixGain(100)).toBe(1)
+    expect(outputMixGain(50)).toBe(0.5)
+    expect(outputMixGain(150)).toBe(1.5)
+    expect(outputMixGain(Number.NaN)).toBe(1)
+  })
+
+  it('lists audible companions besides the selected track', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([tracks[1]!.id])
+    tracks = patchTrack(tracks, tracks[0]!.id, { muted: true })
+    expect(companionTrackIds(tracks, tracks[1]!.id)).toEqual([])
+    tracks = patchTrack(tracks, tracks[0]!.id, { muted: false, solo: true })
+    expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([])
+  })
+
+  it('keeps a sample name on a saved desk', () => {
+    const tracks = patchTrack(defaultTracks(), 'track-1', { fileName: 'kick.wav' })
+    const parsed = parseTracks(JSON.parse(JSON.stringify(tracks)))
+    expect(parsed?.[0]?.fileName).toBe('kick.wav')
   })
 })
