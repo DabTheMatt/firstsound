@@ -6,6 +6,11 @@ describe('mountainLayerSpecs', () => {
     expect(mountainLayerSpecs(0.4, 0).length).toBe(4)
     expect(mountainLayerSpecs(0.4, 0.5).length).toBe(5)
   })
+
+  it('adds distant ridges as space opens', () => {
+    expect(mountainLayerSpecs(0.4, 0, 0.3).length).toBe(5)
+    expect(mountainLayerSpecs(0.4, 0, 0.7).length).toBe(6)
+  })
 })
 
 describe('blurEnvelope', () => {

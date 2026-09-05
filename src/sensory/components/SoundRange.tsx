@@ -55,23 +55,25 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
       const play = readThemeColors().playhead || rgbCss(ink, 1)
       if (buffer && duration > 0) {
         const data = buffer.getChannelData(0)
-        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.motion.toFixed(2)}`
+        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.motion.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
             ? computeMinMaxCached(data, mips, 0, data.length, width)
             : computeMinMax(data, 0, data.length, width)
           const abs = absEnvelope(min, max)
-          const specs = mountainLayerSpecs(visual.mass, visual.motion)
+          const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
+          const dirtBlur = 1 - visual.dirt * 0.72
           cache = {
             key,
-            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr)),
+            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr * dirtBlur)),
           }
         }
-        const specs = mountainLayerSpecs(visual.mass, visual.motion)
+        const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
         const base = height * (0.58 + visual.depth * 0.08)
-        const amp = height * (0.42 + visual.mass * 0.12)
+        const amp = height * (0.42 + visual.mass * 0.12) * (1 - visual.tight * 0.42)
         const sway = reduced ? 0 : visual.motion * 10 * dpr * Math.sin(performance.now() / 1400)
+        const grit = visual.dirt
         specs.forEach((spec, li) => {
           const env = cache?.layers[li]
           if (!env) return
@@ -79,14 +81,16 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
           ctx.beginPath()
           ctx.moveTo(0, height)
           for (let x = 0; x < width; x++) {
-            const h = (env[x] ?? 0) * amp * spec.scale
+            const jag = grit > 0.05 ? Math.sin(x * 0.37 + li) * grit * amp * 0.035 : 0
+            const h = (env[x] ?? 0) * amp * spec.scale + jag
             const y = base + drop - h + sway * (li + 1) * 0.15
             ctx.lineTo(x, y)
           }
           ctx.lineTo(width, height)
           ctx.closePath()
           const echoShift = visual.echo * 22 * dpr * (li % 2 === 0 ? 1 : -1)
-          ctx.fillStyle = rgbCss(ink, spec.alpha * (0.65 + visual.glow * 0.5))
+          const open = Math.max(0, visual.character)
+          ctx.fillStyle = rgbCss(ink, spec.alpha * (0.65 + visual.glow * 0.5 + open * 0.08))
           ctx.fill()
           if (visual.echo > 0.1) {
             ctx.beginPath()
@@ -102,6 +106,20 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
             ctx.fill()
           }
         })
+        if (visual.grain > 0.08) {
+          const n = Math.floor(10 + visual.grain * 48)
+          ctx.fillStyle = rgbCss(ink, 0.18 + visual.grain * 0.35)
+          for (let i = 0; i < n; i++) {
+            const seed = (i * 127.1 + visual.grain * 13) % 1
+            const x = (Math.sin(i * 12.9898) * 43758.5453) % 1
+            const px = Math.abs(x) * width
+            const env = cache?.layers[0]
+            const xi = Math.min(width - 1, Math.max(0, Math.round(px)))
+            const peak = env?.[xi] ?? 0.2
+            const py = base - peak * amp * (0.3 + seed * 0.7) - (i % 7) * visual.grain * 6
+            ctx.fillRect(px, py, Math.max(1, dpr), Math.max(1, dpr))
+          }
+        }
         const now = engine.getPlayheadSeconds()
         const frac = duration > 0 ? Math.min(1, Math.max(0, now / duration)) : 0
         const px = frac * (width - 1)

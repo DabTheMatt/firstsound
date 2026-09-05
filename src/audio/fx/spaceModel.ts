@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { safeFeedbackGain } from './dryWet'
+import { delayLoopGain } from './delayLoop'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
@@ -44,7 +44,7 @@ export function delayTaps(
 ): DelayTap[] {
   const mix = Math.max(params.delayWet / 100, 0.18)
   const time = Math.max(0.001, delayTimeSeconds(params, bpm))
-  const fb = safeFeedbackGain(params.delayFeedback)
+  const fb = delayLoopGain(params.delayFeedback, type)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100
   const ping = type === 'pingPong'
   const stereo = type === 'stereo' || ping
@@ -106,7 +106,7 @@ export function delayTaps(
         channel: 'C',
       })
     }
-    const decay = freeze ? 0.96 : Math.min(0.98, fb * (type === 'diffuse' ? 0.92 : 0.88))
+    const decay = freeze ? 0.96 : fb * (type === 'diffuse' ? 0.9 : 1)
     gain *= decay
     if (gain < 0.012 && !freeze) break
   }

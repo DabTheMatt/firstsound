@@ -5,16 +5,18 @@ export type MountainLayerSpec = {
   drop: number
 }
 
-export function mountainLayerSpecs(mass: number, motion: number): readonly MountainLayerSpec[] {
+export function mountainLayerSpecs(mass: number, motion: number, space = 0): readonly MountainLayerSpec[] {
   const m = Math.min(1, Math.max(0, mass))
-  const extra = motion > 0.28
+  const far = motion > 0.28 || space > 0.22
+  const vast = space > 0.55
   const layers: MountainLayerSpec[] = [
     { scale: 0.9 + m * 0.14, blur: 1, alpha: 0.28, drop: 0 },
-    { scale: 0.68 + m * 0.08, blur: 7, alpha: 0.18, drop: 0.07 },
-    { scale: 0.46, blur: 16, alpha: 0.12, drop: 0.14 },
-    { scale: 0.28, blur: 26, alpha: 0.08, drop: 0.2 },
+    { scale: 0.68 + m * 0.08, blur: 7 + space * 6, alpha: 0.18, drop: 0.07 },
+    { scale: 0.46, blur: 16 + space * 10, alpha: 0.12 + space * 0.04, drop: 0.14 + space * 0.04 },
+    { scale: 0.28, blur: 26 + space * 12, alpha: 0.08 + space * 0.05, drop: 0.2 + space * 0.05 },
   ]
-  if (extra) layers.push({ scale: 0.18, blur: 34, alpha: 0.05, drop: 0.26 })
+  if (far) layers.push({ scale: 0.18, blur: 34 + space * 10, alpha: 0.05 + space * 0.04, drop: 0.26 + space * 0.06 })
+  if (vast) layers.push({ scale: 0.12, blur: 44, alpha: 0.04, drop: 0.32 })
   return layers
 }
 

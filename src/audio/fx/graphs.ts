@@ -1,5 +1,14 @@
 import type { ParamId } from '../parameters/types'
-import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import {
+  delayFeedbackGains,
+  delayFlutterSeconds,
+  delayInputTapGains,
+  delayLoopFilters,
+  delayLoopGain,
+  delayModSeconds,
+  delayWowSeconds,
+} from './delayLoop'
+import { equalPowerDryWet, makeAbsCurve, sideGainFromWidth } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayTimeSeconds } from './spaceModel'
 import { syncedDelayMs } from './sync'
@@ -19,10 +28,12 @@ export type DelayGraph = {
   fbR: GainNode
   pingToL: GainNode
   pingToR: GainNode
-  hp: BiquadFilterNode
-  lp: BiquadFilterNode
-  drive: WaveShaperNode
-  clip: WaveShaperNode
+  hpL: BiquadFilterNode
+  hpR: BiquadFilterNode
+  lpL: BiquadFilterNode
+  lpR: BiquadFilterNode
+  driveL: WaveShaperNode
+  driveR: WaveShaperNode
   duckAmt: GainNode
   pan: StereoPannerNode
   widthSide: GainNode
@@ -31,8 +42,11 @@ export type DelayGraph = {
   reverseMix: GainNode
   reverseDirect: GainNode
   allpass: BiquadFilterNode[]
+  diffDry: GainNode
+  diffWet: GainNode
   lfo: OscillatorNode
   lfoGain: GainNode
+  lfoInv: GainNode
   wow: OscillatorNode
   wowGain: GainNode
   flutter: OscillatorNode
@@ -42,7 +56,8 @@ export type DelayGraph = {
   pitchDelay: DelayNode
   pitchLfo: OscillatorNode
   pitchDepth: GainNode
-  pitchMix: GainNode
+  pitchMixL: GainNode
+  pitchMixR: GainNode
   reverseKey: string
 }
 
@@ -73,10 +88,16 @@ export type ReverbGraph = {
   shimmerDepth: GainNode
 }
 
+/** Identity when Drive is off — a tanh at 0 still aliases and hisses in a loop. */
 export function makeDriveCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 1024
   const curve = new Float32Array(new ArrayBuffer(n * 4))
-  const k = 1 + amount * 14
+  const amt = Math.min(1, Math.max(0, amount))
+  if (amt <= 0.008) {
+    for (let i = 0; i < n; i++) curve[i] = (i / (n - 1)) * 2 - 1
+    return curve
+  }
+  const k = 1 + amt * 6
   const denom = Math.tanh(k)
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1
@@ -119,6 +140,14 @@ function connectMidSide(ctx: AudioContext, source: AudioNode, destination: Audio
   return side
 }
 
+function makeLoopFilter(ctx: AudioContext, type: BiquadFilterType, frequency: number): BiquadFilterNode {
+  const f = ctx.createBiquadFilter()
+  f.type = type
+  f.frequency.value = frequency
+  f.Q.value = 0.5
+  return f
+}
+
 export function createDelayGraph(
   ctx: AudioContext,
   wet: GainNode,
@@ -126,6 +155,10 @@ export function createDelayGraph(
   dryTap: AudioNode,
 ): DelayGraph {
   const freezeIn = ctx.createGain()
+  freezeIn.channelCount = 2
+  freezeIn.channelCountMode = 'explicit'
+  freezeIn.channelInterpretation = 'speakers'
+  const split = ctx.createChannelSplitter(2)
   const merge = ctx.createChannelMerger(2)
   const delayL = ctx.createDelay(DELAY_MAX)
   const delayR = ctx.createDelay(DELAY_MAX)
@@ -133,23 +166,24 @@ export function createDelayGraph(
   const tapB = ctx.createDelay(DELAY_MAX)
   const tapAGain = ctx.createGain()
   const tapBGain = ctx.createGain()
-  const fbIn = ctx.createGain()
+  tapAGain.gain.value = 0
+  tapBGain.gain.value = 0
   const fbL = ctx.createGain()
   const fbR = ctx.createGain()
   const pingToL = ctx.createGain()
   const pingToR = ctx.createGain()
   pingToL.gain.value = 0
   pingToR.gain.value = 0
-  const hp = ctx.createBiquadFilter()
-  hp.type = 'highpass'
-  hp.frequency.value = 20
-  const lp = ctx.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 20000
-  const drive = ctx.createWaveShaper()
-  drive.curve = makeDriveCurve(0)
-  const clip = ctx.createWaveShaper()
-  clip.curve = makeDriveCurve(0.45)
+  const hpL = makeLoopFilter(ctx, 'highpass', 20)
+  const hpR = makeLoopFilter(ctx, 'highpass', 20)
+  const lpL = makeLoopFilter(ctx, 'lowpass', 12000)
+  const lpR = makeLoopFilter(ctx, 'lowpass', 12000)
+  const driveL = ctx.createWaveShaper()
+  const driveR = ctx.createWaveShaper()
+  driveL.curve = makeDriveCurve(0)
+  driveR.curve = makeDriveCurve(0)
+  driveL.oversample = '2x'
+  driveR.oversample = '2x'
   const duckAmt = ctx.createGain()
   duckAmt.gain.value = 0
   const pan = ctx.createStereoPanner()
@@ -165,14 +199,20 @@ export function createDelayGraph(
     const ap = ctx.createBiquadFilter()
     ap.type = 'allpass'
     ap.frequency.value = 600 + i * 900
-    ap.Q.value = 1
+    ap.Q.value = 0.4
     allpass.push(ap)
   }
+  const diffDry = ctx.createGain()
+  const diffWet = ctx.createGain()
+  diffDry.gain.value = 1
+  diffWet.gain.value = 0
   const lfo = ctx.createOscillator()
   lfo.type = 'sine'
   lfo.frequency.value = 0.4
   const lfoGain = ctx.createGain()
   lfoGain.gain.value = 0
+  const lfoInv = ctx.createGain()
+  lfoInv.gain.value = -1
   const wow = ctx.createOscillator()
   wow.frequency.value = 0.55
   const wowGain = ctx.createGain()
@@ -193,47 +233,61 @@ export function createDelayGraph(
   pitchLfo.frequency.value = 6
   const pitchDepth = ctx.createGain()
   pitchDepth.gain.value = 0
-  const pitchMix = ctx.createGain()
-  pitchMix.gain.value = 0
+  const pitchMixL = ctx.createGain()
+  const pitchMixR = ctx.createGain()
+  pitchMixL.gain.value = 0
+  pitchMixR.gain.value = 0
 
-  // Dry first-repeat path; HP/LP/drive/clip live only in the feedback loop.
+  // Stereo split: each DelayNode is mono, so feeding both from a stereo bus
+  // would downmix L+R twice and then sum them again in the loop.
   wet.connect(freezeIn)
-  freezeIn.connect(delayL)
-  freezeIn.connect(delayR)
+  freezeIn.connect(split)
+  split.connect(delayL, 0)
+  split.connect(delayR, 1)
+
+  // First tap is the delayed dry; loop filters only color later repeats.
   delayL.connect(merge, 0, 0)
   delayR.connect(merge, 0, 1)
-  delayL.connect(tapA)
-  delayR.connect(tapB)
-  tapA.connect(tapAGain)
-  tapB.connect(tapBGain)
-  tapAGain.connect(merge, 0, 0)
-  tapBGain.connect(merge, 0, 1)
 
-  delayL.connect(fbIn)
-  delayR.connect(fbIn)
-  fbIn.connect(hp)
-  hp.connect(lp)
-  lp.connect(drive)
-  drive.connect(clip)
-  clip.connect(fbL)
-  clip.connect(fbR)
-  clip.connect(pingToL)
-  clip.connect(pingToR)
-  clip.connect(pitchDelay)
-  pitchDelay.connect(pitchMix)
-  pitchMix.connect(fbL)
-  pitchMix.connect(fbR)
+  delayL.connect(hpL)
+  hpL.connect(lpL)
+  lpL.connect(driveL)
+  delayR.connect(hpR)
+  hpR.connect(lpR)
+  lpR.connect(driveR)
+
+  driveL.connect(fbL)
+  driveL.connect(pingToR)
+  driveR.connect(fbR)
+  driveR.connect(pingToL)
   fbL.connect(delayL)
   fbR.connect(delayR)
   pingToL.connect(delayL)
   pingToR.connect(delayR)
 
+  driveL.connect(pitchDelay)
+  pitchDelay.connect(pitchMixL)
+  pitchDelay.connect(pitchMixR)
+  pitchMixL.connect(delayL)
+  pitchMixR.connect(delayR)
+
+  // Extra taps from the input (not stacked on the delay output).
+  freezeIn.connect(tapA)
+  freezeIn.connect(tapB)
+  tapA.connect(tapAGain)
+  tapB.connect(tapBGain)
+  tapAGain.connect(merge, 0, 0)
+  tapBGain.connect(merge, 0, 1)
+
+  merge.connect(diffDry)
   let node: AudioNode = merge
   for (const ap of allpass) {
     node.connect(ap)
     node = ap
   }
-  node.connect(reverseDirect)
+  node.connect(diffWet)
+  diffDry.connect(reverseDirect)
+  diffWet.connect(reverseDirect)
   freezeIn.connect(reverse)
   reverse.connect(reverseMix)
   reverseDirect.connect(pan)
@@ -256,12 +310,13 @@ export function createDelayGraph(
   duckAmt.connect(duckGain.gain)
 
   lfo.connect(lfoGain)
+  lfoGain.connect(lfoInv)
   wow.connect(wowGain)
   flutter.connect(flutterGain)
   drift.connect(driftGain)
   pitchLfo.connect(pitchDepth)
   lfoGain.connect(delayL.delayTime)
-  lfoGain.connect(delayR.delayTime)
+  lfoInv.connect(delayR.delayTime)
   wowGain.connect(delayL.delayTime)
   wowGain.connect(delayR.delayTime)
   flutterGain.connect(delayL.delayTime)
@@ -291,10 +346,12 @@ export function createDelayGraph(
     fbR,
     pingToL,
     pingToR,
-    hp,
-    lp,
-    drive,
-    clip,
+    hpL,
+    hpR,
+    lpL,
+    lpR,
+    driveL,
+    driveR,
     duckAmt,
     pan,
     widthSide,
@@ -303,8 +360,11 @@ export function createDelayGraph(
     reverseMix,
     reverseDirect,
     allpass,
+    diffDry,
+    diffWet,
     lfo,
     lfoGain,
+    lfoInv,
     wow,
     wowGain,
     flutter,
@@ -314,7 +374,8 @@ export function createDelayGraph(
     pitchDelay,
     pitchLfo,
     pitchDepth,
-    pitchMix,
+    pitchMixL,
+    pitchMixR,
     reverseKey: '',
   }
 }
@@ -330,61 +391,55 @@ export function applyDelayGraph(
 ): void {
   const time = delayTimeSeconds(params, bpm)
   const offset = (params.delayOffset / 100) * time * 0.85
-  const pitchRatio = 2 ** (params.delayPitch / 12)
   const tL = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, time - offset))
-  const tR = Math.min(
-    DELAY_MAX - 0.05,
-    Math.max(0.0008, time + offset) * (type === 'pitch' || Math.abs(params.delayPitch) > 0.05 ? pitchRatio : 1),
-  )
+  const tR = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, time + offset))
   g.delayL.delayTime.setTargetAtTime(tL, now, smoothing)
   g.delayR.delayTime.setTargetAtTime(tR, now, smoothing)
-  const multi = type === 'multiTap' || type === 'diffuse'
-  g.tapA.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.33), now, smoothing)
-  g.tapB.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.67), now, smoothing)
-  g.tapAGain.gain.setTargetAtTime(multi ? 0.35 : 0, now, smoothing)
-  g.tapBGain.gain.setTargetAtTime(multi ? 0.22 : 0, now, smoothing)
+  g.tapA.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.5), now, smoothing)
+  g.tapB.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.75), now, smoothing)
+  const taps = delayInputTapGains(type)
+  g.tapAGain.gain.setTargetAtTime(taps.tapA, now, smoothing)
+  g.tapBGain.gain.setTargetAtTime(taps.tapB, now, smoothing)
 
   const freeze = params.delayFreeze > 0.5
   g.freezeIn.gain.setTargetAtTime(freeze ? 0.0001 : 1, now, smoothing)
-  let fb = freeze ? 0.97 : safeFeedbackGain(params.delayFeedback)
-  if (type === 'digital') fb *= 0.98
-  const ping = type === 'pingPong'
-  g.fbL.gain.setTargetAtTime(ping ? 0 : fb, now, smoothing)
-  g.fbR.gain.setTargetAtTime(ping ? 0 : fb, now, smoothing)
-  g.pingToL.gain.setTargetAtTime(ping ? fb : 0, now, smoothing)
-  g.pingToR.gain.setTargetAtTime(ping ? fb : 0, now, smoothing)
+  const fb = delayFeedbackGains(params.delayFeedback, type, freeze, params.delayPitch)
+  g.fbL.gain.setTargetAtTime(fb.fbL, now, smoothing)
+  g.fbR.gain.setTargetAtTime(fb.fbR, now, smoothing)
+  g.pingToL.gain.setTargetAtTime(fb.pingToL, now, smoothing)
+  g.pingToR.gain.setTargetAtTime(fb.pingToR, now, smoothing)
+  g.pitchMixL.gain.setTargetAtTime(type === 'pingPong' ? 0 : fb.pitchMix, now, smoothing)
+  g.pitchMixR.gain.setTargetAtTime(type === 'pingPong' ? fb.pitchMix : 0, now, smoothing)
 
-  const analog = type === 'analog' || type === 'tape' || type === 'lofi'
-  const hp = analog ? Math.max(params.delayHp, type === 'lofi' ? 180 : 80) : params.delayHp
-  const lp = analog
-    ? Math.min(params.delayLp, type === 'tape' ? 6500 : type === 'lofi' ? 3400 : 4800)
-    : params.delayLp
-  g.hp.frequency.setTargetAtTime(hp, now, smoothing)
-  g.lp.frequency.setTargetAtTime(lp, now, smoothing)
-  const driveAmt =
-    (params.delayDrive / 100) * 0.8 + (type === 'tape' ? 0.22 : type === 'analog' ? 0.12 : type === 'lofi' ? 0.35 : 0)
-  g.drive.curve = makeDriveCurve(driveAmt)
+  const loop = delayLoopFilters(params.delayHp, params.delayLp, params.delayFeedback, type)
+  g.hpL.frequency.setTargetAtTime(loop.hp, now, smoothing)
+  g.hpR.frequency.setTargetAtTime(loop.hp, now, smoothing)
+  g.lpL.frequency.setTargetAtTime(loop.lp, now, smoothing)
+  g.lpR.frequency.setTargetAtTime(loop.lp, now, smoothing)
+  g.hpL.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.hpR.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.lpL.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.lpR.Q.setTargetAtTime(loop.q, now, smoothing)
+  const curve = makeDriveCurve(params.delayDrive / 100)
+  g.driveL.curve = curve
+  g.driveR.curve = curve
 
   g.lfo.frequency.setTargetAtTime(params.delayModRate, now, smoothing)
-  g.lfoGain.gain.setTargetAtTime((params.delayModDepth / 100) * time * 0.12, now, smoothing)
-  const wow = params.delayWow / 100 + (type === 'tape' ? 0.18 : 0)
-  const flutter = params.delayFlutter / 100 + (type === 'tape' ? 0.12 : 0)
-  g.wowGain.gain.setTargetAtTime(wow * time * 0.04, now, smoothing)
-  g.flutterGain.gain.setTargetAtTime(flutter * time * 0.012, now, smoothing)
-  g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.06, now, smoothing)
+  g.lfoGain.gain.setTargetAtTime(delayModSeconds(time, params.delayModDepth / 100), now, smoothing)
+  g.wowGain.gain.setTargetAtTime(delayWowSeconds(time, params.delayWow / 100), now, smoothing)
+  g.flutterGain.gain.setTargetAtTime(delayFlutterSeconds(time, params.delayFlutter / 100), now, smoothing)
+  g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.01, now, smoothing)
 
   g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.delayPan / 100)), now, smoothing)
   g.widthSide.gain.setTargetAtTime(sideGainFromWidth(params.delayWidth), now, smoothing)
   g.duckAmt.gain.setTargetAtTime(-(params.delayDuck / 100) * 0.92, now, smoothing)
-  const pitchAmt = type === 'pitch' ? Math.max(Math.abs(params.delayPitch) / 48, 0.25) : Math.abs(params.delayPitch) / 48
-  g.pitchMix.gain.setTargetAtTime(Math.min(0.85, pitchAmt), now, smoothing)
   g.pitchLfo.frequency.setTargetAtTime(3 + Math.abs(params.delayPitch) * 0.35, now, smoothing)
-  g.pitchDepth.gain.setTargetAtTime(params.delayPitch === 0 && type !== 'pitch' ? 0 : 0.012, now, smoothing)
+  g.pitchDepth.gain.setTargetAtTime(fb.pitchMix > 0.001 ? 0.01 : 0, now, smoothing)
 
   g.out.gain.setTargetAtTime(1, now, smoothing)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.7) : params.delayReverse / 100
-  g.reverseMix.gain.setTargetAtTime(reverseAmt * 0.85, now, smoothing)
-  g.reverseDirect.gain.setTargetAtTime(1 - reverseAmt * 0.7, now, smoothing)
+  g.reverseMix.gain.setTargetAtTime(reverseAmt * 0.55, now, smoothing)
+  g.reverseDirect.gain.setTargetAtTime(1 - reverseAmt * 0.45, now, smoothing)
   if (reverseAmt > 0.05) {
     const key = `${time.toFixed(3)}:${params.delayFeedback.toFixed(0)}`
     if (g.reverseKey !== key) {
@@ -394,9 +449,11 @@ export function applyDelayGraph(
     }
   }
 
-  const diff = (type === 'diffuse' ? 0.55 : 0) + params.delayDiffusion / 100
+  const diff = Math.min(1, (type === 'diffuse' ? 0.4 : 0) + params.delayDiffusion / 100)
+  g.diffWet.gain.setTargetAtTime(diff * 0.55, now, smoothing)
+  g.diffDry.gain.setTargetAtTime(1 - diff * 0.25, now, smoothing)
   for (let i = 0; i < g.allpass.length; i++) {
-    g.allpass[i]!.Q.setTargetAtTime(0.4 + diff * 4, now, smoothing)
+    g.allpass[i]!.Q.setTargetAtTime(0.3 + diff * 2.2, now, smoothing)
     g.allpass[i]!.frequency.setTargetAtTime(400 + i * 700 + diff * 800, now, smoothing)
   }
 }
@@ -407,7 +464,7 @@ function buildDelayReverseIr(ctx: AudioContext, time: number, feedbackPct: numbe
   const seconds = Math.min(4, Math.max(0.2, time * taps * 0.7))
   const n = Math.floor(sr * seconds)
   const buf = ctx.createBuffer(2, n, sr)
-  const fb = safeFeedbackGain(feedbackPct)
+  const fb = delayLoopGain(feedbackPct)
   for (let ch = 0; ch < 2; ch++) {
     const data = buf.getChannelData(ch)
     for (let t = 1; t <= taps; t++) {
@@ -689,7 +746,9 @@ export function silenceDelayGraph(g: DelayGraph, now: number): void {
   instantGain(g.tapAGain.gain, now)
   instantGain(g.tapBGain.gain, now)
   instantGain(g.reverseMix.gain, now)
-  instantGain(g.pitchMix.gain, now)
+  instantGain(g.pitchMixL.gain, now)
+  instantGain(g.pitchMixR.gain, now)
+  instantGain(g.diffWet.gain, now)
   instantGain(g.freezeIn.gain, now)
   instantGain(g.out.gain, now)
 }

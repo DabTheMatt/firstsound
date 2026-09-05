@@ -86,6 +86,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
 import {
@@ -709,6 +710,12 @@ export class AudioEngine {
   setDelayType(type: DelayType): void {
     if (this.delayType === type) return
     this.delayType = type
+    const color = delayTypeColorPatch(type)
+    for (const key of Object.keys(color) as ParamId[]) {
+      const value = color[key]
+      if (typeof value !== 'number') continue
+      this.params[key] = applyParamValue(value, PARAMS[key])
+    }
     this.applyLiveAudio()
     this.emit()
   }
