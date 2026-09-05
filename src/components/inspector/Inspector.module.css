@@ -125,6 +125,7 @@
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .connectTile .connectBtn {
@@ -134,8 +135,8 @@
 
 .plug {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  top: 50%;
+  right: 4px;
   width: 16px;
   height: 16px;
   margin: 0;
@@ -147,6 +148,7 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transform: translateY(-50%);
 }
 
 .plugOn {

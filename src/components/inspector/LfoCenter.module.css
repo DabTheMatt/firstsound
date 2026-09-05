@@ -161,12 +161,14 @@
 .connectTile {
   position: relative;
   min-width: 7.5em;
+  overflow: hidden;
+  border-radius: 999px;
 }
 
 .plug {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  top: 50%;
+  right: 4px;
   width: 16px;
   height: 16px;
   margin: 0;
@@ -178,6 +180,7 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  transform: translateY(-50%);
 }
 
 .plugOn {
