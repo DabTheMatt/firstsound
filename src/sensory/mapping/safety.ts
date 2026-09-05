@@ -34,6 +34,10 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   cap(dsp.params, 'reverbShimmer', SENSORY_SAFETY.reverbShimmer, 0)
   cap(dsp.params, 'delayWet', SENSORY_SAFETY.delayWet, 0)
   cap(dsp.params, 'delayFeedback', SENSORY_SAFETY.delayFeedback, 0)
+  dsp.params.delayWetR = dsp.params.delayWet
+  dsp.params.delayFeedbackR = dsp.params.delayFeedback
+  cap(dsp.params, 'delayWetR', SENSORY_SAFETY.delayWet, 0)
+  cap(dsp.params, 'delayFeedbackR', SENSORY_SAFETY.delayFeedback, 0)
   cap(dsp.params, 'delayModDepth', SENSORY_SAFETY.delayModDepth, 0)
   cap(dsp.params, 'saturation', SENSORY_SAFETY.saturation, 0)
   cap(dsp.params, 'density', SENSORY_SAFETY.density)

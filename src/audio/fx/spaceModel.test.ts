@@ -52,6 +52,25 @@ describe('delay channel times', () => {
     expect(delayChannelTimeSeconds(p, 120, 'R')).toBeCloseTo(0.375, 3)
   })
 
+  it('draws independent L and R tap trains when stereo', () => {
+    const p = defaultParamValues()
+    p.delayStereo = 1
+    p.delaySync = 0
+    p.delaySyncR = 0
+    p.delayTime = 200
+    p.delayTimeR = 400
+    p.delayWet = 40
+    p.delayWetR = 20
+    p.delayFeedback = 30
+    p.delayFeedbackR = 10
+    const taps = delayTaps(p, 'digital', 120)
+    const left = taps.filter((t) => t.channel === 'L')
+    const right = taps.filter((t) => t.channel === 'R')
+    expect(left[0]?.time).toBeCloseTo(0.2, 3)
+    expect(right[0]?.time).toBeCloseTo(0.4, 3)
+    expect(right[1]!.gain).toBeLessThan(left[1]!.gain)
+  })
+
   it('uses one time for both channels in mono', () => {
     const p = defaultParamValues()
     p.delayStereo = 0

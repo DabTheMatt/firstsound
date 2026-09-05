@@ -86,6 +86,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
@@ -762,6 +763,8 @@ export class AudioEngine {
     this.params.delaySyncR = this.params.delaySync
     this.params.delayNoteR = this.params.delayNote
     this.params.delayNoteKindR = this.params.delayNoteKind
+    this.params.delayWetR = this.params.delayWet
+    this.params.delayFeedbackR = this.params.delayFeedback
   }
 
   setDelayType(type: DelayType): void {
@@ -2371,15 +2374,25 @@ export class AudioEngine {
         : this.eqListen === 'filters' && mod.type === 'eq'
           ? false
           : mod.bypassed
-      const dry = bypassed ? 1 : dryLevel(mod.type, params)
+      const stereoDelay = mod.type === 'delay' && isDelayStereo(params)
+      const dry =
+        bypassed ? 1 : stereoDelay ? 0 : dryLevel(mod.type, params)
       const wet =
         this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
           ? 0
           : bypassed
             ? 0
-            : wetLevel(mod.type, params)
+            : stereoDelay
+              ? 1
+              : wetLevel(mod.type, params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
+      if (mod.type === 'delay' && slot.delayFx && (bypassed || this.spaceLatched)) {
+        rampGainExact(slot.delayFx.chanDryL.gain, 0, now, smoothing)
+        rampGainExact(slot.delayFx.chanDryR.gain, 0, now, smoothing)
+        rampGainExact(slot.delayFx.chanWetL.gain, 1, now, smoothing)
+        rampGainExact(slot.delayFx.chanWetR.gain, 1, now, smoothing)
+      }
       if (mod.type === 'delay' || mod.type === 'reverb') {
         const out = bypassed ? 1 : wetDryFor(mod.type, params).out
         rampGainExact(slot.output.gain, out, now, smoothing)

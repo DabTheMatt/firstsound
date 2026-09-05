@@ -119,10 +119,12 @@ export const LFO_DEPTH_DEFAULT = 35
 const DELAY_TARGETS: ParamId[] = [
   'delayDry',
   'delayWet',
+  'delayWetR',
   'delayOutput',
   'delayTime',
   'delayTimeR',
   'delayFeedback',
+  'delayFeedbackR',
   'delayHp',
   'delayLp',
   'delayDrive',
