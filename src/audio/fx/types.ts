@@ -24,6 +24,7 @@ export type ReverbType =
   | 'gated'
   | 'nonlinear'
   | 'cloud'
+  | 'bloom'
   | 'infinite'
 
 export type NoteDivision = '1/64' | '1/32' | '1/16' | '1/8' | '1/4' | '1/2' | '1/1' | '2/1'
@@ -57,6 +58,7 @@ export const REVERB_TYPES: { value: ReverbType; label: string }[] = [
   { value: 'gated', label: 'Gated' },
   { value: 'nonlinear', label: 'Nonlinear' },
   { value: 'cloud', label: 'Cloud' },
+  { value: 'bloom', label: 'Bloom' },
   { value: 'infinite', label: 'Infinite' },
 ]
 

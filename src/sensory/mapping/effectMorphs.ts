@@ -1,0 +1,419 @@
+import type { EffectMorph } from './morph'
+
+/** Designed absolute stops. Rest (t≈0) leaves the captured DSP untouched. */
+export const EFFECT_MORPHS: readonly EffectMorph[] = [
+  {
+    axis: 'character',
+    module: 'eq',
+    stops: [
+      {
+        t: -1,
+        eq: [
+          { band: 0, type: 'highpass', frequency: 180, gain: 0, q: 0.75 },
+          { band: 1, type: 'peaking', frequency: 880, gain: 3.4, q: 1.35 },
+          { band: 2, type: 'peaking', frequency: 3100, gain: 2.4, q: 1.5 },
+          { band: 3, type: 'highshelf', frequency: 6400, gain: -5.4, q: 0.7 },
+        ],
+      },
+      {
+        t: -0.5,
+        eq: [
+          { band: 0, type: 'highpass', frequency: 95, gain: 0, q: 0.72 },
+          { band: 1, type: 'peaking', frequency: 720, gain: 1.8, q: 1.15 },
+          { band: 2, type: 'peaking', frequency: 2700, gain: 1.1, q: 1.2 },
+          { band: 3, type: 'highshelf', frequency: 7800, gain: -2.6, q: 0.7 },
+        ],
+      },
+      {
+        t: 0,
+        eq: [
+          { band: 0, type: 'off', frequency: 80, gain: 0, q: 0.7 },
+          { band: 1, type: 'off', frequency: 400, gain: 0, q: 1 },
+          { band: 2, type: 'off', frequency: 2500, gain: 0, q: 1 },
+          { band: 3, type: 'off', frequency: 12000, gain: 0, q: 0.7 },
+        ],
+      },
+      {
+        t: 0.5,
+        eq: [
+          { band: 0, type: 'lowshelf', frequency: 90, gain: 1.5, q: 0.7 },
+          { band: 1, type: 'peaking', frequency: 420, gain: -0.8, q: 0.9 },
+          { band: 2, type: 'peaking', frequency: 3400, gain: 1.3, q: 1.05 },
+          { band: 3, type: 'highshelf', frequency: 10200, gain: 2.4, q: 0.7 },
+        ],
+      },
+      {
+        t: 1,
+        eq: [
+          { band: 0, type: 'lowshelf', frequency: 85, gain: 2.4, q: 0.7 },
+          { band: 1, type: 'peaking', frequency: 430, gain: -1.4, q: 0.85 },
+          { band: 2, type: 'peaking', frequency: 3500, gain: 2.1, q: 1.05 },
+          { band: 3, type: 'highshelf', frequency: 11000, gain: 4.6, q: 0.65 },
+        ],
+      },
+    ],
+  },
+  {
+    axis: 'space',
+    module: 'reverb',
+    stops: [
+      {
+        t: 0,
+        params: {
+          reverbWet: 0,
+          reverbSize: 50,
+          reverbDecay: 1.6,
+          reverbPredelay: 18,
+          reverbWidth: 100,
+          reverbDistance: 35,
+          reverbEarly: 40,
+          reverbDiffusion: 55,
+          reverbShimmer: 0,
+          reverbModDepth: 8,
+          reverbHighCut: 16000,
+          reverbColor: 0,
+        },
+      },
+      {
+        t: 0.22,
+        params: {
+          reverbWet: 14,
+          reverbSize: 62,
+          reverbDecay: 3.8,
+          reverbPredelay: 28,
+          reverbWidth: 128,
+          reverbDistance: 32,
+          reverbEarly: 52,
+          reverbDiffusion: 68,
+          reverbShimmer: 14,
+          reverbModDepth: 14,
+          reverbHighCut: 13000,
+          reverbColor: 10,
+        },
+      },
+      {
+        t: 0.48,
+        params: {
+          reverbWet: 32,
+          reverbSize: 80,
+          reverbDecay: 8.4,
+          reverbPredelay: 52,
+          reverbWidth: 158,
+          reverbDistance: 48,
+          reverbEarly: 62,
+          reverbDiffusion: 78,
+          reverbShimmer: 30,
+          reverbModDepth: 20,
+          reverbHighCut: 10500,
+          reverbColor: 18,
+        },
+      },
+      {
+        t: 0.74,
+        params: {
+          reverbWet: 48,
+          reverbSize: 94,
+          reverbDecay: 14.5,
+          reverbPredelay: 74,
+          reverbWidth: 186,
+          reverbDistance: 62,
+          reverbEarly: 72,
+          reverbDiffusion: 90,
+          reverbShimmer: 44,
+          reverbModDepth: 26,
+          reverbHighCut: 8600,
+          reverbColor: 24,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          reverbWet: 60,
+          reverbSize: 100,
+          reverbDecay: 18,
+          reverbPredelay: 92,
+          reverbWidth: 200,
+          reverbDistance: 72,
+          reverbEarly: 80,
+          reverbDiffusion: 96,
+          reverbShimmer: 52,
+          reverbModDepth: 32,
+          reverbHighCut: 7400,
+          reverbColor: 30,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'echo',
+    module: 'delay',
+    stops: [
+      {
+        t: 0,
+        params: {
+          delayWet: 0,
+          delayFeedback: 35,
+          delayTime: 300,
+          delayWidth: 100,
+          delayDiffusion: 0,
+          delayOffset: 0,
+        },
+      },
+      {
+        t: 0.28,
+        params: {
+          delayWet: 14,
+          delayFeedback: 32,
+          delayTime: 240,
+          delayWidth: 118,
+          delayDiffusion: 10,
+          delayOffset: 8,
+        },
+      },
+      {
+        t: 0.55,
+        params: {
+          delayWet: 30,
+          delayFeedback: 44,
+          delayTime: 390,
+          delayWidth: 136,
+          delayDiffusion: 18,
+          delayOffset: 14,
+        },
+      },
+      {
+        t: 0.8,
+        params: {
+          delayWet: 44,
+          delayFeedback: 52,
+          delayTime: 520,
+          delayWidth: 150,
+          delayDiffusion: 24,
+          delayOffset: 18,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          delayWet: 56,
+          delayFeedback: 60,
+          delayTime: 640,
+          delayWidth: 164,
+          delayDiffusion: 30,
+          delayOffset: 22,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'grain',
+    module: 'grain',
+    stops: [
+      {
+        t: 0,
+        params: {
+          density: 18.4,
+          scatter: 45,
+          grainSize: 120,
+          pitchSpread: 7.2,
+        },
+      },
+      {
+        t: 0.35,
+        params: {
+          density: 24,
+          scatter: 52,
+          grainSize: 150,
+          pitchSpread: 5.5,
+        },
+      },
+      {
+        t: 0.7,
+        params: {
+          density: 34,
+          scatter: 62,
+          grainSize: 88,
+          pitchSpread: 8.4,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          density: 44,
+          scatter: 72,
+          grainSize: 58,
+          pitchSpread: 10.5,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'dirt',
+    module: 'saturation',
+    stops: [
+      { t: 0, params: { saturation: 0 } },
+      { t: 0.4, params: { saturation: 12 } },
+      { t: 0.72, params: { saturation: 22 } },
+      { t: 1, params: { saturation: 34 } },
+    ],
+  },
+  {
+    axis: 'tight',
+    module: 'compressor',
+    stops: [
+      {
+        t: 0,
+        params: {
+          compressorThreshold: -6,
+          compressorRatio: 2.4,
+          compressorAttack: 12,
+          compressorRelease: 180,
+          compressorKnee: 14,
+          compressorMakeup: 0,
+        },
+      },
+      {
+        t: 0.4,
+        params: {
+          compressorThreshold: -12,
+          compressorRatio: 4.2,
+          compressorAttack: 8,
+          compressorRelease: 140,
+          compressorKnee: 10,
+          compressorMakeup: 1.2,
+        },
+      },
+      {
+        t: 0.72,
+        params: {
+          compressorThreshold: -18,
+          compressorRatio: 7.5,
+          compressorAttack: 3.5,
+          compressorRelease: 110,
+          compressorKnee: 5,
+          compressorMakeup: 2.4,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          compressorThreshold: -24,
+          compressorRatio: 11,
+          compressorAttack: 1.4,
+          compressorRelease: 90,
+          compressorKnee: 2.5,
+          compressorMakeup: 3.6,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'mod',
+    module: 'grain',
+    stops: [
+      {
+        t: 0,
+        params: {
+          motionDepth: 0,
+          motionRate: 0.3,
+          motionJitter: 30,
+        },
+      },
+      {
+        t: 0.35,
+        params: {
+          motionDepth: 22,
+          motionRate: 0.45,
+          motionJitter: 34,
+        },
+      },
+      {
+        t: 0.7,
+        params: {
+          motionDepth: 48,
+          motionRate: 0.9,
+          motionJitter: 42,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          motionDepth: 72,
+          motionRate: 1.6,
+          motionJitter: 52,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'drift',
+    module: 'delay',
+    stops: [
+      {
+        t: 0,
+        params: {
+          delayStereo: 1,
+          delayWidth: 100,
+          delayOffset: 0,
+          delayPan: 0,
+          delayModDepth: 0,
+          delayModRate: 0.4,
+          delayTime: 300,
+          delayTimeR: 300,
+          delayWet: 0,
+          delayFeedback: 8,
+        },
+      },
+      {
+        t: 0.35,
+        params: {
+          delayStereo: 1,
+          delayWidth: 142,
+          delayOffset: 28,
+          delayPan: 0,
+          delayModDepth: 22,
+          delayModRate: 0.7,
+          delayTime: 20,
+          delayTimeR: 48,
+          delayWet: 16,
+          delayFeedback: 8,
+        },
+      },
+      {
+        t: 0.7,
+        params: {
+          delayStereo: 1,
+          delayWidth: 176,
+          delayOffset: 46,
+          delayPan: 0,
+          delayModDepth: 30,
+          delayModRate: 1.3,
+          delayTime: 16,
+          delayTimeR: 72,
+          delayWet: 22,
+          delayFeedback: 10,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          delayStereo: 1,
+          delayWidth: 200,
+          delayOffset: 62,
+          delayPan: 0,
+          delayModDepth: 38,
+          delayModRate: 1.9,
+          delayTime: 12,
+          delayTimeR: 96,
+          delayWet: 28,
+          delayFeedback: 12,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'pan',
+    module: 'gain',
+    stops: [{ t: 0 }, { t: 1 }],
+  },
+]

@@ -40,10 +40,24 @@ export const SENSORY_ATMOSPHERES: readonly SensoryAtmosphere[] = [
     preview: { bg: '#101512', surface: '#1c2520', accent: '#72b98a' },
   },
   {
-    id: 'glass',
-    label: 'Glass',
+    id: 'mirror',
+    label: 'Mirror',
     theme: 'studio-dark',
-    scene: 'glass',
-    preview: { bg: '#151616', surface: '#202222', accent: '#e6ad48' },
+    scene: 'mirror',
+    preview: { bg: '#0a0c10', surface: '#1a2030', accent: '#9ec8ff' },
+  },
+  {
+    id: 'canyon',
+    label: 'Canyon',
+    theme: 'oxide',
+    scene: 'canyon',
+    preview: { bg: '#120e0c', surface: '#2a1c16', accent: '#e8a060' },
+  },
+  {
+    id: 'gleam',
+    label: 'Gleam',
+    theme: 'midnight-blue',
+    scene: 'gleam',
+    preview: { bg: '#071018', surface: '#143044', accent: '#7ee0ff' },
   },
 ]

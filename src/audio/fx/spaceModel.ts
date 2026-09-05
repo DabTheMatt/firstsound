@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { safeFeedbackGain } from './dryWet'
+import { delayLoopGain } from './delayLoop'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
@@ -29,7 +29,29 @@ export type ReverbTail = {
   mix: number
 }
 
+export function isDelayStereo(params: Record<ParamId, number>): boolean {
+  return params.delayStereo > 0.5
+}
+
+export function isReverbStereo(params: Record<ParamId, number>): boolean {
+  return params.reverbStereo > 0.5
+}
+
 export function delayTimeSeconds(params: Record<ParamId, number>, bpm: number): number {
+  return delayChannelTimeSeconds(params, bpm, 'L')
+}
+
+export function delayChannelTimeSeconds(
+  params: Record<ParamId, number>,
+  bpm: number,
+  channel: 'L' | 'R',
+): number {
+  if (channel === 'R' && isDelayStereo(params)) {
+    if (params.delaySyncR > 0.5) {
+      return syncedDelayMs(bpm, noteDivisionAt(params.delayNoteR), noteKindAt(params.delayNoteKindR)) / 1000
+    }
+    return params.delayTimeR / 1000
+  }
   if (params.delaySync > 0.5) {
     return syncedDelayMs(bpm, noteDivisionAt(params.delayNote), noteKindAt(params.delayNoteKind)) / 1000
   }
@@ -44,7 +66,7 @@ export function delayTaps(
 ): DelayTap[] {
   const mix = Math.max(params.delayWet / 100, 0.18)
   const time = Math.max(0.001, delayTimeSeconds(params, bpm))
-  const fb = safeFeedbackGain(params.delayFeedback)
+  const fb = delayLoopGain(params.delayFeedback, type)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100
   const ping = type === 'pingPong'
   const stereo = type === 'stereo' || ping
@@ -106,7 +128,7 @@ export function delayTaps(
         channel: 'C',
       })
     }
-    const decay = freeze ? 0.96 : Math.min(0.98, fb * (type === 'diffuse' ? 0.92 : 0.88))
+    const decay = freeze ? 0.96 : fb * (type === 'diffuse' ? 0.9 : 1)
     gain *= decay
     if (gain < 0.012 && !freeze) break
   }
@@ -135,7 +157,7 @@ export function reverbTail(
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
   const reverse = type === 'reverse' || params.reverbReverse > 50
   const size = params.reverbSize / 100
-  const decay = freeze ? 8 : params.reverbDecay * (0.6 + size * 1.1)
+  const decay = freeze ? 12 : params.reverbDecay * (0.7 + size * 1.35)
   const earlyN = 3 + Math.round((params.reverbEarly / 100) * 5)
   const early: number[] = []
   for (let i = 0; i < earlyN; i++) early.push(pre + 0.008 + i * (0.012 + size * 0.02))

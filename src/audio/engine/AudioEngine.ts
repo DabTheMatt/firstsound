@@ -86,6 +86,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
 import {
@@ -139,6 +140,7 @@ import {
   filterStageCount,
   parseEqBands,
   stageQ,
+  bandIsActive,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
@@ -153,6 +155,14 @@ import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
+import {
+  scaledHannCurve,
+  smoothTowardLinear,
+  smoothTowardLog,
+  stretchLookahead,
+  stretchSlew,
+  stretchWindow,
+} from './stretch'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -208,8 +218,6 @@ type Listener = () => void
 
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
-const STRETCH_GRAIN = 0.07
-const STRETCH_HOP = 0.018
 const MIN_REGION = 0.05
 const RAMP = 0.008
 
@@ -350,6 +358,9 @@ export class AudioEngine {
   private schedulerId = 0
   private stretchHead = 0
   private stretchDir = 1
+  private stretchSpeed = 1
+  private stretchPitch = 0
+  private stretchRate = 1
   private visibilityBound = false
   private unlocked = false
   private motionRandCur = 0
@@ -682,7 +693,11 @@ export class AudioEngine {
       this.params.end = region.end
       this.applyRegionChange()
     } else {
+      const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
+      const turningReverbStereoOn = id === 'reverbStereo' && value > 0.5 && this.params.reverbStereo <= 0.5
       this.params[id] = applyParamValue(value, PARAMS[id])
+      if (turningStereoOn) this.copyDelayLeftToRight()
+      if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
     }
@@ -706,9 +721,22 @@ export class AudioEngine {
     this.emit()
   }
 
+  private copyDelayLeftToRight(): void {
+    this.params.delayTimeR = this.params.delayTime
+    this.params.delaySyncR = this.params.delaySync
+    this.params.delayNoteR = this.params.delayNote
+    this.params.delayNoteKindR = this.params.delayNoteKind
+  }
+
   setDelayType(type: DelayType): void {
     if (this.delayType === type) return
     this.delayType = type
+    const color = delayTypeColorPatch(type)
+    for (const key of Object.keys(color) as ParamId[]) {
+      const value = color[key]
+      if (typeof value !== 'number') continue
+      this.params[key] = applyParamValue(value, PARAMS[key])
+    }
     this.applyLiveAudio()
     this.emit()
   }
@@ -804,6 +832,7 @@ export class AudioEngine {
 
   private syncTimeFromClock(id: ParamId): void {
     if (id === 'delayTime' && this.params.delaySync > 0.5) this.params.delaySync = 0
+    if (id === 'delayTimeR' && this.params.delaySyncR > 0.5) this.params.delaySyncR = 0
     if (id === 'reverbPredelay' && this.params.reverbSync > 0.5) this.params.reverbSync = 0
     if (
       this.params.delaySync > 0.5 &&
@@ -812,6 +841,15 @@ export class AudioEngine {
       this.params.delayTime = applyParamValue(
         syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNote), noteKindAt(this.params.delayNoteKind)),
         PARAMS.delayTime,
+      )
+    }
+    if (
+      this.params.delaySyncR > 0.5 &&
+      (id === 'bpm' || id === 'delayNoteR' || id === 'delayNoteKindR' || id === 'delaySyncR')
+    ) {
+      this.params.delayTimeR = applyParamValue(
+        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNoteR), noteKindAt(this.params.delayNoteKindR)),
+        PARAMS.delayTimeR,
       )
     }
     if (
@@ -1249,6 +1287,12 @@ export class AudioEngine {
     this.syncEqLfoParams(id)
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
+    const mod = this.chain.find((m) => m.instanceId === id)
+    const engaged = st.bands.some(bandIsActive)
+    if (engaged && mod?.bypassed) {
+      this.setModuleBypass(id, false)
+      return
+    }
     this.emit()
   }
 
@@ -2437,7 +2481,7 @@ export class AudioEngine {
     const duration = this.buffer.duration
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
-    const tempo = Math.max(0.01, this.liveParams().speed)
+    const tempo = Math.max(PARAMS.speed.min, this.liveParams().speed)
     const fade = this.regionFade
     let curve: Float32Array
     if (this.voiceFadePingPong) {
@@ -2524,9 +2568,13 @@ export class AudioEngine {
 
   private startStretchPlayback(): void {
     if (!this.ctx) return
+    const live = this.liveParams()
     this.nextGrainTime = this.ctx.currentTime
     this.stretchHead = this.playOffset
     this.stretchDir = this.direction === 'reverse' ? -1 : 1
+    this.stretchSpeed = Math.max(PARAMS.speed.min, live.speed)
+    this.stretchPitch = live.pitch
+    this.stretchRate = Math.max(PARAMS.speed.min, pitchRatio(live.pitch))
     this.schedulerId = window.setInterval(() => this.scheduleStretch(), SCHEDULER_MS)
     this.scheduleStretch()
   }
@@ -2565,10 +2613,10 @@ export class AudioEngine {
     }
     const ctx = this.ctx
     const duration = buffer.duration
-    const horizon = ctx.currentTime + LOOKAHEAD
     const live = this.liveParams()
-    const speed = Math.max(0.05, live.speed)
-    const rate = Math.max(0.05, pitchRatio(live.pitch))
+    const grainWin = stretchWindow(live.stretchInterp)
+    const slew = stretchSlew(grainWin.hopSec, live.stretchInterp)
+    const horizon = ctx.currentTime + stretchLookahead(grainWin.hopSec)
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const reverse = this.direction === 'reverse'
@@ -2576,6 +2624,14 @@ export class AudioEngine {
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
+      this.stretchSpeed = smoothTowardLog(
+        this.stretchSpeed,
+        Math.max(PARAMS.speed.min, live.speed),
+        slew,
+      )
+      this.stretchPitch = smoothTowardLinear(this.stretchPitch, live.pitch, slew)
+      const speed = this.stretchSpeed
+      const rate = Math.max(PARAMS.speed.min, pitchRatio(this.stretchPitch))
       const wrapped = this.wrapStretchHead(this.stretchHead, start, end)
       if (wrapped == null) {
         this.stop()
@@ -2584,8 +2640,11 @@ export class AudioEngine {
       this.stretchHead = wrapped
       const mapped = reverse ? reverseTime(this.stretchHead, duration) : this.stretchHead
       const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
-      const grainDur = STRETCH_GRAIN
-      const srcDur = Math.min(grainDur * rate + 0.01, Math.max(0.01, playBuffer.duration - offset))
+      const grainDur = grainWin.grainSec
+      const srcDur = Math.min(
+        grainDur * Math.max(this.stretchRate, rate) + 0.02,
+        Math.max(0.01, playBuffer.duration - offset),
+      )
       const playbackRel =
         this.direction === 'reverse'
           ? Math.max(0, end - this.stretchHead)
@@ -2601,19 +2660,28 @@ export class AudioEngine {
       )
       const src = ctx.createBufferSource()
       src.buffer = playBuffer
-      src.playbackRate.value = rate
+      try {
+        src.playbackRate.setValueAtTime(this.stretchRate, t)
+        src.playbackRate.linearRampToValueAtTime(rate, t + grainDur)
+      } catch {
+        src.playbackRate.value = rate
+      }
       const gain = ctx.createGain()
-      const attack = grainDur * 0.5
-      const peak = 0.55 * fadeAmp
-      gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(peak, t + attack)
-      gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      const curve = scaledHannCurve(grainWin.peak * fadeAmp, 48)
+      try {
+        gain.gain.setValueCurveAtTime(curve, t, grainDur)
+      } catch {
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(grainWin.peak * fadeAmp, t + grainDur * 0.5)
+        gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      }
       src.connect(gain)
       gain.connect(this.voiceBus)
       src.start(t, offset, srcDur)
       src.stop(t + grainDur + 0.02)
-      this.stretchHead += STRETCH_HOP * speed * this.stretchDir
-      this.nextGrainTime += STRETCH_HOP
+      this.stretchRate = rate
+      this.stretchHead += grainWin.hopSec * speed * this.stretchDir
+      this.nextGrainTime += grainWin.hopSec
     }
   }
 

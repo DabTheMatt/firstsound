@@ -2,13 +2,12 @@ import { PARAMS } from '../parameters/definitions'
 import { fromNormalized, toNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 
-export type DelayMacro = 'time' | 'feedback' | 'color' | 'space' | 'mod' | 'mix'
+export type DelayMacro = 'time' | 'feedback' | 'space' | 'mod' | 'mix'
 export type ReverbMacro = 'size' | 'decay' | 'color' | 'distance' | 'mod' | 'mix'
 
 export const DELAY_MACROS: { id: DelayMacro; label: string }[] = [
   { id: 'time', label: 'Time' },
   { id: 'feedback', label: 'Feedback' },
-  { id: 'color', label: 'Color' },
   { id: 'space', label: 'Space' },
   { id: 'mod', label: 'Mod' },
   { id: 'mix', label: 'Mix' },
@@ -29,11 +28,6 @@ export function delayMacroNormalized(id: DelayMacro, params: Record<ParamId, num
       return toNormalized(params.delayTime, PARAMS.delayTime)
     case 'feedback':
       return toNormalized(params.delayFeedback, PARAMS.delayFeedback)
-    case 'color':
-      return Math.min(
-        1,
-        Math.max(0, (toNormalized(params.delayLp, PARAMS.delayLp) - 0.35) / 0.65),
-      )
     case 'space':
       return (params.delayWidth / 200) * 0.5 + (params.delayDiffusion / 100) * 0.5
     case 'mod':
@@ -74,12 +68,6 @@ export function applyDelayMacro(
       return { delayTime: fromNormalized(t, PARAMS.delayTime), delaySync: 0 }
     case 'feedback':
       return { delayFeedback: fromNormalized(t, PARAMS.delayFeedback) }
-    case 'color':
-      return {
-        delayLp: fromNormalized(0.35 + t * 0.65, PARAMS.delayLp),
-        delayHp: fromNormalized((1 - t) * 0.45, PARAMS.delayHp),
-        delayDrive: (1 - t) * 28,
-      }
     case 'space':
       return {
         delayWidth: t * 200,
@@ -122,6 +110,7 @@ export function applyReverbMacro(
         reverbPredelay: fromNormalized(t * 0.55, PARAMS.reverbPredelay),
         reverbEarly: 20 + (1 - t) * 55,
         reverbLowCut: fromNormalized(t * 0.4, PARAMS.reverbLowCut),
+        reverbWidth: 70 + t * 110,
       }
     case 'mod':
       return {
