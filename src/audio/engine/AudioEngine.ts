@@ -79,6 +79,12 @@ import {
   limiterReductionDb,
   type LimiterGraph,
 } from '../fx/limiter'
+import {
+  applyCompressorGraph,
+  createCompressorGraph,
+  compressorReductionDb,
+  type CompressorGraph,
+} from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
@@ -255,6 +261,7 @@ type Slot = {
   delayFx?: DelayGraph
   reverbFx?: ReverbGraph
   limiterFx?: LimiterGraph
+  compressorFx?: CompressorGraph
   stereo?: StereoStage
 }
 
@@ -272,6 +279,8 @@ export class AudioEngine {
   private analyserEq: AnalyserNode | null = null
   private analyserLimiterPre: AnalyserNode | null = null
   private analyserLimiterPost: AnalyserNode | null = null
+  private analyserCompressorPre: AnalyserNode | null = null
+  private analyserCompressorPost: AnalyserNode | null = null
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
   private spaceLatched = false
@@ -400,17 +409,26 @@ export class AudioEngine {
     return this.prep
   }
 
-  getAnalyser(tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' = 'post'): AnalyserNode | null {
+  getAnalyser(
+    tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' | 'compressorPre' | 'compressorPost' = 'post',
+  ): AnalyserNode | null {
     if (tap === 'pre') return this.analyserPre ?? this.analyser
     if (tap === 'eq') return this.analyserEq ?? this.analyserPre ?? this.analyser
     if (tap === 'limiterPre') return this.analyserLimiterPre
     if (tap === 'limiterPost') return this.analyserLimiterPost
+    if (tap === 'compressorPre') return this.analyserCompressorPre ?? this.analyserLimiterPre
+    if (tap === 'compressorPost') return this.analyserCompressorPost ?? this.analyserLimiterPost
     return this.analyser
   }
 
   getLimiterReduction(): number {
     const slot = [...this.slots.values()].find((s) => s.type === 'limiter')
     return limiterReductionDb(slot?.limiterFx)
+  }
+
+  getCompressorReduction(): number {
+    const slot = [...this.slots.values()].find((s) => s.type === 'compressor')
+    return compressorReductionDb(slot?.compressorFx)
   }
 
   setRegionFades(
@@ -1709,6 +1727,12 @@ export class AudioEngine {
     this.analyserLimiterPost.fftSize = 2048
     this.analyserLimiterPre.smoothingTimeConstant = 0
     this.analyserLimiterPost.smoothingTimeConstant = 0
+    this.analyserCompressorPre = ctx.createAnalyser()
+    this.analyserCompressorPost = ctx.createAnalyser()
+    this.analyserCompressorPre.fftSize = 2048
+    this.analyserCompressorPost.fftSize = 2048
+    this.analyserCompressorPre.smoothingTimeConstant = 0
+    this.analyserCompressorPost.smoothingTimeConstant = 0
     this.analyserL = ctx.createAnalyser()
     this.analyserR = ctx.createAnalyser()
     this.analyserL.fftSize = 2048
@@ -1785,6 +1809,11 @@ export class AudioEngine {
       input.connect(wet)
       slot.reverbFx = createReverbGraph(ctx, wet, output, input)
     }
+    if (mod.type === 'compressor') {
+      slot.compressorFx = createCompressorGraph(ctx, input, wet)
+      this.analyserCompressorPost = slot.compressorFx.analyserPost
+      wet.connect(output)
+    }
     if (mod.type === 'limiter') {
       slot.limiterFx = createLimiterGraph(ctx, input, wet)
       this.analyserLimiterPost = slot.limiterFx.analyserPost
@@ -1816,6 +1845,14 @@ export class AudioEngine {
       const silent = this.ctx.createGain()
       silent.gain.value = 0
       this.analyserLimiterPre.connect(silent)
+      silent.connect(this.ctx.destination)
+    }
+    const compSlot = ordered.find((s) => s.type === 'compressor')
+    if (compSlot && this.analyserCompressorPre) {
+      compSlot.input.connect(this.analyserCompressorPre)
+      const silent = this.ctx.createGain()
+      silent.gain.value = 0
+      this.analyserCompressorPre.connect(silent)
       silent.connect(this.ctx.destination)
     }
     for (let i = 0; i < ordered.length - 1; i++) {
@@ -1858,6 +1895,11 @@ export class AudioEngine {
     }
     try {
       this.analyserLimiterPre?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.analyserCompressorPre?.disconnect()
     } catch {
       /* already disconnected */
     }
@@ -1942,7 +1984,11 @@ export class AudioEngine {
       }
       const bypassed =
         this.eqListen === 'filters' &&
-        (mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'saturation' || mod.type === 'limiter')
+        (mod.type === 'delay' ||
+          mod.type === 'reverb' ||
+          mod.type === 'saturation' ||
+          mod.type === 'compressor' ||
+          mod.type === 'limiter')
         ? true
         : this.eqListen === 'filters' && mod.type === 'eq'
           ? false
@@ -2164,6 +2210,7 @@ export class AudioEngine {
     const bpm = params.bpm
     for (const slot of this.slots.values()) {
       if (slot.shaper) slot.shaper.curve = makeTanhCurve(params.saturation / 100)
+      if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
       if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
       if (slot.delayFx) {
         if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
@@ -2792,7 +2839,7 @@ function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
   if (type === 'saturation') return params.saturation > 0 ? 1 : 0
-  if (type === 'eq' || type === 'limiter') return 1
+  if (type === 'eq' || type === 'compressor' || type === 'limiter') return 1
   return 0
 }
 
@@ -2800,7 +2847,7 @@ function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
   if (type === 'saturation') return params.saturation > 0 ? 0 : 1
-  if (type === 'eq' || type === 'limiter') return 0
+  if (type === 'eq' || type === 'compressor' || type === 'limiter') return 0
   return 1
 }
 

@@ -11,6 +11,7 @@ import {
   LIMITER_PLOT_MIN_DB,
   LIMITER_PREVIEW_SECONDS,
   limitSample,
+  limiterBrickwallSettings,
   limiterOutputDb,
   limiterPlotT,
   limiterSettings,
@@ -29,26 +30,33 @@ describe('autoMakeupDb', () => {
   })
 })
 
-describe('limiterSettings', () => {
-  it('maps defaults onto compressor-friendly units', () => {
-    const s = limiterSettings(defaultParamValues())
-    expect(s.threshold).toBe(-6)
+describe('limiterBrickwallSettings', () => {
+  it('maps the limiter to a hard brickwall at the ceiling', () => {
+    const s = limiterBrickwallSettings(defaultParamValues())
     expect(s.ceiling).toBeCloseTo(-0.3)
-    expect(s.ratio).toBe(12)
+    expect(s.threshold).toBeCloseTo(s.ceiling)
+    expect(s.knee).toBe(0)
+    expect(s.ratio).toBe(20)
+    expect(s.makeupGain).toBe(1)
     expect(s.attack).toBeCloseTo(0.003)
     expect(s.release).toBeCloseTo(0.12)
     expect(s.inputGain).toBeCloseTo(1)
-    expect(s.makeupGain).toBeCloseTo(1)
   })
 
-  it('uses auto makeup when the toggle is on', () => {
+  it('ignores legacy compressor-style limiter params', () => {
     const params = defaultParamValues()
+    params.limiterThreshold = -24
+    params.limiterRatio = 4
+    params.limiterKnee = 12
+    params.limiterMakeup = 12
     params.limiterAutoMakeup = 1
-    params.limiterThreshold = -12
-    params.limiterRatio = 20
-    params.limiterMakeup = 0
+    params.limiterCeiling = -1
     const s = limiterSettings(params)
-    expect(s.makeupGain).toBeGreaterThan(1)
+    expect(s.threshold).toBeCloseTo(-1)
+    expect(s.ceiling).toBeCloseTo(-1)
+    expect(s.knee).toBe(0)
+    expect(s.ratio).toBe(20)
+    expect(s.makeupGain).toBe(1)
   })
 })
 
@@ -82,18 +90,17 @@ describe('limiterPlotT', () => {
 })
 
 describe('limiterOutputDb', () => {
-  it('follows unity below threshold and compresses above it', () => {
-    const s = limiterSettings(defaultParamValues())
+  it('follows unity below the brickwall and clamps at the ceiling', () => {
+    const s = limiterBrickwallSettings(defaultParamValues())
     expect(limiterOutputDb(-24, s)).toBeCloseTo(-24, 3)
-    expect(limiterOutputDb(0, s)).toBeLessThan(-1)
+    expect(limiterOutputDb(0, s)).toBeCloseTo(s.ceiling, 5)
   })
 
-  it('never exceeds the ceiling after makeup', () => {
+  it('never exceeds the ceiling', () => {
     const params = defaultParamValues()
-    params.limiterThreshold = -24
-    params.limiterRatio = 20
-    params.limiterMakeup = 24
-    const s = limiterSettings(params)
+    params.limiterCeiling = -1
+    params.limiterInput = 12
+    const s = limiterBrickwallSettings(params)
     expect(limiterOutputDb(0, s)).toBeCloseTo(s.ceiling, 5)
   })
 
@@ -104,8 +111,8 @@ describe('limiterOutputDb', () => {
 })
 
 describe('limitSample', () => {
-  it('passes quiet samples and reduces hot ones toward the ceiling', () => {
-    const s = limiterSettings(defaultParamValues())
+  it('passes quiet samples and caps hot ones at the ceiling', () => {
+    const s = limiterBrickwallSettings(defaultParamValues())
     expect(Math.abs(limitSample(0.05, s))).toBeCloseTo(0.05, 3)
     expect(Math.abs(limitSample(0.99, s))).toBeLessThan(0.99)
     expect(Math.abs(limitSample(-0.99, s))).toBeLessThan(0.99)
@@ -117,10 +124,9 @@ describe('buildLimiterWavePreview', () => {
     const rate = 100
     const mono = new Float32Array(rate * 12)
     for (let i = 0; i < mono.length; i++) mono[i] = i % 2 === 0 ? 0.95 : -0.95
-    const s = limiterSettings(defaultParamValues())
+    const s = limiterBrickwallSettings(defaultParamValues())
+    s.ceiling = -12
     s.threshold = -12
-    s.ratio = 20
-    s.makeupGain = 1
     const preview = buildLimiterWavePreview(mono, rate, 0, LIMITER_PREVIEW_SECONDS, 8, s, true)
     expect(preview.durationSec).toBeCloseTo(10, 5)
     expect(peakAmplitude(preview.inMax)).toBeGreaterThan(0.9)
@@ -129,7 +135,7 @@ describe('buildLimiterWavePreview', () => {
 
   it('shortens near EOF and leaves Out equal to In when not applying', () => {
     const mono = new Float32Array([0.2, -0.4, 0.6, -0.8])
-    const s = limiterSettings(defaultParamValues())
+    const s = limiterBrickwallSettings(defaultParamValues())
     const preview = buildLimiterWavePreview(mono, 2, 1, 10, 2, s, false)
     expect(preview.durationSec).toBeCloseTo(1, 5)
     expect(preview.outMax[0]).toBe(preview.inMax[0])
@@ -139,10 +145,9 @@ describe('buildLimiterWavePreview', () => {
 
 describe('makeLimiterTransferCurve', () => {
   it('matches limitSample so the live path crushes like the preview', () => {
-    const s = limiterSettings(defaultParamValues())
+    const s = limiterBrickwallSettings(defaultParamValues())
+    s.ceiling = -18
     s.threshold = -18
-    s.ratio = 20
-    s.makeupGain = 1
     const curve = makeLimiterTransferCurve(s, 5)
     expect(curve).toHaveLength(5)
     expect(curve[2]).toBeCloseTo(0, 5)

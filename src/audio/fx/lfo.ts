@@ -8,6 +8,7 @@ export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 export type FxLfoKind =
   | 'delay'
   | 'reverb'
+  | 'compressor'
   | 'limiter'
   | 'saturation'
   | 'grain'
@@ -38,6 +39,7 @@ export const EQ_BAND_LFO_KINDS: FxLfoKind[] = ['eq1', 'eq2', 'eq3', 'eq4']
 export const FX_LFO_KINDS: FxLfoKind[] = [
   'delay',
   'reverb',
+  'compressor',
   'limiter',
   'saturation',
   'grain',
@@ -54,6 +56,7 @@ export const FX_LFO_SLOTS = 3
 export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   delay: 'Delay',
   reverb: 'Reverb',
+  compressor: 'Compressor',
   limiter: 'Limiter',
   saturation: 'Saturation',
   grain: 'Grain',
@@ -68,6 +71,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
 export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   delay: 'd',
   reverb: 'r',
+  compressor: 'c',
   limiter: 'l',
   saturation: 's',
   grain: 'g',
@@ -91,6 +95,7 @@ export function defaultLfoShown(): Record<FxLfoKind, number> {
   return {
     delay: 1,
     reverb: 1,
+    compressor: 1,
     limiter: 1,
     saturation: 1,
     grain: 1,
@@ -165,15 +170,21 @@ const REVERB_TARGETS: ParamId[] = [
   'reverbColor',
 ]
 
+const COMPRESSOR_TARGETS: ParamId[] = [
+  'compressorThreshold',
+  'compressorRatio',
+  'compressorKnee',
+  'compressorAttack',
+  'compressorRelease',
+  'compressorMakeup',
+  'compressorInput',
+]
+
 const LIMITER_TARGETS: ParamId[] = [
-  'limiterThreshold',
   'limiterCeiling',
   'limiterRelease',
   'limiterInput',
   'limiterAttack',
-  'limiterKnee',
-  'limiterRatio',
-  'limiterMakeup',
 ]
 
 const SATURATION_TARGETS: ParamId[] = ['saturation']
@@ -204,6 +215,7 @@ const INPUT_TARGETS: ParamId[] = ['gain', 'speed', 'pitch', 'pan', 'channelGainL
 export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   delay: DELAY_TARGETS,
   reverb: REVERB_TARGETS,
+  compressor: COMPRESSOR_TARGETS,
   limiter: LIMITER_TARGETS,
   saturation: SATURATION_TARGETS,
   grain: GRAIN_TARGETS,
@@ -242,6 +254,7 @@ export function defaultFxLfos(): FxLfoMap {
   return {
     delay: defaultFxLfoBank(),
     reverb: defaultFxLfoBank(),
+    compressor: defaultFxLfoBank(),
     limiter: defaultFxLfoBank(),
     saturation: defaultFxLfoBank(),
     grain: defaultFxLfoBank(),
@@ -432,6 +445,7 @@ export function defaultLfoHold(): LfoHoldState {
   return {
     delay: [emptyHold(), emptyHold(), emptyHold()],
     reverb: [emptyHold(), emptyHold(), emptyHold()],
+    compressor: [emptyHold(), emptyHold(), emptyHold()],
     limiter: [emptyHold(), emptyHold(), emptyHold()],
     saturation: [emptyHold(), emptyHold(), emptyHold()],
     grain: [emptyHold(), emptyHold(), emptyHold()],
@@ -454,7 +468,7 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
-): 'delay' | 'reverb' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
+): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
   if (kind === 'eqcf' || kind === 'eq1' || kind === 'eq2' || kind === 'eq3' || kind === 'eq4') return 'eq'
   if (kind === 'input') return 'gain'
   return kind
@@ -469,13 +483,16 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
     return 'advanced'
   }
   if (
+    kind === 'compressor' &&
+    target &&
+    (target === 'compressorAttack' || target === 'compressorInput' || target === 'compressorMakeup')
+  ) {
+    return 'advanced'
+  }
+  if (
     kind === 'limiter' &&
     target &&
-    target !== 'limiterThreshold' &&
-    target !== 'limiterRatio' &&
-    target !== 'limiterKnee' &&
-    target !== 'limiterCeiling' &&
-    target !== 'limiterRelease'
+    (target === 'limiterInput' || target === 'limiterAttack')
   ) {
     return 'advanced'
   }

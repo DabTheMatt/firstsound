@@ -835,6 +835,84 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 1,
   },
+  compressorThreshold: {
+    id: 'compressorThreshold',
+    label: 'Threshold',
+    min: -48,
+    max: 0,
+    defaultValue: -6,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  compressorRatio: {
+    id: 'compressorRatio',
+    label: 'Ratio',
+    min: 1,
+    max: 20,
+    defaultValue: 12,
+    unit: ':1',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  compressorKnee: {
+    id: 'compressorKnee',
+    label: 'Knee',
+    min: 0,
+    max: 40,
+    defaultValue: 6,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  compressorAttack: {
+    id: 'compressorAttack',
+    label: 'Attack',
+    min: 0.1,
+    max: 50,
+    defaultValue: 3,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  compressorRelease: {
+    id: 'compressorRelease',
+    label: 'Release',
+    min: 10,
+    max: 2000,
+    defaultValue: 120,
+    unit: 'ms',
+    mapping: 'log',
+  },
+  compressorMakeup: {
+    id: 'compressorMakeup',
+    label: 'Makeup',
+    min: -12,
+    max: 24,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  compressorInput: {
+    id: 'compressorInput',
+    label: 'Input',
+    min: -12,
+    max: 24,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
+  compressorAutoMakeup: {
+    id: 'compressorAutoMakeup',
+    label: 'Auto Makeup',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
   eq1Freq: { id: 'eq1Freq', label: 'EQ 1 Freq', min: 10, max: 25000, defaultValue: 80, unit: 'Hz', mapping: 'log' },
   eq1Gain: { id: 'eq1Gain', label: 'EQ 1 Gain', min: -18, max: 18, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
   eq1Q: { id: 'eq1Q', label: 'EQ 1 Q', min: 0.1, max: 20, defaultValue: 0.7, unit: '', mapping: 'log' },
@@ -895,14 +973,19 @@ export const SPACE_KNOBS: ParamId[] = [
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
 export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
-/** Threshold / ratio / knee sit in the Compressor band on the main pane. */
-export const LIMITER_COMPRESSOR_KNOBS: ParamId[] = [
-  'limiterThreshold',
-  'limiterRatio',
-  'limiterKnee',
+export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
+  'compressorThreshold',
+  'compressorRatio',
+  'compressorKnee',
+  'compressorRelease',
+]
+export const COMPRESSOR_ADV_KNOBS: ParamId[] = [
+  'compressorInput',
+  'compressorAttack',
+  'compressorMakeup',
 ]
 export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterCeiling', 'limiterRelease']
-export const LIMITER_ADV_KNOBS: ParamId[] = ['limiterInput', 'limiterAttack', 'limiterMakeup']
+export const LIMITER_ADV_KNOBS: ParamId[] = ['limiterInput', 'limiterAttack']
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {

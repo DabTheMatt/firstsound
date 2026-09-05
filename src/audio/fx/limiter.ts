@@ -19,21 +19,28 @@ export function autoMakeupDb(thresholdDb: number, ratio: number): number {
   return overshoot * (1 - 1 / r)
 }
 
-export function limiterSettings(params: Record<ParamId, number>): LimiterSettings {
-  const threshold = params.limiterThreshold
-  const ratio = params.limiterRatio
-  const makeupDb =
-    params.limiterAutoMakeup > 0.5 ? autoMakeupDb(threshold, ratio) : params.limiterMakeup
+/**
+ * Brickwall-only settings for the Limiter chain module.
+ * Legacy limiterThreshold/Ratio/Knee/Makeup/AutoMakeup params are kept for
+ * preset back-compat but no longer drive this mapping.
+ */
+export function limiterBrickwallSettings(params: Record<ParamId, number>): LimiterSettings {
+  const ceiling = params.limiterCeiling
   return {
     inputGain: dbToGain(params.limiterInput),
-    threshold,
-    knee: params.limiterKnee,
-    ratio,
+    threshold: ceiling,
+    knee: 0,
+    ratio: 20,
     attack: params.limiterAttack / 1000,
     release: params.limiterRelease / 1000,
-    makeupGain: dbToGain(makeupDb),
-    ceiling: params.limiterCeiling,
+    makeupGain: 1,
+    ceiling,
   }
+}
+
+/** @deprecated Prefer limiterBrickwallSettings — alias kept for call sites / tests. */
+export function limiterSettings(params: Record<ParamId, number>): LimiterSettings {
+  return limiterBrickwallSettings(params)
 }
 
 export const LIMITER_CURVE_POINTS = 2048
@@ -114,18 +121,21 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
   }
 }
 
+export function applyLimiterSettingsGraph(g: LimiterGraph, s: LimiterSettings): void {
+  const key = limiterSettingsKey(s)
+  if (key === g.curveKey) return
+  g.shaper.curve = makeLimiterTransferCurve(s)
+  g.curveKey = key
+  g.lastSettings = s
+}
+
 export function applyLimiterGraph(
   g: LimiterGraph,
   params: Record<ParamId, number>,
   _now: number,
   _smoothing: number,
 ): void {
-  const s = limiterSettings(params)
-  const key = limiterSettingsKey(s)
-  if (key === g.curveKey) return
-  g.shaper.curve = makeLimiterTransferCurve(s)
-  g.curveKey = key
-  g.lastSettings = s
+  applyLimiterSettingsGraph(g, limiterBrickwallSettings(params))
 }
 
 export function limiterReductionDb(g: LimiterGraph | null | undefined): number {
