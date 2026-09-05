@@ -80,7 +80,6 @@ export function AppHeader({
         </p>
       ) : null}
       <div className={styles.trailing}>
-        <RuntimeStatus />
         {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
@@ -123,6 +122,9 @@ export function AppHeader({
         >
           {compact ? '☰' : 'Settings'}
         </button>
+      </div>
+      <div className={styles.runtime}>
+        <RuntimeStatus />
       </div>
     </header>
   )

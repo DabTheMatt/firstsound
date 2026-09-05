@@ -2,13 +2,20 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   min-height: 36px;
   flex: none;
 }
 
 .compact {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.runtime {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .trailing {
