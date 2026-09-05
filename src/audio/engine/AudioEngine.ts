@@ -1019,7 +1019,7 @@ export class AudioEngine {
   }
 
   tapSampleTempo(): void {
-    const now = this.ctx?.currentTime ?? performance.now() / 1000
+    const now = performance.now() / 1000
     const next = addTap(this.tapTempoState, now)
     this.tapTempoState = next.state
     if (next.bpm === null) {

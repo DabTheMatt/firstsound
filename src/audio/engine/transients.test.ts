@@ -64,8 +64,14 @@ describe('tapTempo', () => {
     const first = addTap(state, 0)
     const second = addTap(first.state, 0.5)
     expect(second.bpm).toBeCloseTo(120, 0)
-    const reset = addTap(second.state, 4)
-    expect(reset.state.times).toEqual([4])
+    const reset = addTap(second.state, 5)
+    expect(reset.state.times).toEqual([5])
     expect(reset.bpm).toBeNull()
+  })
+
+  it('ignores a double-click bounce', () => {
+    const first = addTap(emptyTapTempo(), 1)
+    const bounce = addTap(first.state, 1.02)
+    expect(bounce.state.times).toEqual([1])
   })
 })

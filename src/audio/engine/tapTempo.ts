@@ -2,7 +2,7 @@
 
 import { clampTempo, roundTempo, TEMPO_MIN_BPM, TEMPO_MAX_BPM } from './transients'
 
-export const TAP_GAP_RESET_SEC = 2.4
+export const TAP_GAP_RESET_SEC = 4
 export const TAP_MAX_HISTORY = 8
 
 export type TapTempoState = {
@@ -19,6 +19,9 @@ export function addTap(
   gapResetSec = TAP_GAP_RESET_SEC,
 ): { state: TapTempoState; bpm: number | null } {
   const last = state.times[state.times.length - 1]
+  if (last !== undefined && nowSec - last < 0.08) {
+    return { state, bpm: bpmFromTaps(state.times) }
+  }
   const times =
     last !== undefined && nowSec - last > gapResetSec ? [nowSec] : [...state.times, nowSec]
   const next = { times: times.slice(-TAP_MAX_HISTORY) }
