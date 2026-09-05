@@ -59,6 +59,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
               onClick={() => {
                 setPreference(opt.theme)
                 onScene(opt.scene)
+                setOpen(false)
               }}
             >
               <span className={styles.swatches} aria-hidden="true">
@@ -77,7 +78,10 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
               role="option"
               className={styles.option}
               aria-selected={preference === opt.id}
-              onClick={() => setPreference(opt.id as ThemePreference)}
+              onClick={() => {
+                setPreference(opt.id as ThemePreference)
+                setOpen(false)
+              }}
             >
               <span className={styles.swatches} aria-hidden="true">
                 <span className={styles.dot} style={{ background: opt.preview.bg }} />

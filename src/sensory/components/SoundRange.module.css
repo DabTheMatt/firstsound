@@ -24,6 +24,17 @@
   opacity: calc(0.92 + var(--sensory-dirt, 0) * 0.08);
 }
 
+.fadeCanyon {
+  background: radial-gradient(ellipse at 50% 16%, transparent 6%, rgba(0, 0, 0, 0.18) 42%, rgba(0, 0, 0, 0.5) 100%);
+  opacity: 0.85;
+}
+
+.fadeMirror {
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0%, transparent 14%, transparent 86%, rgba(0, 0, 0, 0.32) 100%);
+  opacity: 0.88;
+}
+
 .hit {
   position: absolute;
   inset: 12% 18% 22%;

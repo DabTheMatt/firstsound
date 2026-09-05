@@ -121,7 +121,10 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
   return (
     <div className={styles.range}>
       <canvas ref={canvasRef} className={styles.canvas} />
-      <div className={styles.fade} aria-hidden="true" />
+      <div
+        className={`${styles.fade} ${scene === 'canyon' ? styles.fadeCanyon : ''} ${scene === 'mirror' ? styles.fadeMirror : ''}`}
+        aria-hidden="true"
+      />
       {loaded ? (
         <button type="button" className={styles.hit} aria-label="Play or pause" onDoubleClick={onTogglePlay} />
       ) : (

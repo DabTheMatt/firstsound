@@ -26,16 +26,18 @@
 .menu {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
-  z-index: 22;
+  left: 0;
+  right: auto;
+  z-index: 30;
   min-width: 220px;
-  max-height: min(70vh, 480px);
+  max-height: min(62vh, 420px);
   overflow: auto;
   padding: 8px;
-  background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-panel-elevated) 94%, transparent);
   border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
   border-radius: 10px;
   backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 .title {

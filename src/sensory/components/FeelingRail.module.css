@@ -1,15 +1,16 @@
 .rail {
   position: absolute;
   right: clamp(10px, 2vw, 28px);
-  top: 52%;
-  transform: translateY(-50%);
+  top: 96px;
+  bottom: 108px;
+  transform: none;
   z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   pointer-events: auto;
-  max-height: min(78vh, 720px);
+  max-height: none;
   overflow-y: auto;
   padding: 4px 4px 8px 0;
 }
@@ -192,8 +193,9 @@
 @media (max-width: 720px) {
   .rail {
     right: 6px;
+    top: 84px;
+    bottom: 96px;
     gap: 4px;
-    max-height: 72vh;
   }
 
   .label {

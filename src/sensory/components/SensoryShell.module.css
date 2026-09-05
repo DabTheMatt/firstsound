@@ -75,12 +75,19 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 6;
+  z-index: 12;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 18px 22px 8px;
   pointer-events: none;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-self: start;
 }
 
 .top > * {
