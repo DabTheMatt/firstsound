@@ -22,8 +22,8 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   speed: {
     id: 'speed',
     label: 'Speed',
-    min: 0.25,
-    max: 4,
+    min: 0.05,
+    max: 8,
     defaultValue: 1,
     unit: 'x',
     mapping: 'log',
@@ -31,12 +31,22 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   pitch: {
     id: 'pitch',
     label: 'Pitch',
-    min: -24,
-    max: 24,
+    min: -48,
+    max: 48,
     defaultValue: 0,
     unit: 'st',
     mapping: 'linear',
     step: 0.01,
+  },
+  stretchInterp: {
+    id: 'stretchInterp',
+    label: 'Interp',
+    min: 0,
+    max: 100,
+    defaultValue: 62,
+    unit: '%',
+    mapping: 'linear',
+    step: 1,
   },
   gain: {
     id: 'gain',
@@ -952,7 +962,7 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
-export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'gain', 'pan']
+export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'stretchInterp', 'gain', 'pan']
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',

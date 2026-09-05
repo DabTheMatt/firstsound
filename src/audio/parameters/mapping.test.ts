@@ -88,6 +88,16 @@ describe('mapping', () => {
     expect(applyParamValue(-2, PARAMS.speed)).toBe(PARAMS.speed.min)
   })
 
+  it('widens speed and pitch, and exposes stretch interpolation', () => {
+    expect(PARAMS.speed.min).toBe(0.05)
+    expect(PARAMS.speed.max).toBe(8)
+    expect(PARAMS.pitch.min).toBe(-48)
+    expect(PARAMS.pitch.max).toBe(48)
+    expect(applyParamValue(8, PARAMS.speed)).toBe(8)
+    expect(applyParamValue(-48, PARAMS.pitch)).toBe(-48)
+    expect(formatParamValue(62, PARAMS.stretchInterp)).toBe('62 %')
+  })
+
   it('lets Gain go down to −36 dB', () => {
     expect(PARAMS.gain.min).toBe(-36)
     expect(applyParamValue(-36, PARAMS.gain)).toBe(-36)

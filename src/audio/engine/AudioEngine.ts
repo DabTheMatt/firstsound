@@ -154,6 +154,14 @@ import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
+import {
+  scaledHannCurve,
+  smoothTowardLinear,
+  smoothTowardLog,
+  stretchLookahead,
+  stretchSlew,
+  stretchWindow,
+} from './stretch'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
@@ -209,8 +217,6 @@ type Listener = () => void
 
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
-const STRETCH_GRAIN = 0.07
-const STRETCH_HOP = 0.018
 const MIN_REGION = 0.05
 const RAMP = 0.008
 
@@ -351,6 +357,9 @@ export class AudioEngine {
   private schedulerId = 0
   private stretchHead = 0
   private stretchDir = 1
+  private stretchSpeed = 1
+  private stretchPitch = 0
+  private stretchRate = 1
   private visibilityBound = false
   private unlocked = false
   private motionRandCur = 0
@@ -2444,7 +2453,7 @@ export class AudioEngine {
     const duration = this.buffer.duration
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
-    const tempo = Math.max(0.01, this.liveParams().speed)
+    const tempo = Math.max(PARAMS.speed.min, this.liveParams().speed)
     const fade = this.regionFade
     let curve: Float32Array
     if (this.voiceFadePingPong) {
@@ -2531,9 +2540,13 @@ export class AudioEngine {
 
   private startStretchPlayback(): void {
     if (!this.ctx) return
+    const live = this.liveParams()
     this.nextGrainTime = this.ctx.currentTime
     this.stretchHead = this.playOffset
     this.stretchDir = this.direction === 'reverse' ? -1 : 1
+    this.stretchSpeed = Math.max(PARAMS.speed.min, live.speed)
+    this.stretchPitch = live.pitch
+    this.stretchRate = Math.max(PARAMS.speed.min, pitchRatio(live.pitch))
     this.schedulerId = window.setInterval(() => this.scheduleStretch(), SCHEDULER_MS)
     this.scheduleStretch()
   }
@@ -2572,10 +2585,10 @@ export class AudioEngine {
     }
     const ctx = this.ctx
     const duration = buffer.duration
-    const horizon = ctx.currentTime + LOOKAHEAD
     const live = this.liveParams()
-    const speed = Math.max(0.05, live.speed)
-    const rate = Math.max(0.05, pitchRatio(live.pitch))
+    const grainWin = stretchWindow(live.stretchInterp)
+    const slew = stretchSlew(grainWin.hopSec, live.stretchInterp)
+    const horizon = ctx.currentTime + stretchLookahead(grainWin.hopSec)
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const reverse = this.direction === 'reverse'
@@ -2583,6 +2596,14 @@ export class AudioEngine {
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
+      this.stretchSpeed = smoothTowardLog(
+        this.stretchSpeed,
+        Math.max(PARAMS.speed.min, live.speed),
+        slew,
+      )
+      this.stretchPitch = smoothTowardLinear(this.stretchPitch, live.pitch, slew)
+      const speed = this.stretchSpeed
+      const rate = Math.max(PARAMS.speed.min, pitchRatio(this.stretchPitch))
       const wrapped = this.wrapStretchHead(this.stretchHead, start, end)
       if (wrapped == null) {
         this.stop()
@@ -2591,8 +2612,11 @@ export class AudioEngine {
       this.stretchHead = wrapped
       const mapped = reverse ? reverseTime(this.stretchHead, duration) : this.stretchHead
       const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
-      const grainDur = STRETCH_GRAIN
-      const srcDur = Math.min(grainDur * rate + 0.01, Math.max(0.01, playBuffer.duration - offset))
+      const grainDur = grainWin.grainSec
+      const srcDur = Math.min(
+        grainDur * Math.max(this.stretchRate, rate) + 0.02,
+        Math.max(0.01, playBuffer.duration - offset),
+      )
       const playbackRel =
         this.direction === 'reverse'
           ? Math.max(0, end - this.stretchHead)
@@ -2608,19 +2632,28 @@ export class AudioEngine {
       )
       const src = ctx.createBufferSource()
       src.buffer = playBuffer
-      src.playbackRate.value = rate
+      try {
+        src.playbackRate.setValueAtTime(this.stretchRate, t)
+        src.playbackRate.linearRampToValueAtTime(rate, t + grainDur)
+      } catch {
+        src.playbackRate.value = rate
+      }
       const gain = ctx.createGain()
-      const attack = grainDur * 0.5
-      const peak = 0.55 * fadeAmp
-      gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(peak, t + attack)
-      gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      const curve = scaledHannCurve(grainWin.peak * fadeAmp, 48)
+      try {
+        gain.gain.setValueCurveAtTime(curve, t, grainDur)
+      } catch {
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(grainWin.peak * fadeAmp, t + grainDur * 0.5)
+        gain.gain.linearRampToValueAtTime(0, t + grainDur)
+      }
       src.connect(gain)
       gain.connect(this.voiceBus)
       src.start(t, offset, srcDur)
       src.stop(t + grainDur + 0.02)
-      this.stretchHead += STRETCH_HOP * speed * this.stretchDir
-      this.nextGrainTime += STRETCH_HOP
+      this.stretchRate = rate
+      this.stretchHead += grainWin.hopSec * speed * this.stretchDir
+      this.nextGrainTime += grainWin.hopSec
     }
   }
 

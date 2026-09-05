@@ -5,6 +5,7 @@ export type ParamId =
   | 'end'
   | 'speed'
   | 'pitch'
+  | 'stretchInterp'
   | 'gain'
   | 'pan'
   | 'channelGainL'

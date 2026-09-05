@@ -210,7 +210,15 @@ export const EQ_BAND_LFO_IDS: { freq: ParamId; gain: ParamId; q: ParamId }[] = [
 
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
 
-const INPUT_TARGETS: ParamId[] = ['gain', 'speed', 'pitch', 'pan', 'channelGainL', 'channelGainR']
+const INPUT_TARGETS: ParamId[] = [
+  'gain',
+  'speed',
+  'pitch',
+  'stretchInterp',
+  'pan',
+  'channelGainL',
+  'channelGainR',
+]
 
 export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   delay: DELAY_TARGETS,

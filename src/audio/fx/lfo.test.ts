@@ -184,6 +184,7 @@ describe('targets', () => {
     expect(isFxLfoTarget('eq2', 'eq1Freq')).toBe(false)
     expect(isFxLfoTarget('eqcf', 'eqcfGain')).toBe(true)
     expect(isFxLfoTarget('input', 'gain')).toBe(true)
+    expect(isFxLfoTarget('input', 'stretchInterp')).toBe(true)
     expect(isFxLfoTarget('input', 'pan')).toBe(true)
     expect(isFxLfoTarget('input', 'delayWet')).toBe(false)
   })
