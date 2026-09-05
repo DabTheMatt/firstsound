@@ -157,7 +157,7 @@ import type { ChainModule } from '../chain/chain'
 import type { CombFilterState } from '../engine/comb'
 import type { EqBand } from '../engine/eqBands'
 import type { DelayType, ReverbType } from '../fx/types'
-import type { MixLayer } from '../mix/layers'
+import type { MixTrack } from '../mix/tracks'
 
 export type EqListenMode = 'sample' | 'filters'
 
@@ -179,5 +179,7 @@ export type PresetV1 = {
   reverbType?: ReverbType
   comb?: CombFilterState
   fxLfos?: unknown
-  mixLayers?: MixLayer[]
+  tracks?: MixTrack[]
+  /** Legacy parallel mix-layer snapshots; parsed as tracks. */
+  mixLayers?: unknown
 }

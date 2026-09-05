@@ -127,8 +127,8 @@ export function WaveformToolbar({
         ) : null}
         {!minimal ? (
           <IconButton
-            label="Effects mix center"
-            caption="Mix"
+            label="Tracks and mixer"
+            caption="Tracks"
             pressed={viz === 'mix-split'}
             onClick={() => onViz('mix-split')}
           >

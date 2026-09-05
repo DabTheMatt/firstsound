@@ -34,6 +34,31 @@
   min-height: 120px;
 }
 
+.mixDesk {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  gap: 6px;
+}
+
+.trackLanes {
+  flex: 1 1 42%;
+  min-height: 120px;
+  min-width: 0;
+}
+
+.mixStrips {
+  flex: 1 1 58%;
+  min-height: 160px;
+  min-width: 0;
+}
+
+.mixStrips > * {
+  height: 100%;
+}
+
 .splitHandle {
   flex: none;
   height: 10px;

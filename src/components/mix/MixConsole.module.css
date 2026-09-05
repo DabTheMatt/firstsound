@@ -94,6 +94,11 @@
   background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
+.stripSelected {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: -1px;
+}
+
 .stripHead {
   width: 100%;
 }

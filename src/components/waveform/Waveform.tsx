@@ -15,6 +15,7 @@ import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { EqConsole } from '../eq/EqConsole'
 import { MixConsole } from '../mix/MixConsole'
+import { TrackLanes } from '../mix/TrackLanes'
 import {
   clampView,
   fitView,
@@ -86,7 +87,6 @@ export type WaveformHandle = {
 
 const SPLIT_PREF = 'field.splitWave'
 const EQ_SPLIT_PREF = 'field.splitEq'
-const MIX_SPLIT_PREF = 'field.splitMix'
 
 function loadSplitShare(): number {
   try {
@@ -106,16 +106,6 @@ function loadEqSplitShare(): number {
     /* private mode */
   }
   return 0.36
-}
-
-function loadMixSplitShare(): number {
-  try {
-    const n = Number(localStorage.getItem(MIX_SPLIT_PREF))
-    if (Number.isFinite(n) && n >= 0.28 && n <= 0.82) return n
-  } catch {
-    /* private mode */
-  }
-  return 0.4
 }
 
 type DragMode =
@@ -177,9 +167,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const waveShareRef = useRef(waveShare)
   const [eqShare, setEqShare] = useState(loadEqSplitShare)
   const eqShareRef = useRef(eqShare)
-  const [mixShare, setMixShare] = useState(loadMixSplitShare)
-  const mixShareRef = useRef(mixShare)
-  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' | 'mix' } | null>(null)
+  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -197,10 +185,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     eqShareRef.current = eqShare
   }, [eqShare])
-
-  useEffect(() => {
-    mixShareRef.current = mixShare
-  }, [mixShare])
 
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
@@ -710,7 +694,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
   const showWave = viz === 'waveform' || viz === 'split'
-  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
+  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
@@ -901,9 +885,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 ? { flex: 1 - waveShare }
                 : viz === 'eq-split'
                   ? { flex: eqShare }
-                  : viz === 'mix-split'
-                    ? { flex: mixShare }
-                    : undefined
+                  : undefined
             }
           >
             <Spectrum active={showSpec} />
@@ -946,40 +928,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           </>
         ) : null}
         {showMixConsole ? (
-          <>
-            <button
-              type="button"
-              className={styles.splitHandle}
-              aria-label="Resize FFT and mix center"
-              onPointerDown={(event) => {
-                event.currentTarget.setPointerCapture(event.pointerId)
-                splitDrag.current = { y: event.clientY, share: mixShareRef.current, kind: 'mix' }
-              }}
-              onPointerMove={(event) => {
-                const drag = splitDrag.current
-                if (!drag || drag.kind !== 'mix') return
-                const stage = event.currentTarget.parentElement
-                if (!stage) return
-                const h = stage.getBoundingClientRect().height
-                if (h < 80) return
-                const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
-                mixShareRef.current = next
-                setMixShare(next)
-              }}
-              onPointerUp={() => {
-                if (!splitDrag.current || splitDrag.current.kind !== 'mix') return
-                splitDrag.current = null
-                try {
-                  localStorage.setItem(MIX_SPLIT_PREF, String(mixShareRef.current))
-                } catch {
-                  /* private mode */
-                }
-              }}
-            />
-            <div className={styles.eqConsole} style={{ flex: 1 - mixShare }}>
-              <MixConsole />
+            <div className={styles.mixDesk}>
+              <div className={styles.trackLanes}>
+                <TrackLanes />
+              </div>
+              <div className={styles.mixStrips}>
+                <MixConsole />
+              </div>
             </div>
-          </>
         ) : null}
       </div>
       {loaded && duration > 0 && !showWave ? (

@@ -145,21 +145,19 @@ import {
   type EqFilterType,
 } from './eqBands'
 import {
-  addMixLayer,
-  applyLayerFocus,
-  cloneMixLayers,
-  defaultMixLayers,
-  duplicateMixLayer,
-  mixLayersEqual,
-  parseMixLayers,
-  patchMixLayer,
-  removeMixLayer,
-  setMixLayerEqBand,
-  type MixLayer,
-  type MixLayerFocus,
-  type MixLayerRecipe,
-  layerMixGain,
-} from '../mix/layers'
+  addTrack,
+  cloneTracks,
+  defaultTracks,
+  duplicateTrack,
+  parseTracks,
+  patchTrack,
+  removeTrack,
+  selectedTrack,
+  trackMixGain,
+  tracksEqual,
+  writeTrackRegion,
+  type MixTrack,
+} from '../mix/tracks'
 import {
   pingPongFadeCurve,
   pingPongFadeCurveFrom,
@@ -231,7 +229,8 @@ export type EngineSnapshot = {
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
   variations: { id: string; name: string }[]
-  mixLayers: MixLayer[]
+  tracks: MixTrack[]
+  selectedTrackId: string
   transients: number[]
   showTransients: boolean
   tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
@@ -298,16 +297,6 @@ type Slot = {
   stereo?: StereoStage
 }
 
-type MixLayerSlot = {
-  id: string
-  input: GainNode
-  wet: GainNode
-  mix: GainNode
-  eq: BiquadFilterNode[]
-  delayFx?: DelayGraph
-  reverbFx?: ReverbGraph
-  shaper?: WaveShaperNode
-}
 
 /**
  * Client-side sample instrument engine.
@@ -317,8 +306,8 @@ export class AudioEngine {
   private ctx: AudioContext | null = null
   private voiceBus: GainNode | null = null
   private mixBus: GainNode | null = null
-  private mixSlots = new Map<string, MixLayerSlot>()
-  private mixLayers: MixLayer[] = defaultMixLayers()
+  private tracks: MixTrack[] = defaultTracks()
+  private selectedTrackId = this.tracks[0]!.id
   private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
@@ -737,6 +726,7 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
+      this.syncSelectedTrackRegion()
       this.applyRegionChange()
     } else {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
@@ -914,6 +904,7 @@ export class AudioEngine {
     const region = clampRegion(start, end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
+    this.syncSelectedTrackRegion()
     if (!this.prepApplied) {
       this.prep = clampPrep(
         { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
@@ -982,6 +973,7 @@ export class AudioEngine {
     )
     this.params.start = region.start
     this.params.end = region.end
+    this.syncSelectedTrackRegion()
     this.applyRegionChange()
   }
 
@@ -1427,7 +1419,8 @@ export class AudioEngine {
     this.eqListen = 'sample'
     this.stopNoise()
     this.chain = defaultChain()
-    this.mixLayers = defaultMixLayers()
+    this.tracks = defaultTracks(region.start, region.end)
+    this.selectedTrackId = this.tracks[0]!.id
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
@@ -1465,60 +1458,58 @@ export class AudioEngine {
     void this.rebuildGraph()
   }
 
-  addMixLayer(recipe: MixLayerRecipe = 'copy'): string | null {
-    const next = addMixLayer(this.mixLayers, recipe)
-    if (mixLayersEqual(next, this.mixLayers)) return null
-    const added = next.find((layer) => !this.mixLayers.some((item) => item.id === layer.id))
-    this.mixLayers = next
-    void this.rebuildGraph()
+  addTrack(): string | null {
+    const duration = this.buffer?.duration ?? 0
+    const region = this.region(duration)
+    const next = addTrack(this.tracks, region.start, region.end)
+    if (tracksEqual(next, this.tracks)) return null
+    const added = next.find((track) => !this.tracks.some((item) => item.id === track.id))
+    this.tracks = next
+    if (added) this.selectTrack(added.id)
+    else this.emit()
     return added?.id ?? null
   }
 
-  duplicateMixLayer(id: string): string | null {
-    const next = duplicateMixLayer(this.mixLayers, id)
-    if (mixLayersEqual(next, this.mixLayers)) return null
-    const added = next.find((layer) => !this.mixLayers.some((item) => item.id === layer.id))
-    this.mixLayers = next
-    void this.rebuildGraph()
+  duplicateTrack(id: string): string | null {
+    const next = duplicateTrack(this.tracks, id)
+    if (tracksEqual(next, this.tracks)) return null
+    const added = next.find((track) => !this.tracks.some((item) => item.id === track.id))
+    this.tracks = next
+    if (added) this.selectTrack(added.id)
+    else this.emit()
     return added?.id ?? null
   }
 
-  removeMixLayer(id: string): void {
-    const next = removeMixLayer(this.mixLayers, id)
-    if (mixLayersEqual(next, this.mixLayers)) return
-    this.mixLayers = next
-    void this.rebuildGraph()
-  }
-
-  setMixLayer(
-    id: string,
-    patch: Partial<Omit<MixLayer, 'id' | 'eq'>> & { eq?: MixLayer['eq'] },
-  ): void {
-    const next = patchMixLayer(this.mixLayers, id, patch)
-    if (mixLayersEqual(next, this.mixLayers)) return
-    const prev = this.mixLayers.find((layer) => layer.id === id)
-    const updated = next.find((layer) => layer.id === id)
-    this.mixLayers = next
-    if (prev && updated && prev.insert !== updated.insert) {
-      void this.rebuildGraph()
+  removeTrack(id: string): void {
+    const next = removeTrack(this.tracks, id)
+    if (tracksEqual(next, this.tracks)) return
+    this.tracks = next
+    if (!this.tracks.some((track) => track.id === this.selectedTrackId)) {
+      this.selectTrack(this.tracks[0]!.id)
       return
     }
     this.applyLiveAudio(0.01)
     this.emit()
   }
 
-  setMixLayerEq(id: string, index: number, patch: Partial<EqBand>): void {
-    const next = setMixLayerEqBand(this.mixLayers, id, index, patch)
-    if (mixLayersEqual(next, this.mixLayers)) return
-    this.mixLayers = next
+  setTrack(id: string, patch: Partial<Omit<MixTrack, 'id'>>): void {
+    const next = patchTrack(this.tracks, id, patch)
+    if (tracksEqual(next, this.tracks)) return
+    this.tracks = next
+    if (id === this.selectedTrackId && (patch.start != null || patch.end != null)) {
+      const track = selectedTrack(this.tracks, id)
+      if (track) this.applyTrackRegion(track)
+    }
     this.applyLiveAudio(0.01)
     this.emit()
   }
 
-  setMixLayerFocus(id: string, focus: MixLayerFocus): void {
-    const next = applyLayerFocus(this.mixLayers, id, focus)
-    if (mixLayersEqual(next, this.mixLayers)) return
-    this.mixLayers = next
+  selectTrack(id: string): void {
+    const track = selectedTrack(this.tracks, id)
+    if (!track) return
+    this.syncSelectedTrackRegion()
+    this.selectedTrackId = track.id
+    this.applyTrackRegion(track)
     this.applyLiveAudio(0.01)
     this.emit()
   }
@@ -1703,7 +1694,7 @@ export class AudioEngine {
       delayType: this.delayType,
       reverbType: this.reverbType,
       fxLfos: cloneFxLfos(this.fxLfos),
-      mixLayers: cloneMixLayers(this.mixLayers),
+      tracks: cloneTracks(this.tracks),
     }
   }
 
@@ -1758,8 +1749,16 @@ export class AudioEngine {
     this.syncPrimaryEq()
     this.syncEqLfoParams(this.primaryEqId())
     this.syncLfoClock()
-    const parsedMix = parseMixLayers(preset.mixLayers)
-    this.mixLayers = parsedMix ?? defaultMixLayers()
+    const parsedTracks = parseTracks(preset.tracks ?? preset.mixLayers)
+    this.tracks = parsedTracks ?? defaultTracks(region.start, region.end)
+    this.hydrateTrackRegions(region.start, region.end, duration)
+    this.selectedTrackId = this.tracks[0]!.id
+    const selected = selectedTrack(this.tracks, this.selectedTrackId)
+    if (selected && selected.end > selected.start) {
+      const trackRegion = clampRegion(selected.start, selected.end, duration, MIN_REGION)
+      this.params.start = trackRegion.start
+      this.params.end = trackRegion.end
+    }
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1924,6 +1923,8 @@ export class AudioEngine {
         )
       }
     }
+    this.tracks = defaultTracks(this.params.start, this.params.end)
+    this.selectedTrackId = this.tracks[0]!.id
     this.bufferRev++
     this.emit()
   }
@@ -2077,7 +2078,6 @@ export class AudioEngine {
     for (const mod of normalizeChain(this.chain)) {
       this.slots.set(mod.instanceId, this.createSlot(mod))
     }
-    this.rebuildMixSlots()
     this.applyLiveAudio()
     this.applyBypassRamps(0)
   }
@@ -2153,115 +2153,41 @@ export class AudioEngine {
     return slot
   }
 
-  private rebuildMixSlots(): void {
-    if (!this.ctx) return
-    const live = new Set(this.mixLayers.map((layer) => layer.id))
-    for (const id of [...this.mixSlots.keys()]) {
-      if (live.has(id)) continue
-      this.disposeMixSlot(this.mixSlots.get(id))
-      this.mixSlots.delete(id)
-    }
-    for (const layer of this.mixLayers) {
-      const existing = this.mixSlots.get(layer.id)
-      if (existing && this.mixSlotInsert(existing) === layer.insert) continue
-      if (existing) this.disposeMixSlot(existing)
-      this.mixSlots.set(layer.id, this.createMixSlot(layer))
-    }
+  private applyTrackMix(smoothing: number): void {
+    if (!this.ctx || !this.mixBus) return
+    const track = selectedTrack(this.tracks, this.selectedTrackId)
+    const gain = track ? trackMixGain(track, this.tracks) : 1
+    rampGainExact(this.mixBus.gain, gain, this.ctx.currentTime, smoothing)
   }
 
-  private mixSlotInsert(slot: MixLayerSlot): MixLayer['insert'] {
-    if (slot.delayFx) return 'delay'
-    if (slot.reverbFx) return 'reverb'
-    if (slot.shaper) return 'saturation'
-    return 'none'
+  private syncSelectedTrackRegion(): void {
+    const id = this.selectedTrackId
+    if (!this.tracks.some((track) => track.id === id)) return
+    this.tracks = writeTrackRegion(this.tracks, id, this.params.start, this.params.end)
   }
 
-  private createMixSlot(layer: MixLayer): MixLayerSlot {
-    const ctx = this.ctx!
-    const input = ctx.createGain()
-    const wet = ctx.createGain()
-    const mix = ctx.createGain()
-    mix.gain.value = layerMixGain(layer, this.mixLayers)
-    const eq: BiquadFilterNode[] = []
-    const eqCount = EQ_BAND_COUNT * EQ_MAX_STAGES
-    for (let i = 0; i < eqCount; i++) eq.push(ctx.createBiquadFilter())
-    input.connect(eq[0]!)
-    for (let i = 0; i < eq.length - 1; i++) eq[i]!.connect(eq[i + 1]!)
-    const eqOut = eq.at(-1)!
-    const slot: MixLayerSlot = { id: layer.id, input, wet, mix, eq }
-    if (layer.insert === 'delay') {
-      eqOut.connect(wet)
-      slot.delayFx = createDelayGraph(ctx, wet, mix, eqOut)
-    } else if (layer.insert === 'reverb') {
-      eqOut.connect(wet)
-      slot.reverbFx = createReverbGraph(ctx, wet, mix, eqOut)
-    } else if (layer.insert === 'saturation') {
-      const shaper = ctx.createWaveShaper()
-      shaper.curve = makeTanhCurve(0)
-      shaper.oversample = '2x'
-      eqOut.connect(wet)
-      wet.connect(shaper)
-      shaper.connect(mix)
-      slot.shaper = shaper
-    } else {
-      eqOut.connect(mix)
-    }
-    return slot
+  private hydrateTrackRegions(start: number, end: number, duration: number): void {
+    this.tracks = this.tracks.map((track) => {
+      const hasRegion = track.end > track.start
+      const region = clampRegion(
+        hasRegion ? track.start : start,
+        hasRegion ? track.end : end,
+        duration,
+        MIN_REGION,
+      )
+      return { ...track, start: region.start, end: region.end }
+    })
   }
 
-  private disposeMixSlot(slot: MixLayerSlot | undefined): void {
-    if (!slot) return
-    if (slot.delayFx) stopDelayGraph(slot.delayFx)
-    if (slot.reverbFx) stopReverbGraph(slot.reverbFx)
-    try {
-      slot.input.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      slot.mix.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-  }
-
-  private connectMixLayers(): void {
-    if (!this.ctx || !this.voiceBus || !this.mixBus) return
-    for (const layer of this.mixLayers) {
-      const slot = this.mixSlots.get(layer.id)
-      if (!slot) continue
-      this.voiceBus.connect(slot.input)
-      slot.mix.connect(this.mixBus)
-    }
-  }
-
-  private disconnectMixLayers(): void {
-    for (const slot of this.mixSlots.values()) {
-      try {
-        slot.input.disconnect()
-      } catch {
-        /* already disconnected */
-      }
-      try {
-        slot.mix.disconnect()
-      } catch {
-        /* already disconnected */
-      }
-    }
-  }
-
-  private applyMixLayers(smoothing: number): void {
-    if (!this.ctx) return
-    const now = this.ctx.currentTime
-    const nyquist = this.ctx.sampleRate / 2
-    const live = this.liveParams()
-    for (const layer of this.mixLayers) {
-      const slot = this.mixSlots.get(layer.id)
-      if (!slot) continue
-      rampGainExact(slot.mix.gain, layerMixGain(layer, this.mixLayers), now, smoothing)
-      this.writeEqFilters(slot.eq, layer.eq, defaultCombFilter(), now, smoothing, nyquist)
-      if (slot.shaper) slot.shaper.curve = makeTanhCurve(live.saturation / 100)
-    }
+  private applyTrackRegion(track: MixTrack): void {
+    const duration = this.buffer?.duration ?? 0
+    const region = clampRegion(track.start, track.end, duration, MIN_REGION)
+    this.params.start = region.start
+    this.params.end = region.end
+    this.tracks = writeTrackRegion(this.tracks, track.id, region.start, region.end)
+    const span = Math.max(region.end - region.start, 0)
+    this.playOffset = region.start + (this.params.position / 100) * span
+    this.applyRegionChange()
   }
 
   private connectSlots(): void {
@@ -2271,7 +2197,7 @@ export class AudioEngine {
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
     if (this.mixBus) {
-      this.connectMixLayers()
+      this.voiceBus.connect(this.mixBus)
       this.mixBus.connect(ordered[0]!.input)
     } else {
       this.voiceBus.connect(ordered[0]!.input)
@@ -2318,7 +2244,6 @@ export class AudioEngine {
   }
 
   private disconnectSlots(): void {
-    this.disconnectMixLayers()
     for (const slot of this.slots.values()) {
       try {
         slot.output.disconnect()
@@ -2379,7 +2304,6 @@ export class AudioEngine {
       if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
       if (mod.type === 'eq') this.eqState(mod.instanceId)
     }
-    this.rebuildMixSlots()
     this.connectSlots()
     this.applyLiveAudio()
     this.applyBypassRamps(0.01)
@@ -2411,29 +2335,6 @@ export class AudioEngine {
           /* already disconnected */
         }
         slot.reverbFx = createReverbGraph(ctx, slot.wet, slot.output, slot.input)
-        silenceReverbGraph(slot.reverbFx, ctx.currentTime)
-        this.reverbIrKey = ''
-      }
-    }
-    for (const slot of this.mixSlots.values()) {
-      if (kinds.includes('delay') && slot.delayFx) {
-        stopDelayGraph(slot.delayFx)
-        try {
-          slot.wet.disconnect()
-        } catch {
-          /* already disconnected */
-        }
-        slot.delayFx = createDelayGraph(ctx, slot.wet, slot.mix, slot.eq.at(-1)!)
-        silenceDelayGraph(slot.delayFx, ctx.currentTime)
-      }
-      if (kinds.includes('reverb') && slot.reverbFx) {
-        stopReverbGraph(slot.reverbFx)
-        try {
-          slot.wet.disconnect()
-        } catch {
-          /* already disconnected */
-        }
-        slot.reverbFx = createReverbGraph(ctx, slot.wet, slot.mix, slot.eq.at(-1)!)
         silenceReverbGraph(slot.reverbFx, ctx.currentTime)
         this.reverbIrKey = ''
       }
@@ -2715,34 +2616,6 @@ export class AudioEngine {
         }
       }
     }
-    for (const slot of this.mixSlots.values()) {
-      if (slot.shaper) slot.shaper.curve = makeTanhCurve(params.saturation / 100)
-      if (slot.delayFx) {
-        if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
-        else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
-      }
-      if (slot.reverbFx) {
-        if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
-        else {
-          applyReverbGraph(slot.reverbFx, params, this.reverbType, bpm, now, smoothing)
-          const key = reverbImpulseKey(params, this.reverbType)
-          if (key !== this.reverbIrKey) {
-            this.reverbIrKey = key
-            if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
-            const fx = slot.reverbFx
-            if (!fx.conv.buffer) {
-              fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
-            } else {
-              this.reverbIrTimer = window.setTimeout(() => {
-                this.reverbIrTimer = 0
-                if (!this.ctx || !fx) return
-                fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
-              }, 40)
-            }
-          }
-        }
-      }
-    }
   }
 
   private applyLiveAudio(smoothing = 0.03): void {
@@ -2770,7 +2643,7 @@ export class AudioEngine {
     }
     if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(live.outputGain), now, 0.03)
     this.applyEq(smoothing)
-    this.applyMixLayers(smoothing)
+    this.applyTrackMix(smoothing)
     this.applyFxParams(smoothing)
     this.applyBypassRamps(smoothing)
     this.syncEqListen()
@@ -3271,7 +3144,8 @@ export class AudioEngine {
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
-      mixLayers: cloneMixLayers(this.mixLayers),
+      tracks: cloneTracks(this.tracks),
+      selectedTrackId: this.selectedTrackId,
       transients: this.transients.slice(),
       showTransients: this.showTransients,
       tempoSource: this.tempoSource,
