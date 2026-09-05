@@ -212,6 +212,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       ) : (
         <>
           {params(['reverbWet', 'reverbSize', 'reverbDecay'])}
+          <h3 className={styles.sub}>Channels</h3>
           <Segmented
             label="Channels"
             value={reverbStereo ? 'stereo' : 'mono'}
@@ -219,8 +220,14 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
               { value: 'mono', label: 'Mono' },
               { value: 'stereo', label: 'Stereo' },
             ]}
+            wrap
             onChange={(v) => engine.setParam('reverbStereo', v === 'stereo' ? 1 : 0)}
           />
+          {reverbStereo ? (
+            <p className={styles.help}>Width 0% is still a mono tail; 200% is extra-wide. Stereo In and L/R Offset live in Advanced.</p>
+          ) : (
+            <p className={styles.help}>Mono sums the send and collapses the tail — glue for a sample that should stay centered.</p>
+          )}
           {reverbStereo ? params(['reverbWidth']) : null}
           <p className={styles.help}>
             Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.
