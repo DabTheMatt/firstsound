@@ -1,0 +1,243 @@
+.console {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.lead {
+  margin: 2px 0 0;
+  max-width: 42em;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.recipes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.recipe {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recipe:hover:not(:disabled) {
+  background: var(--bg-control-hover);
+  color: var(--accent-primary);
+}
+
+.recipe:disabled {
+  opacity: 0.4;
+}
+
+.strips {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  gap: 0;
+  padding: 4px 6px 8px;
+}
+
+.strip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex: 0 0 132px;
+  min-width: 120px;
+  max-width: 156px;
+  padding: 6px 8px 10px;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.strip:last-child {
+  border-right: 0;
+}
+
+.stripOff {
+  opacity: 0.5;
+}
+
+.stripSolo {
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+}
+
+.stripHead {
+  width: 100%;
+}
+
+.name {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.faderWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 132px;
+}
+
+.faderValue {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-primary);
+}
+
+.fader {
+  flex: 1 1 auto;
+  width: 28px;
+  min-height: 110px;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  appearance: slider-vertical;
+  accent-color: var(--accent-primary);
+}
+
+.faderLabel {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toggles {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.toggle,
+.toggleOn,
+.toggleSolo {
+  width: 28px;
+  min-height: 26px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.toggleOn {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-control-hover);
+}
+
+.toggleSolo {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.insert {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.insert select {
+  min-height: 28px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.focus {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.focusBtn,
+.focusOn {
+  min-height: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focusOn {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ghost {
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ghost:hover:not(:disabled) {
+  color: var(--accent-primary);
+}
+
+.ghost:disabled {
+  opacity: 0.35;
+}

@@ -145,6 +145,22 @@ import {
   type EqFilterType,
 } from './eqBands'
 import {
+  addMixLayer,
+  applyLayerFocus,
+  cloneMixLayers,
+  defaultMixLayers,
+  duplicateMixLayer,
+  mixLayersEqual,
+  parseMixLayers,
+  patchMixLayer,
+  removeMixLayer,
+  setMixLayerEqBand,
+  type MixLayer,
+  type MixLayerFocus,
+  type MixLayerRecipe,
+  layerMixGain,
+} from '../mix/layers'
+import {
   pingPongFadeCurve,
   pingPongFadeCurveFrom,
   regionFadeCurveFrom,
@@ -155,6 +171,7 @@ import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
+import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
@@ -214,6 +231,7 @@ export type EngineSnapshot = {
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
   variations: { id: string; name: string }[]
+  mixLayers: MixLayer[]
   transients: number[]
   showTransients: boolean
   tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
@@ -280,6 +298,17 @@ type Slot = {
   stereo?: StereoStage
 }
 
+type MixLayerSlot = {
+  id: string
+  input: GainNode
+  wet: GainNode
+  mix: GainNode
+  eq: BiquadFilterNode[]
+  delayFx?: DelayGraph
+  reverbFx?: ReverbGraph
+  shaper?: WaveShaperNode
+}
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
@@ -287,6 +316,9 @@ type Slot = {
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private voiceBus: GainNode | null = null
+  private mixBus: GainNode | null = null
+  private mixSlots = new Map<string, MixLayerSlot>()
+  private mixLayers: MixLayer[] = defaultMixLayers()
   private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
@@ -993,6 +1025,27 @@ export class AudioEngine {
     )
   }
 
+  /** Crop the working sample to the play region and cover the whole new buffer. */
+  async trimPlayRegion(): Promise<boolean> {
+    await this.ensureContext()
+    if (!this.ctx || !this.buffer) return false
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const rendered = renderRegion(this.buffer, this.ctx, {
+      start: this.params.start,
+      end: this.params.end,
+      reverse: false,
+      fadeIn: 0,
+      fadeOut: 0,
+      fadeCurve: 'linear',
+      gain: 1,
+    })
+    this.fileName = stemName(this.fileName) + '_trim.wav'
+    this.applyLoadedBuffer(rendered, false, 'full')
+    return true
+  }
+
   detectSilenceMarkers(): void {
     const channels: Float32Array[] = []
     if (this.sourceBuffer) {
@@ -1006,7 +1059,7 @@ export class AudioEngine {
   }
 
   markSampleTransients(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
@@ -1016,7 +1069,7 @@ export class AudioEngine {
     this.showTransients = this.transients.length > 0
     this.tempoNotice = this.transients.length
       ? `Marked ${this.transients.length} transients.`
-      : 'No clear transients in this region.'
+      : 'No clear transients in this sample.'
     this.emit()
   }
 
@@ -1026,26 +1079,55 @@ export class AudioEngine {
     else this.emit()
   }
 
+  setTransientTime(index: number, time: number): void {
+    if (!this.transients.length) return
+    const duration = this.buffer?.duration ?? 0
+    const { prev, next } = neighborTimes(this.transients, index, duration)
+    const nextTime = clampWarpTime(time, prev, next)
+    const copy = this.transients.slice()
+    copy[index] = nextTime
+    this.transients = copy
+    this.emit()
+  }
+
+  commitTransientWarp(index: number, fromSec: number, toSec: number): void {
+    const buffer = this.detachWorkingBuffer()
+    if (!buffer || index < 0 || index >= this.transients.length) return
+    const origin = this.transients.slice()
+    origin[index] = fromSec
+    const duration = buffer.duration
+    const sr = buffer.sampleRate
+    const { prev, next } = neighborTimes(origin, index, duration)
+    const clamped = clampWarpTime(toSec, prev, next)
+    if (Math.abs(clamped - fromSec) < 1e-4) {
+      this.setTransientTime(index, clamped)
+      return
+    }
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      const warped = warpChannel(buffer.getChannelData(ch), sr, fromSec, clamped, prev, next)
+      buffer.getChannelData(ch).set(warped)
+    }
+    this.transients = remapWarpTimes(origin, fromSec, clamped, prev, next)
+    this.showTransients = true
+    this.afterBufferEditKeepTransients()
+  }
+
   detectSampleTempo(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
       return
     }
     const guess = estimateTempo(region.samples, region.sampleRate, region.offsetSec, region.durationSec)
-    this.transients = guess?.transients ?? detectTransients(region.samples, region.sampleRate, region.offsetSec)
-    this.showTransients = this.transients.length > 0
     if (!guess) {
-      this.tempoNotice = this.transients.length
-        ? 'Found transients, but no steady tempo.'
-        : 'No rhythm found in this region.'
+      this.tempoNotice = 'No steady tempo found in this sample.'
       this.emit()
       return
     }
     this.tempoSource = 'detected'
     this.writeTempo(guess.bpm)
-    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM from transients.`
+    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM.`
     this.emit()
   }
 
@@ -1085,7 +1167,7 @@ export class AudioEngine {
     if (resetBpm) this.params.bpm = PARAMS.bpm.defaultValue
   }
 
-  private analysisRegion(): {
+  private analysisFull(): {
     samples: Float32Array
     sampleRate: number
     offsetSec: number
@@ -1095,15 +1177,14 @@ export class AudioEngine {
     const mono = this.mono
     if (!buffer || !mono || !mono.length) return null
     const sr = buffer.sampleRate
-    const start = Math.max(0, this.params.start)
-    const end = Math.min(buffer.duration, Math.max(start + 0.05, this.params.end))
-    const s = Math.min(mono.length - 1, Math.max(0, Math.floor(start * sr)))
-    const e = Math.min(mono.length, Math.max(s + 1, Math.floor(end * sr)))
+    const maxSec = 45
+    const maxN = Math.min(mono.length, Math.max(1, Math.floor(maxSec * sr)))
+    const samples = maxN < mono.length ? mono.subarray(0, maxN) : mono
     return {
-      samples: mono.subarray(s, e),
+      samples,
       sampleRate: sr,
-      offsetSec: s / sr,
-      durationSec: (e - s) / sr,
+      offsetSec: 0,
+      durationSec: samples.length / Math.max(1, sr),
     }
   }
 
@@ -1346,6 +1427,7 @@ export class AudioEngine {
     this.eqListen = 'sample'
     this.stopNoise()
     this.chain = defaultChain()
+    this.mixLayers = defaultMixLayers()
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
@@ -1381,6 +1463,64 @@ export class AudioEngine {
     this.syncPrimaryEq()
     if (this.playing && this.engineMode === 'grain') void this.play()
     void this.rebuildGraph()
+  }
+
+  addMixLayer(recipe: MixLayerRecipe = 'copy'): string | null {
+    const next = addMixLayer(this.mixLayers, recipe)
+    if (mixLayersEqual(next, this.mixLayers)) return null
+    const added = next.find((layer) => !this.mixLayers.some((item) => item.id === layer.id))
+    this.mixLayers = next
+    void this.rebuildGraph()
+    return added?.id ?? null
+  }
+
+  duplicateMixLayer(id: string): string | null {
+    const next = duplicateMixLayer(this.mixLayers, id)
+    if (mixLayersEqual(next, this.mixLayers)) return null
+    const added = next.find((layer) => !this.mixLayers.some((item) => item.id === layer.id))
+    this.mixLayers = next
+    void this.rebuildGraph()
+    return added?.id ?? null
+  }
+
+  removeMixLayer(id: string): void {
+    const next = removeMixLayer(this.mixLayers, id)
+    if (mixLayersEqual(next, this.mixLayers)) return
+    this.mixLayers = next
+    void this.rebuildGraph()
+  }
+
+  setMixLayer(
+    id: string,
+    patch: Partial<Omit<MixLayer, 'id' | 'eq'>> & { eq?: MixLayer['eq'] },
+  ): void {
+    const next = patchMixLayer(this.mixLayers, id, patch)
+    if (mixLayersEqual(next, this.mixLayers)) return
+    const prev = this.mixLayers.find((layer) => layer.id === id)
+    const updated = next.find((layer) => layer.id === id)
+    this.mixLayers = next
+    if (prev && updated && prev.insert !== updated.insert) {
+      void this.rebuildGraph()
+      return
+    }
+    this.applyLiveAudio(0.01)
+    this.emit()
+  }
+
+  setMixLayerEq(id: string, index: number, patch: Partial<EqBand>): void {
+    const next = setMixLayerEqBand(this.mixLayers, id, index, patch)
+    if (mixLayersEqual(next, this.mixLayers)) return
+    this.mixLayers = next
+    this.applyLiveAudio(0.01)
+    this.emit()
+  }
+
+  setMixLayerFocus(id: string, focus: MixLayerFocus): void {
+    const next = applyLayerFocus(this.mixLayers, id, focus)
+    if (mixLayersEqual(next, this.mixLayers)) return
+    this.mixLayers = next
+    this.applyLiveAudio(0.01)
+    this.emit()
   }
 
   setModuleBypass(instanceId: string, bypassed: boolean): void {
@@ -1563,6 +1703,7 @@ export class AudioEngine {
       delayType: this.delayType,
       reverbType: this.reverbType,
       fxLfos: cloneFxLfos(this.fxLfos),
+      mixLayers: cloneMixLayers(this.mixLayers),
     }
   }
 
@@ -1617,6 +1758,8 @@ export class AudioEngine {
     this.syncPrimaryEq()
     this.syncEqLfoParams(this.primaryEqId())
     this.syncLfoClock()
+    const parsedMix = parseMixLayers(preset.mixLayers)
+    this.mixLayers = parsedMix ?? defaultMixLayers()
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1767,6 +1910,19 @@ export class AudioEngine {
       this.params = { ...this.params, start: region.start, end: region.end }
       this.playOffset = region.start
       this.resetTempoAnalysis()
+      if (regionMode === 'full') {
+        this.prepApplied = true
+        this.prep = clampPrep(
+          {
+            ...this.prep,
+            windowStart: 0,
+            windowEnd: buffer.duration,
+            selectionStart: region.start,
+            selectionEnd: region.end,
+          },
+          Math.max(this.sourceDuration(), buffer.duration),
+        )
+      }
     }
     this.bufferRev++
     this.emit()
@@ -1797,6 +1953,15 @@ export class AudioEngine {
     this.reversed = this.buildReversed(this.buffer)
     this.mono = mixToMono(this.buffer)
     this.resetTempoAnalysis()
+    this.bufferRev++
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  private afterBufferEditKeepTransients(): void {
+    if (!this.buffer) return
+    this.reversed = this.buildReversed(this.buffer)
+    this.mono = mixToMono(this.buffer)
     this.bufferRev++
     if (this.playing) void this.play()
     else this.emit()
@@ -1906,10 +2071,13 @@ export class AudioEngine {
     this.previewGain.gain.value = 1
     this.noiseGain = ctx.createGain()
     this.noiseGain.gain.value = 0
+    this.mixBus = ctx.createGain()
+    this.mixBus.gain.value = 1
 
     for (const mod of normalizeChain(this.chain)) {
       this.slots.set(mod.instanceId, this.createSlot(mod))
     }
+    this.rebuildMixSlots()
     this.applyLiveAudio()
     this.applyBypassRamps(0)
   }
@@ -1985,13 +2153,129 @@ export class AudioEngine {
     return slot
   }
 
+  private rebuildMixSlots(): void {
+    if (!this.ctx) return
+    const live = new Set(this.mixLayers.map((layer) => layer.id))
+    for (const id of [...this.mixSlots.keys()]) {
+      if (live.has(id)) continue
+      this.disposeMixSlot(this.mixSlots.get(id))
+      this.mixSlots.delete(id)
+    }
+    for (const layer of this.mixLayers) {
+      const existing = this.mixSlots.get(layer.id)
+      if (existing && this.mixSlotInsert(existing) === layer.insert) continue
+      if (existing) this.disposeMixSlot(existing)
+      this.mixSlots.set(layer.id, this.createMixSlot(layer))
+    }
+  }
+
+  private mixSlotInsert(slot: MixLayerSlot): MixLayer['insert'] {
+    if (slot.delayFx) return 'delay'
+    if (slot.reverbFx) return 'reverb'
+    if (slot.shaper) return 'saturation'
+    return 'none'
+  }
+
+  private createMixSlot(layer: MixLayer): MixLayerSlot {
+    const ctx = this.ctx!
+    const input = ctx.createGain()
+    const wet = ctx.createGain()
+    const mix = ctx.createGain()
+    mix.gain.value = layerMixGain(layer, this.mixLayers)
+    const eq: BiquadFilterNode[] = []
+    const eqCount = EQ_BAND_COUNT * EQ_MAX_STAGES
+    for (let i = 0; i < eqCount; i++) eq.push(ctx.createBiquadFilter())
+    input.connect(eq[0]!)
+    for (let i = 0; i < eq.length - 1; i++) eq[i]!.connect(eq[i + 1]!)
+    const eqOut = eq.at(-1)!
+    const slot: MixLayerSlot = { id: layer.id, input, wet, mix, eq }
+    if (layer.insert === 'delay') {
+      eqOut.connect(wet)
+      slot.delayFx = createDelayGraph(ctx, wet, mix, eqOut)
+    } else if (layer.insert === 'reverb') {
+      eqOut.connect(wet)
+      slot.reverbFx = createReverbGraph(ctx, wet, mix, eqOut)
+    } else if (layer.insert === 'saturation') {
+      const shaper = ctx.createWaveShaper()
+      shaper.curve = makeTanhCurve(0)
+      shaper.oversample = '2x'
+      eqOut.connect(wet)
+      wet.connect(shaper)
+      shaper.connect(mix)
+      slot.shaper = shaper
+    } else {
+      eqOut.connect(mix)
+    }
+    return slot
+  }
+
+  private disposeMixSlot(slot: MixLayerSlot | undefined): void {
+    if (!slot) return
+    if (slot.delayFx) stopDelayGraph(slot.delayFx)
+    if (slot.reverbFx) stopReverbGraph(slot.reverbFx)
+    try {
+      slot.input.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      slot.mix.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  private connectMixLayers(): void {
+    if (!this.ctx || !this.voiceBus || !this.mixBus) return
+    for (const layer of this.mixLayers) {
+      const slot = this.mixSlots.get(layer.id)
+      if (!slot) continue
+      this.voiceBus.connect(slot.input)
+      slot.mix.connect(this.mixBus)
+    }
+  }
+
+  private disconnectMixLayers(): void {
+    for (const slot of this.mixSlots.values()) {
+      try {
+        slot.input.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+      try {
+        slot.mix.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+  }
+
+  private applyMixLayers(smoothing: number): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    const nyquist = this.ctx.sampleRate / 2
+    const live = this.liveParams()
+    for (const layer of this.mixLayers) {
+      const slot = this.mixSlots.get(layer.id)
+      if (!slot) continue
+      rampGainExact(slot.mix.gain, layerMixGain(layer, this.mixLayers), now, smoothing)
+      this.writeEqFilters(slot.eq, layer.eq, defaultCombFilter(), now, smoothing, nyquist)
+      if (slot.shaper) slot.shaper.curve = makeTanhCurve(live.saturation / 100)
+    }
+  }
+
   private connectSlots(): void {
     if (!this.ctx || !this.voiceBus || !this.safetyGain || !this.limiter || !this.analyser) return
     const ordered = this.chain
       .map((m) => this.slots.get(m.instanceId))
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
-    this.voiceBus.connect(ordered[0]!.input)
+    if (this.mixBus) {
+      this.connectMixLayers()
+      this.mixBus.connect(ordered[0]!.input)
+    } else {
+      this.voiceBus.connect(ordered[0]!.input)
+    }
     const eqSlots = ordered.filter((s) => s.type === 'eq')
     const firstEq = eqSlots[0]
     const lastEq = eqSlots.at(-1)
@@ -2034,6 +2318,7 @@ export class AudioEngine {
   }
 
   private disconnectSlots(): void {
+    this.disconnectMixLayers()
     for (const slot of this.slots.values()) {
       try {
         slot.output.disconnect()
@@ -2043,6 +2328,11 @@ export class AudioEngine {
     }
     try {
       this.voiceBus?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.mixBus?.disconnect()
     } catch {
       /* already disconnected */
     }
@@ -2089,6 +2379,7 @@ export class AudioEngine {
       if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
       if (mod.type === 'eq') this.eqState(mod.instanceId)
     }
+    this.rebuildMixSlots()
     this.connectSlots()
     this.applyLiveAudio()
     this.applyBypassRamps(0.01)
@@ -2120,6 +2411,29 @@ export class AudioEngine {
           /* already disconnected */
         }
         slot.reverbFx = createReverbGraph(ctx, slot.wet, slot.output, slot.input)
+        silenceReverbGraph(slot.reverbFx, ctx.currentTime)
+        this.reverbIrKey = ''
+      }
+    }
+    for (const slot of this.mixSlots.values()) {
+      if (kinds.includes('delay') && slot.delayFx) {
+        stopDelayGraph(slot.delayFx)
+        try {
+          slot.wet.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        slot.delayFx = createDelayGraph(ctx, slot.wet, slot.mix, slot.eq.at(-1)!)
+        silenceDelayGraph(slot.delayFx, ctx.currentTime)
+      }
+      if (kinds.includes('reverb') && slot.reverbFx) {
+        stopReverbGraph(slot.reverbFx)
+        try {
+          slot.wet.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        slot.reverbFx = createReverbGraph(ctx, slot.wet, slot.mix, slot.eq.at(-1)!)
         silenceReverbGraph(slot.reverbFx, ctx.currentTime)
         this.reverbIrKey = ''
       }
@@ -2401,6 +2715,34 @@ export class AudioEngine {
         }
       }
     }
+    for (const slot of this.mixSlots.values()) {
+      if (slot.shaper) slot.shaper.curve = makeTanhCurve(params.saturation / 100)
+      if (slot.delayFx) {
+        if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
+        else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
+      }
+      if (slot.reverbFx) {
+        if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
+        else {
+          applyReverbGraph(slot.reverbFx, params, this.reverbType, bpm, now, smoothing)
+          const key = reverbImpulseKey(params, this.reverbType)
+          if (key !== this.reverbIrKey) {
+            this.reverbIrKey = key
+            if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+            const fx = slot.reverbFx
+            if (!fx.conv.buffer) {
+              fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
+            } else {
+              this.reverbIrTimer = window.setTimeout(() => {
+                this.reverbIrTimer = 0
+                if (!this.ctx || !fx) return
+                fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
+              }, 40)
+            }
+          }
+        }
+      }
+    }
   }
 
   private applyLiveAudio(smoothing = 0.03): void {
@@ -2428,6 +2770,7 @@ export class AudioEngine {
     }
     if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(live.outputGain), now, 0.03)
     this.applyEq(smoothing)
+    this.applyMixLayers(smoothing)
     this.applyFxParams(smoothing)
     this.applyBypassRamps(smoothing)
     this.syncEqListen()
@@ -2928,6 +3271,7 @@ export class AudioEngine {
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
+      mixLayers: cloneMixLayers(this.mixLayers),
       transients: this.transients.slice(),
       showTransients: this.showTransients,
       tempoSource: this.tempoSource,

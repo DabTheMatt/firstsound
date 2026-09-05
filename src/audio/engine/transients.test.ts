@@ -52,6 +52,24 @@ describe('estimateTempo', () => {
     expect(guess!.bpm).toBeGreaterThanOrEqual(85)
     expect(guess!.bpm).toBeLessThanOrEqual(95)
   })
+
+  it('guesses tempo from short tonal bursts', () => {
+    const sr = 8000
+    const interval = 60 / 100
+    const n = Math.floor(8 * sr)
+    const samples = new Float32Array(n)
+    const burst = Math.floor(sr * 0.04)
+    for (let t = 0.12; t < 7.6; t += interval) {
+      const i0 = Math.floor(t * sr)
+      for (let k = 0; k < burst && i0 + k < n; k++) {
+        samples[i0 + k] = Math.sin((2 * Math.PI * 180 * k) / sr) * Math.exp(-k / (burst * 0.28))
+      }
+    }
+    const guess = estimateTempo(samples, sr)
+    expect(guess).not.toBeNull()
+    expect(guess!.bpm).toBeGreaterThanOrEqual(95)
+    expect(guess!.bpm).toBeLessThanOrEqual(105)
+  })
 })
 
 describe('tapTempo', () => {

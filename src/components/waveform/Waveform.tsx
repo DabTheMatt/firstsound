@@ -14,6 +14,7 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { EqConsole } from '../eq/EqConsole'
+import { MixConsole } from '../mix/MixConsole'
 import {
   clampView,
   fitView,
@@ -85,6 +86,7 @@ export type WaveformHandle = {
 
 const SPLIT_PREF = 'field.splitWave'
 const EQ_SPLIT_PREF = 'field.splitEq'
+const MIX_SPLIT_PREF = 'field.splitMix'
 
 function loadSplitShare(): number {
   try {
@@ -106,6 +108,16 @@ function loadEqSplitShare(): number {
   return 0.36
 }
 
+function loadMixSplitShare(): number {
+  try {
+    const n = Number(localStorage.getItem(MIX_SPLIT_PREF))
+    if (Number.isFinite(n) && n >= 0.28 && n <= 0.82) return n
+  } catch {
+    /* private mode */
+  }
+  return 0.4
+}
+
 type DragMode =
   | 'start'
   | 'end'
@@ -117,6 +129,7 @@ type DragMode =
   | 'fadeOutShape'
   | 'fx'
   | 'playhead'
+  | 'transient'
   | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
@@ -164,7 +177,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const waveShareRef = useRef(waveShare)
   const [eqShare, setEqShare] = useState(loadEqSplitShare)
   const eqShareRef = useRef(eqShare)
-  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' } | null>(null)
+  const [mixShare, setMixShare] = useState(loadMixSplitShare)
+  const mixShareRef = useRef(mixShare)
+  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' | 'mix' } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -182,6 +197,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     eqShareRef.current = eqShare
   }, [eqShare])
+
+  useEffect(() => {
+    mixShareRef.current = mixShare
+  }, [mixShare])
 
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
@@ -422,6 +441,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     originView: View
     origin: { start: number; end: number }
     fx?: SpaceHit
+    transientIndex?: number
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
@@ -457,11 +477,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
+    const transientAttr = (event.target as HTMLElement | null)?.closest?.('[data-transient]') as HTMLElement | null
     const fadeRole = fadeAttr?.dataset.fadeRole
 
     let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
+    let transientIndex: number | undefined
     if (mode !== 'pan') {
-      if (fadeAttr?.dataset.fade === 'in' && fadeRole === 'shape') mode = 'fadeInShape'
+      if (transientAttr?.dataset.transient != null) {
+        mode = 'transient'
+        transientIndex = Number(transientAttr.dataset.transient)
+      } else if (fadeAttr?.dataset.fade === 'in' && fadeRole === 'shape') mode = 'fadeInShape'
       else if (fadeAttr?.dataset.fade === 'out' && fadeRole === 'shape') mode = 'fadeOutShape'
       else if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
       else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
@@ -477,7 +502,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       mode === 'fadeInShape' ||
       mode === 'fadeOutShape' ||
       mode === 'start' ||
-      mode === 'end'
+      mode === 'end' ||
+      mode === 'transient'
 
     if (!usingRegionHandle && fxMode && tool === 'select') {
       const snap = engine.getSnapshot()
@@ -514,14 +540,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     if (mode === 'fadeIn' || mode === 'fadeInShape') onFades({ fadeFocus: 'in' })
     else if (mode === 'fadeOut' || mode === 'fadeOutShape') onFades({ fadeFocus: 'out' })
     if (mode === 'playhead') engine.seekSeconds(t, 'sample')
+    const originTransient = transientIndex != null ? transients[transientIndex] : t
     drag.current = {
       mode,
       span: end - start,
-      originT: t,
+      originT: originTransient ?? t,
       originY: event.clientY - rect.top,
       originX: event.clientX,
       originView: { ...viewRef.current },
       origin: { start, end },
+      transientIndex,
     }
     setPanning(mode === 'pan')
   }
@@ -597,6 +625,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       })
     }
     else if (mode === 'playhead') engine.seekSeconds(next, 'sample')
+    else if (mode === 'transient' && drag.current.transientIndex != null) {
+      engine.setTransientTime(drag.current.transientIndex, next)
+    }
     else if (mode === 'move') {
       const delta = next - originT
       const maxStart = Math.max(0, duration - span)
@@ -614,9 +645,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     pointers.current.delete(event.pointerId)
     if (pointers.current.size < 2) pinch.current = null
     if (pointers.current.size === 0) {
-      const mode = drag.current?.mode
+      const dragState = drag.current
+      const mode = dragState?.mode
+      const transientIndex = dragState?.transientIndex
+      const originT = dragState?.originT ?? 0
       drag.current = null
       setPanning(false)
+      if (mode === 'transient' && transientIndex != null) {
+        const to = engine.getSnapshot().transients[transientIndex] ?? originT
+        engine.commitTransientWarp(transientIndex, originT, to)
+      }
       if (mode === 'start' || mode === 'end' || mode === 'move') {
         if (autoSnap) {
           if (mode === 'start' || mode === 'move') engine.snapToZero('start')
@@ -672,9 +710,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
   const showWave = viz === 'waveform' || viz === 'split'
-  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
+  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
   const showEqConsole = viz === 'eq-split'
-  const splitStage = viz === 'split' || viz === 'eq-split'
+  const showMixConsole = viz === 'mix-split'
+  const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
 
   return (
     <div className={`${styles.editor} ${sensory ? styles.sensory : ''}`}>
@@ -775,10 +814,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
                   <div ref={playheadRef} className={styles.playhead} />
                   {showTransients && !sensory
-                    ? transients.map((t) => {
+                    ? transients.map((t, i) => {
                         const left = pct(t)
                         if (left < -1 || left > 101) return null
-                        return <div key={t} className={styles.transient} style={{ left: `${left}%` }} />
+                        return (
+                          <div
+                            key={`${i}:${t.toFixed(4)}`}
+                            className={styles.transient}
+                            data-transient={i}
+                            style={{ left: `${left}%` }}
+                            role="slider"
+                            aria-label={`Transient ${i + 1}`}
+                          />
+                        )
                       })
                     : null}
                 </>
@@ -853,7 +901,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 ? { flex: 1 - waveShare }
                 : viz === 'eq-split'
                   ? { flex: eqShare }
-                  : undefined
+                  : viz === 'mix-split'
+                    ? { flex: mixShare }
+                    : undefined
             }
           >
             <Spectrum active={showSpec} />
@@ -892,6 +942,42 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
             <div className={styles.eqConsole} style={{ flex: 1 - eqShare }}>
               <EqConsole />
+            </div>
+          </>
+        ) : null}
+        {showMixConsole ? (
+          <>
+            <button
+              type="button"
+              className={styles.splitHandle}
+              aria-label="Resize FFT and mix center"
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId)
+                splitDrag.current = { y: event.clientY, share: mixShareRef.current, kind: 'mix' }
+              }}
+              onPointerMove={(event) => {
+                const drag = splitDrag.current
+                if (!drag || drag.kind !== 'mix') return
+                const stage = event.currentTarget.parentElement
+                if (!stage) return
+                const h = stage.getBoundingClientRect().height
+                if (h < 80) return
+                const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
+                mixShareRef.current = next
+                setMixShare(next)
+              }}
+              onPointerUp={() => {
+                if (!splitDrag.current || splitDrag.current.kind !== 'mix') return
+                splitDrag.current = null
+                try {
+                  localStorage.setItem(MIX_SPLIT_PREF, String(mixShareRef.current))
+                } catch {
+                  /* private mode */
+                }
+              }}
+            />
+            <div className={styles.eqConsole} style={{ flex: 1 - mixShare }}>
+              <MixConsole />
             </div>
           </>
         ) : null}
