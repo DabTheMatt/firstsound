@@ -1039,7 +1039,11 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
           type="button"
           className={styles.ghost}
           disabled={!snap.sampleLoaded}
-          onClick={() => engine.tapSampleTempo()}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            engine.tapSampleTempo()
+          }}
         >
           Tap tempo{snap.tapCount > 0 ? ` · ${snap.tapCount}` : ''}
         </button>
