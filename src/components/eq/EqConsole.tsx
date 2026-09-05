@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { moduleLabel } from '../../audio/chain/chain'
-import type { EqFilterType } from '../../audio/engine/eqBands'
+import { EQ_MAX_BANDS, type EqFilterType } from '../../audio/engine/eqBands'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
@@ -33,9 +33,10 @@ export function EqConsole() {
                 ],
           )
           const offIndex = bands.findIndex((b) => b.type === 'off')
+          const canAdd = offIndex >= 0 || bands.length < EQ_MAX_BANDS
           return [
             ...enabled,
-            offIndex >= 0 ? (
+            canAdd ? (
               <AddEqStrip
                 key={`${mod.instanceId}-add`}
                 instanceId={mod.instanceId}
@@ -69,7 +70,13 @@ function AddEqStrip({
         value={picked}
         onChange={(type) => {
           setPicked('off')
-          if (type !== 'off') engine.setEqBand(index, { type }, instanceId)
+          if (type === 'off') return
+          if (index >= 0) {
+            engine.setEqBand(index, { type }, instanceId)
+            return
+          }
+          const next = engine.addEqBand(instanceId)
+          if (next != null) engine.setEqBand(next, { type }, instanceId)
         }}
       />
     </article>

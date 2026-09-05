@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bandwidthHz,
   bandIsActive,
+  defaultEqBandAt,
   defaultEqBands,
   eqModuleIsAudible,
   filterStageCount,
@@ -40,6 +41,13 @@ describe('parseEqBands', () => {
     raw[1] = { ...raw[1]!, type: 'peaking', bypassed: true }
     expect(parseEqBands(raw)?.[1]?.bypassed).toBe(true)
     expect(parseEqBands(raw)?.[0]?.bypassed).toBe(false)
+  })
+
+  it('accepts 1–8 bands and rejects an oversized list', () => {
+    expect(parseEqBands([defaultEqBandAt(0)])?.length).toBe(1)
+    const eight = Array.from({ length: 8 }, (_, i) => defaultEqBandAt(i))
+    expect(parseEqBands(eight)?.length).toBe(8)
+    expect(parseEqBands([...eight, defaultEqBandAt(0)])).toBeNull()
   })
 })
 

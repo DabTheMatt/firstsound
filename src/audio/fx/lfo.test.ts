@@ -181,6 +181,8 @@ describe('targets', () => {
     expect(isFxLfoTarget('reverb', 'reverbOffset')).toBe(true)
     expect(isFxLfoTarget('reverb', 'reverbInput')).toBe(true)
     expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
+    expect(isFxLfoTarget('saturation', 'saturationMix')).toBe(true)
+    expect(isFxLfoTarget('eq8', 'eq8Freq')).toBe(true)
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
     expect(isFxLfoTarget('eq1', 'eq1Freq')).toBe(true)
     expect(isFxLfoTarget('eq2', 'eq2Freq')).toBe(true)

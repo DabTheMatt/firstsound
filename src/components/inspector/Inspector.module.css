@@ -459,6 +459,45 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.lfoHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lfoHead .sub {
+  margin: 0;
+}
+
+.lfoToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+}
+
+.lfoToggle:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-secondary);
+}
+
+.lfoToggleOn {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.lfoToggleLive:not(.lfoToggleOn) {
+  color: var(--accent-primary);
+}
+
 .compact {
   flex: 1 1 auto;
   gap: 4px;
@@ -516,7 +555,7 @@
 
 .lfoCompact {
   display: grid;
-  grid-template-rows: 14px 28px 32px 100px 36px;
+  grid-template-rows: 28px 28px 32px 100px 36px;
   align-items: stretch;
   gap: 6px;
   padding-top: 6px;
@@ -525,9 +564,18 @@
   overflow: hidden;
 }
 
+.lfoCompact.lfoCollapsed {
+  grid-template-rows: 28px;
+  gap: 0;
+}
+
 .lfoCompact .sub {
   margin: 0;
   line-height: 14px;
+}
+
+.lfoCompact .lfoHead {
+  min-height: 28px;
 }
 
 .lfoCompact .slotBar {
