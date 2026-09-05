@@ -1,7 +1,7 @@
 /**
- * Convolver tails already carry decay. Tank + shimmer both feed BACK into the
- * same convolver; their gains must share a budget well below unity or the room
- * howls louder every pass.
+ * The tank still recirculates into the convolver. Shimmer is feed-forward into
+ * the wet pan so it sparkles instead of regenerating as hiss. Keep tank well
+ * below unity; shimmer is reported separately for mix level.
  */
 export const REVERB_LOOP_HEADROOM = 0.62
 

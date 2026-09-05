@@ -42,19 +42,23 @@ export function chromaticShift(drift: number, dpr: number): { r: number; g: numb
   return { r: -mag, g: mag * 0.12, b: mag }
 }
 
-/** Dual-ridge mirror: two waves with an open band of air between them. */
+/** Dual-ridge mirror: peaks hang into the gap toward each other, with air left. */
 export function mirrorLayout(height: number): {
   gap: number
   upperBase: number
   lowerBase: number
   amp: number
+  upperDir: 1
+  lowerDir: -1
 } {
-  const gap = height * 0.24
-  const mid = height * 0.5
+  const upperBase = height * 0.22
+  const lowerBase = height * 0.78
   return {
-    gap,
-    upperBase: mid - gap / 2,
-    lowerBase: mid + gap / 2,
+    gap: lowerBase - upperBase,
+    upperBase,
+    lowerBase,
     amp: height * 0.2,
+    upperDir: 1,
+    lowerDir: -1,
   }
 }
