@@ -14,6 +14,15 @@ export function drawDelayOverlay(
   const colors = readThemeColors()
   const span = Math.max(0.0001, viewEnd - viewStart)
   const mid = height / 2
+  const split = taps.some((tap) => tap.channel === 'L') && taps.some((tap) => tap.channel === 'R')
+  if (split) {
+    ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.spectrumLine, 0.35)
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(0, mid)
+    ctx.lineTo(width, mid)
+    ctx.stroke()
+  }
   for (const tap of taps) {
     const x = ((regionStart + tap.time - viewStart) / span) * width
     if (x < -4 || x > width + 4) continue
