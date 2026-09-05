@@ -42,7 +42,16 @@ export function chromaticShift(drift: number, dpr: number): { r: number; g: numb
   return { r: -mag, g: mag * 0.12, b: mag }
 }
 
-/** Dual-ridge mirror: peaks hang into the gap toward each other, with air left. */
+/** Range mountain sits on the bottom edge and reaches the top of the frame. */
+export function rangeLayout(height: number): { base: number; amp: number; dir: -1 } {
+  return {
+    base: height * 0.985,
+    amp: height * 0.94,
+    dir: -1,
+  }
+}
+
+/** Dual-ridge mirror: bases on the top and bottom edges, peaks toward the middle. */
 export function mirrorLayout(height: number): {
   gap: number
   upperBase: number
@@ -51,14 +60,38 @@ export function mirrorLayout(height: number): {
   upperDir: 1
   lowerDir: -1
 } {
-  const upperBase = height * 0.22
-  const lowerBase = height * 0.78
+  const upperBase = height * 0.02
+  const lowerBase = height * 0.98
   return {
     gap: lowerBase - upperBase,
     upperBase,
     lowerBase,
-    amp: height * 0.2,
+    amp: height * 0.44,
     upperDir: 1,
     lowerDir: -1,
   }
+}
+
+export function canyonSliceCount(height: number): number {
+  return Math.max(16, Math.min(42, Math.round(height / 24)))
+}
+
+/** Perspective map: depth 0 is the near edge of the screen, 1 is the vanishing point. */
+export function canyonProject(
+  x01: number,
+  depth01: number,
+  amp01: number,
+  width: number,
+  height: number,
+): { x: number; y: number; floorY: number; scale: number } {
+  const t = Math.min(1, Math.max(0, depth01))
+  const ease = t * t * (3 - 2 * t)
+  const vanishX = width * 0.5
+  const vanishY = height * 0.05
+  const nearY = height * 0.99
+  const scale = 1 - ease * 0.9
+  const floorY = nearY + (vanishY - nearY) * ease
+  const x = vanishX + (Math.min(1, Math.max(0, x01)) - 0.5) * width * scale
+  const lift = Math.min(1, Math.max(0, amp01)) * (floorY - vanishY) * 0.92
+  return { x, y: floorY - lift, floorY, scale }
 }

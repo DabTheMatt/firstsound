@@ -13,20 +13,25 @@ describe('reverbLoopGains', () => {
     for (const opts of cases) {
       const e = reverbLoopEnergy(opts)
       expect(e, JSON.stringify(opts)).toBeLessThan(1)
-      if (!opts.freeze) expect(e, JSON.stringify(opts)).toBeLessThanOrEqual(REVERB_LOOP_HEADROOM + 1e-9)
+      if (!opts.freeze) {
+        expect(e, JSON.stringify(opts)).toBeLessThanOrEqual(REVERB_LOOP_HEADROOM + 1e-9)
+        expect(reverbLoopGains(opts).tank).toBe(0)
+      }
     }
   })
 
-  it('uses less tank as decay gets longer, because the IR already blooms', () => {
-    const short = reverbLoopGains({ decaySec: 1, sizePct: 80, shimmer01: 0, huge: false, freeze: false })
-    const long = reverbLoopGains({ decaySec: 18, sizePct: 80, shimmer01: 0, huge: false, freeze: false })
-    expect(long.tank).toBeLessThan(short.tank)
+  it('opens the tank only for freeze, never for a live tail', () => {
+    const live = reverbLoopGains({ decaySec: 8, sizePct: 90, shimmer01: 0.2, huge: true, freeze: false })
+    const frozen = reverbLoopGains({ decaySec: 8, sizePct: 90, shimmer01: 0.2, huge: true, freeze: true })
+    expect(live.tank).toBe(0)
+    expect(frozen.tank).toBeGreaterThan(0.3)
+    expect(frozen.tank).toBeLessThan(0.5)
   })
 
-  it('gives shimmer a slice without eating the whole loop', () => {
+  it('keeps shimmer as a quiet feed-forward sparkle', () => {
     const g = reverbLoopGains({ decaySec: 8, sizePct: 90, shimmer01: 0.5, huge: true, freeze: false })
-    expect(g.shimmer).toBeGreaterThan(0.05)
-    expect(g.shimmer).toBeLessThan(0.22)
-    expect(g.tank + g.shimmer).toBeLessThanOrEqual(REVERB_LOOP_HEADROOM)
+    expect(g.shimmer).toBeGreaterThan(0.02)
+    expect(g.shimmer).toBeLessThan(0.12)
+    expect(g.tank).toBe(0)
   })
 })

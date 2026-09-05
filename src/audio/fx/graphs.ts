@@ -737,7 +737,7 @@ export function applyReverbGraph(
   g.predelayL.delayTime.setTargetAtTime(Math.max(0.0002, basePre - offset), now, smoothing)
   g.predelayR.delayTime.setTargetAtTime(Math.max(0.0002, Math.min(1.95, basePre + offset)), now, smoothing)
   g.early.delayTime.setTargetAtTime(0.01 + dist * 0.035 + params.reverbSize / 3500, now, smoothing)
-  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * (1.15 - dist * 0.45), now, smoothing)
+  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * 0.28 * (1 - dist * 0.35), now, smoothing)
 
   const input = stereoInputMix(stereo ? params.reverbInput : 0)
   g.inKeepL.gain.setTargetAtTime(input.keep, now, smoothing)

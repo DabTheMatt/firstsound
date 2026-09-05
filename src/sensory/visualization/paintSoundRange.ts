@@ -1,11 +1,11 @@
 import type { SensorySceneId } from '../sensoryScene'
 import {
-  canyonDepthY,
-  canyonRelief,
-  canyonWallX,
+  canyonProject,
+  canyonSliceCount,
   chromaticShift,
   gleamRayCount,
   mirrorLayout,
+  rangeLayout,
 } from './rangeScenes'
 import { grainBandCount, type MountainLayerSpec } from './mountainLayers'
 import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from './sensoryVisualState'
@@ -190,91 +190,75 @@ function paintPlayheadPair(
   ctx.globalAlpha = 1
 }
 
-function paintCanyonWall(
-  ctx: CanvasRenderingContext2D,
-  args: RangePaintArgs,
-  side: 'left' | 'right',
-  fill: Rgb,
-  alphaMul: number,
-  spec: MountainLayerSpec,
-  env: Float32Array,
-) {
-  const { width, height, visual } = args
-  const step = Math.max(1, Math.floor(width / 280))
-  ctx.beginPath()
-  ctx.moveTo(canyonWallX(side, 0, width, 0), canyonDepthY(0, height))
-  for (let x = 0; x < width; x += step) {
-    const d = x / Math.max(1, width - 1)
-    ctx.lineTo(canyonWallX(side, d, width, 0), canyonDepthY(d, height))
-  }
-  ctx.lineTo(canyonWallX(side, 1, width, 0), canyonDepthY(1, height))
-  for (let x = width - 1; x >= 0; x -= step) {
-    const d = x / Math.max(1, width - 1)
-    const jag = visual.dirt > 0.05 ? Math.sin(x * 0.21) * visual.dirt * 0.08 : 0
-    const wave = visual.mod > 0.02 ? Math.sin(x * 0.02 + args.nowMs / 500) * visual.mod * 0.06 : 0
-    const amp01 = Math.min(1, (env[x] ?? 0) * spec.scale + jag + wave)
-    const relief = canyonRelief(amp01, d, width) * (0.85 + visual.mass * 0.2)
-    ctx.lineTo(canyonWallX(side, d, width, relief), canyonDepthY(d, height))
-  }
-  ctx.closePath()
-  ctx.fillStyle = rgbCss(fill, spec.alpha * (0.55 + visual.glow * 0.4) * alphaMul)
-  ctx.fill()
-}
-
 function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, ink, play, dpr, playFrac, layers, specs } = args
-  const farY = canyonDepthY(1, height)
-  const nearY = canyonDepthY(0, height)
-  const floor = ctx.createLinearGradient(width / 2, farY, width / 2, nearY)
-  floor.addColorStop(0, 'rgba(42, 28, 18, 0.35)')
-  floor.addColorStop(1, 'rgba(12, 8, 6, 0.55)')
+  const env = layers[0]
+  if (!env) return
+  const slices = canyonSliceCount(height)
+  const step = Math.max(2, Math.floor(width / 140))
+  const spec0: MountainLayerSpec = specs[0] ?? { scale: 1, alpha: 1, blur: 0, drop: 0 }
+
+  const sky = ctx.createLinearGradient(0, 0, 0, height)
+  sky.addColorStop(0, rgbCss(mixRgb(ink, { r: 56, g: 36, b: 24 }, 0.35), 0.55))
+  sky.addColorStop(1, 'rgba(6, 4, 3, 0.92)')
+  ctx.fillStyle = sky
+  ctx.fillRect(0, 0, width, height)
+
+  const farFloor = canyonProject(0.5, 1, 0, width, height)
+  const nearL = canyonProject(0, 0, 0, width, height)
+  const nearR = canyonProject(1, 0, 0, width, height)
   ctx.beginPath()
-  ctx.moveTo(canyonWallX('left', 0, width, 0), nearY)
-  ctx.lineTo(canyonWallX('right', 0, width, 0), nearY)
-  ctx.lineTo(canyonWallX('right', 1, width, 0), farY)
-  ctx.lineTo(canyonWallX('left', 1, width, 0), farY)
+  ctx.moveTo(nearL.x, nearL.floorY)
+  ctx.lineTo(nearR.x, nearR.floorY)
+  ctx.lineTo(canyonProject(1, 1, 0, width, height).x, farFloor.floorY)
+  ctx.lineTo(canyonProject(0, 1, 0, width, height).x, farFloor.floorY)
   ctx.closePath()
+  const floor = ctx.createLinearGradient(width / 2, farFloor.floorY, width / 2, nearL.floorY)
+  floor.addColorStop(0, 'rgba(64, 42, 28, 0.4)')
+  floor.addColorStop(1, 'rgba(12, 8, 6, 0.7)')
   ctx.fillStyle = floor
   ctx.fill()
 
-  const env = layers[0]
-  if (env) {
-    specs.forEach((spec, i) => {
-      const layerEnv = layers[i] ?? env
-      paintCanyonWall(ctx, args, 'left', mixRgb(ink, { r: 232, g: 168, b: 96 }, 0.12 * i), 1, spec, layerEnv)
-      paintCanyonWall(ctx, args, 'right', mixRgb(ink, { r: 255, g: 140, b: 72 }, 0.1 * i), 0.92, spec, layerEnv)
-    })
+  for (let i = slices - 1; i >= 0; i--) {
+    const d0 = i / slices
+    const d1 = (i + 1) / slices
+    const li = Math.min(specs.length - 1, Math.floor((1 - d0) * specs.length))
+    const spec = specs[li] ?? spec0
+    const layerEnv = layers[li] ?? env
+    ctx.beginPath()
+    for (let x = 0; x <= width; x += step) {
+      const xi = Math.min(width - 1, x)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.85 + visual.mass * 0.2))
+      const p = canyonProject(xi / Math.max(1, width - 1), d0, amp01, width, height)
+      if (x === 0) ctx.moveTo(p.x, p.y)
+      else ctx.lineTo(p.x, p.y)
+    }
+    for (let x = width; x >= 0; x -= step) {
+      const xi = Math.min(width - 1, x)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.85 + visual.mass * 0.2))
+      const p = canyonProject(xi / Math.max(1, width - 1), d1, amp01, width, height)
+      ctx.lineTo(p.x, p.y)
+    }
+    ctx.closePath()
+    const shade = 0.16 + (1 - d0) * 0.5
+    ctx.fillStyle = rgbCss(mixRgb(ink, { r: 255, g: 156, b: 72 }, d0 * 0.18), shade * spec.alpha * (0.7 + visual.glow * 0.35))
+    ctx.fill()
   }
 
-  if (visual.echo > 0.08 && env) {
-    ctx.save()
-    ctx.translate(visual.echo * 10 * dpr, -visual.echo * 8 * dpr)
-    paintCanyonWall(
-      ctx,
-      args,
-      'left',
-      mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.45),
-      visual.echo * 0.4,
-      specs[0]!,
-      env,
-    )
-    ctx.restore()
-  }
-
-  const d = Math.min(1, Math.max(0, playFrac))
-  const y = canyonDepthY(d, height)
-  const xL = canyonWallX('left', d, width, canyonRelief(layers[0]?.[Math.round(d * (width - 1))] ?? 0, d, width))
-  const xR = canyonWallX('right', d, width, canyonRelief(layers[0]?.[Math.round(d * (width - 1))] ?? 0, d, width))
+  const px = Math.min(1, Math.max(0, playFrac))
+  const peak = env[Math.round(px * (width - 1))] ?? 0
+  const far = canyonProject(px, 1, peak, width, height)
+  const near = canyonProject(px, 0, peak, width, height)
   ctx.strokeStyle = play
   ctx.lineWidth = Math.max(1.4, dpr * 1.4)
   ctx.globalAlpha = 0.9
   ctx.beginPath()
-  ctx.moveTo(xL, y)
-  ctx.lineTo(xR, y)
+  ctx.moveTo(far.x, far.y)
+  ctx.lineTo(near.x, near.y)
   ctx.stroke()
   ctx.fillStyle = play
   ctx.beginPath()
-  ctx.arc((xL + xR) / 2, y, 3.4 * dpr, 0, Math.PI * 2)
+  ctx.arc(near.x, near.y, 3.4 * dpr, 0, Math.PI * 2)
   ctx.fill()
   ctx.globalAlpha = 1
 }
@@ -313,12 +297,10 @@ function paintGleam(ctx: CanvasRenderingContext2D, args: RangePaintArgs, base: n
 
 export function paintSoundRange(args: RangePaintArgs) {
   const { ctx, width, height, visual, dpr, reduced, scene } = args
-  const zoom = visual.zoom
   const t = args.nowMs
   const sway = reduced ? 0 : visual.mod * 18 * dpr * Math.sin(t / 900)
 
   if (scene === 'canyon') {
-    paintWash(ctx, args, height * 0.55)
     paintCanyon(ctx, args)
     paintSelection(ctx, args)
     return
@@ -326,7 +308,7 @@ export function paintSoundRange(args: RangePaintArgs) {
 
   if (scene === 'mirror') {
     const layout = mirrorLayout(height)
-    const amp = layout.amp * zoom * (1 - visual.tight * 0.45)
+    const amp = layout.amp * (1 - visual.tight * 0.22)
     paintWash(ctx, args, height * 0.5)
     withGrainBands(args, () => {
       paintChromaStacks(ctx, args, layout.upperBase, amp, sway, layout.upperDir)
@@ -346,13 +328,13 @@ export function paintSoundRange(args: RangePaintArgs) {
     return
   }
 
-  const base = height * (0.72 - visual.space * 0.24)
-  const amp = height * (0.34 + visual.mass * 0.1) * zoom * (1 - visual.tight * 0.45)
-  paintWash(ctx, args, base)
+  const layout = rangeLayout(height)
+  const amp = layout.amp * (1 - visual.tight * 0.22)
+  paintWash(ctx, args, layout.base)
   withGrainBands(args, () => {
-    paintChromaStacks(ctx, args, base, amp, sway, -1)
+    paintChromaStacks(ctx, args, layout.base, amp, sway, layout.dir)
   })
-  if (scene === 'gleam') paintGleam(ctx, args, base, amp)
+  if (scene === 'gleam') paintGleam(ctx, args, layout.base, amp)
   paintSelection(ctx, args)
-  paintPlayheadPair(ctx, args, [base], amp, [-1])
+  paintPlayheadPair(ctx, args, [layout.base], amp, [layout.dir])
 }

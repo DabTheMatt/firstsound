@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canyonRelief, canyonWallInset, canyonWallX, chromaticShift, gleamRayCount, mirrorLayout } from './rangeScenes'
+import { canyonProject, canyonRelief, canyonSliceCount, canyonWallInset, canyonWallX, chromaticShift, gleamRayCount, mirrorLayout, rangeLayout } from './rangeScenes'
 import { grainBandCount } from './mountainLayers'
 
 describe('rangeScenes', () => {
@@ -18,8 +18,10 @@ describe('rangeScenes', () => {
     expect(gleamRayCount(1)).toBeGreaterThan(gleamRayCount(0))
   })
 
-  it('aims mirror peaks at each other and leaves air between the tips', () => {
+  it('pins mirror ridges to the top and bottom edges with inward peaks', () => {
     const layout = mirrorLayout(1000)
+    expect(layout.upperBase).toBeLessThan(40)
+    expect(layout.lowerBase).toBeGreaterThan(960)
     expect(layout.upperDir).toBe(1)
     expect(layout.lowerDir).toBe(-1)
     const upperTip = layout.upperBase + layout.amp * layout.upperDir
@@ -27,7 +29,26 @@ describe('rangeScenes', () => {
     expect(upperTip).toBeGreaterThan(layout.upperBase)
     expect(lowerTip).toBeLessThan(layout.lowerBase)
     expect(lowerTip).toBeGreaterThan(upperTip)
-    expect(lowerTip - upperTip).toBeGreaterThan(120)
+  })
+
+  it('fills the range frame from the bottom edge to the top', () => {
+    const layout = rangeLayout(1000)
+    expect(layout.base).toBeGreaterThan(970)
+    expect(layout.amp).toBeGreaterThan(900)
+    expect(layout.base - layout.amp).toBeLessThan(80)
+    expect(layout.dir).toBe(-1)
+  })
+
+  it('projects canyon slices from a full-width near plane to a vanishing point', () => {
+    const near = canyonProject(0, 0, 0, 1000, 800)
+    const far = canyonProject(0, 1, 0, 1000, 800)
+    const peak = canyonProject(0.5, 0, 1, 1000, 800)
+    expect(near.x).toBeLessThan(20)
+    expect(far.x).toBeGreaterThan(400)
+    expect(near.floorY).toBeGreaterThan(far.floorY)
+    expect(near.scale).toBeGreaterThan(far.scale)
+    expect(peak.y).toBeLessThan(120)
+    expect(canyonSliceCount(800)).toBeGreaterThan(16)
   })
 
   it('puts canyon relief on the walls, nearer samples larger', () => {

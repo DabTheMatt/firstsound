@@ -5,8 +5,8 @@ import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
 import type { SensoryValues } from './sensoryState'
 
-export function sensoryReverbType(space: number): ReverbType {
-  return space > 0.08 ? 'cathedral' : 'hall'
+export function sensoryReverbType(_space: number): ReverbType {
+  return 'hall'
 }
 
 export function captureDsp(engine: AudioEngine): DspSnapshot {

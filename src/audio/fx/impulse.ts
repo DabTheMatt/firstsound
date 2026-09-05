@@ -176,13 +176,20 @@ export function fillReverbImpulse(
   }
 
   let peak = 1e-6
+  let sumSq = 0
   for (let i = 0; i < n; i++) {
-    peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
+    const l = left[i]!
+    const r = right[i]!
+    peak = Math.max(peak, Math.abs(l), Math.abs(r))
+    sumSq += l * l + r * r
   }
-  const norm = 0.88 / peak
+  const rms = Math.sqrt(sumSq / Math.max(1, 2 * n))
+  const rmsGain = 0.045 / Math.max(rms, 1e-8)
+  const peakGain = 0.72 / peak
+  const gain = Math.min(rmsGain, peakGain)
   for (let i = 0; i < n; i++) {
-    left[i]! *= norm
-    right[i]! *= norm
+    left[i]! *= gain
+    right[i]! *= gain
   }
 }
 
