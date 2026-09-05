@@ -125,6 +125,16 @@ export function WaveformToolbar({
             <EqSplitIcon />
           </IconButton>
         ) : null}
+        {!minimal ? (
+          <IconButton
+            label="Effects mix center"
+            caption="Mix"
+            pressed={viz === 'mix-split'}
+            onClick={() => onViz('mix-split')}
+          >
+            <MixSplitIcon />
+          </IconButton>
+        ) : null}
       </div>
       {!minimal ? (
         <div className={styles.zoom}>
@@ -267,6 +277,15 @@ function EqSplitIcon() {
       <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
       <path d="M2 9h14" stroke="currentColor" strokeWidth="1.6" />
       <path d="M6 9v6M10 9v6M14 9v6" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
+function MixSplitIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M6 13V8M9 13V6M12 13V9" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   )
 }

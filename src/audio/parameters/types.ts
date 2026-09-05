@@ -157,6 +157,7 @@ import type { ChainModule } from '../chain/chain'
 import type { CombFilterState } from '../engine/comb'
 import type { EqBand } from '../engine/eqBands'
 import type { DelayType, ReverbType } from '../fx/types'
+import type { MixLayer } from '../mix/layers'
 
 export type EqListenMode = 'sample' | 'filters'
 
@@ -178,4 +179,5 @@ export type PresetV1 = {
   reverbType?: ReverbType
   comb?: CombFilterState
   fxLfos?: unknown
+  mixLayers?: MixLayer[]
 }
