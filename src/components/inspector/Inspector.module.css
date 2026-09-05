@@ -514,7 +514,7 @@
   min-height: 36px;
   max-height: 36px;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .lfoCompact .connectTile {
@@ -533,9 +533,22 @@
   max-height: 36px;
   flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 8px 0 26px;
   overflow: hidden;
 }
 
 .lfoCompact .connectBtn small {
   display: none;
+}
+
+.lfoCompact .plug {
+  top: 50%;
+  left: 4px;
+  right: auto;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  z-index: 2;
 }
