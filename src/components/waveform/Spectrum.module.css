@@ -1,23 +1,22 @@
 .wrap {
   position: relative;
-  display: flex;
-  flex-direction: column;
   height: 100%;
   min-height: 72px;
-  gap: 4px;
 }
 
 .chrome {
-  flex: none;
+  position: absolute;
+  right: 8px;
+  left: auto;
+  z-index: 5;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 6px 6px;
-  z-index: 2;
-  background: var(--bg-app);
-  border-bottom: 1px solid var(--border-subtle);
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: calc(100% - 48px);
+  padding: 0;
+  pointer-events: none;
 }
 
 .chromeLeft,
@@ -25,17 +24,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-}
-
-.chromeRight {
-  margin-left: auto;
+  pointer-events: auto;
 }
 
 .stage {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: 100%;
+  min-height: 72px;
 }
 
 .canvas {
@@ -51,11 +48,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
-  padding: 4px 12px;
+  min-height: 26px;
+  padding: 3px 10px;
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: var(--bg-panel);
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -74,6 +71,24 @@
   font: inherit;
   letter-spacing: inherit;
   text-transform: none;
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 12px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 6px) 46%,
+    calc(100% - 2px) 46%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.bands select:focus,
+.bands select:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .iconTap {
@@ -103,7 +118,7 @@
 
 .legendDock {
   position: absolute;
-  top: 22px;
+  top: 52px;
   right: 8px;
   z-index: 3;
   display: flex;
