@@ -164,6 +164,11 @@
   background: var(--accent-soft);
 }
 
+.plug svg {
+  display: block;
+  transform: translateY(2px);
+}
+
 .slotRow {
   width: 100%;
 }
