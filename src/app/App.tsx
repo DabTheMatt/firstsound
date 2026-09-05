@@ -347,19 +347,12 @@ export default function App() {
       onEdit={(patch) => setEdit((e) => ({ ...e, ...patch }))}
       onCommit={commit}
       onTrim={() => {
-        void engine
-          .useAsSample({
-            fadeIn: 0,
-            fadeOut: 0,
-            fadeCurve: 'linear',
-            reverse: false,
-            normalize: false,
-          })
-          .then(() => {
-            setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
-            waveRef.current?.fitSample()
-            commit()
-          })
+        void engine.trimPlayRegion().then((ok) => {
+          if (!ok) return
+          setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+          waveRef.current?.fitSample()
+          commit()
+        })
       }}
       knobs={mode !== 'sheet' || isPhoneLayout}
       compact={isPhoneLayout}
@@ -629,7 +622,14 @@ export default function App() {
             if (action === 'normalize-view') setNormalizeView((n) => !n)
             if (action === 'reset-zoom') waveRef.current?.resetZoom()
           }}
-          onTrim={() => engine.trimToSelection()}
+          onTrim={() => {
+            void engine.trimPlayRegion().then((ok) => {
+              if (!ok) return
+              setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+              waveRef.current?.fitSample()
+              commit()
+            })
+          }}
           minimal={isPhoneLayout}
         />
 

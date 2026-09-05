@@ -1015,8 +1015,8 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
     <div className={styles.tempo}>
       <h3 className={styles.sub}>Sample tempo</h3>
       <p className={styles.help}>
-        Delay and reverb BPM sync use this tempo. Detect it from transients, mark hits on the waveform, or tap along while
-        the sample plays.
+        Delay and reverb BPM sync use this tempo. Detect tempo from the sample, mark hits on the
+        waveform and drag them to warp the audio, or tap along while the sample plays.
       </p>
       {variant === 'knob' ? (
         <div className={styles.knobs}>
@@ -1034,11 +1034,15 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
         >
           Detect tempo
         </button>
-        <Toggle
-          pressed={snap.showTransients}
-          label="Mark transients"
-          onToggle={() => engine.setShowTransients(!snap.showTransients)}
-        />
+        <button
+          type="button"
+          className={`${styles.ghost} ${snap.showTransients ? styles.ghostOn : ''}`}
+          disabled={!snap.sampleLoaded}
+          aria-pressed={snap.showTransients}
+          onClick={() => engine.setShowTransients(!snap.showTransients)}
+        >
+          Mark transients
+        </button>
         <button
           type="button"
           className={styles.ghost}

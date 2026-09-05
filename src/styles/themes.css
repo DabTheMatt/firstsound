@@ -42,6 +42,9 @@
   --eq-curve-2: #d1c65b;
   --eq-node-2: #e2d67a;
   --envelope: #e6ad48;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 
   --meter-low: #67b36d;
   --meter-mid: #d1c65b;
@@ -96,6 +99,9 @@
   --eq-curve-2: #77c9e6;
   --eq-node-2: #b7e4f2;
   --envelope: #63b3d1;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 }
 
 [data-theme='oxide'] {
@@ -139,6 +145,9 @@
   --eq-curve-2: #d1c65b;
   --eq-node-2: #e2d67a;
   --envelope: #d97845;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 }
 
 [data-theme='forest'] {
@@ -182,6 +191,9 @@
   --eq-curve-2: #d1c65b;
   --eq-node-2: #e2d67a;
   --envelope: #72b98a;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 }
 
 [data-theme='light-studio'] {
@@ -225,6 +237,9 @@
   --eq-curve-2: #c18a34;
   --eq-node-2: #a96e13;
   --envelope: #a96e13;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 
   --scrim: rgba(32, 35, 33, 0.38);
 }
@@ -270,6 +285,9 @@
   --eq-curve-2: #d1c65b;
   --eq-node-2: #e2d67a;
   --envelope: #dfaf55;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
 }
 
 [data-theme='custom'] {

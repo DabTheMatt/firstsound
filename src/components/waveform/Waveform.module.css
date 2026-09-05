@@ -161,6 +161,18 @@
   cursor: ew-resize;
 }
 
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--playhead);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-app) 50%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 8;
+}
+
 .fadeHandle::before {
   content: '';
   position: absolute;
@@ -168,6 +180,14 @@
   transform: rotate(45deg);
   background: var(--envelope);
   box-shadow: 0 0 0 1.5px var(--bg-app);
+}
+
+.fadeHandle[data-fade='in']::before {
+  background: var(--fade-in, var(--meter-low));
+}
+
+.fadeHandle[data-fade='out']::before {
+  background: var(--fade-out, var(--meter-high));
 }
 
 .fadeHandleOn::before {
@@ -193,6 +213,14 @@
   pointer-events: auto;
   z-index: 5;
   cursor: ns-resize;
+}
+
+.fadeShape[data-fade='in'] {
+  background: var(--fade-in, var(--meter-low));
+}
+
+.fadeShape[data-fade='out'] {
+  background: var(--fade-out, var(--meter-high));
 }
 
 .fadeShapeOn {
@@ -229,11 +257,23 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--accent-primary) 72%, transparent);
+  width: 12px;
+  background: transparent;
   transform: translateX(-50%);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 4;
+  cursor: ew-resize;
+}
+
+.transient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: color-mix(in srgb, var(--transient, var(--spectrum-line)) 88%, transparent);
+  transform: translateX(-50%);
 }
 
 .transient::after {
@@ -241,11 +281,12 @@
   position: absolute;
   top: 0;
   left: 50%;
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 1px;
-  background: var(--accent-primary);
+  background: var(--transient, var(--spectrum-line));
   transform: translateX(-50%);
+  box-shadow: 0 0 0 1px var(--bg-app);
 }
 
 .sensory .playhead {

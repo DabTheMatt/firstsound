@@ -4,7 +4,7 @@ export const TEMPO_MIN_BPM = 40
 export const TEMPO_MAX_BPM = 240
 
 const HOP_SEC = 0.01
-const WIN_HOPS = 4
+const WIN_HOPS = 2
 const MIN_ONSET_GAP_SEC = 0.04
 
 export type TempoGuess = {
@@ -72,11 +72,16 @@ function spectralFlux(
   for (let i = 0; i < n; i++) {
     const start = i * hop
     let sum = 0
+    let diff = 0
+    let prev = samples[start] ?? 0
     for (let j = 0; j < win; j++) {
       const v = samples[start + j] ?? 0
       sum += v * v
+      const d = v - prev
+      diff += d * d
+      prev = v
     }
-    env[i] = Math.sqrt(sum / win)
+    env[i] = Math.sqrt(sum / win) + 1.35 * Math.sqrt(diff / win)
   }
   const values = new Float32Array(n)
   for (let i = 1; i < n; i++) values[i] = Math.max(0, (env[i] ?? 0) - (env[i - 1] ?? 0))
@@ -92,7 +97,7 @@ function adaptiveThreshold(flux: Float32Array): number {
     if (v > peak) peak = v
   }
   const mean = flux.length ? sum / flux.length : 0
-  return Math.max(mean * 1.8, peak * 0.18, 1e-6)
+  return Math.max(mean * 1.35, peak * 0.12, 1e-6)
 }
 
 function bpmFromAutocorr(
@@ -117,7 +122,7 @@ function bpmFromAutocorr(
     const score = norm > 0 ? acc / norm : 0
     const bpm = 60 / (lag * hopSec)
     const beatFit = integerBeatFit(bpm, durationSec)
-    const ranked = score * (0.7 + 0.3 * beatFit) * preferredTempoWeight(bpm)
+    const ranked = score * (0.82 + 0.18 * beatFit) * preferredTempoWeight(bpm)
     if (ranked > best) {
       best = ranked
       bestLag = lag
@@ -154,7 +159,7 @@ function pickBpm(
       const bpm = clampTempo(ac.bpm * mul)
       candidates.push({
         bpm,
-        score: ac.score * (mul === 1 ? 1 : 0.85) * preferredTempoWeight(bpm) * (0.6 + 0.4 * integerBeatFit(bpm, durationSec)),
+        score: ac.score * (mul === 1 ? 1 : 0.85) * preferredTempoWeight(bpm) * (0.78 + 0.22 * integerBeatFit(bpm, durationSec)),
       })
     }
   }
@@ -163,14 +168,14 @@ function pickBpm(
       const bpm = clampTempo(ioi.bpm * mul)
       candidates.push({
         bpm,
-        score: ioi.score * (mul === 1 ? 1 : 0.8) * preferredTempoWeight(bpm) * (0.6 + 0.4 * integerBeatFit(bpm, durationSec)),
+        score: ioi.score * (mul === 1 ? 1 : 0.8) * preferredTempoWeight(bpm) * (0.78 + 0.22 * integerBeatFit(bpm, durationSec)),
       })
     }
   }
   if (!candidates.length) return null
   candidates.sort((a, b) => b.score - a.score)
   const top = candidates[0]!
-  if (top.score < 0.04) return null
+  if (top.score < 0.018) return null
   return { bpm: roundTempo(top.bpm), confidence: Math.min(1, top.score) }
 }
 
