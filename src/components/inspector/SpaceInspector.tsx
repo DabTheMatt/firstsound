@@ -95,6 +95,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
     <>
       <details className={styles.band} open>
         <summary>Tempo sync</summary>
+        <p className={styles.help}>Uses the sample tempo from Input. Detect or tap it there, then sync delay notes to it.</p>
         {kind === 'delay' ? (
           <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
         ) : (

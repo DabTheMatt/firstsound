@@ -74,6 +74,12 @@
   color: var(--text-muted);
 }
 
+.bpm {
+  color: var(--accent-primary);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .jumps {
   display: flex;
   gap: 6px;

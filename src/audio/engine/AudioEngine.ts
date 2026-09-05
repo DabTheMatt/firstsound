@@ -152,6 +152,8 @@ import {
 } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
+import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
+import { estimateTempo, detectTransients } from './transients'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
@@ -203,6 +205,11 @@ export type EngineSnapshot = {
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
   variations: { id: string; name: string }[]
+  transients: number[]
+  showTransients: boolean
+  tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
+  tapCount: number
+  tempoNotice: string | null
 }
 
 type Listener = () => void
@@ -372,6 +379,12 @@ export class AudioEngine {
   private silenceProposal: SilenceProposal | null = null
   private variations: SampleVariation[] = []
   private variationSeq = 0
+  private transients: number[] = []
+  private showTransients = false
+  private tempoSource: EngineSnapshot['tempoSource'] = 'default'
+  private tapTempoState: TapTempoState = emptyTapTempo()
+  private tempoNotice: string | null = null
+  private tempoWrite: 'engine' | 'ui' = 'ui'
 
   constructor() {
     this.snapshot = this.buildSnapshot()
@@ -675,6 +688,7 @@ export class AudioEngine {
 
   setParam(id: ParamId, value: number): void {
     this.spacePresetId = null
+    if (id === 'bpm' && this.tempoWrite === 'ui') this.tempoSource = 'manual'
     const duration = this.buffer?.duration ?? 0
     if (id === 'start' || id === 'end') {
       const next = { ...this.params, [id]: value }
@@ -958,6 +972,108 @@ export class AudioEngine {
     const sr = this.sourceBuffer?.sampleRate ?? 0
     this.silenceProposal = detectSilence(channels, sr)
     this.emit()
+  }
+
+  markSampleTransients(): void {
+    const region = this.analysisRegion()
+    if (!region) {
+      this.tempoNotice = 'Load a sample first.'
+      this.emit()
+      return
+    }
+    this.transients = detectTransients(region.samples, region.sampleRate, region.offsetSec)
+    this.showTransients = this.transients.length > 0
+    this.tempoNotice = this.transients.length
+      ? `Marked ${this.transients.length} transients.`
+      : 'No clear transients in this region.'
+    this.emit()
+  }
+
+  setShowTransients(show: boolean): void {
+    this.showTransients = show
+    if (show && !this.transients.length) this.markSampleTransients()
+    else this.emit()
+  }
+
+  detectSampleTempo(): void {
+    const region = this.analysisRegion()
+    if (!region) {
+      this.tempoNotice = 'Load a sample first.'
+      this.emit()
+      return
+    }
+    const guess = estimateTempo(region.samples, region.sampleRate, region.offsetSec, region.durationSec)
+    this.transients = guess?.transients ?? detectTransients(region.samples, region.sampleRate, region.offsetSec)
+    this.showTransients = this.transients.length > 0
+    if (!guess) {
+      this.tempoNotice = this.transients.length
+        ? 'Found transients, but no steady tempo.'
+        : 'No rhythm found in this region.'
+      this.emit()
+      return
+    }
+    this.tempoSource = 'detected'
+    this.writeTempo(guess.bpm)
+    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM from transients.`
+    this.emit()
+  }
+
+  tapSampleTempo(): void {
+    const now = this.ctx?.currentTime ?? performance.now() / 1000
+    const next = addTap(this.tapTempoState, now)
+    this.tapTempoState = next.state
+    if (next.bpm === null) {
+      this.tempoNotice = `Tap ${next.state.times.length} — keep tapping the beat.`
+      this.emit()
+      return
+    }
+    this.tempoSource = 'tapped'
+    this.writeTempo(next.bpm)
+    this.tempoNotice = `Tap tempo ${next.bpm.toFixed(1)} BPM (${next.state.times.length} taps).`
+    this.emit()
+  }
+
+  resetTapTempo(): void {
+    this.tapTempoState = emptyTapTempo()
+    this.tempoNotice = null
+    this.emit()
+  }
+
+  private writeTempo(bpm: number): void {
+    this.tempoWrite = 'engine'
+    this.setParam('bpm', bpm)
+    this.tempoWrite = 'ui'
+  }
+
+  private resetTempoAnalysis(resetBpm = false): void {
+    this.transients = []
+    this.showTransients = false
+    this.tapTempoState = emptyTapTempo()
+    this.tempoNotice = null
+    this.tempoSource = 'default'
+    if (resetBpm) this.params.bpm = PARAMS.bpm.defaultValue
+  }
+
+  private analysisRegion(): {
+    samples: Float32Array
+    sampleRate: number
+    offsetSec: number
+    durationSec: number
+  } | null {
+    const buffer = this.buffer
+    const mono = this.mono
+    if (!buffer || !mono || !mono.length) return null
+    const sr = buffer.sampleRate
+    const start = Math.max(0, this.params.start)
+    const end = Math.min(buffer.duration, Math.max(start + 0.05, this.params.end))
+    const s = Math.min(mono.length - 1, Math.max(0, Math.floor(start * sr)))
+    const e = Math.min(mono.length, Math.max(s + 1, Math.floor(end * sr)))
+    return {
+      samples: mono.subarray(s, e),
+      sampleRate: sr,
+      offsetSec: s / sr,
+      durationSec: (e - s) / sr,
+    }
   }
 
   applySilenceProposal(): void {
@@ -1598,6 +1714,7 @@ export class AudioEngine {
       this.prepHistory = resetHistory(this.prep)
       this.silenceProposal = null
       this.zeroNotice = null
+      this.resetTempoAnalysis(true)
       this.stopPreview()
       this.params = {
         ...this.params,
@@ -1612,6 +1729,7 @@ export class AudioEngine {
           : defaultPlayRegion(buffer.duration, MIN_REGION)
       this.params = { ...this.params, start: region.start, end: region.end }
       this.playOffset = region.start
+      this.resetTempoAnalysis()
     }
     this.bufferRev++
     this.emit()
@@ -1641,6 +1759,7 @@ export class AudioEngine {
     if (!this.buffer) return
     this.reversed = this.buildReversed(this.buffer)
     this.mono = mixToMono(this.buffer)
+    this.resetTempoAnalysis()
     this.bufferRev++
     if (this.playing) void this.play()
     else this.emit()
@@ -2748,6 +2867,11 @@ export class AudioEngine {
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
+      transients: this.transients.slice(),
+      showTransients: this.showTransients,
+      tempoSource: this.tempoSource,
+      tapCount: this.tapTempoState.times.length,
+      tempoNotice: this.tempoNotice,
     }
   }
 

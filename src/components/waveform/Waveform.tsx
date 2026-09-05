@@ -10,7 +10,7 @@ import {
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax } from '../../audio/engine/peaks'
 import type { WaveTool, VizMode } from '../../app/editorState'
-import { engine } from '../../hooks/useEngine'
+import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { EqConsole } from '../eq/EqConsole'
@@ -150,6 +150,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   ref,
 ) {
   const sensory = appearance === 'sensory'
+  const snap = useEngine()
+  const showTransients = snap.showTransients
+  const transients = showTransients ? snap.transients : []
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -771,6 +774,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     </>
                   )}
                   <div ref={playheadRef} className={styles.playhead} />
+                  {showTransients && !sensory
+                    ? transients.map((t) => {
+                        const left = pct(t)
+                        if (left < -1 || left > 101) return null
+                        return <div key={t} className={styles.transient} style={{ left: `${left}%` }} />
+                      })
+                    : null}
                 </>
               ) : (
                 <div className={styles.empty}>

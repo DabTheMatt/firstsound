@@ -341,7 +341,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   bpm: {
     id: 'bpm',
-    label: 'BPM',
+    label: 'Tempo',
     min: 40,
     max: 240,
     defaultValue: 120,
