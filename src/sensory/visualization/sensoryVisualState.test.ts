@@ -22,4 +22,11 @@ describe('sensoryVisualState', () => {
     const visual = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'echo', 0.8), true)
     expect(visual.echo).toBeCloseTo(0.8)
   })
+
+  it('opens haze and depth from space', () => {
+    const rest = sensoryVisualState(defaultSensoryValues(), true)
+    const vast = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.9), true)
+    expect(vast.haze).toBeGreaterThan(rest.haze)
+    expect(vast.depth).toBeGreaterThan(rest.depth)
+  })
 })
