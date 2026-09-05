@@ -86,6 +86,13 @@ export function dspSnapshotsEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): b
   return true
 }
 
+export const PAN_LFO = {
+  depth0: 38,
+  depthSpan: 62,
+  rate0: 0.55,
+  rateSpan: 1.7,
+} as const
+
 function morphFor(axis: SensoryAxisId) {
   return EFFECT_MORPHS.find((m) => m.axis === axis)
 }
@@ -93,12 +100,13 @@ function morphFor(axis: SensoryAxisId) {
 function applyPanLfo(dsp: DspSnapshot, t: number) {
   dsp.fxLfos = cloneFxLfos(dsp.fxLfos)
   const slot = dsp.fxLfos.input[0] ?? { target: null, shape: 'sine' as const, depth: 0, rateHz: 0.6 }
+  const u = Math.min(1, Math.max(0, t))
   dsp.fxLfos.input[0] = {
     ...slot,
     target: 'pan',
     shape: 'sine',
-    depth: Math.round(16 + 70 * t),
-    rateHz: Number((0.14 + 0.62 * t).toFixed(2)),
+    depth: Math.round(PAN_LFO.depth0 + PAN_LFO.depthSpan * u),
+    rateHz: Number((PAN_LFO.rate0 + PAN_LFO.rateSpan * u).toFixed(2)),
   }
 }
 

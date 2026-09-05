@@ -401,7 +401,10 @@ export function Spectrum({ active }: Props) {
   return (
     <div className={styles.wrap}>
       <div className={styles.stage}>
-      <div className={styles.chrome} style={{ top: SPECTRUM_PLOT_PAD.top }}>
+      <div
+        className={styles.chrome}
+        style={{ top: SPECTRUM_PLOT_PAD.top, left: SPECTRUM_PLOT_PAD.left }}
+      >
         <div className={styles.chromeLeft}>
           <label className={styles.bands}>
             Layer
