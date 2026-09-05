@@ -86,6 +86,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { makeTanhCurve, saturationDryWet } from '../fx/saturation'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
@@ -133,9 +134,10 @@ import {
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import {
+  defaultEqBandAt,
   defaultEqBands,
   COMB_MAX_TEETH,
-  EQ_BAND_COUNT,
+  EQ_MAX_BANDS,
   EQ_MAX_STAGES,
   EQ_NODE_COUNT,
   filterStageCount,
@@ -1546,6 +1548,20 @@ export class AudioEngine {
     this.emit()
   }
 
+  addEqBand(instanceId?: string): number | null {
+    const id = instanceId ?? this.primaryEqId()
+    const st = this.eqState(id)
+    if (st.bands.length >= EQ_MAX_BANDS) return null
+    const index = st.bands.length
+    st.bands = [...st.bands, defaultEqBandAt(index)]
+    this.eqById.set(id, st)
+    this.syncPrimaryEq()
+    this.syncEqLfoParams(id)
+    this.applyEq(0.03)
+    this.emit()
+    return index
+  }
+
   setComb(patch: Partial<CombFilterState>, instanceId?: string): void {
     const id = instanceId ?? this.primaryEqId()
     const st = this.eqState(id)
@@ -2485,7 +2501,7 @@ export class AudioEngine {
     smoothing: number,
     nyquist: number,
   ): void {
-    for (let bandIndex = 0; bandIndex < EQ_BAND_COUNT; bandIndex++) {
+    for (let bandIndex = 0; bandIndex < EQ_MAX_BANDS; bandIndex++) {
       const band = bands[bandIndex]
       const stages = band ? filterStageCount(band) : 0
       for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
@@ -2505,7 +2521,7 @@ export class AudioEngine {
       }
     }
     const combBands = combAsEqBands(comb)
-    const combOffset = EQ_BAND_COUNT * EQ_MAX_STAGES
+    const combOffset = EQ_MAX_BANDS * EQ_MAX_STAGES
     for (let i = 0; i < COMB_MAX_TEETH; i++) {
       const node = filters[combOffset + i]
       if (!node) continue
@@ -3233,18 +3249,6 @@ function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-function makeTanhCurve(amount: number): Float32Array<ArrayBuffer> {
-  const n = 1024
-  const curve = new Float32Array(new ArrayBuffer(n * 4))
-  const k = 1 + amount * 10
-  const denom = Math.tanh(k)
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * 2 - 1
-    curve[i] = denom === 0 ? x : Math.tanh(k * x) / denom
-  }
-  return curve
-}
-
 function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {
   param.cancelScheduledValues(now)
   if (value <= 1e-5) {
@@ -3261,7 +3265,7 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
 function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
-  if (type === 'saturation') return params.saturation > 0 ? 1 : 0
+  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).wet
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 1
   return 0
 }
@@ -3269,7 +3273,7 @@ function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
 function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
-  if (type === 'saturation') return params.saturation > 0 ? 0 : 1
+  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).dry
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 0
   return 1
 }

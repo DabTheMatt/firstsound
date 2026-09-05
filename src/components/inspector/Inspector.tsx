@@ -8,6 +8,7 @@ import {
   bandUsesWidth,
   bandwidthHz,
   EQ_FILTER_TYPES,
+  EQ_MAX_BANDS,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
   FILTER_SLOPES,
@@ -63,7 +64,7 @@ const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
-const SAT_IDS: ParamId[] = ['saturation']
+const SAT_IDS: ParamId[] = ['saturation', 'saturationMix']
 const OUT_IDS: ParamId[] = ['outputGain']
 
 const EQ_TYPE_OPTIONS = EQ_FILTER_TYPES.map((t) => ({
@@ -879,6 +880,18 @@ function EqEditor({
           ) : null}
         </details>
       ))}
+      {bands.length < EQ_MAX_BANDS ? (
+        <button
+          type="button"
+          className={styles.ghost}
+          onClick={() => {
+            const next = engine.addEqBand(instanceId)
+            if (next != null) setOpenBand(next)
+          }}
+        >
+          Add band ({bands.length}/{EQ_MAX_BANDS})
+        </button>
+      ) : null}
         </>
       ) : (
         <>
