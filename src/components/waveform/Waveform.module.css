@@ -225,6 +225,48 @@
   pointer-events: none;
 }
 
+.sensory .playhead {
+  width: 2px;
+  background: color-mix(in srgb, var(--playhead) 80%, white);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--playhead) 55%, transparent);
+}
+
+.sensory .wrap {
+  border-radius: 0;
+  background: transparent;
+}
+
+.sensory .canvas {
+  height: 100%;
+}
+
+.sensory .overlay {
+  inset: 0;
+}
+
+.sensory .regionFrame {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--text-primary) 28%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+
+.sensoryEdge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  transform: translateX(-50%);
+  border: 0;
+  background: transparent;
+  z-index: 6;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.sensory .wavePane {
+  min-height: 100%;
+}
+
 .ruler {
   position: absolute;
   left: 0;

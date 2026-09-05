@@ -1,0 +1,83 @@
+.lens {
+  --lens-size: min(34vh, 42vw, 320px);
+  position: relative;
+  width: var(--lens-size);
+  height: var(--lens-size);
+  pointer-events: none;
+}
+
+.halo {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--text-primary) calc(var(--lens-glow) * 18%), transparent) 0%,
+    transparent 68%
+  );
+  filter: blur(8px);
+  opacity: calc(0.45 + var(--lens-haze) * 0.4);
+}
+
+.glass {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, white calc(12% + var(--lens-glow) * 10%), transparent), transparent 46%),
+    color-mix(in srgb, var(--bg-app) 35%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 28%, transparent),
+    inset 0 -18px 28px color-mix(in srgb, black 22%, transparent),
+    0 0 40px color-mix(in srgb, var(--text-primary) calc(var(--lens-glow) * 18%), transparent);
+  backdrop-filter: blur(6px);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hit {
+  position: absolute;
+  inset: 18%;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.loop .halo {
+  animation: breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.72;
+  }
+}
+
+@media (max-width: 720px) {
+  .lens {
+    --lens-size: min(52vw, 46vh, 280px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo {
+    filter: none;
+    animation: none;
+  }
+
+  .glass {
+    backdrop-filter: none;
+  }
+}

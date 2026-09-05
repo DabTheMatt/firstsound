@@ -1,0 +1,31 @@
+import { SENSORY_AXIS_IDS, type SensoryAxisId } from './sensoryParameters'
+
+export type SensoryValues = Record<SensoryAxisId, number>
+
+export function defaultSensoryValues(): SensoryValues {
+  const values = {} as SensoryValues
+  for (const id of SENSORY_AXIS_IDS) values[id] = 0
+  return values
+}
+
+export function clampSensoryValue(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.min(1, Math.max(-1, value))
+}
+
+export function clampSensoryValues(values: Partial<SensoryValues>): SensoryValues {
+  const next = defaultSensoryValues()
+  for (const id of SENSORY_AXIS_IDS) {
+    const v = values[id]
+    next[id] = typeof v === 'number' ? clampSensoryValue(v) : 0
+  }
+  return next
+}
+
+export function sensoryValuesEqual(a: SensoryValues, b: SensoryValues, eps = 1e-4): boolean {
+  return SENSORY_AXIS_IDS.every((id) => Math.abs(a[id] - b[id]) <= eps)
+}
+
+export function patchSensoryValue(values: SensoryValues, id: SensoryAxisId, value: number): SensoryValues {
+  return { ...values, [id]: clampSensoryValue(value) }
+}

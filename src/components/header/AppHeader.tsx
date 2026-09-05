@@ -1,6 +1,7 @@
 import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import type { ReactNode } from 'react'
 import { ThemePicker } from './ThemePicker'
 import styles from './AppHeader.module.css'
 
@@ -14,6 +15,7 @@ type Props = {
   onRecord: () => void
   compact: boolean
   minimal?: boolean
+  modeSwitch?: ReactNode
 }
 
 export function AppHeader({
@@ -26,6 +28,7 @@ export function AppHeader({
   onRecord,
   compact,
   minimal = false,
+  modeSwitch,
 }: Props) {
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
   const ch = snap.channelCount === 1 ? 'M' : snap.channelCount === 2 ? 'Stereo' : snap.channelCount ? `${snap.channelCount} ch` : '—'
@@ -76,6 +79,7 @@ export function AppHeader({
         </p>
       ) : null}
       <div className={styles.trailing}>
+        {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
           <button

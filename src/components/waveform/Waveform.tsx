@@ -14,6 +14,7 @@ import { engine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import {
+  clampView,
   fitView,
   fracToTime,
   panView,
@@ -68,6 +69,9 @@ type Props = {
   onFadesCommit?: () => void
   contentRev?: number
   fxMode?: 'delay' | 'reverb' | null
+  appearance?: 'studio' | 'sensory'
+  followPlayhead?: boolean
+  emptyLabel?: string
 }
 
 export type WaveformHandle = {
@@ -127,9 +131,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onFadesCommit,
     contentRev = 0,
     fxMode = null,
+    appearance = 'studio',
+    followPlayhead = false,
+    emptyLabel = 'Load a sample to begin',
   },
   ref,
 ) {
+  const sensory = appearance === 'sensory'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -184,6 +192,27 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   }, [duration, onZoomLabel])
 
   useEffect(() => {
+    if (!followPlayhead) return
+    let frame = 0
+    let last = 0
+    const tick = (now: number) => {
+      if (now - last > 50 && engine.getSnapshot().playing && duration > 0) {
+        last = now
+        const t = engine.getPlayheadSeconds()
+        setViewState((prev) => {
+          const span = prev.end - prev.start
+          const next = clampView({ start: t - span / 2, end: t + span / 2 }, duration)
+          viewRef.current = next
+          return next
+        })
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [followPlayhead, duration])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const draw = () => {
@@ -229,11 +258,18 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           const lo = Math.max(-1, Math.min(1, (min[x] ?? 0) * gain))
           const top = mid - hi * half
           const bottom = mid - lo * half
-          ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+          if (appearance === 'sensory') {
+            ctx.globalAlpha = selected ? 0.92 : 0.38
+            ctx.fillRect(x, top, 1, Math.max(1.5, bottom - top))
+            ctx.globalAlpha = 1
+          } else {
+            ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+          }
         }
         if (lane === 0) peaksRef.current = { min, max }
       }
       const span = Math.max(0.0001, view.end - view.start)
+      if (appearance === 'sensory') return
       const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
         if (!(to > from + 1e-6)) return
         ctx.beginPath()
@@ -266,7 +302,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance])
 
   useEffect(() => {
     let frame = 0
@@ -609,7 +645,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const showSpec = viz === 'spectrum' || viz === 'split'
 
   return (
-    <div className={styles.editor}>
+    <div className={`${styles.editor} ${sensory ? styles.sensory : ''}`}>
       <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
         <div
           className={styles.wrap}
@@ -618,7 +654,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         >
           <div className={styles.wavePane}>
             <canvas ref={canvasRef} className={styles.canvas} />
-            <canvas ref={fxCanvasRef} className={styles.fxCanvas} />
+            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
             <div
               ref={overlayRef}
               className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
@@ -634,6 +670,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
+                  {!sensory ? (
+                    <>
                   <div
                     className={`${styles.fadeHandle} ${fadeFocus === 'in' ? styles.fadeHandleOn : ''}`}
                     data-fade="in"
@@ -684,18 +722,37 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       aria-label="Region end"
                     />
                   ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.sensoryEdge}
+                        data-edge="start"
+                        style={{ left: `${startPct}%` }}
+                        aria-label="Region start"
+                      />
+                      <button
+                        type="button"
+                        className={styles.sensoryEdge}
+                        data-edge="end"
+                        style={{ left: `${endPct}%` }}
+                        aria-label="Region end"
+                      />
+                    </>
+                  )}
                   <div ref={playheadRef} className={styles.playhead} />
                 </>
               ) : (
                 <div className={styles.empty}>
-                  <span>Load a sample to begin</span>
+                  <span>{emptyLabel}</span>
                   <button type="button" className={styles.demo} onClick={onLoadDemo}>
                     Load demo tone
                   </button>
                 </div>
               )}
             </div>
-            <div className={styles.ruler}>
+            <div className={styles.ruler} hidden={sensory}>
               {loaded
                 ? ticks.map((mark) => (
                     <span key={mark.t} className={styles.tick} style={{ left: `${mark.frac * 100}%` }}>
@@ -707,7 +764,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 ? (
+          {loaded && duration > 0 && !sensory ? (
             <Overview
               duration={duration}
               start={start}

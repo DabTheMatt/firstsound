@@ -1,0 +1,33 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.play,
+.loop {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.play:focus-visible,
+.loop:focus-visible {
+  outline: 1px solid var(--text-primary);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.loop {
+  color: color-mix(in srgb, var(--text-primary) 40%, transparent);
+  font-size: 16px;
+}
+
+.loopOn {
+  color: var(--text-primary);
+}

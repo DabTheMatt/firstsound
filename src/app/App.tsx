@@ -21,6 +21,14 @@ import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
+import { ModeGate } from '../modes/ModeGate'
+import { ModeSwitch } from '../modes/ModeSwitch'
+import { persistUiMode, readStoredUiMode, type UiMode } from '../modes/uiMode'
+import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
+import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
+import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
+import { SensoryShell } from '../sensory/components/SensoryShell'
+import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import styles from './App.module.css'
 
 type Hist = {
@@ -32,6 +40,18 @@ type Hist = {
   fadeCurve: FadeCurve
   fadeInBend: number
   fadeOutBend: number
+  layer: 'region' | 'sensory'
+  sensory?: SensoryValues
+  dsp?: DspSnapshot
+  sensoryBase?: DspSnapshot
+}
+
+function cloneDsp(dsp: DspSnapshot): DspSnapshot {
+  return {
+    params: { ...dsp.params },
+    eqBands: dsp.eqBands.map((b) => ({ ...b })),
+    bypass: { ...dsp.bypass },
+  }
 }
 
 function histKey(
@@ -39,6 +59,7 @@ function histKey(
   end: number,
   chain: { instanceId: string }[],
   edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve' | 'fadeInBend' | 'fadeOutBend'>,
+  extra?: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'>,
 ): Hist {
   return {
     start,
@@ -49,7 +70,32 @@ function histKey(
     fadeCurve: edit.fadeCurve,
     fadeInBend: edit.fadeInBend,
     fadeOutBend: edit.fadeOutBend,
+    layer: extra?.layer ?? 'region',
+    sensory: extra?.sensory,
+    dsp: extra?.dsp ? cloneDsp(extra.dsp) : undefined,
+    sensoryBase: extra?.sensoryBase ? cloneDsp(extra.sensoryBase) : undefined,
   }
+}
+
+function histEqual(a: Hist, b: Hist): boolean {
+  if (
+    a.start !== b.start ||
+    a.end !== b.end ||
+    a.chain !== b.chain ||
+    a.fadeIn !== b.fadeIn ||
+    a.fadeOut !== b.fadeOut ||
+    a.fadeCurve !== b.fadeCurve ||
+    a.fadeInBend !== b.fadeInBend ||
+    a.fadeOutBend !== b.fadeOutBend ||
+    a.layer !== b.layer
+  ) {
+    return false
+  }
+  if (a.layer === 'sensory' || b.layer === 'sensory') {
+    if (!a.sensory || !b.sensory) return false
+    return sensoryValuesEqual(a.sensory, b.sensory)
+  }
+  return true
 }
 
 export default function App() {
@@ -74,11 +120,29 @@ export default function App() {
     instanceId: 'gain-1',
     type: 'gain',
   })
-  const [history, setHistory] = useState(() => createHistory(histKey(0, 1, [], DEFAULT_EDIT)))
+  const [history, setHistory] = useState(() =>
+    createHistory(
+      histKey(0, 1, [], DEFAULT_EDIT, {
+        layer: 'region',
+        sensory: defaultSensoryValues(),
+        dsp: captureDsp(engine),
+        sensoryBase: captureDsp(engine),
+      }),
+    ),
+  )
+  const [uiMode, setUiMode] = useState<UiMode | null>(() => readStoredUiMode())
+  const [sensory, setSensory] = useState(defaultSensoryValues)
+  const [moodLabel, setMoodLabel] = useState<string | null>(null)
+  const sensoryRef = useRef(sensory)
+  const sensoryBaseRef = useRef<DspSnapshot>(captureDsp(engine))
+  const appliedRef = useRef<DspSnapshot>(captureDsp(engine))
   const editRef = useRef(edit)
   useEffect(() => {
     editRef.current = edit
   }, [edit])
+  useEffect(() => {
+    sensoryRef.current = sensory
+  }, [sensory])
 
   useEffect(() => {
     engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend)
@@ -154,22 +218,20 @@ export default function App() {
     if (file) void loadSample(file)
   }
 
-  const commit = useCallback(() => {
+  const commit = useCallback((layer: Hist['layer'] = 'region') => {
     const e = editRef.current
+    const current = engine.getSnapshot()
+    const extra: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'> =
+      layer === 'sensory'
+        ? {
+            layer,
+            sensory: { ...sensoryRef.current },
+            dsp: captureDsp(engine),
+            sensoryBase: cloneDsp(sensoryBaseRef.current),
+          }
+        : { layer: 'region' }
     setHistory((h) =>
-      commitHistory(
-        h,
-        histKey(engine.getSnapshot().params.start, engine.getSnapshot().params.end, engine.getSnapshot().chain, e),
-        (a, b) =>
-          a.start === b.start &&
-          a.end === b.end &&
-          a.chain === b.chain &&
-          a.fadeIn === b.fadeIn &&
-          a.fadeOut === b.fadeOut &&
-          a.fadeCurve === b.fadeCurve &&
-          a.fadeInBend === b.fadeInBend &&
-          a.fadeOutBend === b.fadeOutBend,
-      ),
+      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, extra), histEqual),
     )
   }, [])
 
@@ -183,6 +245,40 @@ export default function App() {
       fadeInBend: present.fadeInBend,
       fadeOutBend: present.fadeOutBend,
     }))
+    if (present.dsp) {
+      writeDsp(engine, present.dsp)
+      appliedRef.current = cloneDsp(present.dsp)
+    }
+    if (present.sensory) {
+      sensoryRef.current = present.sensory
+      setSensory(present.sensory)
+    }
+    if (present.sensoryBase) sensoryBaseRef.current = cloneDsp(present.sensoryBase)
+  }
+
+  const applySensoryValues = (next: SensoryValues) => {
+    sensoryRef.current = next
+    setSensory(next)
+    appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, next)
+  }
+
+  const prepareSensoryLayer = () => {
+    const current = captureDsp(engine)
+    const last = appliedRef.current
+    if (!dspSnapshotsEqual(current, last)) {
+      sensoryBaseRef.current = current
+      appliedRef.current = current
+      const rest = defaultSensoryValues()
+      sensoryRef.current = rest
+      setSensory(rest)
+      setMoodLabel(null)
+    }
+  }
+
+  const chooseMode = (mode: UiMode) => {
+    persistUiMode(mode)
+    if (mode === 'sensory') prepareSensoryLayer()
+    setUiMode(mode)
   }
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
@@ -337,10 +433,98 @@ export default function App() {
     [history, snap.hasSource, snap.recording],
   )
 
+  const fileInputs = (
+    <>
+      <input
+        ref={sampleInput}
+        type="file"
+        accept={AUDIO_FILE_ACCEPT}
+        hidden
+        onChange={(event) => {
+          onFiles(event.target.files)
+          event.target.value = ''
+        }}
+      />
+      <input
+        ref={presetInput}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={async (event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (!file) return
+          const text = await file.text()
+          const preset = parsePreset(JSON.parse(text) as unknown)
+          if (preset) engine.applyPreset(preset)
+        }}
+      />
+    </>
+  )
+
+  const settingsMenu = moreOpen ? (
+    <>
+      <button
+        type="button"
+        className={styles.settingsScrim}
+        aria-label="Close settings"
+        onClick={() => setMenuOpen(false)}
+      />
+      <div className={styles.settingsFly} ref={settingsRef}>
+        {actions}
+      </div>
+    </>
+  ) : null
+
+  if (uiMode === null) {
+    return (
+      <>
+        <ModeGate onChoose={chooseMode} />
+        {fileInputs}
+      </>
+    )
+  }
+
+  if (uiMode === 'sensory') {
+    return (
+      <>
+        <SensoryShell
+          snap={snap}
+          edit={edit}
+          waveRef={waveRef}
+          menuOpen={moreOpen}
+          onToggleMenu={() => setMenuOpen((v) => !v)}
+          menu={settingsMenu}
+          dragging={dragging}
+          onDragOver={() => setDragging(true)}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(file) => void loadSample(file)}
+          onLoadSample={() => sampleInput.current?.click()}
+          onLoadDemo={() => {
+            void engine.unlock().then(() => engine.loadDemoTone())
+          }}
+          onRegionCommit={() => commit('region')}
+          onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
+          onFadesCommit={() => commit('region')}
+          mode={uiMode}
+          onMode={chooseMode}
+          values={sensory}
+          onValues={applySensoryValues}
+          onCommitSensory={() => commit('sensory')}
+          moodLabel={moodLabel}
+          onMoodLabel={setMoodLabel}
+          sampleInput={null}
+        />
+        {fileInputs}
+        {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+      </>
+    )
+  }
+
   return (
     <FxLfoConnectProvider>
     <div
-      className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}
+      className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''} ${styles.modeFade}`}
       onDragOver={(event) => {
         event.preventDefault()
         setDragging(true)
@@ -380,6 +564,7 @@ export default function App() {
           }}
           compact={sheet}
           minimal={isPhoneLayout}
+          modeSwitch={<ModeSwitch mode="technical" onChange={chooseMode} />}
         />
         {lfoCenterOpen ? (
           <>
@@ -536,30 +721,7 @@ export default function App() {
 
         <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>
 
-        <input
-          ref={sampleInput}
-          type="file"
-          accept={AUDIO_FILE_ACCEPT}
-          hidden
-          onChange={(event) => {
-            onFiles(event.target.files)
-            event.target.value = ''
-          }}
-        />
-        <input
-          ref={presetInput}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={async (event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ''
-            if (!file) return
-            const text = await file.text()
-            const preset = parsePreset(JSON.parse(text) as unknown)
-            if (preset) engine.applyPreset(preset)
-          }}
-        />
+        {fileInputs}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
     </div>

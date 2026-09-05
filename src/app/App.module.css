@@ -323,6 +323,25 @@
   clip: rect(0 0 0 0);
 }
 
+.modeFade {
+  animation: modeIn 220ms ease;
+}
+
+@keyframes modeIn {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modeFade {
+    animation: none;
+  }
+}
+
 .sheet .shell,
 .dock-bottom .work {
   grid-template-columns: minmax(0, 1fr);
