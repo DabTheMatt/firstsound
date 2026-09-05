@@ -22,8 +22,8 @@ export function TrackLanes({
         <h2 className={styles.title}>{editor ? 'Multi-track' : 'Tracks'}</h2>
         <p className={styles.lead}>
           {editor
-            ? 'Each lane is its own sample. WAVE opens that track in the editor. Effects follow the selected lane.'
-            : 'Click a lane to select it — the mixer strip and effect chain follow. WAVE opens the waveform.'}
+            ? 'Each lane is its own sample. Mute and solo here. WAVE opens the editor.'
+            : 'Select a lane to edit its region. All unmuted lanes play together into Output.'}
         </p>
       </header>
       <div className={styles.list}>
@@ -41,7 +41,6 @@ export function TrackLanes({
               <span className={styles.meta}>
                 <span className={styles.name}>{track.name}</span>
                 <span className={styles.file}>{track.fileName ?? 'No sample'}</span>
-                {track.id === selectedId ? <span className={styles.fxFlag}>FX</span> : null}
               </span>
               <LaneWave
                 trackId={track.id}

@@ -724,7 +724,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     onClick={() => engine.selectTrack(track.id)}
                   >
                     <span>{track.name}</span>
-                    {on ? <span className={styles.trackTabFile}>FX</span> : null}
                     {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
                   </button>
                 )

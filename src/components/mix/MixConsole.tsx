@@ -9,7 +9,6 @@ export function MixConsole() {
   const tracks = snap.tracks
   const selectedId = snap.selectedTrackId
   const canAdd = tracks.length < MAX_TRACKS
-  const fxTrack = tracks.find((track) => track.id === selectedId) ?? tracks[0]
 
   return (
     <div className={styles.console} aria-label="Mixer">
@@ -17,8 +16,8 @@ export function MixConsole() {
         <div>
           <h2 className={styles.title}>Mixer</h2>
           <p className={styles.lead}>
-            Effects follow the selected strip ({fxTrack?.name ?? 'Track'}). Other audible tracks
-            sum dry into Output on the right.
+            Every unmuted track plays together. Mute and solo are per strip. Effects sit after the
+            mix, on Output.
           </p>
         </div>
         <button
@@ -50,7 +49,6 @@ export function MixConsole() {
                     onClick={(event) => event.stopPropagation()}
                   />
                   <span className={styles.sampleName}>{track.fileName ?? 'No sample'}</span>
-                  {selected ? <span className={styles.fxBadge}>FX</span> : null}
                 </header>
                 <label className={styles.faderWrap}>
                   <span className={styles.faderValue}>{Math.round(track.mix)}</span>
@@ -65,7 +63,6 @@ export function MixConsole() {
                     onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
                     onClick={(event) => event.stopPropagation()}
                   />
-                  <span className={styles.faderLabel}>Mix</span>
                 </label>
                 <div className={styles.toggles}>
                   <button
@@ -92,30 +89,17 @@ export function MixConsole() {
                   </button>
                 </div>
                 <TrackSampleButton trackId={track.id} />
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles.ghost}
-                    disabled={!canAdd}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      engine.duplicateTrack(track.id)
-                    }}
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.ghost}
-                    disabled={tracks.length <= 1}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      engine.removeTrack(track.id)
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  disabled={tracks.length <= 1}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    engine.removeTrack(track.id)
+                  }}
+                >
+                  Remove
+                </button>
               </article>
             )
           })}
@@ -123,7 +107,7 @@ export function MixConsole() {
         <article className={`${styles.strip} ${styles.stripMaster}`}>
           <header className={styles.stripHead}>
             <span className={styles.masterName}>Output</span>
-            <span className={styles.sampleName}>Master</span>
+            <span className={styles.sampleName}>After FX</span>
           </header>
           <label className={styles.faderWrap}>
             <span className={styles.faderValue}>{Math.round(snap.masterMix)}</span>
@@ -137,11 +121,8 @@ export function MixConsole() {
               aria-label="Output mix"
               onChange={(event) => engine.setMasterMix(Number(event.target.value))}
             />
-            <span className={styles.faderLabel}>Out</span>
           </label>
-          <p className={styles.masterHint}>
-            Post-FX sum of every audible track. Chain inserts live on {fxTrack?.name ?? 'the selected track'}.
-          </p>
+          <p className={styles.masterHint}>Master level for the summed mix.</p>
         </article>
       </div>
     </div>
@@ -173,7 +154,7 @@ function TrackSampleButton({ trackId }: { trackId: string }) {
           inputRef.current?.click()
         }}
       >
-        Load sample
+        Sample
       </button>
     </div>
   )

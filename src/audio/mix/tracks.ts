@@ -195,6 +195,20 @@ export function companionTrackIds(tracks: readonly MixTrack[], selectedId: strin
     .map((track) => track.id)
 }
 
+export type MixPlaybackPlan = {
+  playLead: boolean
+  companionIds: string[]
+}
+
+/** Who actually sounds: lead engine plus every other unmuted (or soloed) track. */
+export function mixPlaybackPlan(tracks: readonly MixTrack[], selectedId: string | null): MixPlaybackPlan {
+  const lead = selectedTrack(tracks, selectedId)
+  return {
+    playLead: Boolean(lead && trackIsAudible(lead, tracks)),
+    companionIds: companionTrackIds(tracks, lead?.id ?? selectedId),
+  }
+}
+
 export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boolean {
   if (a.length !== b.length) return false
   return a.every((track, i) => {

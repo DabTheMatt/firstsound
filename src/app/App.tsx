@@ -604,7 +604,6 @@ export default function App() {
           onSelect={selectModule}
           touch={compact}
           minimal={isPhoneLayout}
-          fxTrackName={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? 'Track'}
         />
 
         <WaveformToolbar

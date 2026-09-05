@@ -4,6 +4,7 @@ import {
   alignedRegionOffset,
   companionTrackIds,
   defaultTracks,
+  mixPlaybackPlan,
   duplicateTrack,
   MAX_TRACKS,
   outputMixGain,
@@ -108,8 +109,13 @@ describe('mix tracks', () => {
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([tracks[1]!.id])
     tracks = patchTrack(tracks, tracks[0]!.id, { muted: true })
     expect(companionTrackIds(tracks, tracks[1]!.id)).toEqual([])
+    expect(mixPlaybackPlan(tracks, tracks[0]!.id)).toEqual({
+      playLead: false,
+      companionIds: [tracks[1]!.id],
+    })
     tracks = patchTrack(tracks, tracks[0]!.id, { muted: false, solo: true })
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([])
+    expect(mixPlaybackPlan(tracks, tracks[0]!.id)).toEqual({ playLead: true, companionIds: [] })
   })
 
   it('keeps a sample name on a saved desk', () => {

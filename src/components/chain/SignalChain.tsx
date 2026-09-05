@@ -18,10 +18,9 @@ type Props = {
   onSelect: (instanceId: string) => void
   touch: boolean
   minimal?: boolean
-  fxTrackName?: string
 }
 
-export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false, fxTrackName }: Props) {
+export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false }: Props) {
   const [reorder, setReorder] = useState(false)
   const [openAdd, setOpenAdd] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -51,11 +50,9 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
 
   return (
     <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label="Signal chain">
-      {fxTrackName ? (
-        <span className={styles.fxTarget} title={`Inserts apply to ${fxTrackName}`}>
-          FX · {fxTrackName}
-        </span>
-      ) : null}
+      <span className={styles.fxTarget} title="Effects process the summed mix, after every track fader">
+        Mix FX
+      </span>
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
         const active = mod.instanceId === selectedId
