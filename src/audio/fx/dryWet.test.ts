@@ -43,17 +43,16 @@ describe('wetDryFor', () => {
     expect(delay.out).toBe(1)
   })
 
-  it('keeps reverb as a quiet parallel send so the room cannot replace the dry', () => {
+  it('uses equal-power Mix for reverb so the room is audible', () => {
     const p = defaultParamValues()
     p.reverbWet = 100
     const full = wetDryFor('reverb', p)
-    expect(full.dry).toBe(1)
-    expect(full.wet).toBeCloseTo(0.7)
-    p.reverbWet = 36
-    const mild = wetDryFor('reverb', p)
-    expect(mild.dry).toBe(1)
-    expect(mild.wet).toBeGreaterThan(0.2)
-    expect(mild.wet).toBeLessThan(0.3)
+    expect(full.dry).toBe(0)
+    expect(full.wet).toBe(1)
+    p.reverbWet = 50
+    const half = wetDryFor('reverb', p)
+    expect(half.dry).toBeCloseTo(Math.SQRT1_2, 5)
+    expect(half.wet).toBeCloseTo(Math.SQRT1_2, 5)
   })
 })
 

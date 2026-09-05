@@ -176,17 +176,13 @@ export function fillReverbImpulse(
   }
 
   let peak = 1e-6
-  let l1 = 0
   for (let i = 0; i < n; i++) {
-    const l = left[i]!
-    const r = right[i]!
-    peak = Math.max(peak, Math.abs(l), Math.abs(r))
-    l1 += (Math.abs(l) + Math.abs(r)) * 0.5
+    peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
   }
-  // L1 bound: a full-scale impulse through this IR stays below ~0.35 peak.
-  const l1Gain = 0.5 / Math.max(l1, 1e-8)
-  const peakGain = 0.55 / peak
-  const gain = Math.min(l1Gain, peakGain)
+  // Peak-normalize only. ConvolverNode.normalize = true then applies the
+  // browser equal-power scale. L1-bounding a multi-second hall crushed every
+  // sample to ~1e-6 and made Mix inaudible with normalize = false.
+  const gain = 0.88 / peak
   for (let i = 0; i < n; i++) {
     left[i]! *= gain
     right[i]! *= gain

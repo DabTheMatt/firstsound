@@ -11,7 +11,6 @@ import {
 import {
   equalPowerDryWet,
   makeAbsCurve,
-  reverbDryWet,
   sideGainFromWidth,
   stereoInputMix,
 } from './dryWet'
@@ -565,7 +564,7 @@ export function createReverbGraph(
   const early = ctx.createDelay(0.25)
   const earlyGain = ctx.createGain()
   const conv = ctx.createConvolver()
-  conv.normalize = false
+  conv.normalize = true
   const tankSplit = ctx.createChannelSplitter(2)
   const tankDelayL = ctx.createDelay(0.45)
   const tankDelayR = ctx.createDelay(0.45)
@@ -628,6 +627,7 @@ export function createReverbGraph(
   predelayR.connect(preMerge, 0, 1)
   preMerge.connect(early)
   early.connect(earlyGain)
+  earlyGain.connect(conv)
   preMerge.connect(conv)
   conv.connect(tankSplit)
   tankSplit.connect(tankDelayL, 0)
@@ -780,7 +780,7 @@ export function applyReverbGraph(
   g.predelayL.delayTime.setTargetAtTime(Math.max(0.0002, basePre - offset), now, smoothing)
   g.predelayR.delayTime.setTargetAtTime(Math.max(0.0002, Math.min(1.95, basePre + offset)), now, smoothing)
   g.early.delayTime.setTargetAtTime(0.01 + dist * 0.035 + params.reverbSize / 3500, now, smoothing)
-  g.earlyGain.gain.setTargetAtTime(0, now, smoothing)
+  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * 0.35 * (1 - dist * 0.3), now, smoothing)
 
   const input = stereoInputMix(stereo ? params.reverbInput : 0)
   g.inKeepL.gain.setTargetAtTime(input.keep, now, smoothing)
@@ -848,8 +848,8 @@ export function wetDryFor(
   type: 'delay' | 'reverb',
   params: Record<ParamId, number>,
 ): { dry: number; wet: number; out: number } {
-  if (type === 'reverb') return reverbDryWet(params.reverbWet / 100)
-  const { dry, wet } = equalPowerDryWet(params.delayWet / 100)
+  const mix = type === 'delay' ? params.delayWet : params.reverbWet
+  const { dry, wet } = equalPowerDryWet(mix / 100)
   return { dry, wet, out: 1 }
 }
 
