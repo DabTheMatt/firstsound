@@ -14,6 +14,27 @@
   cursor: grab;
 }
 
+.dial.held {
+  cursor: grabbing;
+}
+
+.pair {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 82%, transparent);
+}
+
+.dash {
+  opacity: 0.45;
+  letter-spacing: 0;
+}
+
 .dial:focus-visible {
   outline: 1px solid color-mix(in srgb, var(--sensory-glow-color) 70%, white);
   outline-offset: 6px;

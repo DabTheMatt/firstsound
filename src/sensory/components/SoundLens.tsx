@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { computeMinMax } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { readThemeColors } from '../../theme'
+import { lensEdgeBulge, lensSourceX } from '../visualization/lensWarp'
 import type { SensoryVisualState } from '../visualization/sensoryVisualState'
 import styles from './SoundLens.module.css'
 
@@ -69,17 +70,42 @@ export function SoundLens({ duration, loaded, visual, loop, onTogglePlay }: Prop
         }
         const wobble = reduced ? 0 : visual.motion * 5 * dpr * Math.sin(performance.now() / 420)
         const amp = r * (0.62 + visual.mass * 0.18) * (0.88 + energy * 0.22)
+        const step = Math.max(1, Math.floor(dpr))
+        const lastCol = Math.max(1, width - 1)
+        const sampleAt = (nx: number) => {
+          const src = lensSourceX(nx, 0.4)
+          const col = Math.round(((src + 1) / 2) * lastCol)
+          return { hi: max[col] ?? 0, lo: min[col] ?? 0 }
+        }
+        ctx.strokeStyle = colors.waveform
+        ctx.lineWidth = Math.max(1.2, dpr * 1.1)
+        ctx.globalAlpha = 0.55 + visual.glow * 0.25
+        ctx.beginPath()
+        let started = false
+        for (let x = 0; x < width; x += step) {
+          const nx = (x - cx) / r
+          if (nx < -1 || nx > 1) continue
+          const { hi } = sampleAt(nx)
+          const y = cy - hi * amp * lensEdgeBulge(nx, 0.62) + wobble
+          if (!started) {
+            ctx.moveTo(x, y)
+            started = true
+          } else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
         ctx.fillStyle = colors.waveform
-        for (let x = 0; x < width; x += Math.max(1, Math.floor(dpr))) {
-          const hi = max[x] ?? 0
-          const lo = min[x] ?? 0
+        for (let x = 0; x < width; x += step) {
+          const nx = (x - cx) / r
+          if (nx < -1 || nx > 1) continue
+          const { hi, lo } = sampleAt(nx)
+          const bulge = lensEdgeBulge(nx, 0.62)
           const span = Math.max(0.02, hi - lo)
           const grains = 2 + Math.floor(span * 5)
           for (let g = 0; g < grains; g++) {
             const u = (g + 0.5) / grains
             const sample = lo + u * (hi - lo)
-            const y = cy - sample * amp + wobble
-            ctx.globalAlpha = 0.22 + visual.glow * 0.35 + energy * 0.15
+            const y = cy - sample * amp * bulge + wobble
+            ctx.globalAlpha = 0.18 + visual.glow * 0.32 + energy * 0.15 + nx * nx * 0.12
             ctx.fillRect(x, y, dpr, dpr)
           }
         }

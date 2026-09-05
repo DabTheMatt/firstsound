@@ -87,17 +87,31 @@ export type SensoryDialPole = 'pos' | 'neg'
 export type SensoryDialSpec = {
   axis: SensoryAxisId
   pole: SensoryDialPole
+  kind?: 'unipolar' | 'bipolar'
   label: string
+  negativeLabel?: string
+  positiveLabel?: string
   whisper: string
   tone: 'warm' | 'cool'
+  ariaLabel?: string
 }
 
-/** Six one-sided dials from the Sensory interface proposal. */
+/** Feeling dials. Distance is bipolar: closer — further. */
 export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
   { axis: 'brightness', pole: 'neg', label: 'darker', whisper: 'more depth', tone: 'warm' },
   { axis: 'warmth', pole: 'pos', label: 'warmer', whisper: 'more soul', tone: 'warm' },
   { axis: 'hardness', pole: 'neg', label: 'softer', whisper: 'more air', tone: 'warm' },
-  { axis: 'distance', pole: 'neg', label: 'closer', whisper: 'more presence', tone: 'cool' },
-  { axis: 'wildness', pole: 'pos', label: 'wilder', whisper: 'more movement', tone: 'cool' },
-  { axis: 'brightness', pole: 'pos', label: 'brighter', whisper: 'more clarity', tone: 'cool' },
+  {
+    axis: 'distance',
+    pole: 'pos',
+    kind: 'bipolar',
+    label: 'distance',
+    negativeLabel: 'closer',
+    positiveLabel: 'further',
+    whisper: 'narrow / vast',
+    tone: 'cool',
+    ariaLabel: 'Distance, closer to further',
+  },
+  { axis: 'wildness', pole: 'pos', label: 'pulse', whisper: 'tremor / grain', tone: 'cool' },
+  { axis: 'brightness', pole: 'pos', label: 'brighter', whisper: 'more light', tone: 'cool' },
 ]

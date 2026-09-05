@@ -1,5 +1,5 @@
 .lens {
-  --lens-size: min(38vh, 36vw, 340px);
+  --lens-size: min(52vh, 54vw, 480px);
   position: relative;
   width: var(--lens-size);
   height: var(--lens-size);
@@ -77,7 +77,7 @@
 
 @media (max-width: 720px) {
   .lens {
-    --lens-size: min(58vw, 42vh, 280px);
+    --lens-size: min(72vw, 48vh, 380px);
   }
 }
 

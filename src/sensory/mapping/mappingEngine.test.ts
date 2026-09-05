@@ -26,27 +26,48 @@ describe('mapSensoryToDsp', () => {
   it('uses mostly EQ at modest brightness', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', 0.2))
     expect(mapped.eqBands[3]?.type).toBe('highshelf')
-    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(0.8)
-    expect(mapped.eqBands[3]?.gain).toBeLessThan(3)
-    expect(mapped.params.reverbShimmer).toBeCloseTo(0)
+    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(1.5)
+    expect(mapped.eqBands[3]?.gain).toBeLessThan(6)
     expect(mapped.params.saturation).toBeCloseTo(0)
     expect(mapped.bypass.eq).toBe(false)
-    expect(mapped.params.eq4Gain).toBeGreaterThan(0.8)
+    expect(mapped.params.eq4Gain).toBeGreaterThan(1.5)
   })
 
-  it('opens shimmer and saturation only at high brightness', () => {
+  it('opens shimmer and saturation at high brightness', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', 0.75))
-    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(3)
+    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(6)
     expect(mapped.params.saturation).toBeGreaterThan(2)
-    expect(mapped.params.reverbShimmer).toBeGreaterThan(1)
+    expect(mapped.params.reverbShimmer).toBeGreaterThan(20)
+    expect(mapped.bypass.reverb).toBe(false)
     expect(mapped.bypass.saturation).toBe(false)
   })
 
-  it('opens space when moving further', () => {
+  it('cuts highs and lifts lows when darker', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'brightness', -0.7))
+    expect(mapped.eqBands[3]?.gain).toBeLessThan(-5)
+    expect(mapped.eqBands[0]?.gain).toBeGreaterThan(4)
+  })
+
+  it('opens space and width when moving further', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'distance', 0.6))
-    expect(mapped.params.reverbWet).toBeGreaterThan(15)
+    expect(mapped.params.reverbWet).toBeGreaterThan(40)
     expect(mapped.params.reverbSize).toBeGreaterThan(50)
+    expect(mapped.params.reverbWidth).toBeGreaterThan(130)
     expect(mapped.bypass.reverb).toBe(false)
+  })
+
+  it('narrows the image when closer', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'distance', -0.7))
+    expect(mapped.params.reverbWidth).toBeLessThan(70)
+    expect(mapped.params.delayWidth).toBeLessThan(70)
+  })
+
+  it('engages grain layers and modulation on pulse', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'wildness', 0.65))
+    expect(mapped.params.motionDepth).toBeGreaterThan(30)
+    expect(mapped.params.density).toBeGreaterThan(25)
+    expect(mapped.params.scatter).toBeGreaterThan(55)
+    expect(mapped.bypass.grain).toBe(false)
   })
 
   it('treats bright+wild as more than bright alone', () => {
