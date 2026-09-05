@@ -1,0 +1,64 @@
+.rail {
+  position: absolute;
+  right: clamp(16px, 3vw, 36px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  pointer-events: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 34%, transparent);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  min-height: 32px;
+  touch-action: none;
+  cursor: ns-resize;
+}
+
+.item.on {
+  color: var(--text-primary);
+}
+
+.item:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--text-primary) 55%, transparent);
+  outline-offset: 4px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  box-shadow: 0 0 8px var(--text-primary);
+}
+
+.gap {
+  width: 5px;
+  height: 5px;
+}
+
+@media (max-width: 720px) {
+  .rail {
+    right: 10px;
+    gap: 10px;
+  }
+
+  .item {
+    letter-spacing: 0.18em;
+    font-size: 10px;
+  }
+}

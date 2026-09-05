@@ -52,13 +52,13 @@
 
 .editorial .opt.on {
   background: transparent;
-  color: #e8d7b0;
+  color: var(--text-primary);
 }
 
 .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #e0b56a;
-  box-shadow: 0 0 10px #e0b56a;
+  background: var(--text-primary);
+  box-shadow: 0 0 10px var(--text-primary);
 }

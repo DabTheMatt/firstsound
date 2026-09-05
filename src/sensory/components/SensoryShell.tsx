@@ -7,14 +7,18 @@ import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
-import { SENSORY_DIALS, type SensoryAxisId } from '../sensoryParameters'
+import { activeFeelingId } from '../sensoryFeelings'
+import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import type { SensoryValues } from '../sensoryState'
-import { patchSensoryValue } from '../sensoryState'
 import { lensWindowSeconds } from '../visualization/lensWindow'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
-import { SensoryDial } from './SensoryDial'
+import { FeelingRail } from './FeelingRail'
+import { OverviewStrip } from './OverviewStrip'
+import { PlayheadClock } from './PlayheadClock'
+import { SensoryThemePicker } from './SensoryThemePicker'
 import { SoundLens } from './SoundLens'
+import { SoundRange } from './SoundRange'
 import styles from './SensoryShell.module.css'
 
 type Props = {
@@ -56,10 +60,10 @@ export function SensoryShell({
   onDragOver,
   onDragLeave,
   onDrop,
-  onLoadSample,
+  onLoadSample: _onLoadSample,
   onLoadDemo,
-  onSave,
-  onRecord,
+  onSave: _onSave,
+  onRecord: _onRecord,
   onRegionCommit,
   onFades,
   onFadesCommit,
@@ -68,30 +72,32 @@ export function SensoryShell({
   values,
   onValues,
   onCommitSensory,
-  moodLabel,
+  moodLabel: _moodLabel,
   onMoodLabel,
   sampleInput = null,
 }: Props) {
   const [placesOpen, setPlacesOpen] = useState(false)
   const [windowAmount, setWindowAmount] = useState(0)
+  const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
+  const [feelingId, setFeelingId] = useState<string | null>(null)
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }, [])
   const visual = sensoryVisualState(values, reduced)
   const cssVars = visualCssVars(visual)
-  const leftDials = SENSORY_DIALS.slice(0, 3)
-  const rightDials = SENSORY_DIALS.slice(3)
   const windowSec = lensWindowSeconds(windowAmount, snap.duration)
+  const activeId = activeFeelingId(values, feelingId)
+  const range = scene === 'range'
 
-  const setAxis = (id: SensoryAxisId, value: number) => {
-    onMoodLabel(null)
-    onValues(patchSensoryValue(values, id, value))
+  const chooseScene = (next: SensorySceneId) => {
+    setScene(next)
+    persistSensoryScene(next)
   }
 
   return (
     <div
-      className={`${styles.page} ${dragging ? styles.drop : ''}`}
+      className={`${styles.page} ${range ? styles.rangePage : ''} ${dragging ? styles.drop : ''}`}
       style={cssVars as CSSProperties}
       onDragOver={(event) => {
         event.preventDefault()
@@ -105,14 +111,14 @@ export function SensoryShell({
       }}
     >
       <header className={styles.top}>
+        <p className={styles.brand}>Firstsound</p>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
-          <button type="button" className={styles.textBtn} onClick={onLoadSample}>
-            Open
-          </button>
-          <button type="button" className={styles.textBtn} onClick={onSave}>
-            Save
-          </button>
+          <SensoryThemePicker
+            scene={scene}
+            onScene={chooseScene}
+            onPlaces={() => setPlacesOpen((v) => !v)}
+          />
           <button
             type="button"
             className={styles.menuBtn}
@@ -127,109 +133,102 @@ export function SensoryShell({
       </header>
       {menuOpen ? menu : null}
 
-      <div className={styles.world} aria-hidden={!snap.sampleLoaded}>
-        <Waveform
-          ref={waveRef}
-          key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}:sensory`}
-          duration={snap.duration}
-          start={snap.params.start}
-          end={snap.params.end}
-          loaded={snap.sampleLoaded}
-          tool="select"
-          viz="waveform"
-          fadeIn={edit.fadeIn}
-          fadeOut={edit.fadeOut}
-          fadeCurve={edit.fadeCurve}
-          fadeInBend={edit.fadeInBend}
-          fadeOutBend={edit.fadeOutBend}
-          fadeFocus={edit.fadeFocus}
-          autoSnap={edit.autoSnap}
-          normalizeView={false}
-          onNormalizeView={() => undefined}
-          onZoomLabel={() => undefined}
-          onLoadDemo={onLoadDemo}
-          onRegionCommit={onRegionCommit}
-          onFades={onFades}
-          onFadesCommit={onFadesCommit}
-          contentRev={snap.bufferRev}
-          appearance="sensory"
-          followPlayhead
-          emptyLabel=""
-        />
-        <div className={styles.vignette} aria-hidden="true" />
-      </div>
-
-      <div className={styles.lensWrap}>
-        <SoundLens
+      {range ? (
+        <SoundRange
           duration={snap.duration}
           loaded={snap.sampleLoaded}
           visual={visual}
-          loop={snap.loop}
-          windowSec={windowSec}
-          windowAmount={windowAmount}
-          onWindowAmount={setWindowAmount}
-          onWindowCommit={() => undefined}
+          contentRev={snap.bufferRev}
           onTogglePlay={() => {
             void engine.unlock().then(() => engine.togglePlay())
           }}
+          onLoadDemo={onLoadDemo}
         />
+      ) : (
+        <>
+          <div className={styles.world} aria-hidden={!snap.sampleLoaded}>
+            <Waveform
+              ref={waveRef}
+              key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}:sensory`}
+              duration={snap.duration}
+              start={snap.params.start}
+              end={snap.params.end}
+              loaded={snap.sampleLoaded}
+              tool="select"
+              viz="waveform"
+              fadeIn={edit.fadeIn}
+              fadeOut={edit.fadeOut}
+              fadeCurve={edit.fadeCurve}
+              fadeInBend={edit.fadeInBend}
+              fadeOutBend={edit.fadeOutBend}
+              fadeFocus={edit.fadeFocus}
+              autoSnap={edit.autoSnap}
+              normalizeView={false}
+              onNormalizeView={() => undefined}
+              onZoomLabel={() => undefined}
+              onLoadDemo={onLoadDemo}
+              onRegionCommit={onRegionCommit}
+              onFades={onFades}
+              onFadesCommit={onFadesCommit}
+              contentRev={snap.bufferRev}
+              appearance="sensory"
+              followPlayhead
+              emptyLabel=""
+            />
+            <div className={styles.vignette} aria-hidden="true" />
+          </div>
+          <div className={styles.lensWrap}>
+            <SoundLens
+              duration={snap.duration}
+              loaded={snap.sampleLoaded}
+              visual={visual}
+              loop={snap.loop}
+              windowSec={windowSec}
+              windowAmount={windowAmount}
+              onWindowAmount={setWindowAmount}
+              onWindowCommit={() => undefined}
+              onTogglePlay={() => {
+                void engine.unlock().then(() => engine.togglePlay())
+              }}
+            />
+          </div>
+        </>
+      )}
+
+      <FeelingRail
+        values={values}
+        activeId={activeId}
+        onActive={(id) => {
+          onMoodLabel(null)
+          setFeelingId(id)
+        }}
+        onValues={(next) => {
+          onMoodLabel(null)
+          onValues(next)
+        }}
+        onCommit={onCommitSensory}
+      />
+
+      <div className={styles.bar}>
+        <button
+          type="button"
+          className={styles.play}
+          disabled={!snap.sampleLoaded}
+          aria-label={snap.playing ? 'Pause' : 'Play'}
+          onClick={() => {
+            void engine.unlock().then(() => engine.togglePlay())
+          }}
+        >
+          {snap.playing ? (
+            <span className={styles.pause} aria-hidden="true" />
+          ) : (
+            <span className={styles.tri} aria-hidden="true" />
+          )}
+        </button>
+        <OverviewStrip duration={snap.duration} loaded={snap.sampleLoaded} contentRev={snap.bufferRev} />
+        <PlayheadClock duration={snap.duration} compact={range} />
       </div>
 
-      <div className={styles.controls}>
-        <div className={styles.dials}>
-          {leftDials.map((spec) => (
-            <SensoryDial
-              key={`${spec.axis}-${spec.pole}`}
-              spec={spec}
-              axisValue={values[spec.axis]}
-              onChange={(v) => setAxis(spec.axis, v)}
-              onCommit={onCommitSensory}
-            />
-          ))}
-          <button
-            type="button"
-            className={styles.play}
-            disabled={!snap.sampleLoaded}
-            aria-label={snap.playing ? 'Pause' : 'Play'}
-            onClick={() => {
-              void engine.unlock().then(() => engine.togglePlay())
-            }}
-          >
-            {snap.playing ? (
-              <span className={styles.pause} aria-hidden="true" />
-            ) : (
-              <span className={styles.tri} aria-hidden="true" />
-            )}
-          </button>
-          {rightDials.map((spec) => (
-            <SensoryDial
-              key={`${spec.axis}-${spec.pole}`}
-              spec={spec}
-              axisValue={values[spec.axis]}
-              onChange={(v) => setAxis(spec.axis, v)}
-              onCommit={onCommitSensory}
-            />
-          ))}
-        </div>
-      </div>
-
-      <footer className={styles.foot}>
-        <div className={styles.links}>
-          <button type="button" className={styles.textBtn} onClick={onLoadSample}>
-            Samples
-          </button>
-          <button type="button" className={styles.textBtn} onClick={() => setPlacesOpen((v) => !v)}>
-            {moodLabel || 'Presets'}
-          </button>
-          <button
-            type="button"
-            className={`${styles.textBtn} ${snap.recording ? styles.recOn : ''}`}
-            onClick={onRecord}
-          >
-            Rec
-          </button>
-        </div>
-      </footer>
       <EmotionalStates
         open={placesOpen}
         onPick={(id) => {

@@ -37,6 +37,14 @@ export function formatSensoryClock(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(whole).padStart(2, '0')}.${frac}`
 }
 
+/** Compact clock for the range scene (`0:17 / 2:36`). */
+export function formatRangeClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /** Millisecond digits that match the current zoom (never claims sample accuracy). */
 export function timecodeDigits(viewSpanSeconds: number): number {
   return viewSpanSeconds > 0 && viewSpanSeconds < 0.4 ? 4 : 3

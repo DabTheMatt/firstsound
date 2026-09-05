@@ -1,0 +1,11 @@
+.strip {
+  display: block;
+  width: min(42vw, 420px);
+  height: 28px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.strip:hover {
+  opacity: 1;
+}

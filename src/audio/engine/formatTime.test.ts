@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatSensoryClock, formatTimecode, timecodeDigits } from './formatTime'
+import { formatRangeClock, formatSensoryClock, formatTimecode, timecodeDigits } from './formatTime'
 
 describe('formatTimecode', () => {
   it('formats minutes, seconds and milliseconds', () => {
@@ -19,6 +19,13 @@ describe('formatSensoryClock', () => {
   it('uses a single tenth of a second', () => {
     expect(formatSensoryClock(12.4)).toBe('00:12.4')
     expect(formatSensoryClock(37.6)).toBe('00:37.6')
+  })
+})
+
+describe('formatRangeClock', () => {
+  it('drops the leading zero on minutes', () => {
+    expect(formatRangeClock(17)).toBe('0:17')
+    expect(formatRangeClock(156)).toBe('2:36')
   })
 })
 
