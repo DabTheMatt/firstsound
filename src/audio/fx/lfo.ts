@@ -29,6 +29,8 @@ export type FxLfo = {
   shape: LfoShape
   depth: number
   target: ParamId | null
+  /** Subtracted from the shared LFO clock so a new connection starts at wave zero. */
+  phaseOriginSec?: number
 }
 
 export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
@@ -548,7 +550,7 @@ export function applyFxLfos(
           slotHold.value = rand() * 2 - 1
         }
       }
-      const wave = lfoWave(lfoPhase(timeSec, lfo.rateHz), lfo.shape, slotHold.value)
+      const wave = lfoWave(lfoPhase(timeSec - (lfo.phaseOriginSec ?? 0), lfo.rateHz), lfo.shape, slotHold.value)
       next[target] = modulateParam(params[target], target, wave, lfo.depth)
     }
   }

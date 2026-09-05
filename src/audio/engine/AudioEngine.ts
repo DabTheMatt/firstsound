@@ -827,6 +827,7 @@ export class AudioEngine {
     if (patch.target !== undefined) {
       next.target = patch.target && isFxLfoTarget(kind, patch.target) ? patch.target : null
       if (next.target) {
+        next.phaseOriginSec = this.lfoTime()
         for (let s = 0; s < FX_LFO_SLOTS; s++) {
           const other = this.fxLfos[kind][s]
           if (s !== i && other?.target === next.target) other.target = null
@@ -835,7 +836,7 @@ export class AudioEngine {
     }
     this.fxLfos[kind][i] = next
     this.syncLfoClock()
-    this.applyLiveAudio(0.01)
+    this.applyLiveAudio(patch.target !== undefined ? 0.06 : 0.02)
     this.emit()
     if (anyFxLfoActive(this.fxLfos)) void this.ensureContext()
   }
@@ -1987,12 +1988,12 @@ export class AudioEngine {
         this.zeroNotice = null
         this.resetTempoAnalysis(true)
         this.stopPreview()
-        this.params = {
-          ...this.params,
-          start: this.prep.selectionStart,
-          end: this.prep.selectionEnd,
-        }
-        this.playOffset = this.params.start
+      this.params = {
+        ...this.params,
+        start: this.prep.selectionStart,
+        end: this.prep.selectionEnd,
+      }
+      this.playOffset = 0
         start = this.params.start
         end = this.params.end
       } else {
@@ -2613,13 +2614,13 @@ export class AudioEngine {
         const node = filters[bandIndex * EQ_MAX_STAGES + stage]
         if (!node) continue
         if (!band || band.type === 'off' || stage >= stages) {
-          node.type = 'allpass'
+          if (node.type !== 'allpass') node.type = 'allpass'
           node.frequency.setTargetAtTime(1000, now, smoothing)
           node.Q.setTargetAtTime(0.0001, now, smoothing)
           node.gain.setTargetAtTime(0, now, smoothing)
           continue
         }
-        node.type = band.type
+        if (node.type !== band.type) node.type = band.type
         node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
         node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
         node.gain.setTargetAtTime(band.gain, now, smoothing)
@@ -2632,13 +2633,13 @@ export class AudioEngine {
       if (!node) continue
       const tooth = combBands[i]
       if (!tooth) {
-        node.type = 'allpass'
+        if (node.type !== 'allpass') node.type = 'allpass'
         node.frequency.setTargetAtTime(1000, now, smoothing)
         node.Q.setTargetAtTime(0.0001, now, smoothing)
         node.gain.setTargetAtTime(0, now, smoothing)
         continue
       }
-      node.type = 'peaking'
+      if (node.type !== 'peaking') node.type = 'peaking'
       node.frequency.setTargetAtTime(Math.min(tooth.frequency, nyquist * 0.99), now, smoothing)
       node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, tooth.q)), now, smoothing)
       node.gain.setTargetAtTime(tooth.gain, now, smoothing)
@@ -2705,7 +2706,7 @@ export class AudioEngine {
     const active = this.playing && anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
-        this.applyLiveAudio(0.003)
+        this.applyLiveAudio(0.028)
         this.emit()
       }, 16)
     }

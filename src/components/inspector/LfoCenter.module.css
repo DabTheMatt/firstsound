@@ -161,10 +161,26 @@
 .connectTile {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   min-width: 7.5em;
   overflow: hidden;
+  border: 1px solid var(--border-default);
   border-radius: 999px;
+  background: transparent;
+}
+
+.connectTile:has(.ghostOn),
+.connectTile:has(.plugOn) {
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.connectTile .ghost,
+.connectTile .ghostOn {
+  border: 0;
+  background: transparent;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .plug {
@@ -173,15 +189,15 @@
   top: auto;
   right: auto;
   bottom: auto;
-  width: 20px;
-  height: 100%;
+  width: 26px;
+  height: auto;
   min-height: 22px;
   margin: 0;
   padding: 0;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 2px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
