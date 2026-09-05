@@ -167,10 +167,11 @@
 
 .plug {
   position: absolute;
-  top: 50%;
-  right: 4px;
+  top: 0;
+  right: 5px;
+  bottom: 0;
   width: 16px;
-  height: 16px;
+  height: auto;
   margin: 0;
   padding: 0;
   display: grid;
@@ -180,7 +181,6 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transform: translateY(-50%);
 }
 
 .plugOn {
