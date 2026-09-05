@@ -245,6 +245,43 @@
   text-transform: none;
 }
 
+.select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.lrGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.lrCol {
+  min-width: 0;
+  padding: 6px 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-panel-elevated);
+}
+
+.lrCol .knobs {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  padding-top: 8px;
+}
+
+.lrCol .sub {
+  margin-top: 0;
+}
+
 .eq {
   display: flex;
   flex-direction: column;

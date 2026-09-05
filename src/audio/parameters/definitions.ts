@@ -202,6 +202,15 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: '%',
     mapping: 'linear',
   },
+  delayWetR: {
+    id: 'delayWetR',
+    label: 'Mix R',
+    min: 0,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
   delayOutput: {
     id: 'delayOutput',
     label: 'Output',
@@ -242,6 +251,15 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   delayFeedback: {
     id: 'delayFeedback',
     label: 'Feedback',
+    min: 0,
+    max: 95,
+    defaultValue: 28,
+    unit: '%',
+    mapping: 'linear',
+  },
+  delayFeedbackR: {
+    id: 'delayFeedbackR',
+    label: 'Feedback R',
     min: 0,
     max: 95,
     defaultValue: 28,

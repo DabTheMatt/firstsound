@@ -1,7 +1,41 @@
 .wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 72px;
+  gap: 4px;
+}
+
+.chrome {
+  flex: none;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 6px;
+  z-index: 2;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.chromeLeft,
+.chromeRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chromeRight {
+  margin-left: auto;
+}
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .canvas {
@@ -13,26 +47,10 @@
   border-radius: 8px;
 }
 
-.toolbar {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  right: auto;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 6px;
-  max-width: calc(100% - 16px);
-}
-
-.taps {
-  display: flex;
-  gap: 4px;
-}
-
-.toolbar button,
 .bands {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-height: 28px;
   padding: 4px 12px;
   border: 1px solid var(--border-default);
@@ -44,22 +62,9 @@
   text-transform: uppercase;
 }
 
-.toolbar button:hover,
 .bands:hover {
   background: var(--bg-control-hover);
   color: var(--text-secondary);
-}
-
-.toolbar .on {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  background: var(--accent-soft);
-}
-
-.bands {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .bands select {
@@ -71,20 +76,7 @@
   text-transform: none;
 }
 
-.legendDock {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  max-height: calc(100% - 16px);
-  pointer-events: none;
-}
-
-.legendToggle {
+.iconTap {
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
@@ -98,15 +90,28 @@
   color: var(--text-muted);
 }
 
-.legendToggle:hover {
+.iconTap:hover {
   background: var(--bg-control-hover);
   color: var(--text-secondary);
 }
 
-.legendToggle.on {
+.iconTap.on {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--accent-soft);
+}
+
+.legendDock {
+  position: absolute;
+  top: 22px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-height: calc(100% - 12px);
+  pointer-events: none;
 }
 
 .regions {
@@ -118,7 +123,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 5px;
-  max-height: min(220px, calc(100% - 36px));
+  max-height: min(220px, calc(100% - 8px));
   overflow: auto;
   font-size: 9px;
   letter-spacing: 0.08em;

@@ -24,6 +24,12 @@ export function migrateSpaceParams(incoming: Record<string, number>): Partial<Re
     params.delayWet = applyParamValue(incoming.spaceMix, PARAMS.delayWet)
     if (typeof incoming.delayOutput !== 'number') params.delayOutput = PARAMS.delayOutput.defaultValue
   }
+  if (typeof incoming.delayWetR !== 'number' && typeof incoming.delayWet === 'number') {
+    params.delayWetR = applyParamValue(incoming.delayWet, PARAMS.delayWetR)
+  }
+  if (typeof incoming.delayFeedbackR !== 'number' && typeof incoming.delayFeedback === 'number') {
+    params.delayFeedbackR = applyParamValue(incoming.delayFeedback, PARAMS.delayFeedbackR)
+  }
   if (typeof incoming.reverbWet !== 'number' && typeof incoming.reverb === 'number') {
     params.reverbDry = PARAMS.reverbDry.defaultValue
     params.reverbWet = applyParamValue(incoming.reverb, PARAMS.reverbWet)

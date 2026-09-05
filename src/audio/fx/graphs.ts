@@ -45,6 +45,10 @@ export type DelayGraph = {
   pan: StereoPannerNode
   widthSide: GainNode
   out: GainNode
+  chanDryL: GainNode
+  chanDryR: GainNode
+  chanWetL: GainNode
+  chanWetR: GainNode
   reverse: ConvolverNode
   reverseMix: GainNode
   reverseDirect: GainNode
@@ -312,7 +316,28 @@ export function createDelayGraph(
   duckGain.gain.value = 1
   const widthSide = connectMidSide(ctx, pan, duckGain)
   duckGain.connect(out)
-  out.connect(output)
+  const wetSplit = ctx.createChannelSplitter(2)
+  const drySplit = ctx.createChannelSplitter(2)
+  const chanMerge = ctx.createChannelMerger(2)
+  const chanDryL = ctx.createGain()
+  const chanDryR = ctx.createGain()
+  const chanWetL = ctx.createGain()
+  const chanWetR = ctx.createGain()
+  chanDryL.gain.value = 0
+  chanDryR.gain.value = 0
+  chanWetL.gain.value = 1
+  chanWetR.gain.value = 1
+  out.connect(wetSplit)
+  wetSplit.connect(chanWetL, 0)
+  wetSplit.connect(chanWetR, 1)
+  dryTap.connect(drySplit)
+  drySplit.connect(chanDryL, 0)
+  drySplit.connect(chanDryR, 1)
+  chanWetL.connect(chanMerge, 0, 0)
+  chanDryL.connect(chanMerge, 0, 0)
+  chanWetR.connect(chanMerge, 0, 1)
+  chanDryR.connect(chanMerge, 0, 1)
+  chanMerge.connect(output)
 
   const abs = ctx.createWaveShaper()
   abs.curve = makeAbsCurve()
@@ -372,6 +397,10 @@ export function createDelayGraph(
     pan,
     widthSide,
     out,
+    chanDryL,
+    chanDryR,
+    chanWetL,
+    chanWetR,
     reverse,
     reverseMix,
     reverseDirect,
@@ -423,7 +452,21 @@ export function applyDelayGraph(
   const freeze = params.delayFreeze > 0.5
   g.freezeIn.gain.setTargetAtTime(freeze ? 0.0001 : 1, now, smoothing)
   const loopType = stereo ? type : type === 'pingPong' ? 'digital' : type
-  const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch)
+  const fbR = stereo ? params.delayFeedbackR : params.delayFeedback
+  const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch, fbR)
+  const mixL = equalPowerDryWet(params.delayWet / 100)
+  const mixR = equalPowerDryWet((stereo ? params.delayWetR : params.delayWet) / 100)
+  if (stereo) {
+    g.chanDryL.gain.setTargetAtTime(mixL.dry, now, smoothing)
+    g.chanDryR.gain.setTargetAtTime(mixR.dry, now, smoothing)
+    g.chanWetL.gain.setTargetAtTime(mixL.wet, now, smoothing)
+    g.chanWetR.gain.setTargetAtTime(mixR.wet, now, smoothing)
+  } else {
+    g.chanDryL.gain.setTargetAtTime(0, now, smoothing)
+    g.chanDryR.gain.setTargetAtTime(0, now, smoothing)
+    g.chanWetL.gain.setTargetAtTime(1, now, smoothing)
+    g.chanWetR.gain.setTargetAtTime(1, now, smoothing)
+  }
   g.fbL.gain.setTargetAtTime(fb.fbL, now, smoothing)
   g.fbR.gain.setTargetAtTime(fb.fbR, now, smoothing)
   g.pingToL.gain.setTargetAtTime(fb.pingToL, now, smoothing)
