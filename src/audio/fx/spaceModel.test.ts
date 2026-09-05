@@ -13,6 +13,7 @@ describe('delayTaps', () => {
     expect(taps[0]?.time).toBeCloseTo(0.25, 3)
     expect(taps.length).toBeGreaterThan(1)
     expect(taps[1]!.gain).toBeLessThan(taps[0]!.gain)
+    expect(taps[taps.length - 1]!.gain).toBeLessThan(taps[0]!.gain * 0.2)
   })
 
   it('ping-pong alternates L/R', () => {
