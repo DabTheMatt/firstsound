@@ -1,35 +1,53 @@
 .rail {
   position: absolute;
-  right: clamp(16px, 3vw, 36px);
+  right: clamp(12px, 2.6vw, 32px);
   top: 50%;
   transform: translateY(-50%);
   z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18px;
+  gap: 12px;
   pointer-events: auto;
 }
 
-.item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
+.rest {
+  margin: 0 0 4px;
   border: 0;
-  padding: 4px 0;
+  padding: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--text-primary) 34%, transparent);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.32em;
+  color: color-mix(in srgb, var(--text-primary) 38%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-  min-height: 32px;
-  touch-action: none;
-  cursor: ns-resize;
+  min-height: 28px;
+  cursor: pointer;
 }
 
-.item.on {
+.rest:hover,
+.rest:focus-visible {
+  color: var(--text-primary);
+  outline: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 34%, transparent);
+  min-height: 34px;
+  touch-action: none;
+  cursor: ns-resize;
+  width: min(42vw, 148px);
+}
+
+.item.on,
+.item.lit {
   color: var(--text-primary);
 }
 
@@ -38,27 +56,81 @@
   outline-offset: 4px;
 }
 
-.dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--text-primary);
-  box-shadow: 0 0 8px var(--text-primary);
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
 }
 
-.gap {
-  width: 5px;
-  height: 5px;
+.label {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.level {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
+}
+
+.item.on .level,
+.item.lit .level {
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+}
+
+.meter {
+  width: 36px;
+  height: 12px;
+  display: block;
+  overflow: visible;
+}
+
+.track {
+  fill: color-mix(in srgb, var(--text-primary) 22%, transparent);
+}
+
+.tick {
+  fill: color-mix(in srgb, var(--text-primary) 55%, transparent);
+}
+
+.knob {
+  fill: var(--text-primary);
+}
+
+.arc {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.1;
+}
+
+.jag {
+  fill: var(--text-primary);
+}
+
+.brace {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.4;
+  stroke-linecap: square;
 }
 
 @media (max-width: 720px) {
   .rail {
-    right: 10px;
-    gap: 10px;
+    right: 8px;
+    gap: 8px;
+  }
+
+  .label {
+    letter-spacing: 0.14em;
+    font-size: 10px;
   }
 
   .item {
-    letter-spacing: 0.18em;
-    font-size: 10px;
+    width: min(46vw, 132px);
   }
 }

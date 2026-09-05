@@ -1,47 +1,115 @@
 import type { SensoryAxisId } from './sensoryParameters'
-import { dialAmount, valueFromDial, type SensoryValues } from './sensoryState'
+import { SENSORY_AXES } from './sensoryParameters'
+import { clampSensoryValue, type SensoryValues } from './sensoryState'
+
+export type FeelingVisual = SensoryAxisId
 
 export type SensoryFeeling = {
-  id: string
+  id: SensoryAxisId
   label: string
   axis: SensoryAxisId
-  pole: 'pos' | 'neg'
+  kind: 'unipolar' | 'bipolar'
+  from: string
+  to: string
+  visual: FeelingVisual
   ariaLabel: string
 }
 
-/** Right-rail adjectives. Each one writes a sensory axis pole. */
+/** Right-rail controls. Each one owns a single effect morph. */
 export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
-  { id: 'bigger', label: 'bigger', axis: 'fullness', pole: 'pos', ariaLabel: 'Bigger, more body' },
-  { id: 'tighter', label: 'tighter', axis: 'distance', pole: 'neg', ariaLabel: 'Tighter, closer' },
-  { id: 'calmer', label: 'calmer', axis: 'wildness', pole: 'neg', ariaLabel: 'Calmer, stiller' },
-  { id: 'wilder', label: 'wilder', axis: 'wildness', pole: 'pos', ariaLabel: 'Wilder, more pulse' },
-  { id: 'warmer', label: 'warmer', axis: 'warmth', pole: 'pos', ariaLabel: 'Warmer' },
-  { id: 'echo', label: 'echo', axis: 'echo', pole: 'pos', ariaLabel: 'Echo' },
+  {
+    id: 'character',
+    label: 'character',
+    axis: 'character',
+    kind: 'bipolar',
+    from: 'tight',
+    to: 'open',
+    visual: 'character',
+    ariaLabel: 'Character, tight to open. Double-click to rest.',
+  },
+  {
+    id: 'space',
+    label: 'space',
+    axis: 'space',
+    kind: 'unipolar',
+    from: 'close',
+    to: 'vast',
+    visual: 'space',
+    ariaLabel: 'Space, close to vast. Double-click to rest.',
+  },
+  {
+    id: 'echo',
+    label: 'echo',
+    axis: 'echo',
+    kind: 'unipolar',
+    from: 'dry',
+    to: 'echo',
+    visual: 'echo',
+    ariaLabel: 'Echo, dry to echo. Double-click to rest.',
+  },
+  {
+    id: 'grain',
+    label: 'grain',
+    axis: 'grain',
+    kind: 'unipolar',
+    from: 'solid',
+    to: 'grain',
+    visual: 'grain',
+    ariaLabel: 'Grain, solid to layered. Double-click to rest.',
+  },
+  {
+    id: 'dirt',
+    label: 'dirt',
+    axis: 'dirt',
+    kind: 'unipolar',
+    from: 'clean',
+    to: 'dirt',
+    visual: 'dirt',
+    ariaLabel: 'Dirt, clean to grit. Double-click to rest.',
+  },
+  {
+    id: 'tight',
+    label: 'tight',
+    axis: 'tight',
+    kind: 'unipolar',
+    from: 'open',
+    to: 'tight',
+    visual: 'tight',
+    ariaLabel: 'Tight, open to compressed. Double-click to rest.',
+  },
 ]
 
 export function feelingAmount(values: SensoryValues, feeling: SensoryFeeling): number {
-  return dialAmount(values[feeling.axis], feeling.pole)
+  return values[feeling.axis]
 }
 
 export function applyFeelingAmount(values: SensoryValues, feeling: SensoryFeeling, amount: number): SensoryValues {
-  return { ...values, [feeling.axis]: valueFromDial(amount, feeling.pole) }
+  return { ...values, [feeling.axis]: clampSensoryValue(feeling.axis, amount) }
 }
 
-/** The feeling whose pole is most open, else the preferred id. */
+export function restFeeling(values: SensoryValues, feeling: SensoryFeeling): SensoryValues {
+  return { ...values, [feeling.axis]: 0 }
+}
+
+/** The control with the largest |amount|, else the preferred id. */
 export function activeFeelingId(
   values: SensoryValues,
   preferred: string | null,
   feelings: readonly SensoryFeeling[] = SENSORY_FEELINGS,
 ): string {
   if (preferred && feelings.some((f) => f.id === preferred)) return preferred
-  let best = feelings[0]?.id ?? 'bigger'
+  let best = feelings[0]?.id ?? 'character'
   let mag = -1
   for (const feeling of feelings) {
-    const a = feelingAmount(values, feeling)
+    const a = Math.abs(feelingAmount(values, feeling))
     if (a > mag) {
       mag = a
       best = feeling.id
     }
   }
   return best
+}
+
+export function axisKind(id: SensoryAxisId) {
+  return SENSORY_AXES[id].kind
 }
