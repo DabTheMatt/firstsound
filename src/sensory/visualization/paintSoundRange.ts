@@ -71,8 +71,11 @@ function strokeStack(
     ctx.lineTo(width + xOff, base)
     ctx.closePath()
     const open = Math.max(0, visual.character)
-    ctx.fillStyle = rgbCss(fill, spec.alpha * (0.7 + visual.glow * 0.55 + open * 0.12) * alphaMul)
+    ctx.fillStyle = rgbCss(fill, Math.min(1, spec.alpha * (1.15 + visual.glow * 0.4 + open * 0.12) * alphaMul))
     ctx.fill()
+    ctx.strokeStyle = rgbCss(fill, 0.78)
+    ctx.lineWidth = Math.max(1, args.dpr)
+    ctx.stroke()
   })
 }
 
@@ -220,29 +223,36 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   ctx.fill()
 
   for (let i = slices - 1; i >= 0; i--) {
-    const d0 = i / slices
-    const d1 = (i + 1) / slices
-    const li = Math.min(specs.length - 1, Math.floor((1 - d0) * specs.length))
+    const d = i / Math.max(1, slices - 1)
+    const li = Math.min(specs.length - 1, Math.floor((1 - d) * specs.length))
     const spec = specs[li] ?? spec0
     const layerEnv = layers[li] ?? env
+    const leftFloor = canyonProject(0, d, 0, width, height)
+    const rightFloor = canyonProject(1, d, 0, width, height)
+    ctx.beginPath()
+    ctx.moveTo(leftFloor.x, leftFloor.floorY)
+    for (let x = 0; x <= width; x += step) {
+      const xi = Math.min(width - 1, x)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale)
+      const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
+      ctx.lineTo(p.x, p.y)
+    }
+    ctx.lineTo(rightFloor.x, rightFloor.floorY)
+    ctx.closePath()
+    const shade = 0.35 + (1 - d) * 0.55
+    ctx.fillStyle = rgbCss(mixRgb(ink, { r: 255, g: 168, b: 88 }, d * 0.22), shade * (0.55 + visual.glow * 0.3))
+    ctx.fill()
+    ctx.strokeStyle = rgbCss(ink, 0.28 + (1 - d) * 0.45)
+    ctx.lineWidth = Math.max(1, dpr * (0.6 + (1 - d)))
     ctx.beginPath()
     for (let x = 0; x <= width; x += step) {
       const xi = Math.min(width - 1, x)
-      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.85 + visual.mass * 0.2))
-      const p = canyonProject(xi / Math.max(1, width - 1), d0, amp01, width, height)
+      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale)
+      const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
       if (x === 0) ctx.moveTo(p.x, p.y)
       else ctx.lineTo(p.x, p.y)
     }
-    for (let x = width; x >= 0; x -= step) {
-      const xi = Math.min(width - 1, x)
-      const amp01 = Math.min(1, (layerEnv[xi] ?? 0) * spec.scale * (0.85 + visual.mass * 0.2))
-      const p = canyonProject(xi / Math.max(1, width - 1), d1, amp01, width, height)
-      ctx.lineTo(p.x, p.y)
-    }
-    ctx.closePath()
-    const shade = 0.16 + (1 - d0) * 0.5
-    ctx.fillStyle = rgbCss(mixRgb(ink, { r: 255, g: 156, b: 72 }, d0 * 0.18), shade * spec.alpha * (0.7 + visual.glow * 0.35))
-    ctx.fill()
+    ctx.stroke()
   }
 
   const px = Math.min(1, Math.max(0, playFrac))
