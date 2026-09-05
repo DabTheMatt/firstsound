@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { canyonProject, canyonRelief, canyonSliceCount, canyonWallInset, canyonWallX, chromaticShift, gleamRayCount, mirrorLayout, rangeLayout } from './rangeScenes'
-import { grainBandCount } from './mountainLayers'
+import { canyonProject, canyonRelief, canyonSliceCount, canyonWallInset, canyonWallX, chromaticShift, gleamRayCount, growFromBaseline, mirrorLayout, projectZ, rangeLayout } from './rangeScenes'
+import { grainLineCount } from './mountainLayers'
 
 describe('rangeScenes', () => {
   it('narrows the canyon toward the vanishing point', () => {
@@ -67,7 +67,28 @@ describe('rangeScenes', () => {
 })
 
 describe('grain strips', () => {
-  it('opens many visible bands at full grain', () => {
-    expect(grainBandCount(1)).toBeGreaterThanOrEqual(12)
+  it('opens hundreds of visible lines at full grain', () => {
+    expect(grainLineCount(1, 1400)).toBeGreaterThanOrEqual(200)
+  })
+})
+
+describe('projectZ', () => {
+  it('is identity at z=0 and recedes toward the horizon as z grows', () => {
+    const flat = projectZ(200, 700, 0, 1000, 800)
+    expect(flat.x).toBeCloseTo(200)
+    expect(flat.y).toBeCloseTo(700)
+    expect(flat.scale).toBe(1)
+    const far = projectZ(200, 700, 1, 1000, 800)
+    expect(far.scale).toBeLessThan(1)
+    expect(Math.abs(far.x - 500)).toBeLessThan(Math.abs(200 - 500))
+    expect(far.y).toBeLessThan(700)
+  })
+})
+
+describe('growFromBaseline', () => {
+  it('enlarges later echoes away from the ridge base', () => {
+    const grown = growFromBaseline(200, 400, 800, 1.5, 1000)
+    expect(grown.y).toBeLessThan(400)
+    expect(Math.abs(grown.x - 500)).toBeGreaterThan(Math.abs(200 - 500))
   })
 })

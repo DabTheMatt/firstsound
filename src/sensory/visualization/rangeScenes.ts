@@ -90,6 +90,46 @@ export function canyonSliceY(depth01: number, height: number): number {
  * Axis-aligned canyon: x follows the sample left-to-right, y is depth + amplitude.
  * No vanishing-point scale, so ridges stay parallel to the screen edges.
  */
+/**
+ * Recede a 2D point along Z toward a vanishing line. z=0 is identity.
+ * pan01 (-1..1) slides the vanishing point so orbiting pan reads in depth.
+ */
+export function projectZ(
+  x: number,
+  y: number,
+  z: number,
+  width: number,
+  height: number,
+  pan01 = 0,
+): { x: number; y: number; scale: number } {
+  const depth = Math.min(1, Math.max(0, z))
+  if (depth < 1e-4) return { x, y, scale: 1 }
+  const scale = 1 / (1 + depth * 1.28)
+  const cx = width * (0.5 + Math.max(-1, Math.min(1, pan01)) * 0.22)
+  const horizon = height * 0.14
+  return {
+    x: cx + (x - cx) * scale,
+    y: horizon + (y - horizon) * scale,
+    scale,
+  }
+}
+
+/** Grow a ridge away from its baseline so later delay ghosts read larger. */
+export function growFromBaseline(
+  x: number,
+  y: number,
+  base: number,
+  scale: number,
+  width: number,
+): { x: number; y: number } {
+  const s = Math.max(0.2, scale)
+  const cx = width * 0.5
+  return {
+    x: cx + (x - cx) * s,
+    y: base + (y - base) * s,
+  }
+}
+
 export function canyonProject(
   x01: number,
   depth01: number,
