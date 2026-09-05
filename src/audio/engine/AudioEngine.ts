@@ -150,6 +150,7 @@ import {
 } from './eqBands'
 import {
   addTrack,
+  alignedRegionOffset,
   clampMix,
   cloneTracks,
   companionTrackIds,
@@ -313,6 +314,7 @@ type Slot = {
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private voiceBus: GainNode | null = null
+  private leadSend: GainNode | null = null
   private mixBus: GainNode | null = null
   private tracks: MixTrack[] = defaultTracks()
   private selectedTrackId = this.tracks[0]!.id
@@ -1575,6 +1577,7 @@ export class AudioEngine {
     this.selectedTrackId = track.id
     this.bindWorkingFromTrack(track.id)
     this.applyTrackRegion(track)
+    this.routeTrackGraph()
     this.applyLiveAudio(0.01)
     if (this.playing) void this.play()
     else this.emit()
@@ -2159,6 +2162,9 @@ export class AudioEngine {
     const ctx = this.ctx
     this.voiceBus = ctx.createGain()
     this.voiceBus.gain.value = 1
+    this.leadSend = ctx.createGain()
+    this.leadSend.gain.value = 1
+    this.voiceBus.connect(this.leadSend)
     this.safetyGain = ctx.createGain()
     this.safetyGain.gain.value = this.muted ? 0.0001 : 1
     this.limiter = ctx.createDynamicsCompressor()
@@ -2281,7 +2287,7 @@ export class AudioEngine {
 
   private applyTrackMix(smoothing: number): void {
     if (!this.ctx || !this.mixBus) return
-    this.ensureTrackGains()
+    this.ensureTrackGainNodes()
     const now = this.ctx.currentTime
     for (const track of this.tracks) {
       const node = this.trackGains.get(track.id)
@@ -2329,11 +2335,7 @@ export class AudioEngine {
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
     if (this.mixBus) {
-      this.ensureTrackGains()
-      const lead = this.trackGains.get(this.selectedTrackId)
-      if (lead) this.voiceBus.connect(lead)
-      else this.voiceBus.connect(this.mixBus)
-      this.mixBus.connect(ordered[0]!.input)
+      this.routeTrackGraph()
     } else {
       this.voiceBus.connect(ordered[0]!.input)
     }
@@ -2367,7 +2369,12 @@ export class AudioEngine {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
     const last = ordered.at(-1)!
-    last.output.connect(this.limiter)
+    if (this.mixBus) {
+      last.output.connect(this.mixBus)
+      this.mixBus.connect(this.limiter)
+    } else {
+      last.output.connect(this.limiter)
+    }
     this.limiter.connect(this.safetyGain)
     this.safetyGain.connect(this.ctx.destination)
     this.limiter.connect(this.analyser)
@@ -2388,6 +2395,11 @@ export class AudioEngine {
     }
     try {
       this.voiceBus?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      this.leadSend?.disconnect()
     } catch {
       /* already disconnected */
     }
@@ -3264,25 +3276,55 @@ export class AudioEngine {
     }
   }
 
-  private ensureTrackGains(): void {
-    if (!this.ctx || !this.mixBus) return
-    const live = new Set(this.tracks.map((track) => track.id))
-    for (const id of [...this.trackGains.keys()]) {
-      if (!live.has(id)) this.dropTrackGain(id)
+  private chainHead(): GainNode | null {
+    for (const mod of this.chain) {
+      const slot = this.slots.get(mod.instanceId)
+      if (slot) return slot.input
     }
+    return null
+  }
+
+  /** Selected track through the effect chain; companions sum dry into Output. */
+  private routeTrackGraph(): void {
+    if (!this.ctx || !this.mixBus || !this.leadSend) return
+    this.ensureTrackGainNodes()
+    try {
+      this.leadSend.disconnect()
+    } catch {
+      /* first connect */
+    }
+    const head = this.chainHead()
     for (const track of this.tracks) {
-      let gain = this.trackGains.get(track.id)
-      if (!gain) {
-        gain = this.ctx.createGain()
-        gain.gain.value = trackMixGain(track, this.tracks)
-        this.trackGains.set(track.id, gain)
-      }
+      const gain = this.trackGains.get(track.id)
+      if (!gain) continue
       try {
         gain.disconnect()
       } catch {
         /* first connect */
       }
-      gain.connect(this.mixBus)
+      if (track.id === this.selectedTrackId && head) gain.connect(head)
+      else gain.connect(this.mixBus)
+    }
+    const lead = this.trackGains.get(this.selectedTrackId)
+    if (lead) this.leadSend.connect(lead)
+    else if (head) this.leadSend.connect(head)
+    else this.leadSend.connect(this.mixBus)
+  }
+
+  private ensureTrackGainNodes(): void {
+    if (!this.ctx || !this.mixBus) return
+    const live = new Set(this.tracks.map((track) => track.id))
+    const head = this.chainHead()
+    for (const id of [...this.trackGains.keys()]) {
+      if (!live.has(id)) this.dropTrackGain(id)
+    }
+    for (const track of this.tracks) {
+      if (this.trackGains.has(track.id)) continue
+      const gain = this.ctx.createGain()
+      gain.gain.value = trackMixGain(track, this.tracks)
+      this.trackGains.set(track.id, gain)
+      if (track.id === this.selectedTrackId && head) gain.connect(head)
+      else gain.connect(this.mixBus)
     }
   }
 
@@ -3308,13 +3350,26 @@ export class AudioEngine {
   private startCompanionVoices(): void {
     this.stopCompanionVoices()
     if (!this.ctx || !this.playing) return
-    this.ensureTrackGains()
+    this.routeTrackGraph()
+    const lead = selectedTrack(this.tracks, this.selectedTrackId)
+    const leadDur = this.buffer?.duration ?? 0
+    const leadRegion = lead
+      ? clampRegion(lead.start, lead.end, leadDur, MIN_REGION)
+      : { start: 0, end: 0 }
+    const leadHead = this.getPlayheadSeconds()
     for (const id of companionTrackIds(this.tracks, this.selectedTrackId)) {
       const buffer = this.trackBuffers.get(id)
       const track = this.tracks.find((item) => item.id === id)
       const gain = this.trackGains.get(id)
       if (!buffer || !track || !gain) continue
       const region = clampRegion(track.start, track.end, buffer.duration, MIN_REGION)
+      const offset = alignedRegionOffset(
+        region.start,
+        region.end,
+        leadRegion.start,
+        leadRegion.end,
+        leadHead,
+      )
       const src = this.ctx.createBufferSource()
       src.buffer = buffer
       src.loop = this.loop
@@ -3322,7 +3377,7 @@ export class AudioEngine {
       src.loopEnd = Math.max(region.start + MIN_REGION, region.end)
       src.connect(gain)
       try {
-        src.start(this.ctx.currentTime, region.start)
+        src.start(this.ctx.currentTime, Math.min(offset, Math.max(0, buffer.duration - MIN_REGION)))
       } catch {
         continue
       }

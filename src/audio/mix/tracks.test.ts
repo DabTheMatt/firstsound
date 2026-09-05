@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addTrack,
+  alignedRegionOffset,
   companionTrackIds,
   defaultTracks,
   duplicateTrack,
@@ -37,6 +38,19 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, tracks[1]!.id, { solo: true, mix: 40 })
     expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
     expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(0.4)
+  })
+
+  it('ignores a muted solo when deciding who is audible', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    tracks = patchTrack(tracks, tracks[0]!.id, { solo: true, muted: true })
+    expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
+    expect(trackMixGain(tracks[1]!, tracks)).toBe(1)
+  })
+
+  it('aligns a companion playhead to the lead region', () => {
+    expect(alignedRegionOffset(0, 2, 0, 4, 2)).toBeCloseTo(1)
+    expect(alignedRegionOffset(1, 2, 0, 1, 0)).toBeCloseTo(1)
+    expect(alignedRegionOffset(0, 1, 0, 1, 2)).toBeCloseTo(1)
   })
 
   it('refuses to drop the last track', () => {

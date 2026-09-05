@@ -67,11 +67,32 @@ export function nextTrackName(tracks: readonly MixTrack[], base = 'Track'): stri
   return `${base} ${n}`
 }
 
+export function anySoloActive(tracks: readonly MixTrack[]): boolean {
+  return tracks.some((item) => item.solo && !item.muted)
+}
+
 export function trackMixGain(track: MixTrack, tracks: readonly MixTrack[]): number {
   if (track.muted) return 0
-  const anySolo = tracks.some((item) => item.solo && !item.muted)
-  if (anySolo && !track.solo) return 0
+  if (anySoloActive(tracks) && !track.solo) return 0
   return clampMix(track.mix) / 100
+}
+
+export function trackIsAudible(track: MixTrack, tracks: readonly MixTrack[]): boolean {
+  return trackMixGain(track, tracks) > 0
+}
+
+/** Playhead inside `track` aligned to the lead region's current position. */
+export function alignedRegionOffset(
+  trackStart: number,
+  trackEnd: number,
+  leadStart: number,
+  leadEnd: number,
+  leadPlayhead: number,
+): number {
+  const leadSpan = Math.max(leadEnd - leadStart, 1e-6)
+  const frac = (leadPlayhead - leadStart) / leadSpan
+  const span = Math.max(trackEnd - trackStart, 1e-6)
+  return trackStart + Math.min(1, Math.max(0, frac)) * span
 }
 
 export function selectedTrack(tracks: readonly MixTrack[], id: string | null): MixTrack | null {

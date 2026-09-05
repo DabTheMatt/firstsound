@@ -68,6 +68,14 @@
   overflow-y: auto;
   gap: 0;
   padding: 4px 6px 8px;
+  align-items: stretch;
+}
+
+.channelRow {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .strip {
@@ -82,14 +90,15 @@
   border-right: 1px solid var(--border-subtle);
 }
 
-.strip:last-child {
-  border-right: 0;
-}
-
 .stripMaster {
-  margin-left: 6px;
-  border-left: 1px solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-control) 55%, transparent);
+  flex: 0 0 140px;
+  margin-left: auto;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  border-right: 0;
+  border-left: 1px solid var(--accent-primary);
+  background: color-mix(in srgb, var(--bg-panel) 88%, var(--bg-control));
 }
 
 .sampleName,
@@ -134,6 +143,18 @@
 .stripSelected {
   outline: 1px solid var(--accent-primary);
   outline-offset: -1px;
+}
+
+.fxBadge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 999px;
+  color: var(--accent-primary);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .stripHead {

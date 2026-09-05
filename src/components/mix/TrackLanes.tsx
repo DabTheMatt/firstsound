@@ -4,7 +4,13 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './TrackLanes.module.css'
 
-export function TrackLanes({ variant = 'mixer' }: { variant?: 'mixer' | 'editor' }) {
+export function TrackLanes({
+  variant = 'mixer',
+  onOpenWave,
+}: {
+  variant?: 'mixer' | 'editor'
+  onOpenWave?: (trackId: string) => void
+}) {
   const snap = useEngine()
   const tracks = snap.tracks
   const selectedId = snap.selectedTrackId
@@ -16,35 +22,77 @@ export function TrackLanes({ variant = 'mixer' }: { variant?: 'mixer' | 'editor'
         <h2 className={styles.title}>{editor ? 'Multi-track' : 'Tracks'}</h2>
         <p className={styles.lead}>
           {editor
-            ? 'Each lane is its own sample. Click a lane to edit that track.'
-            : 'Click a lane to select it. The mixer strip follows.'}
+            ? 'Each lane is its own sample. WAVE opens that track in the editor. Effects follow the selected lane.'
+            : 'Click a lane to select it — the mixer strip and effect chain follow. WAVE opens the waveform.'}
         </p>
       </header>
       <div className={styles.list}>
         {tracks.map((track) => (
-          <button
+          <div
             key={track.id}
-            type="button"
             className={`${styles.lane} ${editor ? styles.laneTall : ''} ${track.id === selectedId ? styles.laneOn : ''} ${track.muted ? styles.laneMuted : ''}`}
-            aria-pressed={track.id === selectedId}
-            onClick={() => engine.selectTrack(track.id)}
           >
-            <span className={styles.meta}>
-              <span className={styles.name}>{track.name}</span>
-              <span className={styles.file}>{track.fileName ?? 'No sample'}</span>
-              <span className={styles.flags}>
-                {track.muted ? 'M' : ''}
-                {track.solo ? 'S' : ''}
+            <button
+              type="button"
+              className={styles.laneHit}
+              aria-pressed={track.id === selectedId}
+              onClick={() => engine.selectTrack(track.id)}
+            >
+              <span className={styles.meta}>
+                <span className={styles.name}>{track.name}</span>
+                <span className={styles.file}>{track.fileName ?? 'No sample'}</span>
+                {track.id === selectedId ? <span className={styles.fxFlag}>FX</span> : null}
               </span>
-            </span>
-            <LaneWave
-              trackId={track.id}
-              start={track.start}
-              end={track.end}
-              selected={track.id === selectedId}
-              contentRev={snap.bufferRev}
-            />
-          </button>
+              <LaneWave
+                trackId={track.id}
+                start={track.start}
+                end={track.end}
+                selected={track.id === selectedId}
+                contentRev={snap.bufferRev}
+              />
+            </button>
+            <div className={styles.laneEnd}>
+              <button
+                type="button"
+                className={styles.waveBtn}
+                aria-label={`Open waveform for ${track.name}`}
+                title="Waveform"
+                onClick={() => {
+                  engine.selectTrack(track.id)
+                  onOpenWave?.(track.id)
+                }}
+              >
+                <svg viewBox="0 0 18 10" width="18" height="10" aria-hidden="true">
+                  <path
+                    d="M1 5c1.4-4 2.2 4 3.6 0s2.2 4 3.6 0 2.2 4 3.6 0 2.2 4 3.6 0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span>WAVE</span>
+              </button>
+              <button
+                type="button"
+                className={track.muted ? styles.toggleOn : styles.toggle}
+                aria-pressed={track.muted}
+                aria-label={`Mute ${track.name}`}
+                onClick={() => engine.setTrack(track.id, { muted: !track.muted })}
+              >
+                M
+              </button>
+              <button
+                type="button"
+                className={track.solo ? styles.toggleSolo : styles.toggle}
+                aria-pressed={track.solo}
+                aria-label={`Solo ${track.name}`}
+                onClick={() => engine.setTrack(track.id, { solo: !track.solo })}
+              >
+                S
+              </button>
+            </div>
+          </div>
         ))}
       </div>
     </div>
