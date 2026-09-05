@@ -45,7 +45,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
   return (
     <article
       className={`${styles.strip} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
-      style={eqBandAccentVars(index) as CSSProperties}
+      style={eqBandAccentVars(band.frequency) as CSSProperties}
     >
       <header className={styles.stripHead}>
         <span className={styles.stripLabel}>{label}</span>

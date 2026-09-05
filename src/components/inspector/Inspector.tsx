@@ -652,7 +652,7 @@ function EqEditor({
           key={index}
           className={styles.band}
           open={openBand === index}
-          style={eqBandAccentVars(index) as CSSProperties}
+          style={eqBandAccentVars(band.frequency) as CSSProperties}
           onToggle={(event) => {
             if (event.currentTarget.open) setOpenBand(index)
           }}

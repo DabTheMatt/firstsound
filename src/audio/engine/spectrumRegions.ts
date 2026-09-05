@@ -1,5 +1,3 @@
-import { EQ_BAND_COUNT } from './eqBands'
-
 /** Mixing-oriented FFT band tints. Center frequency picks the region. */
 
 export type SpectrumRegionId =
@@ -44,10 +42,7 @@ export function bandCenterHz(edges: ArrayLike<number>, index: number): number {
   return Math.sqrt(lo * hi)
 }
 
-/** Distinct palette color per EQ band, sampled from the FFT region palette. */
-export function eqBandPaletteColor(bandIndex: number): string {
-  const n = SPECTRUM_REGIONS.length
-  const step = Math.max(1, Math.floor(n / EQ_BAND_COUNT))
-  const i = Math.min(n - 1, Math.max(0, Math.round(bandIndex)) * step)
-  return SPECTRUM_REGIONS[i]!.color
+/** EQ strip / node color from the stored (base) frequency, using the FFT palette. */
+export function eqBandColorForHz(hz: number): string {
+  return regionForHz(hz).color
 }

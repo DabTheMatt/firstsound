@@ -34,7 +34,7 @@ import {
   logBandEdgesHz,
   type SpectrumBandCount,
 } from '../../audio/engine/spectrumBands'
-import { bandCenterHz, eqBandPaletteColor, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { logFreqAxis } from '../../audio/engine/eqResponse'
@@ -470,7 +470,8 @@ export function Spectrum({ active }: Props) {
                 (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
               ),
           )
-          const color = eqBandPaletteColor(index)
+          const stored = bands[index]
+          const color = eqBandColorForHz(stored?.frequency ?? band.frequency)
           return (
             <button
               key={`${mod.instanceId}-${index}`}

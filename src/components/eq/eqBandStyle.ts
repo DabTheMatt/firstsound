@@ -1,8 +1,8 @@
-import { eqBandPaletteColor } from '../../audio/engine/spectrumRegions'
+import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
 import { colorWithAlpha } from '../../theme/cssColor'
 
-export function eqBandAccentVars(bandIndex: number): Record<string, string> {
-  const color = eqBandPaletteColor(bandIndex)
+export function eqBandAccentVars(frequencyHz: number): Record<string, string> {
+  const color = eqBandColorForHz(frequencyHz)
   return {
     '--eq-band': color,
     '--accent-primary': color,
