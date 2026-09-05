@@ -274,7 +274,7 @@
 }
 
 .lrCol .knobs {
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  grid-template-columns: 1fr;
   padding-top: 8px;
 }
 
@@ -500,6 +500,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px 4px;
   padding-top: 8px;
+}
+
+.compact .lrCol .knobs {
+  grid-template-columns: 1fr;
 }
 
 .compact .help {
