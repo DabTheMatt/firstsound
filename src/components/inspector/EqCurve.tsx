@@ -16,6 +16,7 @@ import {
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz } from '../../audio/engine/spectrumBands'
+import { eqBandPaletteColor } from '../../audio/engine/spectrumRegions'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -189,7 +190,7 @@ export function EqCurve({
         const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
         const yPct = dbToY(nodeDisplayDb(band), 1) * 100
         const selected = index === selectedBand
-        const tone = eqTone(toneIndex, readThemeColors())
+        const color = eqBandPaletteColor(index)
         return (
           <button
             key={index}
@@ -198,8 +199,8 @@ export function EqCurve({
             style={{
               left: `${xPct}%`,
               top: `${yPct}%`,
-              background: band.bypassed ? undefined : tone.node,
-              borderColor: tone.curve,
+              background: band.bypassed ? undefined : color,
+              borderColor: color,
             }}
             aria-label={`EQ band ${index + 1} ${band.type}`}
             onPointerDown={(event) => onNodePointerDown(index, event)}

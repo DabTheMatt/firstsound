@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandCenterHz, regionForHz } from './spectrumRegions'
+import { bandCenterHz, eqBandPaletteColor, regionForHz, SPECTRUM_REGIONS } from './spectrumRegions'
 import { logBandEdgesHz } from './spectrumBands'
 
 describe('spectrumRegions', () => {
@@ -20,5 +20,13 @@ describe('spectrumRegions', () => {
     const c = bandCenterHz(edges, 0)
     expect(c).toBeGreaterThan(edges[0]!)
     expect(c).toBeLessThan(edges[1]!)
+  })
+
+  it('assigns a distinct palette color to each EQ band', () => {
+    const colors = [0, 1, 2, 3].map(eqBandPaletteColor)
+    expect(new Set(colors).size).toBe(4)
+    expect(eqBandPaletteColor(0)).toBe(SPECTRUM_REGIONS[0]!.color)
+    expect(eqBandPaletteColor(1)).toBe(SPECTRUM_REGIONS[2]!.color)
+    expect(eqBandPaletteColor(3)).toBe(SPECTRUM_REGIONS[6]!.color)
   })
 })

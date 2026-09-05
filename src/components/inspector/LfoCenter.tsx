@@ -3,7 +3,6 @@ import {
   FX_LFO_KIND_LABELS,
   FX_LFO_KINDS,
   FX_LFO_SLOTS,
-  LFO_SHAPES,
   fxLfoIsActive,
   fxLfoSlotName,
   lfoConnectCopy,
@@ -12,6 +11,7 @@ import {
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
+import { LfoShapeIcon } from '../controls/LfoShapePicker'
 import { useFxLfoConnect } from './FxLfoConnect'
 import styles from './LfoCenter.module.css'
 
@@ -98,7 +98,6 @@ function KindBlock({
             const lfo = snap.fxLfos[kind][slot]
             if (!lfo) return null
             const connecting = armed?.kind === kind && armed.slot === slot
-            const shape = LFO_SHAPES.find((s) => s.value === lfo.shape)?.label ?? lfo.shape
             const target = lfo.target ? PARAMS[lfo.target].label : null
             const connect = lfoConnectCopy(connecting, target)
             const running = fxLfoIsActive(lfo)
@@ -110,9 +109,11 @@ function KindBlock({
                   className={styles.meta}
                   onClick={() => onReveal?.(kind, slot)}
                 >
-                  <strong>{name}</strong>
+                  <strong>
+                    <LfoShapeIcon shape={lfo.shape} /> {name}
+                  </strong>
                   <span>
-                    {shape} · {lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz ·{' '}
+                    {lfo.rateHz < 10 ? lfo.rateHz.toFixed(2) : lfo.rateHz.toFixed(1)} Hz ·{' '}
                     {Math.round(lfo.depth)}%
                   </span>
                   <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>

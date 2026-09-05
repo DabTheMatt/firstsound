@@ -82,6 +82,9 @@
 }
 
 .meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;

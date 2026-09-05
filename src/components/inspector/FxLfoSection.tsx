@@ -7,7 +7,6 @@ import {
   LFO_RATE_DEFAULT,
   LFO_RATE_MAX,
   LFO_RATE_MIN,
-  LFO_SHAPES,
   fxLfoSlotName,
   lfoConnectCopy,
   type FxLfoKind,
@@ -15,6 +14,7 @@ import {
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
 import { Segmented } from '../controls/Segmented'
+import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { ValueKnob } from '../controls/ValueKnob'
 import { useFxLfoConnect } from './FxLfoConnect'
 import styles from './Inspector.module.css'
@@ -155,11 +155,9 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
           </button>
         ) : null}
       </div>
-      <Segmented
-        label="LFO shape"
+      <LfoShapePicker
         value={lfo?.shape ?? 'sine'}
-        options={LFO_SHAPES}
-        wrap
+        compact={compact}
         onChange={(shape) => engine.setFxLfo(kind, activeSlot, { shape })}
       />
       {knobs}

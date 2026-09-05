@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import {
   bandUsesGain,
   bandUsesWidth,
@@ -17,6 +18,7 @@ import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from '../inspector/FxLfoSection'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
+import { eqBandAccentVars } from './eqBandStyle'
 import styles from './EqConsole.module.css'
 
 type Props = {
@@ -41,11 +43,20 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
   const showWidth = bandUsesWidth(band.type)
 
   return (
-    <article className={`${styles.strip} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}>
+    <article
+      className={`${styles.strip} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
+      style={eqBandAccentVars(index) as CSSProperties}
+    >
       <header className={styles.stripHead}>
         <span className={styles.stripLabel}>{label}</span>
       </header>
-      <EqFilterTypeMenu value={band.type} onChange={(type) => setBand({ type })} />
+      <EqFilterTypeMenu
+        value={band.type}
+        onChange={(type) => setBand({ type })}
+        bypassed={Boolean(band.bypassed)}
+        onBypass={() => setBand({ bypassed: !band.bypassed })}
+      />
+      <div className={styles.params}>
       <LfoParamShell id={ids.freq}>
         <ValueKnob
           compact
@@ -137,6 +148,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
           />
         </LfoParamShell>
       )}
+      </div>
       <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact />
     </article>
   )

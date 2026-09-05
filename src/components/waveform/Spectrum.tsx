@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { eqColorIndex } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
   dbToY as eqDbToY,
@@ -35,7 +34,7 @@ import {
   logBandEdgesHz,
   type SpectrumBandCount,
 } from '../../audio/engine/spectrumBands'
-import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { bandCenterHz, eqBandPaletteColor, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { logFreqAxis } from '../../audio/engine/eqResponse'
@@ -455,7 +454,6 @@ export function Spectrum({ active }: Props) {
         {eqMods.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []
           const liveBands = liveEqBandsFromParams(bands, snap.liveParams)
-          const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
           return liveBands.map((band, index) => {
           if (band.type === 'off') return null
           const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
@@ -472,6 +470,7 @@ export function Spectrum({ active }: Props) {
                 (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
               ),
           )
+          const color = eqBandPaletteColor(index)
           return (
             <button
               key={`${mod.instanceId}-${index}`}
@@ -480,8 +479,8 @@ export function Spectrum({ active }: Props) {
               style={{
                 left: `${xPct}%`,
                 top: `${Math.min(100, Math.max(0, yPct))}%`,
-                background: dim ? undefined : tone.node,
-                borderColor: tone.curve,
+                background: dim ? undefined : color,
+                borderColor: color,
               }}
               aria-label={`EQ ${mod.instanceId} band ${index + 1} ${band.type}`}
               onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
