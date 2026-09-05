@@ -1,0 +1,97 @@
+---
+description: Efficient coding workflow — minimize unnecessary context, tool calls and token usage
+alwaysApply: true
+---
+
+# Efficient Agent Workflow
+
+## Core principles
+
+- Make the smallest change necessary to complete the task.
+- Do not refactor unrelated code.
+- Do not explore unrelated directories or files.
+- Follow existing project patterns before introducing new abstractions.
+- Prefer modifying existing code over creating unnecessary new layers.
+- Keep explanations concise unless explicitly asked for detail.
+
+## Before editing
+
+1. Understand the requested outcome.
+2. Locate the most likely relevant files using targeted search.
+3. Read only the files needed to understand the affected code path.
+4. Do not scan the entire repository unless genuinely required.
+5. If a task could require a large architectural change, explain why before proceeding.
+
+## Context efficiency
+
+- Keep working context focused on the current task.
+- Do not repeatedly read files whose relevant contents are already known.
+- Do not inspect generated files, dependencies, build output, lockfiles, or large datasets unless necessary.
+- Prefer targeted searches for symbols, filenames, routes, components, and error messages.
+- Follow references only as far as necessary.
+- Avoid loading large files when targeted search can locate the relevant section.
+
+## Implementation
+
+- Prefer localized edits.
+- Preserve existing architecture, naming conventions, formatting, and patterns.
+- Avoid speculative improvements.
+- Do not add unrelated cleanup.
+- Do not add dependencies unless necessary.
+- Reuse existing utilities and components when appropriate.
+
+## Debugging
+
+1. Start from the observed error or incorrect behavior.
+2. Identify the most likely execution path.
+3. Form a small number of concrete hypotheses.
+4. Test those hypotheses directly.
+5. Fix the root cause.
+
+Do not explore the entire codebase unless targeted debugging fails.
+
+## Testing
+
+After making changes:
+
+1. Run the narrowest relevant test, typecheck, lint command, or build step.
+2. Fix failures caused by the change.
+3. Expand validation only when necessary.
+4. Do not run the entire test suite when targeted tests are sufficient.
+
+## Terminal and tools
+
+- Prefer precise commands over commands producing large output.
+- Avoid dumping large logs into context.
+- Filter command output when possible.
+- Do not repeatedly execute the same command unless something changed.
+- Avoid unnecessary tool calls.
+
+## Communication
+
+Keep status updates short.
+
+At completion report only:
+- what changed,
+- important files changed,
+- validation/tests performed,
+- unresolved issues or risks.
+
+Do not provide a long walkthrough unless requested.
+
+## Escalation
+
+If a straightforward solution becomes unexpectedly complex:
+- stop expanding the scope,
+- summarize the blocker,
+- identify what additional investigation is needed.
+
+Do not compensate for uncertainty by reading large portions of the repository.
+
+## User intent
+
+The user's explicit request always takes priority over these efficiency guidelines.
+
+If the user explicitly requests deep analysis, broad repository exploration,
+comprehensive testing, detailed explanation, or architectural refactoring,
+perform it.
