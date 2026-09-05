@@ -7,13 +7,13 @@ import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
-import { PRIMARY_ORBIT_AXES, SECONDARY_FIELD_AXES, SENSORY_AXES, type SensoryAxisId } from '../sensoryParameters'
+import { SENSORY_DIALS, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
 import { patchSensoryValue } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
-import { SensoryAxis } from './SensoryAxis'
-import { SensoryTransport } from './SensoryTransport'
+import { PlayheadClock } from './PlayheadClock'
+import { SensoryDial } from './SensoryDial'
 import { SoundLens } from './SoundLens'
 import styles from './SensoryShell.module.css'
 
@@ -30,6 +30,8 @@ type Props = {
   onDrop: (file: File) => void
   onLoadSample: () => void
   onLoadDemo: () => void
+  onSave: () => void
+  onRecord: () => void
   onRegionCommit: () => void
   onFades: (patch: Partial<EditState>) => void
   onFadesCommit: () => void
@@ -56,6 +58,8 @@ export function SensoryShell({
   onDrop,
   onLoadSample,
   onLoadDemo,
+  onSave,
+  onRecord,
   onRegionCommit,
   onFades,
   onFadesCommit,
@@ -75,6 +79,8 @@ export function SensoryShell({
   }, [])
   const visual = sensoryVisualState(values, reduced)
   const cssVars = visualCssVars(visual)
+  const leftDials = SENSORY_DIALS.slice(0, 3)
+  const rightDials = SENSORY_DIALS.slice(3)
 
   const setAxis = (id: SensoryAxisId, value: number) => {
     onMoodLabel(null)
@@ -97,15 +103,18 @@ export function SensoryShell({
       }}
     >
       <header className={styles.top}>
-        <p className={styles.mark}>Firstsound</p>
-        <button type="button" className={styles.file} onClick={onLoadSample}>
-          {snap.fileName || 'Drop a sample'}
-        </button>
+        <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
+        <div className={styles.brand}>
+          <p className={styles.mark}>Firstsound</p>
+          <p className={styles.tag}>Same sound. A deeper you.</p>
+        </div>
         <div className={styles.tools}>
-          <button type="button" className={styles.ghost} onClick={() => setPlacesOpen((v) => !v)}>
-            {moodLabel || 'a place to start'}
+          <button type="button" className={styles.textBtn} onClick={onLoadSample}>
+            Open
           </button>
-          <ModeSwitch mode={mode} onChange={onMode} />
+          <button type="button" className={styles.textBtn} onClick={onSave}>
+            Save
+          </button>
           <button
             type="button"
             className={styles.menuBtn}
@@ -119,24 +128,6 @@ export function SensoryShell({
         </div>
       </header>
       {menuOpen ? menu : null}
-
-      <EmotionalStates
-        open={placesOpen}
-        onPick={(id) => {
-          const next = emotionalValues(id)
-          onValues(next)
-          onMoodLabel(EMOTIONAL_STATES.find((s) => s.id === id)?.label ?? id)
-          setPlacesOpen(false)
-          onCommitSensory()
-        }}
-        onSurprise={() => {
-          const next = surpriseSensoryValues()
-          onValues(next)
-          onMoodLabel(surpriseLabel(next))
-          setPlacesOpen(false)
-          onCommitSensory()
-        }}
-      />
 
       <div className={styles.stage}>
         <Waveform
@@ -168,8 +159,6 @@ export function SensoryShell({
           emptyLabel="Drop a sample. Listen closer."
         />
         <div className={styles.lensWrap}>
-          <div className={`${styles.orbit} ${styles.orbitBright}`}>{values.brightness >= 0 ? 'brighter' : 'darker'}</div>
-          <div className={`${styles.orbit} ${styles.orbitWarm}`}>{values.warmth >= 0 ? 'warmer' : 'colder'}</div>
           <SoundLens
             duration={snap.duration}
             loaded={snap.sampleLoaded}
@@ -179,40 +168,87 @@ export function SensoryShell({
               void engine.unlock().then(() => engine.togglePlay())
             }}
           />
+          <PlayheadClock duration={snap.duration} />
         </div>
       </div>
 
       <div className={styles.controls}>
-        <div className={styles.orbitRow}>
-          {PRIMARY_ORBIT_AXES.map((id) => (
-            <SensoryAxis
-              key={id}
-              def={SENSORY_AXES[id]}
-              value={values[id]}
-              onChange={(v) => setAxis(id, v)}
+        <div className={styles.dials}>
+          {leftDials.map((spec) => (
+            <SensoryDial
+              key={`${spec.axis}-${spec.pole}`}
+              spec={spec}
+              axisValue={values[spec.axis]}
+              onChange={(v) => setAxis(spec.axis, v)}
+              onCommit={onCommitSensory}
+            />
+          ))}
+          <button
+            type="button"
+            className={styles.play}
+            disabled={!snap.sampleLoaded}
+            aria-label={snap.playing ? 'Pause' : 'Play'}
+            onClick={() => {
+              void engine.unlock().then(() => engine.togglePlay())
+            }}
+          >
+            {snap.playing ? (
+              <span className={styles.pause} aria-hidden="true" />
+            ) : (
+              <span className={styles.tri} aria-hidden="true" />
+            )}
+          </button>
+          {rightDials.map((spec) => (
+            <SensoryDial
+              key={`${spec.axis}-${spec.pole}`}
+              spec={spec}
+              axisValue={values[spec.axis]}
+              onChange={(v) => setAxis(spec.axis, v)}
               onCommit={onCommitSensory}
             />
           ))}
         </div>
-        <div className={styles.fieldRow}>
-          {SECONDARY_FIELD_AXES.map((id) => (
-            <SensoryAxis
-              key={id}
-              def={SENSORY_AXES[id]}
-              value={values[id]}
-              onChange={(v) => setAxis(id, v)}
-              onCommit={onCommitSensory}
-              compact
-            />
-          ))}
-        </div>
-        <SensoryTransport
-          playing={snap.playing}
-          loop={snap.loop}
-          disabled={!snap.sampleLoaded}
-          onToggleLoop={() => engine.setLoop(!snap.loop)}
-        />
       </div>
+
+      <footer className={styles.foot}>
+        <p className={styles.guide}>
+          Drag. Listen. Feel.
+          <span>Shape the sound, not the settings.</span>
+        </p>
+        <p className={styles.script}>sound is a feeling</p>
+        <div className={styles.links}>
+          <button type="button" className={styles.textBtn} onClick={onLoadSample}>
+            Samples
+          </button>
+          <button type="button" className={styles.textBtn} onClick={() => setPlacesOpen((v) => !v)}>
+            {moodLabel || 'Presets'}
+          </button>
+          <button
+            type="button"
+            className={`${styles.textBtn} ${snap.recording ? styles.recOn : ''}`}
+            onClick={onRecord}
+          >
+            Rec
+          </button>
+        </div>
+      </footer>
+      <EmotionalStates
+        open={placesOpen}
+        onPick={(id) => {
+          const next = emotionalValues(id)
+          onValues(next)
+          onMoodLabel(EMOTIONAL_STATES.find((s) => s.id === id)?.label ?? id)
+          setPlacesOpen(false)
+          onCommitSensory()
+        }}
+        onSurprise={() => {
+          const next = surpriseSensoryValues()
+          onValues(next)
+          onMoodLabel(surpriseLabel(next))
+          setPlacesOpen(false)
+          onCommitSensory()
+        }}
+      />
       {sampleInput}
     </div>
   )

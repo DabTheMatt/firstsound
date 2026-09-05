@@ -226,9 +226,9 @@
 }
 
 .sensory .playhead {
-  width: 2px;
-  background: color-mix(in srgb, var(--playhead) 80%, white);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--playhead) 55%, transparent);
+  width: 1px;
+  background: color-mix(in srgb, #e0b56a 85%, white);
+  box-shadow: 0 0 16px color-mix(in srgb, #e0b56a 55%, transparent);
 }
 
 .sensory .wrap {

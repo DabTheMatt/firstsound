@@ -23,6 +23,20 @@ export function formatDuration(seconds: number, fractionDigits = 3): string {
   return formatTimecode(seconds, fractionDigits)
 }
 
+/** One-decimal clock used by Sensory Mode (`00:12.4`). */
+export function formatSensoryClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
+  const m = Math.floor(seconds / 60)
+  const s = seconds - m * 60
+  const tenth = Math.round(s * 10) / 10
+  if (tenth >= 60) {
+    return `${String(m + 1).padStart(2, '0')}:00.0`
+  }
+  const whole = Math.floor(tenth)
+  const frac = Math.round((tenth - whole) * 10)
+  return `${String(m).padStart(2, '0')}:${String(whole).padStart(2, '0')}.${frac}`
+}
+
 /** Millisecond digits that match the current zoom (never claims sample accuracy). */
 export function timecodeDigits(viewSpanSeconds: number): number {
   return viewSpanSeconds > 0 && viewSpanSeconds < 0.4 ? 4 : 3

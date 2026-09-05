@@ -1,0 +1,92 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 88px;
+}
+
+.dial {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.dial:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--sensory-glow-color) 70%, white);
+  outline-offset: 6px;
+  border-radius: 50%;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--sensory-glow-color) 55%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--sensory-glow-color) 18%, transparent);
+}
+
+.dot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--sensory-glow-color);
+  box-shadow: 0 0 10px var(--sensory-glow-color);
+}
+
+.warm {
+  --sensory-glow-color: #e0b56a;
+}
+
+.cool {
+  --sensory-glow-color: #e8e4dc;
+}
+
+.label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 82%, transparent);
+}
+
+.whisper {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text-primary) 38%, transparent);
+}
+
+@media (max-width: 720px) {
+  .wrap {
+    min-width: 76px;
+  }
+
+  .dial {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot::after,
+  .ring {
+    box-shadow: none;
+  }
+}

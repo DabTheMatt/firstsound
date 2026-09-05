@@ -503,6 +503,11 @@ export default function App() {
           onLoadDemo={() => {
             void engine.unlock().then(() => engine.loadDemoTone())
           }}
+          onSave={() => downloadJson('field-preset.json', engine.toPreset())}
+          onRecord={() => {
+            if (engine.getSnapshot().recording) engine.stopMicRecord()
+            else void engine.startMicRecord()
+          }}
           onRegionCommit={() => commit('region')}
           onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
           onFadesCommit={() => commit('region')}

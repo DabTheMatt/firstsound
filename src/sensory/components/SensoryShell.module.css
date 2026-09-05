@@ -1,73 +1,94 @@
 .page {
+  --sensory-serif: 'Cormorant Garamond', 'Times New Roman', serif;
+  --sensory-script: 'Great Vibes', cursive;
+  --sensory-gold: #e0b56a;
   position: relative;
   height: 100%;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--bg-app);
   color: var(--text-primary);
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0)
     env(safe-area-inset-left, 0);
-  animation: modeIn 220ms ease;
+  background:
+    radial-gradient(ellipse at 50% 38%, #1a1814 0%, #0a0a0b 62%, #070708 100%);
+  animation: modeIn 260ms ease;
 }
 
 .drop {
-  outline: 1px dashed color-mix(in srgb, var(--text-primary) 35%, transparent);
+  outline: 1px dashed color-mix(in srgb, var(--sensory-gold) 40%, transparent);
 }
 
 .top {
   position: relative;
   z-index: 4;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 16px;
-  padding: 14px 18px 8px;
+  padding: 18px 28px 8px;
   flex: none;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .mark {
   margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.38em;
-  text-transform: uppercase;
+  font-family: var(--sensory-serif);
+  font-size: clamp(18px, 2.2vw, 28px);
   font-weight: 400;
-  color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 88%, var(--sensory-gold));
 }
 
-.file {
-  border: 0;
-  background: transparent;
-  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
-  font-size: 12px;
-  font-weight: 300;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.tag {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 38%, transparent);
 }
 
-.tools {
-  margin-left: auto;
+.tools,
+.links {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 16px;
 }
 
-.ghost,
+.textBtn,
 .menuBtn {
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--text-primary) 45%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 48%, transparent);
   font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: lowercase;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   min-height: 36px;
 }
 
+.textBtn:hover,
+.menuBtn:hover,
+.textBtn:focus-visible,
+.menuBtn:focus-visible {
+  color: var(--text-primary);
+  outline: none;
+}
+
 .menuBtn {
-  letter-spacing: 0.28em;
+  letter-spacing: 0.32em;
   font-size: 16px;
+}
+
+.recOn {
+  color: var(--sensory-gold);
 }
 
 .stage {
@@ -78,105 +99,140 @@
 
 .stage > :first-child {
   position: absolute;
-  inset: 0;
+  inset: 8% 0 18%;
 }
 
 .lensWrap {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   pointer-events: none;
   z-index: 3;
-}
-
-.orbit {
-  position: absolute;
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
-  pointer-events: none;
-}
-
-.orbitBright {
-  top: calc(50% - min(34vh, 42vw, 320px) / 2 - 28px);
-}
-
-.orbitWarm {
-  top: calc(50% - 8px);
-  left: calc(50% - min(34vh, 42vw, 320px) / 2 - 72px);
 }
 
 .controls {
   position: relative;
   z-index: 4;
+  flex: none;
+  padding: 0 24px 8px;
+}
+
+.dials {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 18px 16px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 28px);
+}
+
+.play {
+  flex: none;
+  width: 86px;
+  height: 86px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 35%, transparent);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.08), transparent 55%);
+  color: var(--text-primary);
+  display: grid;
+  place-items: center;
+}
+
+.play:focus-visible {
+  outline: 1px solid var(--sensory-gold);
+  outline-offset: 4px;
+}
+
+.play:disabled {
+  opacity: 0.35;
+}
+
+.tri {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 9px 0 9px 16px;
+  border-color: transparent transparent transparent currentColor;
+  margin-left: 4px;
+}
+
+.pause {
+  width: 14px;
+  height: 16px;
+  border-left: 4px solid currentColor;
+  border-right: 4px solid currentColor;
+}
+
+.foot {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 12px;
+  padding: 8px 28px 18px;
   flex: none;
 }
 
-.orbitRow,
-.fieldRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 28px;
+.guide {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
 }
 
-@media (max-width: 720px) {
-  .orbitRow {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    gap: 12px;
-  }
-
-  .orbitRow > * {
-    flex: 0 0 78%;
-    scroll-snap-align: center;
-  }
-
-  .fieldRow {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    gap: 12px;
-  }
-
-  .fieldRow > * {
-    flex: 0 0 78%;
-    scroll-snap-align: center;
-  }
-
-  .orbitWarm,
-  .orbitBright {
-    display: none;
-  }
-
-  .top {
-    padding: 10px 12px 4px;
-  }
+.guide span {
+  display: block;
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  font-size: 11px;
+  font-weight: 300;
+  color: color-mix(in srgb, var(--text-primary) 32%, transparent);
 }
 
-@media (min-width: 1100px) {
-  .orbitRow,
-  .fieldRow {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+.script {
+  margin: 0;
+  font-family: var(--sensory-script);
+  font-size: 28px;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--text-primary) 55%, var(--sensory-gold));
+}
+
+@media (max-width: 900px) {
+  .top,
+  .foot {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .tools,
+  .links {
+    justify-content: center;
+  }
+
+  .dials {
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 0 8px 8px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .page {
-    scroll-behavior: auto;
     animation: none;
   }
 }
 
 @keyframes modeIn {
   from {
-    opacity: 0.72;
+    opacity: 0.7;
   }
   to {
     opacity: 1;

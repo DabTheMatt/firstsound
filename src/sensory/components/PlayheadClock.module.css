@@ -1,0 +1,8 @@
+.clock {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--text-primary) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+}

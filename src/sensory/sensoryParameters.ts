@@ -81,3 +81,23 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
 export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = ['brightness', 'warmth', 'distance', 'wildness']
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = ['hardness', 'fullness', 'motion', 'strangeness']
+
+export type SensoryDialPole = 'pos' | 'neg'
+
+export type SensoryDialSpec = {
+  axis: SensoryAxisId
+  pole: SensoryDialPole
+  label: string
+  whisper: string
+  tone: 'warm' | 'cool'
+}
+
+/** Six one-sided dials from the Sensory interface proposal. */
+export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
+  { axis: 'brightness', pole: 'neg', label: 'darker', whisper: 'more depth', tone: 'warm' },
+  { axis: 'warmth', pole: 'pos', label: 'warmer', whisper: 'more soul', tone: 'warm' },
+  { axis: 'hardness', pole: 'neg', label: 'softer', whisper: 'more air', tone: 'warm' },
+  { axis: 'distance', pole: 'neg', label: 'closer', whisper: 'more presence', tone: 'cool' },
+  { axis: 'wildness', pole: 'pos', label: 'wilder', whisper: 'more movement', tone: 'cool' },
+  { axis: 'brightness', pole: 'pos', label: 'brighter', whisper: 'more clarity', tone: 'cool' },
+]

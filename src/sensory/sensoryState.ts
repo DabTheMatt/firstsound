@@ -29,3 +29,14 @@ export function sensoryValuesEqual(a: SensoryValues, b: SensoryValues, eps = 1e-
 export function patchSensoryValue(values: SensoryValues, id: SensoryAxisId, value: number): SensoryValues {
   return { ...values, [id]: clampSensoryValue(value) }
 }
+
+export function dialAmount(value: number, pole: 'pos' | 'neg'): number {
+  return pole === 'pos' ? Math.max(0, value) : Math.max(0, -value)
+}
+
+export function valueFromDial(amount: number, pole: 'pos' | 'neg'): number {
+  const a = clampSensoryValue(amount)
+  const mag = Math.min(1, Math.max(0, a))
+  return pole === 'pos' ? mag : -mag
+}
+

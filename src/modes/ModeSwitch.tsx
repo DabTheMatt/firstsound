@@ -4,11 +4,16 @@ import styles from './ModeSwitch.module.css'
 type Props = {
   mode: UiMode
   onChange: (mode: UiMode) => void
+  variant?: 'pill' | 'editorial'
 }
 
-export function ModeSwitch({ mode, onChange }: Props) {
+export function ModeSwitch({ mode, onChange, variant = 'pill' }: Props) {
   return (
-    <div className={styles.switch} role="radiogroup" aria-label="Interface language">
+    <div
+      className={`${styles.switch} ${variant === 'editorial' ? styles.editorial : ''}`}
+      role="radiogroup"
+      aria-label="Interface language"
+    >
       <button
         type="button"
         role="radio"
@@ -16,6 +21,7 @@ export function ModeSwitch({ mode, onChange }: Props) {
         className={`${styles.opt} ${mode === 'sensory' ? styles.on : ''}`}
         onClick={() => onChange('sensory')}
       >
+        {variant === 'editorial' && mode === 'sensory' ? <span className={styles.dot} aria-hidden="true" /> : null}
         Sensory
       </button>
       <button
@@ -25,6 +31,7 @@ export function ModeSwitch({ mode, onChange }: Props) {
         className={`${styles.opt} ${mode === 'technical' ? styles.on : ''}`}
         onClick={() => onChange('technical')}
       >
+        {variant === 'editorial' && mode === 'technical' ? <span className={styles.dot} aria-hidden="true" /> : null}
         Technical
       </button>
     </div>
