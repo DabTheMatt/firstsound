@@ -10,6 +10,7 @@ export const SENSORY_SAFETY = {
   reverbDecay: 12,
   delayWet: 56,
   delayFeedback: 60,
+  delayModDepth: 38,
   saturation: 34,
   density: 46,
   pitchSpread: 11,
@@ -31,6 +32,7 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   cap(dsp.params, 'reverbDecay', SENSORY_SAFETY.reverbDecay)
   cap(dsp.params, 'delayWet', SENSORY_SAFETY.delayWet, 0)
   cap(dsp.params, 'delayFeedback', SENSORY_SAFETY.delayFeedback, 0)
+  cap(dsp.params, 'delayModDepth', SENSORY_SAFETY.delayModDepth, 0)
   cap(dsp.params, 'saturation', SENSORY_SAFETY.saturation, 0)
   cap(dsp.params, 'density', SENSORY_SAFETY.density)
   cap(dsp.params, 'pitchSpread', SENSORY_SAFETY.pitchSpread, 0)

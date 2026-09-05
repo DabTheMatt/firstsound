@@ -16,8 +16,10 @@ export function estimateSensoryFromDsp(dsp: DspSnapshot): SensoryValues {
     character: clampSensoryValue('character', openAir + tightHp),
     space: clampSensoryValue('space', toNormalized(p.reverbWet, PARAMS.reverbWet)),
     echo: clampSensoryValue('echo', p.delayWet / 56),
-    grain: clampSensoryValue('grain', p.motionDepth / 50 + (p.density - 18) / 60),
+    grain: clampSensoryValue('grain', (p.density - 18) / 60),
     dirt: clampSensoryValue('dirt', p.saturation / 34),
     tight: clampSensoryValue('tight', (PARAMS.compressorThreshold.defaultValue - p.compressorThreshold) / 20),
+    mod: clampSensoryValue('mod', p.motionDepth / 72),
+    drift: clampSensoryValue('drift', (p.delayWidth - 100) / 90 + p.delayModDepth / 80),
   }
 }

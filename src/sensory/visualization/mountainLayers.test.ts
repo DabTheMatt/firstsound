@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absEnvelope, blurEnvelope, mountainLayerSpecs } from './mountainLayers'
+import { absEnvelope, blurEnvelope, grainBandCount, mountainLayerSpecs } from './mountainLayers'
 
 describe('mountainLayerSpecs', () => {
   it('adds a far ridge when there is motion', () => {
@@ -10,6 +10,14 @@ describe('mountainLayerSpecs', () => {
   it('adds distant ridges as space opens', () => {
     expect(mountainLayerSpecs(0.4, 0, 0.3).length).toBe(5)
     expect(mountainLayerSpecs(0.4, 0, 0.7).length).toBe(6)
+  })
+})
+
+describe('grainBandCount', () => {
+  it('stays solid at rest and splits as grain rises', () => {
+    expect(grainBandCount(0)).toBe(1)
+    expect(grainBandCount(0.3)).toBeGreaterThan(2)
+    expect(grainBandCount(1)).toBeGreaterThan(grainBandCount(0.3))
   })
 })
 

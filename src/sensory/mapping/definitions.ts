@@ -9,6 +9,8 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
   grain: [],
   dirt: [],
   tight: [],
+  mod: [],
+  drift: [],
 }
 
 export const SENSORY_INTERACTIONS: readonly InteractionModifier[] = []

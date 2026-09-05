@@ -1,4 +1,13 @@
-export const SENSORY_AXIS_IDS = ['character', 'space', 'echo', 'grain', 'dirt', 'tight'] as const
+export const SENSORY_AXIS_IDS = [
+  'character',
+  'space',
+  'echo',
+  'grain',
+  'dirt',
+  'tight',
+  'mod',
+  'drift',
+] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
 
@@ -70,9 +79,36 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
     ariaLabel: 'Tight, open to compressed. Morphs compressor only.',
     hint: 'squeeze it closer',
   },
+  mod: {
+    id: 'mod',
+    kind: 'unipolar',
+    module: 'grain',
+    negativeLabel: 'still',
+    positiveLabel: 'mod',
+    ariaLabel: 'Mod, still to modulated. Morphs grain motion only.',
+    hint: 'let it breathe',
+  },
+  drift: {
+    id: 'drift',
+    kind: 'unipolar',
+    module: 'delay',
+    negativeLabel: 'center',
+    positiveLabel: 'drift',
+    ariaLabel: 'Drift, centered to moving stereo. Morphs delay image only.',
+    hint: 'move it in the panorama',
+  },
 }
 
-export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = ['character', 'space', 'echo', 'grain', 'dirt', 'tight']
+export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
+  'character',
+  'space',
+  'echo',
+  'grain',
+  'dirt',
+  'tight',
+  'mod',
+  'drift',
+]
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = []
 
@@ -157,5 +193,27 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     whisper: 'open to tight',
     tone: 'warm',
     ariaLabel: 'Tight, open to compressed',
+  },
+  {
+    axis: 'mod',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'mod',
+    negativeLabel: 'still',
+    positiveLabel: 'mod',
+    whisper: 'still to modulated',
+    tone: 'cool',
+    ariaLabel: 'Mod, still to modulated',
+  },
+  {
+    axis: 'drift',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'drift',
+    negativeLabel: 'center',
+    positiveLabel: 'drift',
+    whisper: 'center to panorama',
+    tone: 'cool',
+    ariaLabel: 'Drift, centered to moving stereo',
   },
 ]

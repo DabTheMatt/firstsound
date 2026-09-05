@@ -77,6 +77,26 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
     visual: 'tight',
     ariaLabel: 'Tight, open to compressed. Double-click to rest.',
   },
+  {
+    id: 'mod',
+    label: 'mod',
+    axis: 'mod',
+    kind: 'unipolar',
+    from: 'still',
+    to: 'mod',
+    visual: 'mod',
+    ariaLabel: 'Mod, still to modulated. Double-click to rest.',
+  },
+  {
+    id: 'drift',
+    label: 'drift',
+    axis: 'drift',
+    kind: 'unipolar',
+    from: 'center',
+    to: 'drift',
+    visual: 'drift',
+    ariaLabel: 'Drift, center to panorama. Double-click to rest.',
+  },
 ]
 
 export function feelingAmount(values: SensoryValues, feeling: SensoryFeeling): number {

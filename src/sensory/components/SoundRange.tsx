@@ -4,7 +4,7 @@ import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from '../visualization/sensoryVisualState'
-import { absEnvelope, blurEnvelope, mountainLayerSpecs } from '../visualization/mountainLayers'
+import { absEnvelope, blurEnvelope, grainBandCount, mountainLayerSpecs } from '../visualization/mountainLayers'
 import styles from './SoundRange.module.css'
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
 function themeInk(visual: SensoryVisualState): Rgb {
   const parsed = parseCssColor(readThemeColors().waveform)
   if (!parsed) return visual.ink
-  return mixRgb({ r: parsed.r, g: parsed.g, b: parsed.b }, visual.ink, 0.45 + visual.warmth * 0.25)
+  return mixRgb({ r: parsed.r, g: parsed.g, b: parsed.b }, visual.ink, 0.55 + visual.warmth * 0.3)
 }
 
 export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay, onLoadDemo }: Props) {
@@ -55,7 +55,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
       const play = readThemeColors().playhead || rgbCss(ink, 1)
       if (buffer && duration > 0) {
         const data = buffer.getChannelData(0)
-        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.motion.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}`
+        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
@@ -70,71 +70,83 @@ export function SoundRange({ duration, loaded, visual, contentRev, onTogglePlay,
           }
         }
         const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
-        const base = height * (0.58 + visual.depth * 0.08)
-        const amp = height * (0.42 + visual.mass * 0.12) * (1 - visual.tight * 0.42)
-        const sway = reduced ? 0 : visual.motion * 10 * dpr * Math.sin(performance.now() / 1400)
+        const zoom = visual.zoom
+        const base = height * (0.72 - visual.space * 0.24)
+        const amp = height * (0.34 + visual.mass * 0.1) * zoom * (1 - visual.tight * 0.45)
+        const t = performance.now()
+        const sway = reduced ? 0 : visual.mod * 18 * dpr * Math.sin(t / 900)
         const grit = visual.dirt
-        specs.forEach((spec, li) => {
-          const env = cache?.layers[li]
-          if (!env) return
-          const drop = spec.drop * height
-          ctx.beginPath()
-          ctx.moveTo(0, height)
-          for (let x = 0; x < width; x++) {
-            const jag = grit > 0.05 ? Math.sin(x * 0.37 + li) * grit * amp * 0.035 : 0
-            const h = (env[x] ?? 0) * amp * spec.scale + jag
-            const y = base + drop - h + sway * (li + 1) * 0.15
-            ctx.lineTo(x, y)
-          }
-          ctx.lineTo(width, height)
-          ctx.closePath()
-          const echoShift = visual.echo * 22 * dpr * (li % 2 === 0 ? 1 : -1)
-          const open = Math.max(0, visual.character)
-          ctx.fillStyle = rgbCss(ink, spec.alpha * (0.65 + visual.glow * 0.5 + open * 0.08))
-          ctx.fill()
-          if (visual.echo > 0.1) {
+        const bands = grainBandCount(visual.grain)
+        const gap = bands > 1 ? Math.max(3 * dpr, visual.grain * 14 * dpr) : 0
+        const bandW = bands > 1 ? (width - gap * (bands - 1)) / bands : width
+        const echoShift = visual.echo * 28 * dpr
+        const driftPx = visual.drift * 36 * dpr
+
+        const drawStack = (xOff: number, fill: Rgb, alphaMul: number) => {
+          specs.forEach((spec, li) => {
+            const env = cache?.layers[li]
+            if (!env) return
+            const drop = spec.drop * height * (0.7 + visual.space * 0.8)
             ctx.beginPath()
-            ctx.moveTo(echoShift, height)
+            ctx.moveTo(xOff, height)
             for (let x = 0; x < width; x++) {
-              const h = (env[x] ?? 0) * amp * spec.scale * 0.85
-              const y = base + drop - h + sway * (li + 1) * 0.15
-              ctx.lineTo(x + echoShift, y)
+              const jag = grit > 0.05 ? Math.sin(x * 0.37 + li) * grit * amp * 0.055 : 0
+              const wave = reduced ? 0 : visual.mod * Math.sin(x * 0.018 + t / 420) * amp * 0.12
+              const h = (env[x] ?? 0) * amp * spec.scale + jag + wave
+              const y = base + drop - h + sway * (li + 1) * 0.12
+              ctx.lineTo(x + xOff, y)
             }
-            ctx.lineTo(width + echoShift, height)
+            ctx.lineTo(width + xOff, height)
             ctx.closePath()
-            ctx.fillStyle = rgbCss(ink, spec.alpha * visual.echo * 0.45)
+            const open = Math.max(0, visual.character)
+            ctx.fillStyle = rgbCss(fill, spec.alpha * (0.7 + visual.glow * 0.55 + open * 0.12) * alphaMul)
             ctx.fill()
+          })
+        }
+
+        const paint = () => {
+          if (visual.drift > 0.08) {
+            drawStack(-driftPx, visual.inkLeft, 0.85)
+            drawStack(driftPx, visual.inkRight, 0.85)
+          } else {
+            drawStack(0, ink, 1)
           }
-        })
-        if (visual.grain > 0.08) {
-          const n = Math.floor(10 + visual.grain * 48)
-          ctx.fillStyle = rgbCss(ink, 0.18 + visual.grain * 0.35)
-          for (let i = 0; i < n; i++) {
-            const seed = (i * 127.1 + visual.grain * 13) % 1
-            const x = (Math.sin(i * 12.9898) * 43758.5453) % 1
-            const px = Math.abs(x) * width
-            const env = cache?.layers[0]
-            const xi = Math.min(width - 1, Math.max(0, Math.round(px)))
-            const peak = env?.[xi] ?? 0.2
-            const py = base - peak * amp * (0.3 + seed * 0.7) - (i % 7) * visual.grain * 6
-            ctx.fillRect(px, py, Math.max(1, dpr), Math.max(1, dpr))
+          if (visual.echo > 0.08) {
+            drawStack(echoShift, mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.55), visual.echo * 0.55)
+            drawStack(-echoShift * 0.7, mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.35), visual.echo * 0.35)
           }
         }
+
+        if (bands <= 1) {
+          paint()
+        } else {
+          for (let b = 0; b < bands; b++) {
+            const x0 = b * (bandW + gap)
+            ctx.save()
+            ctx.beginPath()
+            ctx.rect(x0, 0, bandW, height)
+            ctx.clip()
+            ctx.translate(0, ((b % 2) * 2 - 1) * visual.grain * 8 * dpr)
+            paint()
+            ctx.restore()
+          }
+        }
+
         const now = engine.getPlayheadSeconds()
         const frac = duration > 0 ? Math.min(1, Math.max(0, now / duration)) : 0
         const px = frac * (width - 1)
         const peak = cache?.layers[0]?.[Math.round(px)] ?? 0
         const peakY = base - peak * amp * (specs[0]?.scale ?? 1)
         ctx.strokeStyle = play
-        ctx.lineWidth = Math.max(1, dpr)
-        ctx.globalAlpha = 0.9
+        ctx.lineWidth = Math.max(1.2, dpr * (1 + visual.glow * 0.8))
+        ctx.globalAlpha = 0.95
         ctx.beginPath()
         ctx.moveTo(px, 0)
         ctx.lineTo(px, height)
         ctx.stroke()
         ctx.fillStyle = play
         ctx.beginPath()
-        ctx.arc(px, peakY, 3.2 * dpr, 0, Math.PI * 2)
+        ctx.arc(px, peakY, 3.6 * dpr, 0, Math.PI * 2)
         ctx.fill()
         ctx.globalAlpha = 1
       }

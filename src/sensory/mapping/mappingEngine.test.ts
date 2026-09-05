@@ -81,13 +81,37 @@ describe('mapSensoryToDsp', () => {
     expect(mapped.bypass.delay).toBe(false)
   })
 
-  it('grain morphs grain params only', () => {
+  it('grain morphs grain params only and leaves motion still', () => {
     const base = baseDsp()
     const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'grain', 0.8))
     expect(mapped.params.density).toBeGreaterThan(base.params.density)
     expect(mapped.params.density).toBeLessThanOrEqual(SENSORY_SAFETY.density)
+    expect(mapped.params.motionDepth).toBeCloseTo(base.params.motionDepth)
     expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
     expect(mapped.bypass.grain).toBe(false)
+  })
+
+  it('mod morphs grain motion only', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'mod', 0.8))
+    expect(mapped.params.motionDepth).toBeGreaterThan(base.params.motionDepth)
+    expect(mapped.params.density).toBeCloseTo(base.params.density)
+    expect(mapped.bypass.grain).toBe(false)
+  })
+
+  it('drift opens a stereo delay image without eating the echo wet', () => {
+    const base = baseDsp()
+    const drifted = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 1))
+    expect(drifted.params.delayWidth).toBeGreaterThan(150)
+    expect(drifted.params.delayTimeR).toBeGreaterThan(drifted.params.delayTime)
+    expect(drifted.params.delayWet).toBeLessThanOrEqual(24)
+    expect(drifted.bypass.delay).toBe(false)
+    const both = mapSensoryToDsp(
+      base,
+      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'echo', 0.8), 'drift', 1),
+    )
+    expect(both.params.delayWet).toBeGreaterThan(drifted.params.delayWet)
+    expect(both.params.delayWidth).toBeGreaterThan(150)
   })
 
   it('dirt morphs saturation only', () => {

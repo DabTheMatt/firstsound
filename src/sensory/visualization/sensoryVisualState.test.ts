@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { lensInk, sensoryVisualState } from './sensoryVisualState'
+import { lensInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
 
 describe('lensInk', () => {
   it('runs warmer as warmth rises', () => {
@@ -23,10 +23,20 @@ describe('sensoryVisualState', () => {
     expect(visual.echo).toBeCloseTo(0.8)
   })
 
-  it('opens haze and depth from space', () => {
+  it('opens haze and depth from space, and zooms the wave away', () => {
     const rest = sensoryVisualState(defaultSensoryValues(), true)
     const vast = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.9), true)
     expect(vast.haze).toBeGreaterThan(rest.haze)
     expect(vast.depth).toBeGreaterThan(rest.depth)
+    expect(spaceZoom(0)).toBeGreaterThan(spaceZoom(0.9))
+    expect(vast.zoom).toBeLessThan(rest.zoom)
+  })
+
+  it('tints toward the focused axis', () => {
+    const values = patchSensoryValue(defaultSensoryValues(), 'dirt', 0.8)
+    const idle = sensoryVisualState(values, true, null)
+    const focused = sensoryVisualState(values, true, 'dirt')
+    expect(focused.ink.r).toBeGreaterThan(idle.ink.r - 1)
+    expect(focused.activeAxis).toBe('dirt')
   })
 })

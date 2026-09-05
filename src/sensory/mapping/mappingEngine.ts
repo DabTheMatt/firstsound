@@ -90,6 +90,21 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     dsp.bypass[morph.module] = false
     touched = true
   }
+  if (Math.abs(values.echo) >= MORPH_GATE && Math.abs(values.drift) >= MORPH_GATE) {
+    const echoMorph = morphFor('echo')
+    if (echoMorph) {
+      const echoStop = interpolateMorphStop(echoMorph.stops, values.echo)
+      if (echoStop.params?.delayWet != null) {
+        dsp.params.delayWet = applyParamValue(echoStop.params.delayWet, PARAMS.delayWet)
+      }
+      if (echoStop.params?.delayFeedback != null) {
+        dsp.params.delayFeedback = applyParamValue(echoStop.params.delayFeedback, PARAMS.delayFeedback)
+      }
+      if (echoStop.params?.delayTime != null) {
+        dsp.params.delayTime = applyParamValue(echoStop.params.delayTime, PARAMS.delayTime)
+      }
+    }
+  }
   if (touched) {
     applySensorySafety(dsp)
     const protect =
