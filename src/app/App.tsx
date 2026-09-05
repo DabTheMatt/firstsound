@@ -629,6 +629,7 @@ export default function App() {
             if (action === 'normalize-view') setNormalizeView((n) => !n)
             if (action === 'reset-zoom') waveRef.current?.resetZoom()
           }}
+          onTrim={() => engine.trimToSelection()}
           minimal={isPhoneLayout}
         />
 

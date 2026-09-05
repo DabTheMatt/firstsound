@@ -11,6 +11,7 @@ type Props = {
   onZoomIn: () => void
   onZoomOut: () => void
   onView: (action: ViewAction) => void
+  onTrim?: () => void
   normalizeView: boolean
   minimal?: boolean
 }
@@ -33,6 +34,7 @@ export function WaveformToolbar({
   onZoomIn,
   onZoomOut,
   onView,
+  onTrim,
   normalizeView,
   minimal = false,
 }: Props) {
@@ -53,6 +55,11 @@ export function WaveformToolbar({
               {item.label}
             </button>
           ))}
+          {onTrim ? (
+            <IconButton label="Trim to selection" caption="Trim" onClick={onTrim}>
+              <TrimIcon />
+            </IconButton>
+          ) : null}
         </div>
       ) : null}
       <div className={styles.views}>
@@ -169,6 +176,21 @@ function IconButton({
       {children}
       <span className={styles.caption}>{caption}</span>
     </button>
+  )
+}
+
+function TrimIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M3 3v12M15 3v12M3 9h3.5M11.5 9H15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <rect x="6.5" y="6" width="5" height="6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
   )
 }
 
