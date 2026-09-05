@@ -50,7 +50,7 @@ describe('applySensoryStacking via mapSensoryToDsp', () => {
     const space = mix({ space: 1 })
     const both = mix({ space: 1, echo: 0.9 })
     expect(both.params.reverbWet).toBeLessThan(space.params.reverbWet)
-    expect(both.params.reverbShimmer).toBeLessThan(space.params.reverbShimmer * 0.7)
+    expect(both.params.reverbShimmer).toBeLessThanOrEqual(space.params.reverbShimmer)
     expect(both.params.delayWet).toBeLessThan(mix({ echo: 0.9 }).params.delayWet)
     expect(both.bypass.limiter).toBe(false)
   })

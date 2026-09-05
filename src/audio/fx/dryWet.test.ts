@@ -42,6 +42,18 @@ describe('wetDryFor', () => {
     expect(delay.wet).toBeCloseTo(Math.SQRT1_2, 5)
     expect(delay.out).toBe(1)
   })
+
+  it('keeps reverb as a quiet parallel send so the room cannot replace the dry', () => {
+    const p = defaultParamValues()
+    p.reverbWet = 100
+    const full = wetDryFor('reverb', p)
+    expect(full.dry).toBe(1)
+    expect(full.wet).toBeLessThanOrEqual(0.28)
+    p.reverbWet = 16
+    const mild = wetDryFor('reverb', p)
+    expect(mild.dry).toBe(1)
+    expect(mild.wet).toBeLessThan(0.06)
+  })
 })
 
 describe('safeFeedbackGain', () => {

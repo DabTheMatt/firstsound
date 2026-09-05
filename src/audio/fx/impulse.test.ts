@@ -45,6 +45,9 @@ describe('impulse', () => {
     const tailRms = Math.sqrt(tailAcc / Math.max(1, n - tailStart))
     expect(earlyPeak).toBeGreaterThan(tailRms * 2.5)
     expect(Math.sqrt((accL + accR) / (2 * n))).toBeLessThan(0.08)
+    let l1 = 0
+    for (let i = 0; i < n; i++) l1 += (Math.abs(left[i]!) + Math.abs(right[i]!)) * 0.5
+    expect(l1).toBeLessThanOrEqual(0.36)
   })
 
   it('cathedral IRs last long enough for huge spaces', () => {
