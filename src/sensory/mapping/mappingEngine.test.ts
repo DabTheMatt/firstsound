@@ -108,6 +108,7 @@ describe('mapSensoryToDsp', () => {
     const drifted = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 1))
     expect(drifted.params.delayWidth).toBeGreaterThan(150)
     expect(drifted.params.delayTimeR).toBeGreaterThan(drifted.params.delayTime)
+    expect(drifted.params.delayTimeR - drifted.params.delayTime).toBeLessThan(50)
     expect(drifted.params.delayWet).toBeLessThanOrEqual(28)
     expect(drifted.bypass.delay).toBe(false)
     const both = mapSensoryToDsp(
@@ -116,6 +117,7 @@ describe('mapSensoryToDsp', () => {
     )
     expect(both.params.delayWet).toBeGreaterThan(drifted.params.delayWet)
     expect(both.params.delayWidth).toBeGreaterThan(150)
+    expect(Math.abs(both.params.delayTimeR - both.params.delayTime)).toBeLessThan(40)
   })
 
   it('dirt morphs saturation only', () => {
