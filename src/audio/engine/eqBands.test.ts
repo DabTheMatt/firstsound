@@ -3,6 +3,7 @@ import {
   bandwidthHz,
   bandIsActive,
   defaultEqBands,
+  eqModuleIsAudible,
   filterStageCount,
   formatEqHz,
   parseEqBands,
@@ -59,6 +60,16 @@ describe('stageQ', () => {
     const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
     expect(stageQ(band, 0)).toBe(4)
     expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  })
+})
+
+describe('eqModuleIsAudible', () => {
+  it('is silent when bypassed or every band is off', () => {
+    const bands = defaultEqBands()
+    expect(eqModuleIsAudible(true, [{ ...bands[0]!, type: 'peaking' }])).toBe(false)
+    expect(eqModuleIsAudible(false, bands)).toBe(false)
+    expect(eqModuleIsAudible(false, bands, true)).toBe(true)
+    expect(eqModuleIsAudible(false, [{ ...bands[0]!, type: 'lowpass' }])).toBe(true)
   })
 })
 

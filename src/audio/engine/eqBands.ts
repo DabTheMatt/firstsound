@@ -24,6 +24,15 @@ export function bandIsActive(band: EqBand): boolean {
   return band.type !== 'off' && !band.bypassed
 }
 
+/** True when this EQ instance is actually changing the signal. */
+export function eqModuleIsAudible(
+  bypassed: boolean,
+  bands: EqBand[],
+  combEnabled = false,
+): boolean {
+  return !bypassed && (combEnabled || bands.some(bandIsActive))
+}
+
 export const EQ_FILTER_TYPES: { value: EqFilterType; label: string; short: string }[] = [
   { value: 'off', label: 'Off', short: 'Off' },
   { value: 'lowpass', label: 'Low Pass', short: 'LP' },
