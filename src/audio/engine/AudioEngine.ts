@@ -171,6 +171,7 @@ import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
+import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
@@ -1024,6 +1025,27 @@ export class AudioEngine {
     )
   }
 
+  /** Crop the working sample to the play region and cover the whole new buffer. */
+  async trimPlayRegion(): Promise<boolean> {
+    await this.ensureContext()
+    if (!this.ctx || !this.buffer) return false
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const rendered = renderRegion(this.buffer, this.ctx, {
+      start: this.params.start,
+      end: this.params.end,
+      reverse: false,
+      fadeIn: 0,
+      fadeOut: 0,
+      fadeCurve: 'linear',
+      gain: 1,
+    })
+    this.fileName = stemName(this.fileName) + '_trim.wav'
+    this.applyLoadedBuffer(rendered, false, 'full')
+    return true
+  }
+
   detectSilenceMarkers(): void {
     const channels: Float32Array[] = []
     if (this.sourceBuffer) {
@@ -1037,7 +1059,7 @@ export class AudioEngine {
   }
 
   markSampleTransients(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
@@ -1047,7 +1069,7 @@ export class AudioEngine {
     this.showTransients = this.transients.length > 0
     this.tempoNotice = this.transients.length
       ? `Marked ${this.transients.length} transients.`
-      : 'No clear transients in this region.'
+      : 'No clear transients in this sample.'
     this.emit()
   }
 
@@ -1057,26 +1079,55 @@ export class AudioEngine {
     else this.emit()
   }
 
+  setTransientTime(index: number, time: number): void {
+    if (!this.transients.length) return
+    const duration = this.buffer?.duration ?? 0
+    const { prev, next } = neighborTimes(this.transients, index, duration)
+    const nextTime = clampWarpTime(time, prev, next)
+    const copy = this.transients.slice()
+    copy[index] = nextTime
+    this.transients = copy
+    this.emit()
+  }
+
+  commitTransientWarp(index: number, fromSec: number, toSec: number): void {
+    const buffer = this.detachWorkingBuffer()
+    if (!buffer || index < 0 || index >= this.transients.length) return
+    const origin = this.transients.slice()
+    origin[index] = fromSec
+    const duration = buffer.duration
+    const sr = buffer.sampleRate
+    const { prev, next } = neighborTimes(origin, index, duration)
+    const clamped = clampWarpTime(toSec, prev, next)
+    if (Math.abs(clamped - fromSec) < 1e-4) {
+      this.setTransientTime(index, clamped)
+      return
+    }
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      const warped = warpChannel(buffer.getChannelData(ch), sr, fromSec, clamped, prev, next)
+      buffer.getChannelData(ch).set(warped)
+    }
+    this.transients = remapWarpTimes(origin, fromSec, clamped, prev, next)
+    this.showTransients = true
+    this.afterBufferEditKeepTransients()
+  }
+
   detectSampleTempo(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
       return
     }
     const guess = estimateTempo(region.samples, region.sampleRate, region.offsetSec, region.durationSec)
-    this.transients = guess?.transients ?? detectTransients(region.samples, region.sampleRate, region.offsetSec)
-    this.showTransients = this.transients.length > 0
     if (!guess) {
-      this.tempoNotice = this.transients.length
-        ? 'Found transients, but no steady tempo.'
-        : 'No rhythm found in this region.'
+      this.tempoNotice = 'No steady tempo found in this sample.'
       this.emit()
       return
     }
     this.tempoSource = 'detected'
     this.writeTempo(guess.bpm)
-    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM from transients.`
+    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM.`
     this.emit()
   }
 
@@ -1116,7 +1167,7 @@ export class AudioEngine {
     if (resetBpm) this.params.bpm = PARAMS.bpm.defaultValue
   }
 
-  private analysisRegion(): {
+  private analysisFull(): {
     samples: Float32Array
     sampleRate: number
     offsetSec: number
@@ -1126,15 +1177,14 @@ export class AudioEngine {
     const mono = this.mono
     if (!buffer || !mono || !mono.length) return null
     const sr = buffer.sampleRate
-    const start = Math.max(0, this.params.start)
-    const end = Math.min(buffer.duration, Math.max(start + 0.05, this.params.end))
-    const s = Math.min(mono.length - 1, Math.max(0, Math.floor(start * sr)))
-    const e = Math.min(mono.length, Math.max(s + 1, Math.floor(end * sr)))
+    const maxSec = 45
+    const maxN = Math.min(mono.length, Math.max(1, Math.floor(maxSec * sr)))
+    const samples = maxN < mono.length ? mono.subarray(0, maxN) : mono
     return {
-      samples: mono.subarray(s, e),
+      samples,
       sampleRate: sr,
-      offsetSec: s / sr,
-      durationSec: (e - s) / sr,
+      offsetSec: 0,
+      durationSec: samples.length / Math.max(1, sr),
     }
   }
 
@@ -1860,6 +1910,19 @@ export class AudioEngine {
       this.params = { ...this.params, start: region.start, end: region.end }
       this.playOffset = region.start
       this.resetTempoAnalysis()
+      if (regionMode === 'full') {
+        this.prepApplied = true
+        this.prep = clampPrep(
+          {
+            ...this.prep,
+            windowStart: 0,
+            windowEnd: buffer.duration,
+            selectionStart: region.start,
+            selectionEnd: region.end,
+          },
+          Math.max(this.sourceDuration(), buffer.duration),
+        )
+      }
     }
     this.bufferRev++
     this.emit()
@@ -1890,6 +1953,15 @@ export class AudioEngine {
     this.reversed = this.buildReversed(this.buffer)
     this.mono = mixToMono(this.buffer)
     this.resetTempoAnalysis()
+    this.bufferRev++
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  private afterBufferEditKeepTransients(): void {
+    if (!this.buffer) return
+    this.reversed = this.buildReversed(this.buffer)
+    this.mono = mixToMono(this.buffer)
     this.bufferRev++
     if (this.playing) void this.play()
     else this.emit()

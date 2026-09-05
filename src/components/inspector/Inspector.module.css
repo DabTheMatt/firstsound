@@ -96,8 +96,15 @@
 }
 
 .fine button:hover,
-.ghost:hover {
+.ghost:hover,
+.ghostOn:hover {
   background: var(--bg-control-hover);
+}
+
+.ghostOn {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .ghost:disabled {
@@ -307,15 +314,21 @@
 }
 
 .tempoActions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: stretch;
 }
 
 .tempoActions > * {
+  flex: 1 1 7.5rem;
   min-width: 0;
-  width: 100%;
+  width: auto;
+  white-space: normal;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  padding: 8px 8px;
+  text-wrap: balance;
 }
 
 .sub {
