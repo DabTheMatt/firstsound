@@ -453,12 +453,15 @@
 
 .lfoCompact .slotBar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) 28px;
+  grid-template-columns: 22px 22px 22px 22px;
+  justify-content: center;
   align-items: stretch;
-  gap: 2px;
+  gap: 3px;
+  width: 100%;
   height: 28px;
   min-height: 28px;
   max-height: 28px;
+  overflow: hidden;
 }
 
 .lfoCompact .slotNum,
