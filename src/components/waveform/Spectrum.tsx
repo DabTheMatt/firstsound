@@ -35,6 +35,7 @@ import {
   type SpectrumBandCount,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { logFreqAxis } from '../../audio/engine/eqResponse'
@@ -62,6 +63,7 @@ type SpectrumPrefs = {
   bands: SpectrumBandCount
   regionColors: boolean
   legendOpen: boolean
+  showBars: boolean
 }
 
 function loadPrefs(): SpectrumPrefs {
@@ -72,9 +74,10 @@ function loadPrefs(): SpectrumPrefs {
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
       regionColors: raw?.regionColors !== false,
       legendOpen: raw?.legendOpen !== false,
+      showBars: raw?.showBars !== false,
     }
   } catch {
-    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true, legendOpen: true }
+    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true, legendOpen: true, showBars: true }
   }
 }
 
@@ -149,7 +152,7 @@ export function Spectrum({ active }: Props) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         const colors = readThemeColors()
-        const { layer, bands, regionColors } = prefsRef.current
+        const { layer, bands, regionColors, showBars } = prefsRef.current
         ctx.clearRect(0, 0, width, height)
         const sr = live.sampleRate || 44100
         const nyquist = sr / 2
@@ -217,29 +220,53 @@ export function Spectrum({ active }: Props) {
           followBands(slow, peaks, SLOW_ATTACK, SLOW_RELEASE)
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
-          for (let i = 0; i < bands; i++) {
-            const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
-            const x1 = hzToX(edges[i + 1] ?? Math.min(nyquist, maxHz), minHz, maxHz, left, right)
-            const bandW = Math.max(1, x1 - x0)
-            const center = bandCenterHz(edges, i)
-            const region = regionForHz(center)
-            const fill = regionColors ? region.color : colors.spectrum
-            const line = regionColors ? region.color : colors.spectrumLine
-            const slowDb = slow[i] ?? -100
-            const fastDb = fast[i] ?? -100
-            const slowY = dbToY(slowDb, top, bottom)
-            const fastY = dbToY(fastDb, top, bottom)
-            const slowH = bottom - slowY
-            const fastH = bottom - fastY
-            const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
-            ctx.fillStyle = colorWithAlpha(fill, alpha)
-            ctx.fillRect(x0 + gap / 2, bottom - slowH, Math.max(1, bandW - gap), slowH)
-            if (style === 'post' || layer !== 'both') {
-              ctx.fillStyle = line
-              ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.max(2, dpr))
-              ctx.fillStyle = colorWithAlpha(line, 0.35)
-              ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.min(fastH, 8 * dpr))
+          const plotBox = { left, right, top, bottom }
+          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox)
+          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox)
+          const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
+          const lineAlpha = style === 'pre' ? (layer === 'both' ? 0.45 : 0.72) : 0.95
+          const fill = regionColors ? undefined : colors.spectrum
+          const line = regionColors ? undefined : colors.spectrumLine
+          if (showBars) {
+            for (let i = 0; i < bands; i++) {
+              const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
+              const x1 = hzToX(edges[i + 1] ?? Math.min(nyquist, maxHz), minHz, maxHz, left, right)
+              const bandW = Math.max(1, x1 - x0)
+              const center = bandCenterHz(edges, i)
+              const region = regionForHz(center)
+              const barFill = fill ?? region.color
+              const barLine = line ?? region.color
+              const slowDb = slow[i] ?? -100
+              const fastDb = fast[i] ?? -100
+              const slowY = dbToY(slowDb, top, bottom)
+              const fastY = dbToY(fastDb, top, bottom)
+              const slowH = bottom - slowY
+              const fastH = bottom - fastY
+              ctx.fillStyle = colorWithAlpha(barFill, alpha)
+              ctx.fillRect(x0 + gap / 2, bottom - slowH, Math.max(1, bandW - gap), slowH)
+              if (style === 'post' || layer !== 'both') {
+                ctx.fillStyle = barLine
+                ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.max(2, dpr))
+                ctx.fillStyle = colorWithAlpha(barLine, 0.35)
+                ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.min(fastH, 8 * dpr))
+              }
             }
+          } else {
+            const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
+            ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
+            fillSpectrumEnvelope(ctx, slowPts, bottom)
+          }
+          ctx.lineJoin = 'round'
+          ctx.lineCap = 'round'
+          ctx.strokeStyle = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
+          ctx.lineWidth = Math.max(1.2, dpr * (style === 'pre' ? 1.15 : 1.65))
+          if (style === 'pre' && layer === 'both') ctx.setLineDash([4 * dpr, 3 * dpr])
+          strokeSpectrumEnvelope(ctx, slowPts)
+          ctx.setLineDash([])
+          if (style === 'post' || layer !== 'both') {
+            ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 1)
+            ctx.lineWidth = Math.max(1, dpr * 0.9)
+            strokeSpectrumEnvelope(ctx, fastPts)
           }
         }
 
@@ -377,6 +404,16 @@ export function Spectrum({ active }: Props) {
         >
           Band colors
         </button>
+        <button
+          type="button"
+          className={prefs.showBars ? styles.on : ''}
+          aria-pressed={prefs.showBars}
+          aria-label={prefs.showBars ? 'Hide FFT bars' : 'Show FFT bars'}
+          title={prefs.showBars ? 'Hide bars' : 'Show bars'}
+          onClick={() => setPrefs((p) => ({ ...p, showBars: !p.showBars }))}
+        >
+          Bars
+        </button>
       </div>
       <div className={styles.legendDock}>
         <button
@@ -408,8 +445,8 @@ export function Spectrum({ active }: Props) {
             </ul>
           ) : (
             <ul className={styles.regions}>
-              <li>Slow</li>
-              <li>Fast</li>
+              <li>{prefs.showBars ? 'Slow bars' : 'Spectrum line'}</li>
+              <li>Fast peak</li>
               {prefs.layer === 'both' ? <li>Before / after EQ</li> : null}
             </ul>
           )
