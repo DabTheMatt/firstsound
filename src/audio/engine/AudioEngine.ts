@@ -770,6 +770,7 @@ export class AudioEngine {
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
       if (id === 'reverbWet') this.engageReverbFromMix()
+      if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -789,6 +790,7 @@ export class AudioEngine {
     this.syncTimeFromClock('bpm')
     this.applyLiveAudio()
     this.engageReverbFromMix()
+    this.engageDelayFromMix()
     this.emit()
   }
 
@@ -796,6 +798,12 @@ export class AudioEngine {
     if (!reverbMixEngagesModule(this.params.reverbWet)) return
     const reverb = this.chain.find((m) => m.type === 'reverb')
     if (reverb?.bypassed) this.setModuleBypass(reverb.instanceId, false)
+  }
+
+  private engageDelayFromMix(): void {
+    if (this.params.delayWet < 1) return
+    const delay = this.chain.find((m) => m.type === 'delay')
+    if (delay?.bypassed) this.setModuleBypass(delay.instanceId, false)
   }
 
   private copyDelayLeftToRight(): void {
@@ -2705,7 +2713,7 @@ export class AudioEngine {
 
   private lfoTime(): number {
     const now = typeof performance !== 'undefined' ? performance.now() : 0
-    if (this.playing) {
+    if (anyFxLfoActive(this.fxLfos)) {
       if (this.lfoWallMs > 0) this.lfoClockSec += (now - this.lfoWallMs) / 1000
       this.lfoWallMs = now
     } else {
@@ -2720,7 +2728,7 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const active = this.playing && anyFxLfoActive(this.fxLfos)
+    const active = anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.003)
@@ -2786,7 +2794,7 @@ export class AudioEngine {
           invert: live.invertPhase > 0.5,
         },
         now,
-        0.03,
+        smoothing,
       )
     } else if (gainSlot) {
       gainSlot.output.gain.setTargetAtTime(dbToGain(live.gain), now, 0.03)

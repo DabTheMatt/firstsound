@@ -105,6 +105,6 @@ export function applyStereoStage(
   stage.leftToR.gain.setTargetAtTime(route.leftToR, now, smoothing)
   stage.rightToL.gain.setTargetAtTime(route.rightToL, now, smoothing)
   stage.rightToR.gain.setTargetAtTime(route.rightToR, now, smoothing)
-  stage.panner.pan.setTargetAtTime(panNorm(params.pan), now, smoothing)
+  stage.panner.pan.setTargetAtTime(panNorm(params.pan), now, Math.min(smoothing, 0.01))
   stage.output.gain.setTargetAtTime(1, now, smoothing)
 }
