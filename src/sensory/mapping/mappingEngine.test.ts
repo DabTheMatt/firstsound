@@ -65,9 +65,9 @@ describe('mapSensoryToDsp', () => {
     expect(subtle.params.reverbWet).toBeLessThan(20)
     expect(vast.params.reverbWet).toBeGreaterThan(subtle.params.reverbWet)
     expect(vast.params.reverbWet).toBeLessThanOrEqual(SENSORY_SAFETY.reverbWet)
-    expect(vast.params.reverbDecay).toBeGreaterThan(12)
+    expect(vast.params.reverbDecay).toBeGreaterThan(6)
     expect(vast.params.reverbDecay).toBeLessThanOrEqual(SENSORY_SAFETY.reverbDecay)
-    expect(vast.params.reverbShimmer).toBeGreaterThan(40)
+    expect(vast.params.reverbShimmer).toBeGreaterThan(12)
     expect(vast.params.reverbShimmer).toBeLessThanOrEqual(SENSORY_SAFETY.reverbShimmer)
     expect(vast.params.reverbSize).toBeGreaterThan(90)
     expect(vast.eqBands[3]?.gain).toBeCloseTo(base.eqBands[3]!.gain)
@@ -146,8 +146,8 @@ describe('mapSensoryToDsp', () => {
     expect(mapped.params.end).toBe(1.2)
   })
 
-  it('protects with the limiter on extreme space', () => {
-    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.9))
+  it('protects with the limiter as soon as space opens', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.25))
     expect(mapped.bypass.limiter).toBe(false)
   })
 

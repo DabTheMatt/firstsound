@@ -16,6 +16,7 @@ import {
 } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStereo } from './spaceModel'
+import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
@@ -746,10 +747,15 @@ export function applyReverbGraph(
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
   g.freezeIn.gain.setTargetAtTime(freeze ? 0.12 : 1, now, smoothing)
   const huge = type === 'cathedral' || type === 'largeHall' || type === 'cloud' || type === 'bloom' || type === 'infinite'
-  const tank = freeze
-    ? 0.9
-    : Math.min(0.78, 0.16 + (params.reverbDecay / 22) * 0.48 + params.reverbSize / 380 + (huge ? 0.08 : 0))
-  g.tankFb.gain.setTargetAtTime(tank, now, smoothing)
+  const shimmerAmt = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100
+  const loop = reverbLoopGains({
+    decaySec: params.reverbDecay,
+    sizePct: params.reverbSize,
+    shimmer01: shimmerAmt,
+    huge,
+    freeze,
+  })
+  g.tankFb.gain.setTargetAtTime(loop.tank, now, smoothing)
   g.tankDelayL.delayTime.setTargetAtTime(0.062 + params.reverbSize / 420, now, smoothing)
   g.tankDelayR.delayTime.setTargetAtTime(0.089 + params.reverbSize / 310, now, smoothing)
 
@@ -772,8 +778,8 @@ export function applyReverbGraph(
   if (stereo && huge) width = Math.min(200, width * 1.06 + 6)
   g.widthSide.gain.setTargetAtTime(sideGainFromWidth(width), now, smoothing)
   g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.reverbPan / 100)), now, smoothing)
-  const shimmer = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100
-  g.shimmerMix.gain.setTargetAtTime(Math.min(0.55, shimmer * 0.5), now, smoothing)
+  const shimmer = shimmerAmt
+  g.shimmerMix.gain.setTargetAtTime(loop.shimmer, now, smoothing)
   g.shimmerLfo.frequency.setTargetAtTime(5 + Math.abs(params.reverbShimmerPitch) * 0.4, now, smoothing)
   g.shimmerDepth.gain.setTargetAtTime(shimmer > 0.02 ? 0.01 : 0, now, smoothing)
 
