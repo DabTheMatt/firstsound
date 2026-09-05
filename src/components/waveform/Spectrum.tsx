@@ -28,11 +28,14 @@ import {
   SLOW_RELEASE,
   SPECTRUM_BAND_CHOICES,
   SPECTRUM_BAND_COUNT,
+  SPECTRUM_FOLLOW_MODES,
   bandPeakDb,
   clampSpectrumBandCount,
+  clampSpectrumFollowMode,
   followBands,
   logBandEdgesHz,
   type SpectrumBandCount,
+  type SpectrumFollowMode,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
@@ -64,6 +67,8 @@ type SpectrumPrefs = {
   regionColors: boolean
   legendOpen: boolean
   showBars: boolean
+  showLine: boolean
+  follow: SpectrumFollowMode
 }
 
 function loadPrefs(): SpectrumPrefs {
@@ -75,9 +80,19 @@ function loadPrefs(): SpectrumPrefs {
       regionColors: raw?.regionColors !== false,
       legendOpen: raw?.legendOpen !== false,
       showBars: raw?.showBars !== false,
+      showLine: raw?.showLine !== false,
+      follow: clampSpectrumFollowMode(raw?.follow),
     }
   } catch {
-    return { layer: 'both', bands: SPECTRUM_BAND_COUNT, regionColors: true, legendOpen: true, showBars: true }
+    return {
+      layer: 'both',
+      bands: SPECTRUM_BAND_COUNT,
+      regionColors: true,
+      legendOpen: true,
+      showBars: true,
+      showLine: true,
+      follow: 'peak',
+    }
   }
 }
 
@@ -152,7 +167,7 @@ export function Spectrum({ active }: Props) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         const colors = readThemeColors()
-        const { layer, bands, regionColors, showBars } = prefsRef.current
+        const { layer, bands, regionColors, showBars, showLine, follow } = prefsRef.current
         ctx.clearRect(0, 0, width, height)
         const sr = live.sampleRate || 44100
         const nyquist = sr / 2
@@ -222,10 +237,19 @@ export function Spectrum({ active }: Props) {
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
           const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox)
+          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox)
+          const wantPeak = follow === 'peak' || follow === 'both'
+          const wantSlow = follow === 'slow' || follow === 'both'
           const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
           const lineAlpha = style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95
           const fill = regionColors ? undefined : colors.spectrum
           const line = regionColors ? undefined : colors.spectrumLine
+          const dashed = style === 'pre' && layer === 'both'
+          const peakStroke = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
+          const slowStroke =
+            follow === 'both'
+              ? colorWithAlpha(colors.accent, style === 'pre' ? 0.7 : 0.95)
+              : peakStroke
           if (showBars) {
             for (let i = 0; i < bands; i++) {
               const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
@@ -253,15 +277,24 @@ export function Spectrum({ active }: Props) {
           } else {
             const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
             ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
-            fillSpectrumEnvelope(ctx, slowPts, bottom)
+            fillSpectrumEnvelope(ctx, follow === 'peak' ? fastPts : slowPts, bottom)
           }
-          ctx.lineJoin = 'round'
-          ctx.lineCap = 'round'
-          ctx.strokeStyle = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
-          ctx.lineWidth = Math.max(1.2, dpr * (style === 'pre' ? 1.15 : 1.65))
-          if (style === 'pre' && layer === 'both') ctx.setLineDash([4 * dpr, 3 * dpr])
-          strokeSpectrumEnvelope(ctx, slowPts)
-          ctx.setLineDash([])
+          const strokeFollow = (pts: typeof fastPts, color: string, width: number) => {
+            if (!showLine) return
+            ctx.lineJoin = 'round'
+            ctx.lineCap = 'round'
+            ctx.strokeStyle = color
+            ctx.lineWidth = width
+            ctx.setLineDash(dashed ? [4 * dpr, 3 * dpr] : [])
+            strokeSpectrumEnvelope(ctx, pts)
+            ctx.setLineDash([])
+          }
+          if (wantPeak) {
+            strokeFollow(fastPts, peakStroke, Math.max(1.2, dpr * (style === 'pre' ? 1.15 : 1.75)))
+          }
+          if (wantSlow) {
+            strokeFollow(slowPts, slowStroke, Math.max(1, dpr * (follow === 'both' ? 1.2 : style === 'pre' ? 1.15 : 1.65)))
+          }
         }
 
         const eqAudible = live.chain.some((mod) => {
@@ -367,180 +400,235 @@ export function Spectrum({ active }: Props) {
   if (!active) return null
   return (
     <div className={styles.wrap}>
-      <div className={styles.toolbar}>
-        <div className={styles.taps} role="radiogroup" aria-label="EQ spectrum layer">
-          {(['pre', 'post', 'both'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={prefs.layer === id ? styles.on : ''}
-              aria-pressed={prefs.layer === id}
-              onClick={() => setPrefs((p) => ({ ...p, layer: id }))}
+      <div className={styles.chrome}>
+        <div className={styles.chromeLeft}>
+          <label className={styles.bands}>
+            Layer
+            <select
+              aria-label="EQ spectrum layer"
+              value={prefs.layer}
+              onChange={(event) =>
+                setPrefs((p) => ({ ...p, layer: event.target.value as Layer }))
+              }
             >
-              {id === 'pre' ? 'Before' : id === 'post' ? 'After' : 'Both'}
-            </button>
-          ))}
-        </div>
-        <label className={styles.bands}>
-          Bands
-          <select
-            aria-label="FFT band count"
-            value={prefs.bands}
-            onChange={(event) =>
-              setPrefs((p) => ({ ...p, bands: clampSpectrumBandCount(Number(event.target.value)) }))
-            }
-          >
-            {SPECTRUM_BAND_CHOICES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className={prefs.regionColors ? styles.on : ''}
-          aria-pressed={prefs.regionColors}
-          onClick={() => setPrefs((p) => ({ ...p, regionColors: !p.regionColors }))}
-        >
-          Band colors
-        </button>
-        <button
-          type="button"
-          className={prefs.showBars ? styles.on : ''}
-          aria-pressed={prefs.showBars}
-          aria-label={prefs.showBars ? 'Hide FFT bars' : 'Show FFT bars'}
-          title={prefs.showBars ? 'Hide bars' : 'Show bars'}
-          onClick={() => setPrefs((p) => ({ ...p, showBars: !p.showBars }))}
-        >
-          Bars
-        </button>
-      </div>
-      <div className={styles.legendDock}>
-        <button
-          type="button"
-          className={`${styles.legendToggle} ${prefs.legendOpen ? styles.on : ''}`}
-          aria-pressed={prefs.legendOpen}
-          aria-label={prefs.legendOpen ? 'Hide spectrum legend' : 'Show spectrum legend'}
-          title={prefs.legendOpen ? 'Hide legend' : 'Show legend'}
-          onClick={() => setPrefs((p) => ({ ...p, legendOpen: !p.legendOpen }))}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <rect x="1.5" y="2" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="2.5" width="8" height="2" rx="1" fill="currentColor" />
-            <rect x="1.5" y="6.5" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="7" width="8" height="2" rx="1" fill="currentColor" />
-            <rect x="1.5" y="11" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
-          </svg>
-        </button>
-        {prefs.legendOpen ? (
-          prefs.regionColors ? (
-            <ul className={styles.regions}>
-              {SPECTRUM_REGIONS.map((region) => (
-                <li key={region.id}>
-                  <i style={{ background: region.color }} />
-                  {region.label}
-                </li>
+              <option value="pre">Before</option>
+              <option value="post">After</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <label className={styles.bands}>
+            Bands
+            <select
+              aria-label="FFT band count"
+              value={prefs.bands}
+              onChange={(event) =>
+                setPrefs((p) => ({ ...p, bands: clampSpectrumBandCount(Number(event.target.value)) }))
+              }
+            >
+              {SPECTRUM_BAND_CHOICES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
-            </ul>
-          ) : (
-            <ul className={styles.regions}>
-              <li>{prefs.showBars ? 'Slow bars' : 'Spectrum'}</li>
-              {prefs.showBars ? <li>Fast peak</li> : null}
-              {prefs.layer === 'both' ? <li>Before / after when EQ is on</li> : null}
-            </ul>
-          )
+            </select>
+          </label>
+          <label className={styles.bands}>
+            Follow
+            <select
+              aria-label="Spectrum envelope follow"
+              value={prefs.follow}
+              onChange={(event) =>
+                setPrefs((p) => ({ ...p, follow: clampSpectrumFollowMode(event.target.value) }))
+              }
+            >
+              {SPECTRUM_FOLLOW_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode === 'peak' ? 'Peak' : mode === 'slow' ? 'Slow' : 'Both'}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className={styles.chromeRight}>
+          <button
+            type="button"
+            className={`${styles.iconTap} ${prefs.regionColors ? styles.on : ''}`}
+            aria-pressed={prefs.regionColors}
+            aria-label={prefs.regionColors ? 'Use solid band color' : 'Use region band colors'}
+            title="Band colors"
+            onClick={() => setPrefs((p) => ({ ...p, regionColors: !p.regionColors }))}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <circle cx="5" cy="6" r="3" fill="currentColor" opacity="0.85" />
+              <circle cx="11" cy="6" r="3" fill="currentColor" opacity="0.55" />
+              <circle cx="8" cy="11" r="3" fill="currentColor" opacity="0.7" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`${styles.iconTap} ${prefs.showBars ? styles.on : ''}`}
+            aria-pressed={prefs.showBars}
+            aria-label={prefs.showBars ? 'Hide FFT bars' : 'Show FFT bars'}
+            title={prefs.showBars ? 'Hide bars' : 'Show bars'}
+            onClick={() => setPrefs((p) => ({ ...p, showBars: !p.showBars }))}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <rect x="2" y="8" width="3" height="6" rx="0.6" fill="currentColor" />
+              <rect x="6.5" y="3" width="3" height="11" rx="0.6" fill="currentColor" />
+              <rect x="11" y="6" width="3" height="8" rx="0.6" fill="currentColor" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`${styles.iconTap} ${prefs.showLine ? styles.on : ''}`}
+            aria-pressed={prefs.showLine}
+            aria-label={prefs.showLine ? 'Hide spectrum line' : 'Show spectrum line'}
+            title={prefs.showLine ? 'Hide line' : 'Show line'}
+            onClick={() => setPrefs((p) => ({ ...p, showLine: !p.showLine }))}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path
+                d="M1.5 11.5 L4.5 6.5 L7.2 9.2 L10.5 3.5 L14.5 8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`${styles.iconTap} ${prefs.legendOpen ? styles.on : ''}`}
+            aria-pressed={prefs.legendOpen}
+            aria-label={prefs.legendOpen ? 'Hide spectrum legend' : 'Show spectrum legend'}
+            title={prefs.legendOpen ? 'Hide legend' : 'Show legend'}
+            onClick={() => setPrefs((p) => ({ ...p, legendOpen: !p.legendOpen }))}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <rect x="1.5" y="2" width="3" height="3" rx="1" fill="currentColor" />
+              <rect x="6.5" y="2.5" width="8" height="2" rx="1" fill="currentColor" />
+              <rect x="1.5" y="6.5" width="3" height="3" rx="1" fill="currentColor" />
+              <rect x="6.5" y="7" width="8" height="2" rx="1" fill="currentColor" />
+              <rect x="1.5" y="11" width="3" height="3" rx="1" fill="currentColor" />
+              <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className={styles.stage}>
+        {prefs.legendOpen ? (
+          <div className={styles.legendDock}>
+            {prefs.regionColors ? (
+              <ul className={styles.regions}>
+                {SPECTRUM_REGIONS.map((region) => (
+                  <li key={region.id}>
+                    <i style={{ background: region.color }} />
+                    {region.label}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <ul className={styles.regions}>
+                <li>{prefs.showBars ? 'Slow bars' : 'Fill'}</li>
+                {prefs.showLine && prefs.follow !== 'slow' ? <li>Peak line</li> : null}
+                {prefs.showLine && prefs.follow !== 'peak' ? (
+                  <li>{prefs.follow === 'both' ? 'Slow line (accent)' : 'Slow line'}</li>
+                ) : null}
+                {prefs.layer === 'both' ? <li>Before / after when EQ is on</li> : null}
+              </ul>
+            )}
+          </div>
+        ) : null}
+        <canvas
+          ref={canvasRef}
+          className={styles.canvas}
+          aria-label="Spectrum analyzer"
+          onPointerMove={(event) => {
+            if (drag.current) return
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const rect = canvas.getBoundingClientRect()
+            const x = event.clientX - rect.left
+            const y = event.clientY - rect.top
+            const sr = engine.getSnapshot().sampleRate || 44100
+            const nyquist = sr / 2
+            const left = SPECTRUM_PLOT_PAD.left
+            const right = rect.width - SPECTRUM_PLOT_PAD.right
+            const top = SPECTRUM_PLOT_PAD.top
+            const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
+            if (x < left || x > right || y < top || y > bottom) {
+              setHover(null)
+              return
+            }
+            const hz = hzFromLogAxis((x - left) / Math.max(1, right - left), 20, nyquist)
+            setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68 })
+          }}
+          onPointerLeave={() => setHover(null)}
+        />
+        <div
+          ref={plotRef}
+          className={styles.plot}
+          style={{
+            left: SPECTRUM_PLOT_PAD.left,
+            right: SPECTRUM_PLOT_PAD.right,
+            top: SPECTRUM_PLOT_PAD.top,
+            bottom: SPECTRUM_PLOT_PAD.bottom,
+          }}
+        >
+          {eqMods.flatMap((mod) => {
+            const bands = snap.eqById[mod.instanceId]?.bands ?? []
+            const liveBands = liveEqBandsFromParams(bands, snap.liveParams)
+            return liveBands.map((band, index) => {
+            if (band.type === 'off') return null
+            const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
+            const yPct =
+              eqDbToY(nodeDisplayDb(band), 1, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB) * 100
+            const selected =
+              selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
+            const dim = mod.bypassed || band.bypassed
+            const ids = EQ_BAND_LFO_IDS[index]
+            const bank = snap.fxLfos[eqBandLfoKind(index)]
+            const mapped = Boolean(
+              ids &&
+                bank?.some(
+                  (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
+                ),
+            )
+            const stored = bands[index]
+            const color = eqBandColorForHz(stored?.frequency ?? band.frequency)
+            return (
+              <button
+                key={`${mod.instanceId}-${index}`}
+                type="button"
+                className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
+                style={{
+                  left: `${xPct}%`,
+                  top: `${Math.min(100, Math.max(0, yPct))}%`,
+                  background: dim ? undefined : color,
+                  borderColor: color,
+                }}
+                aria-label={`EQ ${mod.instanceId} band ${index + 1} ${band.type}`}
+                onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
+                onPointerMove={onNodePointerMove}
+                onPointerUp={onNodePointerUp}
+                onPointerCancel={onNodePointerUp}
+              >
+                {index + 1}
+              </button>
+            )
+          })
+          })}
+        </div>
+        {hover ? (
+          <div
+            className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}
+            style={{ left: hover.x, top: hover.y }}
+          >
+            {hover.label}
+          </div>
         ) : null}
       </div>
-      <canvas
-        ref={canvasRef}
-        className={styles.canvas}
-        aria-label="Spectrum analyzer"
-        onPointerMove={(event) => {
-          if (drag.current) return
-          const canvas = canvasRef.current
-          if (!canvas) return
-          const rect = canvas.getBoundingClientRect()
-          const x = event.clientX - rect.left
-          const y = event.clientY - rect.top
-          const sr = engine.getSnapshot().sampleRate || 44100
-          const nyquist = sr / 2
-          const left = SPECTRUM_PLOT_PAD.left
-          const right = rect.width - SPECTRUM_PLOT_PAD.right
-          const top = SPECTRUM_PLOT_PAD.top
-          const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
-          if (x < left || x > right || y < top || y > bottom) {
-            setHover(null)
-            return
-          }
-          const hz = hzFromLogAxis((x - left) / Math.max(1, right - left), 20, nyquist)
-          setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68 })
-        }}
-        onPointerLeave={() => setHover(null)}
-      />
-      <div
-        ref={plotRef}
-        className={styles.plot}
-        style={{
-          left: SPECTRUM_PLOT_PAD.left,
-          right: SPECTRUM_PLOT_PAD.right,
-          top: SPECTRUM_PLOT_PAD.top,
-          bottom: SPECTRUM_PLOT_PAD.bottom,
-        }}
-      >
-        {eqMods.flatMap((mod) => {
-          const bands = snap.eqById[mod.instanceId]?.bands ?? []
-          const liveBands = liveEqBandsFromParams(bands, snap.liveParams)
-          return liveBands.map((band, index) => {
-          if (band.type === 'off') return null
-          const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
-          const yPct =
-            eqDbToY(nodeDisplayDb(band), 1, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB) * 100
-          const selected =
-            selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
-          const dim = mod.bypassed || band.bypassed
-          const ids = EQ_BAND_LFO_IDS[index]
-          const bank = snap.fxLfos[eqBandLfoKind(index)]
-          const mapped = Boolean(
-            ids &&
-              bank?.some(
-                (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
-              ),
-          )
-          const stored = bands[index]
-          const color = eqBandColorForHz(stored?.frequency ?? band.frequency)
-          return (
-            <button
-              key={`${mod.instanceId}-${index}`}
-              type="button"
-              className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
-              style={{
-                left: `${xPct}%`,
-                top: `${Math.min(100, Math.max(0, yPct))}%`,
-                background: dim ? undefined : color,
-                borderColor: color,
-              }}
-              aria-label={`EQ ${mod.instanceId} band ${index + 1} ${band.type}`}
-              onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
-              onPointerMove={onNodePointerMove}
-              onPointerUp={onNodePointerUp}
-              onPointerCancel={onNodePointerUp}
-            >
-              {index + 1}
-            </button>
-          )
-        })
-        })}
-      </div>
-      {hover ? (
-        <div
-          className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}
-          style={{ left: hover.x, top: hover.y }}
-        >
-          {hover.label}
-        </div>
-      ) : null}
     </div>
   )
 }

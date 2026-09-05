@@ -1,6 +1,12 @@
 /** Log-spaced FFT bands + dual envelope followers for the spectrum view. */
 
-export const SPECTRUM_BAND_COUNT = 32
+export const SPECTRUM_FOLLOW_MODES = ['peak', 'slow', 'both'] as const
+
+export type SpectrumFollowMode = (typeof SPECTRUM_FOLLOW_MODES)[number]
+
+export function clampSpectrumFollowMode(value: unknown): SpectrumFollowMode {
+  return value === 'slow' || value === 'both' || value === 'peak' ? value : 'peak'
+}
 
 export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256] as const
 
