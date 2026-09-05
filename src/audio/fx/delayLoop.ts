@@ -1,7 +1,8 @@
+import { delayTypeProfile } from './delayProfiles'
 import type { DelayType } from './types'
 
 /** Max regenerative gain. Always < 1 so each repeat is quieter than the last. */
-export const DELAY_FB_CEILING = 0.92
+export const DELAY_FB_CEILING = 0.78
 
 export type DelayFeedbackGains = {
   /** Processed L → delay L (self). */
@@ -17,17 +18,18 @@ export type DelayFeedbackGains = {
 }
 
 /**
- * Linear feedback with a hard ceiling under unity.
- * 35% ≈ a handful of decaying slaps; 90% is a long tail that still fades.
+ * Feedback as used on musical delays: 35% is a handful of fading slaps,
+ * 50% is a tail, 95% is long but still decays. Scaled per delay type.
  */
-export function delayLoopGain(feedbackPct: number): number {
-  return Math.min(DELAY_FB_CEILING, Math.max(0, feedbackPct / 100))
+export function delayLoopGain(feedbackPct: number, type: DelayType = 'digital'): number {
+  const t = Math.min(1, Math.max(0, feedbackPct / 100))
+  return Math.min(DELAY_FB_CEILING, t * delayTypeProfile(type).fbScale)
 }
 
 function pitchLoopMix(type: DelayType, delayPitch: number): number {
-  if (type === 'pitch') return Math.min(0.85, Math.max(0.2, Math.abs(delayPitch) / 48))
+  if (type === 'pitch') return Math.min(0.7, Math.max(0.18, Math.abs(delayPitch) / 48))
   if (Math.abs(delayPitch) < 0.05) return 0
-  return Math.min(0.7, Math.abs(delayPitch) / 48)
+  return Math.min(0.55, Math.abs(delayPitch) / 48)
 }
 
 /**
@@ -40,7 +42,7 @@ export function delayFeedbackGains(
   freeze: boolean,
   delayPitch = 0,
 ): DelayFeedbackGains {
-  const g = freeze ? Math.min(0.96, DELAY_FB_CEILING + 0.04) : delayLoopGain(feedbackPct)
+  const g = freeze ? Math.min(0.86, DELAY_FB_CEILING + 0.06) : delayLoopGain(feedbackPct, type)
   const pitchMix = freeze ? 0 : pitchLoopMix(type, delayPitch)
   const regen = g * (1 - pitchMix)
   if (type === 'pingPong') {
@@ -54,45 +56,37 @@ export function delayLoopFilters(
   delayLp: number,
   delayFeedback: number,
   type: DelayType,
-): { hp: number; lp: number } {
-  const analog = type === 'analog' || type === 'tape' || type === 'lofi'
-  const hp = analog ? Math.max(delayHp, type === 'lofi' ? 180 : 80) : delayHp
-  let lp = analog
-    ? Math.min(delayLp, type === 'tape' ? 6500 : type === 'lofi' ? 3400 : 4800)
-    : delayLp
-  if (type === 'digital' || type === 'pingPong' || type === 'stereo') {
-    lp = Math.min(lp, 14000)
-  }
-  // Higher feedback → darker loop so stacked repeats recede instead of hissing up.
-  const damp = 16000 - (Math.min(100, Math.max(0, delayFeedback)) / 100) * 8000
-  lp = Math.min(lp, damp)
-  return { hp, lp: Math.max(200, lp) }
+): { hp: number; lp: number; q: number } {
+  const profile = delayTypeProfile(type)
+  const hp = Math.max(delayHp, profile.loopHpMin)
+  const fb01 = Math.min(100, Math.max(0, delayFeedback)) / 100
+  const damp = profile.loopLpMax * (1 - fb01 * 0.45)
+  const lp = Math.min(delayLp, profile.loopLpMax, damp)
+  return { hp, lp: Math.max(200, lp), q: profile.filterQ }
 }
 
 /** Extra multi-tap / diffuse taps are taken from the input, not the delay output. */
 export function delayInputTapGains(type: DelayType): { tapA: number; tapB: number } {
-  if (type === 'multiTap') return { tapA: 0.28, tapB: 0.16 }
-  if (type === 'diffuse') return { tapA: 0.18, tapB: 0.12 }
+  if (type === 'multiTap') return { tapA: 0.22, tapB: 0.12 }
+  if (type === 'diffuse') return { tapA: 0.14, tapB: 0.08 }
   return { tapA: 0, tapB: 0 }
 }
 
 /** Delay-time modulation in seconds — small enough to color, not to smear the grid. */
 export function delayModSeconds(timeSec: number, depth01: number): number {
-  return Math.min(0.007, Math.max(0, timeSec) * 0.025) * Math.min(1, Math.max(0, depth01))
+  return Math.min(0.005, Math.max(0, timeSec) * 0.018) * Math.min(1, Math.max(0, depth01))
 }
 
-export function delayWowSeconds(timeSec: number, wow01: number, type: DelayType): number {
-  const bias = type === 'tape' ? 0.05 : 0
-  return Math.max(0, timeSec) * 0.012 * Math.min(1, Math.max(0, wow01 + bias))
+export function delayWowSeconds(timeSec: number, wow01: number): number {
+  return Math.max(0, timeSec) * 0.01 * Math.min(1, Math.max(0, wow01))
 }
 
-export function delayFlutterSeconds(timeSec: number, flutter01: number, type: DelayType): number {
-  const bias = type === 'tape' ? 0.04 : 0
-  return Math.max(0, timeSec) * 0.004 * Math.min(1, Math.max(0, flutter01 + bias))
+export function delayFlutterSeconds(timeSec: number, flutter01: number): number {
+  return Math.max(0, timeSec) * 0.003 * Math.min(1, Math.max(0, flutter01))
 }
 
-export function successiveRepeatGains(feedbackPct: number, count: number): number[] {
-  const g = delayLoopGain(feedbackPct)
+export function successiveRepeatGains(feedbackPct: number, count: number, type: DelayType = 'digital'): number[] {
+  const g = delayLoopGain(feedbackPct, type)
   const out: number[] = []
   let level = 1
   for (let i = 0; i < count; i++) {
@@ -100,4 +94,9 @@ export function successiveRepeatGains(feedbackPct: number, count: number): numbe
     out.push(level)
   }
   return out
+}
+
+export function loopHopEnergy(feedbackPct: number, type: DelayType, freeze = false, delayPitch = 0): number {
+  const g = delayFeedbackGains(feedbackPct, type, freeze, delayPitch)
+  return g.fbL + g.pingToR + g.pitchMix
 }

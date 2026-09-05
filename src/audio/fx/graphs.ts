@@ -88,10 +88,16 @@ export type ReverbGraph = {
   shimmerDepth: GainNode
 }
 
+/** Identity when Drive is off — a tanh at 0 still aliases and hisses in a loop. */
 export function makeDriveCurve(amount: number): Float32Array<ArrayBuffer> {
   const n = 1024
   const curve = new Float32Array(new ArrayBuffer(n * 4))
-  const k = 1 + amount * 14
+  const amt = Math.min(1, Math.max(0, amount))
+  if (amt <= 0.008) {
+    for (let i = 0; i < n; i++) curve[i] = (i / (n - 1)) * 2 - 1
+    return curve
+  }
+  const k = 1 + amt * 6
   const denom = Math.tanh(k)
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1
@@ -138,6 +144,7 @@ function makeLoopFilter(ctx: AudioContext, type: BiquadFilterType, frequency: nu
   const f = ctx.createBiquadFilter()
   f.type = type
   f.frequency.value = frequency
+  f.Q.value = 0.5
   return f
 }
 
@@ -175,6 +182,8 @@ export function createDelayGraph(
   const driveR = ctx.createWaveShaper()
   driveL.curve = makeDriveCurve(0)
   driveR.curve = makeDriveCurve(0)
+  driveL.oversample = '2x'
+  driveR.oversample = '2x'
   const duckAmt = ctx.createGain()
   duckAmt.gain.value = 0
   const pan = ctx.createStereoPanner()
@@ -407,17 +416,19 @@ export function applyDelayGraph(
   g.hpR.frequency.setTargetAtTime(loop.hp, now, smoothing)
   g.lpL.frequency.setTargetAtTime(loop.lp, now, smoothing)
   g.lpR.frequency.setTargetAtTime(loop.lp, now, smoothing)
-  const driveAmt =
-    (params.delayDrive / 100) * 0.55 + (type === 'tape' ? 0.12 : type === 'analog' ? 0.08 : type === 'lofi' ? 0.22 : 0)
-  const curve = makeDriveCurve(driveAmt)
+  g.hpL.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.hpR.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.lpL.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.lpR.Q.setTargetAtTime(loop.q, now, smoothing)
+  const curve = makeDriveCurve(params.delayDrive / 100)
   g.driveL.curve = curve
   g.driveR.curve = curve
 
   g.lfo.frequency.setTargetAtTime(params.delayModRate, now, smoothing)
   g.lfoGain.gain.setTargetAtTime(delayModSeconds(time, params.delayModDepth / 100), now, smoothing)
-  g.wowGain.gain.setTargetAtTime(delayWowSeconds(time, params.delayWow / 100, type), now, smoothing)
-  g.flutterGain.gain.setTargetAtTime(delayFlutterSeconds(time, params.delayFlutter / 100, type), now, smoothing)
-  g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.015, now, smoothing)
+  g.wowGain.gain.setTargetAtTime(delayWowSeconds(time, params.delayWow / 100), now, smoothing)
+  g.flutterGain.gain.setTargetAtTime(delayFlutterSeconds(time, params.delayFlutter / 100), now, smoothing)
+  g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.01, now, smoothing)
 
   g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.delayPan / 100)), now, smoothing)
   g.widthSide.gain.setTargetAtTime(sideGainFromWidth(params.delayWidth), now, smoothing)

@@ -127,8 +127,8 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
-        Categories load a starting sound. Mix is a single dry/wet control. Feedback stays below unity so
-        each delay repeat is quieter than the last.
+        Categories load a starting sound. Delay type sets analog / tape / digital color (filters, drive,
+        wow) without changing Time or Mix. Feedback stays below unity so each repeat fades.
       </p>
       <Segmented
         label="Preset category"

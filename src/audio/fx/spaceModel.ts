@@ -44,7 +44,7 @@ export function delayTaps(
 ): DelayTap[] {
   const mix = Math.max(params.delayWet / 100, 0.18)
   const time = Math.max(0.001, delayTimeSeconds(params, bpm))
-  const fb = delayLoopGain(params.delayFeedback)
+  const fb = delayLoopGain(params.delayFeedback, type)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100
   const ping = type === 'pingPong'
   const stereo = type === 'stereo' || ping
