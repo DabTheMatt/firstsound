@@ -109,14 +109,14 @@ export function SensoryShell({
       <header className={styles.top}>
         <div className={styles.brandRow}>
           <p className={styles.brand}>Firstsound</p>
+        </div>
+        <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
+        <div className={styles.tools}>
           <SensoryThemePicker
             scene={scene}
             onScene={chooseScene}
             onPlaces={() => setPlacesOpen((v) => !v)}
           />
-        </div>
-        <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
-        <div className={styles.tools}>
           <button
             type="button"
             className={styles.menuBtn}

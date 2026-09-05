@@ -12,7 +12,7 @@ import {
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
-import { EQ_MAX_HZ, EQ_MIN_HZ } from '../../audio/engine/eqBands'
+import { EQ_MAX_HZ, EQ_MIN_HZ, eqModuleIsAudible } from '../../audio/engine/eqBands'
 import {
   DB_SCALE,
   FREQ_SCALE_HZ,
@@ -222,9 +222,8 @@ export function Spectrum({ active }: Props) {
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
           const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox)
-          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox)
           const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
-          const lineAlpha = style === 'pre' ? (layer === 'both' ? 0.45 : 0.72) : 0.95
+          const lineAlpha = style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95
           const fill = regionColors ? undefined : colors.spectrum
           const line = regionColors ? undefined : colors.spectrumLine
           if (showBars) {
@@ -263,17 +262,19 @@ export function Spectrum({ active }: Props) {
           if (style === 'pre' && layer === 'both') ctx.setLineDash([4 * dpr, 3 * dpr])
           strokeSpectrumEnvelope(ctx, slowPts)
           ctx.setLineDash([])
-          if (style === 'post' || layer !== 'both') {
-            ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 1)
-            ctx.lineWidth = Math.max(1, dpr * 0.9)
-            strokeSpectrumEnvelope(ctx, fastPts)
-          }
         }
 
-        if (layer === 'pre' || layer === 'both') {
+        const eqAudible = live.chain.some((mod) => {
+          if (mod.type !== 'eq') return false
+          const st = live.eqById[mod.instanceId]
+          return eqModuleIsAudible(mod.bypassed, st?.bands ?? [], Boolean(st?.comb.enabled))
+        })
+        const showPre = layer === 'pre' || (layer === 'both' && eqAudible)
+        const showPost = layer === 'post' || layer === 'both'
+        if (showPre) {
           drawLayer(engine.getAnalyser('pre'), preFast.current, preSlow.current, 'pre')
         }
-        if (layer === 'post' || layer === 'both') {
+        if (showPost) {
           drawLayer(engine.getAnalyser('eq'), postFast.current, postSlow.current, 'post')
         }
 
@@ -445,9 +446,9 @@ export function Spectrum({ active }: Props) {
             </ul>
           ) : (
             <ul className={styles.regions}>
-              <li>{prefs.showBars ? 'Slow bars' : 'Spectrum line'}</li>
-              <li>Fast peak</li>
-              {prefs.layer === 'both' ? <li>Before / after EQ</li> : null}
+              <li>{prefs.showBars ? 'Slow bars' : 'Spectrum'}</li>
+              {prefs.showBars ? <li>Fast peak</li> : null}
+              {prefs.layer === 'both' ? <li>Before / after when EQ is on</li> : null}
             </ul>
           )
         ) : null}
