@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absEnvelope, blurEnvelope, grainBandCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
+import { absEnvelope, blurEnvelope, echoGhostSpecs, grainBandCount, grainLineCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
 
 describe('mountainLayerSpecs', () => {
   it('adds a far ridge when there is motion', () => {
@@ -11,6 +11,12 @@ describe('mountainLayerSpecs', () => {
     expect(mountainLayerSpecs(0.4, 0, 0.3).length).toBe(5)
     expect(mountainLayerSpecs(0.4, 0, 0.7).length).toBe(6)
   })
+
+  it('recedes later ridges on z', () => {
+    const layers = mountainLayerSpecs(0.4, 0.5, 0.4)
+    expect(layers[0]?.z).toBe(0)
+    expect(layers[layers.length - 1]!.z).toBeGreaterThan(layers[0]!.z)
+  })
 })
 
 describe('grainBandCount', () => {
@@ -18,6 +24,26 @@ describe('grainBandCount', () => {
     expect(grainBandCount(0)).toBe(1)
     expect(grainBandCount(0.3)).toBeGreaterThan(2)
     expect(grainBandCount(1)).toBeGreaterThan(grainBandCount(0.3))
+  })
+})
+
+describe('grainLineCount', () => {
+  it('stays empty at rest and opens hundreds of lines at full grain', () => {
+    expect(grainLineCount(0, 1200)).toBe(0)
+    expect(grainLineCount(0.25, 1200)).toBeGreaterThan(80)
+    expect(grainLineCount(1, 1200)).toBeGreaterThanOrEqual(200)
+    expect(grainLineCount(1, 1600)).toBeGreaterThan(grainLineCount(0.4, 1600))
+  })
+})
+
+describe('echoGhostSpecs', () => {
+  it('adds enlarging overlapping ghosts as echo rises', () => {
+    expect(echoGhostSpecs(0)).toEqual([])
+    const mild = echoGhostSpecs(0.3)
+    const full = echoGhostSpecs(1)
+    expect(full.length).toBeGreaterThan(mild.length)
+    expect(full[full.length - 1]!.scale).toBeGreaterThan(full[0]!.scale)
+    expect(full[full.length - 1]!.z).toBeGreaterThan(full[0]!.z)
   })
 })
 

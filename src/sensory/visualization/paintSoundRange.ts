@@ -4,10 +4,12 @@ import {
   canyonSliceCount,
   chromaticShift,
   gleamRayCount,
+  growFromBaseline,
   mirrorLayout,
+  projectZ,
   rangeLayout,
 } from './rangeScenes'
-import { grainBandCount, type MountainLayerSpec } from './mountainLayers'
+import { echoGhostSpecs, grainLineCount, type MountainLayerSpec } from './mountainLayers'
 import { mixRgb, panNorm, rgbCss, type Rgb, type SensoryVisualState } from './sensoryVisualState'
 
 export type RangePaintArgs = {
@@ -59,25 +61,59 @@ function strokeStack(
   sway: number,
   grit: number,
   dir: 1 | -1,
+  grow = 1,
+  extraZ = 0,
 ) {
-  const { width, visual, layers, specs, nowMs } = args
+  const { width, height, visual, layers, specs, nowMs } = args
+  const pan01 = panNorm(args.livePan)
   specs.forEach((spec, li) => {
     const env = layers[li]
     if (!env) return
+    const z = Math.min(1, (spec.z ?? li / Math.max(1, specs.length - 1)) + extraZ)
     ctx.beginPath()
-    ctx.moveTo(xOff, base)
+    const origin = projectZ(
+      growFromBaseline(xOff, base, base, grow, width).x,
+      base,
+      z,
+      width,
+      height,
+      pan01,
+    )
+    ctx.moveTo(origin.x, origin.y)
     for (let x = 0; x < width; x++) {
-      ctx.lineTo(x + xOff, ridgeY(env, x, base, amp, spec, visual, grit, nowMs, li, sway, dir))
+      const y = ridgeY(env, x, base, amp, spec, visual, grit, nowMs, li, sway, dir)
+      const grown = growFromBaseline(x + xOff, y, base, grow, width)
+      const p = projectZ(grown.x, grown.y, z, width, height, pan01)
+      ctx.lineTo(p.x, p.y)
     }
-    ctx.lineTo(width + xOff, base)
+    const end = projectZ(
+      growFromBaseline(width + xOff, base, base, grow, width).x,
+      base,
+      z,
+      width,
+      height,
+      pan01,
+    )
+    ctx.lineTo(end.x, end.y)
     ctx.closePath()
     const open = Math.max(0, visual.character)
     ctx.fillStyle = rgbCss(fill, Math.min(1, spec.alpha * (1.15 + visual.glow * 0.4 + open * 0.12) * alphaMul))
     ctx.fill()
     ctx.strokeStyle = rgbCss(fill, 0.78)
-    ctx.lineWidth = Math.max(1, args.dpr)
+    ctx.lineWidth = Math.max(1, args.dpr * (1 - z * 0.35))
     ctx.stroke()
   })
+}
+
+function paintDepthHaze(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
+  const { width, height, visual } = args
+  if (visual.depth < 0.18 && visual.echo < 0.08) return
+  const mist = ctx.createLinearGradient(0, height * 0.08, 0, height)
+  mist.addColorStop(0, `rgba(18, 28, 44, ${0.16 + visual.space * 0.28})`)
+  mist.addColorStop(0.42, `rgba(10, 16, 28, ${0.08 + visual.echo * 0.12})`)
+  mist.addColorStop(1, 'rgba(8,12,20,0)')
+  ctx.fillStyle = mist
+  ctx.fillRect(0, 0, width, height)
 }
 
 function paintWash(ctx: CanvasRenderingContext2D, args: RangePaintArgs, focusY: number) {
@@ -122,11 +158,10 @@ function paintChromaStacks(
 ) {
   const { visual, ink, dpr } = args
   const grit = visual.dirt
-  const echoShift = visual.echo * 28 * dpr
   const chroma = chromaticShift(visual.drift, dpr)
-  const panSwing = panNorm(args.livePan) * args.width * 0.32
-  const draw = (xOff: number, fill: Rgb, alpha: number) => {
-    strokeStack(ctx, args, xOff + panSwing, fill, alpha, base, amp, sway, grit, dir)
+  const panSwing = panNorm(args.livePan) * args.width * 0.18
+  const draw = (xOff: number, fill: Rgb, alpha: number, grow = 1, extraZ = 0) => {
+    strokeStack(ctx, args, xOff + panSwing, fill, alpha, base, amp, sway, grit, dir, grow, extraZ)
   }
   if (visual.drift > 0.06) {
     ctx.save()
@@ -138,31 +173,60 @@ function paintChromaStacks(
   } else {
     draw(0, ink, 1)
   }
-  if (visual.echo > 0.08) {
-    draw(echoShift, mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.55), visual.echo * 0.55)
-    draw(-echoShift * 0.7, mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.35), visual.echo * 0.35)
+  const ghosts = echoGhostSpecs(visual.echo)
+  if (ghosts.length) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    for (const ghost of ghosts) {
+      draw(
+        0,
+        mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.45 + ghost.z * 0.2),
+        ghost.alpha,
+        ghost.scale,
+        ghost.z,
+      )
+    }
+    ctx.restore()
   }
 }
 
-function withGrainBands(args: RangePaintArgs, paint: () => void) {
-  const { ctx, width, height, visual, dpr } = args
-  const bands = grainBandCount(visual.grain)
-  if (bands <= 1) {
-    paint()
-    return
+function paintGrainLines(
+  ctx: CanvasRenderingContext2D,
+  args: RangePaintArgs,
+  bases: number[],
+  amp: number,
+  dirs: Array<1 | -1>,
+) {
+  const { width, visual, layers, specs, dpr, nowMs } = args
+  const n = grainLineCount(visual.grain, width)
+  if (n < 2) return
+  const env = layers[0]
+  const spec = specs[0]
+  if (!env || !spec) return
+  const pan01 = panNorm(args.livePan)
+  ctx.save()
+  ctx.globalCompositeOperation = 'screen'
+  const tint = mixRgb(visual.ink, { r: 140, g: 255, b: 176 }, 0.55)
+  for (let i = 0; i < n; i++) {
+    const x = ((i + 0.5) / n) * (width - 1)
+    const jitter = Math.sin(i * 12.9898 + visual.mod * 8) * visual.grain * 2.4 * dpr
+    const xi = Math.min(width - 1, Math.max(0, Math.round(x)))
+    bases.forEach((base, bi) => {
+      const dir = dirs[bi] ?? -1
+      const tip = ridgeY(env, xi, base, amp, spec, visual, visual.dirt, nowMs, 0, 0, dir)
+      const grown = growFromBaseline(x + jitter, tip, base, 1, width)
+      const pTip = projectZ(grown.x, grown.y, visual.grain * 0.08, width, args.height, pan01)
+      const pBase = projectZ(x + jitter, base, visual.grain * 0.08, width, args.height, pan01)
+      const odd = i % 3 === 0
+      ctx.strokeStyle = rgbCss(tint, 0.08 + visual.grain * (odd ? 0.28 : 0.14))
+      ctx.lineWidth = Math.max(1, dpr * (odd ? 1.15 : 0.7))
+      ctx.beginPath()
+      ctx.moveTo(pBase.x, pBase.y)
+      ctx.lineTo(pTip.x, pTip.y)
+      ctx.stroke()
+    })
   }
-  const gap = Math.max(4 * dpr, visual.grain * 22 * dpr)
-  const bandW = (width - gap * (bands - 1)) / bands
-  for (let b = 0; b < bands; b++) {
-    const x0 = b * (bandW + gap)
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(x0, 0, bandW, height)
-    ctx.clip()
-    ctx.translate(0, ((b % 2) * 2 - 1) * visual.grain * 12 * dpr)
-    paint()
-    ctx.restore()
-  }
+  ctx.restore()
 }
 
 function paintPlayheadPair(
@@ -200,7 +264,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   if (!env) return
   const slices = canyonSliceCount(height)
   const step = Math.max(2, Math.floor(width / 180))
-  const spec0: MountainLayerSpec = specs[0] ?? { scale: 1, alpha: 1, blur: 0, drop: 0 }
+  const spec0: MountainLayerSpec = specs[0] ?? { scale: 1, alpha: 1, blur: 0, drop: 0, z: 0 }
 
   const sky = ctx.createLinearGradient(0, 0, 0, height)
   sky.addColorStop(0, rgbCss(mixRgb(ink, { r: 56, g: 36, b: 24 }, 0.35), 0.55))
@@ -246,6 +310,50 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
       else ctx.lineTo(p.x, p.y)
     }
     ctx.stroke()
+  }
+
+  const ghosts = echoGhostSpecs(visual.echo)
+  if (ghosts.length) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    for (const ghost of ghosts) {
+      ctx.beginPath()
+      const d = Math.min(0.92, ghost.z)
+      const floorY = canyonProject(0, d, 0, width, height).floorY
+      ctx.moveTo(0, floorY)
+      for (let x = 0; x <= width; x += step) {
+        const xi = Math.min(width - 1, x)
+        const amp01 = Math.min(1, (env[xi] ?? 0) * spec0.scale * ghost.scale * (0.4 + visual.echo * 0.5))
+        const p = canyonProject(xi / Math.max(1, width - 1), d, amp01, width, height)
+        ctx.lineTo(p.x, p.y)
+      }
+      ctx.lineTo(width, floorY)
+      ctx.closePath()
+      ctx.fillStyle = rgbCss(mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.45), ghost.alpha)
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
+  const grainN = grainLineCount(visual.grain, width)
+  if (grainN > 2) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    const tint = mixRgb(ink, { r: 140, g: 255, b: 176 }, 0.5)
+    for (let i = 0; i < grainN; i++) {
+      const x01 = (i + 0.5) / grainN
+      const xi = Math.min(width - 1, Math.round(x01 * (width - 1)))
+      const amp01 = Math.min(1, (env[xi] ?? 0) * spec0.scale)
+      const floor = canyonProject(x01, 0.55, 0, width, height)
+      const tipG = canyonProject(x01, 0.08, amp01, width, height)
+      ctx.strokeStyle = rgbCss(tint, 0.06 + visual.grain * 0.2)
+      ctx.lineWidth = Math.max(1, dpr * 0.7)
+      ctx.beginPath()
+      ctx.moveTo(floor.x, floor.floorY)
+      ctx.lineTo(tipG.x, tipG.y)
+      ctx.stroke()
+    }
+    ctx.restore()
   }
 
   const px = Math.min(1, Math.max(0, playFrac)) * (width - 1)
@@ -312,10 +420,13 @@ export function paintSoundRange(args: RangePaintArgs) {
     const layout = mirrorLayout(height, visual.space)
     const amp = layout.amp * (1 - visual.tight * 0.22)
     paintWash(ctx, args, height * 0.5)
-    withGrainBands(args, () => {
-      paintChromaStacks(ctx, args, layout.upperBase, amp, sway, layout.upperDir)
-      paintChromaStacks(ctx, args, layout.lowerBase, amp, sway, layout.lowerDir)
-    })
+    paintDepthHaze(ctx, args)
+    paintChromaStacks(ctx, args, layout.upperBase, amp, sway, layout.upperDir)
+    paintChromaStacks(ctx, args, layout.lowerBase, amp, sway, layout.lowerDir)
+    paintGrainLines(ctx, args, [layout.upperBase, layout.lowerBase], amp, [
+      layout.upperDir,
+      layout.lowerDir,
+    ])
     const haze = ctx.createLinearGradient(0, layout.upperBase, 0, layout.lowerBase)
     haze.addColorStop(0, 'rgba(8,12,20,0)')
     haze.addColorStop(0.5, `rgba(10,16,28,${0.18 + visual.space * 0.22})`)
@@ -333,9 +444,9 @@ export function paintSoundRange(args: RangePaintArgs) {
   const layout = rangeLayout(height, visual.space)
   const amp = layout.amp * (1 - visual.tight * 0.22)
   paintWash(ctx, args, layout.base)
-  withGrainBands(args, () => {
-    paintChromaStacks(ctx, args, layout.base, amp, sway, layout.dir)
-  })
+  paintDepthHaze(ctx, args)
+  paintChromaStacks(ctx, args, layout.base, amp, sway, layout.dir)
+  paintGrainLines(ctx, args, [layout.base], amp, [layout.dir])
   if (scene === 'gleam') paintGleam(ctx, args, layout.base, amp)
   paintSelection(ctx, args)
   paintPlayheadPair(ctx, args, [layout.base], amp, [layout.dir])
