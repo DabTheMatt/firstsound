@@ -7,14 +7,12 @@
 .chrome {
   position: absolute;
   right: 8px;
-  left: auto;
   z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 6px;
-  max-width: calc(100% - 48px);
   padding: 0;
   pointer-events: none;
 }
@@ -24,9 +22,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: 6px;
   pointer-events: auto;
+}
+
+.chromeLeft {
+  justify-content: flex-start;
+}
+
+.chromeRight {
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .stage {
