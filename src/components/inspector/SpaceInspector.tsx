@@ -11,6 +11,8 @@ import {
 } from '../../audio/fx/presets'
 import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, REVERB_TYPES } from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
@@ -191,17 +193,24 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
               { value: 'mono', label: 'Mono' },
               { value: 'stereo', label: 'Stereo' },
             ]}
+            wrap
             onChange={(v) => engine.setParam('delayStereo', v === 'stereo' ? 1 : 0)}
           />
           {delayStereo ? (
             <div className={styles.lrGrid}>
               <section className={styles.lrCol} aria-label="Delay left">
-                <h3 className={styles.sub}>Left</h3>
+                <div className={styles.lrHead}>
+                  <h3 className={styles.sub}>Left</h3>
+                  <span className={styles.lrTime}>{formatParamValue(snap.params.delayTime, PARAMS.delayTime)}</span>
+                </div>
                 {params(['delayTime', 'delayWet', 'delayFeedback'])}
                 <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
               </section>
               <section className={styles.lrCol} aria-label="Delay right">
-                <h3 className={styles.sub}>Right</h3>
+                <div className={styles.lrHead}>
+                  <h3 className={styles.sub}>Right</h3>
+                  <span className={styles.lrTime}>{formatParamValue(snap.params.delayTimeR, PARAMS.delayTimeR)}</span>
+                </div>
                 {params(['delayTimeR', 'delayWetR', 'delayFeedbackR'])}
                 <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
               </section>

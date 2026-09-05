@@ -155,7 +155,7 @@ export function ValueKnob({
           <path
             d={track}
             fill="none"
-            stroke="var(--border-default)"
+            stroke="var(--border-strong)"
             strokeWidth="3"
             strokeLinecap="round"
           />
