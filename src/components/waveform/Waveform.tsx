@@ -99,7 +99,7 @@ function loadEqSplitShare(): number {
   } catch {
     /* private mode */
   }
-  return 0.48
+  return 0.36
 }
 
 type DragMode =
