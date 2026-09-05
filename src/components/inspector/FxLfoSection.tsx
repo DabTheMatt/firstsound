@@ -133,29 +133,66 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
         Up to {FX_LFO_SLOTS} LFOs per effect.
       </p>
       )}
-      <div className={`${styles.row} ${styles.slotRow}`}>
-        <Segmented
-          label="LFO slot"
-          value={String(activeSlot)}
-          options={Array.from({ length: shown }, (_, i) => ({
-            value: String(i),
-            label: fxLfoSlotName(kind, i),
-          }))}
-          onChange={(value) => setSlot(Number(value))}
-        />
-        <button
-          type="button"
-          className={`${styles.ghost} ${styles.addLfo} ${shown >= FX_LFO_SLOTS ? styles.addLfoHold : ''}`}
-          tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
-          aria-hidden={shown >= FX_LFO_SLOTS}
-          onClick={() => {
-            const next = engine.addFxLfo(kind)
-            if (next != null) setSlot(next)
-          }}
-        >
-          {compact ? '+' : 'Add LFO'}
-        </button>
-      </div>
+      {compact ? (
+        <div className={styles.slotBar} role="radiogroup" aria-label="LFO slot">
+          {Array.from({ length: FX_LFO_SLOTS }, (_, i) =>
+            i < shown ? (
+              <button
+                key={i}
+                type="button"
+                role="radio"
+                aria-checked={i === activeSlot}
+                aria-label={`LFO ${i + 1}`}
+                title={fxLfoSlotName(kind, i)}
+                className={`${styles.slotNum} ${i === activeSlot ? styles.slotNumOn : ''}`}
+                onClick={() => setSlot(i)}
+              >
+                {i + 1}
+              </button>
+            ) : (
+              <span key={i} className={styles.slotNumHold} aria-hidden="true" />
+            ),
+          )}
+          <button
+            type="button"
+            className={`${styles.ghost} ${styles.addLfo} ${shown >= FX_LFO_SLOTS ? styles.addLfoHold : ''}`}
+            tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
+            aria-hidden={shown >= FX_LFO_SLOTS}
+            aria-label="Add LFO"
+            title="Add LFO"
+            onClick={() => {
+              const next = engine.addFxLfo(kind)
+              if (next != null) setSlot(next)
+            }}
+          >
+            +
+          </button>
+        </div>
+      ) : (
+        <div className={`${styles.row} ${styles.slotRow}`}>
+          <Segmented
+            label="LFO slot"
+            value={String(activeSlot)}
+            options={Array.from({ length: shown }, (_, i) => ({
+              value: String(i),
+              label: fxLfoSlotName(kind, i),
+            }))}
+            onChange={(value) => setSlot(Number(value))}
+          />
+          <button
+            type="button"
+            className={`${styles.ghost} ${styles.addLfo} ${shown >= FX_LFO_SLOTS ? styles.addLfoHold : ''}`}
+            tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
+            aria-hidden={shown >= FX_LFO_SLOTS}
+            onClick={() => {
+              const next = engine.addFxLfo(kind)
+              if (next != null) setSlot(next)
+            }}
+          >
+            Add LFO
+          </button>
+        </div>
+      )}
       <LfoShapePicker
         value={lfo?.shape ?? 'sine'}
         compact={compact}
@@ -168,10 +205,11 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
             type="button"
             className={`${styles.ghost} ${styles.connectBtn} ${connecting || lfo?.target ? styles.presetOn : ''}`}
             aria-pressed={connecting}
+            title={connect.detail ?? connect.label}
             onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
           >
             <span>{connect.label}</span>
-            {connect.detail ? <small>{connect.detail}</small> : null}
+            {!compact && connect.detail ? <small>{connect.detail}</small> : null}
           </button>
           <button
             type="button"

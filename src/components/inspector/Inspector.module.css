@@ -437,31 +437,62 @@
 
 .lfoCompact {
   display: grid;
-  grid-template-rows: 16px 32px 32px minmax(92px, auto) 40px;
-  align-content: start;
+  grid-template-rows: 14px 28px 32px 100px 36px;
+  align-items: stretch;
   gap: 6px;
   padding-top: 6px;
   margin-top: auto;
   width: 100%;
+  overflow: hidden;
 }
 
 .lfoCompact .sub {
   margin: 0;
-  line-height: 16px;
+  line-height: 14px;
 }
 
-.lfoCompact .slotRow {
+.lfoCompact .slotBar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
-  align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  flex-wrap: nowrap;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 28px;
+  align-items: stretch;
+  gap: 2px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+}
+
+.lfoCompact .slotNum,
+.lfoCompact .slotNumHold {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--bg-control);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.lfoCompact .slotNumHold {
+  visibility: hidden;
+  border-color: transparent;
+  background: transparent;
+}
+
+.lfoCompact .slotNumOn {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .lfoCompact .addLfo {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   padding: 0;
   font-size: 16px;
   line-height: 1;
@@ -471,21 +502,40 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding-top: 0;
-  min-height: 92px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .lfoCompact .connectRow {
+  display: block;
   flex-wrap: nowrap;
-  min-height: 40px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
   width: 100%;
+  overflow: hidden;
+}
+
+.lfoCompact .connectTile {
+  height: 100%;
 }
 
 .lfoCompact .ghost {
-  min-height: 28px;
+  min-height: 0;
   padding: 0 8px;
   font-size: 9px;
 }
 
 .lfoCompact .connectBtn {
-  min-height: 36px;
+  height: 100%;
+  min-height: 0;
+  max-height: 36px;
+  flex-direction: row;
+  align-items: center;
+  overflow: hidden;
+}
+
+.lfoCompact .connectBtn small {
+  display: none;
 }
