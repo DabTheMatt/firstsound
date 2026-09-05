@@ -1,3 +1,4 @@
+import type { StretchAlgo } from '../parameters/types'
 import { clamp } from '../parameters/mapping'
 
 export type StretchWindow = {
@@ -6,11 +7,18 @@ export type StretchWindow = {
   peak: number
 }
 
-/** Sparse (0) → longer grains, wider hops. Dense (100) → tighter overlap-add. */
-export function stretchWindow(interp: number): StretchWindow {
+export function stretchAlgoFromParam(value: number): StretchAlgo {
+  if (value < 0.5) return 'hann'
+  if (value < 1.5) return 'triangle'
+  return 'blackman'
+}
+
+/** Smooth (grain length) + density (hop overlap). Defaults match the old combined knob. */
+export function stretchWindow(interp: number, density = interp): StretchWindow {
   const n = clamp(interp / 100, 0, 1)
+  const d = clamp(density / 100, 0, 1)
   const grainSec = 0.112 - n * 0.058
-  const hopRatio = 0.44 - n * 0.32
+  const hopRatio = 0.44 - d * 0.32
   const hopSec = Math.max(0.004, grainSec * hopRatio)
   const peak = clamp((hopSec / grainSec) * 1.08, 0.14, 0.62)
   return { grainSec, hopSec, peak }
@@ -36,17 +44,33 @@ export function smoothTowardLinear(current: number, target: number, amount: numb
 }
 
 export function hannCurve(length = 64): Float32Array {
+  return windowCurve('hann', length)
+}
+
+export function windowCurve(algo: StretchAlgo, length = 64): Float32Array {
   const n = Math.max(8, Math.floor(length))
   const out = new Float32Array(n)
   const den = n - 1
   for (let i = 0; i < n; i++) {
-    out[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / den))
+    const x = i / den
+    if (algo === 'triangle') {
+      out[i] = 1 - Math.abs(2 * x - 1)
+    } else if (algo === 'blackman') {
+      out[i] =
+        0.42 - 0.5 * Math.cos(2 * Math.PI * x) + 0.08 * Math.cos(4 * Math.PI * x)
+    } else {
+      out[i] = 0.5 * (1 - Math.cos(2 * Math.PI * x))
+    }
   }
   return out
 }
 
 export function scaledHannCurve(peak: number, length = 64): Float32Array {
-  const curve = hannCurve(length)
+  return scaledWindowCurve('hann', peak, length)
+}
+
+export function scaledWindowCurve(algo: StretchAlgo, peak: number, length = 64): Float32Array {
+  const curve = windowCurve(algo, length)
   const g = Math.max(0, peak)
   for (let i = 0; i < curve.length; i++) curve[i]! *= g
   return curve

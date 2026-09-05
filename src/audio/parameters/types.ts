@@ -6,6 +6,9 @@ export type ParamId =
   | 'speed'
   | 'pitch'
   | 'stretchInterp'
+  | 'stretchEnable'
+  | 'stretchDensity'
+  | 'stretchAlgo'
   | 'gain'
   | 'pan'
   | 'channelGainL'
@@ -151,6 +154,8 @@ export type ParamDef = {
 export type EngineMode = 'playback' | 'grain'
 
 export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
+
+export type StretchAlgo = 'hann' | 'triangle' | 'blackman'
 
 /** Where transport scrubbing (ring drag / wheel) is allowed to land. */
 export type ScrubMode = 'region' | 'sample'

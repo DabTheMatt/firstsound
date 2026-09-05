@@ -221,6 +221,7 @@ const INPUT_TARGETS: ParamId[] = [
   'speed',
   'pitch',
   'stretchInterp',
+  'stretchDensity',
   'pan',
   'channelGainL',
   'channelGainR',

@@ -75,6 +75,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
 .fine {
   display: grid;
   grid-template-columns: 72px 1fr 72px;

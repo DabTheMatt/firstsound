@@ -12,7 +12,7 @@ export const TABS: { id: ModuleTab; label: string }[] = [
 ]
 
 export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
-  source: ['speed', 'pitch', 'stretchInterp', 'gain'],
+  source: ['speed', 'pitch', 'stretchInterp', 'stretchDensity', 'gain'],
   grain: ['grainSize', 'density', 'position', 'scatter', 'grainPitch', 'pitchSpread'],
   motion: ['motionDepth', 'motionRate', 'motionJitter', 'position'],
   space: ['delayWet', 'delayTime', 'delayFeedback', 'reverbWet', 'reverbSize', 'reverbDecay'],
@@ -21,7 +21,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
 }
 
 export const TAB_NOTES: Record<ModuleTab, string | null> = {
-  source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo. Interp densifies the overlap that smooths speed and pitch moves. Reverse and Ping-Pong set direction.',
+  source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo while Interp is on. Off uses tape (speed × pitch). Density and window shape the overlap-add. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
       space: 'Delay + reverb. Mix is a single dry/wet control. Feedback stays below unity so repeats fade.',
