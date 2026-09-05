@@ -50,6 +50,53 @@
   cursor: ns-resize;
 }
 
+.value {
+  margin: 0;
+  width: 100%;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--accent-primary);
+  line-height: 1.2;
+}
+
+.baseValue {
+  margin: 0;
+  width: 100%;
+  padding: 0 2px;
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-secondary);
+  line-height: 1.1;
+}
+
+.compact {
+  max-width: 80px;
+  padding-top: 2px;
+  gap: 1px;
+}
+
+.compact .dial {
+  width: 64px;
+  height: 64px;
+}
+
+.compact .label {
+  font-size: 8px;
+}
+
+.compact .value {
+  font-size: 11px;
+}
+
+.compact .baseValue {
+  font-size: 9px;
+}
+
 .valueInput {
   margin: 0;
   width: 100%;

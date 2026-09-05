@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { MODULE_LABELS, eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
@@ -11,6 +11,7 @@ import {
   EQ_MAX_HZ,
   EQ_MIN_HZ,
   FILTER_SLOPES,
+  formatEqHz,
   qFromBandwidth,
   type FilterSlope,
 } from '../../audio/engine/eqBands'
@@ -37,6 +38,7 @@ import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
+import { eqBandAccentVars } from '../eq/eqBandStyle'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
@@ -615,8 +617,7 @@ function EqEditor({
   const setBand = (index: number, patch: Parameters<typeof engine.setEqBand>[1]) =>
     engine.setEqBand(index, patch, instanceId)
   const setComb = (patch: Parameters<typeof engine.setComb>[0]) => engine.setComb(patch, instanceId)
-  const formatHz = (hz: number) =>
-    hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
+  const formatHz = formatEqHz
   const eqKnobLfo = (id: (typeof EQ_BAND_LFO_IDS)[number]['freq'] | (typeof EQ_BAND_LFO_IDS)[number]['gain'] | (typeof EQ_BAND_LFO_IDS)[number]['q'], baseN: number) => {
     const binding = lfoBinding(snap.fxLfos, id)
     return binding ? lfoRangeNormalized(baseN, binding.lfo.depth) : undefined
@@ -651,6 +652,7 @@ function EqEditor({
           key={index}
           className={styles.band}
           open={openBand === index}
+          style={eqBandAccentVars(band.frequency) as CSSProperties}
           onToggle={(event) => {
             if (event.currentTarget.open) setOpenBand(index)
           }}
@@ -696,6 +698,11 @@ function EqEditor({
                 <ValueKnob
                   label="Freq"
                   valueText={formatHz(snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency)}
+                  baseValueText={
+                    eqKnobLfo(EQ_BAND_LFO_IDS[index]!.freq, freqToN(band.frequency))
+                      ? formatHz(band.frequency)
+                      : undefined
+                  }
                   normalized={freqToN(band.frequency)}
                   visualNormalized={freqToN(snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency)}
                   lfoRange={eqKnobLfo(EQ_BAND_LFO_IDS[index]!.freq, freqToN(band.frequency))}
@@ -716,6 +723,11 @@ function EqEditor({
                   <ValueKnob
                     label="Gain"
                     valueText={`${(snap.liveParams[EQ_BAND_LFO_IDS[index]!.gain] ?? band.gain).toFixed(1)} dB`}
+                    baseValueText={
+                      eqKnobLfo(EQ_BAND_LFO_IDS[index]!.gain, (band.gain + 18) / 36)
+                        ? `${band.gain.toFixed(1)} dB`
+                        : undefined
+                    }
                     normalized={(band.gain + 18) / 36}
                     visualNormalized={((snap.liveParams[EQ_BAND_LFO_IDS[index]!.gain] ?? band.gain) + 18) / 36}
                     lfoRange={eqKnobLfo(EQ_BAND_LFO_IDS[index]!.gain, (band.gain + 18) / 36)}
@@ -736,8 +748,24 @@ function EqEditor({
                 <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.q}>
                   <ValueKnob
                     label="Width"
-                    valueText={formatHz(bandwidthHz(band.frequency, band.q))}
+                    valueText={formatHz(
+                      bandwidthHz(
+                        snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency,
+                        snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q,
+                      ),
+                    )}
+                    baseValueText={
+                      eqKnobLfo(EQ_BAND_LFO_IDS[index]!.q, widthToN(bandwidthHz(band.frequency, band.q)))
+                        ? formatHz(bandwidthHz(band.frequency, band.q))
+                        : undefined
+                    }
                     normalized={widthToN(bandwidthHz(band.frequency, band.q))}
+                    visualNormalized={widthToN(
+                      bandwidthHz(
+                        snap.liveParams[EQ_BAND_LFO_IDS[index]!.freq] ?? band.frequency,
+                        snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q,
+                      ),
+                    )}
                     lfoRange={eqKnobLfo(EQ_BAND_LFO_IDS[index]!.q, widthToN(bandwidthHz(band.frequency, band.q)))}
                     min={10}
                     max={10000}
@@ -758,6 +786,9 @@ function EqEditor({
                   <ValueKnob
                     label="Q"
                     valueText={(snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q).toFixed(2)}
+                    baseValueText={
+                      eqKnobLfo(EQ_BAND_LFO_IDS[index]!.q, qToN(band.q)) ? band.q.toFixed(2) : undefined
+                    }
                     normalized={qToN(band.q)}
                     visualNormalized={qToN(snap.liveParams[EQ_BAND_LFO_IDS[index]!.q] ?? band.q)}
                     lfoRange={eqKnobLfo(EQ_BAND_LFO_IDS[index]!.q, qToN(band.q))}

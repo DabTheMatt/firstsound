@@ -41,3 +41,8 @@ export function bandCenterHz(edges: ArrayLike<number>, index: number): number {
   const hi = edges[index + 1] ?? lo
   return Math.sqrt(lo * hi)
 }
+
+/** EQ strip / node color from the stored (base) frequency, using the FFT palette. */
+export function eqBandColorForHz(hz: number): string {
+  return regionForHz(hz).color
+}

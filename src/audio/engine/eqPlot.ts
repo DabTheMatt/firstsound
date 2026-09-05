@@ -5,6 +5,40 @@ import {
   EQ_MIN_HZ,
   type EqBand,
 } from './eqBands'
+import { eqMagnitudeDb } from './eqResponse'
+
+/** Live (LFO) overlay vs stored band setting on EQ / FFT plots. */
+export const EQ_LIVE_CURVE_WIDTH_SCALE = 0.5
+export const EQ_LIVE_CURVE_ALPHA_SCALE = 0.42
+
+export function eqResponseCurveStyle(
+  kind: 'stored' | 'live',
+  bypassed: boolean,
+  dpr: number,
+): { width: number; alpha: number } {
+  const width = Math.max(1.15, dpr * (bypassed ? 0.9 : 1.1))
+  const alpha = bypassed ? 0.28 : 1
+  if (kind === 'stored') return { width, alpha }
+  return { width: width * EQ_LIVE_CURVE_WIDTH_SCALE, alpha: alpha * EQ_LIVE_CURVE_ALPHA_SCALE }
+}
+
+export function strokeEqMagnitude(
+  ctx: CanvasRenderingContext2D,
+  bands: EqBand[],
+  freqs: number[],
+  sampleRate: number,
+  xAt: (index: number) => number,
+  yAt: (db: number) => number,
+): void {
+  ctx.beginPath()
+  for (let i = 0; i < freqs.length; i++) {
+    const y = yAt(eqMagnitudeDb(bands, freqs[i] ?? EQ_MIN_HZ, sampleRate))
+    const x = xAt(i)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.stroke()
+}
 
 /** Mini inspector FFT always shows this many log bands. */
 export const EQ_MINI_BAND_COUNT = 48

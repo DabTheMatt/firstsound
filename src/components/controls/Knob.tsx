@@ -22,6 +22,7 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
       label={def.label}
       valueText={formatParamValue(value, def)}
       visualValueText={mapped ? formatParamValue(live, def) : undefined}
+      baseValueText={mapped ? formatParamValue(value, def) : undefined}
       normalized={baseN}
       visualNormalized={mapped ? toNormalized(live, def) : undefined}
       lfoRange={mapped && lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}

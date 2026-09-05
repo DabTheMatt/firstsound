@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandCenterHz, regionForHz } from './spectrumRegions'
+import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from './spectrumRegions'
 import { logBandEdgesHz } from './spectrumBands'
 
 describe('spectrumRegions', () => {
@@ -20,5 +20,12 @@ describe('spectrumRegions', () => {
     const c = bandCenterHz(edges, 0)
     expect(c).toBeGreaterThan(edges[0]!)
     expect(c).toBeLessThan(edges[1]!)
+  })
+
+  it('tints EQ bands from the stored frequency using the FFT palette', () => {
+    expect(eqBandColorForHz(40)).toBe(SPECTRUM_REGIONS[0]!.color)
+    expect(eqBandColorForHz(80)).toBe(SPECTRUM_REGIONS[1]!.color)
+    expect(eqBandColorForHz(3000)).toBe(SPECTRUM_REGIONS[5]!.color)
+    expect(eqBandColorForHz(40)).not.toBe(eqBandColorForHz(8000))
   })
 })

@@ -20,6 +20,18 @@
   color: var(--text-muted);
 }
 
+.readouts {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.baseValue {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
 .value {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
