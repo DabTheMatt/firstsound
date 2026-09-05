@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
-import { lensEdgeBulge, lensSourceX, lensSphereScale } from '../visualization/lensWarp'
+import { lensDisplayX, lensEdgeBulge, lensSourceX, lensSphereScale } from '../visualization/lensWarp'
 import { rgbCss, type SensoryVisualState } from '../visualization/sensoryVisualState'
 import { LensSpanRing } from './LensSpanRing'
 import styles from './SoundLens.module.css'
@@ -103,8 +103,22 @@ export function SoundLens({
           return { hi: max[i] ?? 0, lo: min[i] ?? 0 }
         }
         const projectY = (nx: number, sample: number) => {
-          const scale = lensSphereScale(nx) * lensEdgeBulge(nx, 1.15)
+          const scale = lensSphereScale(nx) * lensEdgeBulge(nx, 1.35)
           return cy - sample * amp * scale + wobble
+        }
+
+        ctx.strokeStyle = rgbCss(visual.ink, 0.16 + visual.glow * 0.08)
+        ctx.lineWidth = Math.max(1, dpr)
+        const marks = 14
+        for (let m = 1; m < marks; m++) {
+          const src = (m / marks) * 2 - 1
+          const nx = lensDisplayX(src, 0.2)
+          const x = cx + nx * r
+          const h = r * 0.62 * lensSphereScale(nx) * lensEdgeBulge(nx, 1.2)
+          ctx.beginPath()
+          ctx.moveTo(x, cy - h)
+          ctx.lineTo(x, cy + h)
+          ctx.stroke()
         }
 
         const ghosts = visual.echo > 0.04 ? 1 + Math.floor(visual.echo * 3) : 0
@@ -150,6 +164,26 @@ export function SoundLens({
         ctx.fill()
         ctx.strokeStyle = rgbCss(visual.ink, 0.82 + visual.glow * 0.18)
         ctx.lineWidth = Math.max(1.6, dpr * 1.35)
+        ctx.stroke()
+
+        const liveSpan = Math.min(0.32, Math.max(0.08, span * 0.08))
+        ctx.beginPath()
+        let liveStarted = false
+        for (let x = 0; x < width; x += step) {
+          const nx = (x - cx) / r
+          if (nx < -1 || nx > 1) continue
+          const src = lensSourceX(nx, 0.18)
+          const t = now + src * (liveSpan / 2)
+          const idx = Math.floor(Math.max(0, Math.min(data.length - 1, t * samplesPerSec)))
+          const sample = data[idx] ?? 0
+          const y = projectY(nx, sample)
+          if (!liveStarted) {
+            ctx.moveTo(x, y)
+            liveStarted = true
+          } else ctx.lineTo(x, y)
+        }
+        ctx.strokeStyle = rgbCss(visual.ink, 0.95)
+        ctx.lineWidth = Math.max(2.2, dpr * 1.8)
         ctx.stroke()
 
         const grains = 1 + Math.floor(visual.motion * 4)

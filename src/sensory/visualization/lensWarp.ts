@@ -18,3 +18,16 @@ export function lensSphereScale(nx: number): number {
   const n = Math.min(1, Math.max(-1, nx))
   return Math.sqrt(Math.max(0, 1 - n * n))
 }
+
+/** Inverse of lensSourceX: source x in −1…+1 to display x. */
+export function lensDisplayX(source: number, strength = 0.22): number {
+  const target = Math.min(1, Math.max(-1, source))
+  let lo = -1
+  let hi = 1
+  for (let i = 0; i < 22; i++) {
+    const mid = (lo + hi) / 2
+    if (lensSourceX(mid, strength) < target) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}

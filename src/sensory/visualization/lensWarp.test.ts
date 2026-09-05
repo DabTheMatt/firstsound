@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lensEdgeBulge, lensSourceX, lensSphereScale } from './lensWarp'
+import { lensDisplayX, lensEdgeBulge, lensSourceX, lensSphereScale } from './lensWarp'
 
 describe('lensSourceX', () => {
   it('keeps the center pinned', () => {
@@ -11,9 +11,10 @@ describe('lensSourceX', () => {
     expect(Math.abs(lensSourceX(0.5))).toBeLessThan(Math.abs(0.5) * 0.45)
   })
 
-  it('meets the rim at the rim', () => {
-    expect(lensSourceX(1)).toBeCloseTo(1)
-    expect(lensSourceX(-1)).toBeCloseTo(-1)
+  it('spreads the center on the way back from source to display', () => {
+    expect(Math.abs(lensDisplayX(0.2))).toBeGreaterThan(0.2)
+    expect(lensDisplayX(0)).toBeCloseTo(0)
+    expect(lensDisplayX(1)).toBeCloseTo(1)
   })
 })
 
