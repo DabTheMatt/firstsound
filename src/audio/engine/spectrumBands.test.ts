@@ -3,6 +3,7 @@ import {
   SPECTRUM_BAND_COUNT,
   bandPeakDb,
   clampSpectrumBandCount,
+  clampSpectrumFollowMode,
   fftPeakDbInHzRange,
   followEnvelope,
   logBandEdgesHz,
@@ -45,6 +46,16 @@ describe('fftPeakDbInHzRange', () => {
     bins[Math.round((hz * fftSize) / sampleRate)] = -8
     expect(fftPeakDbInHzRange(bins, sampleRate, 800, 1200)).toBeCloseTo(-8)
     expect(fftPeakDbInHzRange(bins, sampleRate, 80, 120)).toBeCloseTo(-90)
+  })
+})
+
+describe('clampSpectrumFollowMode', () => {
+  it('keeps peak slow or both and defaults to peak', () => {
+    expect(clampSpectrumFollowMode('peak')).toBe('peak')
+    expect(clampSpectrumFollowMode('slow')).toBe('slow')
+    expect(clampSpectrumFollowMode('both')).toBe('both')
+    expect(clampSpectrumFollowMode('fast')).toBe('peak')
+    expect(clampSpectrumFollowMode(undefined)).toBe('peak')
   })
 })
 
