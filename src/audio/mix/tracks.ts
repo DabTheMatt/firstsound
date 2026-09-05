@@ -56,6 +56,11 @@ export function nextTrackId(tracks: readonly MixTrack[]): string {
 
 export function nextTrackName(tracks: readonly MixTrack[], base = 'Track'): string {
   const used = new Set(tracks.map((track) => track.name))
+  if (base === 'Track') {
+    let n = 1
+    while (used.has(`Track ${n}`)) n++
+    return `Track ${n}`
+  }
   if (!used.has(base)) return base
   let n = 2
   while (used.has(`${base} ${n}`)) n++

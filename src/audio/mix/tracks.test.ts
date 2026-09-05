@@ -29,6 +29,7 @@ describe('mix tracks', () => {
     expect(next[1]?.start).toBe(0.4)
     expect(next[1]?.end).toBe(1.1)
     expect(next[1]?.mix).toBe(100)
+    expect(next[1]?.name).toBe('Track 2')
   })
 
   it('keeps soloed tracks and mutes the rest', () => {
