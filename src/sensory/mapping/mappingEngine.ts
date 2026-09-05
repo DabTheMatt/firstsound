@@ -120,8 +120,14 @@ function applyBypassHints(dsp: DspSnapshot): void {
         : Math.abs(value ?? 0) > hint.threshold
     if (active) dsp.bypass[hint.module] = false
   }
-  const eqLive = dsp.eqBands.some((b) => b.type !== 'off' && Math.abs(b.gain) > 0.12)
-  if (eqLive && dsp.bypass.eq !== false) dsp.bypass.eq = false
+  const eqLive = dsp.eqBands.some(
+    (b) => b.type !== 'off' && (Math.abs(b.gain) > 0.08 || b.type === 'highpass' || b.type === 'lowpass'),
+  )
+  if (eqLive) dsp.bypass.eq = false
+  const high = dsp.eqBands[3]
+  if (high) dsp.params.eq4Gain = high.gain
+  const low = dsp.eqBands[0]
+  if (low) dsp.params.eq1Gain = low.gain
 }
 
 export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): MappedDsp {

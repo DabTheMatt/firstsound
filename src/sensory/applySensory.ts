@@ -17,11 +17,15 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   dsp.eqBands.forEach((band, i) => {
     engine.setEqBand(i, band)
   })
-  for (const mod of snap.chain) {
+  const chain = engine.getSnapshot().chain
+  for (const mod of chain) {
     const want = dsp.bypass[mod.type]
-    if (typeof want === 'boolean' && want !== mod.bypassed) {
-      engine.setModuleBypass(mod.instanceId, want)
-    }
+    if (typeof want !== 'boolean') continue
+    if (want !== mod.bypassed) engine.setModuleBypass(mod.instanceId, want)
+  }
+  const eq = engine.getSnapshot().chain.find((m) => m.type === 'eq')
+  if (eq && dsp.bypass.eq === false && eq.bypassed) {
+    engine.setModuleBypass(eq.instanceId, false)
   }
 }
 

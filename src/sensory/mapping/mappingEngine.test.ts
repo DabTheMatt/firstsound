@@ -31,6 +31,7 @@ describe('mapSensoryToDsp', () => {
     expect(mapped.params.reverbShimmer).toBeCloseTo(0)
     expect(mapped.params.saturation).toBeCloseTo(0)
     expect(mapped.bypass.eq).toBe(false)
+    expect(mapped.params.eq4Gain).toBeGreaterThan(0.8)
   })
 
   it('opens shimmer and saturation only at high brightness', () => {
