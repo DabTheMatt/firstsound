@@ -65,7 +65,11 @@ describe('mapSensoryToDsp', () => {
     expect(subtle.params.reverbWet).toBeLessThan(20)
     expect(vast.params.reverbWet).toBeGreaterThan(subtle.params.reverbWet)
     expect(vast.params.reverbWet).toBeLessThanOrEqual(SENSORY_SAFETY.reverbWet)
+    expect(vast.params.reverbDecay).toBeGreaterThan(12)
     expect(vast.params.reverbDecay).toBeLessThanOrEqual(SENSORY_SAFETY.reverbDecay)
+    expect(vast.params.reverbShimmer).toBeGreaterThan(40)
+    expect(vast.params.reverbShimmer).toBeLessThanOrEqual(SENSORY_SAFETY.reverbShimmer)
+    expect(vast.params.reverbSize).toBeGreaterThan(90)
     expect(vast.eqBands[3]?.gain).toBeCloseTo(base.eqBands[3]!.gain)
     expect(vast.params.delayWet).toBeCloseTo(base.params.delayWet)
     expect(vast.bypass.reverb).toBe(false)
@@ -104,7 +108,7 @@ describe('mapSensoryToDsp', () => {
     const drifted = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 1))
     expect(drifted.params.delayWidth).toBeGreaterThan(150)
     expect(drifted.params.delayTimeR).toBeGreaterThan(drifted.params.delayTime)
-    expect(drifted.params.delayWet).toBeLessThanOrEqual(24)
+    expect(drifted.params.delayWet).toBeLessThanOrEqual(28)
     expect(drifted.bypass.delay).toBe(false)
     const both = mapSensoryToDsp(
       base,
@@ -143,5 +147,17 @@ describe('mapSensoryToDsp', () => {
   it('protects with the limiter on extreme space', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.9))
     expect(mapped.bypass.limiter).toBe(false)
+  })
+
+  it('pan binds an input LFO to panorama without un-bypassing gain', () => {
+    const base = baseDsp()
+    const rest = mapSensoryToDsp(base, defaultSensoryValues())
+    expect(rest.fxLfos.input[0]?.target).toBeNull()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'pan', 0.8))
+    expect(mapped.fxLfos.input[0]?.target).toBe('pan')
+    expect(mapped.fxLfos.input[0]?.depth).toBeGreaterThan(40)
+    expect(mapped.fxLfos.input[0]?.rateHz).toBeGreaterThan(0.2)
+    expect(mapped.bypass.gain).toBe(base.bypass.gain)
+    expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
   })
 })

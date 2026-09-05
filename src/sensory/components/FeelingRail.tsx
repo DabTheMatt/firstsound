@@ -124,6 +124,16 @@ function EffectMeter({ feeling, amount }: { feeling: SensoryFeeling; amount: num
       </svg>
     )
   }
+  if (feeling.visual === 'pan') {
+    const x = 14 + a * 8
+    return (
+      <svg className={styles.meter} viewBox="0 0 28 56" aria-hidden="true">
+        <path d="M6 28 H22" className={styles.waveSoft} />
+        <circle cx={x} cy="28" r={5 + a * 2} className={styles.knob} />
+        <circle cx={14 - a * 8} cy="28" r="3" className={styles.track} />
+      </svg>
+    )
+  }
   return (
     <svg className={styles.meter} viewBox="0 0 28 56" aria-hidden="true">
       <circle cx={10 - a * 4} cy="28" r={5 + a} className={styles.knob} opacity={0.55 + a * 0.4} />

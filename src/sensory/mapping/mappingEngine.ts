@@ -4,6 +4,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import type { EqBand } from '../../audio/engine/eqBands'
 import { defaultEqBands } from '../../audio/engine/eqBands'
 import type { ChainModule, ModuleType } from '../../audio/chain/chain'
+import { cloneFxLfos, defaultFxLfos, type FxLfo, type FxLfoMap } from '../../audio/fx/lfo'
 import { SENSORY_AXIS_IDS, SENSORY_AXES, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
 import { defaultSensoryValues } from '../sensoryState'
@@ -15,6 +16,7 @@ export type DspSnapshot = {
   params: Record<ParamId, number>
   eqBands: EqBand[]
   bypass: Partial<Record<ModuleType, boolean>>
+  fxLfos: FxLfoMap
 }
 
 export type MappedDsp = DspSnapshot
@@ -27,10 +29,20 @@ function cloneParams(params: Record<ParamId, number>): Record<ParamId, number> {
   return { ...params }
 }
 
+function lfosEqual(a: FxLfo, b: FxLfo, eps = 1e-3): boolean {
+  return (
+    a.target === b.target &&
+    a.shape === b.shape &&
+    Math.abs(a.depth - b.depth) <= eps &&
+    Math.abs(a.rateHz - b.rateHz) <= eps
+  )
+}
+
 export function snapshotFromEngine(input: {
   params: Record<ParamId, number>
   eqBands: EqBand[]
   chain: ChainModule[]
+  fxLfos?: FxLfoMap
 }): DspSnapshot {
   const bypass: DspSnapshot['bypass'] = {}
   for (const mod of input.chain) bypass[mod.type] = mod.bypassed
@@ -38,6 +50,7 @@ export function snapshotFromEngine(input: {
     params: cloneParams(input.params),
     eqBands: cloneBands(input.eqBands.length ? input.eqBands : defaultEqBands()),
     bypass,
+    fxLfos: cloneFxLfos(input.fxLfos ?? defaultFxLfos()),
   }
 }
 
@@ -60,6 +73,15 @@ export function dspSnapshotsEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): b
   for (const key of keys) {
     if (Boolean(a.bypass[key]) !== Boolean(b.bypass[key])) return false
   }
+  const bankA = a.fxLfos.input
+  const bankB = b.fxLfos.input
+  const n = Math.max(bankA.length, bankB.length)
+  for (let i = 0; i < n; i++) {
+    const la = bankA[i]
+    const lb = bankB[i]
+    if (!la || !lb) return false
+    if (!lfosEqual(la, lb, eps)) return false
+  }
   return true
 }
 
@@ -67,11 +89,24 @@ function morphFor(axis: SensoryAxisId) {
   return EFFECT_MORPHS.find((m) => m.axis === axis)
 }
 
+function applyPanLfo(dsp: DspSnapshot, t: number) {
+  dsp.fxLfos = cloneFxLfos(dsp.fxLfos)
+  const slot = dsp.fxLfos.input[0] ?? { target: null, shape: 'sine' as const, depth: 0, rateHz: 0.6 }
+  dsp.fxLfos.input[0] = {
+    ...slot,
+    target: 'pan',
+    shape: 'sine',
+    depth: Math.round(16 + 70 * t),
+    rateHz: Number((0.14 + 0.62 * t).toFixed(2)),
+  }
+}
+
 export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): MappedDsp {
   const dsp: DspSnapshot = {
     params: cloneParams(base.params),
     eqBands: cloneBands(base.eqBands),
     bypass: { ...base.bypass },
+    fxLfos: cloneFxLfos(base.fxLfos),
   }
   let touched = false
   for (const id of SENSORY_AXIS_IDS) {
@@ -87,7 +122,8 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
       dsp.params[param] = applyParamValue(value, def)
     }
     applyMorphStopToBands(dsp.eqBands, stop)
-    dsp.bypass[morph.module] = false
+    if (id !== 'pan') dsp.bypass[morph.module] = false
+    if (id === 'pan') applyPanLfo(dsp, t)
     touched = true
   }
   if (Math.abs(values.echo) >= MORPH_GATE && Math.abs(values.drift) >= MORPH_GATE) {
@@ -120,4 +156,10 @@ export function identityMappingHolds(base: DspSnapshot): boolean {
 
 export function axisModule(id: SensoryAxisId) {
   return SENSORY_AXES[id].module
+}
+
+export function fxLfoSlotChanged(a: FxLfo | undefined, b: FxLfo | undefined): boolean {
+  if (!a && !b) return false
+  if (!a || !b) return true
+  return !lfosEqual(a, b)
 }

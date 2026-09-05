@@ -7,7 +7,8 @@ import type { DspSnapshot } from './mappingEngine'
 export const SENSORY_SAFETY = {
   eqGain: 7.5,
   reverbWet: 64,
-  reverbDecay: 12,
+  reverbDecay: 18,
+  reverbShimmer: 55,
   delayWet: 56,
   delayFeedback: 60,
   delayModDepth: 38,
@@ -30,6 +31,7 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   }
   cap(dsp.params, 'reverbWet', SENSORY_SAFETY.reverbWet, 0)
   cap(dsp.params, 'reverbDecay', SENSORY_SAFETY.reverbDecay)
+  cap(dsp.params, 'reverbShimmer', SENSORY_SAFETY.reverbShimmer, 0)
   cap(dsp.params, 'delayWet', SENSORY_SAFETY.delayWet, 0)
   cap(dsp.params, 'delayFeedback', SENSORY_SAFETY.delayFeedback, 0)
   cap(dsp.params, 'delayModDepth', SENSORY_SAFETY.delayModDepth, 0)

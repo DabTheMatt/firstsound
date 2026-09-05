@@ -21,5 +21,6 @@ export function estimateSensoryFromDsp(dsp: DspSnapshot): SensoryValues {
     tight: clampSensoryValue('tight', (PARAMS.compressorThreshold.defaultValue - p.compressorThreshold) / 20),
     mod: clampSensoryValue('mod', p.motionDepth / 72),
     drift: clampSensoryValue('drift', (p.delayWidth - 100) / 90 + p.delayModDepth / 80),
+    pan: clampSensoryValue('pan', (dsp.fxLfos.input[0]?.target === 'pan' ? (dsp.fxLfos.input[0].depth - 16) / 70 : 0)),
   }
 }

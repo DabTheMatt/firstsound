@@ -7,6 +7,7 @@ export const SENSORY_AXIS_IDS = [
   'tight',
   'mod',
   'drift',
+  'pan',
 ] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
@@ -17,7 +18,7 @@ export type SensoryAxisDef = {
   id: SensoryAxisId
   kind: SensoryAxisKind
   /** DSP module this control owns. */
-  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'saturation' | 'compressor'
+  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'saturation' | 'compressor' | 'gain'
   negativeLabel: string
   positiveLabel: string
   ariaLabel: string
@@ -97,6 +98,15 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
     ariaLabel: 'Drift, centered to moving stereo. Morphs delay image only.',
     hint: 'move it in the panorama',
   },
+  pan: {
+    id: 'pan',
+    kind: 'unipolar',
+    module: 'gain',
+    negativeLabel: 'still',
+    positiveLabel: 'pan',
+    ariaLabel: 'Pan, still to orbiting. Morphs input pan LFO only.',
+    hint: 'swing left and right',
+  },
 }
 
 export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
@@ -108,6 +118,7 @@ export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
   'tight',
   'mod',
   'drift',
+  'pan',
 ]
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = []
@@ -215,5 +226,16 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     whisper: 'center to panorama',
     tone: 'cool',
     ariaLabel: 'Drift, centered to moving stereo',
+  },
+  {
+    axis: 'pan',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'pan',
+    negativeLabel: 'still',
+    positiveLabel: 'pan',
+    whisper: 'still to orbiting pan',
+    tone: 'cool',
+    ariaLabel: 'Pan, still to orbiting',
   },
 ]

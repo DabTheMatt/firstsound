@@ -97,6 +97,16 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
     visual: 'drift',
     ariaLabel: 'Drift, center to panorama. Double-click to rest.',
   },
+  {
+    id: 'pan',
+    label: 'pan',
+    axis: 'pan',
+    kind: 'unipolar',
+    from: 'still',
+    to: 'pan',
+    visual: 'pan',
+    ariaLabel: 'Pan, still to orbiting. Double-click to rest.',
+  },
 ]
 
 export function feelingAmount(values: SensoryValues, feeling: SensoryFeeling): number {

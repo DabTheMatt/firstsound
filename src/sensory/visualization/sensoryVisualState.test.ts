@@ -39,4 +39,19 @@ describe('sensoryVisualState', () => {
     expect(focused.ink.r).toBeGreaterThan(idle.ink.r - 1)
     expect(focused.activeAxis).toBe('dirt')
   })
+
+  it('dissolves several axis tints like watercolors', () => {
+    const mixed = sensoryVisualState(
+      {
+        ...defaultSensoryValues(),
+        space: 0.7,
+        dirt: 0.6,
+        grain: 0.5,
+      },
+      true,
+    )
+    const spaceOnly = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.7), true)
+    expect(mixed.ink.r).toBeGreaterThan(spaceOnly.ink.r)
+    expect(mixed.ink.g).not.toBeCloseTo(spaceOnly.ink.g, 0)
+  })
 })

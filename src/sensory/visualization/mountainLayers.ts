@@ -25,8 +25,8 @@ export function mountainLayerSpecs(mass: number, motion: number, space = 0): rea
 /** How many vertical grain strips to draw. Rest is a single solid ridge. */
 export function grainBandCount(grain: number): number {
   const g = Math.min(1, Math.max(0, grain))
-  if (g < 0.06) return 1
-  return Math.min(12, 2 + Math.round(g * 10))
+  if (g < 0.04) return 1
+  return Math.min(18, 3 + Math.round(g * 15))
 }
 
 /** Horizontal box blur of an absolute envelope. */

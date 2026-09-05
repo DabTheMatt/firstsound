@@ -68,9 +68,9 @@
 }
 
 .item.dim {
-  opacity: 0.22;
-  filter: brightness(0.45) saturate(0.35);
-  transform: scale(0.96);
+  opacity: 0.58;
+  filter: none;
+  transform: none;
 }
 
 .item:focus-visible {
@@ -184,6 +184,9 @@
 }
 .item[data-axis='drift'].on {
   color: #5ca8ff;
+}
+.item[data-axis='pan'].on {
+  color: #ffd678;
 }
 
 @media (max-width: 720px) {
