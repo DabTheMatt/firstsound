@@ -3,6 +3,7 @@ import {
   bandwidthHz,
   defaultEqBands,
   filterStageCount,
+  formatEqHz,
   parseEqBands,
   parseFilterSlope,
   qFromBandwidth,
@@ -57,6 +58,13 @@ describe('stageQ', () => {
     const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
     expect(stageQ(band, 0)).toBe(4)
     expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  })
+})
+
+describe('formatEqHz', () => {
+  it('uses kHz above 1000 Hz', () => {
+    expect(formatEqHz(80)).toBe('80 Hz')
+    expect(formatEqHz(1250)).toBe('1.25 kHz')
   })
 })
 

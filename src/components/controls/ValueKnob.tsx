@@ -9,6 +9,9 @@ type Props = {
   normalized: number
   visualNormalized?: number
   visualValueText?: string
+  /** Stored (pre-LFO) readout shown between the dial and the live value. */
+  baseValueText?: string
+  compact?: boolean
   /** Thin outer ring showing LFO ±depth around the stored zero. */
   lfoRange?: { min: number; max: number }
   onChange: (normalized: number) => void
@@ -29,6 +32,8 @@ export function ValueKnob({
   normalized,
   visualNormalized,
   visualValueText,
+  baseValueText,
+  compact = false,
   lfoRange,
   onChange,
   onReset,
@@ -131,7 +136,7 @@ export function ValueKnob({
   const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
 
   return (
-    <div className={styles.knob}>
+    <div className={`${styles.knob} ${compact ? styles.compact : ''}`}>
       <p className={styles.label}>{label}</p>
       <button
         ref={dialRef}
@@ -217,18 +222,25 @@ export function ValueKnob({
           }}
         />
       ) : (
-        <p
-          className={styles.value}
-          onDoubleClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            setDraft(shownText)
-            setEditing(true)
-          }}
-          title="Double-click to type a value"
-        >
-          {shownText}
-        </p>
+        <>
+          {baseValueText ? (
+            <p className={styles.baseValue} title="Stored value (LFO zero)">
+              {baseValueText}
+            </p>
+          ) : null}
+          <p
+            className={styles.value}
+            onDoubleClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setDraft(valueText)
+              setEditing(true)
+            }}
+            title="Double-click to type a value"
+          >
+            {shownText}
+          </p>
+        </>
       )}
     </div>
   )

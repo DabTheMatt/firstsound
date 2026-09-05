@@ -3,6 +3,9 @@ import type { EqBand } from './eqBands'
 import {
   dbToY,
   eqBandDragPatch,
+  eqResponseCurveStyle,
+  EQ_LIVE_CURVE_ALPHA_SCALE,
+  EQ_LIVE_CURVE_WIDTH_SCALE,
   EQ_MINI_BAND_COUNT,
   freqToX,
   nodeDisplayDb,
@@ -54,5 +57,13 @@ describe('eq plot mapping', () => {
 
   it('uses 48 bands on the mini FFT', () => {
     expect(EQ_MINI_BAND_COUNT).toBe(48)
+  })
+
+  it('draws the live LFO curve at half width and lower alpha', () => {
+    const stored = eqResponseCurveStyle('stored', false, 1)
+    const live = eqResponseCurveStyle('live', false, 1)
+    expect(EQ_LIVE_CURVE_WIDTH_SCALE).toBe(0.5)
+    expect(live.width).toBeCloseTo(stored.width * EQ_LIVE_CURVE_WIDTH_SCALE)
+    expect(live.alpha).toBeCloseTo(stored.alpha * EQ_LIVE_CURVE_ALPHA_SCALE)
   })
 })

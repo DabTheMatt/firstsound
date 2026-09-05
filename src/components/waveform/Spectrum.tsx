@@ -4,10 +4,12 @@ import { combAsEqBands } from '../../audio/engine/comb'
 import {
   dbToY as eqDbToY,
   eqBandDragPatch,
+  eqResponseCurveStyle,
   freqToX,
   nodeDisplayDb,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
+  strokeEqMagnitude,
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
@@ -36,8 +38,13 @@ import {
 import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
-import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
-import { EQ_BAND_LFO_IDS, eqBandLfoKind, liveEqBandsFromParams } from '../../audio/fx/lfo'
+import { logFreqAxis } from '../../audio/engine/eqResponse'
+import {
+  EQ_BAND_LFO_IDS,
+  eqBandLfoKind,
+  eqModuleHasLiveCurve,
+  liveEqBandsFromParams,
+} from '../../audio/fx/lfo'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -254,7 +261,8 @@ export function Spectrum({ active }: Props) {
           if (!st) continue
           const hasShape = st.bands.some((b) => b.type !== 'off') || st.comb.enabled
           if (!hasShape) continue
-          const plotBands = [
+          const storedBands = [...st.bands, ...combAsEqBands(st.comb)]
+          const liveBands = [
             ...liveEqBandsFromParams(st.bands, live.liveParams),
             ...combAsEqBands({
               ...st.comb,
@@ -265,19 +273,19 @@ export function Spectrum({ active }: Props) {
             }),
           ]
           const tone = eqTone(ei, colors)
-          ctx.beginPath()
-          ctx.strokeStyle = colorWithAlpha(tone.curve, mod.bypassed ? 0.28 : 1)
-          ctx.lineWidth = Math.max(1.15, dpr * (mod.bypassed ? 0.9 : 1.1))
+          const xAt = (i: number) => left + (i / Math.max(1, freqs.length - 1)) * plotW
+          const yAt = (db: number) => top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
+          const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
-          for (let i = 0; i < freqs.length; i++) {
-            const hz = freqs[i] ?? minHz
-            const db = eqMagnitudeDb(plotBands, hz, sr)
-            const x = left + (i / Math.max(1, freqs.length - 1)) * plotW
-            const y = top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
-            if (i === 0) ctx.moveTo(x, y)
-            else ctx.lineTo(x, y)
+          ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
+          ctx.lineWidth = storedStyle.width
+          strokeEqMagnitude(ctx, storedBands, freqs, sr, xAt, yAt)
+          if (eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)) {
+            const liveStyle = eqResponseCurveStyle('live', mod.bypassed, dpr)
+            ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
+            ctx.lineWidth = liveStyle.width
+            strokeEqMagnitude(ctx, liveBands, freqs, sr, xAt, yAt)
           }
-          ctx.stroke()
           ctx.setLineDash([])
         }
       }

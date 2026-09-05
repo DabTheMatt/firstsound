@@ -23,6 +23,17 @@
   min-height: 64px;
 }
 
+.eqConsole {
+  flex: 1;
+  min-height: 120px;
+  min-width: 0;
+}
+
+.split .eqConsole {
+  flex: none;
+  min-height: 120px;
+}
+
 .splitHandle {
   flex: none;
   height: 10px;

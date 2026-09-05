@@ -5,6 +5,8 @@ import {
   applyFxLfos,
   defaultFxLfos,
   defaultLfoHold,
+  eqBandHasLfo,
+  eqModuleHasLiveCurve,
   fxLfoSlotName,
   inspectorPaneForLfo,
   isFxLfoTarget,
@@ -216,6 +218,24 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('limiter', 'limiterRelease')).toBe('main')
     expect(inspectorPaneForLfo('limiter', 'limiterAttack')).toBe('advanced')
     expect(inspectorPaneForLfo('limiter', 'limiterInput')).toBe('advanced')
+  })
+})
+
+describe('eqModuleHasLiveCurve', () => {
+  it('is true when a band LFO is patched', () => {
+    const lfos = defaultFxLfos()
+    expect(eqModuleHasLiveCurve(lfos, false)).toBe(false)
+    expect(eqBandHasLfo(lfos, 0)).toBe(false)
+    lfos.eq1[0]!.target = 'eq1Freq'
+    expect(eqBandHasLfo(lfos, 0)).toBe(true)
+    expect(eqModuleHasLiveCurve(lfos, false)).toBe(true)
+  })
+
+  it('includes comb LFOs only when comb is enabled', () => {
+    const lfos = defaultFxLfos()
+    lfos.eqcf[0]!.target = 'eqcfGain'
+    expect(eqModuleHasLiveCurve(lfos, false)).toBe(false)
+    expect(eqModuleHasLiveCurve(lfos, true)).toBe(true)
   })
 })
 

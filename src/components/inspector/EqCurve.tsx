@@ -5,13 +5,16 @@ import { EQ_MAX_HZ, EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
+  eqResponseCurveStyle,
   EQ_MINI_BAND_COUNT,
   freqToX,
   nodeDisplayDb,
+  strokeEqMagnitude,
   xToFreq,
   yToDb,
 } from '../../audio/engine/eqPlot'
-import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { logFreqAxis } from '../../audio/engine/eqResponse'
+import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz } from '../../audio/engine/spectrumBands'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
@@ -100,19 +103,33 @@ export function EqCurve({
       ctx.moveTo(0, zeroY)
       ctx.lineTo(width, zeroY)
       ctx.stroke()
+      const live = engine.getSnapshot()
       const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
       const freqs = logFreqAxis(width, EQ_MIN_HZ, EQ_MAX_HZ)
       const tone = eqTone(toneIndex, colors)
-      ctx.beginPath()
-      ctx.strokeStyle = tone.curve
-      ctx.lineWidth = Math.max(1.5, dpr)
-      for (let x = 0; x < width; x++) {
-        const db = eqMagnitudeDb(plotBands, freqs[x] ?? EQ_MIN_HZ, sr)
-        const y = dbToY(db, height)
-        if (x === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
+      const storedStyle = eqResponseCurveStyle('stored', false, dpr)
+      ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
+      ctx.lineWidth = Math.max(1.5, storedStyle.width)
+      strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, (db) => dbToY(db, height))
+      if (eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
+        const liveComb = comb
+          ? {
+              ...comb,
+              teeth: live.liveParams.eqcfTeeth ?? comb.teeth,
+              gain: live.liveParams.eqcfGain ?? comb.gain,
+              spacing: live.liveParams.eqcfSpacing ?? comb.spacing,
+              frequency: live.liveParams.eqcfFreq ?? comb.frequency,
+            }
+          : undefined
+        const liveBands = [
+          ...liveEqBandsFromParams(bands, live.liveParams),
+          ...(liveComb ? combAsEqBands(liveComb) : []),
+        ]
+        const liveStyle = eqResponseCurveStyle('live', false, dpr)
+        ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
+        ctx.lineWidth = Math.max(0.75, liveStyle.width)
+        strokeEqMagnitude(ctx, liveBands, freqs, sr, (i) => i, (db) => dbToY(db, height))
       }
-      ctx.stroke()
       ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`
       ctx.fillText('10', 4, height - 4)

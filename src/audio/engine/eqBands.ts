@@ -49,6 +49,11 @@ export const EQ_MIN_HZ = 10
 export const EQ_MAX_HZ = 25000
 export const EQ_NODE_COUNT = EQ_BAND_COUNT * EQ_MAX_STAGES + COMB_MAX_TEETH
 
+export function formatEqHz(hz: number): string {
+  const n = Number.isFinite(hz) ? hz : EQ_MIN_HZ
+  return n >= 1000 ? `${(n / 1000).toFixed(2)} kHz` : `${Math.round(n)} Hz`
+}
+
 export function bandUsesWidth(type: EqFilterType): boolean {
   return type === 'bandpass' || type === 'notch'
 }

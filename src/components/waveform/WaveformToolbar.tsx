@@ -108,6 +108,16 @@ export function WaveformToolbar({
             <SplitIcon />
           </IconButton>
         ) : null}
+        {!minimal ? (
+          <IconButton
+            label="EQ console"
+            caption="EQ"
+            pressed={viz === 'eq-split'}
+            onClick={() => onViz('eq-split')}
+          >
+            <EqSplitIcon />
+          </IconButton>
+        ) : null}
       </div>
       {!minimal ? (
         <div className={styles.zoom}>
@@ -225,6 +235,16 @@ function SplitIcon() {
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
       <path d="M2 10h14" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function EqSplitIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2 9h14" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M6 9v6M10 9v6M14 9v6" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   )
 }

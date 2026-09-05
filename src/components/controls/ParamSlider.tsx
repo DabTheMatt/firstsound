@@ -67,7 +67,14 @@ export function ParamSlider({ id, value, liveValue }: Props) {
     <div className={styles.row}>
       <div className={styles.meta}>
         <span className={styles.label}>{def.label}</span>
-        <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
+        <span className={styles.readouts}>
+          {liveValue != null ? (
+            <span className={styles.baseValue} title="Stored value (LFO zero)">
+              {formatParamValue(value, def)}
+            </span>
+          ) : null}
+          <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
+        </span>
       </div>
       <div
         ref={trackRef}

@@ -13,6 +13,7 @@ import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
+import { EqConsole } from '../eq/EqConsole'
 import {
   fitView,
   fracToTime,
@@ -79,6 +80,7 @@ export type WaveformHandle = {
 }
 
 const SPLIT_PREF = 'field.splitWave'
+const EQ_SPLIT_PREF = 'field.splitEq'
 
 function loadSplitShare(): number {
   try {
@@ -88,6 +90,16 @@ function loadSplitShare(): number {
     /* private mode */
   }
   return 0.64
+}
+
+function loadEqSplitShare(): number {
+  try {
+    const n = Number(localStorage.getItem(EQ_SPLIT_PREF))
+    if (Number.isFinite(n) && n >= 0.28 && n <= 0.82) return n
+  } catch {
+    /* private mode */
+  }
+  return 0.48
 }
 
 type DragMode =
@@ -139,7 +151,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [panning, setPanning] = useState(false)
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
-  const splitDrag = useRef<{ y: number; share: number } | null>(null)
+  const [eqShare, setEqShare] = useState(loadEqSplitShare)
+  const eqShareRef = useRef(eqShare)
+  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -153,6 +167,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     waveShareRef.current = waveShare
   }, [waveShare])
+
+  useEffect(() => {
+    eqShareRef.current = eqShare
+  }, [eqShare])
 
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
@@ -605,12 +623,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
-  const showWave = viz !== 'spectrum'
-  const showSpec = viz === 'spectrum' || viz === 'split'
+  const showWave = viz === 'waveform' || viz === 'split'
+  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
+  const showEqConsole = viz === 'eq-split'
+  const splitStage = viz === 'split' || viz === 'eq-split'
 
   return (
     <div className={styles.editor}>
-      <div className={`${styles.stage} ${viz === 'split' ? styles.split : ''}`}>
+      <div className={`${styles.stage} ${splitStage ? styles.split : ''}`}>
         <div
           className={styles.wrap}
           hidden={!showWave}
@@ -725,11 +745,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             aria-label="Resize waveform and FFT"
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId)
-              splitDrag.current = { y: event.clientY, share: waveShareRef.current }
+              splitDrag.current = { y: event.clientY, share: waveShareRef.current, kind: 'wave' }
             }}
             onPointerMove={(event) => {
               const drag = splitDrag.current
-              if (!drag) return
+              if (!drag || drag.kind !== 'wave') return
               const stage = event.currentTarget.parentElement
               if (!stage) return
               const h = stage.getBoundingClientRect().height
@@ -739,7 +759,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               setWaveShare(next)
             }}
             onPointerUp={() => {
-              if (!splitDrag.current) return
+              if (!splitDrag.current || splitDrag.current.kind !== 'wave') return
               splitDrag.current = null
               try {
                 localStorage.setItem(SPLIT_PREF, String(waveShareRef.current))
@@ -752,10 +772,52 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         {showSpec ? (
           <div
             className={`${styles.spec} ${viz === 'spectrum' ? styles.specSolo : ''}`}
-            style={viz === 'split' ? { flex: 1 - waveShare } : undefined}
+            style={
+              viz === 'split'
+                ? { flex: 1 - waveShare }
+                : viz === 'eq-split'
+                  ? { flex: eqShare }
+                  : undefined
+            }
           >
             <Spectrum active={showSpec} />
           </div>
+        ) : null}
+        {showEqConsole ? (
+          <>
+            <button
+              type="button"
+              className={styles.splitHandle}
+              aria-label="Resize FFT and EQ console"
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId)
+                splitDrag.current = { y: event.clientY, share: eqShareRef.current, kind: 'eq' }
+              }}
+              onPointerMove={(event) => {
+                const drag = splitDrag.current
+                if (!drag || drag.kind !== 'eq') return
+                const stage = event.currentTarget.parentElement
+                if (!stage) return
+                const h = stage.getBoundingClientRect().height
+                if (h < 80) return
+                const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
+                eqShareRef.current = next
+                setEqShare(next)
+              }}
+              onPointerUp={() => {
+                if (!splitDrag.current || splitDrag.current.kind !== 'eq') return
+                splitDrag.current = null
+                try {
+                  localStorage.setItem(EQ_SPLIT_PREF, String(eqShareRef.current))
+                } catch {
+                  /* private mode */
+                }
+              }}
+            />
+            <div className={styles.eqConsole} style={{ flex: 1 - eqShare }}>
+              <EqConsole />
+            </div>
+          </>
         ) : null}
       </div>
       {loaded && duration > 0 && !showWave ? (

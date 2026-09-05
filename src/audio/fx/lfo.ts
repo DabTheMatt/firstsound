@@ -556,3 +556,19 @@ export function liveEqBandsFromParams<T extends { frequency: number; gain: numbe
     }
   })
 }
+
+export function eqBandHasLfo(lfos: FxLfoMap, bandIndex: number): boolean {
+  const ids = EQ_BAND_LFO_IDS[bandIndex]
+  if (!ids) return false
+  return Boolean(lfoBinding(lfos, ids.freq) || lfoBinding(lfos, ids.gain) || lfoBinding(lfos, ids.q))
+}
+
+export function eqCombHasLfo(lfos: FxLfoMap): boolean {
+  return EQCF_TARGETS.some((id) => lfoBinding(lfos, id))
+}
+
+/** True when the EQ plot should overlay the animated LFO curve. */
+export function eqModuleHasLiveCurve(lfos: FxLfoMap, combEnabled: boolean): boolean {
+  if (EQ_BAND_LFO_IDS.some((_, index) => eqBandHasLfo(lfos, index))) return true
+  return combEnabled && eqCombHasLfo(lfos)
+}

@@ -33,9 +33,10 @@ type Props = {
   snap: EngineSnapshot
   kind: FxLfoKind
   variant: 'knob' | 'slider'
+  compact?: boolean
 }
 
-export function FxLfoSection({ snap, kind, variant }: Props) {
+export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
   const [slot, setSlot] = useState(0)
   const activeSlot = Math.min(slot, shown - 1)
@@ -56,6 +57,7 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
       <div className={styles.knobs}>
         <ValueKnob
           label="Rate"
+          compact={compact}
           valueText={rateText}
           normalized={toNormalized(rateHz, RATE_DEF)}
           min={LFO_RATE_MIN}
@@ -72,6 +74,7 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
         />
         <ValueKnob
           label="Depth"
+          compact={compact}
           valueText={`${Math.round(depth)} %`}
           normalized={depth / 100}
           min={0}
@@ -120,13 +123,15 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
     )
 
   return (
-    <section className={styles.lfo} data-lfo-kind={kind}>
-      <h3 className={styles.sub}>Modulation / LFO</h3>
+    <section className={`${styles.lfo} ${compact ? styles.lfoCompact : ''}`} data-lfo-kind={kind}>
+      <h3 className={styles.sub}>{compact ? 'LFO' : 'Modulation / LFO'}</h3>
+      {compact ? null : (
       <p className={styles.help}>
         Connect pins this LFO to a knob on this effect. The stored value is oscillator
         zero. Depth is how far it swings up and down (20% = ±20% of the parameter range).
         Up to {FX_LFO_SLOTS} LFOs per effect.
       </p>
+      )}
       <div className={styles.row}>
         <Segmented
           label="LFO slot"
@@ -178,9 +183,11 @@ export function FxLfoSection({ snap, kind, variant }: Props) {
           </button>
         ) : null}
       </div>
+      {compact ? null : (
       <p className={styles.help}>
         {connecting ? 'Click a knob on this effect, or press Escape to cancel.' : connect.detail ? `Target: ${connect.detail}` : 'No target yet.'}
       </p>
+      )}
     </section>
   )
 }
