@@ -67,6 +67,8 @@ describe('mapping', () => {
     expect(formatParamValue(100, PARAMS.delayDry)).toBe('100 %')
     expect(formatParamValue(100, PARAMS.delayOutput)).toBe('100 %')
     expect(formatParamValue(1.6, PARAMS.reverbDecay)).toBe('1.60 s')
+    expect(formatParamValue(-40, PARAMS.reverbPan)).toBe('L 40')
+    expect(formatParamValue(0, PARAMS.reverbPan)).toBe('C')
   })
 
   it('formats limiter params', () => {

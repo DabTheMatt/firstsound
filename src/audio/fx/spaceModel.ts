@@ -135,7 +135,7 @@ export function reverbTail(
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
   const reverse = type === 'reverse' || params.reverbReverse > 50
   const size = params.reverbSize / 100
-  const decay = freeze ? 8 : params.reverbDecay * (0.6 + size * 1.1)
+  const decay = freeze ? 12 : params.reverbDecay * (0.7 + size * 1.35)
   const earlyN = 3 + Math.round((params.reverbEarly / 100) * 5)
   const early: number[] = []
   for (let i = 0; i < earlyN; i++) early.push(pre + 0.008 + i * (0.012 + size * 0.02))

@@ -226,6 +226,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'compressorAutoMakeup':
       return value > 0.5 ? 'On' : 'Off'
     case 'pan':
+    case 'reverbPan':
       if (Math.abs(value) < 0.5) return 'C'
       return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
     default:

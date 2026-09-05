@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { equalPowerDryWet, fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import { equalPowerDryWet, fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth, stereoInputMix } from './dryWet'
 import { wetDryFor } from './graphs'
 
 describe('equalPowerDryWet', () => {
@@ -58,6 +58,17 @@ describe('sideGainFromWidth', () => {
     expect(sideGainFromWidth(0)).toBe(0)
     expect(sideGainFromWidth(100)).toBe(1)
     expect(sideGainFromWidth(200)).toBe(2)
+  })
+})
+
+describe('stereoInputMix', () => {
+  it('sums to mono at 0% and keeps channels at 100%', () => {
+    const mono = stereoInputMix(0)
+    expect(mono.keep).toBeCloseTo(0.5)
+    expect(mono.cross).toBeCloseTo(0.5)
+    const stereo = stereoInputMix(100)
+    expect(stereo.keep).toBeCloseTo(1)
+    expect(stereo.cross).toBeCloseTo(0)
   })
 })
 

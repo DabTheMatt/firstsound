@@ -605,6 +605,33 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Width',
     min: 0,
     max: 200,
+    defaultValue: 125,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbPan: {
+    id: 'reverbPan',
+    label: 'Pan',
+    min: -100,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbOffset: {
+    id: 'reverbOffset',
+    label: 'L/R Offset',
+    min: -100,
+    max: 100,
+    defaultValue: 18,
+    unit: '%',
+    mapping: 'linear',
+  },
+  reverbInput: {
+    id: 'reverbInput',
+    label: 'Stereo In',
+    min: 0,
+    max: 100,
     defaultValue: 100,
     unit: '%',
     mapping: 'linear',
@@ -623,7 +650,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Mod Depth',
     min: 0,
     max: 100,
-    defaultValue: 8,
+    defaultValue: 14,
     unit: '%',
     mapping: 'linear',
   },
@@ -969,9 +996,10 @@ export const SPACE_KNOBS: ParamId[] = [
   'reverbWet',
   'reverbSize',
   'reverbDecay',
+  'reverbWidth',
 ]
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay']
+export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
   'compressorThreshold',

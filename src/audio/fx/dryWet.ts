@@ -30,6 +30,15 @@ export function sideGainFromWidth(widthPct: number): number {
   return Math.min(2.2, Math.max(0, widthPct / 100))
 }
 
+/**
+ * Send stereo image into an effect.
+ * 0% sums L/R (mono glue); 100% keeps independent channels.
+ */
+export function stereoInputMix(stereoPct: number): { keep: number; cross: number } {
+  const t = Math.min(1, Math.max(0, stereoPct / 100))
+  return { keep: 0.5 + 0.5 * t, cross: 0.5 - 0.5 * t }
+}
+
 /** Full-wave rectifier curve for an envelope follower (dry ducking). */
 export function makeAbsCurve(n = 1024): Float32Array<ArrayBuffer> {
   const curve = new Float32Array(new ArrayBuffer(n * 4))

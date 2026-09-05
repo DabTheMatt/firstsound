@@ -122,6 +122,7 @@ export function applyReverbMacro(
         reverbPredelay: fromNormalized(t * 0.55, PARAMS.reverbPredelay),
         reverbEarly: 20 + (1 - t) * 55,
         reverbLowCut: fromNormalized(t * 0.4, PARAMS.reverbLowCut),
+        reverbWidth: 70 + t * 110,
       }
     case 'mod':
       return {

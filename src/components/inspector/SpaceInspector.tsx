@@ -50,6 +50,9 @@ const DELAY_ADV: ParamId[] = [
 ]
 
 const REVERB_ADV: ParamId[] = [
+  'reverbInput',
+  'reverbOffset',
+  'reverbPan',
   'reverbPredelay',
   'reverbEarly',
   'reverbDiffusion',
@@ -57,7 +60,6 @@ const REVERB_ADV: ParamId[] = [
   'reverbDamping',
   'reverbLowCut',
   'reverbHighCut',
-  'reverbWidth',
   'reverbModRate',
   'reverbModDepth',
   'reverbShimmerPitch',
@@ -127,8 +129,9 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
-        Categories load a starting sound. Mix is a single dry/wet control. Feedback stays below unity so
-        each delay repeat is quieter than the last.
+        {kind === 'delay'
+          ? 'Categories load a starting sound. Mix is a single dry/wet control. Feedback stays below unity so each delay repeat is quieter than the last.'
+          : 'Categories load a starting space. Mix is dry/wet. Width 0% makes the tail mono; 200% pushes it wide. Stereo In 0% sums the sample before the tank (clean stereo from a mono file); 100% keeps the stereo image.'}
       </p>
       <Segmented
         label="Preset category"
@@ -177,7 +180,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
       {kind === 'delay'
         ? params(['delayWet', 'delayTime', 'delayFeedback'])
-        : params(['reverbWet', 'reverbSize', 'reverbDecay'])}
+        : params(['reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth'])}
 
       <p className={styles.help}>
         Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.

@@ -177,6 +177,8 @@ describe('targets', () => {
   it('does not allow assigning a delay LFO to a reverb knob', () => {
     expect(isFxLfoTarget('delay', 'reverbWet')).toBe(false)
     expect(isFxLfoTarget('delay', 'delayWet')).toBe(true)
+    expect(isFxLfoTarget('reverb', 'reverbOffset')).toBe(true)
+    expect(isFxLfoTarget('reverb', 'reverbInput')).toBe(true)
     expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
     expect(isFxLfoTarget('eq1', 'eq1Freq')).toBe(true)

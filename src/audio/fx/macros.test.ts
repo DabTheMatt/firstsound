@@ -50,7 +50,13 @@ describe('presets', () => {
   it('covers delay and reverb factory sounds', () => {
     expect(SPACE_PRESETS.some((p) => p.id === 'dly-dot-8')).toBe(true)
     expect(SPACE_PRESETS.some((p) => p.id === 'rv-shimmer')).toBe(true)
+    expect(SPACE_PRESETS.some((p) => p.id === 'rv-stereo-spread')).toBe(true)
     expect(findSpacePreset('dly-ping')?.delayType).toBe('pingPong')
+    expect(findSpacePreset('rv-mono')?.params.reverbWidth).toBe(0)
+    expect(findSpacePreset('rv-stereo-spread')?.params.reverbInput).toBe(0)
+    expect(findSpacePreset('rv-haas')?.params.reverbWidth).toBe(200)
+    expect(findSpacePreset('rv-bloom')?.reverbType).toBe('bloom')
+    expect(findSpacePreset('rv-cinema')?.params.reverbDecay).toBeGreaterThan(10)
   })
 
   it('maps guitar and drums categories to real patches', () => {

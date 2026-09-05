@@ -1,5 +1,11 @@
 import type { ParamId } from '../parameters/types'
-import { equalPowerDryWet, makeAbsCurve, safeFeedbackGain, sideGainFromWidth } from './dryWet'
+import {
+  equalPowerDryWet,
+  makeAbsCurve,
+  safeFeedbackGain,
+  sideGainFromWidth,
+  stereoInputMix,
+} from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayTimeSeconds } from './spaceModel'
 import { syncedDelayMs } from './sync'
@@ -48,12 +54,18 @@ export type DelayGraph = {
 
 export type ReverbGraph = {
   freezeIn: GainNode
-  predelay: DelayNode
+  inKeepL: GainNode
+  inKeepR: GainNode
+  inCrossL: GainNode
+  inCrossR: GainNode
+  predelayL: DelayNode
+  predelayR: DelayNode
   early: DelayNode
   earlyGain: GainNode
   conv: ConvolverNode
   tankFb: GainNode
-  tankDelay: DelayNode
+  tankDelayL: DelayNode
+  tankDelayR: DelayNode
   hp: BiquadFilterNode
   lp: BiquadFilterNode
   damp: BiquadFilterNode
@@ -63,10 +75,13 @@ export type ReverbGraph = {
   duckAmt: GainNode
   gate: DynamicsCompressorNode
   limit: DynamicsCompressorNode
+  pan: StereoPannerNode
   widthSide: GainNode
   out: GainNode
   lfo: OscillatorNode
+  lfoInv: GainNode
   lfoGain: GainNode
+  lfoGainR: GainNode
   shimmerDelay: DelayNode
   shimmerMix: GainNode
   shimmerLfo: OscillatorNode
@@ -432,11 +447,23 @@ export function createReverbGraph(
   dryTap: AudioNode,
 ): ReverbGraph {
   const freezeIn = ctx.createGain()
-  const predelay = ctx.createDelay(1.2)
-  const early = ctx.createDelay(0.2)
+  const inSplit = ctx.createChannelSplitter(2)
+  const inKeepL = ctx.createGain()
+  const inKeepR = ctx.createGain()
+  const inCrossL = ctx.createGain()
+  const inCrossR = ctx.createGain()
+  const inMerge = ctx.createChannelMerger(2)
+  const preSplit = ctx.createChannelSplitter(2)
+  const predelayL = ctx.createDelay(2)
+  const predelayR = ctx.createDelay(2)
+  const preMerge = ctx.createChannelMerger(2)
+  const early = ctx.createDelay(0.25)
   const earlyGain = ctx.createGain()
   const conv = ctx.createConvolver()
-  const tankDelay = ctx.createDelay(0.35)
+  const tankSplit = ctx.createChannelSplitter(2)
+  const tankDelayL = ctx.createDelay(0.45)
+  const tankDelayR = ctx.createDelay(0.45)
+  const tankMerge = ctx.createChannelMerger(2)
   const tankFb = ctx.createGain()
   tankFb.gain.value = 0
   const hp = ctx.createBiquadFilter()
@@ -457,12 +484,17 @@ export function createReverbGraph(
   duckAmt.gain.value = 0
   const gate = ctx.createDynamicsCompressor()
   const limit = ctx.createDynamicsCompressor()
+  const pan = ctx.createStereoPanner()
   const out = ctx.createGain()
   out.gain.value = 1
   const lfo = ctx.createOscillator()
   lfo.frequency.value = 0.35
+  const lfoInv = ctx.createGain()
+  lfoInv.gain.value = -1
   const lfoGain = ctx.createGain()
   lfoGain.gain.value = 0
+  const lfoGainR = ctx.createGain()
+  lfoGainR.gain.value = 0
   const shimmerDelay = ctx.createDelay(0.08)
   shimmerDelay.delayTime.value = 0.028
   const shimmerMix = ctx.createGain()
@@ -474,13 +506,30 @@ export function createReverbGraph(
   shimmerDepth.gain.value = 0
 
   wet.connect(freezeIn)
-  freezeIn.connect(predelay)
-  predelay.connect(early)
+  freezeIn.connect(inSplit)
+  inSplit.connect(inKeepL, 0)
+  inSplit.connect(inCrossR, 0)
+  inSplit.connect(inKeepR, 1)
+  inSplit.connect(inCrossL, 1)
+  inKeepL.connect(inMerge, 0, 0)
+  inCrossL.connect(inMerge, 0, 0)
+  inKeepR.connect(inMerge, 0, 1)
+  inCrossR.connect(inMerge, 0, 1)
+  inMerge.connect(preSplit)
+  preSplit.connect(predelayL, 0)
+  preSplit.connect(predelayR, 1)
+  predelayL.connect(preMerge, 0, 0)
+  predelayR.connect(preMerge, 0, 1)
+  preMerge.connect(early)
   early.connect(earlyGain)
   earlyGain.connect(conv)
-  predelay.connect(conv)
-  conv.connect(tankDelay)
-  tankDelay.connect(tankFb)
+  preMerge.connect(conv)
+  conv.connect(tankSplit)
+  tankSplit.connect(tankDelayL, 0)
+  tankSplit.connect(tankDelayR, 1)
+  tankDelayL.connect(tankMerge, 0, 0)
+  tankDelayR.connect(tankMerge, 0, 1)
+  tankMerge.connect(tankFb)
   tankFb.connect(conv)
   conv.connect(hp)
   hp.connect(lp)
@@ -493,13 +542,17 @@ export function createReverbGraph(
   shimmerMix.connect(conv)
   drive.connect(gate)
   gate.connect(limit)
+  limit.connect(pan)
   const duckGain = ctx.createGain()
   duckGain.gain.value = 1
-  const widthSide = connectMidSide(ctx, limit, duckGain)
+  const widthSide = connectMidSide(ctx, pan, duckGain)
   duckGain.connect(out)
   out.connect(output)
   lfo.connect(lfoGain)
-  lfoGain.connect(predelay.delayTime)
+  lfo.connect(lfoInv)
+  lfoInv.connect(lfoGainR)
+  lfoGain.connect(predelayL.delayTime)
+  lfoGainR.connect(predelayR.delayTime)
   shimmerLfo.connect(shimmerDepth)
   shimmerDepth.connect(shimmerDelay.delayTime)
 
@@ -522,12 +575,18 @@ export function createReverbGraph(
 
   return {
     freezeIn,
-    predelay,
+    inKeepL,
+    inKeepR,
+    inCrossL,
+    inCrossR,
+    predelayL,
+    predelayR,
     early,
     earlyGain,
     conv,
     tankFb,
-    tankDelay,
+    tankDelayL,
+    tankDelayR,
     hp,
     lp,
     damp,
@@ -537,10 +596,13 @@ export function createReverbGraph(
     duckAmt,
     gate,
     limit,
+    pan,
     widthSide,
     out,
     lfo,
+    lfoInv,
     lfoGain,
+    lfoGainR,
     shimmerDelay,
     shimmerMix,
     shimmerLfo,
@@ -604,18 +666,31 @@ export function applyReverbGraph(
 ): void {
   const pre =
     params.reverbSync > 0.5
-      ? Math.min(1.15, syncedDelayMs(bpm, noteDivisionAt(params.reverbNote), noteKindAt(params.reverbNoteKind)) / 1000)
-      : Math.min(1.15, params.reverbPredelay / 1000)
+      ? Math.min(1.8, syncedDelayMs(bpm, noteDivisionAt(params.reverbNote), noteKindAt(params.reverbNoteKind)) / 1000)
+      : Math.min(1.8, params.reverbPredelay / 1000)
   const dist = params.reverbDistance / 100
-  g.predelay.delayTime.setTargetAtTime(Math.max(0.0002, pre + dist * 0.04), now, smoothing)
-  g.early.delayTime.setTargetAtTime(0.012 + dist * 0.03 + params.reverbSize / 4000, now, smoothing)
-  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * (1.1 - dist * 0.5), now, smoothing)
+  const basePre = Math.max(0.0002, pre + dist * 0.05)
+  const offset = (params.reverbOffset / 100) * basePre * 0.9
+  g.predelayL.delayTime.setTargetAtTime(Math.max(0.0002, basePre - offset), now, smoothing)
+  g.predelayR.delayTime.setTargetAtTime(Math.max(0.0002, Math.min(1.95, basePre + offset)), now, smoothing)
+  g.early.delayTime.setTargetAtTime(0.01 + dist * 0.035 + params.reverbSize / 3500, now, smoothing)
+  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * (1.15 - dist * 0.45), now, smoothing)
+
+  const input = stereoInputMix(params.reverbInput)
+  g.inKeepL.gain.setTargetAtTime(input.keep, now, smoothing)
+  g.inKeepR.gain.setTargetAtTime(input.keep, now, smoothing)
+  g.inCrossL.gain.setTargetAtTime(input.cross, now, smoothing)
+  g.inCrossR.gain.setTargetAtTime(input.cross, now, smoothing)
 
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
   g.freezeIn.gain.setTargetAtTime(freeze ? 0.12 : 1, now, smoothing)
-  const tank = freeze ? 0.86 : Math.min(0.55, (params.reverbDecay / 60) * 0.35)
+  const huge = type === 'cathedral' || type === 'largeHall' || type === 'cloud' || type === 'bloom' || type === 'infinite'
+  const tank = freeze
+    ? 0.9
+    : Math.min(0.78, 0.16 + (params.reverbDecay / 22) * 0.48 + params.reverbSize / 380 + (huge ? 0.08 : 0))
   g.tankFb.gain.setTargetAtTime(tank, now, smoothing)
-  g.tankDelay.delayTime.setTargetAtTime(0.08 + params.reverbSize / 400, now, smoothing)
+  g.tankDelayL.delayTime.setTargetAtTime(0.062 + params.reverbSize / 420, now, smoothing)
+  g.tankDelayR.delayTime.setTargetAtTime(0.089 + params.reverbSize / 310, now, smoothing)
 
   g.hp.frequency.setTargetAtTime(params.reverbLowCut + dist * 80, now, smoothing)
   g.lp.frequency.setTargetAtTime(params.reverbHighCut * (1 - dist * 0.15), now, smoothing)
@@ -627,10 +702,15 @@ export function applyReverbGraph(
   g.out.gain.setTargetAtTime(1, now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
-  g.lfoGain.gain.setTargetAtTime((params.reverbModDepth / 100) * 0.012, now, smoothing)
+  const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)
+  g.lfoGain.gain.setTargetAtTime(modSec, now, smoothing)
+  g.lfoGainR.gain.setTargetAtTime(modSec, now, smoothing)
 
   g.duckAmt.gain.setTargetAtTime(-(params.reverbDuck / 100) * 0.9, now, smoothing)
-  g.widthSide.gain.setTargetAtTime(sideGainFromWidth(params.reverbWidth), now, smoothing)
+  let width = params.reverbWidth
+  if (huge) width = Math.min(200, width * 1.06 + 6)
+  g.widthSide.gain.setTargetAtTime(sideGainFromWidth(width), now, smoothing)
+  g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.reverbPan / 100)), now, smoothing)
   const shimmer = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100
   g.shimmerMix.gain.setTargetAtTime(Math.min(0.55, shimmer * 0.5), now, smoothing)
   g.shimmerLfo.frequency.setTargetAtTime(5 + Math.abs(params.reverbShimmerPitch) * 0.4, now, smoothing)
