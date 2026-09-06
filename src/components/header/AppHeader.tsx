@@ -79,6 +79,9 @@ export function AppHeader({
           <span>{snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}</span>
         </p>
       ) : null}
+      <div className={styles.runtime}>
+        <RuntimeStatus />
+      </div>
       <div className={styles.trailing}>
         {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
@@ -122,9 +125,6 @@ export function AppHeader({
         >
           {compact ? '☰' : 'Settings'}
         </button>
-      </div>
-      <div className={styles.runtime}>
-        <RuntimeStatus />
       </div>
     </header>
   )
