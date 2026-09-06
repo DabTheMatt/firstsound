@@ -36,7 +36,7 @@
 
 .mixDesk {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 1;
   min-height: 0;
   min-width: 0;
@@ -44,15 +44,15 @@
 }
 
 .trackLanes {
-  flex: 1 1 42%;
+  flex: 1 1 46%;
   min-height: 120px;
   min-width: 0;
 }
 
 .mixStrips {
-  flex: 1 1 58%;
+  flex: 1 1 54%;
   min-height: 160px;
-  min-width: 0;
+  min-width: 220px;
 }
 
 .mixStrips > * {
@@ -84,6 +84,12 @@
 .specSolo {
   flex: 1 1 auto;
   min-height: 160px;
+}
+
+@media (max-width: 900px) {
+  .mixDesk {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 640px) {

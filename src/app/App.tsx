@@ -659,6 +659,7 @@ export default function App() {
               onFadesCommit={commit}
               onRegionCommit={commit}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
+              onViz={setViz}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}

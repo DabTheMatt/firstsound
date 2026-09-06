@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { MAX_TRACKS } from '../../audio/mix/tracks'
+import { MAX_TRACKS, trackIsAudible } from '../../audio/mix/tracks'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { engine, useEngine } from '../../hooks/useEngine'
 import styles from './MixConsole.module.css'
@@ -16,7 +16,8 @@ export function MixConsole() {
         <div>
           <h2 className={styles.title}>Mixer</h2>
           <p className={styles.lead}>
-            One strip per track plus Output. Load a sample on any strip. All unmuted tracks sum into Output.
+            All tracks play together. Selecting a lane only edits that sample. Mute silences a
+            strip; solo hears every soloed strip. Effects sit after the mix, on Output.
           </p>
         </div>
         <button
@@ -29,77 +30,65 @@ export function MixConsole() {
         </button>
       </header>
       <div className={styles.strips}>
-        {tracks.map((track) => {
-          const audible = !track.muted && (tracks.every((item) => !item.solo || item.muted) || track.solo)
-          const selected = track.id === selectedId
-          return (
-            <article
-              key={track.id}
-              className={`${styles.strip} ${audible ? '' : styles.stripOff} ${track.solo ? styles.stripSolo : ''} ${selected ? styles.stripSelected : ''}`}
-              onClick={() => engine.selectTrack(track.id)}
-            >
-              <header className={styles.stripHead}>
-                <input
-                  className={styles.name}
-                  value={track.name}
-                  aria-label="Track name"
-                  onChange={(event) => engine.setTrack(track.id, { name: event.target.value })}
-                  onClick={(event) => event.stopPropagation()}
-                />
-                <span className={styles.sampleName}>{track.fileName ?? 'No sample'}</span>
-              </header>
-              <label className={styles.faderWrap}>
-                <span className={styles.faderValue}>{Math.round(track.mix)}</span>
-                <input
-                  className={styles.fader}
-                  type="range"
-                  min={0}
-                  max={150}
-                  step={1}
-                  value={track.mix}
-                  aria-label={`${track.name} mix`}
-                  onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
-                  onClick={(event) => event.stopPropagation()}
-                />
-                <span className={styles.faderLabel}>Mix</span>
-              </label>
-              <div className={styles.toggles}>
-                <button
-                  type="button"
-                  className={track.muted ? styles.toggleOn : styles.toggle}
-                  aria-pressed={track.muted}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    engine.setTrack(track.id, { muted: !track.muted })
-                  }}
-                >
-                  M
-                </button>
-                <button
-                  type="button"
-                  className={track.solo ? styles.toggleSolo : styles.toggle}
-                  aria-pressed={track.solo}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    engine.setTrack(track.id, { solo: !track.solo })
-                  }}
-                >
-                  S
-                </button>
-              </div>
-              <TrackSampleButton trackId={track.id} />
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.ghost}
-                  disabled={!canAdd}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    engine.duplicateTrack(track.id)
-                  }}
-                >
-                  Duplicate
-                </button>
+        <div className={styles.channelRow}>
+          {tracks.map((track) => {
+            const audible = trackIsAudible(track, tracks)
+            const selected = track.id === selectedId
+            return (
+              <article
+                key={track.id}
+                className={`${styles.strip} ${audible ? '' : styles.stripOff} ${track.solo ? styles.stripSolo : ''} ${selected ? styles.stripSelected : ''}`}
+                onClick={() => engine.selectTrack(track.id)}
+              >
+                <header className={styles.stripHead}>
+                  <input
+                    className={styles.name}
+                    value={track.name}
+                    aria-label="Track name"
+                    onChange={(event) => engine.setTrack(track.id, { name: event.target.value })}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                  <span className={styles.sampleName}>{track.fileName ?? 'No sample'}</span>
+                </header>
+                <label className={styles.faderWrap}>
+                  <span className={styles.faderValue}>{Math.round(track.mix)}</span>
+                  <input
+                    className={styles.fader}
+                    type="range"
+                    min={0}
+                    max={150}
+                    step={1}
+                    value={track.mix}
+                    aria-label={`${track.name} mix`}
+                    onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                </label>
+                <div className={styles.toggles}>
+                  <button
+                    type="button"
+                    className={track.muted ? styles.toggleOn : styles.toggle}
+                    aria-pressed={track.muted}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      engine.setTrack(track.id, { muted: !track.muted })
+                    }}
+                  >
+                    M
+                  </button>
+                  <button
+                    type="button"
+                    className={track.solo ? styles.toggleSolo : styles.toggle}
+                    aria-pressed={track.solo}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      engine.setTrack(track.id, { solo: !track.solo })
+                    }}
+                  >
+                    S
+                  </button>
+                </div>
+                <TrackSampleButton trackId={track.id} />
                 <button
                   type="button"
                   className={styles.ghost}
@@ -111,14 +100,14 @@ export function MixConsole() {
                 >
                   Remove
                 </button>
-              </div>
-            </article>
-          )
-        })}
+              </article>
+            )
+          })}
+        </div>
         <article className={`${styles.strip} ${styles.stripMaster}`}>
           <header className={styles.stripHead}>
             <span className={styles.masterName}>Output</span>
-            <span className={styles.sampleName}>Master</span>
+            <span className={styles.sampleName}>After FX</span>
           </header>
           <label className={styles.faderWrap}>
             <span className={styles.faderValue}>{Math.round(snap.masterMix)}</span>
@@ -132,9 +121,8 @@ export function MixConsole() {
               aria-label="Output mix"
               onChange={(event) => engine.setMasterMix(Number(event.target.value))}
             />
-            <span className={styles.faderLabel}>Out</span>
           </label>
-          <p className={styles.masterHint}>Sums every audible track into the effect chain.</p>
+          <p className={styles.masterHint}>Master level for the summed mix.</p>
         </article>
       </div>
     </div>
@@ -166,7 +154,7 @@ function TrackSampleButton({ trackId }: { trackId: string }) {
           inputRef.current?.click()
         }}
       >
-        Load sample
+        Sample
       </button>
     </div>
   )

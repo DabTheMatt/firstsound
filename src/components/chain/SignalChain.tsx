@@ -50,6 +50,9 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
 
   return (
     <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label="Signal chain">
+      <span className={styles.fxTarget} title="Effects process the summed mix, after every track fader">
+        Mix FX
+      </span>
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
         const active = mod.instanceId === selectedId

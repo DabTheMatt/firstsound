@@ -67,11 +67,32 @@ export function nextTrackName(tracks: readonly MixTrack[], base = 'Track'): stri
   return `${base} ${n}`
 }
 
+export function anySoloActive(tracks: readonly MixTrack[]): boolean {
+  return tracks.some((item) => item.solo && !item.muted)
+}
+
 export function trackMixGain(track: MixTrack, tracks: readonly MixTrack[]): number {
   if (track.muted) return 0
-  const anySolo = tracks.some((item) => item.solo && !item.muted)
-  if (anySolo && !track.solo) return 0
+  if (anySoloActive(tracks) && !track.solo) return 0
   return clampMix(track.mix) / 100
+}
+
+export function trackIsAudible(track: MixTrack, tracks: readonly MixTrack[]): boolean {
+  return trackMixGain(track, tracks) > 0
+}
+
+/** Playhead inside `track` aligned to the lead region's current position. */
+export function alignedRegionOffset(
+  trackStart: number,
+  trackEnd: number,
+  leadStart: number,
+  leadEnd: number,
+  leadPlayhead: number,
+): number {
+  const leadSpan = Math.max(leadEnd - leadStart, 1e-6)
+  const frac = (leadPlayhead - leadStart) / leadSpan
+  const span = Math.max(trackEnd - trackStart, 1e-6)
+  return trackStart + Math.min(1, Math.max(0, frac)) * span
 }
 
 export function selectedTrack(tracks: readonly MixTrack[], id: string | null): MixTrack | null {
@@ -167,11 +188,45 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
   return parsed.length ? parsed : null
 }
 
+/** Every strip that should sound, independent of which lane is selected. */
+export function audibleTrackIds(tracks: readonly MixTrack[]): string[] {
+  return tracks.filter((track) => trackIsAudible(track, tracks)).map((track) => track.id)
+}
+
 /** Tracks that should sound in parallel with the selected (engine) track. */
 export function companionTrackIds(tracks: readonly MixTrack[], selectedId: string | null): string[] {
-  return tracks
-    .filter((track) => track.id !== selectedId && trackMixGain(track, tracks) > 0)
-    .map((track) => track.id)
+  return audibleTrackIds(tracks).filter((id) => id !== selectedId)
+}
+
+/** Position inside a track region from a shared mix clock. */
+export function mixRegionOffset(start: number, end: number, elapsed: number, loop: boolean): number {
+  const span = Math.max(end - start, 1e-6)
+  if (!Number.isFinite(elapsed) || elapsed <= 0) return start
+  if (loop) {
+    const rel = elapsed % span
+    return start + (rel < 0 ? rel + span : rel)
+  }
+  return Math.min(Math.max(end - 1e-4, start), start + elapsed)
+}
+
+export type MixPlaybackPlan = {
+  playLead: boolean
+  companionIds: string[]
+}
+
+/** Who actually sounds: lead engine plus every other unmuted (or soloed) track. */
+export function mixPlaybackPlan(tracks: readonly MixTrack[], selectedId: string | null): MixPlaybackPlan {
+  const lead = selectedTrack(tracks, selectedId)
+  return {
+    playLead: Boolean(lead && trackIsAudible(lead, tracks)),
+    companionIds: companionTrackIds(tracks, lead?.id ?? selectedId),
+  }
+}
+
+/** Engine voice level. Never follows another strip's mute. */
+export function leadMixGain(tracks: readonly MixTrack[], selectedId: string | null): number {
+  const lead = selectedTrack(tracks, selectedId)
+  return lead ? trackMixGain(lead, tracks) : 0
 }
 
 export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boolean {

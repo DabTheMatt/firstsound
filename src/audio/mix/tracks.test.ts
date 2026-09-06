@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   addTrack,
+  alignedRegionOffset,
+  audibleTrackIds,
   companionTrackIds,
   defaultTracks,
+  leadMixGain,
+  mixPlaybackPlan,
   duplicateTrack,
   MAX_TRACKS,
   outputMixGain,
@@ -37,6 +41,19 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, tracks[1]!.id, { solo: true, mix: 40 })
     expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
     expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(0.4)
+  })
+
+  it('ignores a muted solo when deciding who is audible', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    tracks = patchTrack(tracks, tracks[0]!.id, { solo: true, muted: true })
+    expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
+    expect(trackMixGain(tracks[1]!, tracks)).toBe(1)
+  })
+
+  it('aligns a companion playhead to the lead region', () => {
+    expect(alignedRegionOffset(0, 2, 0, 4, 2)).toBeCloseTo(1)
+    expect(alignedRegionOffset(1, 2, 0, 1, 0)).toBeCloseTo(1)
+    expect(alignedRegionOffset(0, 1, 0, 1, 2)).toBeCloseTo(1)
   })
 
   it('refuses to drop the last track', () => {
@@ -94,8 +111,38 @@ describe('mix tracks', () => {
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([tracks[1]!.id])
     tracks = patchTrack(tracks, tracks[0]!.id, { muted: true })
     expect(companionTrackIds(tracks, tracks[1]!.id)).toEqual([])
+    expect(mixPlaybackPlan(tracks, tracks[0]!.id)).toEqual({
+      playLead: false,
+      companionIds: [tracks[1]!.id],
+    })
     tracks = patchTrack(tracks, tracks[0]!.id, { muted: false, solo: true })
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([])
+    expect(mixPlaybackPlan(tracks, tracks[0]!.id)).toEqual({ playLead: true, companionIds: [] })
+  })
+
+  it('does not silence the selected track when another strip is muted', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    tracks = patchTrack(tracks, tracks[0]!.id, { muted: true })
+    expect(leadMixGain(tracks, tracks[1]!.id)).toBe(1)
+    expect(trackMixGain(tracks[1]!, tracks)).toBe(1)
+    expect(mixPlaybackPlan(tracks, tracks[1]!.id)).toEqual({
+      playLead: true,
+      companionIds: [],
+    })
+  })
+
+  it('applies mute and solo without caring which track is selected', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    expect(audibleTrackIds(tracks)).toEqual(['track-1', 'track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: false, solo: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-1'])
+    tracks = patchTrack(tracks, 'track-2', { solo: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-1', 'track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: true, solo: false })
+    tracks = patchTrack(tracks, 'track-2', { muted: true, solo: false })
+    expect(audibleTrackIds(tracks)).toEqual([])
   })
 
   it('keeps a sample name on a saved desk', () => {
