@@ -7,10 +7,25 @@ export type StereoRoute = {
   rightToR: number
 }
 
-/** Stereo keep L/R separate; mono sums both channels equally onto L and R. */
-export function stereoRouteGains(mono: boolean): StereoRoute {
-  if (mono) return { leftToL: 0.5, leftToR: 0.5, rightToL: 0.5, rightToR: 0.5 }
+/**
+ * Stereo keeps L/R separate. A 1-channel buffer only occupies splitter
+ * channel 0, so copy left onto both speakers. Fold-to-mono sums L+R equally.
+ */
+export function stereoRouteGains(foldMono: boolean, sourceChannels = 2): StereoRoute {
+  if (sourceChannels < 2) return { leftToL: 1, leftToR: 1, rightToL: 0, rightToR: 0 }
+  if (foldMono) return { leftToL: 0.5, leftToR: 0.5, rightToL: 0.5, rightToR: 0.5 }
   return { leftToL: 1, leftToR: 0, rightToL: 0, rightToR: 1 }
+}
+
+/** Upmix a mono bus to stereo so ChannelSplitter(2) is not left-only. */
+export function forceStereoUpmix(node: AudioNode): void {
+  try {
+    node.channelCount = 2
+    node.channelCountMode = 'explicit'
+    node.channelInterpretation = 'speakers'
+  } catch {
+    /* some node types reject channelCount */
+  }
 }
 
 export function panNorm(panPct: number): number {
@@ -49,6 +64,7 @@ export function createStereoStage(ctx: AudioContext): StereoStage {
   const output = ctx.createGain()
 
   input.connect(makeup)
+  forceStereoUpmix(makeup)
   makeup.connect(split)
   split.connect(leftLevel, 0)
   split.connect(rightLevel, 1)
@@ -90,11 +106,12 @@ export function applyStereoStage(
     rightDb: number
     mono: boolean
     invert: boolean
+    sourceChannels?: number
   },
   now: number,
   smoothing: number,
 ): void {
-  const route = stereoRouteGains(params.mono)
+  const route = stereoRouteGains(params.mono, params.sourceChannels ?? 2)
   const pol = params.invert ? -1 : 1
   stage.makeup.gain.setTargetAtTime(dbToGain(params.gainDb), now, smoothing)
   stage.leftLevel.gain.setTargetAtTime(dbToGain(params.leftDb), now, smoothing)
