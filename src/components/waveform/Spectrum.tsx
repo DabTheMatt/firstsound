@@ -392,7 +392,9 @@ export function Spectrum({ active }: Props) {
           ]
           const tone = eqTone(ei, colors)
           const xAt = (i: number) => left + (i / Math.max(1, freqs.length - 1)) * plotW
-          const yAt = (db: number) => dbToY(db, top, bottom)
+          const plotH = Math.max(1, bottom - top)
+          const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
+          const yAt = (db: number) => top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
           const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
