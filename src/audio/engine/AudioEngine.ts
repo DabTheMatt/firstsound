@@ -3495,7 +3495,7 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
     param.setValueAtTime(0, now)
     return
   }
-  if (value >= 1 - 1e-5) {
+  if (Math.abs(value - 1) <= 1e-5) {
     param.setTargetAtTime(1, now, smoothing)
     return
   }
