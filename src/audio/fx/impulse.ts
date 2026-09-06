@@ -180,14 +180,14 @@ export function fillReverbImpulse(
 
 /** First 80 ms of the IR — the part Mix has to make audible against dry. */
 export const IR_EARLY_SEC = 0.08
-export const IR_TARGET_EARLY_RMS = 0.1
-export const IR_PEAK_LIMIT = 0.92
+export const IR_TARGET_EARLY_RMS = 0.042
+export const IR_PEAK_LIMIT = 0.38
 
 /**
  * ConvolverNode.normalize uses Chrome's 0.00125 GainCalibration, which turns a
  * peak-normalized hall into ~-36 dB wet. We scale ourselves and keep
  * normalize = false. Match early-window RMS so long cathedrals stay as loud as
- * short rooms, then peak-limit so a 0 dBFS hit cannot clip the send.
+ * short rooms, then peak-limit so Mix cannot clip the dry path.
  */
 export function scaleReverbImpulse(
   left: Float32Array,

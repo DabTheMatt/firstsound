@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillReverbImpulse, impulseLengthSec } from './impulse'
+import { fillReverbImpulse, impulseLengthSec, IR_PEAK_LIMIT, IR_TARGET_EARLY_RMS } from './impulse'
 
 describe('impulse', () => {
   it('writes a decaying stereo IR', () => {
@@ -50,10 +50,10 @@ describe('impulse', () => {
     for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
     for (let i = 0; i < rmsN; i++) earlyEnergy += left[i]! * left[i]! + right[i]! * right[i]!
     const earlyRms = Math.sqrt(earlyEnergy / (2 * rmsN))
-    expect(peak).toBeGreaterThan(0.15)
-    expect(peak).toBeLessThanOrEqual(0.92)
-    expect(earlyRms).toBeGreaterThan(0.04)
-    expect(earlyRms).toBeLessThan(0.2)
+    expect(peak).toBeGreaterThan(0.08)
+    expect(peak).toBeLessThanOrEqual(IR_PEAK_LIMIT)
+    expect(earlyRms).toBeGreaterThan(IR_TARGET_EARLY_RMS * 0.35)
+    expect(earlyRms).toBeLessThan(0.08)
   })
 
   it('cathedral IRs last long enough for huge spaces', () => {
