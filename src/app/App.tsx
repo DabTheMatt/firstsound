@@ -651,6 +651,7 @@ export default function App() {
               loaded={snap.sampleLoaded}
               tool={tool}
               viz={viz}
+              meterRange={meterRange}
               fadeIn={edit.fadeIn}
               fadeOut={edit.fadeOut}
               fadeCurve={edit.fadeCurve}

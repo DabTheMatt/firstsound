@@ -69,7 +69,10 @@ export function spectrumDbScaleMarks(minDb: number, plotHeightPx: number): numbe
   if (!(span > 0) || ticks.length === 0) return ticks
   const minGap = Math.max(10, Math.min(16, plotHeightPx / 12))
   const yOf = (db: number) => ((0 - db) / span) * plotHeightPx
-  const anchors = new Set([0, -6, -12, Math.round(minDb)])
+  const anchors = new Set<number>([0, -6, -12, Math.round(minDb)])
+  if (plotHeightPx >= 160) {
+    for (const db of [-3, -9, -18, -24]) anchors.add(db)
+  }
   const out: number[] = []
   let lastY = Number.NEGATIVE_INFINITY
   for (const db of ticks) {

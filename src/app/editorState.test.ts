@@ -66,6 +66,14 @@ describe('meter mapping', () => {
     expect(marks.length).toBeLessThan(meterScaleTicks(SPECTRUM_DB_FLOOR).length)
     expect(marks).not.toContain(-3)
   })
+
+  it('keeps meter-style 3 dB labels on a taller FFT', () => {
+    const marks = spectrumDbScaleMarks(-60, 200)
+    expect(marks).toContain(-3)
+    expect(marks).toContain(-9)
+    expect(marks).toContain(-24)
+    expect(marks.at(-1)).toBe(-60)
+  })
 })
 
 describe('fallHoldDb', () => {
