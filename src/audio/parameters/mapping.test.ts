@@ -100,10 +100,13 @@ describe('mapping', () => {
     expect(formatParamValue(62, PARAMS.stretchInterp)).toBe('62 %')
   })
 
-  it('lets Gain go down to −36 dB', () => {
+  it('lets Gain go from −36 dB to +24 dB', () => {
     expect(PARAMS.gain.min).toBe(-36)
+    expect(PARAMS.gain.max).toBe(24)
     expect(applyParamValue(-36, PARAMS.gain)).toBe(-36)
     expect(applyParamValue(-40, PARAMS.gain)).toBe(-36)
+    expect(applyParamValue(24, PARAMS.gain)).toBe(24)
+    expect(applyParamValue(30, PARAMS.gain)).toBe(24)
   })
 
   it('converts dB to amplitude', () => {
