@@ -51,4 +51,6 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   if (high) dsp.params.eq4Gain = high.gain
   const low = dsp.eqBands[0]
   if (low) dsp.params.eq1Gain = low.gain
+  const scoop = dsp.eqBands[1]
+  if (scoop) dsp.params.eq2Gain = scoop.gain
 }

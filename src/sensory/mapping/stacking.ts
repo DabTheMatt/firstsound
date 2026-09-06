@@ -37,6 +37,9 @@ export function stackingEnergy(values: SensoryValues): number {
     clamp01(values.dirt) * 0.8 +
     clamp01(values.drift) * 0.45 +
     clamp01(values.mod) * 0.25 +
+    clamp01(values.veil) * 0.7 +
+    clamp01(values.halo) * 0.65 +
+    clamp01(values.well) * 0.55 +
     Math.abs(values.character) * 0.3
   )
 }
@@ -68,6 +71,9 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
   const dirt = clamp01(values.dirt)
   const tight = clamp01(values.tight)
   const mod = clamp01(values.mod)
+  const veil = clamp01(values.veil)
+  const halo = clamp01(values.halo)
+  const well = clamp01(values.well)
 
   if (echo >= MORPH_GATE && drift >= MORPH_GATE) {
     const timeL = echoTimeMs(echo)
@@ -79,13 +85,18 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
     setParam(dsp, 'delayOffset', Math.min(dsp.params.delayOffset, 16 + 10 * drift))
   }
 
-  const air = Math.min(1, space * echo)
+  const air = Math.min(1, space * echo + 0.55 * space * (veil + halo) + 0.4 * echo * (veil + well))
   if (air > 0.02) {
     scaleParam(dsp, 'reverbWet', 1 - 0.4 * air)
     scaleParam(dsp, 'delayWet', 1 - 0.2 * air)
     scaleParam(dsp, 'reverbShimmer', 1 - 0.62 * air)
     scaleParam(dsp, 'reverbDecay', 1 - 0.24 * air)
     scaleParam(dsp, 'delayFeedback', 1 - 0.22 * air)
+  }
+
+  if (echo >= MORPH_GATE && veil + halo + well > 0.04) {
+    setParam(dsp, 'delayTime', echoTimeMs(echo))
+    scaleParam(dsp, 'delayWet', 1 - 0.18 * Math.min(1, veil + halo * 0.6 + well * 0.5))
   }
 
   const grainIntoAir = Math.min(1, grain * Math.max(space, echo, drift * 0.6))
@@ -114,6 +125,7 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
     energy > 0.85 ||
     (space > 0.38 && echo > 0.32) ||
     (echo > 0.28 && drift > 0.28) ||
-    (grain > 0.45 && (space > 0.35 || echo > 0.35))
+    (grain > 0.45 && (space > 0.35 || echo > 0.35)) ||
+    veil + halo + well > 0.7
   if (pile) dsp.bypass.limiter = false
 }

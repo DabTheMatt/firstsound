@@ -31,7 +31,20 @@ describe('sensory feelings', () => {
     expect(activeFeelingId(values, 'echo')).toBe('echo')
   })
 
-  it('includes a pan feeling', () => {
-    expect(SENSORY_FEELINGS.some((f) => f.id === 'pan')).toBe(true)
+  it('includes hybrid braid feelings', () => {
+    expect(SENSORY_FEELINGS.map((f) => f.id)).toEqual([
+      'character',
+      'space',
+      'echo',
+      'grain',
+      'dirt',
+      'tight',
+      'mod',
+      'drift',
+      'pan',
+      'veil',
+      'halo',
+      'well',
+    ])
   })
 })

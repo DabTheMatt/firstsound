@@ -15,7 +15,7 @@ export type SensoryFeeling = {
   ariaLabel: string
 }
 
-/** Right-rail controls. Each one owns a single effect morph. */
+/** Right-rail controls. Hybrids braid more than one insert. */
 export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
   {
     id: 'character',
@@ -106,6 +106,36 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
     to: 'pan',
     visual: 'pan',
     ariaLabel: 'Pan, still to orbiting. Double-click to rest.',
+  },
+  {
+    id: 'veil',
+    label: 'veil',
+    axis: 'veil',
+    kind: 'unipolar',
+    from: 'clear',
+    to: 'veil',
+    visual: 'veil',
+    ariaLabel: 'Veil, clear to distant. Double-click to rest.',
+  },
+  {
+    id: 'halo',
+    label: 'halo',
+    axis: 'halo',
+    kind: 'unipolar',
+    from: 'bare',
+    to: 'halo',
+    visual: 'halo',
+    ariaLabel: 'Halo, bare to blooming. Double-click to rest.',
+  },
+  {
+    id: 'well',
+    label: 'well',
+    axis: 'well',
+    kind: 'unipolar',
+    from: 'flat',
+    to: 'well',
+    visual: 'well',
+    ariaLabel: 'Well, flat to hollow. Double-click to rest.',
   },
 ]
 
