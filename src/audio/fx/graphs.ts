@@ -16,6 +16,7 @@ import {
 } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStereo } from './spaceModel'
+import { reverbWetOutputGain } from './reverbLevel'
 import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
@@ -811,7 +812,7 @@ export function applyReverbGraph(
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
   g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
-  g.out.gain.setTargetAtTime(1, now, smoothing)
+  g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput), now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
   const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)
@@ -840,9 +841,11 @@ export function applyReverbGraph(
     g.gate.knee.setTargetAtTime(2, now, smoothing)
   }
 
-  // Limit was removed from the reverb UI; keep the brickwall bypassed.
-  g.limit.threshold.setTargetAtTime(0, now, smoothing)
-  g.limit.ratio.setTargetAtTime(1, now, smoothing)
+  g.limit.threshold.setTargetAtTime(-1.5, now, smoothing)
+  g.limit.knee.setTargetAtTime(3, now, smoothing)
+  g.limit.ratio.setTargetAtTime(16, now, smoothing)
+  g.limit.attack.setTargetAtTime(0.002, now, smoothing)
+  g.limit.release.setTargetAtTime(0.08, now, smoothing)
 }
 
 export function wetDryFor(
