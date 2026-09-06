@@ -27,7 +27,7 @@ import { ModeSwitch } from '../modes/ModeSwitch'
 import { persistUiMode, readStoredUiMode, type UiMode } from '../modes/uiMode'
 import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
-import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
+import { sensoryLayerBaseEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
@@ -274,7 +274,7 @@ export default function App() {
   const prepareSensoryLayer = () => {
     const current = captureDsp(engine)
     const last = appliedRef.current
-    if (!dspSnapshotsEqual(current, last)) {
+    if (!sensoryLayerBaseEqual(current, last)) {
       sensoryBaseRef.current = current
       appliedRef.current = current
       const rest = defaultSensoryValues()
