@@ -56,8 +56,28 @@ export function snapshotFromEngine(input: {
 }
 
 export function dspSnapshotsEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): boolean {
+  return dspSnapshotsEqualExcept(a, b, emptyIgnore, eps)
+}
+
+/** Playhead and region move while the morph base should stay put. */
+export const SENSORY_LAYER_TRANSPORT_IDS: readonly ParamId[] = ['position', 'start', 'end']
+
+const sensoryTransportIgnore = new Set<ParamId>(SENSORY_LAYER_TRANSPORT_IDS)
+const emptyIgnore = new Set<ParamId>()
+
+export function sensoryLayerBaseEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): boolean {
+  return dspSnapshotsEqualExcept(a, b, sensoryTransportIgnore, eps)
+}
+
+function dspSnapshotsEqualExcept(
+  a: DspSnapshot,
+  b: DspSnapshot,
+  ignore: ReadonlySet<ParamId>,
+  eps: number,
+): boolean {
   const ids = Object.keys(a.params) as ParamId[]
   for (const id of ids) {
+    if (ignore.has(id)) continue
     if (Math.abs((a.params[id] ?? 0) - (b.params[id] ?? 0)) > eps) return false
   }
   if (a.eqBands.length !== b.eqBands.length) return false

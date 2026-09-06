@@ -34,7 +34,7 @@ export function canyonRelief(amp01: number, depth01: number, width: number): num
 }
 
 export function gleamRayCount(energy: number): number {
-  return Math.max(3, Math.round(4 + Math.min(1, Math.max(0, energy)) * 8))
+  return Math.max(3, Math.round(5 + Math.min(1, Math.max(0, energy)) * 16))
 }
 
 /** Tiny stereo color offset for drift — keep it sub-pixel so ridges stay readable. */
@@ -78,7 +78,7 @@ export function mirrorLayout(
 }
 
 export function canyonSliceCount(height: number): number {
-  return Math.max(12, Math.min(24, Math.round(height / 36)))
+  return Math.max(16, Math.min(42, Math.round(height / 24)))
 }
 
 /** Horizontal baseline for a depth slice. Depth 0 is the bottom edge; 1 is near the top. */

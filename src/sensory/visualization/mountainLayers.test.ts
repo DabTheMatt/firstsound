@@ -32,13 +32,16 @@ describe('grainDustCount', () => {
     expect(grainDustCount(0, 1200)).toBe(0)
     expect(grainDustCount(0.25, 1200)).toBeGreaterThan(20)
     expect(grainDustCount(1, 1200)).toBeGreaterThan(grainDustCount(0.4, 1200))
+    expect(grainDustCount(1, 1200)).toBeGreaterThan(80)
     expect(grainDustCount(1, 1200)).toBeLessThan(250)
   })
 })
 
 describe('contourCount', () => {
   it('adds flowing isolines as space opens', () => {
+    expect(contourCount(0)).toBeGreaterThanOrEqual(6)
     expect(contourCount(1)).toBeGreaterThan(contourCount(0))
+    expect(contourCount(1, 1)).toBeGreaterThanOrEqual(16)
   })
 })
 

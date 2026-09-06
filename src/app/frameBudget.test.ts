@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { forPaintX, paintIntervalMs, ridgeSampleStep } from './frameBudget'
+import { forPaintX, paintIntervalMs, ridgeSampleStep, sensoryPaintIntervalMs } from './frameBudget'
 
 describe('ridgeSampleStep', () => {
   it('skips columns on wide canvases', () => {
@@ -9,9 +9,10 @@ describe('ridgeSampleStep', () => {
   })
 })
 
-describe('paintIntervalMs', () => {
-  it('paints slower when transport is stopped', () => {
-    expect(paintIntervalMs(true)).toBeLessThan(paintIntervalMs(false))
+describe('sensoryPaintIntervalMs', () => {
+  it('keeps the landscape near 30 fps while knobs ease at rest', () => {
+    expect(sensoryPaintIntervalMs()).toBe(33)
+    expect(sensoryPaintIntervalMs()).toBeLessThan(paintIntervalMs(false))
   })
 })
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
+import { isDocumentHidden, sensoryPaintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { lensDisplayX, lensEdgeBulge, lensSourceX, lensSphereScale } from '../visualization/lensWarp'
@@ -44,7 +44,7 @@ export function SoundLens({
         frame = requestAnimationFrame(tick)
         return
       }
-      if (now - lastPaint < paintIntervalMs(engine.getSnapshot().playing)) {
+      if (now - lastPaint < sensoryPaintIntervalMs()) {
         frame = requestAnimationFrame(tick)
         return
       }

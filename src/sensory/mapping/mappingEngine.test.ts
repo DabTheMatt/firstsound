@@ -3,7 +3,7 @@ import { defaultParamValues } from '../../audio/parameters/definitions'
 import { defaultEqBands } from '../../audio/engine/eqBands'
 import { defaultChain } from '../../audio/chain/chain'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { mapSensoryToDsp, snapshotFromEngine } from './mappingEngine'
+import { dspSnapshotsEqual, mapSensoryToDsp, sensoryLayerBaseEqual, snapshotFromEngine } from './mappingEngine'
 import { SENSORY_SAFETY } from './safety'
 import { interpolateMorphStop } from './morph'
 import { EFFECT_MORPHS } from './effectMorphs'
@@ -174,5 +174,18 @@ describe('mapSensoryToDsp', () => {
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'mod', 0.6)).bypass.grain).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 0.6)).bypass.delay).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'character', 0.6)).bypass.eq).toBe(false)
+  })
+})
+
+describe('sensoryLayerBaseEqual', () => {
+  it('ignores playhead motion so entering Sensory does not rest the knobs', () => {
+    const a = baseDsp()
+    const b = baseDsp()
+    b.params.position = 80
+    b.params.start = 0.2
+    expect(dspSnapshotsEqual(a, b)).toBe(false)
+    expect(sensoryLayerBaseEqual(a, b)).toBe(true)
+    b.params.reverbWet = 22
+    expect(sensoryLayerBaseEqual(a, b)).toBe(false)
   })
 })

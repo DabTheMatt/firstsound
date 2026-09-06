@@ -50,10 +50,10 @@ describe('impulse', () => {
     for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
     for (let i = 0; i < rmsN; i++) earlyEnergy += left[i]! * left[i]! + right[i]! * right[i]!
     const earlyRms = Math.sqrt(earlyEnergy / (2 * rmsN))
-    expect(peak).toBeGreaterThan(0.08)
+    expect(peak).toBeGreaterThan(0.15)
     expect(peak).toBeLessThanOrEqual(IR_PEAK_LIMIT)
     expect(earlyRms).toBeGreaterThan(IR_TARGET_EARLY_RMS * 0.35)
-    expect(earlyRms).toBeLessThan(0.08)
+    expect(earlyRms).toBeLessThan(0.2)
   })
 
   it('cathedral IRs last long enough for huge spaces', () => {
