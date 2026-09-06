@@ -660,7 +660,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   reverbDamping: {
     id: 'reverbDamping',
-    label: 'Damping',
+    label: 'High Damp',
     min: 200,
     max: 18000,
     defaultValue: 7000,
@@ -1550,7 +1550,16 @@ export const SPACE_KNOBS: ParamId[] = [
   'reverbWidth',
 ]
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbDry', 'reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth']
+export const REVERB_MAIN_KNOBS: ParamId[] = [
+  'reverbDry',
+  'reverbWet',
+  'reverbSize',
+  'reverbDecay',
+  'reverbWidth',
+  'reverbLowCut',
+  'reverbHighCut',
+  'reverbDamping',
+]
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso', 'filterDrive', 'filterMix']
 export const FILTER_MOD_KNOBS: ParamId[] = [
   'filterLfoRate',
