@@ -2486,16 +2486,16 @@ export class AudioEngine {
     } else {
       this.voiceBus.connect(ordered[0]!.input)
     }
-    const eqSlots = ordered.filter((s) => s.type === 'eq')
-    const firstEq = eqSlots[0]
-    const lastEq = eqSlots.at(-1)
-    if (firstEq) {
-      if (this.analyserPre) firstEq.input.connect(this.analyserPre)
-      if (this.noiseGain) this.noiseGain.connect(firstEq.input)
+    const toneSlots = ordered.filter((s) => s.type === 'eq' || s.type === 'filter')
+    const firstTone = toneSlots[0]
+    const lastTone = toneSlots.at(-1)
+    if (firstTone) {
+      if (this.analyserPre) firstTone.input.connect(this.analyserPre)
+      if (this.noiseGain) this.noiseGain.connect(firstTone.input)
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
-    if (lastEq && this.analyserEq) lastEq.output.connect(this.analyserEq)
+    if (lastTone && this.analyserEq) lastTone.output.connect(this.analyserEq)
     const limSlot = ordered.find((s) => s.type === 'limiter')
     if (limSlot && this.analyserLimiterPre) {
       limSlot.input.connect(this.analyserLimiterPre)

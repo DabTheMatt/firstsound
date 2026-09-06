@@ -81,7 +81,26 @@ export function fftFirstBinHz(sampleRate: number, binCount: number): number {
   return sampleRate / (binCount * 2)
 }
 
-/** Linear interpolation between FFT bins at `hz`. Below bin 1 → floor. */
+/**
+ * Last AnalyserNode bin is Nyquist-adjacent and often holds window/DC fold
+ * energy. Ignore it so the air band does not paint a fake shelf.
+ */
+export function fftLastUsableBin(binCount: number): number {
+  return Math.max(1, binCount - 2)
+}
+
+export function fftLastUsableHz(sampleRate: number, binCount: number): number {
+  if (!(sampleRate > 0) || binCount < 2) return 0
+  return (fftLastUsableBin(binCount) * sampleRate) / (binCount * 2)
+}
+
+/** Plot / band top: Nyquist, capped to the EQ axis so log bands match the UI. */
+export function spectrumMaxHz(sampleRate: number, capHz: number): number {
+  if (!(sampleRate > 0)) return Math.max(1, capHz)
+  return Math.min(capHz, sampleRate / 2)
+}
+
+/** Linear interpolation between FFT bins at `hz`. DC and Nyquist bins → floor. */
 export function fftDbAtHz(
   binsDb: ArrayLike<number>,
   sampleRate: number,
@@ -92,9 +111,10 @@ export function fftDbAtHz(
   if (n < 2 || !(sampleRate > 0) || !(hz > 0)) return floorDb
   const fftSize = n * 2
   const pos = (hz * fftSize) / sampleRate
-  if (pos < 1) return floorDb
-  if (pos >= n - 1) return binsDb[n - 1] ?? floorDb
-  const i0 = Math.floor(pos)
+  const last = fftLastUsableBin(n)
+  if (pos < 1 || pos > last) return floorDb
+  const i0 = Math.min(last, Math.floor(pos))
+  if (i0 >= last) return binsDb[last] ?? floorDb
   const frac = pos - i0
   const a = binsDb[i0] ?? floorDb
   const b = binsDb[i0 + 1] ?? floorDb
@@ -107,6 +127,7 @@ export function bandPeakDb(
   sampleRate: number,
   bandCount: number = SPECTRUM_BAND_COUNT,
   minHz = 20,
+  maxHz?: number,
 ): Float32Array {
   const n = binsDb.length
   const out = new Float32Array(bandCount)
@@ -114,20 +135,23 @@ export function bandPeakDb(
   if (n < 2 || !(sampleRate > 0)) return out
   const fftSize = n * 2
   const nyquist = sampleRate / 2
+  const hiLimit = Math.min(nyquist, maxHz ?? nyquist)
   const firstHz = fftFirstBinHz(sampleRate, n)
-  const edges = logBandEdgesHz(minHz, nyquist, bandCount)
+  const lastHz = fftLastUsableHz(sampleRate, n)
+  const lastBin = fftLastUsableBin(n)
+  const edges = logBandEdgesHz(minHz, Math.max(minHz * 1.01, hiLimit), bandCount)
   for (let b = 0; b < bandCount; b++) {
     const loHz = edges[b] ?? minHz
-    const hiHz = edges[b + 1] ?? nyquist
+    const hiHz = edges[b + 1] ?? hiLimit
     const center = Math.sqrt(Math.max(1, loHz) * Math.max(loHz, hiHz))
-    if (hiHz <= firstHz || center < firstHz) {
+    if (hiHz <= firstHz || center < firstHz || loHz >= lastHz || center > lastHz) {
       out[b] = SPECTRUM_FLOOR_DB
       continue
     }
     // Only bins whose center frequency sits inside the band — avoids painting
     // one coarse LF bin across a wide log-frequency plateau (10–25 Hz shelf).
     const i0 = Math.max(1, Math.ceil((loHz * fftSize) / sampleRate))
-    const i1 = Math.min(n - 1, Math.floor((hiHz * fftSize) / sampleRate - 1e-9))
+    const i1 = Math.min(lastBin, Math.floor((hiHz * fftSize) / sampleRate - 1e-9))
     if (i1 >= i0) {
       let peak = SPECTRUM_FLOOR_DB
       for (let i = i0; i <= i1; i++) {
@@ -140,6 +164,16 @@ export function bandPeakDb(
     }
   }
   return out
+}
+
+/** Do not lift analyser-floor bins when matching FFT height to the loudness meter. */
+export function alignedBandDb(
+  db: number,
+  alignDb: number,
+  floorDb = SPECTRUM_FLOOR_DB,
+): number {
+  if (!Number.isFinite(db) || db <= floorDb + 1) return floorDb
+  return db + alignDb
 }
 
 /** Keep measured post-EQ FFT from exceeding pre + filter gain (kills LF leakage). */
@@ -169,9 +203,14 @@ export function capBandsByEqGain(
   }
 }
 
-/** In a cut, use the more attenuated of band-low and band-center so a wide log band cannot leak. */
-export function eqGainForSpectrumBand(centerGainDb: number, lowEdgeGainDb: number): number {
-  if (centerGainDb < -1) return Math.min(centerGainDb, lowEdgeGainDb)
+/** In a cut, use the most attenuated of center and both edges so a wide log band cannot leak. */
+export function eqGainForSpectrumBand(
+  centerGainDb: number,
+  lowEdgeGainDb: number,
+  highEdgeGainDb = centerGainDb,
+): number {
+  const steepest = Math.min(centerGainDb, lowEdgeGainDb, highEdgeGainDb)
+  if (steepest < -1) return steepest
   return centerGainDb
 }
 
@@ -189,7 +228,7 @@ export function fftPeakDbInHzRange(
   const lo = Math.min(nyquist, Math.max(1, Math.min(loHz, hiHz)))
   const hi = Math.min(nyquist, Math.max(lo * 1.001, Math.max(loHz, hiHz)))
   const i0 = Math.max(1, Math.floor((lo * fftSize) / sampleRate))
-  const i1 = Math.min(n - 1, Math.ceil((hi * fftSize) / sampleRate))
+  const i1 = Math.min(fftLastUsableBin(n), Math.ceil((hi * fftSize) / sampleRate))
   let peak = -100
   for (let i = i0; i <= i1; i++) {
     const db = binsDb[i] ?? -100

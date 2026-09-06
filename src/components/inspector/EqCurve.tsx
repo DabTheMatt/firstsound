@@ -17,7 +17,7 @@ import {
 } from '../../audio/engine/eqPlot'
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
-import { bandPeakDb, logBandEdgesHz } from '../../audio/engine/spectrumBands'
+import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
@@ -83,15 +83,15 @@ export function EqCurve({
         const bins = new Float32Array(analyser.frequencyBinCount)
         analyser.getFloatFrequencyData(bins)
         const fftSr = engine.getSnapshot().sampleRate || sr
-        const nyquist = fftSr / 2
-        const peaks = bandPeakDb(bins, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ)
-        const edges = logBandEdgesHz(EQ_MIN_HZ, Math.min(nyquist, EQ_MAX_HZ), EQ_MINI_BAND_COUNT)
+        const plotMax = spectrumMaxHz(fftSr, EQ_MAX_HZ)
+        const peaks = bandPeakDb(bins, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ, plotMax)
+        const edges = logBandEdgesHz(EQ_MIN_HZ, plotMax, EQ_MINI_BAND_COUNT)
         const gap = Math.max(1, Math.floor((width / EQ_MINI_BAND_COUNT) * 0.12))
         const zeroY = dbToY(0, height)
         ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.42)
         for (let i = 0; i < EQ_MINI_BAND_COUNT; i++) {
           const x0 = freqToX(edges[i] ?? EQ_MIN_HZ, width, EQ_MAX_HZ)
-          const x1 = freqToX(edges[i + 1] ?? Math.min(nyquist, EQ_MAX_HZ), width, EQ_MAX_HZ)
+          const x1 = freqToX(edges[i + 1] ?? plotMax, width, EQ_MAX_HZ)
           const mag = peaks[i] ?? -100
           const t = Math.min(1, Math.max(0, (0 - mag) / 90))
           const y = zeroY + t * (height - zeroY)

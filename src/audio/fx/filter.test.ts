@@ -15,7 +15,7 @@ import {
   FILTER_TYPE_OPTIONS,
 } from './filter'
 import { filterPresetPatch, randomizeFilterPatch } from './filterPresets'
-import { filterMagnitudeDb } from './filterResponse'
+import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from './filterResponse'
 
 describe('filter types and slopes', () => {
   it('maps discrete indices onto creative filter types', () => {
@@ -140,6 +140,19 @@ describe('response and presets', () => {
     const hp = { ...lp, filterKind: optionIndex(FILTER_TYPE_OPTIONS, 'highpass') }
     expect(filterMagnitudeDb(lp, 80, 48000)).toBeGreaterThan(filterMagnitudeDb(lp, 8000, 48000))
     expect(filterMagnitudeDb(hp, 8000, 48000)).toBeGreaterThan(filterMagnitudeDb(hp, 80, 48000))
+  })
+
+  it('stays near the floor below a wet high-pass after mix', () => {
+    const hp = defaultParamValues()
+    hp.filterKind = optionIndex(FILTER_TYPE_OPTIONS, 'highpass')
+    hp.filterCutoff = 200
+    hp.filterSlope = 3
+    hp.filterMix = 100
+    const raw = filterMagnitudeDb(hp, 20, 48000)
+    expect(filterMixMagnitudeDb(raw, 100)).toBeLessThan(-24)
+    expect(filterMixMagnitudeDb(raw, 0)).toBeCloseTo(0, 1)
+    expect(filterModuleIsAudible(true, 100)).toBe(false)
+    expect(filterModuleIsAudible(false, 100)).toBe(true)
   })
 
   it('keeps randomize inside a musical recipe family', () => {
