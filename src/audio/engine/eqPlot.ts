@@ -59,9 +59,15 @@ export function clampEqOverlayDb(
   return Math.min(maxDb, Math.max(minDb, db))
 }
 
-/** Node Y on the spectrum overlay: actual chain magnitude at the handle frequency. */
-export function eqNodePlotDb(bands: EqBand[], hz: number, sampleRate: number): number {
-  return clampEqOverlayDb(eqMagnitudeDb(bands, hz, sampleRate))
+/** Node Y on an EQ overlay: actual chain magnitude at the handle frequency. */
+export function eqNodePlotDb(
+  bands: EqBand[],
+  hz: number,
+  sampleRate: number,
+  minDb = SPECTRUM_EQ_MIN_DB,
+  maxDb = SPECTRUM_EQ_MAX_DB,
+): number {
+  return clampEqOverlayDb(eqMagnitudeDb(bands, hz, sampleRate), minDb, maxDb)
 }
 
 export function spectrumEqOverlayY(

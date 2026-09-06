@@ -5,10 +5,12 @@ import { EQ_MAX_HZ, EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
+  eqNodePlotDb,
   eqResponseCurveStyle,
   EQ_MINI_BAND_COUNT,
+  EQ_PLOT_MAX_DB,
+  EQ_PLOT_MIN_DB,
   freqToX,
-  nodeDisplayDb,
   strokeEqMagnitude,
   xToFreq,
   yToDb,
@@ -108,10 +110,15 @@ export function EqCurve({
       const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
       const freqs = logFreqAxis(width, EQ_MIN_HZ, EQ_MAX_HZ)
       const tone = eqTone(toneIndex, colors)
+      const yAt = (db: number) => Math.min(height, Math.max(0, dbToY(db, height)))
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, 0, width, height)
+      ctx.clip()
       const storedStyle = eqResponseCurveStyle('stored', false, dpr)
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
       ctx.lineWidth = Math.max(1.5, storedStyle.width)
-      strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, (db) => dbToY(db, height))
+      strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
       if (eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
         const liveComb = comb
           ? {
@@ -129,8 +136,9 @@ export function EqCurve({
         const liveStyle = eqResponseCurveStyle('live', false, dpr)
         ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
         ctx.lineWidth = Math.max(0.75, liveStyle.width)
-        strokeEqMagnitude(ctx, liveBands, freqs, sr, (i) => i, (db) => dbToY(db, height))
+        strokeEqMagnitude(ctx, liveBands, freqs, sr, (i) => i, yAt)
       }
+      ctx.restore()
       ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`
       ctx.fillText('10', 4, height - 4)
@@ -188,7 +196,9 @@ export function EqCurve({
       {bands.map((band, index) => {
         if (band.type === 'off') return null
         const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
-        const yPct = dbToY(nodeDisplayDb(band), 1) * 100
+        const liveBands = liveEqBandsFromParams(bands, engine.getSnapshot().liveParams)
+        const yPct =
+          dbToY(eqNodePlotDb(liveBands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
         const selected = index === selectedBand
         const color = eqBandColorForHz(band.frequency)
         return (
