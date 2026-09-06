@@ -5,6 +5,14 @@ import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ValueKnob } from './ValueKnob'
 
+const BIPOLAR: ReadonlySet<ParamId> = new Set([
+  'pan',
+  'msBalance',
+  'msMidTilt',
+  'msSideTilt',
+  'msRotate',
+])
+
 type Props = {
   id: ParamId
   value: number
@@ -29,7 +37,8 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
       min={def.min}
       max={def.max}
       now={Number(live.toFixed(3))}
-      bipolar={id === 'pan'}
+      bipolar={BIPOLAR.has(id)}
+      markerNormalized={id === 'msWidth' ? 0.5 : undefined}
       onChange={(n) => engine.setParam(id, fromNormalized(n, def))}
       onReset={() => engine.resetParam(id)}
       onTypedValue={(text) => {

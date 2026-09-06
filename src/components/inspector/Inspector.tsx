@@ -43,6 +43,7 @@ import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, type DistortionType } from '.
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { FilterInspector } from './FilterInspector'
+import { MidSideInspector } from './MidSideInspector'
 import { eqBandAccentVars } from '../eq/eqBandStyle'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
@@ -537,6 +538,7 @@ function ModuleInspector({
         <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
       ) : null}
       {type === 'filter' ? <FilterInspector snap={snap} variant={variant} pane={pane} /> : null}
+      {type === 'midside' ? <MidSideInspector snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'distortion' && pane === 'main' ? (
         <>
           <Segmented

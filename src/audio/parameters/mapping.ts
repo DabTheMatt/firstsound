@@ -237,7 +237,33 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'invertPhase':
     case 'limiterAutoMakeup':
     case 'compressorAutoMakeup':
+    case 'msSoloMid':
+    case 'msSoloSide':
+    case 'msMono':
+    case 'msFlipMid':
+    case 'msFlipSide':
       return value > 0.5 ? 'On' : 'Off'
+    case 'msHaasDir':
+      return value < 0.5 ? 'L' : 'R'
+    case 'msSideHpf':
+      return value < 20
+        ? 'Off'
+        : value >= 1000
+          ? '1.00 kHz'
+          : `${Math.round(value)} Hz`
+    case 'msMidGain':
+    case 'msSideGain':
+      return value <= def.min + 0.05 ? '−∞ dB' : `${value.toFixed(1)} dB`
+    case 'msBalance':
+      if (Math.abs(value) < 0.5) return 'Center'
+      return value < 0 ? `Mid ${Math.round(-value)}` : `Side ${Math.round(value)}`
+    case 'msRotate':
+      if (Math.abs(value) < 0.5) return '0'
+      return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
+    case 'msMidTilt':
+    case 'msSideTilt':
+      if (Math.abs(value) < 0.5) return '0'
+      return value < 0 ? `Dark ${Math.round(-value)}` : `Bright ${Math.round(value)}`
     case 'pan':
     case 'reverbPan':
       if (Math.abs(value) < 0.5) return 'C'

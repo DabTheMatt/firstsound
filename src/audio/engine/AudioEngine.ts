@@ -105,6 +105,15 @@ import {
   rmsFromTimeDomain,
 } from '../fx/filter'
 import { applyFilterGraph, createFilterGraph, filterDryWetGains, type FilterGraph } from '../fx/filterGraph'
+import { applyMidSideGraph, createMidSideGraph, type MidSideGraph } from '../fx/midSideGraph'
+import { MS_PARAM_IDS } from '../fx/midSide'
+import {
+  randomizeMidSide as randomizeMidSidePatch,
+  resetMidSidePatch,
+  type MidSideRecipeId,
+  midSideRecipePatch,
+  MIDSIDE_RECIPES,
+} from '../fx/midSidePresets'
 import { filterPresetPatch, randomizeFilterPatch, resetFilterPatch, type FilterPresetId } from '../fx/filterPresets'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
@@ -321,6 +330,7 @@ type Slot = {
   shaper?: WaveShaperNode
   distortionFx?: DistortionGraph
   filterFx?: FilterGraph
+  midSideFx?: MidSideGraph
   delay?: DelayNode
   delayFb?: GainNode
   convolver?: ConvolverNode
@@ -827,6 +837,7 @@ export class AudioEngine {
         this.engageDistortionFromDrive()
       }
       if ((FILTER_PARAM_IDS as string[]).includes(id)) this.engageFilter()
+      if ((MS_PARAM_IDS as string[]).includes(id)) this.engageMidSide()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -855,6 +866,7 @@ export class AudioEngine {
     this.engageDelayFromMix()
     this.engageDistortionFromDrive()
     if (FILTER_PARAM_IDS.some((id) => id in patch)) this.engageFilter()
+    if (MS_PARAM_IDS.some((id) => id in patch)) this.engageMidSide()
     this.emit()
   }
 
@@ -938,6 +950,11 @@ export class AudioEngine {
     if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
   }
 
+  private engageMidSide(): void {
+    const mod = this.chain.find((m) => m.type === 'midside')
+    if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+  }
+
   applyFilterPreset(id: FilterPresetId): void {
     this.setParams(filterPresetPatch(id))
   }
@@ -948,6 +965,38 @@ export class AudioEngine {
 
   resetFilter(): void {
     this.setParams(resetFilterPatch())
+  }
+
+  applyMidSideRecipe(id: MidSideRecipeId): void {
+    const recipe = MIDSIDE_RECIPES.find((item) => item.id === id)
+    this.setParams(midSideRecipePatch(id))
+    if (recipe?.lfo) this.setFxLfo('midside', 0, { ...defaultFxLfo(), ...recipe.lfo })
+    else this.setFxLfo('midside', 0, { target: null })
+  }
+
+  randomizeMidSide(): void {
+    const next = randomizeMidSidePatch()
+    this.setParams(next.params)
+    if (next.lfo) {
+      this.setFxLfo('midside', 0, { ...defaultFxLfo(), ...next.lfo })
+    } else {
+      this.setFxLfo('midside', 0, { target: null })
+    }
+  }
+
+  resetMidSide(): void {
+    this.setParams(resetMidSidePatch())
+    this.setFxLfo('midside', 0, { target: null })
+  }
+
+  copyMidSideScope(left: Uint8Array, right: Uint8Array): boolean {
+    for (const slot of this.slots.values()) {
+      if (!slot.midSideFx) continue
+      slot.midSideFx.analyserL.getByteTimeDomainData(left as Uint8Array<ArrayBuffer>)
+      slot.midSideFx.analyserR.getByteTimeDomainData(right as Uint8Array<ArrayBuffer>)
+      return true
+    }
+    return false
   }
 
   setReverbType(type: ReverbType): void {
@@ -2401,6 +2450,10 @@ export class AudioEngine {
       input.connect(wet)
       slot.filterFx = createFilterGraph(ctx, wet, output)
     }
+    if (mod.type === 'midside') {
+      input.connect(wet)
+      slot.midSideFx = createMidSideGraph(ctx, wet, output)
+    }
     if (mod.type === 'distortion') {
       input.connect(wet)
       slot.distortionFx = createDistortionGraph(ctx, wet, output)
@@ -2666,6 +2719,7 @@ export class AudioEngine {
           mod.type === 'reverb' ||
           mod.type === 'distortion' ||
           mod.type === 'filter' ||
+          mod.type === 'midside' ||
           mod.type === 'compressor' ||
           mod.type === 'limiter')
         ? true
@@ -2930,6 +2984,9 @@ export class AudioEngine {
     for (const slot of this.slots.values()) {
       if (slot.filterFx) {
         applyFilterGraph(slot.filterFx, params, now, smoothing, this.ctx.sampleRate)
+      }
+      if (slot.midSideFx) {
+        applyMidSideGraph(slot.midSideFx, params, now, smoothing)
       }
       if (slot.distortionFx) {
         applyDistortionGraph(
@@ -3706,7 +3763,7 @@ function wetLevel(
       params.distortionNoise,
     ).wet
   }
-  if (type === 'eq' || type === 'compressor' || type === 'limiter') return 1
+  if (type === 'eq' || type === 'compressor' || type === 'limiter' || type === 'midside') return 1
   return 0
 }
 
@@ -3728,7 +3785,7 @@ function dryLevel(
       params.distortionNoise,
     ).dry
   }
-  if (type === 'eq' || type === 'compressor' || type === 'limiter') return 0
+  if (type === 'eq' || type === 'compressor' || type === 'limiter' || type === 'midside') return 0
   return 1
 }
 
