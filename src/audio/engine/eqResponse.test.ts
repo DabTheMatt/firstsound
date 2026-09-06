@@ -43,4 +43,11 @@ describe('eqMagnitudeDb', () => {
     bands[2] = { type: 'peaking', frequency: 1000, gain: 6, q: 1, slope: 12, bypassed: true }
     expect(eqMagnitudeDb(bands, 1000, 48000)).toBeCloseTo(0, 5)
   })
+
+  it('a steep high-pass is far below unity at 20 Hz', () => {
+    const bands = defaultEqBands()
+    bands[1] = { type: 'highpass', frequency: 190, gain: 0, q: 0.7, slope: 48 }
+    expect(eqMagnitudeDb(bands, 20, 48000)).toBeLessThan(-80)
+    expect(eqMagnitudeDb(bands, 400, 48000)).toBeGreaterThan(-6)
+  })
 })
