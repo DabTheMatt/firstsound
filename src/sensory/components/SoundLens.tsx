@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { lensDisplayX, lensEdgeBulge, lensSourceX, lensSphereScale } from '../visualization/lensWarp'
@@ -36,7 +37,18 @@ export function SoundLens({
     if (!canvas) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
-    const tick = () => {
+    let lastPaint = 0
+    let timeBuf: Uint8Array | null = null
+    const tick = (now: number) => {
+      if (isDocumentHidden()) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      if (now - lastPaint < paintIntervalMs(engine.getSnapshot().playing)) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      lastPaint = now
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -83,8 +95,10 @@ export function SoundLens({
         const analyser = engine.getAnalyser()
         let energy = 0.18
         if (analyser) {
-          const bins = new Uint8Array(analyser.frequencyBinCount)
-          analyser.getByteTimeDomainData(bins)
+          const n = analyser.fftSize
+          if (!timeBuf || timeBuf.length !== n) timeBuf = new Uint8Array(n)
+          analyser.getByteTimeDomainData(timeBuf as Uint8Array<ArrayBuffer>)
+          const bins = timeBuf
           let acc = 0
           for (let i = 0; i < bins.length; i++) {
             const v = ((bins[i] ?? 128) - 128) / 128

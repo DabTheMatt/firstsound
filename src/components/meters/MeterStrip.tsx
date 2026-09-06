@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -31,12 +32,19 @@ export function MeterStrip({ channels, range, onRange }: Props) {
 
   useEffect(() => {
     let frame = 0
-    const tick = () => {
+    let last = 0
+    const leftBuf = { data: null as Float32Array | null }
+    const rightBuf = { data: null as Float32Array | null }
+    const tick = (now: number) => {
+      if (isDocumentHidden() || now - last < paintIntervalMs(engine.getSnapshot().playing)) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      last = now
       const { left, right } = engine.getChannelAnalysers()
       const minDb = meterDbMin(range)
-      const l = peakDb(left)
-      const r = peakDb(right ?? left)
-      const now = performance.now()
+      const l = peakDb(left, leftBuf)
+      const r = peakDb(right ?? left, rightBuf)
       const dt = hold.current.t ? (now - hold.current.t) / 1000 : 0
       hold.current.t = now
       hold.current.l = fallHoldDb(hold.current.l, l, dt)
@@ -156,10 +164,11 @@ function LaneHashes({ marks, minDb }: { marks: MeterScaleMark[]; minDb: number }
   )
 }
 
-function peakDb(node: AnalyserNode | null): number {
+function peakDb(node: AnalyserNode | null, scratch: { data: Float32Array | null }): number {
   if (!node) return Number.NEGATIVE_INFINITY
-  const buf = new Float32Array(node.fftSize)
-  node.getFloatTimeDomainData(buf)
+  if (!scratch.data || scratch.data.length !== node.fftSize) scratch.data = new Float32Array(node.fftSize)
+  const buf = scratch.data
+  node.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>)
   let peak = 0
   for (let i = 0; i < buf.length; i++) {
     const a = Math.abs(buf[i] ?? 0)

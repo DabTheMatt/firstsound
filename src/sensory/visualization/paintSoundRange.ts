@@ -1,3 +1,4 @@
+import { forPaintX, ridgeSampleStep } from '../../app/frameBudget'
 import type { SensorySceneId } from '../sensoryScene'
 import { gleamRayCount, mirrorLayout, rangeLayout } from './rangeScenes'
 import {
@@ -115,12 +116,13 @@ function strokeContour(
   breath: number,
   frac: number,
 ) {
+  const step = ridgeSampleStep(width)
   ctx.beginPath()
-  for (let x = 0; x < width; x++) {
+  forPaintX(width, step, (x) => {
     const y = ridgeY(env, x, base, amp * frac, spec, visual, grit, t, li, dir, breath)
     if (x === 0) ctx.moveTo(x, y)
     else ctx.lineTo(x, y)
-  }
+  })
   ctx.stroke()
 }
 
@@ -146,11 +148,12 @@ function paintRidgeStack(
     const layerAmp = amp * (1 - spec.z * 0.18)
     ctx.save()
     if (xOff) ctx.translate(xOff, 0)
+    const step = ridgeSampleStep(width)
     ctx.beginPath()
     ctx.moveTo(0, layerBase)
-    for (let x = 0; x < width; x++) {
+    forPaintX(width, step, (x) => {
       ctx.lineTo(x, ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath))
-    }
+    })
     ctx.lineTo(width - 1, layerBase)
     ctx.closePath()
     ctx.fillStyle = moodFill(ctx, width, visual, ridge, spec.alpha * (0.85 + visual.glow * 0.2) * alphaMul)
@@ -160,11 +163,11 @@ function paintRidgeStack(
     ctx.lineWidth = Math.max(1, dpr * (1.1 - spec.z * 0.4))
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    for (let x = 0; x < width; x++) {
+    forPaintX(width, step, (x) => {
       const y = ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath)
       if (x === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
-    }
+    })
     ctx.stroke()
 
     const lines = Math.max(4, Math.round(contours * (1 - spec.z * 0.55)))

@@ -41,6 +41,8 @@ import {
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
+import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
+import { isDocumentHidden } from '../../app/frameBudget'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
@@ -150,11 +152,13 @@ function readAnalyserPeaks(
   sampleRate: number,
   bandCount: number,
   minHz: number,
+  scratch: { bins: Float32Array | null },
 ): Float32Array | null {
   if (!analyser) return null
-  const bins = new Float32Array(analyser.frequencyBinCount)
-  analyser.getFloatFrequencyData(bins)
-  return bandPeakDb(bins, sampleRate, bandCount, minHz)
+  const n = analyser.frequencyBinCount
+  if (!scratch.bins || scratch.bins.length !== n) scratch.bins = new Float32Array(n)
+  analyser.getFloatFrequencyData(scratch.bins as Float32Array<ArrayBuffer>)
+  return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz)
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
@@ -189,11 +193,23 @@ export function Spectrum({ active }: Props) {
   }, [prefs])
 
   useEffect(() => {
-    if (!active) return
+    if (!active) {
+      engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
+      return
+    }
     const canvas = canvasRef.current
     if (!canvas) return
+    engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
     let frame = 0
+    const preScratch = { bins: null as Float32Array | null }
+    const postScratch = { bins: null as Float32Array | null }
+    let gainsBuf: Float32Array | null = null
     const tick = () => {
+      if (isDocumentHidden()) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
       const live = engine.getSnapshot()
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -346,11 +362,12 @@ export function Spectrum({ active }: Props) {
         })
         const showPre = layer === 'pre' || (layer === 'both' && eqAudible)
         const showPost = layer === 'post' || layer === 'both'
-        const prePeaks = readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz)
-        const postPeaks = readAnalyserPeaks(engine.getAnalyser('eq'), sr, bands, minHz)
+        const prePeaks = readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch)
+        const postPeaks = readAnalyserPeaks(engine.getAnalyser('eq'), sr, bands, minHz, postScratch)
         if (postPeaks && prePeaks && eqAudible) {
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
-          const gains = new Float32Array(bands)
+          if (!gainsBuf || gainsBuf.length !== bands) gainsBuf = new Float32Array(bands)
+          const gains = gainsBuf
           for (let i = 0; i < bands; i++) {
             const lo = edges[i] ?? minHz
             const center = bandCenterHz(edges, i)
@@ -412,7 +429,10 @@ export function Spectrum({ active }: Props) {
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
+    }
   }, [active])
 
   const onNodePointerDown = (

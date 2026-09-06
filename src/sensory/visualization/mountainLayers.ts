@@ -42,14 +42,14 @@ export function grainBandCount(grain: number): number {
 export function contourCount(space: number, grain = 0): number {
   const s = Math.min(1, Math.max(0, space))
   const g = Math.min(1, Math.max(0, grain))
-  return Math.max(6, Math.round(8 + s * 8 + g * 4))
+  return Math.max(3, Math.round(4 + s * 4 + g * 2))
 }
 
 /** Sparse stardust, scaled to canvas width and grain amount. */
 export function grainDustCount(grain: number, width = 1000): number {
   const g = Math.min(1, Math.max(0, grain))
   if (g < 0.04) return 0
-  const cap = Math.min(220, Math.max(48, Math.round(width * 0.12)))
+  const cap = Math.min(80, Math.max(28, Math.round(width * 0.05)))
   return Math.round(24 + g * (cap - 24))
 }
 

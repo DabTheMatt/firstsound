@@ -42,6 +42,10 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
   useEffect(() => {
     let frame = 0
     const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       const live = engine.getPrep()
       const d = timecodeDigits(viewSpan)
       if (startReadout.current) startReadout.current.textContent = formatTimecode(live.selectionStart, d)

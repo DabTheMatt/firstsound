@@ -56,6 +56,7 @@ import {
   parseCombFilter,
   type CombFilterState,
 } from './comb'
+import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
 import { createPinkNoiseBuffer } from './pinkNoise'
 import { micAccessMessage } from './micAccess'
 import {
@@ -482,6 +483,13 @@ export class AudioEngine {
     if (tap === 'compressorPre') return this.analyserCompressorPre ?? this.analyserLimiterPre
     if (tap === 'compressorPost') return this.analyserCompressorPost ?? this.analyserLimiterPost
     return this.analyser
+  }
+
+  setSpectrumFftSize(size: number): void {
+    const fft = clampAnalyserFftSize(size)
+    for (const node of [this.analyser, this.analyserPre, this.analyserEq]) {
+      if (node && node.fftSize !== fft) node.fftSize = fft
+    }
   }
 
   getLimiterReduction(): number {
@@ -2179,17 +2187,17 @@ export class AudioEngine {
     this.limiter.attack.value = 0.001
     this.limiter.release.value = 0.05
     this.analyser = ctx.createAnalyser()
-    this.analyser.fftSize = 16384
+    this.analyser.fftSize = ANALYSER_FFT_IDLE
     this.analyser.minDecibels = -100
     this.analyser.maxDecibels = 0
     this.analyser.smoothingTimeConstant = 0.55
     this.analyserPre = ctx.createAnalyser()
-    this.analyserPre.fftSize = 16384
+    this.analyserPre.fftSize = ANALYSER_FFT_IDLE
     this.analyserPre.minDecibels = -100
     this.analyserPre.maxDecibels = 0
     this.analyserPre.smoothingTimeConstant = 0.55
     this.analyserEq = ctx.createAnalyser()
-    this.analyserEq.fftSize = 16384
+    this.analyserEq.fftSize = ANALYSER_FFT_IDLE
     this.analyserEq.minDecibels = -100
     this.analyserEq.maxDecibels = 0
     this.analyserEq.smoothingTimeConstant = 0.55

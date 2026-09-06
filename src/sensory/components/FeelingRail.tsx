@@ -157,8 +157,12 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
   useEffect(() => {
     if (values.pan < 0.02) return
     let frame = 0
-    const tick = () => {
-      setLivePanPct(engine.getSnapshot().liveParams.pan)
+    let last = 0
+    const tick = (now: number) => {
+      if (now - last >= 80) {
+        last = now
+        setLivePanPct(engine.getSnapshot().liveParams.pan)
+      }
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)

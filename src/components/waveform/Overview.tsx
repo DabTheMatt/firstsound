@@ -71,6 +71,10 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
   useEffect(() => {
     let frame = 0
     const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       const el = playheadRef.current
       if (el && duration > 0) {
         el.style.left = `${(engine.getPlayheadSeconds() / duration) * 100}%`

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
@@ -75,11 +76,22 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
     if (!canvas) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
+    let lastPaint = 0
     let cache: { key: string; layers: Float32Array[] } | null = null
     const unsub = subscribeThemeChange(() => {
       cache = null
     })
-    const tick = () => {
+    const tick = (now: number) => {
+      if (isDocumentHidden()) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      const playing = engine.getSnapshot().playing
+      if (now - lastPaint < paintIntervalMs(playing)) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      lastPaint = now
       const target = visualRef.current
       shownRef.current = reduced ? target : lerpVisualState(shownRef.current, target, 0.085)
       const visual = shownRef.current

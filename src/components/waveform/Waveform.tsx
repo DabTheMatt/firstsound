@@ -339,7 +339,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   useEffect(() => {
     let frame = 0
-    const tick = () => {
+    let lastFx = 0
+    const tick = (now: number) => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       const el = playheadRef.current
       if (el) {
         const frac = timeToFrac(engine.getPlayheadSeconds(), viewRef.current)
@@ -354,6 +359,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const snap = engine.getSnapshot()
       const mode = fxMode
       if (fxCanvas && mode && !snap.chain.find((m) => m.type === mode)?.bypassed) {
+        if (now - lastFx < (snap.playing ? 33 : 80)) {
+          frame = requestAnimationFrame(tick)
+          return
+        }
+        lastFx = now
         const rect = fxCanvas.getBoundingClientRect()
         const dpr = Math.min(window.devicePixelRatio || 1, 2)
         const width = Math.max(1, Math.floor(rect.width * dpr))

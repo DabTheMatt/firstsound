@@ -53,6 +53,10 @@ export function TransportDock({
   useEffect(() => {
     let frame = 0
     const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       const el = tickRef.current
       const dur = stateRef.current.duration
       if (el) {

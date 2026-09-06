@@ -61,13 +61,18 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
     const postTap = (): 'compressorPost' | 'limiterPost' =>
       kindRef.current === 'compressor' ? 'compressorPost' : 'limiterPost'
 
+    const peakScratch = new Map<string, Float32Array>()
     const readPeakDb = (
       tap: 'compressorPre' | 'limiterPre' | 'compressorPost' | 'limiterPost',
     ): number => {
       const analyser = engine.getAnalyser(tap)
       if (!analyser) return Number.NEGATIVE_INFINITY
-      const buf = new Float32Array(analyser.fftSize)
-      analyser.getFloatTimeDomainData(buf)
+      let buf = peakScratch.get(tap)
+      if (!buf || buf.length !== analyser.fftSize) {
+        buf = new Float32Array(analyser.fftSize)
+        peakScratch.set(tap, buf)
+      }
+      analyser.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>)
       return amplitudeToDb(peakAmplitude(buf))
     }
 

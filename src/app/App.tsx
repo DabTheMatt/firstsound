@@ -6,6 +6,7 @@ import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { isTypingTarget } from './keys'
+import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
@@ -145,6 +146,12 @@ export default function App() {
   useEffect(() => {
     sensoryRef.current = sensory
   }, [sensory])
+
+  useEffect(() => {
+    if (uiMode === 'sensory' || (viz !== 'spectrum' && viz !== 'split' && viz !== 'eq-split')) {
+      engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
+    }
+  }, [uiMode, viz])
 
   useEffect(() => {
     engine.setRegionFades(edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend)

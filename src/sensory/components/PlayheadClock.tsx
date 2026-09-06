@@ -13,6 +13,10 @@ export function PlayheadClock({ duration, compact = false }: Props) {
   useEffect(() => {
     let frame = 0
     const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
       if (ref.current) {
         const fmt = compact ? formatRangeClock : formatSensoryClock
         const now = fmt(engine.getPlayheadSeconds())
