@@ -56,6 +56,37 @@ export function meterScaleTicks(minDb: number): number[] {
   return meterScaleMarks(minDb).filter((m) => m.label).map((m) => m.db)
 }
 
+/** Analyser / FFT floor — same 0 dBFS top as the field loudness meter. */
+export const SPECTRUM_DB_FLOOR = -100
+
+/**
+ * Labeled dB ticks for the FFT: meter cadence (3 dB to −24, then 6 dB),
+ * thinned so labels fit a short plot. Always keeps 0, −6, −12, and the floor.
+ */
+export function spectrumDbScaleMarks(minDb: number, plotHeightPx: number): number[] {
+  const ticks = meterScaleTicks(minDb)
+  const span = 0 - minDb
+  if (!(span > 0) || ticks.length === 0) return ticks
+  const minGap = Math.max(10, Math.min(16, plotHeightPx / 12))
+  const yOf = (db: number) => ((0 - db) / span) * plotHeightPx
+  const anchors = new Set([0, -6, -12, Math.round(minDb)])
+  const out: number[] = []
+  let lastY = Number.NEGATIVE_INFINITY
+  for (const db of ticks) {
+    const y = yOf(db)
+    if (anchors.has(db)) {
+      out.push(db)
+      lastY = y
+      continue
+    }
+    if (y - lastY >= minGap) {
+      out.push(db)
+      lastY = y
+    }
+  }
+  return out
+}
+
 export type MeterScaleMark = {
   db: number
   label: boolean

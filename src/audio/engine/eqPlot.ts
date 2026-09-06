@@ -51,6 +51,31 @@ export const EQ_PLOT_MAX_DB = 18
 export const SPECTRUM_EQ_MIN_DB = -18
 export const SPECTRUM_EQ_MAX_DB = 18
 
+export function clampEqOverlayDb(
+  db: number,
+  minDb = SPECTRUM_EQ_MIN_DB,
+  maxDb = SPECTRUM_EQ_MAX_DB,
+): number {
+  return Math.min(maxDb, Math.max(minDb, db))
+}
+
+/** Node Y on the spectrum overlay: actual chain magnitude at the handle frequency. */
+export function eqNodePlotDb(bands: EqBand[], hz: number, sampleRate: number): number {
+  return clampEqOverlayDb(eqMagnitudeDb(bands, hz, sampleRate))
+}
+
+export function spectrumEqOverlayY(
+  db: number,
+  top: number,
+  bottom: number,
+  minDb = SPECTRUM_EQ_MIN_DB,
+  maxDb = SPECTRUM_EQ_MAX_DB,
+): number {
+  const span = maxDb - minDb
+  const y = top + ((maxDb - db) / span) * (bottom - top)
+  return Math.min(bottom, Math.max(top, y))
+}
+
 export function freqToX(hz: number, width: number, maxHz = EQ_MAX_HZ, minHz = EQ_MIN_HZ): number {
   const hi = Math.max(maxHz, minHz * 1.01)
   const t = Math.log(Math.min(hi, Math.max(minHz, hz)) / minHz) / Math.log(hi / minHz)
