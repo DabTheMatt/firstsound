@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absEnvelope, blurEnvelope, echoGhostSpecs, grainBandCount, grainLineCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
+import { absEnvelope, blurEnvelope, contourCount, echoGhostSpecs, grainBandCount, grainDustCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
 
 describe('mountainLayerSpecs', () => {
   it('adds a far ridge when there is motion', () => {
@@ -27,23 +27,29 @@ describe('grainBandCount', () => {
   })
 })
 
-describe('grainLineCount', () => {
-  it('stays empty at rest and opens hundreds of lines at full grain', () => {
-    expect(grainLineCount(0, 1200)).toBe(0)
-    expect(grainLineCount(0.25, 1200)).toBeGreaterThan(80)
-    expect(grainLineCount(1, 1200)).toBeGreaterThanOrEqual(200)
-    expect(grainLineCount(1, 1600)).toBeGreaterThan(grainLineCount(0.4, 1600))
+describe('grainDustCount', () => {
+  it('stays empty at rest and adds sparse stardust as grain rises', () => {
+    expect(grainDustCount(0, 1200)).toBe(0)
+    expect(grainDustCount(0.25, 1200)).toBeGreaterThan(20)
+    expect(grainDustCount(1, 1200)).toBeGreaterThan(grainDustCount(0.4, 1200))
+    expect(grainDustCount(1, 1200)).toBeLessThan(250)
+  })
+})
+
+describe('contourCount', () => {
+  it('adds flowing isolines as space opens', () => {
+    expect(contourCount(1)).toBeGreaterThan(contourCount(0))
   })
 })
 
 describe('echoGhostSpecs', () => {
-  it('adds enlarging overlapping ghosts as echo rises', () => {
+  it('adds faint delayed copies as echo rises', () => {
     expect(echoGhostSpecs(0)).toEqual([])
     const mild = echoGhostSpecs(0.3)
     const full = echoGhostSpecs(1)
     expect(full.length).toBeGreaterThan(mild.length)
-    expect(full[full.length - 1]!.scale).toBeGreaterThan(full[0]!.scale)
-    expect(full[full.length - 1]!.z).toBeGreaterThan(full[0]!.z)
+    expect(full[full.length - 1]!.xOff).toBeGreaterThan(full[0]!.xOff)
+    expect(full[full.length - 1]!.xOff).toBeLessThan(0.08)
   })
 })
 

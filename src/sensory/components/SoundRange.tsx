@@ -5,7 +5,13 @@ import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
-import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from '../visualization/sensoryVisualState'
+import {
+  lerpVisualState,
+  mixRgb,
+  rgbCss,
+  type Rgb,
+  type SensoryVisualState,
+} from '../visualization/sensoryVisualState'
 import { absEnvelope, blurEnvelope, mountainLayerSpecs, normalizeEnvelopePeak } from '../visualization/mountainLayers'
 import styles from './SoundRange.module.css'
 
@@ -57,6 +63,12 @@ function sourceView() {
 
 export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogglePlay, onLoadDemo }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const visualRef = useRef(visual)
+  const shownRef = useRef(visual)
+
+  useEffect(() => {
+    visualRef.current = visual
+  }, [visual])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -68,6 +80,9 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
       cache = null
     })
     const tick = () => {
+      const target = visualRef.current
+      shownRef.current = reduced ? target : lerpVisualState(shownRef.current, target, 0.085)
+      const visual = shownRef.current
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -90,7 +105,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
       const sourceDur = view.sourceDur || duration
       if (buffer && sourceDur > 0) {
         const data = buffer.getChannelData(0)
-        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}`
+        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
@@ -115,13 +130,12 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           play,
           layers: cache.layers,
           specs,
-          nowMs: performance.now(),
+          nowMs: reduced ? 0 : performance.now(),
           reduced,
           playFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.head / sourceDur)) : 0,
           windowStartFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionStart / sourceDur)) : 0,
           windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
           scene,
-          livePan: engine.getSnapshot().liveParams.pan,
           ridge: themeRidge(ink),
         })
       }
@@ -132,7 +146,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
       cancelAnimationFrame(frame)
       unsub()
     }
-  }, [duration, loaded, visual, contentRev, scene])
+  }, [duration, loaded, contentRev, scene])
 
   return (
     <div className={styles.range}>

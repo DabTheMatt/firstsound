@@ -8,10 +8,10 @@ export type MountainLayerSpec = {
 }
 
 export type EchoGhostSpec = {
-  /** Grows each repeat away from the dry ridge. */
-  scale: number
+  /** Small time delay as a horizontal offset, 0…1 of width. */
+  xOff: number
   alpha: number
-  z: number
+  drop: number
 }
 
 export function mountainLayerSpecs(mass: number, motion: number, space = 0): readonly MountainLayerSpec[] {
@@ -31,33 +31,40 @@ export function mountainLayerSpecs(mass: number, motion: number, space = 0): rea
   return layers
 }
 
-/** Coarse shredded bands. Prefer `grainLineCount` for the dense vertical field. */
+/** Coarse shredded bands. Prefer `grainDustCount` for the stardust field. */
 export function grainBandCount(grain: number): number {
   const g = Math.min(1, Math.max(0, grain))
   if (g < 0.04) return 1
-  return Math.min(18, 3 + Math.round(g * 15))
+  return Math.min(10, 2 + Math.round(g * 8))
 }
 
-/** Hundreds of vertical grain lines, scaled to canvas width and grain amount. */
-export function grainLineCount(grain: number, width = 1000): number {
+/** Soft contour count for the topographic landscape. */
+export function contourCount(space: number, grain = 0): number {
+  const s = Math.min(1, Math.max(0, space))
+  const g = Math.min(1, Math.max(0, grain))
+  return Math.max(6, Math.round(8 + s * 8 + g * 4))
+}
+
+/** Sparse stardust, scaled to canvas width and grain amount. */
+export function grainDustCount(grain: number, width = 1000): number {
   const g = Math.min(1, Math.max(0, grain))
   if (g < 0.04) return 0
-  const cap = Math.min(420, Math.max(140, Math.round(width * 0.4)))
-  return Math.round(56 + g * (cap - 56))
+  const cap = Math.min(220, Math.max(48, Math.round(width * 0.12)))
+  return Math.round(24 + g * (cap - 24))
 }
 
-/** Overlapping delay ghosts: each echo is larger and further on Z. */
+/** Delay ghosts: faint delayed copies of the same ridge, not a 3D explosion. */
 export function echoGhostSpecs(echo: number): readonly EchoGhostSpec[] {
   const e = Math.min(1, Math.max(0, echo))
   if (e < 0.06) return []
-  const n = Math.max(1, Math.round(1 + e * 6))
+  const n = Math.max(1, Math.round(1 + e * 2))
   const out: EchoGhostSpec[] = []
   for (let i = 1; i <= n; i++) {
-    const u = i / (n + 0.25)
+    const u = i / (n + 0.35)
     out.push({
-      scale: 1 + u * (0.2 + e * 0.72),
-      alpha: Math.max(0.045, (0.4 - u * 0.26) * e),
-      z: 0.1 + u * 0.62,
+      xOff: u * (0.012 + e * 0.02),
+      alpha: Math.max(0.04, (0.22 - u * 0.08) * e),
+      drop: u * 0.035,
     })
   }
   return out

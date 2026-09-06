@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canyonProject, canyonRelief, canyonSliceCount, canyonWallInset, canyonWallX, chromaticShift, gleamRayCount, growFromBaseline, mirrorLayout, projectZ, rangeLayout } from './rangeScenes'
-import { grainLineCount } from './mountainLayers'
+import { grainDustCount } from './mountainLayers'
 
 describe('rangeScenes', () => {
   it('narrows the canyon toward the vanishing point', () => {
@@ -11,7 +11,7 @@ describe('rangeScenes', () => {
     const c = chromaticShift(1, 1)
     expect(c.r).toBeLessThan(0)
     expect(c.b).toBeGreaterThan(0)
-    expect(Math.abs(c.r)).toBeGreaterThan(40)
+    expect(Math.abs(c.r)).toBeLessThan(4)
   })
 
   it('adds more gleam rays as energy rises', () => {
@@ -66,9 +66,10 @@ describe('rangeScenes', () => {
   })
 })
 
-describe('grain strips', () => {
-  it('opens hundreds of visible lines at full grain', () => {
-    expect(grainLineCount(1, 1400)).toBeGreaterThanOrEqual(200)
+describe('grain dust', () => {
+  it('stays sparse so the landscape remains readable', () => {
+    expect(grainDustCount(1, 1400)).toBeLessThan(250)
+    expect(grainDustCount(1, 1400)).toBeGreaterThan(40)
   })
 })
 

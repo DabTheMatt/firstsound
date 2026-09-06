@@ -92,16 +92,72 @@ export function lensInk(warmth: number, glow: number): Rgb {
   return mixRgb(mixRgb(temp, DARK, 1 - glow), LIGHT, glow * 0.45)
 }
 
-/** Dissolve each axis tint into the wash like successive watercolors. */
+/** Dissolve each axis tint into the wash like successive watercolors. Keep paper readable. */
 export function watercolorMix(values: SensoryValues, active: SensoryAxisId | null, paper: Rgb): Rgb {
   let ink = paper
   for (const id of SENSORY_AXIS_IDS) {
     const mag = Math.abs(values[id])
     if (mag < 0.015) continue
-    const focus = active === id ? 0.18 : 0
-    ink = mixRgb(ink, AXIS_TINT[id], Math.min(0.78, mag * 0.52 + focus))
+    const focus = active === id ? 0.1 : 0
+    ink = mixRgb(ink, AXIS_TINT[id], Math.min(0.28, mag * 0.2 + focus))
   }
   return ink
+}
+
+export function lerpNum(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+export function lerpRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return {
+    r: lerpNum(a.r, b.r, t),
+    g: lerpNum(a.g, b.g, t),
+    b: lerpNum(a.b, b.b, t),
+  }
+}
+
+/** Ease visual fields so knobs retint the landscape instead of popping. */
+export function lerpVisualState(from: SensoryVisualState, to: SensoryVisualState, t: number): SensoryVisualState {
+  const u = Math.min(1, Math.max(0, t))
+  return {
+    sharpness: lerpNum(from.sharpness, to.sharpness, u),
+    glow: lerpNum(from.glow, to.glow, u),
+    warmth: lerpNum(from.warmth, to.warmth, u),
+    depth: lerpNum(from.depth, to.depth, u),
+    mass: lerpNum(from.mass, to.mass, u),
+    motion: lerpNum(from.motion, to.motion, u),
+    haze: lerpNum(from.haze, to.haze, u),
+    echo: lerpNum(from.echo, to.echo, u),
+    character: lerpNum(from.character, to.character, u),
+    space: lerpNum(from.space, to.space, u),
+    grain: lerpNum(from.grain, to.grain, u),
+    dirt: lerpNum(from.dirt, to.dirt, u),
+    tight: lerpNum(from.tight, to.tight, u),
+    mod: lerpNum(from.mod, to.mod, u),
+    drift: lerpNum(from.drift, to.drift, u),
+    pan: lerpNum(from.pan, to.pan, u),
+    zoom: lerpNum(from.zoom, to.zoom, u),
+    activeAxis: to.activeAxis,
+    ink: lerpRgb(from.ink, to.ink, u),
+    inkLeft: lerpRgb(from.inkLeft, to.inkLeft, u),
+    inkRight: lerpRgb(from.inkRight, to.inkRight, u),
+    inkRed: lerpRgb(from.inkRed, to.inkRed, u),
+    inkGreen: lerpRgb(from.inkGreen, to.inkGreen, u),
+    inkBlue: lerpRgb(from.inkBlue, to.inkBlue, u),
+  }
+}
+
+/** Horizontal mood of the range: theme dusk wash, eased by warmth / space. */
+export function landscapeStops(
+  visual: SensoryVisualState,
+  palette: RidgePalette = DUSK_RIDGE,
+): { left: Rgb; crest: Rgb; right: Rgb } {
+  const wash = ridgeInk(visual.ink, palette)
+  return {
+    left: mixRgb(wash.left, WARM, visual.warmth * 0.18),
+    crest: mixRgb(wash.mid, LIGHT, visual.glow * 0.16),
+    right: mixRgb(wash.right, COLD, visual.space * 0.1 + visual.drift * 0.08),
+  }
 }
 
 /** Map engine pan (-100..100) to -1..1 for visuals. */

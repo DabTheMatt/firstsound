@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { DUSK_RIDGE, lensInk, panNorm, ridgeInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
+import { DUSK_RIDGE, landscapeStops, lensInk, lerpVisualState, panNorm, ridgeInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
 
 describe('lensInk', () => {
   it('runs warmer as warmth rises', () => {
@@ -71,5 +71,34 @@ describe('panNorm', () => {
     expect(panNorm(0)).toBe(0)
     expect(panNorm(100)).toBe(1)
     expect(panNorm(-50)).toBeCloseTo(-0.5)
+  })
+})
+
+describe('landscapeStops', () => {
+  it('warms the left and cools the right as character and space open', () => {
+    const rest = landscapeStops(sensoryVisualState(defaultSensoryValues(), true))
+    const mood = landscapeStops(
+      sensoryVisualState(
+        {
+          ...defaultSensoryValues(),
+          character: 0.85,
+          space: 0.8,
+          drift: 0.5,
+        },
+        true,
+      ),
+    )
+    expect(mood.left.r).toBeGreaterThan(rest.left.r - 1)
+    expect(mood.right.b).toBeGreaterThan(mood.left.b - 8)
+  })
+})
+
+describe('lerpVisualState', () => {
+  it('eases warmth toward the target', () => {
+    const from = sensoryVisualState(defaultSensoryValues(), true)
+    const to = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'character', 1), true)
+    const mid = lerpVisualState(from, to, 0.5)
+    expect(mid.warmth).toBeGreaterThan(from.warmth)
+    expect(mid.warmth).toBeLessThan(to.warmth)
   })
 })
