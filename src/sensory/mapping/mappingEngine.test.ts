@@ -231,4 +231,26 @@ describe('mapSensoryToDsp', () => {
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 0.6)).bypass.delay).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'character', 0.6)).bypass.eq).toBe(false)
   })
+
+  it('correlates reverb Dry and Wet in sensory mode', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 1))
+    expect(mapped.params.reverbCorrelate).toBe(1)
+    expect(mapped.params.reverbDry + mapped.params.reverbWet).toBeCloseTo(100)
+    expect(mapped.reverbType).toBe('hall')
+  })
+
+  it('opens plate, bloom, and fuzz as dedicated effect models', () => {
+    const plate = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'plate', 1))
+    expect(plate.reverbType).toBe('plate')
+    expect(plate.bypass.reverb).toBe(false)
+    expect(plate.params.reverbDry + plate.params.reverbWet).toBeCloseTo(100)
+    const bloom = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'bloom', 1))
+    expect(bloom.reverbType).toBe('bloom')
+    const fuzz = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'fuzz', 1))
+    expect(fuzz.distortionType).toBe('fuzz')
+    expect(fuzz.bypass.distortion).toBe(false)
+    const reverse = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'reverse', 1))
+    expect(reverse.reverbType).toBe('reverse')
+    expect(reverse.params.reverbReverse).toBeGreaterThan(80)
+  })
 })

@@ -5,12 +5,13 @@ import type { EqBand } from '../../audio/engine/eqBands'
 import { defaultEqBands } from '../../audio/engine/eqBands'
 import type { ChainModule, ModuleType } from '../../audio/chain/chain'
 import { cloneFxLfos, defaultFxLfos, FX_LFO_KINDS, type FxLfo, type FxLfoMap } from '../../audio/fx/lfo'
+import type { DistortionType, ReverbType } from '../../audio/fx/types'
 import { AXIS_LFOS, resolvedAxisLfo } from './axisLfos'
 import { SENSORY_AXIS_IDS, SENSORY_AXES, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
 import { defaultSensoryValues } from '../sensoryState'
 import { EFFECT_MORPHS } from './effectMorphs'
-import { applyMorphStopToBands, interpolateMorphStop, MORPH_GATE } from './morph'
+import { applyMorphStopToBands, interpolateMorphStop, MORPH_GATE, type EffectMorph } from './morph'
 import { applySensorySafety } from './safety'
 import { applySensoryStacking } from './stacking'
 
@@ -19,6 +20,8 @@ export type DspSnapshot = {
   eqBands: EqBand[]
   bypass: Partial<Record<ModuleType, boolean>>
   fxLfos: FxLfoMap
+  reverbType?: ReverbType
+  distortionType?: DistortionType
 }
 
 export type MappedDsp = DspSnapshot
@@ -45,6 +48,8 @@ export function snapshotFromEngine(input: {
   eqBands: EqBand[]
   chain: ChainModule[]
   fxLfos?: FxLfoMap
+  reverbType?: ReverbType
+  distortionType?: DistortionType
 }): DspSnapshot {
   const bypass: DspSnapshot['bypass'] = {}
   for (const mod of input.chain) bypass[mod.type] = mod.bypassed
@@ -53,6 +58,8 @@ export function snapshotFromEngine(input: {
     eqBands: cloneBands(input.eqBands.length ? input.eqBands : defaultEqBands()),
     bypass,
     fxLfos: cloneFxLfos(input.fxLfos ?? defaultFxLfos()),
+    reverbType: input.reverbType,
+    distortionType: input.distortionType,
   }
 }
 
@@ -86,6 +93,7 @@ export function dspSnapshotsEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): b
       if (!lfosEqual(la, lb, eps)) return false
     }
   }
+  if (a.reverbType !== b.reverbType || a.distortionType !== b.distortionType) return false
   return true
 }
 
@@ -93,6 +101,22 @@ export { AXIS_LFOS }
 
 function morphFor(axis: SensoryAxisId) {
   return EFFECT_MORPHS.find((m) => m.axis === axis)
+}
+
+function pickMorphColor<T extends 'reverbType' | 'distortionType'>(
+  values: SensoryValues,
+  field: T,
+): NonNullable<EffectMorph[T]> | undefined {
+  let best = MORPH_GATE
+  let picked: NonNullable<EffectMorph[T]> | undefined
+  for (const morph of EFFECT_MORPHS) {
+    const amount = Math.abs(values[morph.axis as SensoryAxisId] ?? 0)
+    const color = morph[field]
+    if (!color || amount < best) continue
+    best = amount
+    picked = color
+  }
+  return picked
 }
 
 function applyAxisLfos(dsp: DspSnapshot, values: SensoryValues) {
@@ -126,6 +150,8 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     eqBands: cloneBands(base.eqBands),
     bypass: { ...base.bypass },
     fxLfos: cloneFxLfos(base.fxLfos),
+    reverbType: base.reverbType,
+    distortionType: base.distortionType,
   }
   let touched = false
   for (const id of SENSORY_AXIS_IDS) {
@@ -147,10 +173,18 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     }
     touched = true
   }
+  const reverbType = pickMorphColor(values, 'reverbType')
+  const distortionType = pickMorphColor(values, 'distortionType')
+  if (reverbType) dsp.reverbType = reverbType
+  if (distortionType) dsp.distortionType = distortionType
   applyAxisLfos(dsp, values)
   if (touched) {
     applySensoryStacking(dsp, values)
-    applySensorySafety(dsp)
+    applySensorySafety(dsp, {
+      allowReverse: values.reverse >= MORPH_GATE,
+      allowGate: values.gate >= MORPH_GATE,
+      allowShimmer: values.shimmer >= MORPH_GATE,
+    })
     const protect =
       values.space > 0.05 ||
       values.dirt > 0.35 ||
@@ -159,6 +193,13 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
       values.veil > 0.28 ||
       values.halo > 0.32 ||
       values.well > 0.32 ||
+      values.bloom > 0.28 ||
+      values.shimmer > 0.28 ||
+      values.reverse > 0.22 ||
+      values.gate > 0.28 ||
+      values.fuzz > 0.32 ||
+      values.crush > 0.28 ||
+      values.fold > 0.32 ||
       Math.abs(values.character) > 0.85
     if (protect) dsp.bypass.limiter = false
   }

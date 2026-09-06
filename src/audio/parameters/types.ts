@@ -31,6 +31,7 @@ export type ParamId =
   | 'delayStereo'
   | 'reverbDry'
   | 'reverbWet'
+  | 'reverbCorrelate'
   | 'reverbOutput'
   | 'reverbLimit'
   | 'motionDepth'

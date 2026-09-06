@@ -15,7 +15,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
   source: ['speed', 'pitch', 'stretchInterp', 'gain'],
   grain: ['grainSize', 'density', 'position', 'scatter', 'grainPitch', 'pitchSpread'],
   motion: ['motionDepth', 'motionRate', 'motionJitter', 'position'],
-  space: ['delayWet', 'delayTime', 'delayFeedback', 'reverbWet', 'reverbSize', 'reverbDecay'],
+  space: ['delayWet', 'delayTime', 'delayFeedback', 'reverbDry', 'reverbWet', 'reverbSize', 'reverbDecay'],
   filter: ['filterCutoff', 'filterReso'],
   output: ['gain', 'outputGain'],
 }
@@ -24,7 +24,7 @@ export const TAB_NOTES: Record<ModuleTab, string | null> = {
   source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo. Interp densifies the overlap that smooths speed and pitch moves. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
-      space: 'Delay + reverb. Mix is a single dry/wet control. Feedback stays below unity so repeats fade.',
+      space: 'Delay + reverb. Reverb has Dry and Wet; Correlate keeps them summing to 100%. Feedback stays below unity so repeats fade.',
   filter: 'Pick a type to engage the filter, then sweep cutoff and resonance.',
   output: 'Safety brickwall sits after Output. The Limiter module in the chain is the musical limiter.',
 }

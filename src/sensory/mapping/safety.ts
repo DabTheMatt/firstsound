@@ -1,6 +1,7 @@
 import { PARAMS } from '../../audio/parameters/definitions'
 import { applyParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
+import { complementaryPct } from '../../audio/fx/dryWet'
 import type { DspSnapshot } from './mappingEngine'
 
 /** Caps so sensory morphs stay musical: no speaker-busting wet, no sample melt. */
@@ -9,6 +10,7 @@ export const SENSORY_SAFETY = {
   reverbWet: 40,
   reverbDecay: 5.5,
   reverbShimmer: 6,
+  reverbShimmerLift: 28,
   delayWet: 48,
   delayFeedback: 40,
   delayModDepth: 38,
@@ -18,6 +20,12 @@ export const SENSORY_SAFETY = {
   compressorMakeup: 4,
 } as const
 
+export type SensorySafetyOpts = {
+  allowReverse?: boolean
+  allowGate?: boolean
+  allowShimmer?: boolean
+}
+
 function cap(params: DspSnapshot['params'], id: ParamId, max: number, min?: number): void {
   const def = PARAMS[id]
   const lo = min ?? def.min
@@ -25,13 +33,20 @@ function cap(params: DspSnapshot['params'], id: ParamId, max: number, min?: numb
   params[id] = applyParamValue(Math.min(hi, Math.max(lo, params[id])), def)
 }
 
-export function applySensorySafety(dsp: DspSnapshot): void {
+export function applySensorySafety(dsp: DspSnapshot, opts: SensorySafetyOpts = {}): void {
   for (const band of dsp.eqBands) {
     band.gain = Math.min(SENSORY_SAFETY.eqGain, Math.max(-SENSORY_SAFETY.eqGain, band.gain))
   }
   cap(dsp.params, 'reverbWet', SENSORY_SAFETY.reverbWet, 0)
   cap(dsp.params, 'reverbDecay', SENSORY_SAFETY.reverbDecay)
-  cap(dsp.params, 'reverbShimmer', SENSORY_SAFETY.reverbShimmer, 0)
+  cap(
+    dsp.params,
+    'reverbShimmer',
+    opts.allowShimmer ? SENSORY_SAFETY.reverbShimmerLift : SENSORY_SAFETY.reverbShimmer,
+    0,
+  )
+  dsp.params.reverbCorrelate = 1
+  dsp.params.reverbDry = complementaryPct(dsp.params.reverbWet)
   cap(dsp.params, 'delayWet', SENSORY_SAFETY.delayWet, 0)
   cap(dsp.params, 'delayFeedback', SENSORY_SAFETY.delayFeedback, 0)
   dsp.params.delayWetR = dsp.params.delayWet
@@ -44,7 +59,8 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   cap(dsp.params, 'pitchSpread', SENSORY_SAFETY.pitchSpread, 0)
   cap(dsp.params, 'compressorMakeup', SENSORY_SAFETY.compressorMakeup)
   dsp.params.delayReverse = PARAMS.delayReverse.defaultValue
-  dsp.params.reverbReverse = PARAMS.reverbReverse.defaultValue
+  if (!opts.allowReverse) dsp.params.reverbReverse = PARAMS.reverbReverse.defaultValue
+  if (!opts.allowGate) dsp.params.reverbGate = PARAMS.reverbGate.defaultValue
   dsp.params.delayFreeze = 0
   dsp.params.reverbFreeze = 0
   const high = dsp.eqBands[3]

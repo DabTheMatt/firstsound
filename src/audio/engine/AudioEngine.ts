@@ -87,6 +87,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { applyReverbCorrelation } from '../fx/dryWet'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet } from '../fx/distortion'
 import {
@@ -791,9 +792,12 @@ export class AudioEngine {
       this.params[id] = applyParamValue(value, PARAMS[id])
       if (turningStereoOn) this.copyDelayLeftToRight()
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
+      if (id === 'reverbCorrelate' && this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('enable')
+      else if (id === 'reverbDry') this.syncReverbCorrelation('dry')
+      else if (id === 'reverbWet') this.syncReverbCorrelation('wet')
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
-      if (id === 'reverbWet') this.engageReverbFromMix()
+      if (id === 'reverbWet' || id === 'reverbDry') this.engageReverbFromMix()
       if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
       if (
         id === 'saturation' ||
@@ -821,11 +825,20 @@ export class AudioEngine {
       this.params[key] = applyParamValue(value, PARAMS[key])
     }
     this.syncTimeFromClock('bpm')
+    if (this.params.reverbCorrelate >= 0.5) {
+      this.syncReverbCorrelation(
+        'reverbDry' in patch && !('reverbWet' in patch) ? 'dry' : 'wet',
+      )
+    }
     this.applyLiveAudio()
     this.engageReverbFromMix()
     this.engageDelayFromMix()
     this.engageDistortionFromDrive()
     this.emit()
+  }
+
+  private syncReverbCorrelation(changed: 'dry' | 'wet' | 'enable'): void {
+    applyReverbCorrelation(this.params, changed)
   }
 
   private engageReverbFromMix(): void {
@@ -955,6 +968,7 @@ export class AudioEngine {
       this.params[key] = applyParamValue(value, PARAMS[key])
     }
     this.syncTimeFromClock('bpm')
+    if (this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('wet')
     this.applyLiveAudio()
     const type = next.kind
     const mod = this.chain.find((m) => m.type === type)
@@ -1684,6 +1698,7 @@ export class AudioEngine {
     if (!mod) return
     if (mod.bypassed && mod.type === 'reverb') {
       this.params.reverbWet = mixWhenEnablingReverb(this.params.reverbWet)
+      this.syncReverbCorrelation('wet')
     }
     this.setModuleBypass(instanceId, !mod.bypassed)
   }

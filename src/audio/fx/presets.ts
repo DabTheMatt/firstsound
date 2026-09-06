@@ -1,3 +1,4 @@
+import { complementaryPct, isCorrelated } from './dryWet'
 import type { ParamId } from '../parameters/types'
 import type { DelayType, ReverbType } from './types'
 
@@ -125,7 +126,7 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
 }
 
 function reverbP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId, number>> {
-  return {
+  const next: Partial<Record<ParamId, number>> = {
     reverbFreeze: 0,
     reverbReverse: 0,
     reverbShimmer: 0,
@@ -143,11 +144,16 @@ function reverbP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamI
     reverbEarly: 40,
     reverbDiffusion: 55,
     reverbDensity: 70,
+    reverbCorrelate: 1,
     reverbDry: 100,
     reverbWet: 36,
     reverbOutput: 100,
     ...patch,
   }
+  if (isCorrelated(next.reverbCorrelate ?? 1) && patch.reverbDry == null && typeof next.reverbWet === 'number') {
+    next.reverbDry = complementaryPct(next.reverbWet)
+  }
+  return next
 }
 
 export const SPACE_PRESETS: SpacePreset[] = [

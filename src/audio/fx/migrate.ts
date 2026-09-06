@@ -1,3 +1,4 @@
+import { complementaryPct, isCorrelated } from './dryWet'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
@@ -31,9 +32,17 @@ export function migrateSpaceParams(incoming: Record<string, number>): Partial<Re
     params.delayFeedbackR = applyParamValue(incoming.delayFeedback, PARAMS.delayFeedbackR)
   }
   if (typeof incoming.reverbWet !== 'number' && typeof incoming.reverb === 'number') {
-    params.reverbDry = PARAMS.reverbDry.defaultValue
     params.reverbWet = applyParamValue(incoming.reverb, PARAMS.reverbWet)
     if (typeof incoming.reverbOutput !== 'number') params.reverbOutput = PARAMS.reverbOutput.defaultValue
+  }
+  const wet = params.reverbWet
+  if (typeof incoming.reverbCorrelate !== 'number') {
+    params.reverbCorrelate = PARAMS.reverbCorrelate.defaultValue
+  }
+  if (isCorrelated(params.reverbCorrelate ?? PARAMS.reverbCorrelate.defaultValue) && typeof wet === 'number') {
+    params.reverbDry = complementaryPct(wet)
+  } else if (typeof incoming.reverbDry !== 'number' && typeof wet === 'number') {
+    params.reverbDry = PARAMS.reverbDry.defaultValue
   }
   return params
 }

@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { equalPowerDryWet, fxSendLevels, makeAbsCurve, safeFeedbackGain, sideGainFromWidth, stereoInputMix } from './dryWet'
+import {
+  applyCorrelatedPair,
+  complementaryPct,
+  equalPowerDryWet,
+  fxSendLevels,
+  makeAbsCurve,
+  reverbSendLevels,
+  safeFeedbackGain,
+  sideGainFromWidth,
+  stereoInputMix,
+} from './dryWet'
 import { wetDryFor } from './graphs'
 
 describe('equalPowerDryWet', () => {
@@ -43,16 +53,46 @@ describe('wetDryFor', () => {
     expect(delay.out).toBe(1)
   })
 
-  it('uses equal-power Mix for reverb so the room is audible', () => {
+  it('correlates reverb Dry and Wet so they sum to unity', () => {
     const p = defaultParamValues()
+    p.reverbCorrelate = 1
     p.reverbWet = 100
+    p.reverbDry = 0
     const full = wetDryFor('reverb', p)
     expect(full.dry).toBe(0)
     expect(full.wet).toBe(1)
+    p.reverbWet = 40
+    p.reverbDry = 100
+    const correlated = wetDryFor('reverb', p)
+    expect(correlated.dry).toBeCloseTo(0.6)
+    expect(correlated.wet).toBeCloseTo(0.4)
+    expect(correlated.dry + correlated.wet).toBeCloseTo(1)
+  })
+
+  it('lets uncorrelated reverb Dry and Wet stack', () => {
+    const p = defaultParamValues()
+    p.reverbCorrelate = 0
+    p.reverbDry = 100
     p.reverbWet = 50
-    const half = wetDryFor('reverb', p)
-    expect(half.dry).toBeCloseTo(Math.SQRT1_2, 5)
-    expect(half.wet).toBeCloseTo(Math.SQRT1_2, 5)
+    const stacked = wetDryFor('reverb', p)
+    expect(stacked.dry).toBe(1)
+    expect(stacked.wet).toBeCloseTo(0.5)
+  })
+})
+
+describe('applyCorrelatedPair', () => {
+  it('makes Dry and Wet complementary percentages', () => {
+    expect(applyCorrelatedPair('wet', 30)).toEqual({ dry: 70, wet: 30 })
+    expect(applyCorrelatedPair('dry', 80)).toEqual({ dry: 80, wet: 20 })
+    expect(complementaryPct(40)).toBe(60)
+  })
+})
+
+describe('reverbSendLevels', () => {
+  it('ignores stored Dry when Correlate is on', () => {
+    const send = reverbSendLevels({ reverbDry: 100, reverbWet: 25, reverbCorrelate: 1 })
+    expect(send.dry).toBeCloseTo(0.75)
+    expect(send.wet).toBeCloseTo(0.25)
   })
 })
 

@@ -277,12 +277,22 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   reverbWet: {
     id: 'reverbWet',
-    label: 'Mix',
+    label: 'Wet',
     min: 0,
     max: 100,
     defaultValue: 0,
     unit: '%',
     mapping: 'linear',
+  },
+  reverbCorrelate: {
+    id: 'reverbCorrelate',
+    label: 'Correlate',
+    min: 0,
+    max: 1,
+    defaultValue: 1,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
   },
   reverbOutput: {
     id: 'reverbOutput',
@@ -1158,13 +1168,14 @@ export const SPACE_KNOBS: ParamId[] = [
   'delayWet',
   'delayTime',
   'delayFeedback',
+  'reverbDry',
   'reverbWet',
   'reverbSize',
   'reverbDecay',
   'reverbWidth',
 ]
 export const DELAY_MAIN_KNOBS: ParamId[] = ['delayWet', 'delayTime', 'delayFeedback']
-export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth']
+export const REVERB_MAIN_KNOBS: ParamId[] = ['reverbDry', 'reverbWet', 'reverbSize', 'reverbDecay', 'reverbWidth']
 export const FILTER_KNOBS: ParamId[] = ['filterCutoff', 'filterReso']
 export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
   'compressorThreshold',

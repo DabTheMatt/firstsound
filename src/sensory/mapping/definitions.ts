@@ -15,6 +15,17 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
   veil: [],
   halo: [],
   well: [],
+  bloom: [],
+  plate: [],
+  spring: [],
+  shimmer: [],
+  reverse: [],
+  gate: [],
+  fuzz: [],
+  crush: [],
+  tape: [],
+  fold: [],
+  vinyl: [],
 }
 
 export const SENSORY_INTERACTIONS: readonly InteractionModifier[] = []

@@ -1,12 +1,36 @@
 import type { AudioEngine } from '../audio/engine/AudioEngine'
 import { FX_LFO_KINDS, FX_LFO_SLOTS } from '../audio/fx/lfo'
-import type { ReverbType } from '../audio/fx/types'
+import type { DistortionType, ReverbType } from '../audio/fx/types'
+import { EFFECT_MORPHS } from './mapping/effectMorphs'
+import { MORPH_GATE } from './mapping/morph'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
+import type { SensoryAxisId } from './sensoryParameters'
 import type { SensoryValues } from './sensoryState'
 
-export function sensoryReverbType(_space: number): ReverbType {
-  return 'hall'
+function strongestMorphColor<T extends 'reverbType' | 'distortionType'>(
+  values: SensoryValues | number,
+  field: T,
+): NonNullable<(typeof EFFECT_MORPHS)[number][T]> | undefined {
+  if (typeof values === 'number') return field === 'reverbType' ? ('hall' as never) : undefined
+  let best = MORPH_GATE
+  let picked: NonNullable<(typeof EFFECT_MORPHS)[number][T]> | undefined
+  for (const morph of EFFECT_MORPHS) {
+    const amount = Math.abs(values[morph.axis as SensoryAxisId] ?? 0)
+    const color = morph[field]
+    if (!color || amount < best) continue
+    best = amount
+    picked = color
+  }
+  return picked
+}
+
+export function sensoryReverbType(values: SensoryValues | number): ReverbType {
+  return strongestMorphColor(values, 'reverbType') ?? 'hall'
+}
+
+export function sensoryDistortionType(values: SensoryValues): DistortionType | undefined {
+  return strongestMorphColor(values, 'distortionType')
 }
 
 export function captureDsp(engine: AudioEngine): DspSnapshot {
@@ -16,6 +40,8 @@ export function captureDsp(engine: AudioEngine): DspSnapshot {
 
 export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   const snap = engine.getSnapshot()
+  if (dsp.reverbType) engine.setReverbType(dsp.reverbType)
+  if (dsp.distortionType) engine.setDistortionType(dsp.distortionType)
   const patch: Partial<typeof snap.params> = { ...dsp.params }
   delete patch.start
   delete patch.end
@@ -52,6 +78,5 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
 export function applySensorySession(engine: AudioEngine, base: DspSnapshot, values: SensoryValues): DspSnapshot {
   const mapped = mapSensoryToDsp(base, values)
   writeDsp(engine, mapped)
-  engine.setReverbType(sensoryReverbType(values.space))
   return mapped
 }
