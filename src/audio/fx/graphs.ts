@@ -10,6 +10,7 @@ import {
 } from './delayLoop'
 import {
   equalPowerDryWet,
+  reverbSendLevels,
   makeAbsCurve,
   sideGainFromWidth,
   stereoInputMix,
@@ -852,8 +853,11 @@ export function wetDryFor(
   type: 'delay' | 'reverb',
   params: Record<ParamId, number>,
 ): { dry: number; wet: number; out: number } {
-  const mix = type === 'delay' ? params.delayWet : params.reverbWet
-  const { dry, wet } = equalPowerDryWet(mix / 100)
+  if (type === 'reverb') {
+    const send = reverbSendLevels(params)
+    return { dry: send.dry, wet: send.wet, out: 1 }
+  }
+  const { dry, wet } = equalPowerDryWet(params.delayWet / 100)
   return { dry, wet, out: 1 }
 }
 

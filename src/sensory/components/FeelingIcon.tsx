@@ -98,6 +98,50 @@ export function FeelingIcon({ feeling, amount, livePanPct }: Props) {
             <path d={`M6 8 L6 ${12 + a * 6} Q 14 ${22 + a * 2} 22 ${12 + a * 6} L22 8`} className={styles.brace} />
             <ellipse cx="14" cy={12 + a * 6} rx={8 - a} ry={2 + a} className={styles.arc} />
           </>
+        ) : visual === 'bloom' ? (
+          <>
+            <ellipse cx="14" cy={18 - a * 4} rx={4 + a * 6} ry={3 + a * 5} className={styles.arc} opacity={0.3 + a * 0.45} />
+            <circle cx="14" cy={16 - a * 3} r={2 + a * 2} className={styles.knob} />
+          </>
+        ) : visual === 'plate' ? (
+          <rect x={6} y={8 + (1 - a) * 4} width="16" height={10 + a * 4} rx="1" className={styles.knob} opacity={0.45 + a * 0.5} />
+        ) : visual === 'spring' ? (
+          <path
+            d={`M6 20 Q 10 ${6 + a * 4} 14 20 Q 18 ${6 + a * 4} 22 20`}
+            className={styles.wave}
+          />
+        ) : visual === 'shimmer' ? (
+          <>
+            <circle cx="14" cy="14" r={3 + a * 5} className={styles.arc} opacity={0.25 + a * 0.4} />
+            <path d={`M14 6 L15 ${12 - a} L20 14 L15 ${16 + a} L14 22 L13 ${16 + a} L8 14 L13 ${12 - a} Z`} className={styles.knob} />
+          </>
+        ) : visual === 'reverse' ? (
+          <path d={`M20 7 L8 ${14} L20 21`} className={styles.brace} opacity={0.45 + a * 0.5} />
+        ) : visual === 'gate' ? (
+          <>
+            <rect x="6" y="6" width="4" height="16" className={styles.track} />
+            <rect x="18" y="6" width="4" height="16" className={styles.track} />
+            <rect x="11" y={8 + (1 - a) * 8} width="6" height={4 + a * 8} className={styles.knob} />
+          </>
+        ) : visual === 'fuzz' ? (
+          <path d={`M4 18 L8 ${10 - a * 4} L12 16 L16 ${8 - a * 3} L20 17 L24 12 L24 22 L4 22 Z`} className={styles.jag} />
+        ) : visual === 'crush' ? (
+          Array.from({ length: 5 }, (_, i) => (
+            <rect key={i} x={5 + i * 4} y={8 + (i % 2) * a * 4} width="3" height={12 - a * 4} className={styles.knob} />
+          ))
+        ) : visual === 'tape' ? (
+          <>
+            <circle cx="9" cy="14" r={4 + a} className={styles.arc} />
+            <circle cx="19" cy="14" r={4 + a} className={styles.arc} />
+            <rect x="8" y="13" width="12" height="2" className={styles.knob} />
+          </>
+        ) : visual === 'fold' ? (
+          <path d={`M4 14 L10 ${14 - a * 8} L14 14 L18 ${14 + a * 8} L24 14`} className={styles.wave} />
+        ) : visual === 'vinyl' ? (
+          <>
+            <circle cx="14" cy="14" r={8} className={styles.arc} />
+            <circle cx="14" cy="14" r={3 + a * 2} className={styles.knob} />
+          </>
         ) : (
           <>
             <circle cx={10 - a * 3} cy="14" r={4 + a} className={styles.knob} opacity={0.55 + a * 0.4} />

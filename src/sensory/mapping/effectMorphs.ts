@@ -56,6 +56,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
   {
     axis: 'space',
     module: 'reverb',
+    reverbType: 'hall',
     stops: [
       {
         t: 0,
@@ -250,6 +251,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
   {
     axis: 'dirt',
     module: 'distortion',
+    distortionType: 'saturation',
     stops: [
       { t: 0, params: { saturation: 0 } },
       { t: 0.4, params: { saturation: 12 } },
@@ -420,6 +422,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
     axis: 'veil',
     module: 'reverb',
     modules: ['reverb', 'delay', 'eq'],
+    reverbType: 'hall',
     stops: [
       {
         t: 0,
@@ -482,6 +485,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
     axis: 'halo',
     module: 'reverb',
     modules: ['reverb', 'delay', 'eq'],
+    reverbType: 'cloud',
     stops: [
       {
         t: 0,
@@ -544,6 +548,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
     axis: 'well',
     module: 'eq',
     modules: ['eq', 'reverb', 'delay'],
+    reverbType: 'chamber',
     stops: [
       {
         t: 0,
@@ -593,6 +598,116 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
           { band: 1, type: 'peaking', frequency: 490, gain: -4.8, q: 1.7 },
         ],
       },
+    ],
+  },
+  {
+    axis: 'bloom',
+    module: 'reverb',
+    reverbType: 'bloom',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbSize: 70, reverbDecay: 2.2, reverbDiffusion: 70, reverbPredelay: 24 } },
+      { t: 0.5, params: { reverbWet: 18, reverbSize: 82, reverbDecay: 3.6, reverbDiffusion: 84, reverbPredelay: 36, reverbModDepth: 22 } },
+      { t: 1, params: { reverbWet: 32, reverbSize: 90, reverbDecay: 5, reverbDiffusion: 90, reverbPredelay: 48, reverbModDepth: 30, reverbWidth: 168 } },
+    ],
+  },
+  {
+    axis: 'plate',
+    module: 'reverb',
+    reverbType: 'plate',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbSize: 42, reverbDecay: 0.9, reverbEarly: 50, reverbHighCut: 12000 } },
+      { t: 0.5, params: { reverbWet: 20, reverbSize: 48, reverbDecay: 1.5, reverbEarly: 58, reverbColor: 16, reverbWidth: 138 } },
+      { t: 1, params: { reverbWet: 34, reverbSize: 52, reverbDecay: 2.1, reverbEarly: 62, reverbColor: 28, reverbWidth: 150, reverbHighCut: 16000 } },
+    ],
+  },
+  {
+    axis: 'spring',
+    module: 'reverb',
+    reverbType: 'spring',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbSize: 34, reverbDecay: 0.8, reverbDrive: 0, reverbWidth: 80 } },
+      { t: 0.5, params: { reverbWet: 18, reverbSize: 38, reverbDecay: 1.2, reverbDrive: 8, reverbWidth: 86, reverbPredelay: 6 } },
+      { t: 1, params: { reverbWet: 30, reverbSize: 42, reverbDecay: 1.5, reverbDrive: 14, reverbWidth: 90, reverbPredelay: 8, reverbColor: 12 } },
+    ],
+  },
+  {
+    axis: 'shimmer',
+    module: 'reverb',
+    reverbType: 'shimmer',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbShimmer: 0, reverbShimmerPitch: 12, reverbSize: 64, reverbDecay: 2.4 } },
+      { t: 0.5, params: { reverbWet: 16, reverbShimmer: 12, reverbShimmerPitch: 12, reverbSize: 72, reverbDecay: 3.4, reverbModDepth: 18 } },
+      { t: 1, params: { reverbWet: 28, reverbShimmer: 24, reverbShimmerPitch: 12, reverbSize: 80, reverbDecay: 4.6, reverbModDepth: 26, reverbWidth: 170 } },
+    ],
+  },
+  {
+    axis: 'reverse',
+    module: 'reverb',
+    reverbType: 'reverse',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbReverse: 0, reverbSize: 52, reverbDecay: 1.1, reverbPredelay: 40 } },
+      { t: 0.5, params: { reverbWet: 16, reverbReverse: 70, reverbSize: 58, reverbDecay: 1.5, reverbPredelay: 70 } },
+      { t: 1, params: { reverbWet: 28, reverbReverse: 100, reverbSize: 64, reverbDecay: 1.8, reverbPredelay: 90, reverbWidth: 155 } },
+    ],
+  },
+  {
+    axis: 'gate',
+    module: 'reverb',
+    reverbType: 'gated',
+    stops: [
+      { t: 0, params: { reverbWet: 0, reverbGate: 0, reverbSize: 48, reverbDecay: 0.5, reverbPredelay: 2 } },
+      { t: 0.5, params: { reverbWet: 20, reverbGate: 48, reverbGateThres: -20, reverbSize: 52, reverbDecay: 0.62, reverbGateHold: 70 } },
+      { t: 1, params: { reverbWet: 34, reverbGate: 78, reverbGateThres: -18, reverbSize: 56, reverbDecay: 0.72, reverbGateHold: 82, reverbGateRelease: 36, reverbWidth: 122 } },
+    ],
+  },
+  {
+    axis: 'fuzz',
+    module: 'distortion',
+    distortionType: 'fuzz',
+    stops: [
+      { t: 0, params: { saturation: 0, saturationMix: 100 } },
+      { t: 0.45, params: { saturation: 14, saturationMix: 100 } },
+      { t: 1, params: { saturation: 30, saturationMix: 100 } },
+    ],
+  },
+  {
+    axis: 'crush',
+    module: 'distortion',
+    distortionType: 'bitcrush',
+    stops: [
+      { t: 0, params: { saturation: 0, saturationMix: 100, distortionBits: 16, distortionDownsample: 1 } },
+      { t: 0.5, params: { saturation: 10, saturationMix: 100, distortionBits: 10, distortionDownsample: 3 } },
+      { t: 1, params: { saturation: 22, saturationMix: 100, distortionBits: 6, distortionDownsample: 6 } },
+    ],
+  },
+  {
+    axis: 'tape',
+    module: 'distortion',
+    distortionType: 'tape',
+    stops: [
+      { t: 0, params: { saturation: 0, saturationMix: 100 } },
+      { t: 0.5, params: { saturation: 14, saturationMix: 100 } },
+      { t: 1, params: { saturation: 28, saturationMix: 100, distortionNoise: 4 } },
+    ],
+  },
+  {
+    axis: 'fold',
+    module: 'distortion',
+    distortionType: 'fold',
+    stops: [
+      { t: 0, params: { saturation: 0, saturationMix: 100 } },
+      { t: 0.5, params: { saturation: 12, saturationMix: 100 } },
+      { t: 1, params: { saturation: 26, saturationMix: 100 } },
+    ],
+  },
+  {
+    axis: 'vinyl',
+    module: 'distortion',
+    distortionType: 'vinyl',
+    stops: [
+      { t: 0, params: { saturation: 0, saturationMix: 70, distortionNoise: 0 } },
+      { t: 0.5, params: { saturation: 8, saturationMix: 80, distortionNoise: 8 } },
+      { t: 1, params: { saturation: 16, saturationMix: 88, distortionNoise: 16 } },
     ],
   },
 ]

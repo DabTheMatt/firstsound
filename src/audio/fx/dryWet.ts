@@ -1,3 +1,44 @@
+export function clampPct(value: number): number {
+  return Math.min(100, Math.max(0, value))
+}
+
+/** Complementary share so Dry + Wet = 100%. */
+export function complementaryPct(valuePct: number): number {
+  return clampPct(100 - valuePct)
+}
+
+export function isCorrelated(flag: number): boolean {
+  return flag >= 0.5
+}
+
+export function applyCorrelatedPair(changed: 'dry' | 'wet', valuePct: number): { dry: number; wet: number } {
+  const value = clampPct(valuePct)
+  if (changed === 'wet') return { wet: value, dry: complementaryPct(value) }
+  return { dry: value, wet: complementaryPct(value) }
+}
+
+export function applyReverbCorrelation(
+  params: { reverbDry: number; reverbWet: number; reverbCorrelate: number },
+  changed: 'dry' | 'wet' | 'enable' = 'wet',
+): void {
+  if (!isCorrelated(params.reverbCorrelate) && changed !== 'enable') return
+  if (changed === 'enable') params.reverbCorrelate = 1
+  const pair = applyCorrelatedPair(changed === 'dry' ? 'dry' : 'wet', changed === 'dry' ? params.reverbDry : params.reverbWet)
+  params.reverbDry = pair.dry
+  params.reverbWet = pair.wet
+}
+
+/** Linear Dry/Wet sends. Correlate derives Dry from Wet so the pair sums to 100%. */
+export function reverbSendLevels(params: {
+  reverbDry: number
+  reverbWet: number
+  reverbCorrelate: number
+}): { dry: number; wet: number; out: number } {
+  const wetPct = clampPct(params.reverbWet)
+  const dryPct = isCorrelated(params.reverbCorrelate) ? complementaryPct(wetPct) : clampPct(params.reverbDry)
+  return fxSendLevels(dryPct, wetPct, 100)
+}
+
 /** Equal-power dry/wet so Mix 50% stays near unity loudness. Ends are exact 0/1 so Mix can mute. */
 export function equalPowerDryWet(mix01: number): { dry: number; wet: number } {
   const t = Math.min(1, Math.max(0, mix01))

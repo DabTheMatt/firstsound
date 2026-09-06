@@ -1,6 +1,7 @@
 import type { EqBand, EqFilterType } from '../../audio/engine/eqBands'
 import type { ParamId } from '../../audio/parameters/types'
 import type { ModuleType } from '../../audio/chain/chain'
+import type { DistortionType, ReverbType } from '../../audio/fx/types'
 
 export type MorphEqBand = {
   band: number
@@ -21,6 +22,8 @@ export type EffectMorph = {
   module: ModuleType
   /** Extra inserts this feeling un-bypasses (hybrids that braid several effects). */
   modules?: readonly ModuleType[]
+  reverbType?: ReverbType
+  distortionType?: DistortionType
   stops: readonly MorphStop[]
 }
 

@@ -45,6 +45,17 @@ describe('sensory feelings', () => {
       'veil',
       'halo',
       'well',
+      'bloom',
+      'plate',
+      'spring',
+      'shimmer',
+      'reverse',
+      'gate',
+      'fuzz',
+      'crush',
+      'tape',
+      'fold',
+      'vinyl',
     ])
   })
 })

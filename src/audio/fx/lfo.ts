@@ -2,6 +2,7 @@ import { EQ_MAX_BANDS } from '../engine/eqBands'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue, clamp, fromNormalized, toNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
+import { complementaryPct, isCorrelated } from './dryWet'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
@@ -577,6 +578,13 @@ export function applyFxLfos(
       }
       const wave = lfoWave(lfoPhase(timeSec - (lfo.phaseOriginSec ?? 0), lfo.rateHz), lfo.shape, slotHold.value)
       next[target] = modulateParam(params[target], target, wave, lfo.depth)
+    }
+  }
+  if (isCorrelated(next.reverbCorrelate)) {
+    if (claimed.has('reverbDry') && !claimed.has('reverbWet')) {
+      next.reverbWet = complementaryPct(next.reverbDry)
+    } else if (claimed.has('reverbWet')) {
+      next.reverbDry = complementaryPct(next.reverbWet)
     }
   }
   return next

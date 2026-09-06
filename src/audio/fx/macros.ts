@@ -1,6 +1,7 @@
 import { PARAMS } from '../parameters/definitions'
 import { fromNormalized, toNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
+import { complementaryPct, isCorrelated } from './dryWet'
 
 export type DelayMacro = 'time' | 'feedback' | 'space' | 'mod' | 'mix'
 export type ReverbMacro = 'size' | 'decay' | 'color' | 'distance' | 'mod' | 'mix'
@@ -118,6 +119,8 @@ export function applyReverbMacro(
         reverbModRate: fromNormalized(0.25 + t * 0.4, PARAMS.reverbModRate),
       }
     case 'mix':
-      return { reverbWet: t * 100 }
+      return isCorrelated(params.reverbCorrelate)
+        ? { reverbWet: t * 100, reverbDry: complementaryPct(t * 100) }
+        : { reverbWet: t * 100 }
   }
 }

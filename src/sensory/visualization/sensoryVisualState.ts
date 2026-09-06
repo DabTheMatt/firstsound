@@ -49,6 +49,17 @@ export const AXIS_TINT: Record<SensoryAxisId, Rgb> = {
   veil: { r: 120, g: 122, b: 128 },
   halo: { r: 210, g: 210, b: 206 },
   well: { r: 88, g: 86, b: 82 },
+  bloom: { r: 186, g: 214, b: 255 },
+  plate: { r: 220, g: 196, b: 160 },
+  spring: { r: 180, g: 210, b: 92 },
+  shimmer: { r: 255, g: 230, b: 140 },
+  reverse: { r: 168, g: 140, b: 255 },
+  gate: { r: 200, g: 90, b: 110 },
+  fuzz: { r: 196, g: 72, b: 48 },
+  crush: { r: 96, g: 210, b: 140 },
+  tape: { r: 196, g: 140, b: 72 },
+  fold: { r: 255, g: 120, b: 196 },
+  vinyl: { r: 72, g: 72, b: 68 },
 }
 
 const DRIFT_RIGHT: Rgb = { r: 255, g: 168, b: 72 }
@@ -189,23 +200,35 @@ export function sensoryVisualState(
   const veil = Math.max(0, values.veil)
   const halo = Math.max(0, values.halo)
   const well = Math.max(0, values.well)
+  const bloom = Math.max(0, values.bloom)
+  const plate = Math.max(0, values.plate)
+  const spring = Math.max(0, values.spring)
+  const shimmer = Math.max(0, values.shimmer)
+  const reverse = Math.max(0, values.reverse)
+  const fuzz = Math.max(0, values.fuzz)
+  const crush = Math.max(0, values.crush)
+  const tape = Math.max(0, values.tape)
+  const fold = Math.max(0, values.fold)
+  const vinyl = Math.max(0, values.vinyl)
 
-  const warmth = 0.42 + character * 0.48 - dirt * 0.28 - veil * 0.12 + halo * 0.08
-  const glow = 0.2 + Math.max(0, character) * 0.62 + space * 0.18 + halo * 0.28 - dirt * 0.12 - well * 0.1
+  const warmth = 0.42 + character * 0.48 - dirt * 0.28 - veil * 0.12 + halo * 0.08 + tape * 0.12 + plate * 0.08 - vinyl * 0.1
+  const glow = 0.2 + Math.max(0, character) * 0.62 + space * 0.18 + halo * 0.28 + bloom * 0.22 + shimmer * 0.3 - dirt * 0.12 - well * 0.1 - fuzz * 0.08
   let ink = lensInk(Math.min(1, Math.max(0, warmth)), Math.min(1, Math.max(0.08, glow)))
   if (dirt > 0.08) ink = mixRgb(ink, GRIT, dirt * 0.55)
+  if (fuzz > 0.08) ink = mixRgb(ink, AXIS_TINT.fuzz, fuzz * 0.4)
+  if (crush > 0.08) ink = mixRgb(ink, AXIS_TINT.crush, crush * 0.35)
   ink = watercolorMix(values, activeAxis, ink)
 
-  const motion = reducedMotion ? 0 : mod * 0.85 + grain * 0.18 + pan * 0.4
+  const motion = reducedMotion ? 0 : mod * 0.85 + grain * 0.18 + pan * 0.4 + fold * 0.12
   const zoom = spaceZoom(space)
   return {
-    sharpness: 0.42 + character * 0.4 - dirt * 0.16 + tight * 0.14,
+    sharpness: 0.42 + character * 0.4 - dirt * 0.16 + tight * 0.14 - fuzz * 0.1,
     glow: Math.min(1, Math.max(0, glow)),
     warmth: Math.min(1, Math.max(0, warmth)),
-    depth: 0.12 + space * 0.78 + well * 0.22 + veil * 0.16,
-    mass: 0.42 + space * 0.4 + grain * 0.1 + well * 0.12 - tight * 0.28,
+    depth: 0.12 + space * 0.78 + well * 0.22 + veil * 0.16 + bloom * 0.18 + reverse * 0.1,
+    mass: 0.42 + space * 0.4 + grain * 0.1 + well * 0.12 - tight * 0.28 + spring * 0.06,
     motion,
-    haze: 0.04 + space * 0.72 + veil * 0.38,
+    haze: 0.04 + space * 0.72 + veil * 0.38 + bloom * 0.2 + vinyl * 0.12,
     echo,
     character,
     space,

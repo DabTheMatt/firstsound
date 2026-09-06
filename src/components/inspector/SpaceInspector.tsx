@@ -137,7 +137,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       <p className={styles.help}>
         {kind === 'delay'
           ? 'Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Mix. Feedback stays below unity so each repeat fades.'
-          : 'Categories load a starting space. Mix is dry/wet. Mono collapses the tail; Stereo keeps Width, L/R offset, and a stereo tank. Stereo In 0% sums the sample first (clean space from a mono file).'}
+          : 'Categories load a starting space. Dry and Wet are independent unless Correlate is on — then raising Dry lowers Wet so they always sum to 100%. Stereo In 0% sums the sample first (clean space from a mono file).'}
       </p>
       <Segmented
         label="Preset category"
@@ -224,7 +224,17 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         </>
       ) : (
         <>
-          {params(['reverbWet', 'reverbSize', 'reverbDecay'])}
+          {params(['reverbDry', 'reverbWet', 'reverbSize', 'reverbDecay'])}
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.params.reverbCorrelate > 0.5}
+              label="Correlate"
+              onToggle={() => engine.setParam('reverbCorrelate', snap.params.reverbCorrelate > 0.5 ? 0 : 1)}
+            />
+          </div>
+          <p className={styles.help}>
+            Correlate keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+          </p>
           <h3 className={styles.sub}>Channels</h3>
           <Segmented
             label="Channels"
