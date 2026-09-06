@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { SPACE_HANDLE_TOP_PX, dragSpaceOverlay, hitSpaceOverlay } from './hit'
+import { dragSpaceOverlay, hitSpaceOverlay } from './hit'
 import { delayTaps, reverbTail } from './spaceModel'
+import { SPACE_HANDLE_TOP_PX } from '../../components/waveform/handleLayout'
 
 describe('space overlay hit', () => {
   it('grabs delay time near the first echo', () => {

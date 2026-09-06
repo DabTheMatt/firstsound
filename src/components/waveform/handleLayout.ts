@@ -1,6 +1,21 @@
+/** Track tabs hang from the top of the wave pane; loop nodes sit below them. */
+export const LOOP_HANDLE_TOP_PX = 26
+
+export const LOOP_HANDLE_HEIGHT_PX = 16
 
 /** Envelope diamonds sit below the loop nodes so the hit targets do not overlap. */
-export const FADE_DIAMOND_TOP_PX = 20
+export const FADE_DIAMOND_TOP_PX = LOOP_HANDLE_TOP_PX + LOOP_HANDLE_HEIGHT_PX + 2
+
+export const FADE_DIAMOND_SIZE_PX = 18
+
+/** Delay/reverb overlay keeps the band above fade diamonds for loop / envelope. */
+export const SPACE_HANDLE_TOP_PX = FADE_DIAMOND_TOP_PX + FADE_DIAMOND_SIZE_PX + 2
+
+/** True when a pointer Y should grab a loop edge instead of the playhead. */
+export function hitsLoopNodeY(y: number, hitPx: number): boolean {
+  const pad = hitPx * 0.35
+  return y >= LOOP_HANDLE_TOP_PX - pad && y <= LOOP_HANDLE_TOP_PX + LOOP_HANDLE_HEIGHT_PX + pad
+}
 
 /** Envelope diamonds share the loop-node X when fade length is 0. */
 export function fadeHandleAtLoopFrac(loopEdgeFrac: number): number {

@@ -19,8 +19,6 @@ export type SpaceHitReserve = {
   top?: number
 }
 
-export const SPACE_HANDLE_TOP_PX = 42
-
 function reservedForHandles(x: number, y: number, reserve?: SpaceHitReserve): boolean {
   if (!reserve) return false
   if (reserve.top != null && y < reserve.top) return true

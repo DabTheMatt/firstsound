@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FADE_DIAMOND_SIZE_PX,
   FADE_DIAMOND_TOP_PX,
+  LOOP_HANDLE_HEIGHT_PX,
+  LOOP_HANDLE_TOP_PX,
+  SPACE_HANDLE_TOP_PX,
   clampFadeLengthToLoop,
   fadeDiamondLayout,
   fadeHandleAtLoopFrac,
@@ -8,6 +12,7 @@ import {
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
+  hitsLoopNodeY,
 } from './handleLayout'
 
 describe('fadeHandleAtLoopFrac', () => {
@@ -64,9 +69,25 @@ describe('fadeKnobMaxSec', () => {
   })
 })
 
-describe('FADE_DIAMOND_TOP_PX', () => {
-  it('clears the 16px loop nodes', () => {
-    expect(FADE_DIAMOND_TOP_PX).toBe(20)
+describe('loop and envelope node layout', () => {
+  it('parks loop nodes below the track tab band', () => {
+    expect(LOOP_HANDLE_TOP_PX).toBeGreaterThanOrEqual(24)
+  })
+
+  it('parks envelope diamonds below the loop nodes', () => {
+    expect(FADE_DIAMOND_TOP_PX).toBe(LOOP_HANDLE_TOP_PX + LOOP_HANDLE_HEIGHT_PX + 2)
+  })
+
+  it('reserves space FX hits below the fade diamonds', () => {
+    expect(SPACE_HANDLE_TOP_PX).toBe(FADE_DIAMOND_TOP_PX + FADE_DIAMOND_SIZE_PX + 2)
+  })
+})
+
+describe('hitsLoopNodeY', () => {
+  it('grabs the lowered loop node without taking the rest of the waveform', () => {
+    expect(hitsLoopNodeY(LOOP_HANDLE_TOP_PX + 8, 22)).toBe(true)
+    expect(hitsLoopNodeY(4, 22)).toBe(false)
+    expect(hitsLoopNodeY(120, 22)).toBe(false)
   })
 })
 

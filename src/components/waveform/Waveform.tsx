@@ -29,15 +29,19 @@ import {
   zoomToSelection,
   type View,
 } from './viewport'
-import { SPACE_HANDLE_TOP_PX, hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
+import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx/hit'
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import {
+  FADE_DIAMOND_TOP_PX,
+  LOOP_HANDLE_TOP_PX,
+  SPACE_HANDLE_TOP_PX,
   clampFadeLengthToLoop,
   fadeDiamondLayout,
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
+  hitsLoopNodeY,
 } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
@@ -490,8 +494,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
       else if (handleAttr?.dataset.edge === 'start') mode = 'start'
       else if (handleAttr?.dataset.edge === 'end') mode = 'end'
-      else if (Math.abs(x - startX) < hit && y < hit * 1.6) mode = 'start'
-      else if (Math.abs(x - endX) < hit && y < hit * 1.6) mode = 'end'
+      else if (Math.abs(x - startX) < hit && hitsLoopNodeY(y, hit)) mode = 'start'
+      else if (Math.abs(x - endX) < hit && hitsLoopNodeY(y, hit)) mode = 'end'
     }
 
     const usingRegionHandle =
@@ -691,7 +695,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       fadeOut,
     })
     const left = Math.min(100, Math.max(0, pct(layout.time)))
-    return { left: `${left}%` }
+    return { left: `${left}%`, top: FADE_DIAMOND_TOP_PX }
   }
 
   const fadeShapeStyle = (side: 'in' | 'out') => {
@@ -803,7 +807,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       type="button"
                       className={styles.handle}
                       data-edge="start"
-                      style={{ left: `${startPct}%` }}
+                      style={{ left: `${startPct}%`, top: LOOP_HANDLE_TOP_PX }}
                       aria-label="Region start"
                     />
                   ) : null}
@@ -812,7 +816,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       type="button"
                       className={styles.handle}
                       data-edge="end"
-                      style={{ left: `${endPct}%` }}
+                      style={{ left: `${endPct}%`, top: LOOP_HANDLE_TOP_PX }}
                       aria-label="Region end"
                     />
                   ) : null}
