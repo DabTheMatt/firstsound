@@ -51,6 +51,14 @@ export function stackingEnergy(values: SensoryValues): number {
     clamp01(values.tape) * 0.55 +
     clamp01(values.fold) * 0.7 +
     clamp01(values.vinyl) * 0.4 +
+    clamp01(values.sweep) * 0.55 +
+    clamp01(values.dark) * 0.5 +
+    clamp01(values.thin) * 0.35 +
+    clamp01(values.phone) * 0.5 +
+    clamp01(values.notch) * 0.4 +
+    clamp01(values.peak) * 0.55 +
+    clamp01(values.comb) * 0.5 +
+    clamp01(values.melt) * 0.55 +
     Math.abs(values.character) * 0.3
   )
 }
@@ -96,6 +104,12 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
   const tape = clamp01(values.tape)
   const fold = clamp01(values.fold)
   const vinyl = clamp01(values.vinyl)
+  const sweep = clamp01(values.sweep)
+  const dark = clamp01(values.dark)
+  const thin = clamp01(values.thin)
+  const phone = clamp01(values.phone)
+  const peak = clamp01(values.peak)
+  const melt = clamp01(values.melt)
 
   if (echo >= MORPH_GATE && drift >= MORPH_GATE) {
     const timeL = echoTimeMs(echo)
@@ -142,10 +156,16 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
   const dirtIntoAir = Math.min(
     1,
     (dirt + fuzz * 0.9 + crush * 0.85 + tape * 0.7 + fold * 0.85 + vinyl * 0.55) *
-      (0.55 * space + 0.45 * echo + 0.35 * grain + 0.25 * bloom),
+      (0.55 * space + 0.45 * echo + 0.35 * grain + 0.25 * bloom + 0.2 * sweep + 0.2 * dark),
   )
   if (dirtIntoAir > 0.02) {
     scaleParam(dsp, 'saturation', 1 - 0.3 * dirtIntoAir)
+  }
+
+  const filterPile = Math.min(1, sweep + dark + thin + phone + peak + melt)
+  if (filterPile > 0.55 && space + echo + dirt > 0.4) {
+    scaleParam(dsp, 'filterDrive', 1 - 0.28 * filterPile)
+    scaleParam(dsp, 'filterReso', 1 - 0.18 * filterPile)
   }
 
   if (tight >= MORPH_GATE && space + echo + grain + dirt + fuzz + crush > 0.45) {

@@ -254,4 +254,23 @@ describe('mapSensoryToDsp', () => {
     expect(reverse.reverbType).toBe('reverse')
     expect(reverse.params.reverbReverse).toBeGreaterThan(80)
   })
+
+  it('opens dedicated FILTER models and keeps the strongest type', () => {
+    const thin = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'thin', 1))
+    expect(thin.bypass.filter).toBe(false)
+    expect(thin.params.filterKind).toBe(1)
+    expect(thin.params.filterCutoff).toBeGreaterThan(400)
+    const phone = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'phone', 1))
+    expect(phone.params.filterKind).toBe(2)
+    expect(phone.params.filterMix).toBeGreaterThan(80)
+    const mixed = mapSensoryToDsp(
+      baseDsp(),
+      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'thin', 0.4), 'phone', 0.9),
+    )
+    expect(mixed.params.filterKind).toBe(2)
+    const melt = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'melt', 1))
+    expect(melt.params.filterKind).toBe(6)
+    expect(melt.params.filterMorph).toBeGreaterThan(60)
+    expect(melt.fxLfos.filter[2]?.target).toBe('filterCutoff')
+  })
 })

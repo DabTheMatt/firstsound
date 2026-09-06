@@ -1,6 +1,7 @@
 import type { EqBand, EqFilterType } from '../../audio/engine/eqBands'
 import type { ParamId } from '../../audio/parameters/types'
 import type { ModuleType } from '../../audio/chain/chain'
+import type { CreativeFilterType } from '../../audio/fx/filter'
 import type { DistortionType, ReverbType } from '../../audio/fx/types'
 
 export type MorphEqBand = {
@@ -24,6 +25,7 @@ export type EffectMorph = {
   modules?: readonly ModuleType[]
   reverbType?: ReverbType
   distortionType?: DistortionType
+  filterType?: CreativeFilterType
   stops: readonly MorphStop[]
 }
 

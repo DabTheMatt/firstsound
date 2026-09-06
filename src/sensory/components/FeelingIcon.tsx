@@ -150,6 +150,35 @@ export function FeelingIcon({ feeling, amount, livePanPct }: Props) {
             />
             <circle cx={8 + a * 12} cy={16 - a * 6} r={2.4 + a} className={styles.knob} />
           </>
+        ) : visual === 'dark' ? (
+          <path d={`M4 8 Q 14 ${8 + a * 12} 24 8 L24 22 L4 22 Z`} className={styles.jag} opacity={0.45 + a * 0.5} />
+        ) : visual === 'thin' ? (
+          <path d={`M4 20 Q 14 ${20 - a * 12} 24 20 L24 6 L4 6 Z`} className={styles.arc} opacity={0.4 + a * 0.5} />
+        ) : visual === 'phone' ? (
+          <>
+            <rect x={10 - a} y="6" width={8 + a * 2} height="16" rx="3" className={styles.arc} />
+            <rect x="12" y="10" width="4" height={8 * a + 2} className={styles.knob} />
+          </>
+        ) : visual === 'notch' ? (
+          <path d={`M4 10 L10 10 L14 ${10 + a * 10} L18 10 L24 10 L24 18 L4 18 Z`} className={styles.jag} />
+        ) : visual === 'peak' ? (
+          <path d={`M4 18 L10 18 L14 ${18 - a * 12} L18 18 L24 18`} className={styles.wave} />
+        ) : visual === 'comb' ? (
+          Array.from({ length: 6 }, (_, i) => (
+            <rect
+              key={i}
+              x={5 + i * 3.4}
+              y={8 + (i % 2) * a * 3}
+              width="2"
+              height={12 - (i % 2) * a * 4}
+              className={styles.knob}
+            />
+          ))
+        ) : visual === 'melt' ? (
+          <path
+            d={`M4 ${12 + a * 4} C 10 ${6 - a * 2}, 16 ${20 + a * 2}, 24 ${10 + a * 6}`}
+            className={styles.wave}
+          />
         ) : (
           <>
             <circle cx={10 - a * 3} cy="14" r={4 + a} className={styles.knob} opacity={0.55 + a * 0.4} />

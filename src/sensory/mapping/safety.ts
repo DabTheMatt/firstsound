@@ -18,6 +18,8 @@ export const SENSORY_SAFETY = {
   density: 46,
   pitchSpread: 11,
   compressorMakeup: 4,
+  filterReso: 8,
+  filterDrive: 18,
 } as const
 
 export type SensorySafetyOpts = {
@@ -58,6 +60,8 @@ export function applySensorySafety(dsp: DspSnapshot, opts: SensorySafetyOpts = {
   cap(dsp.params, 'density', SENSORY_SAFETY.density)
   cap(dsp.params, 'pitchSpread', SENSORY_SAFETY.pitchSpread, 0)
   cap(dsp.params, 'compressorMakeup', SENSORY_SAFETY.compressorMakeup)
+  cap(dsp.params, 'filterReso', SENSORY_SAFETY.filterReso)
+  cap(dsp.params, 'filterDrive', SENSORY_SAFETY.filterDrive, 0)
   dsp.params.delayReverse = PARAMS.delayReverse.defaultValue
   if (!opts.allowReverse) dsp.params.reverbReverse = PARAMS.reverbReverse.defaultValue
   if (!opts.allowGate) dsp.params.reverbGate = PARAMS.reverbGate.defaultValue

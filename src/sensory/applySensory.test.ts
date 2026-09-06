@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sensoryDistortionType, sensoryReverbType } from './applySensory'
+import { sensoryDistortionType, sensoryFilterType, sensoryReverbType } from './applySensory'
 import { defaultSensoryValues, patchSensoryValue } from './sensoryState'
 
 describe('sensoryReverbType', () => {
@@ -27,5 +27,18 @@ describe('sensoryDistortionType', () => {
     expect(sensoryDistortionType(patchSensoryValue(defaultSensoryValues(), 'fold', 0.7))).toBe('fold')
     expect(sensoryDistortionType(patchSensoryValue(defaultSensoryValues(), 'vinyl', 0.6))).toBe('vinyl')
     expect(sensoryDistortionType(patchSensoryValue(defaultSensoryValues(), 'tape', 0.8))).toBe('tape')
+  })
+})
+
+describe('sensoryFilterType', () => {
+  it('picks a FILTER model from the strongest filter feeling', () => {
+    expect(sensoryFilterType(defaultSensoryValues())).toBeUndefined()
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'sweep', 0.8))).toBe('lowpass')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'thin', 0.9))).toBe('highpass')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'phone', 1))).toBe('bandpass')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'notch', 0.7))).toBe('notch')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'peak', 0.8))).toBe('peak')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'comb', 0.6))).toBe('comb')
+    expect(sensoryFilterType(patchSensoryValue(defaultSensoryValues(), 'melt', 0.8))).toBe('morph')
   })
 })

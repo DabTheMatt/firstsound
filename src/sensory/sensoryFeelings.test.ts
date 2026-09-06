@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeFeelingId, applyFeelingAmount, feelingAmount, restFeeling, SENSORY_FEELINGS } from './sensoryFeelings'
+import { activeFeelingId, applyFeelingAmount, feelingAmount, feelingsForRail, LEFT_RAIL_IDS, restFeeling, RIGHT_RAIL_IDS, SENSORY_FEELINGS } from './sensoryFeelings'
 import { defaultSensoryValues } from './sensoryState'
 
 describe('sensory feelings', () => {
@@ -57,6 +57,23 @@ describe('sensory feelings', () => {
       'fold',
       'vinyl',
       'sweep',
+      'dark',
+      'thin',
+      'phone',
+      'notch',
+      'peak',
+      'comb',
+      'melt',
     ])
+  })
+
+  it('splits feelings across two rails without overlap', () => {
+    const left = LEFT_RAIL_IDS
+    const right = RIGHT_RAIL_IDS
+    expect([...left, ...right].sort()).toEqual([...SENSORY_FEELINGS.map((f) => f.id)].sort())
+    expect(new Set(left).size).toBe(left.length)
+    expect(new Set(right).size).toBe(right.length)
+    expect(feelingsForRail('left').map((f) => f.id)).toEqual([...left])
+    expect(feelingsForRail('right').map((f) => f.id)).toEqual([...right])
   })
 })
