@@ -141,6 +141,11 @@ export function eqColorIndex(chain: readonly ChainModule[], instanceId: string):
   )
 }
 
+/** First EQ in the chain owns the shared band LFO params. */
+export function primaryEqInstanceId(chain: readonly ChainModule[]): string | null {
+  return chain.find((m) => m.type === 'eq')?.instanceId ?? null
+}
+
 /** Insert `type` after `afterIndex` (the module to the left of the +). */
 export function insertChainModule(
   chain: readonly ChainModule[],

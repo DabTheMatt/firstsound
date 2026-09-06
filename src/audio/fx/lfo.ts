@@ -656,7 +656,9 @@ export function applyFxLfos(
 export function liveEqBandsFromParams<T extends { frequency: number; gain: number; q: number }>(
   bands: T[],
   live: Record<ParamId, number>,
+  overlay = true,
 ): T[] {
+  if (!overlay) return bands
   return bands.map((band, index) => {
     const ids = EQ_BAND_LFO_IDS[index]
     if (!ids) return band

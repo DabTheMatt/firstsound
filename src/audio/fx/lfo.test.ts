@@ -6,6 +6,7 @@ import {
   defaultFxLfos,
   defaultLfoHold,
   eqBandHasLfo,
+  liveEqBandsFromParams,
   eqModuleHasLiveCurve,
   fxLfoSlotName,
   inspectorPaneForLfo,
@@ -256,6 +257,18 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('limiter', 'limiterInput')).toBe('advanced')
     expect(inspectorPaneForLfo('distortion', 'saturation')).toBe('main')
     expect(inspectorPaneForLfo('distortion', 'distortionBits')).toBe('advanced')
+  })
+})
+
+describe('liveEqBandsFromParams', () => {
+  it('leaves stored values when overlay is off', () => {
+    const bands = [{ frequency: 400, gain: -2, q: 1.2 }]
+    const live = { ...defaultParamValues() }
+    live.eq1Freq = 1200
+    live.eq1Gain = 6
+    live.eq1Q = 4
+    expect(liveEqBandsFromParams(bands, live, false)[0]?.frequency).toBe(400)
+    expect(liveEqBandsFromParams(bands, live)[0]?.frequency).toBe(1200)
   })
 })
 

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
   eqBandDragPatch,
@@ -43,7 +44,16 @@ import {
   type SpectrumBandCount,
   type SpectrumFollowMode,
 } from '../../audio/engine/spectrumBands'
-import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import {
+  clampEqOverlayFocus,
+  eqInstanceUsesSharedLfo,
+  eqOverlayIncludes,
+  eqOverlayOptions,
+  loadEqOverlayFocus,
+  persistEqOverlayFocus,
+  subscribeEqOverlayFocus,
+} from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
 import { timeDomainPeakDb, louderPeakDb } from '../../audio/engine/timePeak'
@@ -143,7 +153,11 @@ function chainToneGainAtHz(
       const st = live.eqById[mod.instanceId]
       if (!st) continue
       const bands = [
-        ...liveEqBandsFromParams(st.bands, live.liveParams),
+        ...liveEqBandsFromParams(
+          st.bands,
+          live.liveParams,
+          eqInstanceUsesSharedLfo(live.chain, mod.instanceId),
+        ),
         ...combAsEqBands({
           ...st.comb,
           teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
@@ -185,9 +199,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const plotRef = useRef<HTMLDivElement>(null)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
+  const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
+  const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
   const [selectedBand, setSelectedBand] = useState<{ instanceId: string; index: number } | null>(null)
   const prefsRef = useRef(prefs)
+  const eqFocusRef = useRef(eqFocus)
   const meterMinRef = useRef(meterDbMin(meterRange))
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
@@ -204,6 +221,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   useEffect(() => {
     meterMinRef.current = meterDbMin(meterRange)
   }, [meterRange])
+
+  useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
+
+  useEffect(() => {
+    eqFocusRef.current = eqFocus
+  }, [eqFocus])
 
   useEffect(() => {
     prefsRef.current = prefs
@@ -431,6 +454,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         }
 
         const eqs = live.chain.filter((m) => m.type === 'eq')
+        const overlayFocus = eqFocusRef.current
         const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
         for (let ei = 0; ei < eqs.length; ei++) {
           const mod = eqs[ei]
@@ -439,18 +463,24 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           if (!st) continue
           const hasShape = st.bands.some((b) => b.type !== 'off') || st.comb.enabled
           if (!hasShape) continue
+          const modulate = eqInstanceUsesSharedLfo(live.chain, mod.instanceId)
           const storedBands = [...st.bands, ...combAsEqBands(st.comb)]
           const liveBands = [
-            ...liveEqBandsFromParams(st.bands, live.liveParams),
-            ...combAsEqBands({
-              ...st.comb,
-              teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
-              gain: live.liveParams.eqcfGain ?? st.comb.gain,
-              spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
-              frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
-            }),
+            ...liveEqBandsFromParams(st.bands, live.liveParams, modulate),
+            ...combAsEqBands(
+              modulate
+                ? {
+                    ...st.comb,
+                    teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
+                    gain: live.liveParams.eqcfGain ?? st.comb.gain,
+                    spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
+                    frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
+                  }
+                : st.comb,
+            ),
           ]
           const tone = eqTone(ei, colors)
+          const focused = eqOverlayIncludes(overlayFocus, mod.instanceId)
           const xAt = (i: number) => left + (i / Math.max(1, freqs.length - 1)) * plotW
           const yAt = (db: number) => spectrumEqOverlayY(db, top, bottom)
           ctx.save()
@@ -459,12 +489,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.clip()
           const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
-          ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
-          ctx.lineWidth = storedStyle.width
+          ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha * (focused ? 1 : 0.28))
+          ctx.lineWidth = storedStyle.width * (focused ? 1 : 0.85)
           strokeEqMagnitude(ctx, storedBands, freqs, sr, xAt, yAt)
-          if (eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)) {
+          if (modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)) {
             const liveStyle = eqResponseCurveStyle('live', mod.bypassed, dpr)
-            ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
+            ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha * (focused ? 1 : 0.28))
             ctx.lineWidth = liveStyle.width
             strokeEqMagnitude(ctx, liveBands, freqs, sr, xAt, yAt)
           }
@@ -545,6 +575,26 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               <option value="both">Both</option>
             </select>
           </label>
+          {eqMods.length > 1 ? (
+            <label className={styles.bands}>
+              EQ
+              <select
+                aria-label="EQ overlay"
+                value={eqFocus}
+                onChange={(event) => {
+                  const next = clampEqOverlayFocus(event.target.value, snap.chain)
+                  setEqFocusRaw(next)
+                  persistEqOverlayFocus(next)
+                }}
+              >
+                {eqOverlayOptions(snap.chain).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className={styles.bands}>
             Bands
             <select
@@ -705,8 +755,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           }}
         >
           {eqMods.flatMap((mod) => {
+            if (!eqOverlayIncludes(eqFocus, mod.instanceId)) return []
             const bands = snap.eqById[mod.instanceId]?.bands ?? []
-            const liveBands = liveEqBandsFromParams(bands, snap.liveParams)
+            const modulate = eqInstanceUsesSharedLfo(snap.chain, mod.instanceId)
+            const liveBands = liveEqBandsFromParams(bands, snap.liveParams, modulate)
+            const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
+            const eqName = eqMods.length > 1 ? moduleLabel(mod, snap.chain) : 'EQ'
             return liveBands.map((band, index) => {
             if (band.type === 'off') return null
             const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
@@ -721,31 +775,36 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             const ids = EQ_BAND_LFO_IDS[index]
             const bank = snap.fxLfos[eqBandLfoKind(index)]
             const mapped = Boolean(
-              ids &&
+              modulate &&
+                ids &&
                 bank?.some(
                   (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
                 ),
             )
-            const stored = bands[index]
-            const color = eqBandColorForHz(stored?.frequency ?? band.frequency)
             return (
               <button
                 key={`${mod.instanceId}-${index}`}
                 type="button"
                 className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
-                style={{
-                  left: `${xPct}%`,
-                  top: `${Math.min(100, Math.max(0, yPct))}%`,
-                  background: dim ? undefined : color,
-                  borderColor: color,
-                }}
-                aria-label={`EQ ${mod.instanceId} band ${index + 1} ${band.type}`}
+                style={
+                  {
+                    left: `${xPct}%`,
+                    top: `${Math.min(100, Math.max(0, yPct))}%`,
+                    background: dim ? undefined : tone.node,
+                    borderColor: tone.curve,
+                    '--eq-curve': tone.curve,
+                    '--eq-node-selected': tone.node,
+                    zIndex: selected ? 4 : 2,
+                  } as CSSProperties
+                }
+                title={`${eqName} band ${index + 1} ${band.type}`}
+                aria-label={`${eqName} band ${index + 1} ${band.type}`}
                 onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
                 onPointerMove={onNodePointerMove}
                 onPointerUp={onNodePointerUp}
                 onPointerCancel={onNodePointerUp}
               >
-                {index + 1}
+                {eqMods.length > 1 ? `${eqColorIndex(snap.chain, mod.instanceId) + 1}.${index + 1}` : index + 1}
               </button>
             )
           })

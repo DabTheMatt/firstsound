@@ -2807,7 +2807,15 @@ export class AudioEngine {
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
-      this.writeEqFilters(slot.eq, this.liveEqBands(st.bands, live), this.liveComb(st.comb, live), now, smoothing, nyquist)
+      const overlay = slot.instanceId === this.primaryEqId()
+      this.writeEqFilters(
+        slot.eq,
+        overlay ? this.liveEqBands(st.bands, live) : st.bands,
+        overlay ? this.liveComb(st.comb, live) : st.comb,
+        now,
+        smoothing,
+        nyquist,
+      )
     }
   }
 

@@ -16,7 +16,10 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
+import { eqTone, readThemeColors } from '../../theme'
+import { colorWithAlpha } from '../../theme/cssColor'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from '../inspector/FxLfoSection'
@@ -30,25 +33,34 @@ type Props = {
   index: number
   band: EqBand
   label: string
+  toneIndex?: number
 }
 
-export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
+export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 0 }: Props) {
   const ids = EQ_BAND_LFO_IDS[index]
   if (!ids) return null
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
-  const liveFreq = snap.liveParams[ids.freq] ?? band.frequency
-  const liveGain = snap.liveParams[ids.gain] ?? band.gain
-  const liveQ = snap.liveParams[ids.q] ?? band.q
-  const freqLfo = lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq))
-  const gainLfo = lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain))
-  const qLfo = lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q))
+  const modulate = eqInstanceUsesSharedLfo(snap.chain, instanceId)
+  const liveFreq = modulate ? (snap.liveParams[ids.freq] ?? band.frequency) : band.frequency
+  const liveGain = modulate ? (snap.liveParams[ids.gain] ?? band.gain) : band.gain
+  const liveQ = modulate ? (snap.liveParams[ids.q] ?? band.q) : band.q
+  const freqLfo = modulate ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
+  const gainLfo = modulate ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
+  const qLfo = modulate ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
   const showGain = bandUsesGain(band.type) || band.type === 'off'
   const showWidth = bandUsesWidth(band.type)
+  const tone = eqTone(toneIndex, readThemeColors())
+  const accent = {
+    ...eqBandAccentVars(band.frequency),
+    '--eq-instance': tone.curve,
+    '--accent-primary': tone.curve,
+    '--accent-soft': colorWithAlpha(tone.curve, 0.22),
+  } as CSSProperties
 
   return (
     <article
       className={`${styles.strip} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
-      style={eqBandAccentVars(band.frequency) as CSSProperties}
+      style={accent}
     >
       <header className={styles.stripHead}>
         <span className={styles.stripLabel}>{label}</span>
@@ -177,7 +189,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
         </LfoParamShell>
       )}
       </div>
-      <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact />
+      {modulate ? <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact /> : null}
     </article>
   )
 }
