@@ -28,15 +28,80 @@ export function applyReverbCorrelation(
   params.reverbWet = pair.wet
 }
 
+export type DelayCorrelationChange = 'dry' | 'wet' | 'dryR' | 'wetR' | 'enable'
+
+export function applyDelayCorrelation(
+  params: {
+    delayDry: number
+    delayDryR: number
+    delayWet: number
+    delayWetR: number
+    delayCorrelate: number
+  },
+  changed: DelayCorrelationChange = 'wet',
+): void {
+  if (!isCorrelated(params.delayCorrelate) && changed !== 'enable') return
+  if (changed === 'enable') params.delayCorrelate = 1
+  if (changed === 'dry' || changed === 'wet' || changed === 'enable') {
+    const pair = applyCorrelatedPair(
+      changed === 'dry' ? 'dry' : 'wet',
+      changed === 'dry' ? params.delayDry : params.delayWet,
+    )
+    params.delayDry = pair.dry
+    params.delayWet = pair.wet
+  }
+  if (changed === 'dryR' || changed === 'wetR' || changed === 'enable') {
+    const pair = applyCorrelatedPair(
+      changed === 'dryR' ? 'dry' : 'wet',
+      changed === 'dryR' ? params.delayDryR : params.delayWetR,
+    )
+    params.delayDryR = pair.dry
+    params.delayWetR = pair.wet
+  }
+}
+
 /** Linear Dry/Wet sends. Correlate derives Dry from Wet so the pair sums to 100%. */
+export function correlatedSendLevels(
+  dryPct: number,
+  wetPct: number,
+  correlate: number,
+): { dry: number; wet: number; out: number } {
+  const wet = clampPct(wetPct)
+  const dry = isCorrelated(correlate) ? complementaryPct(wet) : clampPct(dryPct)
+  return fxSendLevels(dry, wet, 100)
+}
+
 export function reverbSendLevels(params: {
   reverbDry: number
   reverbWet: number
   reverbCorrelate: number
 }): { dry: number; wet: number; out: number } {
-  const wetPct = clampPct(params.reverbWet)
-  const dryPct = isCorrelated(params.reverbCorrelate) ? complementaryPct(wetPct) : clampPct(params.reverbDry)
-  return fxSendLevels(dryPct, wetPct, 100)
+  return correlatedSendLevels(params.reverbDry, params.reverbWet, params.reverbCorrelate)
+}
+
+export function delaySendLevels(params: {
+  delayDry: number
+  delayWet: number
+  delayCorrelate: number
+}): { dry: number; wet: number; out: number } {
+  return correlatedSendLevels(params.delayDry, params.delayWet, params.delayCorrelate)
+}
+
+export function delayChannelSendLevels(
+  params: {
+    delayDry: number
+    delayDryR: number
+    delayWet: number
+    delayWetR: number
+    delayCorrelate: number
+  },
+  channel: 'L' | 'R',
+  stereo: boolean,
+): { dry: number; wet: number; out: number } {
+  if (channel === 'R' && stereo) {
+    return correlatedSendLevels(params.delayDryR, params.delayWetR, params.delayCorrelate)
+  }
+  return delaySendLevels(params)
 }
 
 /** Equal-power dry/wet so Mix 50% stays near unity loudness. Ends are exact 0/1 so Mix can mute. */

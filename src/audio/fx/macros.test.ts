@@ -31,8 +31,9 @@ describe('migrateSpaceParams', () => {
 
   it('maps legacy Mix onto correlated Dry/Wet that sum to 100%', () => {
     const next = migrateSpaceParams({ spaceMix: 40, reverb: 25, delayTime: 300, reverbWidth: 100 })
-    expect(next.delayDry).toBe(100)
+    expect(next.delayDry).toBe(60)
     expect(next.delayWet).toBe(40)
+    expect(next.delayCorrelate).toBe(1)
     expect(next.reverbCorrelate).toBe(1)
     expect(next.reverbWet).toBe(25)
     expect(next.reverbDry).toBe(75)

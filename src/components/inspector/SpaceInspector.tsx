@@ -136,7 +136,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       <h3 className={styles.sub}>Presets</h3>
       <p className={styles.help}>
         {kind === 'delay'
-          ? 'Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Mix. Feedback stays below unity so each repeat fades.'
+          ? 'Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Dry/Wet. Dry and Wet are independent unless Correlate is on. Feedback stays below unity so each repeat fades.'
           : 'Categories load a starting space. Dry and Wet are independent unless Correlate is on — then raising Dry lowers Wet so they always sum to 100%. Stereo In 0% sums the sample first (clean space from a mono file).'}
       </p>
       <Segmented
@@ -203,24 +203,40 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                   <h3 className={styles.sub}>Left</h3>
                   <span className={styles.lrTime}>{formatParamValue(snap.params.delayTime, PARAMS.delayTime)}</span>
                 </div>
-                {params(['delayTime', 'delayWet', 'delayFeedback'])}
-                <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+                {params(['delayDry', 'delayWet', 'delayTime', 'delayFeedback'])}
+                <div className={styles.syncCluster}>
+                  <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+                </div>
               </section>
               <section className={styles.lrCol} aria-label="Delay right">
                 <div className={styles.lrHead}>
                   <h3 className={styles.sub}>Right</h3>
                   <span className={styles.lrTime}>{formatParamValue(snap.params.delayTimeR, PARAMS.delayTimeR)}</span>
                 </div>
-                {params(['delayTimeR', 'delayWetR', 'delayFeedbackR'])}
-                <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+                {params(['delayDryR', 'delayWetR', 'delayTimeR', 'delayFeedbackR'])}
+                <div className={styles.syncCluster}>
+                  <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+                </div>
               </section>
             </div>
           ) : (
             <>
-              {params(['delayWet', 'delayFeedback', 'delayTime'])}
-              <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+              {params(['delayDry', 'delayWet', 'delayFeedback', 'delayTime'])}
+              <div className={styles.syncCluster}>
+                <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+              </div>
             </>
           )}
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.params.delayCorrelate > 0.5}
+              label="Correlate"
+              onToggle={() => engine.setParam('delayCorrelate', snap.params.delayCorrelate > 0.5 ? 0 : 1)}
+            />
+          </div>
+          <p className={styles.help}>
+            Correlate keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+          </p>
         </>
       ) : (
         <>

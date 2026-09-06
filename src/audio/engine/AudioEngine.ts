@@ -87,7 +87,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
-import { applyReverbCorrelation } from '../fx/dryWet'
+import { applyDelayCorrelation, applyReverbCorrelation } from '../fx/dryWet'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet } from '../fx/distortion'
 import {
@@ -812,11 +812,16 @@ export class AudioEngine {
       if (id === 'reverbCorrelate' && this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('enable')
       else if (id === 'reverbDry') this.syncReverbCorrelation('dry')
       else if (id === 'reverbWet') this.syncReverbCorrelation('wet')
+      if (id === 'delayCorrelate' && this.params.delayCorrelate >= 0.5) this.syncDelayCorrelation('enable')
+      else if (id === 'delayDry') this.syncDelayCorrelation('dry')
+      else if (id === 'delayWet') this.syncDelayCorrelation('wet')
+      else if (id === 'delayDryR') this.syncDelayCorrelation('dryR')
+      else if (id === 'delayWetR') this.syncDelayCorrelation('wetR')
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
       this.syncLfoClock()
       if (id === 'reverbWet' || id === 'reverbDry') this.engageReverbFromMix()
-      if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
+      if (id === 'delayWet' || id === 'delayWetR' || id === 'delayDry' || id === 'delayDryR') this.engageDelayFromMix()
       if (
         id === 'saturation' ||
         id === 'saturationMix' ||
@@ -849,6 +854,15 @@ export class AudioEngine {
         'reverbDry' in patch && !('reverbWet' in patch) ? 'dry' : 'wet',
       )
     }
+    if (this.params.delayCorrelate >= 0.5) {
+      const left = 'delayDry' in patch || 'delayWet' in patch || 'delayCorrelate' in patch
+      const right = 'delayDryR' in patch || 'delayWetR' in patch || 'delayCorrelate' in patch
+      if ('delayCorrelate' in patch) this.syncDelayCorrelation('enable')
+      else {
+        if (left) this.syncDelayCorrelation('delayDry' in patch && !('delayWet' in patch) ? 'dry' : 'wet')
+        if (right) this.syncDelayCorrelation('delayDryR' in patch && !('delayWetR' in patch) ? 'dryR' : 'wetR')
+      }
+    }
     this.applyLiveAudio()
     this.syncLfoClock()
     this.engageReverbFromMix()
@@ -862,6 +876,10 @@ export class AudioEngine {
     applyReverbCorrelation(this.params, changed)
   }
 
+  private syncDelayCorrelation(changed: 'dry' | 'wet' | 'dryR' | 'wetR' | 'enable'): void {
+    applyDelayCorrelation(this.params, changed)
+  }
+
   private engageReverbFromMix(): void {
     if (!reverbMixEngagesModule(this.params.reverbWet)) return
     const reverb = this.chain.find((m) => m.type === 'reverb')
@@ -869,7 +887,7 @@ export class AudioEngine {
   }
 
   private engageDelayFromMix(): void {
-    if (this.params.delayWet < 1) return
+    if (this.params.delayWet < 1 && this.params.delayWetR < 1) return
     const delay = this.chain.find((m) => m.type === 'delay')
     if (delay?.bypassed) this.setModuleBypass(delay.instanceId, false)
   }
@@ -880,6 +898,7 @@ export class AudioEngine {
     this.params.delayNoteR = this.params.delayNote
     this.params.delayNoteKindR = this.params.delayNoteKind
     this.params.delayWetR = this.params.delayWet
+    this.params.delayDryR = this.params.delayDry
     this.params.delayFeedbackR = this.params.delayFeedback
   }
 
@@ -1007,6 +1026,7 @@ export class AudioEngine {
     }
     this.syncTimeFromClock('bpm')
     if (this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('wet')
+    if (this.params.delayCorrelate >= 0.5) this.syncDelayCorrelation('enable')
     this.applyLiveAudio()
     const type = next.kind
     const mod = this.chain.find((m) => m.type === type)

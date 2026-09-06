@@ -118,6 +118,7 @@ describe('applyFxLfos', () => {
     const params = defaultParamValues()
     params.delayWet = 50
     params.delayDry = 50
+    params.delayCorrelate = 0
     const lfos = defaultFxLfos()
     lfos.delay[0]!.target = 'delayWet'
     lfos.delay[0]!.depth = 20

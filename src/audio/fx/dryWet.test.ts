@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
 import {
+  applyDelayCorrelation,
   applyCorrelatedPair,
   complementaryPct,
+  delaySendLevels,
   equalPowerDryWet,
   fxSendLevels,
   makeAbsCurve,
@@ -44,13 +46,25 @@ describe('fxSendLevels', () => {
 })
 
 describe('wetDryFor', () => {
-  it('uses equal-power Mix so dry falls as wet rises', () => {
+  it('correlates delay Dry and Wet so they sum to unity', () => {
     const p = defaultParamValues()
+    p.delayCorrelate = 1
     p.delayWet = 50
+    p.delayDry = 100
     const delay = wetDryFor('delay', p)
-    expect(delay.dry).toBeCloseTo(Math.SQRT1_2, 5)
-    expect(delay.wet).toBeCloseTo(Math.SQRT1_2, 5)
+    expect(delay.dry).toBeCloseTo(0.5)
+    expect(delay.wet).toBeCloseTo(0.5)
     expect(delay.out).toBe(1)
+  })
+
+  it('lets uncorrelated delay Dry and Wet stack', () => {
+    const p = defaultParamValues()
+    p.delayCorrelate = 0
+    p.delayDry = 100
+    p.delayWet = 50
+    const stacked = wetDryFor('delay', p)
+    expect(stacked.dry).toBe(1)
+    expect(stacked.wet).toBeCloseTo(0.5)
   })
 
   it('correlates reverb Dry and Wet so they sum to unity', () => {
@@ -85,6 +99,29 @@ describe('applyCorrelatedPair', () => {
     expect(applyCorrelatedPair('wet', 30)).toEqual({ dry: 70, wet: 30 })
     expect(applyCorrelatedPair('dry', 80)).toEqual({ dry: 80, wet: 20 })
     expect(complementaryPct(40)).toBe(60)
+  })
+})
+
+describe('applyDelayCorrelation', () => {
+  it('mirrors left and right when Correlate is enabled', () => {
+    const p = defaultParamValues()
+    p.delayWet = 40
+    p.delayWetR = 25
+    p.delayDry = 100
+    p.delayDryR = 100
+    applyDelayCorrelation(p, 'enable')
+    expect(p.delayDry).toBe(60)
+    expect(p.delayWet).toBe(40)
+    expect(p.delayDryR).toBe(75)
+    expect(p.delayWetR).toBe(25)
+  })
+})
+
+describe('delaySendLevels', () => {
+  it('ignores stored Dry when Correlate is on', () => {
+    const send = delaySendLevels({ delayDry: 100, delayWet: 25, delayCorrelate: 1 })
+    expect(send.dry).toBeCloseTo(0.75)
+    expect(send.wet).toBeCloseTo(0.25)
   })
 })
 

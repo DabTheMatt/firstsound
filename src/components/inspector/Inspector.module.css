@@ -284,7 +284,10 @@
 
 .lrCol {
   min-width: 0;
-  padding: 6px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 6px 12px;
   border: 1px solid var(--border-default);
   border-radius: 10px;
   background: var(--bg-panel-elevated);
@@ -293,6 +296,7 @@
 .lrCol .knobs {
   grid-template-columns: 1fr;
   padding-top: 8px;
+  width: 100%;
 }
 
 .lrHead {
@@ -300,6 +304,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
 }
 
 .lrHead .sub {
@@ -317,6 +322,26 @@
 
 .lrCol .sub {
   margin-top: 0;
+}
+
+.syncCluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.lrCol .syncCluster {
+  margin-top: 14px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .eq {
@@ -580,6 +605,14 @@
 
 .compact .lrCol .knobs {
   grid-template-columns: 1fr;
+}
+
+.compact .syncCluster {
+  margin-top: 10px;
+}
+
+.compact .lrCol .syncCluster {
+  margin-top: 12px;
 }
 
 .compact .help {

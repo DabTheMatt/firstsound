@@ -108,8 +108,10 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
     delayPan: 0,
     delayOffset: 0,
     delayDry: 100,
+    delayDryR: 100,
     delayWet: 28,
     delayWetR: 28,
+    delayCorrelate: 1,
     delayOutput: 100,
     delayFeedback: 28,
     delayFeedbackR: 28,
@@ -121,7 +123,14 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
   if (patch.delayNote != null && patch.delayNoteR == null) next.delayNoteR = patch.delayNote
   if (patch.delayNoteKind != null && patch.delayNoteKindR == null) next.delayNoteKindR = patch.delayNoteKind
   if (patch.delayWet != null && patch.delayWetR == null) next.delayWetR = patch.delayWet
+  if (patch.delayDry != null && patch.delayDryR == null) next.delayDryR = patch.delayDry
   if (patch.delayFeedback != null && patch.delayFeedbackR == null) next.delayFeedbackR = patch.delayFeedback
+  if (isCorrelated(next.delayCorrelate ?? 1) && patch.delayDry == null && typeof next.delayWet === 'number') {
+    next.delayDry = complementaryPct(next.delayWet)
+  }
+  if (isCorrelated(next.delayCorrelate ?? 1) && patch.delayDryR == null && typeof next.delayWetR === 'number') {
+    next.delayDryR = complementaryPct(next.delayWetR)
+  }
   return next
 }
 

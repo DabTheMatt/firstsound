@@ -201,7 +201,7 @@ export function delayTypeProfile(type: DelayType): DelayTypeProfile {
   return DELAY_TYPE_PROFILES[type]
 }
 
-/** Color / loop knobs for a type. Leaves Time, Feedback, Mix, Width alone. */
+/** Color / loop knobs for a type. Leaves Time, Feedback, Dry/Wet, Width alone. */
 export function delayTypeColorPatch(type: DelayType): Partial<Record<ParamId, number>> {
   const p = delayTypeProfile(type)
   return {

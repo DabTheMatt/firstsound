@@ -83,7 +83,9 @@ export function applyDelayMacro(
         delayModRate: fromNormalized(0.2 + t * 0.35, PARAMS.delayModRate),
       }
     case 'mix':
-      return { delayWet: t * 100 }
+      return isCorrelated(params.delayCorrelate)
+        ? { delayWet: t * 100, delayDry: complementaryPct(t * 100), delayWetR: t * 100, delayDryR: complementaryPct(t * 100) }
+        : { delayWet: t * 100 }
   }
 }
 

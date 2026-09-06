@@ -129,6 +129,7 @@ export const LFO_DEPTH_DEFAULT = 35
 
 const DELAY_TARGETS: ParamId[] = [
   'delayDry',
+  'delayDryR',
   'delayWet',
   'delayWetR',
   'delayOutput',
@@ -612,6 +613,18 @@ export function applyFxLfos(
       next.reverbWet = complementaryPct(next.reverbDry)
     } else if (claimed.has('reverbWet')) {
       next.reverbDry = complementaryPct(next.reverbWet)
+    }
+  }
+  if (isCorrelated(next.delayCorrelate)) {
+    if (claimed.has('delayDry') && !claimed.has('delayWet')) {
+      next.delayWet = complementaryPct(next.delayDry)
+    } else if (claimed.has('delayWet')) {
+      next.delayDry = complementaryPct(next.delayWet)
+    }
+    if (claimed.has('delayDryR') && !claimed.has('delayWetR')) {
+      next.delayWetR = complementaryPct(next.delayDryR)
+    } else if (claimed.has('delayWetR')) {
+      next.delayDryR = complementaryPct(next.delayWetR)
     }
   }
   return next

@@ -19,17 +19,33 @@ export function migrateSpaceParams(incoming: Record<string, number>): Partial<Re
   if (!hasNew && typeof incoming.reverbPredelay === 'number') {
     params.reverbPredelay = applyParamValue(Math.max(0.1, incoming.reverbPredelay), PARAMS.reverbPredelay)
   }
-  // Legacy Mix crossfaded dry away. Map it onto independent Wet, keep Dry at 100%.
   if (typeof incoming.delayWet !== 'number' && typeof incoming.spaceMix === 'number') {
-    params.delayDry = PARAMS.delayDry.defaultValue
     params.delayWet = applyParamValue(incoming.spaceMix, PARAMS.delayWet)
     if (typeof incoming.delayOutput !== 'number') params.delayOutput = PARAMS.delayOutput.defaultValue
   }
   if (typeof incoming.delayWetR !== 'number' && typeof incoming.delayWet === 'number') {
     params.delayWetR = applyParamValue(incoming.delayWet, PARAMS.delayWetR)
   }
+  if (typeof incoming.delayDryR !== 'number' && typeof incoming.delayDry === 'number') {
+    params.delayDryR = applyParamValue(incoming.delayDry, PARAMS.delayDryR)
+  }
   if (typeof incoming.delayFeedbackR !== 'number' && typeof incoming.delayFeedback === 'number') {
     params.delayFeedbackR = applyParamValue(incoming.delayFeedback, PARAMS.delayFeedbackR)
+  }
+  const delayWet = params.delayWet
+  if (typeof incoming.delayCorrelate !== 'number') {
+    params.delayCorrelate = PARAMS.delayCorrelate.defaultValue
+  }
+  if (isCorrelated(params.delayCorrelate ?? PARAMS.delayCorrelate.defaultValue) && typeof delayWet === 'number') {
+    params.delayDry = complementaryPct(delayWet)
+  } else if (typeof incoming.delayDry !== 'number' && typeof delayWet === 'number') {
+    params.delayDry = PARAMS.delayDry.defaultValue
+  }
+  const delayWetR = params.delayWetR
+  if (isCorrelated(params.delayCorrelate ?? PARAMS.delayCorrelate.defaultValue) && typeof delayWetR === 'number') {
+    params.delayDryR = complementaryPct(delayWetR)
+  } else if (typeof incoming.delayDryR !== 'number' && typeof delayWetR === 'number') {
+    params.delayDryR = PARAMS.delayDryR.defaultValue
   }
   if (typeof incoming.reverbWet !== 'number' && typeof incoming.reverb === 'number') {
     params.reverbWet = applyParamValue(incoming.reverb, PARAMS.reverbWet)

@@ -9,7 +9,8 @@ import {
   delayWowSeconds,
 } from './delayLoop'
 import {
-  equalPowerDryWet,
+  delayChannelSendLevels,
+  delaySendLevels,
   reverbSendLevels,
   makeAbsCurve,
   sideGainFromWidth,
@@ -455,8 +456,8 @@ export function applyDelayGraph(
   const loopType = stereo ? type : type === 'pingPong' ? 'digital' : type
   const fbR = stereo ? params.delayFeedbackR : params.delayFeedback
   const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch, fbR)
-  const mixL = equalPowerDryWet(params.delayWet / 100)
-  const mixR = equalPowerDryWet((stereo ? params.delayWetR : params.delayWet) / 100)
+  const mixL = delayChannelSendLevels(params, 'L', stereo)
+  const mixR = delayChannelSendLevels(params, 'R', stereo)
   if (stereo) {
     g.chanDryL.gain.setTargetAtTime(mixL.dry, now, smoothing)
     g.chanDryR.gain.setTargetAtTime(mixR.dry, now, smoothing)
@@ -857,8 +858,8 @@ export function wetDryFor(
     const send = reverbSendLevels(params)
     return { dry: send.dry, wet: send.wet, out: 1 }
   }
-  const { dry, wet } = equalPowerDryWet(params.delayWet / 100)
-  return { dry, wet, out: 1 }
+  const send = delaySendLevels(params)
+  return { dry: send.dry, wet: send.wet, out: 1 }
 }
 
 function instantGain(param: AudioParam, now: number, value = 0): void {
