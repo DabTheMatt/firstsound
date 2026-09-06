@@ -16,8 +16,8 @@ export function MixConsole() {
         <div>
           <h2 className={styles.title}>Mixer</h2>
           <p className={styles.lead}>
-            Every unmuted track plays together. Mute and solo are per strip. Effects sit after the
-            mix, on Output.
+            All tracks play together. Selecting a lane only edits that sample. Mute silences a
+            strip; solo hears every soloed strip. Effects sit after the mix, on Output.
           </p>
         </div>
         <button

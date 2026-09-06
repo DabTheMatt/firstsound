@@ -22,8 +22,8 @@ export function TrackLanes({
         <h2 className={styles.title}>{editor ? 'Multi-track' : 'Tracks'}</h2>
         <p className={styles.lead}>
           {editor
-            ? 'Each lane is its own sample. Mute and solo here. WAVE opens the editor.'
-            : 'Select a lane to edit its region. All unmuted lanes play together into Output.'}
+            ? 'All lanes play together. Select a lane to edit it. WAVE opens the editor.'
+            : 'Select a lane to edit its sample. Playback follows mute and solo, not the selection.'}
         </p>
       </header>
       <div className={styles.list}>

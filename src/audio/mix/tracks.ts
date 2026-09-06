@@ -188,11 +188,25 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
   return parsed.length ? parsed : null
 }
 
+/** Every strip that should sound, independent of which lane is selected. */
+export function audibleTrackIds(tracks: readonly MixTrack[]): string[] {
+  return tracks.filter((track) => trackIsAudible(track, tracks)).map((track) => track.id)
+}
+
 /** Tracks that should sound in parallel with the selected (engine) track. */
 export function companionTrackIds(tracks: readonly MixTrack[], selectedId: string | null): string[] {
-  return tracks
-    .filter((track) => track.id !== selectedId && trackMixGain(track, tracks) > 0)
-    .map((track) => track.id)
+  return audibleTrackIds(tracks).filter((id) => id !== selectedId)
+}
+
+/** Position inside a track region from a shared mix clock. */
+export function mixRegionOffset(start: number, end: number, elapsed: number, loop: boolean): number {
+  const span = Math.max(end - start, 1e-6)
+  if (!Number.isFinite(elapsed) || elapsed <= 0) return start
+  if (loop) {
+    const rel = elapsed % span
+    return start + (rel < 0 ? rel + span : rel)
+  }
+  return Math.min(Math.max(end - 1e-4, start), start + elapsed)
 }
 
 export type MixPlaybackPlan = {

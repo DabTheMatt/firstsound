@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addTrack,
   alignedRegionOffset,
+  audibleTrackIds,
   companionTrackIds,
   defaultTracks,
   leadMixGain,
@@ -128,6 +129,20 @@ describe('mix tracks', () => {
       playLead: true,
       companionIds: [],
     })
+  })
+
+  it('applies mute and solo without caring which track is selected', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    expect(audibleTrackIds(tracks)).toEqual(['track-1', 'track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: false, solo: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-1'])
+    tracks = patchTrack(tracks, 'track-2', { solo: true })
+    expect(audibleTrackIds(tracks)).toEqual(['track-1', 'track-2'])
+    tracks = patchTrack(tracks, 'track-1', { muted: true, solo: false })
+    tracks = patchTrack(tracks, 'track-2', { muted: true, solo: false })
+    expect(audibleTrackIds(tracks)).toEqual([])
   })
 
   it('keeps a sample name on a saved desk', () => {

@@ -150,14 +150,12 @@ import {
 } from './eqBands'
 import {
   addTrack,
-  alignedRegionOffset,
+  audibleTrackIds,
   clampMix,
   cloneTracks,
-  companionTrackIds,
   defaultTracks,
   duplicateTrack,
-  leadMixGain,
-  mixPlaybackPlan,
+  mixRegionOffset,
   outputMixGain,
   parseTracks,
   patchTrack,
@@ -611,10 +609,8 @@ export class AudioEngine {
   async play(): Promise<void> {
     await this.ensureContext()
     this.bindWorkingFromTrack(this.selectedTrackId)
-    const plan = mixPlaybackPlan(this.tracks, this.selectedTrackId)
-    const hasLead = plan.playLead && Boolean(this.buffer)
-    const hasCompanion = plan.companionIds.some((id) => Boolean(this.trackBuffers.get(id)))
-    if (!this.ctx || (!hasLead && !hasCompanion)) return
+    const sounding = audibleTrackIds(this.tracks).some((id) => Boolean(this.trackBuffers.get(id)))
+    if (!this.ctx || !sounding) return
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
@@ -633,7 +629,7 @@ export class AudioEngine {
       this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
     }
     this.routeTrackGraph()
-    if (hasLead) {
+    if (this.engineOwnsSelected()) {
       if (this.engineMode === 'grain') {
         this.nextGrainTime = this.ctx.currentTime
         this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
@@ -642,7 +638,7 @@ export class AudioEngine {
         this.startRegionPlayback()
       }
     }
-    this.startCompanionVoices()
+    this.startMixVoices()
     this.emit()
   }
 
@@ -1524,7 +1520,7 @@ export class AudioEngine {
       if (source?.fileName) this.tracks = patchTrack(this.tracks, added.id, { fileName: source.fileName })
       this.routeTrackGraph()
       this.applyLiveAudio(0.01)
-      this.refreshCompanionVoices()
+      this.refreshMixVoices()
       this.emit()
     } else {
       this.emit()
@@ -1542,7 +1538,7 @@ export class AudioEngine {
       if (shared) this.trackBuffers.set(added.id, shared)
       this.routeTrackGraph()
       this.applyLiveAudio(0.01)
-      this.refreshCompanionVoices()
+      this.refreshMixVoices()
       this.emit()
     } else {
       this.emit()
@@ -1561,7 +1557,7 @@ export class AudioEngine {
       return
     }
     this.applyLiveAudio(0.01)
-    this.refreshCompanionVoices()
+    this.refreshMixVoices()
     this.emit()
   }
 
@@ -1574,7 +1570,7 @@ export class AudioEngine {
       if (track) this.applyTrackRegion(track)
     }
     this.applyLiveAudio(0.01)
-    this.refreshCompanionVoices()
+    this.refreshMixVoices()
     this.emit()
   }
 
@@ -1588,8 +1584,8 @@ export class AudioEngine {
     this.applyTrackRegion(track)
     this.routeTrackGraph()
     this.applyLiveAudio(0.01)
-    if (this.playing) void this.play()
-    else this.emit()
+    if (this.playing) this.startMixVoices()
+    this.emit()
   }
 
   setMasterMix(mix: number): void {
@@ -2300,9 +2296,7 @@ export class AudioEngine {
     if (!this.ctx || !this.mixBus) return
     this.ensureTrackGainNodes()
     const now = this.ctx.currentTime
-    if (this.leadSend) {
-      rampGainExact(this.leadSend.gain, leadMixGain(this.tracks, this.selectedTrackId), now, smoothing)
-    }
+    if (this.leadSend) this.leadSend.gain.value = 1
     for (const track of this.tracks) {
       const node = this.trackGains.get(track.id)
       if (!node) continue
@@ -3307,7 +3301,7 @@ export class AudioEngine {
     this.voiceBus.connect(this.leadSend)
   }
 
-  /** Engine voice into the sum on its own gain — never through another strip's fader. */
+  /** Engine (grain/stretch) into the selected strip; every strip sums into Output. */
   private routeTrackGraph(): void {
     if (!this.ctx || !this.sumBus || !this.leadSend) return
     this.ensureTrackGainNodes()
@@ -3316,8 +3310,10 @@ export class AudioEngine {
     } catch {
       /* first connect */
     }
-    this.leadSend.connect(this.sumBus)
-    this.leadSend.gain.value = leadMixGain(this.tracks, this.selectedTrackId)
+    const selectedGain = this.trackGains.get(this.selectedTrackId)
+    if (selectedGain) this.leadSend.connect(selectedGain)
+    else this.leadSend.connect(this.sumBus)
+    this.leadSend.gain.value = 1
     for (const track of this.tracks) {
       const gain = this.trackGains.get(track.id)
       if (!gain) continue
@@ -3360,38 +3356,34 @@ export class AudioEngine {
     for (const id of [...this.trackGains.keys()]) this.dropTrackGain(id)
   }
 
-  private refreshCompanionVoices(): void {
-    if (this.playing) this.startCompanionVoices()
+  private engineOwnsSelected(): boolean {
+    if (!audibleTrackIds(this.tracks).includes(this.selectedTrackId)) return false
+    if (this.engineMode === 'grain') return true
+    if (this.direction === 'reverse' || this.direction === 'pingpong') return true
+    const live = this.liveParams()
+    return playbackNeedsStretch(live.speed, live.pitch)
   }
 
-  private startCompanionVoices(): void {
+  private refreshMixVoices(): void {
+    if (this.playing) this.startMixVoices()
+  }
+
+  private startMixVoices(): void {
     this.stopCompanionVoices()
     if (!this.ctx || !this.playing) return
     this.ensureTrackGainNodes()
-    const lead = selectedTrack(this.tracks, this.selectedTrackId)
-    const leadDur = this.buffer?.duration ?? 0
-    const leadRegion = lead
-      ? clampRegion(lead.start, lead.end, leadDur, MIN_REGION)
-      : { start: 0, end: 0 }
-    const leadHead = mixPlaybackPlan(this.tracks, this.selectedTrackId).playLead
-      ? this.getPlayheadSeconds()
-      : leadRegion.start
-    for (const id of companionTrackIds(this.tracks, this.selectedTrackId)) {
+    const elapsed = Math.max(0, this.ctx.currentTime - this.playCtxTime)
+    const skipSelected = this.engineOwnsSelected()
+    for (const id of audibleTrackIds(this.tracks)) {
+      if (skipSelected && id === this.selectedTrackId) continue
       const buffer = this.trackBuffers.get(id)
       const track = this.tracks.find((item) => item.id === id)
       const gain = this.trackGains.get(id)
       if (!buffer || !track || !gain) continue
       const region = clampRegion(track.start, track.end, buffer.duration, MIN_REGION)
-      let offset = alignedRegionOffset(
-        region.start,
-        region.end,
-        leadRegion.start,
-        leadRegion.end,
-        leadHead,
-      )
-      const maxOffset = Math.max(0, buffer.duration - MIN_REGION)
-      if (!Number.isFinite(offset) || offset < 0 || offset >= maxOffset) offset = region.start
-      offset = Math.min(offset, maxOffset)
+      let offset = mixRegionOffset(region.start, region.end, elapsed, this.loop)
+      const maxOffset = Math.max(region.start, Math.min(region.end, buffer.duration) - MIN_REGION)
+      if (!Number.isFinite(offset) || offset < region.start || offset >= maxOffset) offset = region.start
       const src = this.ctx.createBufferSource()
       src.buffer = buffer
       src.loop = this.loop
