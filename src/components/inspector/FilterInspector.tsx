@@ -25,6 +25,7 @@ import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { wheelToNormalized } from '../controls/scrub'
 import { FxLfoSection } from './FxLfoSection'
+import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
 import styles from './FilterInspector.module.css'
 
 type Props = {
@@ -248,9 +249,7 @@ function FilterXyPad({
   const pointFromEvent = (clientX: number, clientY: number) => {
     const el = wrapRef.current
     if (!el) return
-    const rect = el.getBoundingClientRect()
-    const nx = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
-    const ny = Math.min(1, Math.max(0, 1 - (clientY - rect.top) / rect.height))
+    const { x: nx, y: ny } = xyFromClient(el.getBoundingClientRect(), clientX, clientY)
     apply(nx, ny)
   }
 
@@ -263,32 +262,52 @@ function FilterXyPad({
         aria-label="Cutoff and resonance pad"
         tabIndex={0}
         onPointerDown={(event) => {
-          if (event.button !== 0) return
+          if (!isPrimaryPadPress(event)) return
           event.preventDefault()
-          event.currentTarget.setPointerCapture(event.pointerId)
+          const target = event.currentTarget
+          target.setPointerCapture(event.pointerId)
+          const pointerId = event.pointerId
           const started = event.timeStamp
           const ox = event.clientX
           const oy = event.clientY
+          let ended = false
           pointFromEvent(event.clientX, event.clientY)
-          const move = (ev: PointerEvent) => pointFromEvent(ev.clientX, ev.clientY)
+          const move = (ev: PointerEvent) => {
+            if (ended || ev.pointerId !== pointerId) return
+            if (!shouldApplyPadMove(ev)) {
+              up(ev)
+              return
+            }
+            pointFromEvent(ev.clientX, ev.clientY)
+          }
           const up = (ev: PointerEvent) => {
-            event.currentTarget.removeEventListener('pointermove', move)
-            event.currentTarget.removeEventListener('pointerup', up)
-            event.currentTarget.removeEventListener('pointercancel', up)
+            if (ended || ev.pointerId !== pointerId) return
+            ended = true
+            try {
+              target.releasePointerCapture(ev.pointerId)
+            } catch {
+              /* already released */
+            }
+            target.removeEventListener('pointermove', move)
+            target.removeEventListener('pointerup', up)
+            target.removeEventListener('pointercancel', up)
+            target.removeEventListener('lostpointercapture', up)
+            if (ev.type !== 'pointerup') return
             if (ev.timeStamp - started < 220 && Math.hypot(ev.clientX - ox, ev.clientY - oy) < 8) {
-              const prev = event.currentTarget.dataset.lastTap
+              const prev = target.dataset.lastTap
               if (prev && ev.timeStamp - Number(prev) < 400) {
                 engine.setParam('filterCutoff', cutoffDef.defaultValue)
                 engine.setParam('filterReso', resoDef.defaultValue)
-                event.currentTarget.dataset.lastTap = ''
+                target.dataset.lastTap = ''
                 return
               }
-              event.currentTarget.dataset.lastTap = String(ev.timeStamp)
+              target.dataset.lastTap = String(ev.timeStamp)
             }
           }
-          event.currentTarget.addEventListener('pointermove', move)
-          event.currentTarget.addEventListener('pointerup', up)
-          event.currentTarget.addEventListener('pointercancel', up)
+          target.addEventListener('pointermove', move)
+          target.addEventListener('pointerup', up)
+          target.addEventListener('pointercancel', up)
+          target.addEventListener('lostpointercapture', up)
         }}
         onWheel={(event) => {
           event.preventDefault()
