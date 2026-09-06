@@ -12,7 +12,9 @@ import {
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
+  fadeParkedOnLoopNode,
   hitsLoopNodeY,
+  resolveWaveformDrag,
 } from './handleLayout'
 
 describe('fadeHandleAtLoopFrac', () => {
@@ -84,10 +86,48 @@ describe('loop and envelope node layout', () => {
 })
 
 describe('hitsLoopNodeY', () => {
-  it('grabs the lowered loop node without taking the rest of the waveform', () => {
+  it('covers the loop and envelope stack without taking the waveform body', () => {
     expect(hitsLoopNodeY(LOOP_HANDLE_TOP_PX + 8, 22)).toBe(true)
+    expect(hitsLoopNodeY(FADE_DIAMOND_TOP_PX + 8, 22)).toBe(true)
     expect(hitsLoopNodeY(4, 22)).toBe(false)
-    expect(hitsLoopNodeY(120, 22)).toBe(false)
+    expect(hitsLoopNodeY(160, 22)).toBe(false)
+  })
+})
+
+describe('resolveWaveformDrag', () => {
+  const base = {
+    altOrMiddle: false,
+    shift: false,
+    x: 400,
+    y: FADE_DIAMOND_TOP_PX + 8,
+    startX: 40,
+    endX: 400,
+    fadeInX: 40,
+    fadeOutX: 400,
+    hitPx: 22,
+  }
+
+  it('moves the loop end when the fade-out diamond is parked on it', () => {
+    expect(resolveWaveformDrag({ ...base, fadeSide: 'out', fadeRole: 'length' })).toBe('end')
+  })
+
+  it('keeps a pulled-away fade-out diamond as a fade drag', () => {
+    expect(resolveWaveformDrag({ ...base, fadeOutX: 280, fadeSide: 'out', fadeRole: 'length' })).toBe('fadeOut')
+  })
+
+  it('does not let a nearby transient steal the loop end', () => {
+    expect(resolveWaveformDrag({ ...base, transient: true })).toBe('end')
+  })
+
+  it('scrubs the playhead below the node stack', () => {
+    expect(resolveWaveformDrag({ ...base, y: 180, fadeOutX: 400 })).toBe('playhead')
+  })
+})
+
+describe('fadeParkedOnLoopNode', () => {
+  it('treats a short fade as sitting on the loop edge', () => {
+    expect(fadeParkedOnLoopNode(398, 400, 22)).toBe(true)
+    expect(fadeParkedOnLoopNode(300, 400, 22)).toBe(false)
   })
 })
 
