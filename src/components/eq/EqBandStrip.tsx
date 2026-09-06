@@ -58,7 +58,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
         value={band.type}
         onChange={(type) =>
           setBand(
-            bandUsesSlope(type) && band.slope < 24
+            (type === 'highpass' || type === 'lowpass') && band.slope < 24
               ? { type, slope: 48 }
               : { type },
           )

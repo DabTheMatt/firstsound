@@ -58,4 +58,13 @@ describe('eqMagnitudeDb', () => {
     hp96[1] = { type: 'highpass', frequency: 79, gain: 0, q: 0.7, slope: 96 }
     expect(eqMagnitudeDb(hp96, 20, 48000)).toBeLessThan(eqMagnitudeDb(hp48, 20, 48000) - 20)
   })
+
+  it('steeper high-shelf keeps the same high-end gain', () => {
+    const hs12 = defaultEqBands()
+    hs12[3] = { type: 'highshelf', frequency: 4000, gain: 6, q: 0.7, slope: 12 }
+    const hs48 = defaultEqBands()
+    hs48[3] = { type: 'highshelf', frequency: 4000, gain: 6, q: 0.7, slope: 48 }
+    expect(eqMagnitudeDb(hs12, 12000, 48000)).toBeCloseTo(6, 0)
+    expect(eqMagnitudeDb(hs48, 12000, 48000)).toBeCloseTo(6, 0)
+  })
 })

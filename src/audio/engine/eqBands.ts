@@ -105,7 +105,7 @@ export function bandUsesGain(type: EqFilterType): boolean {
 }
 
 export function bandUsesSlope(type: EqFilterType): boolean {
-  return type === 'lowpass' || type === 'highpass'
+  return type === 'lowpass' || type === 'highpass' || type === 'lowshelf' || type === 'highshelf'
 }
 
 export function parseFilterSlope(raw: unknown): FilterSlope {

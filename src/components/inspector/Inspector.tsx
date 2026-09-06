@@ -683,7 +683,9 @@ function EqEditor({
             onChange={(type) =>
               setBand(
                 index,
-                bandUsesSlope(type) && band.slope < 24 ? { type, slope: 48 } : { type },
+                (type === 'highpass' || type === 'lowpass') && band.slope < 24
+                  ? { type, slope: 48 }
+                  : { type },
               )
             }
           />

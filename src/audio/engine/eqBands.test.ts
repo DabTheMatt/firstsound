@@ -69,6 +69,7 @@ describe('filterStageCount', () => {
     expect(filterStageCount({ type: 'lowpass', frequency: 800, gain: 0, q: 0.7, slope: 12 })).toBe(1)
     expect(filterStageCount({ type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 48 })).toBe(4)
     expect(filterStageCount({ type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 96 })).toBe(8)
+    expect(filterStageCount({ type: 'highshelf', frequency: 8e3, gain: 6, q: 0.7, slope: 48 })).toBe(4)
     expect(filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 48 })).toBe(1)
     expect(
       filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 12, bypassed: true }),

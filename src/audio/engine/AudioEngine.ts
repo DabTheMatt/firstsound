@@ -145,6 +145,7 @@ import {
   parseEqBands,
   stageQ,
   bandIsActive,
+  bandUsesGain,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
@@ -2641,22 +2642,24 @@ export class AudioEngine {
   ): void {
     for (let bandIndex = 0; bandIndex < EQ_MAX_BANDS; bandIndex++) {
       const band = bands[bandIndex]
-      const stages = band ? filterStageCount(band) : 0
-      for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
-        const node = filters[bandIndex * EQ_MAX_STAGES + stage]
-        if (!node) continue
-        if (!band || band.type === 'off' || stage >= stages) {
-          if (node.type !== 'allpass') node.type = 'allpass'
-          node.frequency.setTargetAtTime(1000, now, smoothing)
-          node.Q.setTargetAtTime(0.0001, now, smoothing)
-          node.gain.setTargetAtTime(0, now, smoothing)
-          continue
+        const stages = band ? filterStageCount(band) : 0
+        const stageGain =
+          band && bandUsesGain(band.type) && stages > 0 ? band.gain / stages : band?.gain ?? 0
+        for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
+          const node = filters[bandIndex * EQ_MAX_STAGES + stage]
+          if (!node) continue
+          if (!band || band.type === 'off' || stage >= stages) {
+            if (node.type !== 'allpass') node.type = 'allpass'
+            node.frequency.setTargetAtTime(1000, now, smoothing)
+            node.Q.setTargetAtTime(0.0001, now, smoothing)
+            node.gain.setTargetAtTime(0, now, smoothing)
+            continue
+          }
+          if (node.type !== band.type) node.type = band.type
+          node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
+          node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
+          node.gain.setTargetAtTime(stageGain, now, smoothing)
         }
-        if (node.type !== band.type) node.type = band.type
-        node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
-        node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
-        node.gain.setTargetAtTime(band.gain, now, smoothing)
-      }
     }
     const combBands = combAsEqBands(comb)
     const combOffset = EQ_MAX_BANDS * EQ_MAX_STAGES
