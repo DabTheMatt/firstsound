@@ -10,6 +10,7 @@ export type ModuleType =
   | 'eq'
   | 'distortion'
   | 'filter'
+  | 'midside'
   | 'delay'
   | 'reverb'
   | 'compressor'
@@ -28,6 +29,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   eq: 'EQ',
   distortion: 'Distortion',
   filter: 'Filter',
+  midside: 'Mid/Side',
   delay: 'Delay',
   reverb: 'Reverb',
   compressor: 'Compressor',
@@ -40,6 +42,7 @@ export const INSERTABLE_TYPES: ModuleType[] = [
   'grain',
   'eq',
   'filter',
+  'midside',
   'distortion',
   'delay',
   'reverb',
@@ -55,6 +58,7 @@ export function defaultChain(): ChainModule[] {
     { instanceId: 'grain-1', type: 'grain', bypassed: true },
     { instanceId: 'eq-1', type: 'eq', bypassed: true },
     { instanceId: 'filter-1', type: 'filter', bypassed: true },
+    { instanceId: 'midside-1', type: 'midside', bypassed: true },
     { instanceId: 'distortion-1', type: 'distortion', bypassed: true },
     { instanceId: 'delay-1', type: 'delay', bypassed: true },
     { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
@@ -202,6 +206,7 @@ function isModuleType(value: unknown): value is ModuleType {
     value === 'grain' ||
     value === 'eq' ||
     value === 'filter' ||
+    value === 'midside' ||
     value === 'distortion' ||
     value === 'delay' ||
     value === 'reverb' ||

@@ -22,6 +22,8 @@ type Props = {
   max?: number
   now?: number
   bipolar?: boolean
+  /** Tick on the value arc, e.g. Width 100%. */
+  markerNormalized?: number
 }
 
 const DRAG_PX = 140
@@ -43,6 +45,7 @@ export function ValueKnob({
   max = 1,
   now,
   bipolar = false,
+  markerNormalized,
 }: Props) {
   const dialRef = useRef<HTMLButtonElement>(null)
   const valueRef = useRef(normalized)
@@ -134,6 +137,8 @@ export function ValueKnob({
   const rangeStart = lfoRange ? polar(cx, cy, rangeR, rangeStartDeg) : null
   const rangeEnd = lfoRange ? polar(cx, cy, rangeR, rangeEndDeg) : null
   const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
+  const marker =
+    markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
 
   return (
     <div className={`${styles.knob} ${compact ? styles.compact : ''}`}>
@@ -190,6 +195,9 @@ export function ValueKnob({
           {rangeEnd ? <circle cx={rangeEnd.x} cy={rangeEnd.y} r="2" fill="var(--accent-primary)" /> : null}
           {zeroTick ? (
             <circle cx={zeroTick.x} cy={zeroTick.y} r="2.25" fill="var(--text-primary)" />
+          ) : null}
+          {marker ? (
+            <circle cx={marker.x} cy={marker.y} r="2.4" fill="var(--text-muted)" />
           ) : null}
           <line
             x1={cx}
