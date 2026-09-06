@@ -152,7 +152,8 @@
 }
 
 .ghost,
-.preset {
+.preset,
+.shape {
   min-height: 36px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
@@ -165,7 +166,8 @@
 }
 
 .ghost:hover,
-.preset:hover {
+.preset:hover,
+.shape:hover {
   background: var(--bg-control-hover);
 }
 
@@ -195,6 +197,42 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+.shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shapeOn {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.syncRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.syncRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syncRow select {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-primary);
 }
 
 @media (max-width: 720px) {
