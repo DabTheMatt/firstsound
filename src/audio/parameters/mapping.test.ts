@@ -88,6 +88,7 @@ describe('mapping', () => {
   it('formats mid/side width, HPF off, and mute floor', () => {
     expect(formatParamValue(100, PARAMS.msWidth)).toBe('100 %')
     expect(formatParamValue(0, PARAMS.msSideHpf)).toBe('Off')
+    expect(PARAMS.msSideHpf.label).toBe('Center Below')
     expect(formatParamValue(-60, PARAMS.msMidGain)).toBe('−∞ dB')
     expect(formatParamValue(0, PARAMS.msBalance)).toBe('Center')
   })

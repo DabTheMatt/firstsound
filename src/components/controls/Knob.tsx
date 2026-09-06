@@ -11,6 +11,12 @@ const BIPOLAR: ReadonlySet<ParamId> = new Set([
   'msMidTilt',
   'msSideTilt',
   'msRotate',
+  'msMidLowGain',
+  'msMidPeakGain',
+  'msMidHighGain',
+  'msSideLowGain',
+  'msSidePeakGain',
+  'msSideHighGain',
 ])
 
 type Props = {

@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { PARAMS } from '../parameters/definitions'
 import type { ParamId } from '../parameters/types'
 import {
+  MS_EQ_LOW_HZ,
   msBalanceGains,
   msCrossfeedMix,
+  msEqGainDb,
+  msEqHz,
+  msEqQ,
   msHaasDelayLeft,
   msLevelGain,
   msRotateMatrix,
@@ -84,6 +88,16 @@ describe('mid/side math', () => {
     expect(stereoCorrelation(a, a.map((v) => -v))).toBeCloseTo(-1)
     expect(stereoCorrelation([1, 0, 1, 0], [0, 1, 0, 1])).toBeCloseTo(0)
   })
+
+  it('clamps mid/side EQ gain, frequency, and Q', () => {
+    expect(msEqGainDb(3)).toBe(3)
+    expect(msEqGainDb(40)).toBe(18)
+    expect(msEqGainDb(-40)).toBe(-18)
+    expect(msEqHz(120, MS_EQ_LOW_HZ)).toBe(120)
+    expect(msEqHz(10, MS_EQ_LOW_HZ)).toBe(20)
+    expect(msEqQ(0.1)).toBe(0.3)
+    expect(msEqQ(12)).toBe(8)
+  })
 })
 
 describe('mid/side randomize', () => {
@@ -102,5 +116,7 @@ describe('mid/side randomize', () => {
     expect(patch.msBalance).toBe(0)
     expect(patch.msHaasAmount).toBe(0)
     expect(patch.msMono).toBe(0)
+    expect(patch.msMidLowGain).toBe(0)
+    expect(patch.msSideHpf).toBe(0)
   })
 })
