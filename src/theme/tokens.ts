@@ -7,6 +7,7 @@ export const THEME_IDS = [
   'forest',
   'light-studio',
   'oled',
+  'dusk',
   'custom',
 ] as const
 
@@ -58,6 +59,7 @@ export const THEME_OPTIONS: {
   { id: 'forest', label: 'Forest', preview: { bg: '#101512', surface: '#1C2520', accent: '#72B98A' } },
   { id: 'light-studio', label: 'Light Studio', preview: { bg: '#E7E7E3', surface: '#F8F8F5', accent: '#A96E13' } },
   { id: 'oled', label: 'OLED', preview: { bg: '#050606', surface: '#0E1111', accent: '#DFAF55' } },
+  { id: 'dusk', label: 'Dusk', preview: { bg: '#161412', surface: '#24211D', accent: '#E07A42' } },
   { id: 'custom', label: 'Custom', preview: { bg: '#151616', surface: '#202222', accent: '#E6AD48' } },
 ]
 

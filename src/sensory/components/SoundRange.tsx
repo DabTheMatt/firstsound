@@ -25,6 +25,20 @@ function themeInk(visual: SensoryVisualState): Rgb {
   return mixRgb({ r: parsed.r, g: parsed.g, b: parsed.b }, visual.ink, 0.55 + visual.warmth * 0.3)
 }
 
+function cssRgb(value: string, fallback: Rgb): Rgb {
+  const parsed = parseCssColor(value)
+  return parsed ? { r: parsed.r, g: parsed.g, b: parsed.b } : fallback
+}
+
+function themeRidge(ink: Rgb) {
+  const colors = readThemeColors()
+  return {
+    warm: cssRgb(colors.ridgeWarm, ink),
+    mid: cssRgb(colors.ridgeMid, ink),
+    cool: cssRgb(colors.ridgeCool, ink),
+  }
+}
+
 function sourceView() {
   const source = engine.getSourceBuffer() ?? engine.getBuffer()
   const working = engine.getBuffer()
@@ -108,6 +122,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
           scene,
           livePan: engine.getSnapshot().liveParams.pan,
+          ridge: themeRidge(ink),
         })
       }
       frame = requestAnimationFrame(tick)

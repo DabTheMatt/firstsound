@@ -56,6 +56,10 @@
   --danger: #df5b52;
 
   --scrim: rgba(5, 6, 6, 0.55);
+
+  --ridge-warm: #e6ad48;
+  --ridge-mid: #e8e6df;
+  --ridge-cool: #aeb5b6;
 }
 
 [data-theme='midnight-blue'] {
@@ -102,6 +106,10 @@
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
   --fade-out: var(--meter-high);
+
+  --ridge-warm: #63b3d1;
+  --ridge-mid: #e6edf3;
+  --ridge-cool: #819ca9;
 }
 
 [data-theme='oxide'] {
@@ -148,6 +156,10 @@
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
   --fade-out: var(--meter-high);
+
+  --ridge-warm: #d97845;
+  --ridge-mid: #efe4d2;
+  --ridge-cool: #a79582;
 }
 
 [data-theme='forest'] {
@@ -194,6 +206,10 @@
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
   --fade-out: var(--meter-high);
+
+  --ridge-warm: #72b98a;
+  --ridge-mid: #e3e9e4;
+  --ridge-cool: #849a8a;
 }
 
 [data-theme='light-studio'] {
@@ -242,6 +258,10 @@
   --fade-out: var(--meter-high);
 
   --scrim: rgba(32, 35, 33, 0.38);
+
+  --ridge-warm: #a96e13;
+  --ridge-mid: #555d59;
+  --ridge-cool: #7c8580;
 }
 
 [data-theme='oled'] {
@@ -288,6 +308,60 @@
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
   --fade-out: var(--meter-high);
+
+  --ridge-warm: #dfaf55;
+  --ridge-mid: #e7e9e8;
+  --ridge-cool: #7a807c;
+}
+
+[data-theme='dusk'] {
+  color-scheme: dark;
+
+  --bg-app: #161412;
+  --bg-panel: #1c1a17;
+  --bg-panel-elevated: #24211d;
+  --bg-control: #2d2924;
+  --bg-control-hover: #38332d;
+  --bg-control-active: #3d3228;
+
+  --border-subtle: #2c2824;
+  --border-default: #433d36;
+  --border-strong: #5e564c;
+
+  --text-primary: #eeeae4;
+  --text-secondary: #b7b0a6;
+  --text-muted: #7d776e;
+  --text-disabled: #524e48;
+  --text-on-accent: #161412;
+
+  --accent-primary: #e07a42;
+  --accent-primary-hover: #ee9360;
+  --accent-secondary: #4eb8c6;
+  --accent-soft: rgba(224, 122, 66, 0.16);
+
+  --waveform-primary: #f0e6d8;
+  --waveform-secondary: #8a8378;
+  --waveform-selected: #fff6ea;
+
+  --selection-fill: rgba(224, 122, 66, 0.18);
+  --selection-border: #e07a42;
+  --playhead: #f7f4ee;
+
+  --spectrum-fill: #6aafb8;
+  --spectrum-line: #c9e4e8;
+
+  --eq-curve: #e07a42;
+  --eq-node: #ee9360;
+  --eq-curve-2: #4eb8c6;
+  --eq-node-2: #7ed4de;
+  --envelope: #e07a42;
+  --transient: var(--spectrum-line);
+  --fade-in: var(--meter-low);
+  --fade-out: var(--meter-high);
+
+  --ridge-warm: #e56a32;
+  --ridge-mid: #f6efe6;
+  --ridge-cool: #4eb8c6;
 }
 
 [data-theme='custom'] {

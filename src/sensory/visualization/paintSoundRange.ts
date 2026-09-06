@@ -10,7 +10,7 @@ import {
   rangeLayout,
 } from './rangeScenes'
 import { echoGhostSpecs, grainLineCount, type MountainLayerSpec } from './mountainLayers'
-import { mixRgb, panNorm, rgbCss, type Rgb, type SensoryVisualState } from './sensoryVisualState'
+import { mixRgb, panNorm, rgbCss, ridgeInk, type Rgb, type RidgePalette, type SensoryVisualState } from './sensoryVisualState'
 
 export type RangePaintArgs = {
   ctx: CanvasRenderingContext2D
@@ -29,6 +29,7 @@ export type RangePaintArgs = {
   windowEndFrac: number
   scene: SensorySceneId
   livePan: number
+  ridge: RidgePalette
 }
 
 function ridgeY(
@@ -97,9 +98,19 @@ function strokeStack(
     ctx.lineTo(end.x, end.y)
     ctx.closePath()
     const open = Math.max(0, visual.character)
-    ctx.fillStyle = rgbCss(fill, Math.min(1, spec.alpha * (1.15 + visual.glow * 0.4 + open * 0.12) * alphaMul))
+    const alpha = Math.min(1, spec.alpha * (1.15 + visual.glow * 0.4 + open * 0.12) * alphaMul)
+    const wash = ridgeInk(fill, args.ridge)
+    const grad = ctx.createLinearGradient(0, 0, width, 0)
+    grad.addColorStop(0, rgbCss(wash.left, alpha))
+    grad.addColorStop(0.48, rgbCss(wash.mid, alpha))
+    grad.addColorStop(1, rgbCss(wash.right, alpha))
+    ctx.fillStyle = grad
     ctx.fill()
-    ctx.strokeStyle = rgbCss(fill, 0.78)
+    const edge = ctx.createLinearGradient(0, 0, width, 0)
+    edge.addColorStop(0, rgbCss(wash.left, 0.78))
+    edge.addColorStop(0.48, rgbCss(wash.mid, 0.78))
+    edge.addColorStop(1, rgbCss(wash.right, 0.78))
+    ctx.strokeStyle = edge
     ctx.lineWidth = Math.max(1, args.dpr * (1 - z * 0.35))
     ctx.stroke()
   })
@@ -117,9 +128,11 @@ function paintDepthHaze(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
 }
 
 function paintWash(ctx: CanvasRenderingContext2D, args: RangePaintArgs, focusY: number) {
-  const { width, height, visual, ink } = args
+  const { width, height, visual, ink, ridge } = args
   const blobs: Array<{ c: Rgb; a: number; x: number; r: number }> = [
     { c: visual.ink, a: 0.08 + visual.space * 0.1, x: width * 0.5, r: width * 0.42 },
+    { c: ridge.warm, a: 0.1 + visual.warmth * 0.08, x: width * 0.18, r: width * 0.38 },
+    { c: ridge.cool, a: 0.1 + (1 - visual.warmth) * 0.08, x: width * 0.82, r: width * 0.38 },
     { c: visual.inkLeft, a: visual.drift * 0.16, x: width * 0.28, r: width * 0.3 },
     { c: visual.inkRight, a: visual.drift * 0.16, x: width * 0.72, r: width * 0.3 },
     { c: mixRgb(ink, { r: 196, g: 128, b: 255 }, 0.6), a: visual.echo * 0.14, x: width * 0.62, r: width * 0.28 },

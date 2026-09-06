@@ -69,11 +69,11 @@
 }
 
 .warm {
-  --sensory-glow-color: #e0b56a;
+  --sensory-glow-color: var(--accent-primary);
 }
 
 .cool {
-  --sensory-glow-color: #e8e4dc;
+  --sensory-glow-color: var(--accent-secondary);
 }
 
 .label {

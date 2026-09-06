@@ -53,6 +53,27 @@ const CHROMA_R: Rgb = { r: 255, g: 72, b: 48 }
 const CHROMA_G: Rgb = { r: 72, g: 255, b: 140 }
 const CHROMA_B: Rgb = { r: 64, g: 140, b: 255 }
 
+export type RidgePalette = {
+  warm: Rgb
+  mid: Rgb
+  cool: Rgb
+}
+
+export const DUSK_RIDGE: RidgePalette = {
+  warm: { r: 229, g: 106, b: 50 },
+  mid: { r: 246, g: 239, b: 230 },
+  cool: { r: 78, g: 184, b: 198 },
+}
+
+/** Lateral mountain wash: warm left, cream center, cool right, tinted by ink. */
+export function ridgeInk(fill: Rgb, palette: RidgePalette): { left: Rgb; mid: Rgb; right: Rgb } {
+  return {
+    left: mixRgb(palette.warm, fill, 0.42),
+    mid: mixRgb(palette.mid, fill, 0.28),
+    right: mixRgb(palette.cool, fill, 0.42),
+  }
+}
+
 export function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
   const u = Math.min(1, Math.max(0, t))
   return {

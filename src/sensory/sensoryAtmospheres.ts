@@ -12,6 +12,13 @@ export type SensoryAtmosphere = {
 /** Named looks for Sensory Mode: color theme + scene. */
 export const SENSORY_ATMOSPHERES: readonly SensoryAtmosphere[] = [
   {
+    id: 'bloom',
+    label: 'Bloom',
+    theme: 'dusk',
+    scene: 'range',
+    preview: { bg: '#161412', surface: '#2a2420', accent: '#e07a42' },
+  },
+  {
     id: 'range',
     label: 'Range',
     theme: 'oled',

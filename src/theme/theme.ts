@@ -41,6 +41,9 @@ export type ThemeColors = {
   textPrimary: string
   bgApp: string
   envelope: string
+  ridgeWarm: string
+  ridgeMid: string
+  ridgeCool: string
 }
 
 const THEME_CHANGE = 'field-theme-change'
@@ -88,6 +91,9 @@ const CUSTOM_STYLE_PROPS = [
   '--fade-in',
   '--fade-out',
   '--scrim',
+  '--ridge-warm',
+  '--ridge-mid',
+  '--ridge-cool',
 ] as const
 
 function prefersDark(): boolean {
@@ -123,6 +129,9 @@ export function computeThemeColors(root: HTMLElement = document.documentElement)
     textPrimary: readVar(styles, '--text-primary'),
     bgApp: readVar(styles, '--bg-app'),
     envelope: readVar(styles, '--envelope') || readVar(styles, '--accent-primary'),
+    ridgeWarm: readVar(styles, '--ridge-warm') || readVar(styles, '--accent-primary'),
+    ridgeMid: readVar(styles, '--ridge-mid') || readVar(styles, '--text-primary'),
+    ridgeCool: readVar(styles, '--ridge-cool') || readVar(styles, '--spectrum-fill'),
   }
 }
 
@@ -185,6 +194,9 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--fade-in', mixCssColor(custom.waveform, '#67b36d', 0.55))
   root.style.setProperty('--fade-out', mixCssColor(custom.accent, '#df9447', 0.45))
   root.style.setProperty('--scrim', colorWithAlpha(custom.bgApp, 0.55))
+  root.style.setProperty('--ridge-warm', custom.accent)
+  root.style.setProperty('--ridge-mid', custom.textPrimary)
+  root.style.setProperty('--ridge-cool', custom.spectrum)
 }
 
 export function applyResolvedTheme(theme: ThemeId): void {

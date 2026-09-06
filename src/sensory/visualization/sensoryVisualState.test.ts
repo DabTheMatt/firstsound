@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { lensInk, panNorm, sensoryVisualState, spaceZoom } from './sensoryVisualState'
+import { DUSK_RIDGE, lensInk, panNorm, ridgeInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
 
 describe('lensInk', () => {
   it('runs warmer as warmth rises', () => {
@@ -54,6 +54,15 @@ describe('sensoryVisualState', () => {
     const spaceOnly = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.7), true)
     expect(mixed.ink.r).toBeGreaterThan(spaceOnly.ink.r)
     expect(mixed.ink.g).not.toBeCloseTo(spaceOnly.ink.g, 0)
+  })
+})
+
+describe('ridgeInk', () => {
+  it('keeps dusk mountains warmer on the left and cooler on the right', () => {
+    const wash = ridgeInk({ r: 180, g: 160, b: 140 }, DUSK_RIDGE)
+    expect(wash.left.r).toBeGreaterThan(wash.right.r)
+    expect(wash.right.b).toBeGreaterThan(wash.left.b)
+    expect(wash.mid.g).toBeGreaterThan(wash.left.g)
   })
 })
 

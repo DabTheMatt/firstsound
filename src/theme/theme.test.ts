@@ -25,7 +25,9 @@ describe('theme tokens', () => {
     expect(parseThemePreference('custom')).toBe('custom')
     expect(parseThemePreference('user:s12abc')).toBe('user:s12abc')
     expect(THEME_IDS).toContain('light-studio')
+    expect(THEME_IDS).toContain('dusk')
     expect(THEME_IDS).toContain('custom')
+    expect(parseThemePreference('dusk')).toBe('dusk')
   })
 
   it('maps system preference to studio-dark or light-studio', () => {
