@@ -141,7 +141,10 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
       dsp.params[param] = applyParamValue(value, def)
     }
     applyMorphStopToBands(dsp.eqBands, stop)
-    if (id !== 'pan') dsp.bypass[morph.module] = false
+    for (const mod of morph.modules ?? [morph.module]) {
+      if (mod === 'gain') continue
+      dsp.bypass[mod] = false
+    }
     touched = true
   }
   applyAxisLfos(dsp, values)
@@ -153,6 +156,9 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
       values.dirt > 0.35 ||
       values.echo > 0.22 ||
       values.grain > 0.55 ||
+      values.veil > 0.28 ||
+      values.halo > 0.32 ||
+      values.well > 0.32 ||
       Math.abs(values.character) > 0.85
     if (protect) dsp.bypass.limiter = false
   }

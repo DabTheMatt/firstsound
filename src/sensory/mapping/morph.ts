@@ -19,6 +19,8 @@ export type MorphStop = {
 export type EffectMorph = {
   axis: string
   module: ModuleType
+  /** Extra inserts this feeling un-bypasses (hybrids that braid several effects). */
+  modules?: readonly ModuleType[]
   stops: readonly MorphStop[]
 }
 
