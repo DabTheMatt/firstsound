@@ -19,6 +19,21 @@ describe('stereoRouteGains', () => {
       rightToR: 0.5,
     })
   })
+
+  it('copies a one-channel file onto both speakers', () => {
+    expect(stereoRouteGains(false, 1)).toEqual({
+      leftToL: 1,
+      leftToR: 1,
+      rightToL: 0,
+      rightToR: 0,
+    })
+    expect(stereoRouteGains(true, 1)).toEqual({
+      leftToL: 1,
+      leftToR: 1,
+      rightToL: 0,
+      rightToR: 0,
+    })
+  })
 })
 
 describe('panNorm', () => {

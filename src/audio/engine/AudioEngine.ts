@@ -180,7 +180,7 @@ import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
 import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
-import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
+import { applyStereoStage, createStereoStage, forceStereoUpmix, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
   scaledHannCurve,
@@ -2178,6 +2178,7 @@ export class AudioEngine {
     const ctx = this.ctx
     this.voiceBus = ctx.createGain()
     this.voiceBus.gain.value = 1
+    forceStereoUpmix(this.voiceBus)
     this.safetyGain = ctx.createGain()
     this.safetyGain.gain.value = this.muted ? 0.0001 : 1
     this.limiter = ctx.createDynamicsCompressor()
@@ -2225,6 +2226,7 @@ export class AudioEngine {
     this.noiseGain.gain.value = 0
     this.mixBus = ctx.createGain()
     this.mixBus.gain.value = 1
+    forceStereoUpmix(this.mixBus)
 
     for (const mod of normalizeChain(this.chain)) {
       this.slots.set(mod.instanceId, this.createSlot(mod))
@@ -2812,6 +2814,7 @@ export class AudioEngine {
           rightDb: live.channelGainR,
           mono: live.makeMono > 0.5,
           invert: live.invertPhase > 0.5,
+          sourceChannels: this.activeBuffer()?.numberOfChannels ?? this.buffer?.numberOfChannels ?? 2,
         },
         now,
         smoothing,
