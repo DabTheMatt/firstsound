@@ -680,7 +680,12 @@ function EqEditor({
             value={band.type}
             options={EQ_TYPE_OPTIONS}
             wrap
-            onChange={(type) => setBand(index, { type })}
+            onChange={(type) =>
+              setBand(
+                index,
+                bandUsesSlope(type) && band.slope < 24 ? { type, slope: 48 } : { type },
+              )
+            }
           />
           {bandUsesSlope(band.type) ? (
             <>

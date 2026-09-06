@@ -9,7 +9,7 @@ export type EqFilterType =
   | 'bandpass'
 
 /** dB/octave for cascaded LP/HP biquads. One biquad is 12 dB/oct. */
-export type FilterSlope = 12 | 24 | 36 | 48
+export type FilterSlope = 12 | 24 | 36 | 48 | 72 | 96
 
 export type EqBand = {
   type: EqFilterType
@@ -49,13 +49,15 @@ export const FILTER_SLOPES: { value: FilterSlope; label: string }[] = [
   { value: 24, label: '24' },
   { value: 36, label: '36' },
   { value: 48, label: '48' },
+  { value: 72, label: '72' },
+  { value: 96, label: '96' },
 ]
 
 export const EQ_MAX_BANDS = 8
 export const EQ_DEFAULT_BAND_COUNT = 4
 /** Alias used by the biquad pool: always allocate the maximum. */
 export const EQ_BAND_COUNT = EQ_MAX_BANDS
-export const EQ_MAX_STAGES = 4
+export const EQ_MAX_STAGES = 8
 export const COMB_MAX_TEETH = 16
 export const EQ_MIN_HZ = 10
 export const EQ_MAX_HZ = 25000
@@ -107,8 +109,37 @@ export function bandUsesSlope(type: EqFilterType): boolean {
 }
 
 export function parseFilterSlope(raw: unknown): FilterSlope {
-  if (raw === 12 || raw === 24 || raw === 36 || raw === 48) return raw
-  return 12
+  const n = typeof raw === 'number' ? raw : Number(raw)
+  const found = FILTER_SLOPES.find((s) => s.value === n)
+  return found?.value ?? 12
+}
+
+export function slopeToNormalized(slope: number): number {
+  const i = Math.max(
+    0,
+    FILTER_SLOPES.findIndex((s) => s.value === parseFilterSlope(slope)),
+  )
+  return FILTER_SLOPES.length <= 1 ? 0 : i / (FILTER_SLOPES.length - 1)
+}
+
+export function slopeFromNormalized(t: number): FilterSlope {
+  const last = FILTER_SLOPES.length - 1
+  const i = Math.round(Math.min(1, Math.max(0, t)) * last)
+  return FILTER_SLOPES[i]?.value ?? 12
+}
+
+export function nearestFilterSlope(value: number): FilterSlope {
+  if (!Number.isFinite(value)) return 12
+  let best: FilterSlope = 12
+  let dist = Infinity
+  for (const s of FILTER_SLOPES) {
+    const d = Math.abs(s.value - value)
+    if (d < dist) {
+      dist = d
+      best = s.value
+    }
+  }
+  return best
 }
 
 export function filterStageCount(band: EqBand): number {

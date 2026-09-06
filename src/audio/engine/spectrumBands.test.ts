@@ -5,6 +5,7 @@ import {
   capBandByExpected,
   capBandsByEqGain,
   clampSpectrumBandCount,
+  eqGainForSpectrumBand,
   clampSpectrumFollowMode,
   fftDbAtHz,
   fftFirstBinHz,
@@ -74,6 +75,13 @@ describe('capBandByExpected', () => {
   })
 })
 
+describe('eqGainForSpectrumBand', () => {
+  it('in a cut uses the more attenuated band edge', () => {
+    expect(eqGainForSpectrumBand(-12, -40)).toBe(-40)
+    expect(eqGainForSpectrumBand(6, 0)).toBe(6)
+  })
+})
+
 describe('fftPeakDbInHzRange', () => {
   it('reads the peak inside a frequency window', () => {
     const bins = new Float32Array(512)
@@ -103,7 +111,9 @@ describe('clampSpectrumBandCount', () => {
     expect(clampSpectrumBandCount(8)).toBe(8)
     expect(clampSpectrumBandCount(99)).toBe(96)
     expect(clampSpectrumBandCount(256)).toBe(256)
+    expect(clampSpectrumBandCount(1024)).toBe(1024)
     expect(clampSpectrumBandCount(200)).toBe(256)
+    expect(clampSpectrumBandCount(800)).toBe(1024)
   })
 })
 

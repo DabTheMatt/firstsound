@@ -8,7 +8,7 @@ export function clampSpectrumFollowMode(value: unknown): SpectrumFollowMode {
   return value === 'slow' || value === 'both' || value === 'peak' ? value : 'peak'
 }
 
-export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256] as const
+export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256, 512, 1024] as const
 
 export type SpectrumBandCount = (typeof SPECTRUM_BAND_CHOICES)[number]
 
@@ -139,6 +139,12 @@ export function capBandsByEqGain(
       floorDb,
     )
   }
+}
+
+/** In a cut, use the more attenuated of band-low and band-center so a wide log band cannot leak. */
+export function eqGainForSpectrumBand(centerGainDb: number, lowEdgeGainDb: number): number {
+  if (centerGainDb < -1) return Math.min(centerGainDb, lowEdgeGainDb)
+  return centerGainDb
 }
 
 /** Peak FFT bin dB between two frequencies (AnalyserNode.getFloatFrequencyData). */

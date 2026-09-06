@@ -50,4 +50,12 @@ describe('eqMagnitudeDb', () => {
     expect(eqMagnitudeDb(bands, 20, 48000)).toBeLessThan(-80)
     expect(eqMagnitudeDb(bands, 400, 48000)).toBeGreaterThan(-6)
   })
+
+  it('96 dB/oct high-pass is quieter at 20 Hz than 48 dB/oct', () => {
+    const hp48 = defaultEqBands()
+    hp48[1] = { type: 'highpass', frequency: 79, gain: 0, q: 0.7, slope: 48 }
+    const hp96 = defaultEqBands()
+    hp96[1] = { type: 'highpass', frequency: 79, gain: 0, q: 0.7, slope: 96 }
+    expect(eqMagnitudeDb(hp96, 20, 48000)).toBeLessThan(eqMagnitudeDb(hp48, 20, 48000) - 20)
+  })
 })

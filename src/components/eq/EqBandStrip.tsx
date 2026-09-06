@@ -1,12 +1,16 @@
 import type { CSSProperties } from 'react'
 import {
   bandUsesGain,
+  bandUsesSlope,
   bandUsesWidth,
   bandwidthHz,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
   formatEqHz,
   qFromBandwidth,
+  slopeFromNormalized,
+  slopeToNormalized,
+  nearestFilterSlope,
   type EqBand,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
@@ -52,7 +56,13 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
       </header>
       <EqFilterTypeMenu
         value={band.type}
-        onChange={(type) => setBand({ type })}
+        onChange={(type) =>
+          setBand(
+            bandUsesSlope(type) && band.slope < 24
+              ? { type, slope: 48 }
+              : { type },
+          )
+        }
         bypassed={Boolean(band.bypassed)}
         onBypass={() => setBand({ bypassed: !band.bypassed })}
       />
@@ -78,7 +88,24 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
           }}
         />
       </LfoParamShell>
-      {showGain ? (
+      {bandUsesSlope(band.type) ? (
+        <ValueKnob
+          compact
+          label="Slope"
+          valueText={`${band.slope} dB`}
+          normalized={slopeToNormalized(band.slope)}
+          min={12}
+          max={96}
+          now={band.slope}
+          onChange={(n) => setBand({ slope: slopeFromNormalized(n) })}
+          onTypedValue={(text) => {
+            const next = parseTypedRange(text, 12, 96, 'dB')
+            if (next == null) return false
+            setBand({ slope: nearestFilterSlope(next) })
+            return true
+          }}
+        />
+      ) : showGain ? (
         <LfoParamShell id={ids.gain}>
           <ValueKnob
             compact

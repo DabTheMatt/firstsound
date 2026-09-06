@@ -10,15 +10,27 @@ import {
   parseEqBands,
   parseFilterSlope,
   qFromBandwidth,
+  slopeFromNormalized,
+  slopeToNormalized,
+  nearestFilterSlope,
   stageQ,
 } from './eqBands'
 
 describe('parseFilterSlope', () => {
-  it('accepts 12/24/36/48 and falls back to 12', () => {
+  it('accepts 12–96 dB/oct and falls back to 12', () => {
     expect(parseFilterSlope(24)).toBe(24)
     expect(parseFilterSlope(48)).toBe(48)
+    expect(parseFilterSlope(96)).toBe(96)
     expect(parseFilterSlope(18)).toBe(12)
     expect(parseFilterSlope(undefined)).toBe(12)
+  })
+
+  it('maps the slope knob across the allowed steps', () => {
+    expect(slopeFromNormalized(0)).toBe(12)
+    expect(slopeFromNormalized(1)).toBe(96)
+    expect(nearestFilterSlope(50)).toBe(48)
+    expect(slopeToNormalized(12)).toBe(0)
+    expect(slopeFromNormalized(slopeToNormalized(72))).toBe(72)
   })
 })
 
@@ -56,6 +68,7 @@ describe('filterStageCount', () => {
     expect(filterStageCount({ type: 'off', frequency: 80, gain: 0, q: 0.7, slope: 48 })).toBe(0)
     expect(filterStageCount({ type: 'lowpass', frequency: 800, gain: 0, q: 0.7, slope: 12 })).toBe(1)
     expect(filterStageCount({ type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 48 })).toBe(4)
+    expect(filterStageCount({ type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 96 })).toBe(8)
     expect(filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 48 })).toBe(1)
     expect(
       filterStageCount({ type: 'peaking', frequency: 1e3, gain: 3, q: 1, slope: 12, bypassed: true }),

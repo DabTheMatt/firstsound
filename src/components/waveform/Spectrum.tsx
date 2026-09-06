@@ -29,9 +29,10 @@ import {
   SPECTRUM_BAND_CHOICES,
   SPECTRUM_BAND_COUNT,
   SPECTRUM_FOLLOW_MODES,
-          bandPeakDb,
-          capBandsByEqGain,
-          clampSpectrumBandCount,
+  bandPeakDb,
+  capBandsByEqGain,
+  eqGainForSpectrumBand,
+  clampSpectrumBandCount,
   clampSpectrumFollowMode,
   followBands,
   logBandEdgesHz,
@@ -258,6 +259,9 @@ export function Spectrum({ active }: Props) {
           ctx.fillText(tick.label, x, top - 2 * dpr)
         }
 
+        let postEqGains: Float32Array | null = null
+        let preCap: Float32Array | null = null
+
         const drawLayer = (
           peaks: Float32Array | null,
           fast: Float32Array,
@@ -267,6 +271,10 @@ export function Spectrum({ active }: Props) {
           if (!peaks) return
           followBands(fast, peaks, FAST_ATTACK, FAST_RELEASE)
           followBands(slow, peaks, SLOW_ATTACK, SLOW_RELEASE)
+          if (style === 'post' && postEqGains && preCap) {
+            capBandsByEqGain(fast, preCap, postEqGains)
+            capBandsByEqGain(slow, preCap, postEqGains)
+          }
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
@@ -344,9 +352,16 @@ export function Spectrum({ active }: Props) {
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gains = new Float32Array(bands)
           for (let i = 0; i < bands; i++) {
-            gains[i] = chainEqGainAtHz(live, bandCenterHz(edges, i), sr)
+            const lo = edges[i] ?? minHz
+            const center = bandCenterHz(edges, i)
+            gains[i] = eqGainForSpectrumBand(
+              chainEqGainAtHz(live, center, sr),
+              chainEqGainAtHz(live, lo, sr),
+            )
           }
           capBandsByEqGain(postPeaks, prePeaks, gains)
+          postEqGains = gains
+          preCap = prePeaks
         }
         if (showPre) {
           drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
