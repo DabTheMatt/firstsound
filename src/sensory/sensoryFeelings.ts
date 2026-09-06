@@ -346,10 +346,10 @@ export const LEFT_RAIL_IDS: readonly SensoryAxisId[] = [
   'bloom',
   'plate',
   'spring',
-  'shimmer',
 ]
 
 export const RIGHT_RAIL_IDS: readonly SensoryAxisId[] = [
+  'shimmer',
   'reverse',
   'gate',
   'fuzz',

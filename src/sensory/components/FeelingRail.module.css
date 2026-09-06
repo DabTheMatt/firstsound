@@ -9,7 +9,15 @@
   gap: 0;
   pointer-events: auto;
   overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 4px 10px 8px 4px;
+}
+
+.rail::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .left {
@@ -40,7 +48,7 @@
   touch-action: none;
   cursor: ns-resize;
   width: min(28vw, 156px);
-  max-height: 40px;
+  max-height: 32px;
   border-radius: 10px;
   overflow: hidden;
   transform: none;
@@ -119,11 +127,7 @@
 
 .item.on .level,
 .item.lit .level {
-  display: block;
-  font-size: 8px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  display: none;
 }
 
 .iconWell {
