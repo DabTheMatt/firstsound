@@ -4,17 +4,17 @@ import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
   bandUsesGain,
-  bandUsesSlope,
   bandUsesWidth,
   bandwidthHz,
   EQ_FILTER_TYPES,
   EQ_MAX_BANDS,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
-  FILTER_SLOPES,
   formatEqHz,
+  nearestFilterSlope,
   qFromBandwidth,
-  type FilterSlope,
+  slopeFromNormalized,
+  slopeToNormalized,
 } from '../../audio/engine/eqBands'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import {
@@ -689,22 +689,6 @@ function EqEditor({
               )
             }
           />
-          {bandUsesSlope(band.type) ? (
-            <>
-              <p className={styles.help}>Slope (dB/oct)</p>
-              <Segmented
-                label={`Band ${index + 1} slope`}
-                value={String(band.slope) as `${FilterSlope}`}
-                options={FILTER_SLOPES.map((s) => ({
-                  value: String(s.value) as `${FilterSlope}`,
-                  label: `${s.value}`,
-                  title: `${s.value} dB/oct`,
-                }))}
-                wrap
-                onChange={(slope) => setBand(index, { slope: Number(slope) as FilterSlope })}
-              />
-            </>
-          ) : null}
           {knobs ? (
             <div className={styles.knobs}>
               <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.freq}>
@@ -731,7 +715,23 @@ function EqEditor({
                   }}
                 />
               </LfoParamShell>
-              {bandUsesGain(band.type) ? (
+              {band.type === 'highpass' || band.type === 'lowpass' ? (
+                <ValueKnob
+                  label="Slope"
+                  valueText={`${band.slope} dB`}
+                  normalized={slopeToNormalized(band.slope)}
+                  min={12}
+                  max={96}
+                  now={band.slope}
+                  onChange={(n) => setBand(index, { slope: slopeFromNormalized(n) })}
+                  onTypedValue={(text) => {
+                    const next = parseTypedRange(text, 12, 96, 'dB')
+                    if (next == null) return false
+                    setBand(index, { slope: nearestFilterSlope(next) })
+                    return true
+                  }}
+                />
+              ) : bandUsesGain(band.type) ? (
                 <LfoParamShell id={EQ_BAND_LFO_IDS[index]!.gain}>
                   <ValueKnob
                     label="Gain"
@@ -835,7 +835,22 @@ function EqEditor({
                 />
                 <span>{formatHz(band.frequency)}</span>
               </label>
-              {bandUsesGain(band.type) ? (
+              {band.type === 'highpass' || band.type === 'lowpass' ? (
+                <label className={styles.field}>
+                  Slope
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={slopeToNormalized(band.slope)}
+                    onChange={(e) =>
+                      setBand(index, { slope: slopeFromNormalized(Number(e.target.value)) })
+                    }
+                  />
+                  <span>{band.slope} dB</span>
+                </label>
+              ) : bandUsesGain(band.type) ? (
                 <label className={styles.field}>
                   Gain
                   <input
