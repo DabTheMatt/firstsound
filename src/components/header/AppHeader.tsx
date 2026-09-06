@@ -32,7 +32,16 @@ export function AppHeader({
   modeSwitch,
 }: Props) {
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
-  const ch = snap.channelCount === 1 ? 'M' : snap.channelCount === 2 ? 'Stereo' : snap.channelCount ? `${snap.channelCount} ch` : '—'
+  const folded = snap.params.makeMono > 0.5
+  const ch = folded
+    ? 'Mono'
+    : snap.channelCount === 1
+      ? 'M'
+      : snap.channelCount === 2
+        ? 'Stereo'
+        : snap.channelCount
+          ? `${snap.channelCount} ch`
+          : '—'
   return (
     <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
       <div className={styles.brand}>
