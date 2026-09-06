@@ -626,10 +626,8 @@ export class AudioEngine {
     this.playing = true
     this.lfoWallMs = typeof performance !== 'undefined' ? performance.now() : 0
     this.syncLfoClock()
-    if (this.spaceLatched) {
-      this.spaceLatched = false
-      this.applyLiveAudio()
-    }
+    if (this.spaceLatched) this.spaceLatched = false
+    this.applyLiveAudio()
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
@@ -2069,6 +2067,7 @@ export class AudioEngine {
       fileName: sampleName ?? (bindEditor && this.fileName ? this.fileName : this.tracks.find((t) => t.id === targetId)?.fileName ?? null),
     })
     this.bufferRev++
+    this.applyLiveAudio()
     this.emit()
   }
 

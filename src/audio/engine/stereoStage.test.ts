@@ -27,11 +27,14 @@ describe('stereoRouteGains', () => {
       rightToL: 0,
       rightToR: 0,
     })
+  })
+
+  it('still folds when Make mono is on, even if the last file was one channel', () => {
     expect(stereoRouteGains(true, 1)).toEqual({
-      leftToL: 1,
-      leftToR: 1,
-      rightToL: 0,
-      rightToR: 0,
+      leftToL: 0.5,
+      leftToR: 0.5,
+      rightToL: 0.5,
+      rightToR: 0.5,
     })
   })
 })

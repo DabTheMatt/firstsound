@@ -256,10 +256,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const colors = readThemeColors()
       const selA = Math.min(start, end)
       const selB = Math.max(start, end)
+      const foldMono = engine.getSnapshot().params.makeMono > 0.5
+      const mixed = foldMono ? engine.getMono() : null
       const channels = buffer.numberOfChannels
-      const lanes = Math.min(2, channels)
+      const lanes = mixed ? 1 : Math.min(2, channels)
       for (let lane = 0; lane < lanes; lane++) {
-        const data = buffer.getChannelData(Math.min(lane, channels - 1))
+        const data = mixed ?? buffer.getChannelData(Math.min(lane, channels - 1))
         const laneH = height / lanes
         const top0 = lane * laneH
         const samplesPerSec = data.length / duration
@@ -335,7 +337,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono])
 
   useEffect(() => {
     let frame = 0
