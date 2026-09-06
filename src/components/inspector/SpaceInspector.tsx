@@ -16,6 +16,7 @@ import { formatParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
+import { PlugGlyph } from '../controls/PlugGlyph'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { FxLfoSection } from './FxLfoSection'
@@ -350,38 +351,27 @@ function DryWetPair({
   return (
     <>
       <div className={styles.mixRow}>
-        <ParamControl id={dryId} value={snap.params[dryId]} variant={variant} linked={linked} />
-        <button
-          type="button"
-          className={`${styles.correlate} ${linked ? styles.correlateOn : ''}`}
-          aria-pressed={linked}
-          aria-label="Correlate Dry and Wet"
-          title={linked ? 'Correlate on — Dry + Wet stay at 100%' : 'Correlate off — Dry and Wet are independent'}
-          onClick={() => engine.setParam(correlateId, linked ? 0 : 1)}
-        >
-          <CorrelateIcon />
-        </button>
-        <ParamControl id={wetId} value={snap.params[wetId]} variant={variant} linked={linked} />
+        <ParamControl id={dryId} value={snap.params[dryId]} variant={variant} />
+        <div className={`${styles.mixLink} ${variant === 'slider' ? styles.mixLinkSlider : ''}`}>
+          <span className={`${styles.mixDash} ${linked ? styles.mixDashOn : ''}`} />
+          <button
+            type="button"
+            className={`${styles.correlate} ${linked ? styles.correlateOn : ''}`}
+            aria-pressed={linked}
+            aria-label="Correlate Dry and Wet"
+            title={linked ? 'Correlate on — Dry + Wet stay at 100%' : 'Correlate off — Dry and Wet are independent'}
+            onClick={() => engine.setParam(correlateId, linked ? 0 : 1)}
+          >
+            <PlugGlyph />
+          </button>
+          <span className={`${styles.mixDash} ${linked ? styles.mixDashOn : ''}`} />
+        </div>
+        <ParamControl id={wetId} value={snap.params[wetId]} variant={variant} />
       </div>
       <p className={styles.help}>
         The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
       </p>
     </>
-  )
-}
-
-function CorrelateIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        d="M7.2 10.8 10.8 7.2M6.3 8.1a2.4 2.4 0 0 1 0-3.4l1.2-1.2a2.4 2.4 0 0 1 3.4 3.4L9.9 8M11.7 9.9a2.4 2.4 0 0 1 0 3.4l-1.2 1.2a2.4 2.4 0 1 1-3.4-3.4L8.1 10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
 

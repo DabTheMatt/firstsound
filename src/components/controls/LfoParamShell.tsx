@@ -8,10 +8,9 @@ import styles from './ParamControl.module.css'
 type Props = {
   id: ParamId
   children: ReactNode
-  linked?: boolean
 }
 
-export function LfoParamShell({ id, children, linked = false }: Props) {
+export function LfoParamShell({ id, children }: Props) {
   const snap = useEngine()
   const { armed, setArmed } = useFxLfoConnect()
   const kind = fxLfoKindForParam(id)
@@ -29,7 +28,6 @@ export function LfoParamShell({ id, children, linked = false }: Props) {
     styles.wrap,
     pickable ? styles.pickable : '',
     mapped ? styles.mapped : '',
-    linked ? styles.linked : '',
   ]
     .filter(Boolean)
     .join(' ')

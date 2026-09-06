@@ -20,11 +20,6 @@
   background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
 }
 
-.linked {
-  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 28%, transparent);
-}
-
 .lfoTag {
   position: absolute;
   top: 0;

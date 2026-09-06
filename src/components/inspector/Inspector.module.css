@@ -300,32 +300,64 @@
 
 .mixRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 4px 6px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(44px, 0.85fr) minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
   justify-items: center;
   padding-top: 12px;
 }
 
+.mixLink {
+  display: flex;
+  align-items: center;
+  align-self: start;
+  width: calc(100% + 32px);
+  min-width: 0;
+  margin: 54px -16px 0;
+  height: 22px;
+}
+
+.mixLinkSlider {
+  margin-top: 10px;
+  align-self: center;
+}
+
+.mixDash {
+  flex: 1 1 auto;
+  min-width: 6px;
+  height: 0;
+  border-top: 1.5px dashed transparent;
+}
+
+.mixDashOn {
+  border-top-color: var(--accent-primary);
+}
+
 .correlate {
-  width: 36px;
-  height: 36px;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
   padding: 0;
   display: grid;
   place-items: center;
-  border-radius: 999px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-control);
-  color: var(--text-muted);
+  border: 0;
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-disabled);
+  cursor: pointer;
 }
 
 .correlate svg {
   display: block;
 }
 
+.correlate:hover {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
 .correlateOn {
-  border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 16%, var(--bg-control));
   color: var(--accent-primary);
 }
 
