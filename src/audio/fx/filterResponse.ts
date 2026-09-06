@@ -3,6 +3,7 @@ import { defaultEqBandAt, type EqBand, type EqFilterType } from '../engine/eqBan
 import {
   combDelaySeconds,
   combFeedbackFromReso,
+  filterDryWet,
   filterSlopeAt,
   filterStageQs,
   filterTypeAt,
@@ -61,6 +62,17 @@ export function filterMagnitudeDb(params: Record<ParamId, number>, freqHz: numbe
     return eqMagnitudeDb([band(eqTypeFor(kind), cutoff, q, 0)], freqHz, sampleRate)
   }
   return seriesDb(eqTypeFor(kind), cutoff, qs, 0, freqHz, sampleRate)
+}
+
+/** Combine dry/wet mix with the filter's magnitude at one frequency. */
+export function filterMixMagnitudeDb(filterDb: number, mixPct: number): number {
+  const { dry, wet } = filterDryWet(mixPct)
+  const lin = dry + wet * 10 ** (filterDb / 20)
+  return 20 * Math.log10(Math.max(1e-12, lin))
+}
+
+export function filterModuleIsAudible(bypassed: boolean, mixPct: number): boolean {
+  return !bypassed && mixPct > 0.5
 }
 
 export function filterResponseCurve(

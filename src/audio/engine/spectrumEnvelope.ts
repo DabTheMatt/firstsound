@@ -20,7 +20,8 @@ export function spectrumEnvelopePoints(
   for (let i = 0; i < n; i++) {
     const hz = bandCenterHz(edges, i)
     const t = Math.log(Math.max(minHz, hz) / Math.max(1, minHz)) / logSpan
-    const db = (dbs[i] ?? dbFloor) + dbOffset
+    const raw = dbs[i] ?? dbFloor
+    const db = raw <= dbFloor + 1 ? dbFloor : raw + dbOffset
     const u = Math.min(1, Math.max(0, (dbCeil - db) / dbSpan))
     out.push({
       x: plot.left + t * (plot.right - plot.left),

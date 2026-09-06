@@ -4,7 +4,7 @@ import type { ParamId } from '../parameters/types'
 import { complementaryPct, isCorrelated } from './dryWet'
 
 export type DelayMacro = 'time' | 'feedback' | 'space' | 'mod' | 'mix'
-export type ReverbMacro = 'size' | 'decay' | 'color' | 'distance' | 'mod' | 'mix'
+export type ReverbMacro = 'size' | 'decay' | 'distance' | 'mod' | 'mix'
 
 export const DELAY_MACROS: { id: DelayMacro; label: string }[] = [
   { id: 'time', label: 'Time' },
@@ -17,7 +17,6 @@ export const DELAY_MACROS: { id: DelayMacro; label: string }[] = [
 export const REVERB_MACROS: { id: ReverbMacro; label: string }[] = [
   { id: 'size', label: 'Size' },
   { id: 'decay', label: 'Decay' },
-  { id: 'color', label: 'Color' },
   { id: 'distance', label: 'Distance' },
   { id: 'mod', label: 'Mod' },
   { id: 'mix', label: 'Mix' },
@@ -47,8 +46,6 @@ export function reverbMacroNormalized(id: ReverbMacro, params: Record<ParamId, n
       return toNormalized(params.reverbSize, PARAMS.reverbSize)
     case 'decay':
       return toNormalized(params.reverbDecay, PARAMS.reverbDecay)
-    case 'color':
-      return (params.reverbColor + 100) / 200
     case 'distance':
       return params.reverbDistance / 100
     case 'mod':
@@ -83,7 +80,9 @@ export function applyDelayMacro(
         delayModRate: fromNormalized(0.2 + t * 0.35, PARAMS.delayModRate),
       }
     case 'mix':
-      return { delayWet: t * 100 }
+      return isCorrelated(params.delayCorrelate)
+        ? { delayWet: t * 100, delayDry: complementaryPct(t * 100), delayWetR: t * 100, delayDryR: complementaryPct(t * 100) }
+        : { delayWet: t * 100 }
   }
 }
 
@@ -99,12 +98,6 @@ export function applyReverbMacro(
       return { reverbSize: fromNormalized(t, PARAMS.reverbSize) }
     case 'decay':
       return { reverbDecay: fromNormalized(t, PARAMS.reverbDecay) }
-    case 'color':
-      return {
-        reverbColor: t * 200 - 100,
-        reverbDamping: fromNormalized(0.25 + t * 0.7, PARAMS.reverbDamping),
-        reverbHighCut: fromNormalized(0.4 + t * 0.6, PARAMS.reverbHighCut),
-      }
     case 'distance':
       return {
         reverbDistance: t * 100,

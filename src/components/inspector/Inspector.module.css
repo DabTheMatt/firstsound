@@ -5,7 +5,8 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
@@ -265,14 +266,100 @@
 .select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
-  padding: 4px 8px;
+  min-height: 36px;
+  padding: 6px 10px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.selectOn {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+}
+
+.selectCurrent {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field .select,
+.field .selectCurrent {
+  color: var(--text-primary);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mixRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(44px, 0.85fr) minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
+  justify-items: center;
+  padding-top: 12px;
+}
+
+.mixLink {
+  display: flex;
+  align-items: center;
+  align-self: start;
+  width: calc(100% + 32px);
+  min-width: 0;
+  margin: 54px -16px 0;
+  height: 22px;
+}
+
+.mixLinkSlider {
+  margin-top: 10px;
+  align-self: center;
+}
+
+.mixDash {
+  flex: 1 1 auto;
+  min-width: 6px;
+  height: 0;
+  border-top: 1.5px dashed transparent;
+}
+
+.mixDashOn {
+  border-top-color: var(--accent-primary);
+}
+
+.correlate {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-disabled);
+  cursor: pointer;
+}
+
+.correlate svg {
+  display: block;
+}
+
+.correlate:hover {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.correlateOn {
+  color: var(--accent-primary);
 }
 
 .lrGrid {
@@ -284,7 +371,10 @@
 
 .lrCol {
   min-width: 0;
-  padding: 6px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 6px 12px;
   border: 1px solid var(--border-default);
   border-radius: 10px;
   background: var(--bg-panel-elevated);
@@ -293,6 +383,7 @@
 .lrCol .knobs {
   grid-template-columns: 1fr;
   padding-top: 8px;
+  width: 100%;
 }
 
 .lrHead {
@@ -300,6 +391,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
 }
 
 .lrHead .sub {
@@ -317,6 +409,26 @@
 
 .lrCol .sub {
   margin-top: 0;
+}
+
+.syncCluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.lrCol .syncCluster {
+  margin-top: 14px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .eq {
@@ -580,6 +692,14 @@
 
 .compact .lrCol .knobs {
   grid-template-columns: 1fr;
+}
+
+.compact .syncCluster {
+  margin-top: 10px;
+}
+
+.compact .lrCol .syncCluster {
+  margin-top: 12px;
 }
 
 .compact .help {

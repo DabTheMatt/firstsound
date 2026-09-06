@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
-import { applyDelayMacro, applyReverbMacro, delayMacroNormalized, reverbMacroNormalized } from './macros'
+import { applyDelayMacro, applyReverbMacro, delayMacroNormalized } from './macros'
 import { migrateSpaceParams } from './migrate'
 import { defaultPresetFor, findSpacePreset, SPACE_PRESETS } from './presets'
 
@@ -14,10 +14,12 @@ describe('macros', () => {
     expect(delayMacroNormalized('mix', { ...p, delayWet: 40 })).toBeCloseTo(0.4)
   })
 
-  it('lets reverb Color reach the dark end', () => {
+  it('lets reverb Mix stay complementary when Correlate is on', () => {
     const p = defaultParamValues()
-    const dark = applyReverbMacro('color', 0, p)
-    expect(reverbMacroNormalized('color', { ...p, ...dark })).toBeCloseTo(0)
+    p.reverbCorrelate = 1
+    const mix = applyReverbMacro('mix', 0.3, p)
+    expect(mix.reverbWet).toBeCloseTo(30)
+    expect(mix.reverbDry).toBeCloseTo(70)
   })
 })
 
@@ -31,8 +33,9 @@ describe('migrateSpaceParams', () => {
 
   it('maps legacy Mix onto correlated Dry/Wet that sum to 100%', () => {
     const next = migrateSpaceParams({ spaceMix: 40, reverb: 25, delayTime: 300, reverbWidth: 100 })
-    expect(next.delayDry).toBe(100)
+    expect(next.delayDry).toBe(60)
     expect(next.delayWet).toBe(40)
+    expect(next.delayCorrelate).toBe(1)
     expect(next.reverbCorrelate).toBe(1)
     expect(next.reverbWet).toBe(25)
     expect(next.reverbDry).toBe(75)
@@ -54,19 +57,20 @@ describe('presets', () => {
     expect(findSpacePreset('rv-mono')?.params.reverbWidth).toBe(0)
     expect(findSpacePreset('rv-mono')?.params.reverbStereo).toBe(0)
     expect(findSpacePreset('rv-stereo-spread')?.params.reverbInput).toBe(0)
-    expect(findSpacePreset('rv-haas')?.params.reverbWidth).toBe(200)
+    expect(findSpacePreset('rv-haas')?.params.reverbWidth).toBe(160)
     expect(findSpacePreset('rv-bloom')?.reverbType).toBe('bloom')
-    expect(findSpacePreset('rv-cinema')?.params.reverbDecay).toBeGreaterThan(10)
+    expect(findSpacePreset('rv-cinema')?.params.reverbDecay).toBeGreaterThan(3)
+    expect(findSpacePreset('rv-big')?.category).toBe('Room')
   })
 
-  it('maps guitar and drums categories to real patches', () => {
+  it('maps guitar and drums delay categories and room reverb patches', () => {
     const guitarDelay = defaultPresetFor('delay', 'Guitar')
     const drumDelay = defaultPresetFor('delay', 'Drums')
-    const guitarRev = defaultPresetFor('reverb', 'Guitar')
-    const drumRev = defaultPresetFor('reverb', 'Drums')
+    const roomRev = defaultPresetFor('reverb', 'Room')
+    const ambientRev = defaultPresetFor('reverb', 'Ambient')
     expect(guitarDelay?.params.delayTime ?? guitarDelay?.params.delaySync).toBeTruthy()
     expect(drumDelay?.params.delayFeedback).toBeLessThan(20)
-    expect(guitarRev?.reverbType).toBe('room')
-    expect(drumRev?.category).toBe('Drums')
+    expect(roomRev?.reverbType).toBe('room')
+    expect(ambientRev?.category).toBe('Ambient')
   })
 })

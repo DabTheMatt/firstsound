@@ -9,7 +9,8 @@ import {
   delayWowSeconds,
 } from './delayLoop'
 import {
-  equalPowerDryWet,
+  delayChannelSendLevels,
+  delaySendLevels,
   reverbSendLevels,
   makeAbsCurve,
   sideGainFromWidth,
@@ -455,8 +456,8 @@ export function applyDelayGraph(
   const loopType = stereo ? type : type === 'pingPong' ? 'digital' : type
   const fbR = stereo ? params.delayFeedbackR : params.delayFeedback
   const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch, fbR)
-  const mixL = equalPowerDryWet(params.delayWet / 100)
-  const mixR = equalPowerDryWet((stereo ? params.delayWetR : params.delayWet) / 100)
+  const mixL = delayChannelSendLevels(params, 'L', stereo)
+  const mixR = delayChannelSendLevels(params, 'R', stereo)
   if (stereo) {
     g.chanDryL.gain.setTargetAtTime(mixL.dry, now, smoothing)
     g.chanDryR.gain.setTargetAtTime(mixR.dry, now, smoothing)
@@ -792,7 +793,7 @@ export function applyReverbGraph(
   g.inCrossR.gain.setTargetAtTime(input.cross, now, smoothing)
 
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
-  g.freezeIn.gain.setTargetAtTime(freeze ? 0.12 : 1, now, smoothing)
+  g.freezeIn.gain.setTargetAtTime(freeze ? 0.05 : 1, now, smoothing)
   const huge = type === 'cathedral' || type === 'largeHall' || type === 'cloud' || type === 'bloom' || type === 'infinite'
   const shimmerAmt = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100
   const loop = reverbLoopGains({
@@ -813,7 +814,7 @@ export function applyReverbGraph(
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
   g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
-  g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput), now, smoothing)
+  g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
   const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)
@@ -857,8 +858,8 @@ export function wetDryFor(
     const send = reverbSendLevels(params)
     return { dry: send.dry, wet: send.wet, out: 1 }
   }
-  const { dry, wet } = equalPowerDryWet(params.delayWet / 100)
-  return { dry, wet, out: 1 }
+  const send = delaySendLevels(params)
+  return { dry: send.dry, wet: send.wet, out: 1 }
 }
 
 function instantGain(param: AudioParam, now: number, value = 0): void {

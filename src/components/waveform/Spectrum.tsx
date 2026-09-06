@@ -28,6 +28,7 @@ import {
   SPECTRUM_BAND_CHOICES,
   SPECTRUM_BAND_COUNT,
   SPECTRUM_FOLLOW_MODES,
+  alignedBandDb,
   bandPeakDb,
   capBandsByEqGain,
   eqGainForSpectrumBand,
@@ -37,6 +38,7 @@ import {
   followEnvelope,
   logBandEdgesHz,
   maxBandDb,
+  spectrumMaxHz,
   spectrumMeterAlignDb,
   type SpectrumBandCount,
   type SpectrumFollowMode,
@@ -56,6 +58,7 @@ import {
   eqModuleHasLiveCurve,
   liveEqBandsFromParams,
 } from '../../audio/fx/lfo'
+import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -128,27 +131,35 @@ function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: nu
   return left + t * (right - left)
 }
 
-function chainEqGainAtHz(
+function chainToneGainAtHz(
   live: ReturnType<typeof engine.getSnapshot>,
   hz: number,
   sampleRate: number,
 ): number {
   let db = 0
   for (const mod of live.chain) {
-    if (mod.type !== 'eq' || mod.bypassed) continue
-    const st = live.eqById[mod.instanceId]
-    if (!st) continue
-    const bands = [
-      ...liveEqBandsFromParams(st.bands, live.liveParams),
-      ...combAsEqBands({
-        ...st.comb,
-        teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
-        gain: live.liveParams.eqcfGain ?? st.comb.gain,
-        spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
-        frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
-      }),
-    ]
-    db += eqMagnitudeDb(bands, hz, sampleRate)
+    if (mod.bypassed) continue
+    if (mod.type === 'eq') {
+      const st = live.eqById[mod.instanceId]
+      if (!st) continue
+      const bands = [
+        ...liveEqBandsFromParams(st.bands, live.liveParams),
+        ...combAsEqBands({
+          ...st.comb,
+          teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
+          gain: live.liveParams.eqcfGain ?? st.comb.gain,
+          spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
+          frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
+        }),
+      ]
+      db += eqMagnitudeDb(bands, hz, sampleRate)
+    }
+    if (mod.type === 'filter') {
+      db += filterMixMagnitudeDb(
+        filterMagnitudeDb(live.liveParams, hz, sampleRate),
+        live.liveParams.filterMix,
+      )
+    }
   }
   return db
 }
@@ -164,7 +175,7 @@ function readAnalyserPeaks(
   const n = analyser.frequencyBinCount
   if (!scratch.bins || scratch.bins.length !== n) scratch.bins = new Float32Array(n)
   analyser.getFloatFrequencyData(scratch.bins as Float32Array<ArrayBuffer>)
-  return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz)
+  return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz, spectrumMaxHz(sampleRate, EQ_MAX_HZ))
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
@@ -239,9 +250,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         const { layer, bands, regionColors, showBars, showLine, follow } = prefsRef.current
         ctx.clearRect(0, 0, width, height)
         const sr = live.sampleRate || 44100
-        const nyquist = sr / 2
+        const maxHz = spectrumMaxHz(sr, EQ_MAX_HZ)
         const minHz = EQ_MIN_HZ
-        const maxHz = EQ_MAX_HZ
         const padL = SPECTRUM_PLOT_PAD.left * dpr
         const padR = SPECTRUM_PLOT_PAD.right * dpr
         const padT = SPECTRUM_PLOT_PAD.top * dpr
@@ -315,7 +325,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             capBandsByEqGain(fast, preCap, postEqGains)
             capBandsByEqGain(slow, preCap, postEqGains)
           }
-          const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
+          const edges = logBandEdgesHz(minHz, maxHz, bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
           const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb)
@@ -335,16 +345,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           if (showBars) {
             for (let i = 0; i < bands; i++) {
               const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
-              const x1 = hzToX(edges[i + 1] ?? Math.min(nyquist, maxHz), minHz, maxHz, left, right)
+              const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right)
               const bandW = Math.max(1, x1 - x0)
               const center = bandCenterHz(edges, i)
               const region = regionForHz(center)
               const barFill = fill ?? region.color
               const barLine = line ?? region.color
-              const slowDb = slow[i] ?? -100
-              const fastDb = fast[i] ?? -100
-              const slowY = dbToY(slowDb + alignDb, top, bottom, dbFloor)
-              const fastY = dbToY(fastDb + alignDb, top, bottom, dbFloor)
+              const slowDb = alignedBandDb(slow[i] ?? -100, alignDb)
+              const fastDb = alignedBandDb(fast[i] ?? -100, alignDb)
+              const slowY = dbToY(slowDb, top, bottom, dbFloor)
+              const fastY = dbToY(fastDb, top, bottom, dbFloor)
               const slowH = bottom - slowY
               const fastH = bottom - fastY
               ctx.fillStyle = colorWithAlpha(barFill, alpha)
@@ -379,25 +389,30 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           }
         }
 
-        const eqAudible = live.chain.some((mod) => {
+        const toneAudible = live.chain.some((mod) => {
+          if (mod.type === 'filter') {
+            return filterModuleIsAudible(mod.bypassed, live.liveParams.filterMix)
+          }
           if (mod.type !== 'eq') return false
           const st = live.eqById[mod.instanceId]
           return eqModuleIsAudible(mod.bypassed, st?.bands ?? [], Boolean(st?.comb.enabled))
         })
-        const showPre = layer === 'pre' || (layer === 'both' && eqAudible)
+        const showPre = layer === 'pre' || (layer === 'both' && toneAudible)
         const showPost = layer === 'post' || layer === 'both'
         const prePeaks = readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch)
         const postPeaks = readAnalyserPeaks(engine.getAnalyser('eq'), sr, bands, minHz, postScratch)
-        if (postPeaks && prePeaks && eqAudible) {
-          const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
+        if (postPeaks && prePeaks && toneAudible) {
+          const edges = logBandEdgesHz(minHz, maxHz, bands)
           if (!gainsBuf || gainsBuf.length !== bands) gainsBuf = new Float32Array(bands)
           const gains = gainsBuf
           for (let i = 0; i < bands; i++) {
             const lo = edges[i] ?? minHz
+            const hi = edges[i + 1] ?? maxHz
             const center = bandCenterHz(edges, i)
             gains[i] = eqGainForSpectrumBand(
-              chainEqGainAtHz(live, center, sr),
-              chainEqGainAtHz(live, lo, sr),
+              chainToneGainAtHz(live, center, sr),
+              chainToneGainAtHz(live, lo, sr),
+              chainToneGainAtHz(live, hi, sr),
             )
           }
           capBandsByEqGain(postPeaks, prePeaks, gains)
@@ -665,7 +680,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             const x = event.clientX - rect.left
             const y = event.clientY - rect.top
             const sr = engine.getSnapshot().sampleRate || 44100
-            const nyquist = sr / 2
+            const maxHz = spectrumMaxHz(sr, EQ_MAX_HZ)
             const left = SPECTRUM_PLOT_PAD.left
             const right = rect.width - SPECTRUM_PLOT_PAD.right
             const top = SPECTRUM_PLOT_PAD.top
@@ -674,7 +689,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               setHover(null)
               return
             }
-            const hz = hzFromLogAxis((x - left) / Math.max(1, right - left), EQ_MIN_HZ, nyquist)
+            const hz = hzFromLogAxis((x - left) / Math.max(1, right - left), EQ_MIN_HZ, maxHz)
             setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68 })
           }}
           onPointerLeave={() => setHover(null)}

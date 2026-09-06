@@ -14,6 +14,7 @@ export type FxLfoKind =
   | 'limiter'
   | 'distortion'
   | 'filter'
+  | 'midside'
   | 'grain'
   | 'eq1'
   | 'eq2'
@@ -52,6 +53,7 @@ export const FX_LFO_KINDS: FxLfoKind[] = [
   'limiter',
   'distortion',
   'filter',
+  'midside',
   'grain',
   'eq1',
   'eq2',
@@ -74,6 +76,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   limiter: 'Limiter',
   distortion: 'Distortion',
   filter: 'Filter',
+  midside: 'Mid/Side',
   grain: 'Grain',
   eq1: 'EQ band 1',
   eq2: 'EQ band 2',
@@ -94,6 +97,7 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   limiter: 'l',
   distortion: 's',
   filter: 'f',
+  midside: 'ms',
   grain: 'g',
   eq1: 'eq1b',
   eq2: 'eq2b',
@@ -129,6 +133,7 @@ export const LFO_DEPTH_DEFAULT = 35
 
 const DELAY_TARGETS: ParamId[] = [
   'delayDry',
+  'delayDryR',
   'delayWet',
   'delayWetR',
   'delayOutput',
@@ -226,6 +231,22 @@ const FILTER_TARGETS: ParamId[] = [
   'filterEnvAmt',
 ]
 
+const MIDSIDE_TARGETS: ParamId[] = [
+  'msWidth',
+  'msBalance',
+  'msMidGain',
+  'msSideGain',
+  'msRotate',
+  'msCrossfeed',
+  'msHaasAmount',
+  'msMidLowGain',
+  'msMidPeakGain',
+  'msMidHighGain',
+  'msSideLowGain',
+  'msSidePeakGain',
+  'msSideHighGain',
+]
+
 const GRAIN_TARGETS: ParamId[] = [
   'grainSize',
   'density',
@@ -268,6 +289,7 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   limiter: LIMITER_TARGETS,
   distortion: DISTORTION_TARGETS,
   filter: FILTER_TARGETS,
+  midside: MIDSIDE_TARGETS,
   grain: GRAIN_TARGETS,
   eq1: [EQ_BAND_LFO_IDS[0]!.freq, EQ_BAND_LFO_IDS[0]!.gain, EQ_BAND_LFO_IDS[0]!.q],
   eq2: [EQ_BAND_LFO_IDS[1]!.freq, EQ_BAND_LFO_IDS[1]!.gain, EQ_BAND_LFO_IDS[1]!.q],
@@ -502,7 +524,7 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
-): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'filter' | 'grain' | 'eq' | 'gain' {
+): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'filter' | 'midside' | 'grain' | 'eq' | 'gain' {
   switch (kind) {
     case 'input':
       return 'gain'
@@ -566,6 +588,7 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
   ) {
     return 'advanced'
   }
+  if (kind === 'midside' && target && target === 'msHaasAmount') return 'advanced'
   return 'main'
 }
 
@@ -612,6 +635,18 @@ export function applyFxLfos(
       next.reverbWet = complementaryPct(next.reverbDry)
     } else if (claimed.has('reverbWet')) {
       next.reverbDry = complementaryPct(next.reverbWet)
+    }
+  }
+  if (isCorrelated(next.delayCorrelate)) {
+    if (claimed.has('delayDry') && !claimed.has('delayWet')) {
+      next.delayWet = complementaryPct(next.delayDry)
+    } else if (claimed.has('delayWet')) {
+      next.delayDry = complementaryPct(next.delayWet)
+    }
+    if (claimed.has('delayDryR') && !claimed.has('delayWetR')) {
+      next.delayWetR = complementaryPct(next.delayDryR)
+    } else if (claimed.has('delayWetR')) {
+      next.delayDryR = complementaryPct(next.delayWetR)
     }
   }
   return next

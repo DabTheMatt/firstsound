@@ -13,6 +13,7 @@ import {
   followEnvelope,
   logBandEdgesHz,
   maxBandDb,
+  alignedBandDb,
   spectrumMeterAlignDb,
 } from './spectrumBands'
 
@@ -51,6 +52,15 @@ describe('bandPeakDb', () => {
     expect(hot.length).toBeLessThan(3)
     expect(bands[0]).toBeLessThan(-80)
   })
+
+  it('ignores DC and Nyquist bins so the plot edges stay empty', () => {
+    const bins = new Float32Array(512)
+    bins.fill(-90)
+    bins[0] = -6
+    bins[511] = -6
+    const bands = bandPeakDb(bins, 48000, 32, 10, 24000)
+    expect(Math.max(...bands)).toBeLessThan(-80)
+  })
 })
 
 describe('fftDbAtHz', () => {
@@ -59,6 +69,13 @@ describe('fftDbAtHz', () => {
     bins.fill(-30)
     expect(fftFirstBinHz(44100, 512)).toBeCloseTo(44100 / 1024)
     expect(fftDbAtHz(bins, 44100, 5)).toBe(-100)
+  })
+
+  it('returns the floor at Nyquist instead of the last bin', () => {
+    const bins = new Float32Array(512)
+    bins.fill(-80)
+    bins[511] = -12
+    expect(fftDbAtHz(bins, 48000, 24000)).toBe(-100)
   })
 })
 
@@ -81,6 +98,7 @@ describe('eqGainForSpectrumBand', () => {
   it('in a cut uses the more attenuated band edge', () => {
     expect(eqGainForSpectrumBand(-12, -40)).toBe(-40)
     expect(eqGainForSpectrumBand(6, 0)).toBe(6)
+    expect(eqGainForSpectrumBand(-12, -12, -40)).toBe(-40)
   })
 })
 
@@ -141,5 +159,12 @@ describe('spectrumMeterAlignDb', () => {
   it('stays put when the meter or spectrum is silent', () => {
     expect(spectrumMeterAlignDb(-100, -9)).toBe(0)
     expect(spectrumMeterAlignDb(-48, Number.NEGATIVE_INFINITY)).toBe(0)
+  })
+})
+
+describe('alignedBandDb', () => {
+  it('does not lift analyser-floor bins with the meter offset', () => {
+    expect(alignedBandDb(-100, 39)).toBe(-100)
+    expect(alignedBandDb(-48, 39)).toBeCloseTo(-9)
   })
 })

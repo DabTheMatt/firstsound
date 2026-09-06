@@ -26,10 +26,21 @@ export function fromNormalized(t: number, def: ParamDef): number {
   return def.min + n * (def.max - def.min)
 }
 
+/** Decimal places implied by a step so 0.1 * 28 does not become 2.8000000000000003. */
+export function stepDecimals(step: number): number {
+  if (!(step > 0) || step >= 1) return 0
+  const text = step.toString()
+  const exp = /e-(\d+)$/i.exec(text)
+  if (exp) return Math.min(8, Number(exp[1]))
+  const frac = text.split('.')[1]
+  return frac ? Math.min(8, frac.length) : 1
+}
+
 export function quantize(value: number, def: ParamDef): number {
   if (def.step == null) return value
   const snapped = Math.round(value / def.step) * def.step
-  return clamp(snapped, def.min, def.max)
+  const rounded = Number(snapped.toFixed(stepDecimals(def.step)))
+  return clamp(rounded, def.min, def.max)
 }
 
 export function applyParamValue(value: number, def: ParamDef): number {
@@ -218,6 +229,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'delayLp':
     case 'reverbLowCut':
     case 'reverbHighCut':
+    case 'msMidLowFreq':
+    case 'msMidPeakFreq':
+    case 'msMidHighFreq':
+    case 'msSideLowFreq':
+    case 'msSidePeakFreq':
+    case 'msSideHighFreq':
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`
         : `${Math.round(value)} Hz`
@@ -232,21 +249,59 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'reverbSync':
     case 'delayFreeze':
     case 'reverbFreeze':
+    case 'delayCorrelate':
     case 'reverbCorrelate':
     case 'makeMono':
     case 'invertPhase':
     case 'limiterAutoMakeup':
     case 'compressorAutoMakeup':
+    case 'msSoloMid':
+    case 'msSoloSide':
+    case 'msMono':
+    case 'msFlipMid':
+    case 'msFlipSide':
       return value > 0.5 ? 'On' : 'Off'
+    case 'msHaasDir':
+      return value < 0.5 ? 'L' : 'R'
+    case 'msSideHpf':
+      return value < 20
+        ? 'Off'
+        : value >= 1000
+          ? '1.00 kHz'
+          : `${Math.round(value)} Hz`
+    case 'msMidGain':
+    case 'msSideGain':
+      return value <= def.min + 0.05 ? '−∞ dB' : `${value.toFixed(1)} dB`
+    case 'msMidLowGain':
+    case 'msMidPeakGain':
+    case 'msMidHighGain':
+    case 'msSideLowGain':
+    case 'msSidePeakGain':
+    case 'msSideHighGain':
+      return `${value.toFixed(1)} dB`
+    case 'msBalance':
+      if (Math.abs(value) < 0.5) return 'Center'
+      return value < 0 ? `Mid ${Math.round(-value)}` : `Side ${Math.round(value)}`
+    case 'msRotate':
+      if (Math.abs(value) < 0.5) return '0'
+      return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
+    case 'msMidTilt':
+    case 'msSideTilt':
+      if (Math.abs(value) < 0.5) return '0'
+      return value < 0 ? `Dark ${Math.round(-value)}` : `Bright ${Math.round(value)}`
     case 'pan':
     case 'reverbPan':
       if (Math.abs(value) < 0.5) return 'C'
       return value < 0 ? `L ${Math.round(-value)}` : `R ${Math.round(value)}`
-    default:
+    default: {
       if (def.unit === '%') return `${Math.round(value)} %`
       if (def.unit === 'ms') return `${Math.round(value)} ms`
       if (def.unit === 'Hz') return `${value.toFixed(2)} Hz`
       if (def.unit === ':1') return `${value.toFixed(1)}:1`
-      return String(value)
+      if (def.unit === 'dB') return `${value.toFixed(1)} dB`
+      const digits = def.step != null ? stepDecimals(def.step) : 2
+      const body = Number.isFinite(value) ? value.toFixed(digits) : String(value)
+      return def.unit ? `${body} ${def.unit}` : body
+    }
   }
 }

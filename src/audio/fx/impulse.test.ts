@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillReverbImpulse, impulseLengthSec, IR_PEAK_LIMIT, IR_TARGET_EARLY_RMS } from './impulse'
+import { fillReverbImpulse, impulseLengthSec, irStackTrim, IR_PEAK_LIMIT, IR_TARGET_EARLY_RMS } from './impulse'
 
 describe('impulse', () => {
   it('writes a decaying stereo IR', () => {
@@ -72,8 +72,8 @@ describe('impulse', () => {
       color: 0,
       freeze: false,
     }
-    expect(impulseLengthSec(spec)).toBeGreaterThan(8)
-    expect(impulseLengthSec(spec)).toBeLessThanOrEqual(12)
+    expect(impulseLengthSec(spec)).toBeGreaterThan(3.5)
+    expect(impulseLengthSec(spec)).toBeLessThanOrEqual(6)
   })
 
   it('bloom IRs stay long and write energy', () => {
@@ -99,6 +99,11 @@ describe('impulse', () => {
     expect(n / 48000).toBeGreaterThan(3)
     expect(left.some((v) => v !== 0)).toBe(true)
     expect(right.some((v) => v !== 0)).toBe(true)
+  })
+
+  it('trims long IRs so overlapping tails stay quieter', () => {
+    expect(irStackTrim(0.3)).toBe(1)
+    expect(irStackTrim(6)).toBeLessThan(0.55)
   })
 
   it('gated IRs stay short', () => {

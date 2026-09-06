@@ -47,6 +47,18 @@ describe('spectrumEnvelopePoints', () => {
     expect(aligned[0]!.y).toBeLessThan(raw[0]!.y)
     expect(aligned[0]!.y).toBeCloseTo(15)
   })
+
+  it('does not lift a floor band when aligning', () => {
+    const edges = logBandEdgesHz(20, 20000, 2)
+    const pts = spectrumEnvelopePoints([-100, -40], edges, 20, 20000, {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+    }, 0, -100, 20)
+    expect(pts[0]!.y).toBe(100)
+    expect(pts[1]!.y).toBeCloseTo(20)
+  })
 })
 
 describe('strokeSpectrumEnvelope', () => {

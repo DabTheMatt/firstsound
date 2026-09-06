@@ -118,6 +118,7 @@ describe('applyFxLfos', () => {
     const params = defaultParamValues()
     params.delayWet = 50
     params.delayDry = 50
+    params.delayCorrelate = 0
     const lfos = defaultFxLfos()
     lfos.delay[0]!.target = 'delayWet'
     lfos.delay[0]!.depth = 20
@@ -205,6 +206,10 @@ describe('targets', () => {
     expect(isFxLfoTarget('filter', 'filterCutoff')).toBe(true)
     expect(isFxLfoTarget('filter', 'filterDrive')).toBe(true)
     expect(isFxLfoTarget('filter', 'delayWet')).toBe(false)
+    expect(isFxLfoTarget('midside', 'msWidth')).toBe(true)
+    expect(isFxLfoTarget('midside', 'msBalance')).toBe(true)
+    expect(isFxLfoTarget('midside', 'msMidLowGain')).toBe(true)
+    expect(isFxLfoTarget('midside', 'filterCutoff')).toBe(false)
     expect(isFxLfoTarget('distortion', 'saturationMix')).toBe(true)
     expect(isFxLfoTarget('distortion', 'distortionBits')).toBe(true)
     expect(isFxLfoTarget('eq8', 'eq8Freq')).toBe(true)
@@ -284,6 +289,7 @@ describe('fxLfoSlotName', () => {
     expect(fxLfoSlotName('delay', 1)).toBe('d2')
     expect(fxLfoSlotName('input', 0)).toBe('i1')
     expect(fxLfoSlotName('filter', 0)).toBe('f1')
+    expect(fxLfoSlotName('midside', 0)).toBe('ms1')
   })
 })
 
@@ -294,5 +300,6 @@ describe('moduleTypeForLfoKind', () => {
     expect(moduleTypeForLfoKind('distortion')).toBe('distortion')
     expect(moduleTypeForLfoKind('input')).toBe('gain')
     expect(moduleTypeForLfoKind('filter')).toBe('filter')
+    expect(moduleTypeForLfoKind('midside')).toBe('midside')
   })
 })
