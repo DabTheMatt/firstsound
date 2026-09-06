@@ -1,5 +1,5 @@
 import type { AudioEngine } from '../audio/engine/AudioEngine'
-import { FX_LFO_SLOTS } from '../audio/fx/lfo'
+import { FX_LFO_KINDS, FX_LFO_SLOTS } from '../audio/fx/lfo'
 import type { ReverbType } from '../audio/fx/types'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
@@ -33,17 +33,19 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   if (eq && dsp.bypass.eq === false && eq.bypassed) {
     engine.setModuleBypass(eq.instanceId, false)
   }
-  const live = engine.getSnapshot().fxLfos.input
-  for (let slot = 0; slot < FX_LFO_SLOTS; slot++) {
-    const want = dsp.fxLfos.input[slot]
-    if (!want) continue
-    if (!fxLfoSlotChanged(live[slot], want)) continue
-    engine.setFxLfo('input', slot, {
-      target: want.target,
-      shape: want.shape,
-      depth: want.depth,
-      rateHz: want.rateHz,
-    })
+  const liveMap = engine.getSnapshot().fxLfos
+  for (const kind of FX_LFO_KINDS) {
+    for (let slot = 0; slot < FX_LFO_SLOTS; slot++) {
+      const want = dsp.fxLfos[kind][slot]
+      if (!want) continue
+      if (!fxLfoSlotChanged(liveMap[kind][slot], want)) continue
+      engine.setFxLfo(kind, slot, {
+        target: want.target,
+        shape: want.shape,
+        depth: want.depth,
+        rateHz: want.rateHz,
+      })
+    }
   }
 }
 

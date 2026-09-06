@@ -230,6 +230,10 @@ export function SensoryShell({
         }}
       />
       {sampleInput}
+      <div className={styles.atmosphere} aria-hidden="true">
+        <div className={styles.chroma} />
+        <div className={styles.grain} />
+      </div>
     </div>
   )
 }

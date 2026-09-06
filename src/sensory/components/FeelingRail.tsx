@@ -6,6 +6,7 @@ import {
   SENSORY_FEELINGS,
   type SensoryFeeling,
 } from '../sensoryFeelings'
+import { AXIS_LFO_BY_ID, axisLfoActive } from '../mapping/axisLfos'
 import { engine } from '../../hooks/useEngine'
 import { defaultSensoryValues, type SensoryValues } from '../sensoryState'
 import { panNorm } from '../visualization/sensoryVisualState'
@@ -220,13 +221,14 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
         const on = feeling.id === activeId
         const amount = feelingAmount(values, feeling)
         const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
+        const lfoOn = Boolean(AXIS_LFO_BY_ID[feeling.id] && axisLfoActive(amount))
         return (
           <button
             key={feeling.id}
             type="button"
             role="option"
             data-axis={feeling.id}
-            className={`${styles.item} ${on ? styles.on : ''} ${focused && !on ? styles.dim : ''} ${Math.abs(amount) > 0.04 ? styles.lit : ''}`}
+            className={`${styles.item} ${on ? styles.on : ''} ${focused && !on ? styles.dim : ''} ${Math.abs(amount) > 0.04 ? styles.lit : ''} ${lfoOn ? styles.lfoOn : ''}`}
             aria-selected={on}
             aria-label={feeling.ariaLabel}
             aria-valuemin={0}
@@ -271,6 +273,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
             }}
           >
             <EffectMeter feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
+            {lfoOn ? <span className={styles.lfoMark} aria-hidden="true" /> : null}
             <span className={styles.copy}>
               <span className={styles.label}>{feeling.label}</span>
               <span className={styles.rangeHint}>

@@ -5,6 +5,7 @@ import {
   restFeeling,
   SENSORY_FEELINGS,
 } from '../sensoryFeelings'
+import { AXIS_LFO_BY_ID, axisLfoActive, resolvedAxisLfo } from '../mapping/axisLfos'
 import type { SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
 import {
@@ -51,6 +52,10 @@ export function ParameterStrings({
   const valuesRef = useRef(values)
   const drag = useRef<{ pointerId: number; id: SensoryAxisId } | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
+  const reduced = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }, [])
 
   useEffect(() => {
     valuesRef.current = values
@@ -162,11 +167,17 @@ export function ParameterStrings({
             const lit = Math.abs(amount) > 0.04
             const tone = `${on ? styles.on : ''} ${lit ? styles.lit : ''}`
             const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
+            const lfo = AXIS_LFO_BY_ID[geom.id]
+            const lfoOn = Boolean(lfo && axisLfoActive(amount))
+            const lfoResolved = lfoOn && lfo ? resolvedAxisLfo(lfo, amount) : null
+            const lfoPeriod = lfoResolved ? `${Math.max(0.45, 1 / lfoResolved.rateHz).toFixed(2)}s` : '1.6s'
             return (
               <g
                 key={geom.id}
                 data-axis={geom.id}
+                data-lfo={lfoOn ? 'on' : undefined}
                 className={`${styles.string} ${activeId && !on ? styles.dim : ''}`}
+                style={{ ['--lfo-period' as string]: lfoPeriod }}
               >
                 <line
                   className={styles.hit}
@@ -176,7 +187,7 @@ export function ParameterStrings({
                   y2={geom.y2}
                   tabIndex={0}
                   role="slider"
-                  aria-label={feeling.ariaLabel}
+                  aria-label={lfoOn ? `${feeling.ariaLabel} LFO connected.` : feeling.ariaLabel}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={now}
@@ -223,6 +234,26 @@ export function ParameterStrings({
                   y2={geom.y2}
                   pointerEvents="none"
                 />
+                {lfoOn ? (
+                  <>
+                    <line
+                      className={styles.lfoLine}
+                      x1={geom.x1}
+                      y1={geom.y1}
+                      x2={geom.x2}
+                      y2={geom.y2}
+                    />
+                    <circle className={styles.lfoRider} r={2.2} cx={geom.x1} cy={geom.y1}>
+                      {reduced ? null : (
+                        <animateMotion
+                          dur={lfoPeriod}
+                          repeatCount="indefinite"
+                          path={`M ${geom.x1} ${geom.y1} L ${geom.x2} ${geom.y2}`}
+                        />
+                      )}
+                    </circle>
+                  </>
+                ) : null}
                 <circle className={`${styles.node} ${tone}`} cx={bead.x} cy={bead.y} r={on ? 5.5 : 3.6} />
                 <text
                   className={`${styles.label} ${tone}`}

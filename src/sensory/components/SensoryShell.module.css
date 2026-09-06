@@ -15,14 +15,94 @@
 }
 
 .rangePage::before {
+  content: none;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.chroma {
+  position: absolute;
+  inset: -2px;
+  mix-blend-mode: screen;
+  opacity: calc(0.18 + var(--sensory-space, 0) * 0.12 + var(--sensory-drift, 0) * 0.08);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 56, 72, 0.16) 0%,
+      rgba(255, 56, 72, 0.04) 7%,
+      transparent 16%,
+      transparent 84%,
+      rgba(48, 170, 255, 0.05) 93%,
+      rgba(48, 170, 255, 0.16) 100%
+    ),
+    radial-gradient(ellipse at 18% 42%, rgba(255, 40, 70, 0.07), transparent 42%),
+    radial-gradient(ellipse at 82% 58%, rgba(40, 160, 255, 0.07), transparent 42%);
+  transform: translateX(calc(var(--sensory-drift, 0) * 1.2px));
+}
+
+.chroma::before,
+.chroma::after {
   content: '';
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.045;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+}
+
+.chroma::before {
+  box-shadow: inset 1.2px 0 0 rgba(255, 64, 80, 0.12);
+  transform: translate(-0.7px, 0);
+}
+
+.chroma::after {
+  box-shadow: inset -1.2px 0 0 rgba(48, 180, 255, 0.12);
+  transform: translate(0.7px, 0);
+}
+
+.grain {
+  position: absolute;
+  inset: -18%;
+  opacity: calc(0.11 + var(--sensory-grain, 0) * 0.08 + var(--sensory-dirt, 0) * 0.05);
   mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  animation: grainShift 0.28s steps(5) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain {
+    animation: none;
+  }
+
+  .chroma {
+    transform: none;
+  }
+}
+
+@keyframes grainShift {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-1.6%, 0.8%);
+  }
+  40% {
+    transform: translate(1.2%, -1.4%);
+  }
+  60% {
+    transform: translate(-0.8%, 1.6%);
+  }
+  80% {
+    transform: translate(1.4%, 0.6%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 .brand {
