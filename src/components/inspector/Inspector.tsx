@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { MODULE_LABELS, eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
+import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import {
@@ -707,6 +708,7 @@ function EqEditor({
           selectedBand={openBand}
           comb={comb}
           toneIndex={toneIndex}
+          modulate={eqInstanceUsesSharedLfo(snap.chain, instanceId)}
           onSelectBand={setOpenBand}
           onDragBand={(index, patch) => setBand(index, patch)}
         />

@@ -39,8 +39,10 @@
 
   --eq-curve: #e6ad48;
   --eq-node: #f2c064;
-  --eq-curve-2: #d1c65b;
-  --eq-node-2: #e2d67a;
+  --eq-curve-2: #4eb8c6;
+  --eq-node-2: #7ed4de;
+  --eq-curve-3: #c084fc;
+  --eq-node-3: #d8b4fe;
   --envelope: #e6ad48;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -100,8 +102,10 @@
 
   --eq-curve: #63b3d1;
   --eq-node: #a1d9ea;
-  --eq-curve-2: #77c9e6;
-  --eq-node-2: #b7e4f2;
+  --eq-curve-2: #e07d48;
+  --eq-node-2: #f0a16f;
+  --eq-curve-3: #e6ad48;
+  --eq-node-3: #f2c064;
   --envelope: #63b3d1;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -150,8 +154,10 @@
 
   --eq-curve: #e07d48;
   --eq-node: #f0a16f;
-  --eq-curve-2: #d1c65b;
-  --eq-node-2: #e2d67a;
+  --eq-curve-2: #4eb8c6;
+  --eq-node-2: #7ed4de;
+  --eq-curve-3: #d1c65b;
+  --eq-node-3: #e2d67a;
   --envelope: #d97845;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -200,8 +206,10 @@
 
   --eq-curve: #72b98a;
   --eq-node: #a3d9b2;
-  --eq-curve-2: #d1c65b;
-  --eq-node-2: #e2d67a;
+  --eq-curve-2: #e6ad48;
+  --eq-node-2: #f2c064;
+  --eq-curve-3: #63b3d1;
+  --eq-node-3: #a1d9ea;
   --envelope: #72b98a;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -250,8 +258,10 @@
 
   --eq-curve: #a96e13;
   --eq-node: #89580e;
-  --eq-curve-2: #c18a34;
-  --eq-node-2: #a96e13;
+  --eq-curve-2: #0f7a86;
+  --eq-node-2: #1a8a96;
+  --eq-curve-3: #6d28d9;
+  --eq-node-3: #7c3aed;
   --envelope: #a96e13;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -302,8 +312,10 @@
 
   --eq-curve: #dfaf55;
   --eq-node: #edc470;
-  --eq-curve-2: #d1c65b;
-  --eq-node-2: #e2d67a;
+  --eq-curve-2: #4eb8c6;
+  --eq-node-2: #7ed4de;
+  --eq-curve-3: #c084fc;
+  --eq-node-3: #d8b4fe;
   --envelope: #dfaf55;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);
@@ -354,6 +366,8 @@
   --eq-node: #ee9360;
   --eq-curve-2: #4eb8c6;
   --eq-node-2: #7ed4de;
+  --eq-curve-3: #c084fc;
+  --eq-node-3: #d8b4fe;
   --envelope: #e07a42;
   --transient: var(--spectrum-line);
   --fade-in: var(--meter-low);

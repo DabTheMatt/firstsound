@@ -10,6 +10,7 @@ import {
   reorderChain,
   setBypassed,
   eqColorIndex,
+  primaryEqInstanceId,
 } from './chain'
 
 describe('reorderChain', () => {
@@ -150,6 +151,7 @@ describe('insertChainModule', () => {
     expect(moduleLabel(chain[0]!, chain)).toBe('Input')
     expect(eqColorIndex(chain, 'eq-2')).toBe(1)
     expect(eqColorIndex(chain, 'eq-1')).toBe(0)
+    expect(primaryEqInstanceId(chain)).toBe('eq-1')
   })
 
   it('removes a middle module but keeps endpoints', () => {

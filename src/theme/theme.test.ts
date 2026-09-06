@@ -9,7 +9,7 @@ import {
   userThemeId,
   userThemePreference,
 } from './tokens'
-import { customColorsFromComputed } from './theme'
+import { customColorsFromComputed, eqTone } from './theme'
 import { colorWithAlpha, mixCssColor, parseCssColor, toCssHex } from './cssColor'
 
 describe('theme tokens', () => {
@@ -50,6 +50,23 @@ describe('theme tokens', () => {
     expect(parsed[0]?.colors.accent).toBe('#72b98a')
     expect(nextSavedThemeName([], 'My theme')).toBe('My theme')
     expect(nextSavedThemeName([{ name: 'My theme' }])).toBe('My theme 2')
+  })
+})
+
+describe('eq overlay tones', () => {
+  it('cycles distinct EQ overlay tones', () => {
+    const colors = {
+      eqCurve: '#e6ad48',
+      eqNode: '#f2c064',
+      eqCurve2: '#4eb8c6',
+      eqNode2: '#7ed4de',
+      eqCurve3: '#c084fc',
+      eqNode3: '#d8b4fe',
+    }
+    expect(eqTone(0, colors as never).curve).toBe('#e6ad48')
+    expect(eqTone(1, colors as never).curve).toBe('#4eb8c6')
+    expect(eqTone(2, colors as never).curve).toBe('#c084fc')
+    expect(eqTone(3, colors as never).curve).toBe('#e6ad48')
   })
 })
 

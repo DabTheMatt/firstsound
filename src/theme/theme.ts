@@ -34,6 +34,8 @@ export type ThemeColors = {
   eqNodeSelected: string
   eqCurve2: string
   eqNode2: string
+  eqCurve3: string
+  eqNode3: string
   accent: string
   accentSoft: string
   borderSubtle: string
@@ -86,6 +88,8 @@ const CUSTOM_STYLE_PROPS = [
   '--eq-node',
   '--eq-curve-2',
   '--eq-node-2',
+  '--eq-curve-3',
+  '--eq-node-3',
   '--envelope',
   '--transient',
   '--fade-in',
@@ -122,6 +126,8 @@ export function computeThemeColors(root: HTMLElement = document.documentElement)
     eqNodeSelected: accentHover || readVar(styles, '--eq-node'),
     eqCurve2: readVar(styles, '--eq-curve-2') || readVar(styles, '--eq-curve'),
     eqNode2: readVar(styles, '--eq-node-2') || readVar(styles, '--eq-node'),
+    eqCurve3: readVar(styles, '--eq-curve-3') || readVar(styles, '--eq-curve-2') || readVar(styles, '--eq-curve'),
+    eqNode3: readVar(styles, '--eq-node-3') || readVar(styles, '--eq-node-2') || readVar(styles, '--eq-node'),
     accent: readVar(styles, '--accent-primary'),
     accentSoft: readVar(styles, '--accent-soft'),
     borderSubtle: readVar(styles, '--border-subtle'),
@@ -187,8 +193,10 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--spectrum-line', mixCssColor(custom.spectrum, paper, 0.35))
   root.style.setProperty('--eq-curve', custom.accent)
   root.style.setProperty('--eq-node', mixCssColor(custom.accent, paper, 0.2))
-  root.style.setProperty('--eq-curve-2', mixCssColor(custom.accent, custom.spectrum, 0.42))
-  root.style.setProperty('--eq-node-2', mixCssColor(custom.spectrum, paper, 0.18))
+  root.style.setProperty('--eq-curve-2', mixCssColor(custom.spectrum, paper, 0.12))
+  root.style.setProperty('--eq-node-2', mixCssColor(custom.spectrum, paper, 0.28))
+  root.style.setProperty('--eq-curve-3', mixCssColor(custom.playhead, custom.accent, 0.45))
+  root.style.setProperty('--eq-node-3', mixCssColor(custom.playhead, paper, 0.22))
   root.style.setProperty('--envelope', custom.accent)
   root.style.setProperty('--transient', mixCssColor(custom.spectrum, paper, 0.35))
   root.style.setProperty('--fade-in', mixCssColor(custom.waveform, '#67b36d', 0.55))
@@ -366,9 +374,13 @@ export function getThemePreference(): ThemePreference {
 }
 
 export function eqTone(index: number, colors: ThemeColors): { curve: string; node: string } {
-  return index % 2 === 1
-    ? { curve: colors.eqCurve2, node: colors.eqNode2 }
-    : { curve: colors.eqCurve, node: colors.eqNode }
+  const tones = [
+    { curve: colors.eqCurve, node: colors.eqNode },
+    { curve: colors.eqCurve2, node: colors.eqNode2 },
+    { curve: colors.eqCurve3, node: colors.eqNode3 },
+  ]
+  const i = ((Math.round(index) % tones.length) + tones.length) % tones.length
+  return tones[i]!
 }
 
 export function subscribeThemeChange(onChange: () => void): () => void {

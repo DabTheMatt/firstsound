@@ -18,7 +18,6 @@ import {
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
-import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -29,6 +28,7 @@ type Props = {
   selectedBand?: number
   comb?: CombFilterState
   toneIndex?: number
+  modulate?: boolean
   onSelectBand?: (index: number) => void
   onDragBand?: (index: number, patch: Partial<EqBand>) => void
 }
@@ -41,6 +41,7 @@ export function EqCurve({
   selectedBand = 0,
   comb,
   toneIndex = 0,
+  modulate = true,
   onSelectBand,
   onDragBand,
 }: Props) {
@@ -119,7 +120,7 @@ export function EqCurve({
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
       ctx.lineWidth = Math.max(1.5, storedStyle.width)
       strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
-      if (eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
+      if (modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
         const liveComb = comb
           ? {
               ...comb,
@@ -130,7 +131,7 @@ export function EqCurve({
             }
           : undefined
         const liveBands = [
-          ...liveEqBandsFromParams(bands, live.liveParams),
+          ...liveEqBandsFromParams(bands, live.liveParams, true),
           ...(liveComb ? combAsEqBands(liveComb) : []),
         ]
         const liveStyle = eqResponseCurveStyle('live', false, dpr)
@@ -152,7 +153,7 @@ export function EqCurve({
       cancelAnimationFrame(frame)
       unsub()
     }
-  }, [bands, sr, selectedBand, comb, toneIndex])
+  }, [bands, sr, selectedBand, comb, toneIndex, modulate])
 
   const onNodePointerDown = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -196,11 +197,12 @@ export function EqCurve({
       {bands.map((band, index) => {
         if (band.type === 'off') return null
         const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
-        const liveBands = liveEqBandsFromParams(bands, engine.getSnapshot().liveParams)
+        const liveBands = liveEqBandsFromParams(bands, engine.getSnapshot().liveParams, modulate)
         const yPct =
           dbToY(eqNodePlotDb(liveBands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
         const selected = index === selectedBand
-        const color = eqBandColorForHz(band.frequency)
+        const colors = readThemeColors()
+        const tone = eqTone(toneIndex, colors)
         return (
           <button
             key={index}
@@ -209,8 +211,10 @@ export function EqCurve({
             style={{
               left: `${xPct}%`,
               top: `${yPct}%`,
-              background: band.bypassed ? undefined : color,
-              borderColor: color,
+              background: band.bypassed ? undefined : tone.node,
+              borderColor: tone.curve,
+              ['--eq-curve' as string]: tone.curve,
+              ['--eq-node-selected' as string]: tone.node,
             }}
             aria-label={`EQ band ${index + 1} ${band.type}`}
             onPointerDown={(event) => onNodePointerDown(index, event)}
