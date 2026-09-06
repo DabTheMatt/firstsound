@@ -12,6 +12,12 @@ import {
   msLevelGain,
   msPolarity,
   msRotateMatrix,
+  msEqGainDb,
+  msEqHz,
+  msEqQ,
+  MS_EQ_HIGH_HZ,
+  MS_EQ_LOW_HZ,
+  MS_EQ_PEAK_HZ,
   msSideHpfHz,
   msSoloGains,
   msTiltGains,
@@ -37,6 +43,12 @@ export type MidSideGraph = {
   midHigh: BiquadFilterNode
   sideLow: BiquadFilterNode
   sideHigh: BiquadFilterNode
+  midEqLow: BiquadFilterNode
+  midEqPeak: BiquadFilterNode
+  midEqHigh: BiquadFilterNode
+  sideEqLow: BiquadFilterNode
+  sideEqPeak: BiquadFilterNode
+  sideEqHigh: BiquadFilterNode
   rotLL: GainNode
   rotLR: GainNode
   rotRL: GainNode
@@ -62,6 +74,15 @@ function shelf(ctx: AudioContext, type: BiquadFilterType): BiquadFilterNode {
   node.type = type
   node.frequency.value = MS_TILT_HZ
   node.Q.value = 0.5
+  node.gain.value = 0
+  return node
+}
+
+function eqBand(ctx: AudioContext, type: BiquadFilterType, hz: number, q: number): BiquadFilterNode {
+  const node = ctx.createBiquadFilter()
+  node.type = type
+  node.frequency.value = hz
+  node.Q.value = q
   node.gain.value = 0
   return node
 }
@@ -133,6 +154,22 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
   sideFlip.connect(sideLow)
   sideLow.connect(sideHigh)
 
+  const midEqLow = eqBand(ctx, 'lowshelf', MS_EQ_LOW_HZ.fallback, 0.7)
+  const midEqPeak = eqBand(ctx, 'peaking', MS_EQ_PEAK_HZ.fallback, 1)
+  const midEqHigh = eqBand(ctx, 'highshelf', MS_EQ_HIGH_HZ.fallback, 0.7)
+  const sideEqLow = eqBand(ctx, 'lowshelf', MS_EQ_LOW_HZ.fallback, 0.7)
+  const sideEqPeak = eqBand(ctx, 'peaking', MS_EQ_PEAK_HZ.fallback, 1)
+  const sideEqHigh = eqBand(ctx, 'highshelf', MS_EQ_HIGH_HZ.fallback, 0.7)
+  for (const tap of [midEqLow, midEqPeak, midEqHigh, sideEqLow, sideEqPeak, sideEqHigh]) {
+    forceMonoDiscrete(tap)
+  }
+  midHigh.connect(midEqLow)
+  midEqLow.connect(midEqPeak)
+  midEqPeak.connect(midEqHigh)
+  sideHigh.connect(sideEqLow)
+  sideEqLow.connect(sideEqPeak)
+  sideEqPeak.connect(sideEqHigh)
+
   const midGain = ctx.createGain()
   const sideGain = ctx.createGain()
   const width = ctx.createGain()
@@ -141,10 +178,10 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
   const midSolo = ctx.createGain()
   const sideSolo = ctx.createGain()
   for (const tap of [midGain, sideGain, width, midBal, sideBal, midSolo, sideSolo]) forceMonoDiscrete(tap)
-  midHigh.connect(midGain)
+  midEqHigh.connect(midGain)
   midGain.connect(midBal)
   midBal.connect(midSolo)
-  sideHigh.connect(sideGain)
+  sideEqHigh.connect(sideGain)
   sideGain.connect(width)
   width.connect(sideBal)
   sideBal.connect(sideSolo)
@@ -262,6 +299,12 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
     midHigh,
     sideLow,
     sideHigh,
+    midEqLow,
+    midEqPeak,
+    midEqHigh,
+    sideEqLow,
+    sideEqPeak,
+    sideEqHigh,
     rotLL,
     rotLR,
     rotRL,
@@ -319,6 +362,22 @@ export function applyMidSideGraph(
   g.midHigh.gain.setTargetAtTime(midTilt.highDb, now, smoothing)
   g.sideLow.gain.setTargetAtTime(sideTilt.lowDb, now, smoothing)
   g.sideHigh.gain.setTargetAtTime(sideTilt.highDb, now, smoothing)
+
+  g.midEqLow.frequency.setTargetAtTime(msEqHz(params.msMidLowFreq, MS_EQ_LOW_HZ), now, smoothing)
+  g.midEqLow.gain.setTargetAtTime(msEqGainDb(params.msMidLowGain), now, smoothing)
+  g.midEqPeak.frequency.setTargetAtTime(msEqHz(params.msMidPeakFreq, MS_EQ_PEAK_HZ), now, smoothing)
+  g.midEqPeak.gain.setTargetAtTime(msEqGainDb(params.msMidPeakGain), now, smoothing)
+  g.midEqPeak.Q.setTargetAtTime(msEqQ(params.msMidPeakQ), now, smoothing)
+  g.midEqHigh.frequency.setTargetAtTime(msEqHz(params.msMidHighFreq, MS_EQ_HIGH_HZ), now, smoothing)
+  g.midEqHigh.gain.setTargetAtTime(msEqGainDb(params.msMidHighGain), now, smoothing)
+
+  g.sideEqLow.frequency.setTargetAtTime(msEqHz(params.msSideLowFreq, MS_EQ_LOW_HZ), now, smoothing)
+  g.sideEqLow.gain.setTargetAtTime(msEqGainDb(params.msSideLowGain), now, smoothing)
+  g.sideEqPeak.frequency.setTargetAtTime(msEqHz(params.msSidePeakFreq, MS_EQ_PEAK_HZ), now, smoothing)
+  g.sideEqPeak.gain.setTargetAtTime(msEqGainDb(params.msSidePeakGain), now, smoothing)
+  g.sideEqPeak.Q.setTargetAtTime(msEqQ(params.msSidePeakQ), now, smoothing)
+  g.sideEqHigh.frequency.setTargetAtTime(msEqHz(params.msSideHighFreq, MS_EQ_HIGH_HZ), now, smoothing)
+  g.sideEqHigh.gain.setTargetAtTime(msEqGainDb(params.msSideHighGain), now, smoothing)
 
   g.rotLL.gain.setTargetAtTime(rot.ll, now, smoothing)
   g.rotLR.gain.setTargetAtTime(rot.lr, now, smoothing)

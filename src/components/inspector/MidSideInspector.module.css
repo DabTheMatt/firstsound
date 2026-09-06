@@ -81,13 +81,15 @@
 }
 
 .hintX {
-  left: 10px;
+  left: 50%;
   bottom: 8px;
+  transform: translateX(-50%);
 }
 
 .hintY {
-  right: 10px;
+  left: 50%;
   top: 8px;
+  transform: translateX(-50%);
 }
 
 .corr {

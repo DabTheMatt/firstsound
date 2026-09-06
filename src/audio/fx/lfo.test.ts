@@ -208,6 +208,7 @@ describe('targets', () => {
     expect(isFxLfoTarget('filter', 'delayWet')).toBe(false)
     expect(isFxLfoTarget('midside', 'msWidth')).toBe(true)
     expect(isFxLfoTarget('midside', 'msBalance')).toBe(true)
+    expect(isFxLfoTarget('midside', 'msMidLowGain')).toBe(true)
     expect(isFxLfoTarget('midside', 'filterCutoff')).toBe(false)
     expect(isFxLfoTarget('distortion', 'saturationMix')).toBe(true)
     expect(isFxLfoTarget('distortion', 'distortionBits')).toBe(true)

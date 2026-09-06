@@ -239,6 +239,12 @@ const MIDSIDE_TARGETS: ParamId[] = [
   'msRotate',
   'msCrossfeed',
   'msHaasAmount',
+  'msMidLowGain',
+  'msMidPeakGain',
+  'msMidHighGain',
+  'msSideLowGain',
+  'msSidePeakGain',
+  'msSideHighGain',
 ]
 
 const GRAIN_TARGETS: ParamId[] = [

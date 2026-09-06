@@ -229,6 +229,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'delayLp':
     case 'reverbLowCut':
     case 'reverbHighCut':
+    case 'msMidLowFreq':
+    case 'msMidPeakFreq':
+    case 'msMidHighFreq':
+    case 'msSideLowFreq':
+    case 'msSidePeakFreq':
+    case 'msSideHighFreq':
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`
         : `${Math.round(value)} Hz`
@@ -266,6 +272,13 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'msMidGain':
     case 'msSideGain':
       return value <= def.min + 0.05 ? '−∞ dB' : `${value.toFixed(1)} dB`
+    case 'msMidLowGain':
+    case 'msMidPeakGain':
+    case 'msMidHighGain':
+    case 'msSideLowGain':
+    case 'msSidePeakGain':
+    case 'msSideHighGain':
+      return `${value.toFixed(1)} dB`
     case 'msBalance':
       if (Math.abs(value) < 0.5) return 'Center'
       return value < 0 ? `Mid ${Math.round(-value)}` : `Side ${Math.round(value)}`

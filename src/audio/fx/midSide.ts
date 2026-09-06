@@ -16,6 +16,20 @@ export const MS_PARAM_IDS: ParamId[] = [
   'msSideHpf',
   'msMidTilt',
   'msSideTilt',
+  'msMidLowFreq',
+  'msMidLowGain',
+  'msMidPeakFreq',
+  'msMidPeakGain',
+  'msMidPeakQ',
+  'msMidHighFreq',
+  'msMidHighGain',
+  'msSideLowFreq',
+  'msSideLowGain',
+  'msSidePeakFreq',
+  'msSidePeakGain',
+  'msSidePeakQ',
+  'msSideHighFreq',
+  'msSideHighGain',
   'msRotate',
   'msCrossfeed',
   'msHaasTime',
@@ -49,6 +63,30 @@ export function msLevelGain(db: number): number {
 export function msSideHpfHz(value: number): number | null {
   if (!Number.isFinite(value) || value < MS_SIDE_HPF_MIN) return null
   return Math.min(1000, Math.max(MS_SIDE_HPF_MIN, value))
+}
+
+export const MS_EQ_GAIN_RANGE = 18
+export const MS_EQ_LOW_HZ = { min: 20, max: 500, fallback: 120 }
+export const MS_EQ_PEAK_HZ = { min: 200, max: 8000, fallback: 1200 }
+export const MS_EQ_HIGH_HZ = { min: 2000, max: 16000, fallback: 8000 }
+export const MS_EQ_Q = { min: 0.3, max: 8, fallback: 1 }
+
+export function msEqGainDb(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.min(MS_EQ_GAIN_RANGE, Math.max(-MS_EQ_GAIN_RANGE, value))
+}
+
+export function msEqHz(
+  value: number,
+  range: { min: number; max: number; fallback: number },
+): number {
+  if (!Number.isFinite(value)) return range.fallback
+  return Math.min(range.max, Math.max(range.min, value))
+}
+
+export function msEqQ(value: number): number {
+  if (!Number.isFinite(value)) return MS_EQ_Q.fallback
+  return Math.min(MS_EQ_Q.max, Math.max(MS_EQ_Q.min, value))
 }
 
 /** Left = darker (more low / less high). Right = brighter. */
