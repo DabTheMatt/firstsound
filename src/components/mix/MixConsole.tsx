@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { MAX_TRACKS } from '../../audio/mix/tracks'
+import { MAX_TRACKS, trackMixGain } from '../../audio/mix/tracks'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { engine, useEngine } from '../../hooks/useEngine'
 import styles from './MixConsole.module.css'
@@ -30,7 +30,7 @@ export function MixConsole() {
       </header>
       <div className={styles.strips}>
         {tracks.map((track) => {
-          const audible = !track.muted && (tracks.every((item) => !item.solo || item.muted) || track.solo)
+          const audible = trackMixGain(track, tracks) > 0
           const selected = track.id === selectedId
           return (
             <article

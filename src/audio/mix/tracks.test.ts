@@ -4,6 +4,7 @@ import {
   companionTrackIds,
   defaultTracks,
   duplicateTrack,
+  leadVoiceMixGain,
   MAX_TRACKS,
   outputMixGain,
   parseTracks,
@@ -37,6 +38,18 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, tracks[1]!.id, { solo: true, mix: 40 })
     expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
     expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(0.4)
+  })
+
+  it('keeps a loud soloed track audible when another soloed strip is at mix 0', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    tracks = patchTrack(tracks, tracks[0]!.id, { solo: true, mix: 0 })
+    tracks = patchTrack(tracks, tracks[1]!.id, { solo: true, mix: 150 })
+    expect(trackMixGain(tracks[0]!, tracks)).toBe(0)
+    expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(1.5)
+    expect(companionTrackIds(tracks, tracks[1]!.id)).toEqual([])
+    expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([tracks[1]!.id])
+    expect(leadVoiceMixGain(tracks, tracks[1]!.id)).toBeCloseTo(1.5)
+    expect(leadVoiceMixGain(tracks, tracks[0]!.id)).toBe(0)
   })
 
   it('refuses to drop the last track', () => {

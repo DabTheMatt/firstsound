@@ -74,6 +74,12 @@ export function trackMixGain(track: MixTrack, tracks: readonly MixTrack[]): numb
   return clampMix(track.mix) / 100
 }
 
+/** Fader for the engine lead voice (the selected strip), including mute/solo. */
+export function leadVoiceMixGain(tracks: readonly MixTrack[], selectedId: string | null): number {
+  const track = selectedTrack(tracks, selectedId)
+  return track ? trackMixGain(track, tracks) : 1
+}
+
 export function selectedTrack(tracks: readonly MixTrack[], id: string | null): MixTrack | null {
   return tracks.find((track) => track.id === id) ?? tracks[0] ?? null
 }

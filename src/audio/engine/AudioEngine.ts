@@ -154,6 +154,7 @@ import {
   clampMix,
   cloneTracks,
   companionTrackIds,
+  leadVoiceMixGain,
   defaultTracks,
   duplicateTrack,
   outputMixGain,
@@ -2299,6 +2300,9 @@ export class AudioEngine {
     if (!this.ctx || !this.mixBus) return
     this.ensureTrackGains()
     const now = this.ctx.currentTime
+    if (this.voiceBus) {
+      rampGainExact(this.voiceBus.gain, leadVoiceMixGain(this.tracks, this.selectedTrackId), now, smoothing)
+    }
     for (const track of this.tracks) {
       const node = this.trackGains.get(track.id)
       if (!node) continue
@@ -2346,9 +2350,7 @@ export class AudioEngine {
     if (ordered.length === 0) return
     if (this.mixBus) {
       this.ensureTrackGains()
-      const lead = this.trackGains.get(this.selectedTrackId)
-      if (lead) this.voiceBus.connect(lead)
-      else this.voiceBus.connect(this.mixBus)
+      this.voiceBus.connect(this.mixBus)
       this.mixBus.connect(ordered[0]!.input)
     } else {
       this.voiceBus.connect(ordered[0]!.input)
@@ -3493,7 +3495,7 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
     param.setValueAtTime(0, now)
     return
   }
-  if (value >= 1 - 1e-5) {
+  if (Math.abs(value - 1) <= 1e-5) {
     param.setTargetAtTime(1, now, smoothing)
     return
   }
