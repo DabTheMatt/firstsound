@@ -1,0 +1,211 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lead,
+.help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.section {
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  height: 88px;
+  border-radius: 8px;
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+}
+
+.xyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.xy {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  aspect-ratio: 1.35;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(120% 80% at 0% 100%, color-mix(in srgb, var(--accent-primary) 16%, transparent), transparent 55%),
+    var(--bg-control);
+  touch-action: none;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.xy:focus-visible {
+  outline: 2px solid var(--accent-primary);
+}
+
+.dot,
+.ghostDot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.dot {
+  background: var(--accent-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 22%, transparent);
+}
+
+.ghostDot {
+  background: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  width: 12px;
+  height: 12px;
+}
+
+.xyHint,
+.xyHintY {
+  position: absolute;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.xyHint {
+  left: 10px;
+  bottom: 8px;
+}
+
+.xyHintY {
+  right: 10px;
+  top: 8px;
+}
+
+.readout {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.readout strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.toolbar,
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ghost,
+.preset,
+.shape {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ghost:hover,
+.preset:hover,
+.shape:hover {
+  background: var(--bg-control-hover);
+}
+
+.knobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  justify-items: center;
+}
+
+.mod {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel-elevated);
+}
+
+.modHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shapeOn {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.syncRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.syncRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.syncRow select {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-primary);
+}
+
+@media (max-width: 720px) {
+  .xy {
+    min-height: 280px;
+    aspect-ratio: auto;
+    flex: 1;
+  }
+}

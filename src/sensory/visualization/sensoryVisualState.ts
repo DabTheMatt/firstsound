@@ -60,6 +60,7 @@ export const AXIS_TINT: Record<SensoryAxisId, Rgb> = {
   tape: { r: 196, g: 140, b: 72 },
   fold: { r: 255, g: 120, b: 196 },
   vinyl: { r: 72, g: 72, b: 68 },
+  sweep: { r: 92, g: 210, b: 196 },
 }
 
 const DRIFT_RIGHT: Rgb = { r: 255, g: 168, b: 72 }

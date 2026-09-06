@@ -230,6 +230,7 @@ describe('mapSensoryToDsp', () => {
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'mod', 0.6)).bypass.grain).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 0.6)).bypass.delay).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'character', 0.6)).bypass.eq).toBe(false)
+    expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'sweep', 0.6)).bypass.filter).toBe(false)
   })
 
   it('correlates reverb Dry and Wet in sensory mode', () => {

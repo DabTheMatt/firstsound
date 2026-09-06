@@ -42,6 +42,7 @@ import { ValueKnob } from '../controls/ValueKnob'
 import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, type DistortionType } from '../../audio/fx/types'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
+import { FilterInspector } from './FilterInspector'
 import { eqBandAccentVars } from '../eq/eqBandStyle'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
@@ -535,6 +536,7 @@ function ModuleInspector({
       {type === 'eq' ? (
         <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
       ) : null}
+      {type === 'filter' ? <FilterInspector snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'distortion' && pane === 'main' ? (
         <>
           <Segmented

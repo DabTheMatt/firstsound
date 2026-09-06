@@ -142,6 +142,14 @@ export function FeelingIcon({ feeling, amount, livePanPct }: Props) {
             <circle cx="14" cy="14" r={8} className={styles.arc} />
             <circle cx="14" cy="14" r={3 + a * 2} className={styles.knob} />
           </>
+        ) : visual === 'sweep' ? (
+          <>
+            <path
+              d={`M4 ${18 - a * 8} C 10 ${20 - a * 10}, 14 ${8 + a * 2}, 24 ${10 + a * 4}`}
+              className={styles.wave}
+            />
+            <circle cx={8 + a * 12} cy={16 - a * 6} r={2.4 + a} className={styles.knob} />
+          </>
         ) : (
           <>
             <circle cx={10 - a * 3} cy="14" r={4 + a} className={styles.knob} opacity={0.55 + a * 0.4} />

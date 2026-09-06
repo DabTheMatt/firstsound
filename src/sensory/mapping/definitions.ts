@@ -26,6 +26,7 @@ export const SENSORY_MAPPINGS: Record<SensoryAxisId, readonly SensoryMappingRule
   tape: [],
   fold: [],
   vinyl: [],
+  sweep: [],
 }
 
 export const SENSORY_INTERACTIONS: readonly InteractionModifier[] = []

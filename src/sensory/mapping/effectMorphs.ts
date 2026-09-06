@@ -710,4 +710,47 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
       { t: 1, params: { saturation: 16, saturationMix: 88, distortionNoise: 16 } },
     ],
   },
+  {
+    axis: 'sweep',
+    module: 'filter',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: 0,
+          filterCutoff: 12000,
+          filterReso: 0.7,
+          filterDrive: 0,
+          filterMix: 100,
+          filterLfoDepth: 0,
+          filterEnvAmt: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: 0,
+          filterCutoff: 1400,
+          filterReso: 3.6,
+          filterDrive: 8,
+          filterMix: 100,
+          filterLfoDepth: 28,
+          filterLfoRate: 0.22,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: 0,
+          filterCutoff: 520,
+          filterReso: 6.2,
+          filterDrive: 14,
+          filterMix: 100,
+          filterLfoDepth: 55,
+          filterLfoRate: 0.35,
+          filterSlope: 3,
+        },
+      },
+    ],
+  },
 ]

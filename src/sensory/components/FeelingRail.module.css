@@ -208,6 +208,12 @@
 .item[data-axis='well'].on {
   color: #5a5854;
 }
+.item[data-axis='vinyl'].on {
+  color: #5a5a56;
+}
+.item[data-axis='sweep'].on {
+  color: #7ec4b8;
+}
 
 .lfoOn .meter {
   filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 40%, transparent));

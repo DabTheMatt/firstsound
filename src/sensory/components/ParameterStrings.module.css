@@ -56,6 +56,12 @@
 .string[data-axis='well'] {
   color: #5a5854;
 }
+.string[data-axis='vinyl'] {
+  color: #5a5a56;
+}
+.string[data-axis='sweep'] {
+  color: #7ec4b8;
+}
 
 .line {
   fill: none;

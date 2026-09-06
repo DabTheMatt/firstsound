@@ -22,6 +22,7 @@ export const SENSORY_AXIS_IDS = [
   'tape',
   'fold',
   'vinyl',
+  'sweep',
 ] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
@@ -32,7 +33,7 @@ export type SensoryAxisDef = {
   id: SensoryAxisId
   kind: SensoryAxisKind
   /** DSP module this control owns. */
-  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'distortion' | 'compressor' | 'gain'
+  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'distortion' | 'compressor' | 'gain' | 'filter'
   negativeLabel: string
   positiveLabel: string
   ariaLabel: string
@@ -247,6 +248,15 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
     ariaLabel: 'Vinyl, clean to dusty record. Morphs vinyl distortion.',
     hint: 'add record dust',
   },
+  sweep: {
+    id: 'sweep',
+    kind: 'unipolar',
+    module: 'filter',
+    negativeLabel: 'open',
+    positiveLabel: 'sweep',
+    ariaLabel: 'Sweep, open to moving filter. Morphs FILTER only.',
+    hint: 'move the filter',
+  },
 }
 
 export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
@@ -273,6 +283,7 @@ export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
   'tape',
   'fold',
   'vinyl',
+  'sweep',
 ]
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = []
@@ -545,5 +556,16 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     whisper: 'clean to dusty record',
     tone: 'warm',
     ariaLabel: 'Vinyl, clean to dusty record',
+  },
+  {
+    axis: 'sweep',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'sweep',
+    negativeLabel: 'open',
+    positiveLabel: 'sweep',
+    whisper: 'open to moving filter',
+    tone: 'cool',
+    ariaLabel: 'Sweep, open to moving filter',
   },
 ]

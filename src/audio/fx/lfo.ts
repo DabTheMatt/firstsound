@@ -13,6 +13,7 @@ export type FxLfoKind =
   | 'compressor'
   | 'limiter'
   | 'distortion'
+  | 'filter'
   | 'grain'
   | 'eq1'
   | 'eq2'
@@ -50,6 +51,7 @@ export const FX_LFO_KINDS: FxLfoKind[] = [
   'compressor',
   'limiter',
   'distortion',
+  'filter',
   'grain',
   'eq1',
   'eq2',
@@ -71,6 +73,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   compressor: 'Compressor',
   limiter: 'Limiter',
   distortion: 'Distortion',
+  filter: 'Filter',
   grain: 'Grain',
   eq1: 'EQ band 1',
   eq2: 'EQ band 2',
@@ -90,6 +93,7 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   compressor: 'c',
   limiter: 'l',
   distortion: 's',
+  filter: 'f',
   grain: 'g',
   eq1: 'eq1b',
   eq2: 'eq2b',
@@ -211,6 +215,17 @@ const DISTORTION_TARGETS: ParamId[] = [
   'distortionOutput',
 ]
 
+const FILTER_TARGETS: ParamId[] = [
+  'filterCutoff',
+  'filterReso',
+  'filterDrive',
+  'filterMix',
+  'filterLfoRate',
+  'filterLfoDepth',
+  'filterAdsAmt',
+  'filterEnvAmt',
+]
+
 const GRAIN_TARGETS: ParamId[] = [
   'grainSize',
   'density',
@@ -252,6 +267,7 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   compressor: COMPRESSOR_TARGETS,
   limiter: LIMITER_TARGETS,
   distortion: DISTORTION_TARGETS,
+  filter: FILTER_TARGETS,
   grain: GRAIN_TARGETS,
   eq1: [EQ_BAND_LFO_IDS[0]!.freq, EQ_BAND_LFO_IDS[0]!.gain, EQ_BAND_LFO_IDS[0]!.q],
   eq2: [EQ_BAND_LFO_IDS[1]!.freq, EQ_BAND_LFO_IDS[1]!.gain, EQ_BAND_LFO_IDS[1]!.q],
@@ -486,7 +502,7 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
-): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'grain' | 'eq' | 'gain' {
+): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'filter' | 'grain' | 'eq' | 'gain' {
   switch (kind) {
     case 'input':
       return 'gain'
@@ -536,6 +552,17 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
       target === 'distortionDownsample' ||
       target === 'distortionNoise' ||
       target === 'distortionOutput')
+  ) {
+    return 'advanced'
+  }
+  if (
+    kind === 'filter' &&
+    target &&
+    (target === 'filterAdsAmt' ||
+      target === 'filterPitchTrack' ||
+      target === 'filterEnvAmt' ||
+      target === 'filterLfoRate' ||
+      target === 'filterLfoDepth')
   ) {
     return 'advanced'
   }

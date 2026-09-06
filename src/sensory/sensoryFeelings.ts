@@ -247,6 +247,16 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
     visual: 'vinyl',
     ariaLabel: 'Vinyl, clean to dusty record. Double-click to rest.',
   },
+  {
+    id: 'sweep',
+    label: 'sweep',
+    axis: 'sweep',
+    kind: 'unipolar',
+    from: 'open',
+    to: 'sweep',
+    visual: 'sweep',
+    ariaLabel: 'Sweep, open to moving filter. Double-click to rest.',
+  },
 ]
 
 export function feelingAmount(values: SensoryValues, feeling: SensoryFeeling): number {

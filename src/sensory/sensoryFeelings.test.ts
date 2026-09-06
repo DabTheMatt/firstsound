@@ -56,6 +56,7 @@ describe('sensory feelings', () => {
       'tape',
       'fold',
       'vinyl',
+      'sweep',
     ])
   })
 })

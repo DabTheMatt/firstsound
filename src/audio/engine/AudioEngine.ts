@@ -97,6 +97,15 @@ import {
   type DistortionGraph,
 } from '../fx/distortionGraph'
 import { distortionTypeColorPatch, distortionTypeProfile } from '../fx/distortionProfiles'
+import {
+  applyFilterModulation,
+  FILTER_PARAM_IDS,
+  filterModNeedsClock,
+  followerEnvelope,
+  rmsFromTimeDomain,
+} from '../fx/filter'
+import { applyFilterGraph, createFilterGraph, filterDryWetGains, type FilterGraph } from '../fx/filterGraph'
+import { filterPresetPatch, randomizeFilterPatch, resetFilterPatch, type FilterPresetId } from '../fx/filterPresets'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
@@ -311,6 +320,7 @@ type Slot = {
   eq?: BiquadFilterNode[]
   shaper?: WaveShaperNode
   distortionFx?: DistortionGraph
+  filterFx?: FilterGraph
   delay?: DelayNode
   delayFb?: GainNode
   convolver?: ConvolverNode
@@ -385,6 +395,11 @@ export class AudioEngine {
   private reverbType: ReverbType = 'hall'
   private distortionType: DistortionType = 'saturation'
   private distortionNoiseKind: DistortionNoiseKind = 'white'
+  private filterFollower = 0
+  private filterEnvOrigin = 0
+  private filterSnh = { index: -1, value: 0 }
+  private filterFollowBuf = new Uint8Array(1024)
+  private filterFollowStamp = 0
   private fxLfos = defaultFxLfos()
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
@@ -643,6 +658,8 @@ export class AudioEngine {
     this.playing = true
     this.lfoWallMs = typeof performance !== 'undefined' ? performance.now() : 0
     this.syncLfoClock()
+    this.filterEnvOrigin = this.lfoClockSec
+    this.filterFollower = 0
     if (this.spaceLatched) this.spaceLatched = false
     this.applyLiveAudio()
     const duration = this.buffer?.duration ?? 0
@@ -797,6 +814,7 @@ export class AudioEngine {
       else if (id === 'reverbWet') this.syncReverbCorrelation('wet')
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
+      this.syncLfoClock()
       if (id === 'reverbWet' || id === 'reverbDry') this.engageReverbFromMix()
       if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
       if (
@@ -808,6 +826,7 @@ export class AudioEngine {
       ) {
         this.engageDistortionFromDrive()
       }
+      if ((FILTER_PARAM_IDS as string[]).includes(id)) this.engageFilter()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -831,9 +850,11 @@ export class AudioEngine {
       )
     }
     this.applyLiveAudio()
+    this.syncLfoClock()
     this.engageReverbFromMix()
     this.engageDelayFromMix()
     this.engageDistortionFromDrive()
+    if (FILTER_PARAM_IDS.some((id) => id in patch)) this.engageFilter()
     this.emit()
   }
 
@@ -910,6 +931,23 @@ export class AudioEngine {
     this.distortionNoiseKind = kind
     this.applyLiveAudio()
     this.emit()
+  }
+
+  private engageFilter(): void {
+    const mod = this.chain.find((m) => m.type === 'filter')
+    if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+  }
+
+  applyFilterPreset(id: FilterPresetId): void {
+    this.setParams(filterPresetPatch(id))
+  }
+
+  randomizeFilter(): void {
+    this.setParams(randomizeFilterPatch())
+  }
+
+  resetFilter(): void {
+    this.setParams(resetFilterPatch())
   }
 
   setReverbType(type: ReverbType): void {
@@ -2359,6 +2397,10 @@ export class AudioEngine {
       bands.at(-1)!.connect(output)
       slot.eq = bands
     }
+    if (mod.type === 'filter') {
+      input.connect(wet)
+      slot.filterFx = createFilterGraph(ctx, wet, output)
+    }
     if (mod.type === 'distortion') {
       input.connect(wet)
       slot.distortionFx = createDistortionGraph(ctx, wet, output)
@@ -2623,6 +2665,7 @@ export class AudioEngine {
         (mod.type === 'delay' ||
           mod.type === 'reverb' ||
           mod.type === 'distortion' ||
+          mod.type === 'filter' ||
           mod.type === 'compressor' ||
           mod.type === 'limiter')
         ? true
@@ -2823,7 +2866,7 @@ export class AudioEngine {
 
   private lfoTime(): number {
     const now = typeof performance !== 'undefined' ? performance.now() : 0
-    if (anyFxLfoActive(this.fxLfos)) {
+    if (anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params) || this.playing) {
       if (this.lfoWallMs > 0) this.lfoClockSec += (now - this.lfoWallMs) / 1000
       this.lfoWallMs = now
     } else {
@@ -2833,12 +2876,40 @@ export class AudioEngine {
   }
 
   private liveParams(): Record<ParamId, number> {
-    if (!anyFxLfoActive(this.fxLfos)) return this.params
-    return applyFxLfos(this.params, this.fxLfos, this.lfoTime(), this.lfoHold)
+    const now = typeof performance !== 'undefined' ? performance.now() : 0
+    const dt = this.filterFollowStamp > 0 ? Math.min(0.05, (now - this.filterFollowStamp) / 1000) : 0.016
+    this.filterFollowStamp = now
+    this.updateFilterFollower(dt)
+    const base = anyFxLfoActive(this.fxLfos)
+      ? applyFxLfos(this.params, this.fxLfos, this.lfoTime(), this.lfoHold)
+      : this.params
+    return applyFilterModulation(base, {
+      timeSec: this.lfoTime(),
+      playing: this.playing,
+      envOriginSec: this.filterEnvOrigin,
+      follower01: this.filterFollower,
+      snh: this.filterSnh,
+    })
+  }
+
+  private updateFilterFollower(dtSec: number): void {
+    let level = 0
+    for (const slot of this.slots.values()) {
+      if (!slot.filterFx) continue
+      slot.filterFx.analyser.getByteTimeDomainData(this.filterFollowBuf)
+      level = Math.max(level, rmsFromTimeDomain(this.filterFollowBuf))
+    }
+    this.filterFollower = followerEnvelope(
+      this.filterFollower,
+      Math.min(1, level * 3.4),
+      Math.max(0.001, dtSec),
+      this.params.filterEnvAttack,
+      this.params.filterEnvRelease,
+    )
   }
 
   private syncLfoClock(): void {
-    const active = anyFxLfoActive(this.fxLfos)
+    const active = anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.028)
@@ -2857,6 +2928,9 @@ export class AudioEngine {
     const params = this.liveParams()
     const bpm = params.bpm
     for (const slot of this.slots.values()) {
+      if (slot.filterFx) {
+        applyFilterGraph(slot.filterFx, params, now, smoothing, this.ctx.sampleRate)
+      }
       if (slot.distortionFx) {
         applyDistortionGraph(
           slot.distortionFx,
@@ -3011,6 +3085,7 @@ export class AudioEngine {
       if (this.source !== src || !this.playing) return
       if (this.loop) {
         this.source = null
+        this.filterEnvOrigin = this.lfoClockSec
         this.playOffset = full ? 0 : reverse ? end : start
         this.playCtxTime = this.ctx?.currentTime ?? 0
         this.startBufferVoice(this.playOffset)
@@ -3037,6 +3112,7 @@ export class AudioEngine {
       if (this.source !== src || !this.playing) return
       if (this.loop) {
         this.source = null
+        this.filterEnvOrigin = this.lfoClockSec
         this.playOffset = start
         this.playCtxTime = this.ctx?.currentTime ?? 0
         this.startPingPongVoice()
@@ -3619,6 +3695,7 @@ function wetLevel(
 ): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
+  if (type === 'filter') return filterDryWetGains(params.filterMix).wet
   if (type === 'distortion') {
     return distortionDryWet(
       distortionType,
@@ -3640,6 +3717,7 @@ function dryLevel(
 ): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
+  if (type === 'filter') return filterDryWetGains(params.filterMix).dry
   if (type === 'distortion') {
     return distortionDryWet(
       distortionType,
