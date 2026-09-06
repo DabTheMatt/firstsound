@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
-  dbToY as eqDbToY,
   eqBandDragPatch,
+  eqNodePlotDb,
   eqResponseCurveStyle,
   freqToX,
-  nodeDisplayDb,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
+  spectrumEqOverlayY,
   strokeEqMagnitude,
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
-import { EQ_MAX_HZ, EQ_MIN_HZ, bandUsesGain, bandUsesWidth, eqModuleIsAudible } from '../../audio/engine/eqBands'
+import { EQ_MAX_HZ, EQ_MIN_HZ, eqModuleIsAudible } from '../../audio/engine/eqBands'
 import {
-  DB_SCALE,
   FREQ_SCALE_HZ,
   formatFreqTick,
   formatHoverFreq,
@@ -43,6 +42,7 @@ import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '.
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
 import { isDocumentHidden } from '../../app/frameBudget'
+import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
@@ -56,6 +56,7 @@ import styles from './Spectrum.module.css'
 
 type Props = {
   active: boolean
+  meterRange?: MeterRange
 }
 
 type Layer = 'pre' | 'post' | 'both'
@@ -63,7 +64,7 @@ type Layer = 'pre' | 'post' | 'both'
 const SPECTRUM_PREF_KEY = 'field.spectrum'
 
 /** Matches canvas padding so EQ nodes sit on the plotted curve. */
-export const SPECTRUM_PLOT_PAD = { left: 36, right: 10, top: 22, bottom: 28 }
+export const SPECTRUM_PLOT_PAD = { left: 44, right: 10, top: 38, bottom: 28 }
 
 type SpectrumPrefs = {
   layer: Layer
@@ -112,8 +113,9 @@ function emptyBands(n: number): Float32Array {
   return new Float32Array(n).fill(-100)
 }
 
-function dbToY(db: number, top: number, bottom: number): number {
-  const t = Math.min(1, Math.max(0, (0 - db) / 100))
+function dbToY(db: number, top: number, bottom: number, minDb: number): number {
+  const span = 0 - minDb
+  const t = Math.min(1, Math.max(0, span > 0 ? (0 - db) / span : 1))
   return top + t * (bottom - top)
 }
 
@@ -162,7 +164,7 @@ function readAnalyserPeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active }: Props) {
+export function Spectrum({ active, meterRange = 'normal' }: Props) {
   const snap = useEngine()
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -171,6 +173,7 @@ export function Spectrum({ active }: Props) {
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
   const [selectedBand, setSelectedBand] = useState<{ instanceId: string; index: number } | null>(null)
   const prefsRef = useRef(prefs)
+  const meterMinRef = useRef(meterDbMin(meterRange))
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
   const postFast = useRef(emptyBands(prefs.bands))
@@ -182,6 +185,10 @@ export function Spectrum({ active }: Props) {
     q0: number
     y0: number
   } | null>(null)
+
+  useEffect(() => {
+    meterMinRef.current = meterDbMin(meterRange)
+  }, [meterRange])
 
   useEffect(() => {
     prefsRef.current = prefs
@@ -238,22 +245,32 @@ export function Spectrum({ active }: Props) {
         const bottom = height - padB
         const plotW = Math.max(1, right - left)
 
+        const plotH = Math.max(1, bottom - top)
+        const dbFloor = meterMinRef.current
+        const dbMarks = spectrumDbScaleMarks(dbFloor, plotH / dpr)
+
         ctx.fillStyle = colors.textMuted
-        ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'right'
         ctx.textBaseline = 'middle'
-        for (const db of DB_SCALE) {
-          const y = dbToY(db, top, bottom)
-          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, 0.9)
-          ctx.lineWidth = dpr * 0.5
+        for (const db of dbMarks) {
+          const y = dbToY(db, top, bottom, dbFloor)
+          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, db === 0 || db === -6 || db === -12 ? 1 : 0.75)
+          ctx.lineWidth = dpr * (db === 0 || db === -6 || db === -12 ? 0.7 : 0.45)
           ctx.beginPath()
           ctx.moveTo(left, y)
           ctx.lineTo(right, y)
           ctx.stroke()
           ctx.fillStyle = colors.textMuted
-          ctx.fillText(`${db}`, left - 6 * dpr, y)
+          ctx.fillText(`${db}`, left - 5 * dpr, y)
         }
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
+        ctx.font = `${7 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        ctx.fillText('dB', 4 * dpr, top - 3 * dpr)
 
+        ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
         for (const hz of FREQ_SCALE_HZ) {
@@ -294,8 +311,8 @@ export function Spectrum({ active }: Props) {
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
-          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox)
-          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox)
+          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor)
+          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox, 0, dbFloor)
           const wantPeak = follow === 'peak' || follow === 'both'
           const wantSlow = follow === 'slow' || follow === 'both'
           const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
@@ -319,8 +336,8 @@ export function Spectrum({ active }: Props) {
               const barLine = line ?? region.color
               const slowDb = slow[i] ?? -100
               const fastDb = fast[i] ?? -100
-              const slowY = dbToY(slowDb, top, bottom)
-              const fastY = dbToY(fastDb, top, bottom)
+              const slowY = dbToY(slowDb, top, bottom, dbFloor)
+              const fastY = dbToY(fastDb, top, bottom, dbFloor)
               const slowH = bottom - slowY
               const fastH = bottom - fastY
               ctx.fillStyle = colorWithAlpha(barFill, alpha)
@@ -409,9 +426,11 @@ export function Spectrum({ active }: Props) {
           ]
           const tone = eqTone(ei, colors)
           const xAt = (i: number) => left + (i / Math.max(1, freqs.length - 1)) * plotW
-          const plotH = Math.max(1, bottom - top)
-          const eqSpan = SPECTRUM_EQ_MAX_DB - SPECTRUM_EQ_MIN_DB
-          const yAt = (db: number) => top + ((SPECTRUM_EQ_MAX_DB - db) / eqSpan) * plotH
+          const yAt = (db: number) => spectrumEqOverlayY(db, top, bottom)
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(left, top, plotW, plotH)
+          ctx.clip()
           const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
@@ -423,7 +442,7 @@ export function Spectrum({ active }: Props) {
             ctx.lineWidth = liveStyle.width
             strokeEqMagnitude(ctx, liveBands, freqs, sr, xAt, yAt)
           }
-          ctx.setLineDash([])
+          ctx.restore()
         }
       }
       frame = requestAnimationFrame(tick)
@@ -433,7 +452,7 @@ export function Spectrum({ active }: Props) {
       cancelAnimationFrame(frame)
       engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
     }
-  }, [active])
+  }, [active, meterRange])
 
   const onNodePointerDown = (
     instanceId: string,
@@ -483,7 +502,7 @@ export function Spectrum({ active }: Props) {
       <div className={styles.stage}>
       <div
         className={styles.chrome}
-        style={{ top: SPECTRUM_PLOT_PAD.top, left: SPECTRUM_PLOT_PAD.left }}
+        style={{ top: 6, left: SPECTRUM_PLOT_PAD.left }}
       >
         <div className={styles.chromeLeft}>
           <label className={styles.bands}>
@@ -665,10 +684,11 @@ export function Spectrum({ active }: Props) {
             return liveBands.map((band, index) => {
             if (band.type === 'off') return null
             const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
-            const yPct =
-              bandUsesGain(band.type) || bandUsesWidth(band.type)
-                ? eqDbToY(nodeDisplayDb(band), 1, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB) * 100
-                : dbToY(0, 0, 1) * 100
+            const yPct = spectrumEqOverlayY(
+              eqNodePlotDb(liveBands, band.frequency, snap.sampleRate || 44100),
+              0,
+              100,
+            )
             const selected =
               selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
             const dim = mod.bypassed || band.bypassed

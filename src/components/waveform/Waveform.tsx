@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
-import type { WaveTool, VizMode } from '../../app/editorState'
+import type { WaveTool, VizMode, MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
@@ -50,6 +50,7 @@ type Props = {
   loaded: boolean
   tool: WaveTool
   viz: VizMode
+  meterRange?: MeterRange
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
@@ -130,6 +131,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     loaded,
     tool,
     viz,
+    meterRange = 'normal',
     fadeIn,
     fadeOut,
     fadeCurve,
@@ -930,7 +932,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   : undefined
             }
           >
-            <Spectrum active={showSpec} />
+            <Spectrum active={showSpec} meterRange={meterRange} />
           </div>
         ) : null}
         {showEqConsole ? (

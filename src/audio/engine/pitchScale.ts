@@ -58,4 +58,3 @@ export function formatHoverFreq(hz: number): string {
   return `${freq} · ${hzToNoteName(hz)}`
 }
 
-export const DB_SCALE = [0, -25, -50, -75, -100] as const

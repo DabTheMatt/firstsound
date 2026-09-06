@@ -7,6 +7,8 @@ import {
   meterDbMin,
   meterScaleMarks,
   meterScaleTicks,
+  SPECTRUM_DB_FLOOR,
+  spectrumDbScaleMarks,
 } from './editorState'
 
 describe('meter mapping', () => {
@@ -53,6 +55,24 @@ describe('meter mapping', () => {
       expect(ticks).toContain(-12)
       expect(ticks.at(-1)).toBe(meterDbMin(range))
     }
+  })
+
+  it('thins FFT dB labels like the meter while keeping the sweet band', () => {
+    const marks = spectrumDbScaleMarks(SPECTRUM_DB_FLOOR, 120)
+    expect(marks[0]).toBe(0)
+    expect(marks).toContain(-6)
+    expect(marks).toContain(-12)
+    expect(marks.at(-1)).toBe(SPECTRUM_DB_FLOOR)
+    expect(marks.length).toBeLessThan(meterScaleTicks(SPECTRUM_DB_FLOOR).length)
+    expect(marks).not.toContain(-3)
+  })
+
+  it('keeps meter-style 3 dB labels on a taller FFT', () => {
+    const marks = spectrumDbScaleMarks(-60, 200)
+    expect(marks).toContain(-3)
+    expect(marks).toContain(-9)
+    expect(marks).toContain(-24)
+    expect(marks.at(-1)).toBe(-60)
   })
 })
 
