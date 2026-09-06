@@ -6,6 +6,8 @@ export type ParamId =
   | 'speed'
   | 'pitch'
   | 'stretchInterp'
+  | 'stretchInterpOn'
+  | 'stretchInterpAlgo'
   | 'gain'
   | 'pan'
   | 'channelGainL'
@@ -226,6 +228,9 @@ export type ParamDef = {
 export type EngineMode = 'playback' | 'grain'
 
 export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
+
+/** Sample interpolator used when Speed or Pitch leave 1× / 0 st. */
+export type StretchInterpAlgo = 'nearest' | 'linear' | 'cubic' | 'sinc'
 
 /** Where transport scrubbing (ring drag / wheel) is allowed to land. */
 export type ScrubMode = 'region' | 'sample'

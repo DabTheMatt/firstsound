@@ -26,6 +26,15 @@ describe('stretchWindow', () => {
       expect(w.peak).toBeLessThanOrEqual(0.62)
     }
   })
+
+  it('lengthens grains when pitching down or slowing so bass can pass', () => {
+    const unity = stretchWindow(62, 1, 1)
+    const down = stretchWindow(62, 1, 0.5)
+    const slow = stretchWindow(62, 0.5, 1)
+    expect(down.grainSec).toBeGreaterThan(unity.grainSec * 1.4)
+    expect(slow.grainSec).toBeGreaterThan(unity.grainSec * 1.4)
+    expect(stretchWindow(62, 2, 2).grainSec).toBeCloseTo(unity.grainSec)
+  })
 })
 
 describe('stretch smoothing', () => {

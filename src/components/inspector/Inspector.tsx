@@ -27,6 +27,7 @@ import {
   LIMITER_MAIN_KNOBS,
   MOTION_KNOBS,
   PLAYBACK_DIRECTIONS,
+  STRETCH_INTERP_ALGOS,
 } from '../../audio/parameters/definitions'
 import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
@@ -484,9 +485,39 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.params.stretchInterpOn > 0.5}
+              label="Interpolation"
+              onToggle={() =>
+                engine.setParam('stretchInterpOn', snap.params.stretchInterpOn > 0.5 ? 0 : 1)
+              }
+            />
+          </div>
+          <label className={styles.field}>
+            Algorithm
+            <select
+              className={styles.select}
+              aria-label="Pitch and speed interpolation algorithm"
+              disabled={snap.params.stretchInterpOn <= 0.5}
+              value={STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value ?? 'cubic'}
+              onChange={(event) => {
+                const i = STRETCH_INTERP_ALGOS.findIndex((a) => a.value === event.target.value)
+                if (i >= 0) engine.setParam('stretchInterpAlgo', i)
+              }}
+            >
+              {STRETCH_INTERP_ALGOS.map((a) => (
+                <option key={a.value} value={a.value} title={a.title}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <p className={styles.help}>
-            Interp densifies the overlap-add used when Speed or Pitch leave 1× / 0 st. Sparse is
-            lighter; dense eases tempo and transpose moves so they do not click.
+            Speed changes tempo without pitch; Pitch transposes without tempo. Pitching down or
+            slowing lengthens the overlap-add grains so low frequencies can come through.
+            Interpolation reconstructs in-between samples (Nearest / Linear / Cubic / Sinc). Overlap
+            densifies the grain train that smooths those moves.
           </p>
           <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />

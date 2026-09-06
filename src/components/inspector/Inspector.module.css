@@ -278,6 +278,11 @@
   text-transform: none;
 }
 
+.select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .selectOn {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent);

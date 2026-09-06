@@ -1,4 +1,4 @@
-import type { FilterType, ParamDef, ParamId, PlaybackDirection } from './types'
+import type { FilterType, ParamDef, ParamId, PlaybackDirection, StretchInterpAlgo } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
   start: {
@@ -40,11 +40,31 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   stretchInterp: {
     id: 'stretchInterp',
-    label: 'Interp',
+    label: 'Overlap',
     min: 0,
     max: 100,
     defaultValue: 62,
     unit: '%',
+    mapping: 'linear',
+    step: 1,
+  },
+  stretchInterpOn: {
+    id: 'stretchInterpOn',
+    label: 'Interpolation',
+    min: 0,
+    max: 1,
+    defaultValue: 1,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
+  stretchInterpAlgo: {
+    id: 'stretchInterpAlgo',
+    label: 'Interp Algo',
+    min: 0,
+    max: 3,
+    defaultValue: 2,
+    unit: '',
     mapping: 'linear',
     step: 1,
   },
@@ -1681,6 +1701,13 @@ export const PLAYBACK_DIRECTIONS: { value: PlaybackDirection; label: string }[] 
 export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 
 export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'stretchInterp', 'gain', 'pan']
+
+export const STRETCH_INTERP_ALGOS: { value: StretchInterpAlgo; label: string; title: string }[] = [
+  { value: 'nearest', label: 'Nearest', title: 'Drop-sample, no reconstruction' },
+  { value: 'linear', label: 'Linear', title: 'Two-point lerp' },
+  { value: 'cubic', label: 'Cubic', title: '4-point Hermite, fuller lows' },
+  { value: 'sinc', label: 'Sinc', title: 'Windowed sinc, band-limited' },
+]
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',
   'density',
