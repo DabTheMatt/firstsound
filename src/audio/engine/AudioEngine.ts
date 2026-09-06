@@ -844,7 +844,7 @@ export class AudioEngine {
       if ((FILTER_PARAM_IDS as string[]).includes(id)) this.engageFilter()
       if ((MS_PARAM_IDS as string[]).includes(id)) this.engageMidSide()
     }
-    if (id === 'position' || id === 'start' || id === 'end') {
+    if (id === 'position') {
       const dur = this.buffer?.duration ?? 0
       const { start, end } = this.region(dur)
       this.playOffset = start + (this.params.position / 100) * Math.max(end - start, 0)

@@ -11,10 +11,65 @@ export const FADE_DIAMOND_SIZE_PX = 18
 /** Delay/reverb overlay keeps the band above fade diamonds for loop / envelope. */
 export const SPACE_HANDLE_TOP_PX = FADE_DIAMOND_TOP_PX + FADE_DIAMOND_SIZE_PX + 2
 
-/** True when a pointer Y should grab a loop edge instead of the playhead. */
+/** True when a pointer Y is in the loop / parked-fade node stack. */
 export function hitsLoopNodeY(y: number, hitPx: number): boolean {
   const pad = hitPx * 0.35
-  return y >= LOOP_HANDLE_TOP_PX - pad && y <= LOOP_HANDLE_TOP_PX + LOOP_HANDLE_HEIGHT_PX + pad
+  const top = LOOP_HANDLE_TOP_PX - pad
+  const bottom = FADE_DIAMOND_TOP_PX + FADE_DIAMOND_SIZE_PX + pad
+  return y >= top && y <= bottom
+}
+
+/** Short fades park the diamond on the loop node — do not steal the edge drag. */
+export function fadeParkedOnLoopNode(fadePx: number, loopEdgePx: number, hitPx: number): boolean {
+  return Math.abs(fadePx - loopEdgePx) < hitPx
+}
+
+export type WaveformDragKind =
+  | 'start'
+  | 'end'
+  | 'move'
+  | 'fadeIn'
+  | 'fadeOut'
+  | 'fadeInShape'
+  | 'fadeOutShape'
+  | 'playhead'
+  | 'transient'
+  | 'pan'
+
+/** Loop edges win over parked fade diamonds, transients, and the playhead. */
+export function resolveWaveformDrag(opts: {
+  altOrMiddle: boolean
+  shift: boolean
+  x: number
+  y: number
+  startX: number
+  endX: number
+  fadeInX: number
+  fadeOutX: number
+  hitPx: number
+  fadeSide?: 'in' | 'out'
+  fadeRole?: string
+  edge?: 'start' | 'end'
+  transient?: boolean
+}): WaveformDragKind {
+  if (opts.altOrMiddle) return 'pan'
+  const nearStart = Math.abs(opts.x - opts.startX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
+  const nearEnd = Math.abs(opts.x - opts.endX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
+  const fadeInParked = fadeParkedOnLoopNode(opts.fadeInX, opts.startX, opts.hitPx)
+  const fadeOutParked = fadeParkedOnLoopNode(opts.fadeOutX, opts.endX, opts.hitPx)
+  if (opts.edge === 'start') return 'start'
+  if (opts.edge === 'end') return 'end'
+  if (opts.fadeSide === 'in' && opts.fadeRole === 'shape') return 'fadeInShape'
+  if (opts.fadeSide === 'out' && opts.fadeRole === 'shape') return 'fadeOutShape'
+  if (opts.fadeSide === 'in' && fadeInParked) return 'start'
+  if (opts.fadeSide === 'out' && fadeOutParked) return 'end'
+  if (opts.transient && !nearStart && !nearEnd) return 'transient'
+  if (opts.fadeSide === 'in') return 'fadeIn'
+  if (opts.fadeSide === 'out') return 'fadeOut'
+  if (nearStart) return 'start'
+  if (nearEnd) return 'end'
+  if (opts.shift) return 'move'
+  return 'playhead'
 }
 
 /** Envelope diamonds share the loop-node X when fade length is 0. */

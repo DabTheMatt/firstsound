@@ -30,7 +30,7 @@ export const DEFAULT_EDIT: EditState = {
   fadeInBend: 0.5,
   fadeOutBend: 0.5,
   fadeFocus: 'in',
-  autoSnap: true,
+  autoSnap: false,
   fadeAuto: true,
   normalizeOnUse: false,
 }

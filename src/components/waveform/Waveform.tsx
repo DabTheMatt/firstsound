@@ -41,7 +41,7 @@ import {
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
-  hitsLoopNodeY,
+  resolveWaveformDrag,
 } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
@@ -480,23 +480,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
     const transientAttr = (event.target as HTMLElement | null)?.closest?.('[data-transient]') as HTMLElement | null
-    const fadeRole = fadeAttr?.dataset.fadeRole
-
-    let mode: DragMode = event.altKey || event.button === 1 ? 'pan' : event.shiftKey ? 'move' : 'playhead'
-    let transientIndex: number | undefined
-    if (mode !== 'pan') {
-      if (transientAttr?.dataset.transient != null) {
-        mode = 'transient'
-        transientIndex = Number(transientAttr.dataset.transient)
-      } else if (fadeAttr?.dataset.fade === 'in' && fadeRole === 'shape') mode = 'fadeInShape'
-      else if (fadeAttr?.dataset.fade === 'out' && fadeRole === 'shape') mode = 'fadeOutShape'
-      else if (fadeAttr?.dataset.fade === 'in') mode = 'fadeIn'
-      else if (fadeAttr?.dataset.fade === 'out') mode = 'fadeOut'
-      else if (handleAttr?.dataset.edge === 'start') mode = 'start'
-      else if (handleAttr?.dataset.edge === 'end') mode = 'end'
-      else if (Math.abs(x - startX) < hit && hitsLoopNodeY(y, hit)) mode = 'start'
-      else if (Math.abs(x - endX) < hit && hitsLoopNodeY(y, hit)) mode = 'end'
-    }
+    const fadeInX = timeToFrac(fadeDiamondLayout({ side: 'in', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
+    const fadeOutX = timeToFrac(fadeDiamondLayout({ side: 'out', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
+    const mode: DragMode = resolveWaveformDrag({
+      altOrMiddle: event.altKey || event.button === 1,
+      shift: event.shiftKey,
+      x,
+      y,
+      startX,
+      endX,
+      fadeInX,
+      fadeOutX,
+      hitPx: hit,
+      fadeSide: fadeAttr?.dataset.fade === 'in' || fadeAttr?.dataset.fade === 'out' ? fadeAttr.dataset.fade : undefined,
+      fadeRole: fadeAttr?.dataset.fadeRole,
+      edge: handleAttr?.dataset.edge === 'start' || handleAttr?.dataset.edge === 'end' ? handleAttr.dataset.edge : undefined,
+      transient: transientAttr?.dataset.transient != null,
+    })
+    const transientIndex = mode === 'transient' && transientAttr?.dataset.transient != null
+      ? Number(transientAttr.dataset.transient)
+      : undefined
 
     const usingRegionHandle =
       mode === 'fadeIn' ||
