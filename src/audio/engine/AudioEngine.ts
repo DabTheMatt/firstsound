@@ -1586,6 +1586,7 @@ export class AudioEngine {
     this.bindWorkingFromTrack(track.id)
     this.applyTrackRegion(track)
     this.applyLiveAudio(0.01)
+    this.routeLeadVoice()
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -2346,9 +2347,7 @@ export class AudioEngine {
     if (ordered.length === 0) return
     if (this.mixBus) {
       this.ensureTrackGains()
-      const lead = this.trackGains.get(this.selectedTrackId)
-      if (lead) this.voiceBus.connect(lead)
-      else this.voiceBus.connect(this.mixBus)
+      this.routeLeadVoice()
       this.mixBus.connect(ordered[0]!.input)
     } else {
       this.voiceBus.connect(ordered[0]!.input)
@@ -3302,6 +3301,28 @@ export class AudioEngine {
       }
       gain.connect(this.mixBus)
     }
+  }
+
+  /** Selected-track playback must follow that strip's fader, not a stale first-track gain. */
+  private routeLeadVoice(): void {
+    if (!this.voiceBus) return
+    for (const gain of this.trackGains.values()) {
+      try {
+        this.voiceBus.disconnect(gain)
+      } catch {
+        /* not connected */
+      }
+    }
+    if (this.mixBus) {
+      try {
+        this.voiceBus.disconnect(this.mixBus)
+      } catch {
+        /* not connected */
+      }
+    }
+    const lead = this.trackGains.get(this.selectedTrackId)
+    if (lead) this.voiceBus.connect(lead)
+    else if (this.mixBus) this.voiceBus.connect(this.mixBus)
   }
 
   private dropTrackGain(id: string): void {
