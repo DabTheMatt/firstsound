@@ -10,6 +10,23 @@ export type DelayType =
   | 'lofi'
   | 'pitch'
 
+export type DistortionType =
+  | 'saturation'
+  | 'overdrive'
+  | 'tube'
+  | 'analog'
+  | 'tape'
+  | 'digital'
+  | 'fuzz'
+  | 'clip'
+  | 'fold'
+  | 'bitcrush'
+  | 'downsample'
+  | 'noise'
+  | 'vinyl'
+
+export type DistortionNoiseKind = 'white' | 'pink' | 'brown'
+
 export type ReverbType =
   | 'room'
   | 'chamber'
@@ -30,6 +47,28 @@ export type ReverbType =
 export type NoteDivision = '1/64' | '1/32' | '1/16' | '1/8' | '1/4' | '1/2' | '1/1' | '2/1'
 
 export type NoteKind = 'straight' | 'dotted' | 'triplet'
+
+export const DISTORTION_TYPES: { value: DistortionType; label: string }[] = [
+  { value: 'saturation', label: 'Saturation' },
+  { value: 'overdrive', label: 'Overdrive' },
+  { value: 'tube', label: 'Tube' },
+  { value: 'analog', label: 'Analog' },
+  { value: 'tape', label: 'Tape' },
+  { value: 'digital', label: 'Digital' },
+  { value: 'fuzz', label: 'Fuzz' },
+  { value: 'clip', label: 'Clip' },
+  { value: 'fold', label: 'Wavefold' },
+  { value: 'bitcrush', label: 'Bitcrush' },
+  { value: 'downsample', label: 'Downsample' },
+  { value: 'noise', label: 'Noise' },
+  { value: 'vinyl', label: 'Vinyl' },
+]
+
+export const DISTORTION_NOISE_KINDS: { value: DistortionNoiseKind; label: string }[] = [
+  { value: 'white', label: 'White' },
+  { value: 'pink', label: 'Pink' },
+  { value: 'brown', label: 'Brown' },
+]
 
 export const DELAY_TYPES: { value: DelayType; label: string }[] = [
   { value: 'digital', label: 'Digital' },
@@ -81,6 +120,8 @@ export const NOTE_KINDS: { value: NoteKind; label: string; mul: number }[] = [
 
 export const DELAY_TYPE_SET = new Set<string>(DELAY_TYPES.map((t) => t.value))
 export const REVERB_TYPE_SET = new Set<string>(REVERB_TYPES.map((t) => t.value))
+export const DISTORTION_TYPE_SET = new Set<string>(DISTORTION_TYPES.map((t) => t.value))
+export const DISTORTION_NOISE_KIND_SET = new Set<string>(DISTORTION_NOISE_KINDS.map((t) => t.value))
 
 export function parseDelayType(raw: unknown): DelayType | null {
   return typeof raw === 'string' && DELAY_TYPE_SET.has(raw) ? (raw as DelayType) : null
@@ -88,6 +129,16 @@ export function parseDelayType(raw: unknown): DelayType | null {
 
 export function parseReverbType(raw: unknown): ReverbType | null {
   return typeof raw === 'string' && REVERB_TYPE_SET.has(raw) ? (raw as ReverbType) : null
+}
+
+export function parseDistortionType(raw: unknown): DistortionType | null {
+  return typeof raw === 'string' && DISTORTION_TYPE_SET.has(raw) ? (raw as DistortionType) : null
+}
+
+export function parseDistortionNoiseKind(raw: unknown): DistortionNoiseKind | null {
+  return typeof raw === 'string' && DISTORTION_NOISE_KIND_SET.has(raw)
+    ? (raw as DistortionNoiseKind)
+    : null
 }
 
 export function noteDivisionAt(index: number): NoteDivision {

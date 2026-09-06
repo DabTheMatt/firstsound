@@ -20,6 +20,8 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import {
   COMPRESSOR_ADV_KNOBS,
   COMPRESSOR_MAIN_KNOBS,
+  DISTORTION_ADV_KNOBS,
+  DISTORTION_MAIN_KNOBS,
   GRAIN_KNOBS,
   LIMITER_ADV_KNOBS,
   LIMITER_MAIN_KNOBS,
@@ -37,6 +39,7 @@ import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
+import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, type DistortionType } from '../../audio/fx/types'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { eqBandAccentVars } from '../eq/eqBandStyle'
@@ -64,8 +67,38 @@ const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
-const SAT_IDS: ParamId[] = ['saturation', 'saturationMix']
 const OUT_IDS: ParamId[] = ['outputGain']
+
+function distortionHelp(type: DistortionType): string {
+  switch (type) {
+    case 'saturation':
+      return 'Soft analog saturation. Drive stays near unity on quiet signals.'
+    case 'overdrive':
+      return 'Pedal-style overdrive with rounder even harmonics.'
+    case 'tube':
+      return 'Asymmetric tube-like clip. Bias shifts the even-harmonic balance.'
+    case 'analog':
+      return 'Diode / console analog grit with a darker loop.'
+    case 'tape':
+      return 'Tape compression with high-end roll-off and a little hiss.'
+    case 'digital':
+      return 'Hard digital clip. Bright, alias-prone edges.'
+    case 'fuzz':
+      return 'Heavy square-ish fuzz. Tone pulls the growl down.'
+    case 'clip':
+      return 'Brick clip into ±1. Use Mix to blend.'
+    case 'fold':
+      return 'Sine wavefold. Extra Drive adds inharmonic folds.'
+    case 'bitcrush':
+      return 'Bit reducer. Drop Bits for crunch; Rate stays at full sample rate.'
+    case 'downsample':
+      return 'Sample-rate reducer. Rate holds samples so aliases fold in.'
+    case 'noise':
+      return 'Noise generator blended with the signal. Color is on Advanced.'
+    case 'vinyl':
+      return 'Worn vinyl: mild sat, pink hiss, and a little rate crush.'
+  }
+}
 
 const EQ_TYPE_OPTIONS = EQ_FILTER_TYPES.map((t) => ({
   value: t.value,
@@ -395,7 +428,7 @@ function ModuleInspector({
   const pane = paneById[instanceId] ?? paneHint ?? 'main'
   const setPane = (next: 'main' | 'advanced') =>
     setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
-  const hasAdvanced = type !== 'saturation' && type !== 'output'
+  const hasAdvanced = type !== 'output'
   const params = (ids: ParamId[]) =>
     variant === 'knob' ? (
       <div className={styles.knobs}>
@@ -502,10 +535,31 @@ function ModuleInspector({
       {type === 'eq' ? (
         <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
       ) : null}
-      {type === 'saturation' ? (
+      {type === 'distortion' && pane === 'main' ? (
         <>
-          {params(SAT_IDS)}
-          <FxLfoSection snap={snap} kind="saturation" variant={variant} />
+          <Segmented
+            label="Distortion type"
+            value={snap.distortionType}
+            options={DISTORTION_TYPES}
+            wrap
+            onChange={(v) => engine.setDistortionType(v)}
+          />
+          <p className={styles.help}>{distortionHelp(snap.distortionType)}</p>
+          {params(DISTORTION_MAIN_KNOBS)}
+          <FxLfoSection snap={snap} kind="distortion" variant={variant} />
+        </>
+      ) : null}
+      {type === 'distortion' && pane === 'advanced' ? (
+        <>
+          <Segmented
+            label="Noise color"
+            value={snap.distortionNoiseKind}
+            options={DISTORTION_NOISE_KINDS}
+            wrap
+            onChange={(v) => engine.setDistortionNoiseKind(v)}
+          />
+          {params(DISTORTION_ADV_KNOBS)}
+          <FxLfoSection snap={snap} kind="distortion" variant={variant} />
         </>
       ) : null}
       {type === 'delay' ? <SpaceInspector snap={snap} kind="delay" variant={variant} pane={pane} /> : null}

@@ -39,6 +39,12 @@ export type ParamId =
   | 'outputGain'
   | 'saturation'
   | 'saturationMix'
+  | 'distortionTone'
+  | 'distortionBias'
+  | 'distortionBits'
+  | 'distortionDownsample'
+  | 'distortionNoise'
+  | 'distortionOutput'
   | 'reverbSize'
   | 'reverbDecay'
   | 'reverbPredelay'
@@ -171,7 +177,7 @@ export type ScrubMode = 'region' | 'sample'
 import type { ChainModule } from '../chain/chain'
 import type { CombFilterState } from '../engine/comb'
 import type { EqBand } from '../engine/eqBands'
-import type { DelayType, ReverbType } from '../fx/types'
+import type { DelayType, DistortionNoiseKind, DistortionType, ReverbType } from '../fx/types'
 import type { MixTrack } from '../mix/tracks'
 
 export type EqListenMode = 'sample' | 'filters'
@@ -192,6 +198,8 @@ export type PresetV1 = {
   muted?: boolean
   delayType?: DelayType
   reverbType?: ReverbType
+  distortionType?: DistortionType
+  distortionNoiseKind?: DistortionNoiseKind
   comb?: CombFilterState
   fxLfos?: unknown
   tracks?: MixTrack[]

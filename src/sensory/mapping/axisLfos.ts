@@ -52,7 +52,7 @@ export const AXIS_LFOS: readonly AxisLfoBind[] = [
   },
   {
     axis: 'dirt',
-    kind: 'saturation',
+    kind: 'distortion',
     slot: 0,
     target: 'saturation',
     shape: 'triangle',

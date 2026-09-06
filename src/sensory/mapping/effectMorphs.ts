@@ -249,7 +249,7 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
   },
   {
     axis: 'dirt',
-    module: 'saturation',
+    module: 'distortion',
     stops: [
       { t: 0, params: { saturation: 0 } },
       { t: 0.4, params: { saturation: 12 } },

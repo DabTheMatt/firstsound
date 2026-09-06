@@ -88,7 +88,14 @@ import {
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
-import { makeTanhCurve, saturationDryWet } from '../fx/saturation'
+import { distortionDryWet } from '../fx/distortion'
+import {
+  applyDistortionGraph,
+  createDistortionGraph,
+  stopDistortionGraph,
+  type DistortionGraph,
+} from '../fx/distortionGraph'
+import { distortionTypeColorPatch, distortionTypeProfile } from '../fx/distortionProfiles'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
@@ -97,8 +104,12 @@ import {
   noteDivisionAt,
   noteKindAt,
   parseDelayType,
+  parseDistortionNoiseKind,
+  parseDistortionType,
   parseReverbType,
   type DelayType,
+  type DistortionNoiseKind,
+  type DistortionType,
   type ReverbType,
 } from '../fx/types'
 import {
@@ -222,6 +233,8 @@ export type EngineSnapshot = {
   muted: boolean
   delayType: DelayType
   reverbType: ReverbType
+  distortionType: DistortionType
+  distortionNoiseKind: DistortionNoiseKind
   fxLfos: FxLfoMap
   lfoShown: Record<FxLfoKind, number>
   spacePresetId: string | null
@@ -296,6 +309,7 @@ type Slot = {
   wet: GainNode
   eq?: BiquadFilterNode[]
   shaper?: WaveShaperNode
+  distortionFx?: DistortionGraph
   delay?: DelayNode
   delayFb?: GainNode
   convolver?: ConvolverNode
@@ -368,6 +382,8 @@ export class AudioEngine {
   private muted = false
   private delayType: DelayType = 'digital'
   private reverbType: ReverbType = 'hall'
+  private distortionType: DistortionType = 'saturation'
+  private distortionNoiseKind: DistortionNoiseKind = 'white'
   private fxLfos = defaultFxLfos()
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
@@ -779,6 +795,15 @@ export class AudioEngine {
       this.applyLiveAudio()
       if (id === 'reverbWet') this.engageReverbFromMix()
       if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
+      if (
+        id === 'saturation' ||
+        id === 'saturationMix' ||
+        id === 'distortionNoise' ||
+        id === 'distortionBits' ||
+        id === 'distortionDownsample'
+      ) {
+        this.engageDistortionFromDrive()
+      }
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -799,6 +824,7 @@ export class AudioEngine {
     this.applyLiveAudio()
     this.engageReverbFromMix()
     this.engageDelayFromMix()
+    this.engageDistortionFromDrive()
     this.emit()
   }
 
@@ -823,6 +849,21 @@ export class AudioEngine {
     this.params.delayFeedbackR = this.params.delayFeedback
   }
 
+  private engageDistortionFromDrive(): void {
+    const p = this.params
+    const active = distortionDryWet(
+      this.distortionType,
+      p.saturation,
+      100,
+      p.distortionBits,
+      p.distortionDownsample,
+      p.distortionNoise,
+    ).wet > 0
+    if (!active) return
+    const mod = this.chain.find((m) => m.type === 'distortion')
+    if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+  }
+
   setDelayType(type: DelayType): void {
     if (this.delayType === type) return
     this.delayType = type
@@ -832,6 +873,28 @@ export class AudioEngine {
       if (typeof value !== 'number') continue
       this.params[key] = applyParamValue(value, PARAMS[key])
     }
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  setDistortionType(type: DistortionType): void {
+    if (this.distortionType === type) return
+    this.distortionType = type
+    const color = distortionTypeColorPatch(type)
+    for (const key of Object.keys(color) as ParamId[]) {
+      const value = color[key]
+      if (typeof value !== 'number') continue
+      this.params[key] = applyParamValue(value, PARAMS[key])
+    }
+    this.distortionNoiseKind = distortionTypeProfile(type).noiseKind
+    this.applyLiveAudio()
+    this.engageDistortionFromDrive()
+    this.emit()
+  }
+
+  setDistortionNoiseKind(kind: DistortionNoiseKind): void {
+    if (this.distortionNoiseKind === kind) return
+    this.distortionNoiseKind = kind
     this.applyLiveAudio()
     this.emit()
   }
@@ -1467,6 +1530,8 @@ export class AudioEngine {
     this.filterType = 'off'
     this.delayType = 'digital'
     this.reverbType = 'hall'
+    this.distortionType = 'saturation'
+    this.distortionNoiseKind = 'white'
     this.fxLfos = defaultFxLfos()
     this.lfoHold = defaultLfoHold()
     this.lfoShown = defaultLfoShown()
@@ -1807,6 +1872,8 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
+      distortionType: this.distortionType,
+      distortionNoiseKind: this.distortionNoiseKind,
       fxLfos: cloneFxLfos(this.fxLfos),
       tracks: cloneTracks(this.tracks),
       masterMix: this.masterMix,
@@ -1821,6 +1888,8 @@ export class AudioEngine {
     this.muted = preset.muted ?? false
     this.delayType = parseDelayType(preset.delayType) ?? 'digital'
     this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
+    this.distortionType = parseDistortionType(preset.distortionType) ?? 'saturation'
+    this.distortionNoiseKind = parseDistortionNoiseKind(preset.distortionNoiseKind) ?? 'white'
     this.fxLfos = parseFxLfos(preset.fxLfos)
     this.lfoHold = defaultLfoHold()
     this.lfoShown = lfoShownFromMap(this.fxLfos)
@@ -2275,14 +2344,10 @@ export class AudioEngine {
       bands.at(-1)!.connect(output)
       slot.eq = bands
     }
-    if (mod.type === 'saturation') {
-      const shaper = ctx.createWaveShaper()
-      shaper.curve = makeTanhCurve(0)
-      shaper.oversample = '2x'
+    if (mod.type === 'distortion') {
       input.connect(wet)
-      wet.connect(shaper)
-      shaper.connect(output)
-      slot.shaper = shaper
+      slot.distortionFx = createDistortionGraph(ctx, wet, output)
+      slot.shaper = slot.distortionFx.shaper
     }
     if (mod.type === 'delay') {
       input.connect(wet)
@@ -2467,9 +2532,18 @@ export class AudioEngine {
     this.disconnectSlots()
     const live = new Set(this.chain.map((m) => m.instanceId))
     for (const id of [...this.slots.keys()]) {
-      if (!live.has(id)) this.slots.delete(id)
+      if (!live.has(id)) {
+        const gone = this.slots.get(id)
+        if (gone?.distortionFx) stopDistortionGraph(gone.distortionFx)
+        this.slots.delete(id)
+      }
     }
     for (const mod of this.chain) {
+      const existing = this.slots.get(mod.instanceId)
+      if (existing && existing.type !== mod.type) {
+        if (existing.distortionFx) stopDistortionGraph(existing.distortionFx)
+        this.slots.delete(mod.instanceId)
+      }
       if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
       if (mod.type === 'eq') this.eqState(mod.instanceId)
     }
@@ -2533,7 +2607,7 @@ export class AudioEngine {
         this.eqListen === 'filters' &&
         (mod.type === 'delay' ||
           mod.type === 'reverb' ||
-          mod.type === 'saturation' ||
+          mod.type === 'distortion' ||
           mod.type === 'compressor' ||
           mod.type === 'limiter')
         ? true
@@ -2542,7 +2616,7 @@ export class AudioEngine {
           : mod.bypassed
       const stereoDelay = mod.type === 'delay' && isDelayStereo(params)
       const dry =
-        bypassed ? 1 : stereoDelay ? 0 : dryLevel(mod.type, params)
+        bypassed ? 1 : stereoDelay ? 0 : dryLevel(mod.type, params, this.distortionType)
       const wet =
         this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
           ? 0
@@ -2550,7 +2624,7 @@ export class AudioEngine {
             ? 0
             : stereoDelay
               ? 1
-              : wetLevel(mod.type, params)
+              : wetLevel(mod.type, params, this.distortionType)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
       if (mod.type === 'delay' && slot.delayFx && (bypassed || this.spaceLatched)) {
@@ -2768,7 +2842,16 @@ export class AudioEngine {
     const params = this.liveParams()
     const bpm = params.bpm
     for (const slot of this.slots.values()) {
-      if (slot.shaper) slot.shaper.curve = makeTanhCurve(params.saturation / 100)
+      if (slot.distortionFx) {
+        applyDistortionGraph(
+          slot.distortionFx,
+          params,
+          this.distortionType,
+          this.distortionNoiseKind,
+          now,
+          smoothing,
+        )
+      }
       if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
       if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
       if (slot.delayFx) {
@@ -3405,6 +3488,8 @@ export class AudioEngine {
       muted: this.muted,
       delayType: this.delayType,
       reverbType: this.reverbType,
+      distortionType: this.distortionType,
+      distortionNoiseKind: this.distortionNoiseKind,
       fxLfos: cloneFxLfos(this.fxLfos),
       lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,
@@ -3512,18 +3597,44 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
   param.setTargetAtTime(value, now, smoothing)
 }
 
-function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
+function wetLevel(
+  type: ModuleType,
+  params: Record<ParamId, number>,
+  distortionType: DistortionType,
+): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
-  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).wet
+  if (type === 'distortion') {
+    return distortionDryWet(
+      distortionType,
+      params.saturation,
+      params.saturationMix,
+      params.distortionBits,
+      params.distortionDownsample,
+      params.distortionNoise,
+    ).wet
+  }
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 1
   return 0
 }
 
-function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
+function dryLevel(
+  type: ModuleType,
+  params: Record<ParamId, number>,
+  distortionType: DistortionType,
+): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
-  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).dry
+  if (type === 'distortion') {
+    return distortionDryWet(
+      distortionType,
+      params.saturation,
+      params.saturationMix,
+      params.distortionBits,
+      params.distortionDownsample,
+      params.distortionNoise,
+    ).dry
+  }
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 0
   return 1
 }

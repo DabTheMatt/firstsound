@@ -18,7 +18,7 @@ export type SensoryAxisDef = {
   id: SensoryAxisId
   kind: SensoryAxisKind
   /** DSP module this control owns. */
-  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'saturation' | 'compressor' | 'gain'
+  module: 'eq' | 'reverb' | 'delay' | 'grain' | 'distortion' | 'compressor' | 'gain'
   negativeLabel: string
   positiveLabel: string
   ariaLabel: string
@@ -65,10 +65,10 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
   dirt: {
     id: 'dirt',
     kind: 'unipolar',
-    module: 'saturation',
+    module: 'distortion',
     negativeLabel: 'clean',
     positiveLabel: 'dirt',
-    ariaLabel: 'Dirt, clean to grit. Morphs saturation only.',
+    ariaLabel: 'Dirt, clean to grit. Morphs distortion only.',
     hint: 'add grit',
   },
   tight: {
