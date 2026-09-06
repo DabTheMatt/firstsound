@@ -6,10 +6,21 @@ export type StretchWindow = {
   peak: number
 }
 
+/**
+ * How much to lengthen grains so pitched-down / slowed audio keeps bass.
+ * Short Hann grains high-pass near 1/grainSec; lowering pitch moves energy there.
+ */
+export function stretchLfScale(speed: number, pitchRatio: number): number {
+  const slow = 1 / Math.max(speed, 1 / 8)
+  const down = 1 / Math.max(pitchRatio, 1 / 8)
+  return clamp(Math.max(slow, down, 1), 1, 8)
+}
+
 /** Sparse (0) → longer grains, wider hops. Dense (100) → tighter overlap-add. */
-export function stretchWindow(interp: number): StretchWindow {
+export function stretchWindow(interp: number, speed = 1, pitchRatio = 1): StretchWindow {
   const n = clamp(interp / 100, 0, 1)
-  const grainSec = 0.112 - n * 0.058
+  const lf = stretchLfScale(speed, pitchRatio)
+  const grainSec = (0.112 - n * 0.058) * lf
   const hopRatio = 0.44 - n * 0.32
   const hopSec = Math.max(0.004, grainSec * hopRatio)
   const peak = clamp((hopSec / grainSec) * 1.08, 0.14, 0.62)

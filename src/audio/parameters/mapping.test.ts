@@ -107,6 +107,11 @@ describe('mapping', () => {
     expect(applyParamValue(8, PARAMS.speed)).toBe(8)
     expect(applyParamValue(-48, PARAMS.pitch)).toBe(-48)
     expect(formatParamValue(62, PARAMS.stretchInterp)).toBe('62 %')
+    expect(PARAMS.stretchInterp.label).toBe('Overlap')
+    expect(formatParamValue(1, PARAMS.stretchInterpOn)).toBe('On')
+    expect(formatParamValue(0, PARAMS.stretchInterpOn)).toBe('Off')
+    expect(formatParamValue(2, PARAMS.stretchInterpAlgo)).toBe('Cubic')
+    expect(formatParamValue(3, PARAMS.stretchInterpAlgo)).toBe('Sinc')
   })
 
   it('lets Gain go from −36 dB to +24 dB', () => {

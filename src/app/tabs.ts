@@ -21,7 +21,7 @@ export const TAB_KNOBS: Record<ModuleTab, ParamId[]> = {
 }
 
 export const TAB_NOTES: Record<ModuleTab, string | null> = {
-  source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo. Interp densifies the overlap that smooths speed and pitch moves. Reverse and Ping-Pong set direction.',
+  source: 'Region player — Speed changes tempo without pitch; Pitch transposes without tempo. Interpolation reconstructs samples when rate changes (Nearest, Linear, Cubic, Sinc). Overlap densifies the grain train. Reverse and Ping-Pong set direction.',
   grain: 'Cloud of grains inside the selected region.',
   motion: 'Drifts the grain position over time (grain engine). Depth 0 holds still.',
       space: 'Delay + reverb. Dry and Wet are independent unless Correlate is on — then they always sum to 100%. Feedback stays below unity so repeats fade.',

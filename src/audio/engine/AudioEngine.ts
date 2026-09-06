@@ -30,6 +30,7 @@ import type {
   PlaybackDirection,
   PresetV1,
   ScrubMode,
+  StretchInterpAlgo,
 } from '../parameters/types'
 import {
   anyFxLfoActive,
@@ -212,8 +213,8 @@ import { estimateTempo, detectTransients } from './transients'
 import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
 import { applyStereoStage, createStereoStage, forceStereoUpmix, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
+import { effectiveInterpAlgo, resampleInto } from './resample'
 import {
-  scaledHannCurve,
   smoothTowardLinear,
   smoothTowardLog,
   stretchLookahead,
@@ -445,7 +446,8 @@ export class AudioEngine {
   private stretchDir = 1
   private stretchSpeed = 1
   private stretchPitch = 0
-  private stretchRate = 1
+  private stretchGrainPool: AudioBuffer[] = []
+  private stretchGrainPoolIndex = 0
   private visibilityBound = false
   private unlocked = false
   private motionRandCur = 0
@@ -3332,6 +3334,38 @@ export class AudioEngine {
     else this.startBufferVoice(this.playOffset)
   }
 
+  private acquireResampleGrain(length: number, channels: number, sampleRate: number): AudioBuffer | null {
+    const ctx = this.ctx
+    if (!ctx) return null
+    const n = Math.max(64, length)
+    const i = this.stretchGrainPoolIndex
+    this.stretchGrainPoolIndex = (i + 1) % 24
+    let buf = this.stretchGrainPool[i]
+    if (!buf || buf.numberOfChannels !== channels || buf.sampleRate !== sampleRate || buf.length < n) {
+      buf = ctx.createBuffer(channels, n, sampleRate)
+      this.stretchGrainPool[i] = buf
+    }
+    return buf
+  }
+
+  private fillResampledGrain(
+    dest: AudioBuffer,
+    source: AudioBuffer,
+    offsetSec: number,
+    count: number,
+    step: number,
+    algo: StretchInterpAlgo,
+    gain: number,
+    windowed: boolean,
+  ): void {
+    const pos = offsetSec * source.sampleRate
+    const n = Math.min(count, dest.length)
+    const ch = Math.min(dest.numberOfChannels, source.numberOfChannels)
+    for (let c = 0; c < ch; c++) {
+      resampleInto(dest.getChannelData(c), n, source.getChannelData(c), pos, step, algo, windowed, gain)
+    }
+  }
+
   private startStretchPlayback(): void {
     if (!this.ctx) return
     const live = this.liveParams()
@@ -3340,7 +3374,6 @@ export class AudioEngine {
     this.stretchDir = this.direction === 'reverse' ? -1 : 1
     this.stretchSpeed = Math.max(PARAMS.speed.min, live.speed)
     this.stretchPitch = live.pitch
-    this.stretchRate = Math.max(PARAMS.speed.min, pitchRatio(live.pitch))
     this.schedulerId = window.setInterval(() => this.scheduleStretch(), SCHEDULER_MS)
     this.scheduleStretch()
   }
@@ -3380,9 +3413,10 @@ export class AudioEngine {
     const ctx = this.ctx
     const duration = buffer.duration
     const live = this.liveParams()
-    const grainWin = stretchWindow(live.stretchInterp)
-    const slew = stretchSlew(grainWin.hopSec, live.stretchInterp)
-    const horizon = ctx.currentTime + stretchLookahead(grainWin.hopSec)
+    const algo = effectiveInterpAlgo(live.stretchInterpOn, live.stretchInterpAlgo)
+    const slew = stretchSlew(stretchWindow(live.stretchInterp, 1, 1).hopSec, live.stretchInterp)
+    const horizonBase = stretchWindow(live.stretchInterp, live.speed, pitchRatio(live.pitch))
+    const horizon = ctx.currentTime + stretchLookahead(horizonBase.hopSec)
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const reverse = this.direction === 'reverse'
@@ -3398,6 +3432,7 @@ export class AudioEngine {
       this.stretchPitch = smoothTowardLinear(this.stretchPitch, live.pitch, slew)
       const speed = this.stretchSpeed
       const rate = Math.max(PARAMS.speed.min, pitchRatio(this.stretchPitch))
+      const grainWin = stretchWindow(live.stretchInterp, speed, rate)
       const wrapped = this.wrapStretchHead(this.stretchHead, start, end)
       if (wrapped == null) {
         this.stop()
@@ -3407,10 +3442,6 @@ export class AudioEngine {
       const mapped = reverse ? reverseTime(this.stretchHead, duration) : this.stretchHead
       const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
       const grainDur = grainWin.grainSec
-      const srcDur = Math.min(
-        grainDur * Math.max(this.stretchRate, rate) + 0.02,
-        Math.max(0.01, playBuffer.duration - offset),
-      )
       const playbackRel =
         this.direction === 'reverse'
           ? Math.max(0, end - this.stretchHead)
@@ -3424,28 +3455,15 @@ export class AudioEngine {
         this.regionFade.fadeInBend,
         this.regionFade.fadeOutBend,
       )
+      const count = Math.max(32, Math.ceil(grainDur * playBuffer.sampleRate))
+      const grainBuf = this.acquireResampleGrain(count, playBuffer.numberOfChannels, playBuffer.sampleRate)
+      if (!grainBuf) return
+      this.fillResampledGrain(grainBuf, playBuffer, offset, count, rate, algo, grainWin.peak * fadeAmp, true)
       const src = ctx.createBufferSource()
-      src.buffer = playBuffer
-      try {
-        src.playbackRate.setValueAtTime(this.stretchRate, t)
-        src.playbackRate.linearRampToValueAtTime(rate, t + grainDur)
-      } catch {
-        src.playbackRate.value = rate
-      }
-      const gain = ctx.createGain()
-      const curve = scaledHannCurve(grainWin.peak * fadeAmp, 48)
-      try {
-        gain.gain.setValueCurveAtTime(curve, t, grainDur)
-      } catch {
-        gain.gain.setValueAtTime(0, t)
-        gain.gain.linearRampToValueAtTime(grainWin.peak * fadeAmp, t + grainDur * 0.5)
-        gain.gain.linearRampToValueAtTime(0, t + grainDur)
-      }
-      src.connect(gain)
-      gain.connect(this.voiceBus)
-      src.start(t, offset, srcDur)
+      src.buffer = grainBuf
+      src.connect(this.voiceBus)
+      src.start(t, 0, grainDur)
       src.stop(t + grainDur + 0.02)
-      this.stretchRate = rate
       this.stretchHead += grainWin.hopSec * speed * this.stretchDir
       this.nextGrainTime += grainWin.hopSec
     }
@@ -3491,8 +3509,6 @@ export class AudioEngine {
         this.regionFade.fadeOutBend,
       )
       const src = ctx.createBufferSource()
-      src.buffer = buffer
-      src.playbackRate.value = rate
       const gain = ctx.createGain()
       const attack = Math.min(0.012, grainDur * 0.25)
       const releaseStart = Math.max(attack, grainDur - grainDur * 0.35)
@@ -3501,12 +3517,25 @@ export class AudioEngine {
       gain.gain.linearRampToValueAtTime(peak, t + attack)
       gain.gain.linearRampToValueAtTime(peak, t + releaseStart)
       gain.gain.linearRampToValueAtTime(0, t + grainDur)
-      src.connect(gain)
-      gain.connect(this.voiceBus)
       const dur = Math.min(grainDur, Math.max(0.01, duration - offset))
       const grainOffset =
         this.direction === 'reverse' ? Math.max(0, duration - offset - dur) : offset
-      src.start(t, grainOffset, dur)
+      const algo = effectiveInterpAlgo(live.stretchInterpOn, live.stretchInterpAlgo)
+      if (Math.abs(rate - 1) > 0.01) {
+        const count = Math.max(32, Math.ceil(dur * buffer.sampleRate))
+        const grainBuf = this.acquireResampleGrain(count, buffer.numberOfChannels, buffer.sampleRate)
+        if (!grainBuf) return
+        this.fillResampledGrain(grainBuf, buffer, grainOffset, count, rate, algo, 1, false)
+        src.buffer = grainBuf
+        src.connect(gain)
+        gain.connect(this.voiceBus)
+        src.start(t, 0, dur)
+      } else {
+        src.buffer = buffer
+        src.connect(gain)
+        gain.connect(this.voiceBus)
+        src.start(t, grainOffset, dur)
+      }
       src.stop(t + dur + 0.02)
       this.nextGrainTime += interval
     }

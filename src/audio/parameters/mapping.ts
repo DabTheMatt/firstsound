@@ -260,7 +260,12 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'msMono':
     case 'msFlipMid':
     case 'msFlipSide':
+    case 'stretchInterpOn':
       return value > 0.5 ? 'On' : 'Off'
+    case 'stretchInterpAlgo': {
+      const names = ['Nearest', 'Linear', 'Cubic', 'Sinc']
+      return names[Math.round(clamp(value, 0, names.length - 1))] ?? 'Cubic'
+    }
     case 'msHaasDir':
       return value < 0.5 ? 'L' : 'R'
     case 'msSideHpf':
