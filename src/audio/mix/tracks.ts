@@ -209,6 +209,12 @@ export function mixPlaybackPlan(tracks: readonly MixTrack[], selectedId: string 
   }
 }
 
+/** Engine voice level. Never follows another strip's mute. */
+export function leadMixGain(tracks: readonly MixTrack[], selectedId: string | null): number {
+  const lead = selectedTrack(tracks, selectedId)
+  return lead ? trackMixGain(lead, tracks) : 0
+}
+
 export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boolean {
   if (a.length !== b.length) return false
   return a.every((track, i) => {

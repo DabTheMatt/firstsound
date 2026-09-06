@@ -4,6 +4,7 @@ import {
   alignedRegionOffset,
   companionTrackIds,
   defaultTracks,
+  leadMixGain,
   mixPlaybackPlan,
   duplicateTrack,
   MAX_TRACKS,
@@ -116,6 +117,17 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, tracks[0]!.id, { muted: false, solo: true })
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([])
     expect(mixPlaybackPlan(tracks, tracks[0]!.id)).toEqual({ playLead: true, companionIds: [] })
+  })
+
+  it('does not silence the selected track when another strip is muted', () => {
+    let tracks = addTrack(defaultTracks(), 0, 1)
+    tracks = patchTrack(tracks, tracks[0]!.id, { muted: true })
+    expect(leadMixGain(tracks, tracks[1]!.id)).toBe(1)
+    expect(trackMixGain(tracks[1]!, tracks)).toBe(1)
+    expect(mixPlaybackPlan(tracks, tracks[1]!.id)).toEqual({
+      playLead: true,
+      companionIds: [],
+    })
   })
 
   it('keeps a sample name on a saved desk', () => {

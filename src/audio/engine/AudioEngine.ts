@@ -156,6 +156,7 @@ import {
   companionTrackIds,
   defaultTracks,
   duplicateTrack,
+  leadMixGain,
   mixPlaybackPlan,
   outputMixGain,
   parseTracks,
@@ -2299,6 +2300,9 @@ export class AudioEngine {
     if (!this.ctx || !this.mixBus) return
     this.ensureTrackGainNodes()
     const now = this.ctx.currentTime
+    if (this.leadSend) {
+      rampGainExact(this.leadSend.gain, leadMixGain(this.tracks, this.selectedTrackId), now, smoothing)
+    }
     for (const track of this.tracks) {
       const node = this.trackGains.get(track.id)
       if (!node) continue
@@ -3303,7 +3307,7 @@ export class AudioEngine {
     this.voiceBus.connect(this.leadSend)
   }
 
-  /** Every track fader into the sum; the selected engine voice follows the selected fader. */
+  /** Engine voice into the sum on its own gain — never through another strip's fader. */
   private routeTrackGraph(): void {
     if (!this.ctx || !this.sumBus || !this.leadSend) return
     this.ensureTrackGainNodes()
@@ -3312,6 +3316,8 @@ export class AudioEngine {
     } catch {
       /* first connect */
     }
+    this.leadSend.connect(this.sumBus)
+    this.leadSend.gain.value = leadMixGain(this.tracks, this.selectedTrackId)
     for (const track of this.tracks) {
       const gain = this.trackGains.get(track.id)
       if (!gain) continue
@@ -3322,9 +3328,6 @@ export class AudioEngine {
       }
       gain.connect(this.sumBus)
     }
-    const lead = this.trackGains.get(this.selectedTrackId)
-    if (lead) this.leadSend.connect(lead)
-    else this.leadSend.connect(this.sumBus)
   }
 
   private ensureTrackGainNodes(): void {
@@ -3379,13 +3382,16 @@ export class AudioEngine {
       const gain = this.trackGains.get(id)
       if (!buffer || !track || !gain) continue
       const region = clampRegion(track.start, track.end, buffer.duration, MIN_REGION)
-      const offset = alignedRegionOffset(
+      let offset = alignedRegionOffset(
         region.start,
         region.end,
         leadRegion.start,
         leadRegion.end,
         leadHead,
       )
+      const maxOffset = Math.max(0, buffer.duration - MIN_REGION)
+      if (!Number.isFinite(offset) || offset < 0 || offset >= maxOffset) offset = region.start
+      offset = Math.min(offset, maxOffset)
       const src = this.ctx.createBufferSource()
       src.buffer = buffer
       src.loop = this.loop
@@ -3393,9 +3399,13 @@ export class AudioEngine {
       src.loopEnd = Math.max(region.start + MIN_REGION, region.end)
       src.connect(gain)
       try {
-        src.start(this.ctx.currentTime, Math.min(offset, Math.max(0, buffer.duration - MIN_REGION)))
+        src.start(this.ctx.currentTime, offset)
       } catch {
-        continue
+        try {
+          src.start(this.ctx.currentTime, region.start)
+        } catch {
+          continue
+        }
       }
       this.companionSources.set(id, src)
     }
