@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import { applyReverbMacro, reverbMacroNormalized } from '../../audio/fx/macros'
 import {
   DELAY_PRESET_CATEGORIES,
   defaultPresetFor,
+  findSpacePreset,
   presetHint,
   presetsFor,
   REVERB_PRESET_CATEGORIES,
@@ -18,7 +18,6 @@ import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
-import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from './FxLfoSection'
 import styles from './Inspector.module.css'
 
@@ -55,9 +54,6 @@ const REVERB_ADV: ParamId[] = [
   'reverbEarly',
   'reverbDiffusion',
   'reverbDensity',
-  'reverbDamping',
-  'reverbLowCut',
-  'reverbHighCut',
   'reverbModRate',
   'reverbModDepth',
   'reverbShimmerPitch',
@@ -89,8 +85,6 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
     ) : (
       ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
     )
-
-  const colorNorm = reverbMacroNormalized('color', snap.params)
 
   return pane === 'advanced' ? (
     <>
@@ -134,36 +128,72 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       )}
 
       <h3 className={styles.sub}>Presets</h3>
-      <p className={styles.help}>
-        {kind === 'delay'
-          ? 'Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Dry/Wet. Dry and Wet are independent unless Correlate is on. Feedback stays below unity so each repeat fades.'
-          : 'Categories load a starting space. Dry and Wet are independent unless Correlate is on — then raising Dry lowers Wet so they always sum to 100%. Stereo In 0% sums the sample first (clean space from a mono file).'}
-      </p>
-      <Segmented
-        label="Preset category"
-        value={category}
-        options={cats.map((c) => ({ value: c, label: c }))}
-        wrap
-        onChange={(c) => {
-          setCategory(c)
-          const preset = defaultPresetFor(kind, c)
-          if (preset) engine.applySpacePreset(preset)
-        }}
-      />
-      <div className={styles.presets}>
-        {presets.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`${styles.preset} ${snap.spacePresetId === p.id ? styles.presetOn : ''}`}
-            title={presetHint(p)}
-            onClick={() => engine.applySpacePreset(p)}
-          >
-            <span>{p.name}</span>
-            <em>{presetHint(p)}</em>
-          </button>
-        ))}
-      </div>
+      {kind === 'delay' ? (
+        <>
+          <p className={styles.help}>
+            Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Dry/Wet. Dry and Wet are independent unless Correlate is on. Feedback stays below unity so each repeat fades.
+          </p>
+          <Segmented
+            label="Preset category"
+            value={category}
+            options={cats.map((c) => ({ value: c, label: c }))}
+            wrap
+            onChange={(c) => {
+              setCategory(c)
+              const preset = defaultPresetFor(kind, c)
+              if (preset) engine.applySpacePreset(preset)
+            }}
+          />
+          <div className={styles.presets}>
+            {presets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`${styles.preset} ${snap.spacePresetId === p.id ? styles.presetOn : ''}`}
+                title={presetHint(p)}
+                onClick={() => engine.applySpacePreset(p)}
+              >
+                <span>{p.name}</span>
+                <em>{presetHint(p)}</em>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className={styles.help}>
+            Pick a category, then a space. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
+          </p>
+          <label className={styles.field}>
+            Reverb preset
+            <select
+              className={styles.select}
+              aria-label="Reverb preset"
+              value={snap.spacePresetId && findSpacePreset(snap.spacePresetId)?.kind === 'reverb' ? snap.spacePresetId : ''}
+              onChange={(event) => {
+                const preset = findSpacePreset(event.target.value)
+                if (preset) engine.applySpacePreset(preset)
+              }}
+            >
+              <option value="" disabled>
+                Choose a space
+              </option>
+              {REVERB_PRESET_CATEGORIES.map((cat) => (
+                <optgroup key={cat} label={cat}>
+                  {presetsFor('reverb', cat).map((p) => (
+                    <option key={p.id} value={p.id} title={presetHint(p)}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          {snap.spacePresetId && findSpacePreset(snap.spacePresetId)?.kind === 'reverb' ? (
+            <p className={styles.help}>{presetHint(findSpacePreset(snap.spacePresetId)!)}</p>
+          ) : null}
+        </>
+      )}
 
       <div className={styles.row}>
         <button type="button" className={styles.ghost} onClick={() => engine.killFx(kind)}>
@@ -268,35 +298,11 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
             <p className={styles.help}>Mono sums the send and collapses the tail — glue for a sample that should stay centered.</p>
           )}
           {reverbStereo ? params(['reverbWidth']) : null}
+          <h3 className={styles.sub}>Tone</h3>
           <p className={styles.help}>
-            Color tilts tone: lower is darker (closes the low-pass, opens the high-pass). 0% is fully dark.
+            Simple EQ on the wet path: Low Cut removes rumble, High Cut tames air, High Damp rolls off the tail.
           </p>
-          {variant === 'knob' ? (
-            <div className={styles.knobs}>
-              <ValueKnob
-                label="Color"
-                valueText={`${Math.round(colorNorm * 100)} %`}
-                normalized={colorNorm}
-                onChange={(n) => engine.setParams(applyReverbMacro('color', n, snap.params))}
-              />
-            </div>
-          ) : (
-            <label className={styles.field}>
-              Color
-              <input
-                className={styles.range}
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(colorNorm * 100)}
-                aria-label="Color"
-                onChange={(e) => {
-                  const n = Number(e.target.value) / 100
-                  engine.setParams(applyReverbMacro('color', n, snap.params))
-                }}
-              />
-            </label>
-          )}
+          {params(['reverbLowCut', 'reverbHighCut', 'reverbDamping'])}
         </>
       )}
       <FxLfoSection snap={snap} kind={kind} variant={variant} />

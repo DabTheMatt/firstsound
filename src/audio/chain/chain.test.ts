@@ -81,6 +81,14 @@ describe('defaultChain', () => {
     expect(chain.find((m) => m.type === 'filter')?.bypassed).toBe(true)
   })
 
+  it('places Mid/Side after FILTER and before distortion', () => {
+    const chain = defaultChain()
+    const types = chain.map((m) => m.type)
+    expect(types.indexOf('filter')).toBeLessThan(types.indexOf('midside'))
+    expect(types.indexOf('midside')).toBeLessThan(types.indexOf('distortion'))
+    expect(chain.find((m) => m.type === 'midside')?.bypassed).toBe(true)
+  })
+
   it('hosts distortion instead of a standalone saturation module', () => {
     const chain = defaultChain()
     expect(chain.some((m) => m.type === 'distortion')).toBe(true)
