@@ -3,9 +3,9 @@ import type { EqFilterType } from '../../audio/engine/eqBands'
 /** Mini EQ-response glyphs used on strips and the type menu. */
 export const FILTER_ICON_PATH: Record<EqFilterType, string> = {
   off: 'M3 8h18',
-  // Smooth rolloff — flat, then a rounded knee, no bump.
-  lowpass: 'M2 4.8 H11 C16.5 4.8 18.8 12.2 22 12.2',
-  highpass: 'M2 12.2 C5.2 12.2 7.5 4.8 13 4.8 H22',
+  // Smooth rolloff on the 0 dB line (mid box), then a rounded knee.
+  lowpass: 'M2 8.2 H11 C16.5 8.2 18.8 13.4 22 13.4',
+  highpass: 'M2 13.4 C5.2 13.4 7.5 8.2 13 8.2 H22',
   // Shelves with a rounded slope, mirrored.
   lowshelf: 'M2 4.2 H9 C13.5 4.2 14.5 12.2 19 12.2 H22',
   highshelf: 'M2 12.2 H5 C9.5 12.2 10.5 4.2 15 4.2 H22',

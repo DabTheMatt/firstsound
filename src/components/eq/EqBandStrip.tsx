@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import {
   bandUsesGain,
-  bandUsesSlope,
   bandUsesWidth,
   bandwidthHz,
   EQ_MAX_HZ,
@@ -88,23 +87,25 @@ export function EqBandStrip({ snap, instanceId, index, band, label }: Props) {
           }}
         />
       </LfoParamShell>
-      {bandUsesSlope(band.type) ? (
-        <ValueKnob
-          compact
-          label="Slope"
-          valueText={`${band.slope} dB`}
-          normalized={slopeToNormalized(band.slope)}
-          min={12}
-          max={96}
-          now={band.slope}
-          onChange={(n) => setBand({ slope: slopeFromNormalized(n) })}
-          onTypedValue={(text) => {
-            const next = parseTypedRange(text, 12, 96, 'dB')
-            if (next == null) return false
-            setBand({ slope: nearestFilterSlope(next) })
-            return true
-          }}
-        />
+      {band.type === 'highpass' || band.type === 'lowpass' ? (
+        <div className={styles.knobSlot}>
+          <ValueKnob
+            compact
+            label="Slope"
+            valueText={`${band.slope} dB`}
+            normalized={slopeToNormalized(band.slope)}
+            min={12}
+            max={96}
+            now={band.slope}
+            onChange={(n) => setBand({ slope: slopeFromNormalized(n) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 12, 96, 'dB')
+              if (next == null) return false
+              setBand({ slope: nearestFilterSlope(next) })
+              return true
+            }}
+          />
+        </div>
       ) : showGain ? (
         <LfoParamShell id={ids.gain}>
           <ValueKnob

@@ -10,6 +10,14 @@ describe('EQ filter icons', () => {
     expect(FILTER_ICON_PATH.lowpass).not.toBe(FILTER_ICON_PATH.highpass)
   })
 
+  it('sits the HP/LP passband on the mid line, not the top of the glyph', () => {
+    expect(FILTER_ICON_PATH.lowpass).toMatch(/M2 8\.2/)
+    expect(FILTER_ICON_PATH.highpass).toMatch(/H22$|H22 /)
+    expect(FILTER_ICON_PATH.highpass).toContain('8.2')
+    expect(FILTER_ICON_PATH.lowpass).not.toContain('4.8')
+    expect(FILTER_ICON_PATH.highpass).not.toContain('4.8')
+  })
+
   it('draws low shelf and high shelf as mirrored rounded slopes', () => {
     expect(FILTER_ICON_PATH.lowshelf).not.toBe(FILTER_ICON_PATH.highshelf)
     expect(FILTER_ICON_PATH.lowshelf).toContain('C')
