@@ -8,6 +8,9 @@ export const SENSORY_AXIS_IDS = [
   'mod',
   'drift',
   'pan',
+  'veil',
+  'halo',
+  'well',
 ] as const
 
 export type SensoryAxisId = (typeof SENSORY_AXIS_IDS)[number]
@@ -107,6 +110,33 @@ export const SENSORY_AXES: Record<SensoryAxisId, SensoryAxisDef> = {
     ariaLabel: 'Pan, still to orbiting. Morphs input pan LFO only.',
     hint: 'swing left and right',
   },
+  veil: {
+    id: 'veil',
+    kind: 'unipolar',
+    module: 'reverb',
+    negativeLabel: 'clear',
+    positiveLabel: 'veil',
+    ariaLabel: 'Veil, clear to distant. Morphs reverb, delay, and EQ together.',
+    hint: 'draw a dark curtain',
+  },
+  halo: {
+    id: 'halo',
+    kind: 'unipolar',
+    module: 'reverb',
+    negativeLabel: 'bare',
+    positiveLabel: 'halo',
+    ariaLabel: 'Halo, bare to blooming. Morphs reverb, delay, and EQ together.',
+    hint: 'let air bloom around it',
+  },
+  well: {
+    id: 'well',
+    kind: 'unipolar',
+    module: 'eq',
+    negativeLabel: 'flat',
+    positiveLabel: 'well',
+    ariaLabel: 'Well, flat to hollow. Morphs EQ, reverb, and delay together.',
+    hint: 'drop it into a cavity',
+  },
 }
 
 export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
@@ -119,6 +149,9 @@ export const PRIMARY_ORBIT_AXES: SensoryAxisId[] = [
   'mod',
   'drift',
   'pan',
+  'veil',
+  'halo',
+  'well',
 ]
 
 export const SECONDARY_FIELD_AXES: SensoryAxisId[] = []
@@ -237,5 +270,38 @@ export const SENSORY_DIALS: readonly SensoryDialSpec[] = [
     whisper: 'still to orbiting pan',
     tone: 'cool',
     ariaLabel: 'Pan, still to orbiting',
+  },
+  {
+    axis: 'veil',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'veil',
+    negativeLabel: 'clear',
+    positiveLabel: 'veil',
+    whisper: 'clear to distant',
+    tone: 'cool',
+    ariaLabel: 'Veil, clear to distant',
+  },
+  {
+    axis: 'halo',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'halo',
+    negativeLabel: 'bare',
+    positiveLabel: 'halo',
+    whisper: 'bare to blooming',
+    tone: 'cool',
+    ariaLabel: 'Halo, bare to blooming',
+  },
+  {
+    axis: 'well',
+    pole: 'pos',
+    kind: 'unipolar',
+    label: 'well',
+    negativeLabel: 'flat',
+    positiveLabel: 'well',
+    whisper: 'flat to hollow',
+    tone: 'warm',
+    ariaLabel: 'Well, flat to hollow',
   },
 ]

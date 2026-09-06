@@ -34,13 +34,17 @@ import {
   clampSpectrumBandCount,
   clampSpectrumFollowMode,
   followBands,
+  followEnvelope,
   logBandEdgesHz,
+  maxBandDb,
+  spectrumMeterAlignDb,
   type SpectrumBandCount,
   type SpectrumFollowMode,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
+import { timeDomainPeakDb, louderPeakDb } from '../../audio/engine/timePeak'
 import { isDocumentHidden } from '../../app/frameBudget'
 import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -210,6 +214,9 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     let frame = 0
     const preScratch = { bins: null as Float32Array | null }
     const postScratch = { bins: null as Float32Array | null }
+    const meterLeft = { data: null as Float32Array | null }
+    const meterRight = { data: null as Float32Array | null }
+    let alignDb = 0
     let gainsBuf: Float32Array | null = null
     const tick = () => {
       if (isDocumentHidden()) {
@@ -311,8 +318,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const edges = logBandEdgesHz(minHz, Math.min(nyquist, maxHz), bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
-          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor)
-          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox, 0, dbFloor)
+          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb)
+          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb)
           const wantPeak = follow === 'peak' || follow === 'both'
           const wantSlow = follow === 'slow' || follow === 'both'
           const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
@@ -336,8 +343,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               const barLine = line ?? region.color
               const slowDb = slow[i] ?? -100
               const fastDb = fast[i] ?? -100
-              const slowY = dbToY(slowDb, top, bottom, dbFloor)
-              const fastY = dbToY(fastDb, top, bottom, dbFloor)
+              const slowY = dbToY(slowDb + alignDb, top, bottom, dbFloor)
+              const fastY = dbToY(fastDb + alignDb, top, bottom, dbFloor)
               const slowH = bottom - slowY
               const fastH = bottom - fastY
               ctx.fillStyle = colorWithAlpha(barFill, alpha)
@@ -397,6 +404,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           postEqGains = gains
           preCap = prePeaks
         }
+        const { left: meterL, right: meterR } = engine.getChannelAnalysers()
+        const meterDb = louderPeakDb(timeDomainPeakDb(meterL, meterLeft), timeDomainPeakDb(meterR ?? meterL, meterRight))
+        const guide = showPost ? postPeaks : prePeaks
+        alignDb = followEnvelope(alignDb, spectrumMeterAlignDb(maxBandDb(guide), meterDb), 0.55, 0.22)
         if (showPre) {
           drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
         }

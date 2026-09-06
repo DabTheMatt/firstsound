@@ -12,6 +12,8 @@ import {
   fftPeakDbInHzRange,
   followEnvelope,
   logBandEdgesHz,
+  maxBandDb,
+  spectrumMeterAlignDb,
 } from './spectrumBands'
 
 describe('logBandEdgesHz', () => {
@@ -122,5 +124,22 @@ describe('followEnvelope', () => {
     const up = followEnvelope(-80, -10, 0.55, 0.28)
     const down = followEnvelope(-10, -80, 0.55, 0.28)
     expect(up + 80).toBeGreaterThan(Math.abs(down + 10))
+  })
+})
+
+describe('spectrumMeterAlignDb', () => {
+  it('boosts a quiet FFT peak up to the loudness meter', () => {
+    expect(spectrumMeterAlignDb(-48, -9)).toBeCloseTo(39)
+    expect(maxBandDb([-90, -48, -70])).toBe(-48)
+  })
+
+  it('does not pull a matching or louder spectrum down', () => {
+    expect(spectrumMeterAlignDb(-9, -9)).toBe(0)
+    expect(spectrumMeterAlignDb(-3, -9)).toBe(0)
+  })
+
+  it('stays put when the meter or spectrum is silent', () => {
+    expect(spectrumMeterAlignDb(-100, -9)).toBe(0)
+    expect(spectrumMeterAlignDb(-48, Number.NEGATIVE_INFINITY)).toBe(0)
   })
 })

@@ -47,6 +47,15 @@
 .string[data-axis='pan'] {
   color: #6e6e6a;
 }
+.string[data-axis='veil'] {
+  color: #8a8c90;
+}
+.string[data-axis='halo'] {
+  color: #d4d4ce;
+}
+.string[data-axis='well'] {
+  color: #5a5854;
+}
 
 .line {
   fill: none;

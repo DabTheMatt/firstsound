@@ -45,7 +45,10 @@ export const AXIS_TINT: Record<SensoryAxisId, Rgb> = {
   tight: { r: 236, g: 236, b: 230 },
   mod: { r: 255, g: 92, b: 168 },
   drift: { r: 92, g: 168, b: 255 },
-  pan: { r: 255, g: 214, b: 120 },
+  pan: { r: 180, g: 180, b: 176 },
+  veil: { r: 120, g: 122, b: 128 },
+  halo: { r: 210, g: 210, b: 206 },
+  well: { r: 88, g: 86, b: 82 },
 }
 
 const DRIFT_RIGHT: Rgb = { r: 255, g: 168, b: 72 }
@@ -183,9 +186,12 @@ export function sensoryVisualState(
   const mod = Math.max(0, values.mod)
   const drift = Math.max(0, values.drift)
   const pan = Math.max(0, values.pan)
+  const veil = Math.max(0, values.veil)
+  const halo = Math.max(0, values.halo)
+  const well = Math.max(0, values.well)
 
-  const warmth = 0.42 + character * 0.48 - dirt * 0.28
-  const glow = 0.2 + Math.max(0, character) * 0.62 + space * 0.18 - dirt * 0.12
+  const warmth = 0.42 + character * 0.48 - dirt * 0.28 - veil * 0.12 + halo * 0.08
+  const glow = 0.2 + Math.max(0, character) * 0.62 + space * 0.18 + halo * 0.28 - dirt * 0.12 - well * 0.1
   let ink = lensInk(Math.min(1, Math.max(0, warmth)), Math.min(1, Math.max(0.08, glow)))
   if (dirt > 0.08) ink = mixRgb(ink, GRIT, dirt * 0.55)
   ink = watercolorMix(values, activeAxis, ink)
@@ -196,10 +202,10 @@ export function sensoryVisualState(
     sharpness: 0.42 + character * 0.4 - dirt * 0.16 + tight * 0.14,
     glow: Math.min(1, Math.max(0, glow)),
     warmth: Math.min(1, Math.max(0, warmth)),
-    depth: 0.12 + space * 0.78,
-    mass: 0.42 + space * 0.4 + grain * 0.1 - tight * 0.28,
+    depth: 0.12 + space * 0.78 + well * 0.22 + veil * 0.16,
+    mass: 0.42 + space * 0.4 + grain * 0.1 + well * 0.12 - tight * 0.28,
     motion,
-    haze: 0.04 + space * 0.72,
+    haze: 0.04 + space * 0.72 + veil * 0.38,
     echo,
     character,
     space,

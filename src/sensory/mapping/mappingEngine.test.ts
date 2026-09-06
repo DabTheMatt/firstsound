@@ -186,6 +186,40 @@ describe('mapSensoryToDsp', () => {
     expect(grainMod.fxLfos.grain[1]?.target).toBe('motionDepth')
   })
 
+  it('veil braids reverb, delay, and a darker EQ', () => {
+    const base = baseDsp()
+    const mapped = mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'veil', 1))
+    expect(mapped.bypass.reverb).toBe(false)
+    expect(mapped.bypass.delay).toBe(false)
+    expect(mapped.bypass.eq).toBe(false)
+    expect(mapped.params.reverbWet).toBeGreaterThan(10)
+    expect(mapped.params.delayWet).toBeGreaterThan(8)
+    expect(mapped.eqBands[3]?.type).toBe('highshelf')
+    expect(mapped.eqBands[3]?.gain).toBeLessThan(-2)
+    expect(mapped.fxLfos.reverb[1]?.target).toBe('reverbDamping')
+  })
+
+  it('halo braids a bright air around reverb, delay, and EQ', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'halo', 1))
+    expect(mapped.bypass.reverb).toBe(false)
+    expect(mapped.bypass.delay).toBe(false)
+    expect(mapped.bypass.eq).toBe(false)
+    expect(mapped.params.reverbEarly).toBeGreaterThan(70)
+    expect(mapped.params.delayDiffusion).toBeGreaterThan(30)
+    expect(mapped.eqBands[3]?.gain).toBeGreaterThan(2)
+    expect(mapped.fxLfos.reverb[2]?.target).toBe('reverbEarly')
+  })
+
+  it('well scoops the midrange and opens a cavity of reverb and delay', () => {
+    const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'well', 1))
+    expect(mapped.bypass.eq).toBe(false)
+    expect(mapped.bypass.reverb).toBe(false)
+    expect(mapped.bypass.delay).toBe(false)
+    expect(mapped.eqBands[1]?.gain).toBeLessThan(-3)
+    expect(mapped.params.reverbSize).toBeGreaterThan(70)
+    expect(mapped.fxLfos.eq2[0]?.target).toBe('eq2Gain')
+  })
+
   it('un-bypasses each morph module so sensory axes stay audible', () => {
     const base = baseDsp()
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 0.6)).bypass.reverb).toBe(false)
