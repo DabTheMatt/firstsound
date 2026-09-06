@@ -4,6 +4,7 @@ import {
   companionTrackIds,
   defaultTracks,
   duplicateTrack,
+  leadVoiceMixGain,
   MAX_TRACKS,
   outputMixGain,
   parseTracks,
@@ -47,6 +48,8 @@ describe('mix tracks', () => {
     expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(1.5)
     expect(companionTrackIds(tracks, tracks[1]!.id)).toEqual([])
     expect(companionTrackIds(tracks, tracks[0]!.id)).toEqual([tracks[1]!.id])
+    expect(leadVoiceMixGain(tracks, tracks[1]!.id)).toBeCloseTo(1.5)
+    expect(leadVoiceMixGain(tracks, tracks[0]!.id)).toBe(0)
   })
 
   it('refuses to drop the last track', () => {
