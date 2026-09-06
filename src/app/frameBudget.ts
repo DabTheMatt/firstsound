@@ -10,6 +10,11 @@ export function paintIntervalMs(playing: boolean): number {
   return playing ? 33 : 80
 }
 
+/** Sensory landscape eases with the knobs; keep ~30 fps even while stopped. */
+export function sensoryPaintIntervalMs(): number {
+  return 33
+}
+
 export function isDocumentHidden(): boolean {
   return typeof document !== 'undefined' && document.hidden
 }

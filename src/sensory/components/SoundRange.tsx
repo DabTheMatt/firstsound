@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
+import { isDocumentHidden, sensoryPaintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
@@ -86,8 +86,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
         frame = requestAnimationFrame(tick)
         return
       }
-      const playing = engine.getSnapshot().playing
-      if (now - lastPaint < paintIntervalMs(playing)) {
+      if (now - lastPaint < sensoryPaintIntervalMs()) {
         frame = requestAnimationFrame(tick)
         return
       }

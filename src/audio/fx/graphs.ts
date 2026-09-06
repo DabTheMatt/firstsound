@@ -841,6 +841,7 @@ export function applyReverbGraph(
     g.gate.knee.setTargetAtTime(2, now, smoothing)
   }
 
+  // Brickwall the wet send so a loud IR cannot pin the meter; Mix stays audible.
   g.limit.threshold.setTargetAtTime(-1.5, now, smoothing)
   g.limit.knee.setTargetAtTime(3, now, smoothing)
   g.limit.ratio.setTargetAtTime(16, now, smoothing)

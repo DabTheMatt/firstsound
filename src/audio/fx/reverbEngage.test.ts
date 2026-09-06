@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { equalPowerDryWet } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, IR_EARLY_SEC, IR_TARGET_EARLY_RMS } from './impulse'
 import { mixWhenEnablingReverb, REVERB_ENGAGE_MIX, reverbMixEngagesModule } from './reverbEngage'
+import { reverbWetOutputGain } from './reverbLevel'
 
 function hallSpec(type: 'hall' | 'cathedral') {
   return {
@@ -34,6 +36,12 @@ describe('reverbEngage', () => {
     expect(mixWhenEnablingReverb(22)).toBe(22)
     expect(reverbMixEngagesModule(0)).toBe(false)
     expect(reverbMixEngagesModule(1)).toBe(true)
+  })
+
+  it('keeps engage Mix loud enough against dry after IR scale and Output', () => {
+    const mix = equalPowerDryWet(REVERB_ENGAGE_MIX / 100)
+    const send = mix.wet * IR_TARGET_EARLY_RMS * reverbWetOutputGain(100)
+    expect(send).toBeGreaterThan(0.04)
   })
 })
 

@@ -15,7 +15,9 @@ describe('rangeScenes', () => {
   })
 
   it('adds more gleam rays as energy rises', () => {
+    expect(gleamRayCount(0)).toBeGreaterThanOrEqual(5)
     expect(gleamRayCount(1)).toBeGreaterThan(gleamRayCount(0))
+    expect(gleamRayCount(1)).toBeGreaterThanOrEqual(18)
   })
 
   it('pins mirror ridges to the top and bottom edges with inward peaks', () => {
