@@ -8,6 +8,7 @@ import {
   bandUsesWidth,
   bandwidthHz,
   EQ_FILTER_TYPES,
+  EQ_MAX_BANDS,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
   FILTER_SLOPES,
@@ -63,7 +64,7 @@ const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
-const SAT_IDS: ParamId[] = ['saturation']
+const SAT_IDS: ParamId[] = ['saturation', 'saturationMix']
 const OUT_IDS: ParamId[] = ['outputGain']
 
 const EQ_TYPE_OPTIONS = EQ_FILTER_TYPES.map((t) => ({
@@ -414,7 +415,7 @@ function ModuleInspector({
             <Toggle
               pressed={!mod?.bypassed}
               label={mod?.bypassed ? 'Bypassed' : 'Active'}
-              onToggle={() => engine.setModuleBypass(instanceId, !mod?.bypassed)}
+              onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
           {mod && !isFixedType(mod.type) ? (
@@ -879,6 +880,18 @@ function EqEditor({
           ) : null}
         </details>
       ))}
+      {bands.length < EQ_MAX_BANDS ? (
+        <button
+          type="button"
+          className={styles.ghost}
+          onClick={() => {
+            const next = engine.addEqBand(instanceId)
+            if (next != null) setOpenBand(next)
+          }}
+        >
+          Add band ({bands.length}/{EQ_MAX_BANDS})
+        </button>
+      ) : null}
         </>
       ) : (
         <>
@@ -1015,8 +1028,8 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
     <div className={styles.tempo}>
       <h3 className={styles.sub}>Sample tempo</h3>
       <p className={styles.help}>
-        Delay and reverb BPM sync use this tempo. Detect it from transients, mark hits on the waveform, or tap along while
-        the sample plays.
+        Delay and reverb BPM sync use this tempo. Detect tempo from the sample, mark hits on the
+        waveform and drag them to warp the audio, or tap along while the sample plays.
       </p>
       {variant === 'knob' ? (
         <div className={styles.knobs}>
@@ -1034,11 +1047,15 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
         >
           Detect tempo
         </button>
-        <Toggle
-          pressed={snap.showTransients}
-          label="Mark transients"
-          onToggle={() => engine.setShowTransients(!snap.showTransients)}
-        />
+        <button
+          type="button"
+          className={`${styles.ghost} ${snap.showTransients ? styles.ghostOn : ''}`}
+          disabled={!snap.sampleLoaded}
+          aria-pressed={snap.showTransients}
+          onClick={() => engine.setShowTransients(!snap.showTransients)}
+        >
+          Mark transients
+        </button>
         <button
           type="button"
           className={styles.ghost}

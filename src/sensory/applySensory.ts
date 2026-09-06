@@ -1,8 +1,13 @@
 import type { AudioEngine } from '../audio/engine/AudioEngine'
 import { FX_LFO_SLOTS } from '../audio/fx/lfo'
+import type { ReverbType } from '../audio/fx/types'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
 import type { SensoryValues } from './sensoryState'
+
+export function sensoryReverbType(_space: number): ReverbType {
+  return 'hall'
+}
 
 export function captureDsp(engine: AudioEngine): DspSnapshot {
   const snap = engine.getSnapshot()
@@ -45,5 +50,6 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
 export function applySensorySession(engine: AudioEngine, base: DspSnapshot, values: SensoryValues): DspSnapshot {
   const mapped = mapSensoryToDsp(base, values)
   writeDsp(engine, mapped)
+  engine.setReverbType(sensoryReverbType(values.space))
   return mapped
 }

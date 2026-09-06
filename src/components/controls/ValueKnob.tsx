@@ -47,7 +47,7 @@ export function ValueKnob({
   const dialRef = useRef<HTMLButtonElement>(null)
   const valueRef = useRef(normalized)
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(valueText)
+  const [draft, setDraft] = useState('')
 
   useEffect(() => {
     valueRef.current = normalized
@@ -155,7 +155,7 @@ export function ValueKnob({
           <path
             d={track}
             fill="none"
-            stroke="var(--border-default)"
+            stroke="var(--border-strong)"
             strokeWidth="3"
             strokeLinecap="round"
           />
@@ -233,7 +233,7 @@ export function ValueKnob({
             onDoubleClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              setDraft(valueText)
+              setDraft('')
               setEditing(true)
             }}
             title="Double-click to type a value"

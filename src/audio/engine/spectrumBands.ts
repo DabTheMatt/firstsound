@@ -1,10 +1,18 @@
 /** Log-spaced FFT bands + dual envelope followers for the spectrum view. */
 
-export const SPECTRUM_BAND_COUNT = 32
+export const SPECTRUM_FOLLOW_MODES = ['peak', 'slow', 'both'] as const
+
+export type SpectrumFollowMode = (typeof SPECTRUM_FOLLOW_MODES)[number]
+
+export function clampSpectrumFollowMode(value: unknown): SpectrumFollowMode {
+  return value === 'slow' || value === 'both' || value === 'peak' ? value : 'peak'
+}
 
 export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256] as const
 
 export type SpectrumBandCount = (typeof SPECTRUM_BAND_CHOICES)[number]
+
+export const SPECTRUM_BAND_COUNT: SpectrumBandCount = 32
 
 export function clampSpectrumBandCount(value: number): SpectrumBandCount {
   const allowed = SPECTRUM_BAND_CHOICES
@@ -25,7 +33,7 @@ export const FAST_RELEASE = 0.28
 export const SLOW_ATTACK = 0.07
 export const SLOW_RELEASE = 0.045
 
-export function logBandEdgesHz(minHz: number, maxHz: number, bandCount = SPECTRUM_BAND_COUNT): Float32Array {
+export function logBandEdgesHz(minHz: number, maxHz: number, bandCount: number = SPECTRUM_BAND_COUNT): Float32Array {
   const n = Math.max(1, bandCount)
   const lo = Math.max(1, minHz)
   const hi = Math.max(lo * 1.01, maxHz)
@@ -41,7 +49,7 @@ export function logBandEdgesHz(minHz: number, maxHz: number, bandCount = SPECTRU
 export function bandPeakDb(
   binsDb: ArrayLike<number>,
   sampleRate: number,
-  bandCount = SPECTRUM_BAND_COUNT,
+  bandCount: number = SPECTRUM_BAND_COUNT,
   minHz = 20,
 ): Float32Array {
   const n = binsDb.length

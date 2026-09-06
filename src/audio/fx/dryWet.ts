@@ -7,7 +7,6 @@ export function equalPowerDryWet(mix01: number): { dry: number; wet: number } {
   return { dry: Math.cos(a), wet: Math.sin(a) }
 }
 
-/** Parallel send: Dry and Wet are independent; Output is post-sum gain (100% = unity). */
 export function fxSendLevels(
   dryPct: number,
   wetPct: number,

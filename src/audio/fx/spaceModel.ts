@@ -58,19 +58,27 @@ export function delayChannelTimeSeconds(
   return params.delayTime / 1000
 }
 
-export function delayTaps(
+function delayChannelMix(params: Record<ParamId, number>, channel: 'L' | 'R'): number {
+  const wet = channel === 'R' && isDelayStereo(params) ? params.delayWetR : params.delayWet
+  return Math.max(wet / 100, 0.18)
+}
+
+function delayChannelFeedback(params: Record<ParamId, number>, channel: 'L' | 'R'): number {
+  return channel === 'R' && isDelayStereo(params) ? params.delayFeedbackR : params.delayFeedback
+}
+
+function delayTapTrain(
   params: Record<ParamId, number>,
   type: DelayType,
   bpm: number,
-  now = 0,
+  now: number,
+  channel: DelayTap['channel'],
 ): DelayTap[] {
-  const mix = Math.max(params.delayWet / 100, 0.18)
-  const time = Math.max(0.001, delayTimeSeconds(params, bpm))
-  const fb = delayLoopGain(params.delayFeedback, type)
+  const side = channel === 'R' ? 'R' : 'L'
+  const mix = delayChannelMix(params, side)
+  const time = Math.max(0.001, delayChannelTimeSeconds(params, bpm, side))
+  const fb = delayLoopGain(delayChannelFeedback(params, side), type)
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.65) : params.delayReverse / 100
-  const ping = type === 'pingPong'
-  const stereo = type === 'stereo' || ping
-  const offset = (params.delayOffset / 100) * time * 0.9
   const pan0 = params.delayPan / 100
   const width = params.delayWidth / 100
   const mod = (params.delayModDepth / 100) * 0.035 * Math.sin(now * params.delayModRate * Math.PI * 2)
@@ -88,51 +96,43 @@ export function delayTaps(
         : Math.min(12, Math.max(2, Math.ceil(Math.log(0.02) / Math.log(Math.max(0.15, Math.min(0.97, fb)))) + 1))
   const taps: DelayTap[] = []
   let gain = mix * (0.85 + params.delayDrive / 400)
+  const pan =
+    channel === 'L' ? -0.7 * width + pan0 : channel === 'R' ? 0.7 * width + pan0 : pan0 * width
   for (let i = 1; i <= tapCount; i++) {
     const spaced = type === 'multiTap' ? time * (0.28 + i * 0.28) : time * i
-    const t = spaced * jitter + (stereo ? (i % 2 === 0 ? offset : -offset) : 0)
-    if (ping) {
-      const left = i % 2 === 1
-      taps.push({
-        time: Math.max(0.0005, t),
-        gain,
-        pan: (left ? -0.85 : 0.85) * width + pan0 * 0.2,
-        reverse: reverseAmt > 0.4,
-        degraded: degrade(params, type, i),
-        channel: left ? 'L' : 'R',
-      })
-    } else if (stereo) {
-      taps.push({
-        time: Math.max(0.0005, t - offset),
-        gain: gain * 0.9,
-        pan: -0.7 * width + pan0,
-        reverse: reverseAmt > 0.4,
-        degraded: degrade(params, type, i),
-        channel: 'L',
-      })
-      taps.push({
-        time: Math.max(0.0005, t + offset),
-        gain: gain * 0.9,
-        pan: 0.7 * width + pan0,
-        reverse: reverseAmt > 0.4,
-        degraded: degrade(params, type, i),
-        channel: 'R',
-      })
-    } else {
-      taps.push({
-        time: Math.max(0.0005, t),
-        gain,
-        pan: pan0 * width,
-        reverse: reverseAmt > 0.4,
-        degraded: degrade(params, type, i),
-        channel: 'C',
-      })
-    }
+    taps.push({
+      time: Math.max(0.0005, spaced * jitter),
+      gain,
+      pan,
+      reverse: reverseAmt > 0.4,
+      degraded: degrade(params, type, i),
+      channel,
+    })
     const decay = freeze ? 0.96 : fb * (type === 'diffuse' ? 0.9 : 1)
     gain *= decay
     if (gain < 0.012 && !freeze) break
   }
   return taps
+}
+
+export function delayTaps(
+  params: Record<ParamId, number>,
+  type: DelayType,
+  bpm: number,
+  now = 0,
+): DelayTap[] {
+  if (isDelayStereo(params)) {
+    return [...delayTapTrain(params, type, bpm, now, 'L'), ...delayTapTrain(params, type, bpm, now, 'R')]
+  }
+  if (type === 'pingPong') {
+    const left = delayTapTrain(params, type, bpm, now, 'C')
+    return left.map((tap, i) => ({
+      ...tap,
+      channel: i % 2 === 0 ? 'L' : 'R',
+      pan: (i % 2 === 0 ? -0.85 : 0.85) * (params.delayWidth / 100) + (params.delayPan / 100) * 0.2,
+    }))
+  }
+  return delayTapTrain(params, type, bpm, now, 'C')
 }
 
 function degrade(params: Record<ParamId, number>, type: DelayType, i: number): number {

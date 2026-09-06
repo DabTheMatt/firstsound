@@ -1,4 +1,4 @@
-import { clampRegion, defaultPlayRegion } from '../parameters/mapping'
+import { clampRegion, fullPlayRegion } from '../parameters/mapping'
 import {
   DEFAULT_NORMALIZE_DBFS,
   DEFAULT_PROTECTIVE_FADE_SEC,
@@ -8,7 +8,7 @@ import {
 } from './types'
 
 export function defaultPrep(duration: number): SamplePrepState {
-  const region = defaultPlayRegion(duration, PREP_MIN_REGION)
+  const region = fullPlayRegion(duration)
   return {
     windowStart: 0,
     windowEnd: Math.max(0, duration),

@@ -22,10 +22,12 @@ export type ParamId =
   | 'filterReso'
   | 'delayDry'
   | 'delayWet'
+  | 'delayWetR'
   | 'delayOutput'
   | 'delayTime'
   | 'delayTimeR'
   | 'delayFeedback'
+  | 'delayFeedbackR'
   | 'delayStereo'
   | 'reverbDry'
   | 'reverbWet'
@@ -36,6 +38,7 @@ export type ParamId =
   | 'motionJitter'
   | 'outputGain'
   | 'saturation'
+  | 'saturationMix'
   | 'reverbSize'
   | 'reverbDecay'
   | 'reverbPredelay'
@@ -120,6 +123,18 @@ export type ParamId =
   | 'eq4Freq'
   | 'eq4Gain'
   | 'eq4Q'
+  | 'eq5Freq'
+  | 'eq5Gain'
+  | 'eq5Q'
+  | 'eq6Freq'
+  | 'eq6Gain'
+  | 'eq6Q'
+  | 'eq7Freq'
+  | 'eq7Gain'
+  | 'eq7Q'
+  | 'eq8Freq'
+  | 'eq8Gain'
+  | 'eq8Q'
   | 'eqcfTeeth'
   | 'eqcfGain'
   | 'eqcfSpacing'
@@ -157,6 +172,7 @@ import type { ChainModule } from '../chain/chain'
 import type { CombFilterState } from '../engine/comb'
 import type { EqBand } from '../engine/eqBands'
 import type { DelayType, ReverbType } from '../fx/types'
+import type { MixTrack } from '../mix/tracks'
 
 export type EqListenMode = 'sample' | 'filters'
 
@@ -178,4 +194,8 @@ export type PresetV1 = {
   reverbType?: ReverbType
   comb?: CombFilterState
   fxLfos?: unknown
+  tracks?: MixTrack[]
+  /** Legacy parallel mix-layer snapshots; parsed as tracks. */
+  mixLayers?: unknown
+  masterMix?: number
 }

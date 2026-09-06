@@ -1,10 +1,11 @@
+import { EQ_MAX_BANDS } from '../engine/eqBands'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue, clamp, fromNormalized, toNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
-/** Per-EQ-band LFO banks use eq1…eq4 so slot names read eq1b1, eq2b3, etc. */
+/** Per-EQ-band LFO banks use eq1…eq8 so slot names read eq1b1, eq2b3, etc. */
 export type FxLfoKind =
   | 'delay'
   | 'reverb'
@@ -16,6 +17,10 @@ export type FxLfoKind =
   | 'eq2'
   | 'eq3'
   | 'eq4'
+  | 'eq5'
+  | 'eq6'
+  | 'eq7'
+  | 'eq8'
   | 'eqcf'
   | 'input'
 
@@ -24,6 +29,8 @@ export type FxLfo = {
   shape: LfoShape
   depth: number
   target: ParamId | null
+  /** Subtracted from the shared LFO clock so a new connection starts at wave zero. */
+  phaseOriginSec?: number
 }
 
 export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
@@ -34,7 +41,7 @@ export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
   { value: 'snh', label: 'S&H' },
 ]
 
-export const EQ_BAND_LFO_KINDS: FxLfoKind[] = ['eq1', 'eq2', 'eq3', 'eq4']
+export const EQ_BAND_LFO_KINDS: FxLfoKind[] = ['eq1', 'eq2', 'eq3', 'eq4', 'eq5', 'eq6', 'eq7', 'eq8']
 
 export const FX_LFO_KINDS: FxLfoKind[] = [
   'delay',
@@ -47,6 +54,10 @@ export const FX_LFO_KINDS: FxLfoKind[] = [
   'eq2',
   'eq3',
   'eq4',
+  'eq5',
+  'eq6',
+  'eq7',
+  'eq8',
   'eqcf',
   'input',
 ]
@@ -64,6 +75,10 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   eq2: 'EQ band 2',
   eq3: 'EQ band 3',
   eq4: 'EQ band 4',
+  eq5: 'EQ band 5',
+  eq6: 'EQ band 6',
+  eq7: 'EQ band 7',
+  eq8: 'EQ band 8',
   eqcf: 'EQ comb',
   input: 'Input',
 }
@@ -79,6 +94,10 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   eq2: 'eq2b',
   eq3: 'eq3b',
   eq4: 'eq4b',
+  eq5: 'eq5b',
+  eq6: 'eq6b',
+  eq7: 'eq7b',
+  eq8: 'eq8b',
   eqcf: 'eqcf',
   input: 'i',
 }
@@ -88,24 +107,11 @@ export function fxLfoSlotName(kind: FxLfoKind, slot: number): string {
 }
 
 export function eqBandLfoKind(bandIndex: number): FxLfoKind {
-  return EQ_BAND_LFO_KINDS[clamp(Math.round(bandIndex), 0, 3)] ?? 'eq1'
+  return EQ_BAND_LFO_KINDS[clamp(Math.round(bandIndex), 0, EQ_MAX_BANDS - 1)] ?? 'eq1'
 }
 
 export function defaultLfoShown(): Record<FxLfoKind, number> {
-  return {
-    delay: 1,
-    reverb: 1,
-    compressor: 1,
-    limiter: 1,
-    saturation: 1,
-    grain: 1,
-    eq1: 1,
-    eq2: 1,
-    eq3: 1,
-    eq4: 1,
-    eqcf: 1,
-    input: 1,
-  }
+  return Object.fromEntries(FX_LFO_KINDS.map((kind) => [kind, 1])) as Record<FxLfoKind, number>
 }
 
 export type FxLfoBank = FxLfo[]
@@ -119,10 +125,12 @@ export const LFO_DEPTH_DEFAULT = 35
 const DELAY_TARGETS: ParamId[] = [
   'delayDry',
   'delayWet',
+  'delayWetR',
   'delayOutput',
   'delayTime',
   'delayTimeR',
   'delayFeedback',
+  'delayFeedbackR',
   'delayHp',
   'delayLp',
   'delayDrive',
@@ -191,7 +199,7 @@ const LIMITER_TARGETS: ParamId[] = [
   'limiterAttack',
 ]
 
-const SATURATION_TARGETS: ParamId[] = ['saturation']
+const SATURATION_TARGETS: ParamId[] = ['saturation', 'saturationMix']
 
 const GRAIN_TARGETS: ParamId[] = [
   'grainSize',
@@ -210,6 +218,10 @@ export const EQ_BAND_LFO_IDS: { freq: ParamId; gain: ParamId; q: ParamId }[] = [
   { freq: 'eq2Freq', gain: 'eq2Gain', q: 'eq2Q' },
   { freq: 'eq3Freq', gain: 'eq3Gain', q: 'eq3Q' },
   { freq: 'eq4Freq', gain: 'eq4Gain', q: 'eq4Q' },
+  { freq: 'eq5Freq', gain: 'eq5Gain', q: 'eq5Q' },
+  { freq: 'eq6Freq', gain: 'eq6Gain', q: 'eq6Q' },
+  { freq: 'eq7Freq', gain: 'eq7Gain', q: 'eq7Q' },
+  { freq: 'eq8Freq', gain: 'eq8Gain', q: 'eq8Q' },
 ]
 
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
@@ -235,6 +247,10 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   eq2: [EQ_BAND_LFO_IDS[1]!.freq, EQ_BAND_LFO_IDS[1]!.gain, EQ_BAND_LFO_IDS[1]!.q],
   eq3: [EQ_BAND_LFO_IDS[2]!.freq, EQ_BAND_LFO_IDS[2]!.gain, EQ_BAND_LFO_IDS[2]!.q],
   eq4: [EQ_BAND_LFO_IDS[3]!.freq, EQ_BAND_LFO_IDS[3]!.gain, EQ_BAND_LFO_IDS[3]!.q],
+  eq5: [EQ_BAND_LFO_IDS[4]!.freq, EQ_BAND_LFO_IDS[4]!.gain, EQ_BAND_LFO_IDS[4]!.q],
+  eq6: [EQ_BAND_LFO_IDS[5]!.freq, EQ_BAND_LFO_IDS[5]!.gain, EQ_BAND_LFO_IDS[5]!.q],
+  eq7: [EQ_BAND_LFO_IDS[6]!.freq, EQ_BAND_LFO_IDS[6]!.gain, EQ_BAND_LFO_IDS[6]!.q],
+  eq8: [EQ_BAND_LFO_IDS[7]!.freq, EQ_BAND_LFO_IDS[7]!.gain, EQ_BAND_LFO_IDS[7]!.q],
   eqcf: EQCF_TARGETS,
   input: INPUT_TARGETS,
 }
@@ -263,20 +279,7 @@ export function defaultFxLfoBank(): FxLfoBank {
 }
 
 export function defaultFxLfos(): FxLfoMap {
-  return {
-    delay: defaultFxLfoBank(),
-    reverb: defaultFxLfoBank(),
-    compressor: defaultFxLfoBank(),
-    limiter: defaultFxLfoBank(),
-    saturation: defaultFxLfoBank(),
-    grain: defaultFxLfoBank(),
-    eq1: defaultFxLfoBank(),
-    eq2: defaultFxLfoBank(),
-    eq3: defaultFxLfoBank(),
-    eq4: defaultFxLfoBank(),
-    eqcf: defaultFxLfoBank(),
-    input: defaultFxLfoBank(),
-  }
+  return Object.fromEntries(FX_LFO_KINDS.map((kind) => [kind, defaultFxLfoBank()])) as FxLfoMap
 }
 
 export function cloneFxLfos(lfos: FxLfoMap): FxLfoMap {
@@ -454,20 +457,9 @@ function emptyHold(): LfoHoldSlot {
 }
 
 export function defaultLfoHold(): LfoHoldState {
-  return {
-    delay: [emptyHold(), emptyHold(), emptyHold()],
-    reverb: [emptyHold(), emptyHold(), emptyHold()],
-    compressor: [emptyHold(), emptyHold(), emptyHold()],
-    limiter: [emptyHold(), emptyHold(), emptyHold()],
-    saturation: [emptyHold(), emptyHold(), emptyHold()],
-    grain: [emptyHold(), emptyHold(), emptyHold()],
-    eq1: [emptyHold(), emptyHold(), emptyHold()],
-    eq2: [emptyHold(), emptyHold(), emptyHold()],
-    eq3: [emptyHold(), emptyHold(), emptyHold()],
-    eq4: [emptyHold(), emptyHold(), emptyHold()],
-    eqcf: [emptyHold(), emptyHold(), emptyHold()],
-    input: [emptyHold(), emptyHold(), emptyHold()],
-  }
+  return Object.fromEntries(
+    FX_LFO_KINDS.map((kind) => [kind, [emptyHold(), emptyHold(), emptyHold()]]),
+  ) as LfoHoldState
 }
 
 export function fxLfoIsActive(lfo: FxLfo): boolean {
@@ -481,9 +473,22 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
 ): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
-  if (kind === 'eqcf' || kind === 'eq1' || kind === 'eq2' || kind === 'eq3' || kind === 'eq4') return 'eq'
-  if (kind === 'input') return 'gain'
-  return kind
+  switch (kind) {
+    case 'input':
+      return 'gain'
+    case 'eqcf':
+    case 'eq1':
+    case 'eq2':
+    case 'eq3':
+    case 'eq4':
+    case 'eq5':
+    case 'eq6':
+    case 'eq7':
+    case 'eq8':
+      return 'eq'
+    default:
+      return kind
+  }
 }
 
 export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'main' | 'advanced' {
@@ -545,7 +550,7 @@ export function applyFxLfos(
           slotHold.value = rand() * 2 - 1
         }
       }
-      const wave = lfoWave(lfoPhase(timeSec, lfo.rateHz), lfo.shape, slotHold.value)
+      const wave = lfoWave(lfoPhase(timeSec - (lfo.phaseOriginSec ?? 0), lfo.rateHz), lfo.shape, slotHold.value)
       next[target] = modulateParam(params[target], target, wave, lfo.depth)
     }
   }

@@ -42,6 +42,18 @@ describe('wetDryFor', () => {
     expect(delay.wet).toBeCloseTo(Math.SQRT1_2, 5)
     expect(delay.out).toBe(1)
   })
+
+  it('uses equal-power Mix for reverb so the room is audible', () => {
+    const p = defaultParamValues()
+    p.reverbWet = 100
+    const full = wetDryFor('reverb', p)
+    expect(full.dry).toBe(0)
+    expect(full.wet).toBe(1)
+    p.reverbWet = 50
+    const half = wetDryFor('reverb', p)
+    expect(half.dry).toBeCloseTo(Math.SQRT1_2, 5)
+    expect(half.wet).toBeCloseTo(Math.SQRT1_2, 5)
+  })
 })
 
 describe('safeFeedbackGain', () => {

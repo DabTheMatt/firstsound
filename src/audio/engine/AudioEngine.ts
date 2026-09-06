@@ -86,6 +86,9 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
+import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
+import { makeTanhCurve, saturationDryWet } from '../fx/saturation'
+import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
@@ -132,9 +135,10 @@ import {
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import {
+  defaultEqBandAt,
   defaultEqBands,
   COMB_MAX_TEETH,
-  EQ_BAND_COUNT,
+  EQ_MAX_BANDS,
   EQ_MAX_STAGES,
   EQ_NODE_COUNT,
   filterStageCount,
@@ -144,6 +148,23 @@ import {
   type EqBand,
   type EqFilterType,
 } from './eqBands'
+import {
+  addTrack,
+  clampMix,
+  cloneTracks,
+  companionTrackIds,
+  defaultTracks,
+  duplicateTrack,
+  outputMixGain,
+  parseTracks,
+  patchTrack,
+  removeTrack,
+  selectedTrack,
+  trackMixGain,
+  tracksEqual,
+  writeTrackRegion,
+  type MixTrack,
+} from '../mix/tracks'
 import {
   pingPongFadeCurve,
   pingPongFadeCurveFrom,
@@ -155,6 +176,7 @@ import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
+import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
@@ -214,6 +236,9 @@ export type EngineSnapshot = {
   zeroNotice: string | null
   silenceProposal: SilenceProposal | null
   variations: { id: string; name: string }[]
+  tracks: MixTrack[]
+  selectedTrackId: string
+  masterMix: number
   transients: number[]
   showTransients: boolean
   tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
@@ -280,6 +305,7 @@ type Slot = {
   stereo?: StereoStage
 }
 
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
@@ -287,6 +313,13 @@ type Slot = {
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private voiceBus: GainNode | null = null
+  private mixBus: GainNode | null = null
+  private tracks: MixTrack[] = defaultTracks()
+  private selectedTrackId = this.tracks[0]!.id
+  private masterMix = 100
+  private trackBuffers = new Map<string, AudioBuffer>()
+  private trackGains = new Map<string, GainNode>()
+  private companionSources = new Map<string, AudioBufferSourceNode>()
   private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
@@ -411,6 +444,10 @@ export class AudioEngine {
 
   getBuffer(): AudioBuffer | null {
     return this.buffer
+  }
+
+  getTrackBuffer(id: string): AudioBuffer | null {
+    return this.trackBuffers.get(id) ?? (id === this.selectedTrackId ? this.buffer : null)
   }
 
   getMono(): Float32Array | null {
@@ -543,23 +580,37 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.fileName = 'field_demo.wav'
-    this.applyLoadedBuffer(buffer, true)
+    this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId)
   }
 
   async loadArrayBuffer(data: ArrayBuffer, fileName: string): Promise<void> {
+    await this.loadTrackArrayBuffer(this.selectedTrackId, data, fileName)
+  }
+
+  async loadTrackArrayBuffer(id: string, data: ArrayBuffer, fileName: string): Promise<void> {
     await this.ensureContext()
     if (!this.ctx) return
+    const track = selectedTrack(this.tracks, id)
+    if (!track) return
     const copy = data.slice(0)
     const decoded = await this.ctx.decodeAudioData(copy)
+    const wasPlaying = this.playing
     this.stopVoices()
     this.playing = false
-    this.fileName = fileName
-    this.applyLoadedBuffer(decoded, true)
+    if (track.id === this.selectedTrackId) this.fileName = fileName
+    this.applyLoadedBuffer(decoded, true, 'inset', track.id, fileName)
+    if (track.id !== this.selectedTrackId) this.selectTrack(track.id)
+    if (wasPlaying) void this.play()
   }
 
   async play(): Promise<void> {
     await this.ensureContext()
-    if (!this.ctx || !this.buffer) return
+    this.bindWorkingFromTrack(this.selectedTrackId)
+    const hasLead = Boolean(this.buffer)
+    const hasCompanion = companionTrackIds(this.tracks, this.selectedTrackId).some((id) =>
+      Boolean(this.trackBuffers.get(id)),
+    )
+    if (!this.ctx || (!hasLead && !hasCompanion)) return
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
@@ -569,7 +620,7 @@ export class AudioEngine {
       this.spaceLatched = false
       this.applyLiveAudio()
     }
-    const duration = this.buffer.duration
+    const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
     if (this.playFullSample) {
@@ -577,13 +628,16 @@ export class AudioEngine {
     } else {
       this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
     }
-    if (this.engineMode === 'grain') {
-      this.nextGrainTime = this.ctx.currentTime
-      this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
-      this.scheduleGrains()
-    } else {
-      this.startRegionPlayback()
+    if (hasLead) {
+      if (this.engineMode === 'grain') {
+        this.nextGrainTime = this.ctx.currentTime
+        this.schedulerId = window.setInterval(() => this.scheduleGrains(), SCHEDULER_MS)
+        this.scheduleGrains()
+      } else {
+        this.startRegionPlayback()
+      }
     }
+    this.startCompanionVoices()
     this.emit()
   }
 
@@ -705,6 +759,7 @@ export class AudioEngine {
       const region = clampRegion(next.start, next.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
+      this.syncSelectedTrackRegion()
       this.applyRegionChange()
     } else {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
@@ -714,6 +769,8 @@ export class AudioEngine {
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       this.syncTimeFromClock(id)
       this.applyLiveAudio()
+      if (id === 'reverbWet') this.engageReverbFromMix()
+      if (id === 'delayWet' || id === 'delayWetR') this.engageDelayFromMix()
     }
     if (id === 'position' || id === 'start' || id === 'end') {
       const dur = this.buffer?.duration ?? 0
@@ -732,7 +789,21 @@ export class AudioEngine {
     }
     this.syncTimeFromClock('bpm')
     this.applyLiveAudio()
+    this.engageReverbFromMix()
+    this.engageDelayFromMix()
     this.emit()
+  }
+
+  private engageReverbFromMix(): void {
+    if (!reverbMixEngagesModule(this.params.reverbWet)) return
+    const reverb = this.chain.find((m) => m.type === 'reverb')
+    if (reverb?.bypassed) this.setModuleBypass(reverb.instanceId, false)
+  }
+
+  private engageDelayFromMix(): void {
+    if (this.params.delayWet < 1) return
+    const delay = this.chain.find((m) => m.type === 'delay')
+    if (delay?.bypassed) this.setModuleBypass(delay.instanceId, false)
   }
 
   private copyDelayLeftToRight(): void {
@@ -740,6 +811,8 @@ export class AudioEngine {
     this.params.delaySyncR = this.params.delaySync
     this.params.delayNoteR = this.params.delayNote
     this.params.delayNoteKindR = this.params.delayNoteKind
+    this.params.delayWetR = this.params.delayWet
+    this.params.delayFeedbackR = this.params.delayFeedback
   }
 
   setDelayType(type: DelayType): void {
@@ -771,6 +844,7 @@ export class AudioEngine {
     if (patch.target !== undefined) {
       next.target = patch.target && isFxLfoTarget(kind, patch.target) ? patch.target : null
       if (next.target) {
+        next.phaseOriginSec = this.lfoTime()
         for (let s = 0; s < FX_LFO_SLOTS; s++) {
           const other = this.fxLfos[kind][s]
           if (s !== i && other?.target === next.target) other.target = null
@@ -779,7 +853,7 @@ export class AudioEngine {
     }
     this.fxLfos[kind][i] = next
     this.syncLfoClock()
-    this.applyLiveAudio(0.01)
+    this.applyLiveAudio(patch.target !== undefined ? 0.06 : 0.02)
     this.emit()
     if (anyFxLfoActive(this.fxLfos)) void this.ensureContext()
   }
@@ -882,6 +956,7 @@ export class AudioEngine {
     const region = clampRegion(start, end, duration, MIN_REGION)
     this.params.start = region.start
     this.params.end = region.end
+    this.syncSelectedTrackRegion()
     if (!this.prepApplied) {
       this.prep = clampPrep(
         { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
@@ -950,6 +1025,7 @@ export class AudioEngine {
     )
     this.params.start = region.start
     this.params.end = region.end
+    this.syncSelectedTrackRegion()
     this.applyRegionChange()
   }
 
@@ -993,6 +1069,27 @@ export class AudioEngine {
     )
   }
 
+  /** Crop the working sample to the play region and cover the whole new buffer. */
+  async trimPlayRegion(): Promise<boolean> {
+    await this.ensureContext()
+    if (!this.ctx || !this.buffer) return false
+    this.stopPreview()
+    this.stopVoices()
+    this.playing = false
+    const rendered = renderRegion(this.buffer, this.ctx, {
+      start: this.params.start,
+      end: this.params.end,
+      reverse: false,
+      fadeIn: 0,
+      fadeOut: 0,
+      fadeCurve: 'linear',
+      gain: 1,
+    })
+    this.fileName = stemName(this.fileName) + '_trim.wav'
+    this.applyLoadedBuffer(rendered, false, 'full', this.selectedTrackId)
+    return true
+  }
+
   detectSilenceMarkers(): void {
     const channels: Float32Array[] = []
     if (this.sourceBuffer) {
@@ -1006,7 +1103,7 @@ export class AudioEngine {
   }
 
   markSampleTransients(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
@@ -1016,7 +1113,7 @@ export class AudioEngine {
     this.showTransients = this.transients.length > 0
     this.tempoNotice = this.transients.length
       ? `Marked ${this.transients.length} transients.`
-      : 'No clear transients in this region.'
+      : 'No clear transients in this sample.'
     this.emit()
   }
 
@@ -1026,26 +1123,55 @@ export class AudioEngine {
     else this.emit()
   }
 
+  setTransientTime(index: number, time: number): void {
+    if (!this.transients.length) return
+    const duration = this.buffer?.duration ?? 0
+    const { prev, next } = neighborTimes(this.transients, index, duration)
+    const nextTime = clampWarpTime(time, prev, next)
+    const copy = this.transients.slice()
+    copy[index] = nextTime
+    this.transients = copy
+    this.emit()
+  }
+
+  commitTransientWarp(index: number, fromSec: number, toSec: number): void {
+    const buffer = this.detachWorkingBuffer()
+    if (!buffer || index < 0 || index >= this.transients.length) return
+    const origin = this.transients.slice()
+    origin[index] = fromSec
+    const duration = buffer.duration
+    const sr = buffer.sampleRate
+    const { prev, next } = neighborTimes(origin, index, duration)
+    const clamped = clampWarpTime(toSec, prev, next)
+    if (Math.abs(clamped - fromSec) < 1e-4) {
+      this.setTransientTime(index, clamped)
+      return
+    }
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      const warped = warpChannel(buffer.getChannelData(ch), sr, fromSec, clamped, prev, next)
+      buffer.getChannelData(ch).set(warped)
+    }
+    this.transients = remapWarpTimes(origin, fromSec, clamped, prev, next)
+    this.showTransients = true
+    this.afterBufferEditKeepTransients()
+  }
+
   detectSampleTempo(): void {
-    const region = this.analysisRegion()
+    const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
       return
     }
     const guess = estimateTempo(region.samples, region.sampleRate, region.offsetSec, region.durationSec)
-    this.transients = guess?.transients ?? detectTransients(region.samples, region.sampleRate, region.offsetSec)
-    this.showTransients = this.transients.length > 0
     if (!guess) {
-      this.tempoNotice = this.transients.length
-        ? 'Found transients, but no steady tempo.'
-        : 'No rhythm found in this region.'
+      this.tempoNotice = 'No steady tempo found in this sample.'
       this.emit()
       return
     }
     this.tempoSource = 'detected'
     this.writeTempo(guess.bpm)
-    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM from transients.`
+    this.tempoNotice = `Detected ${guess.bpm.toFixed(1)} BPM.`
     this.emit()
   }
 
@@ -1085,7 +1211,7 @@ export class AudioEngine {
     if (resetBpm) this.params.bpm = PARAMS.bpm.defaultValue
   }
 
-  private analysisRegion(): {
+  private analysisFull(): {
     samples: Float32Array
     sampleRate: number
     offsetSec: number
@@ -1095,15 +1221,14 @@ export class AudioEngine {
     const mono = this.mono
     if (!buffer || !mono || !mono.length) return null
     const sr = buffer.sampleRate
-    const start = Math.max(0, this.params.start)
-    const end = Math.min(buffer.duration, Math.max(start + 0.05, this.params.end))
-    const s = Math.min(mono.length - 1, Math.max(0, Math.floor(start * sr)))
-    const e = Math.min(mono.length, Math.max(s + 1, Math.floor(end * sr)))
+    const maxSec = 45
+    const maxN = Math.min(mono.length, Math.max(1, Math.floor(maxSec * sr)))
+    const samples = maxN < mono.length ? mono.subarray(0, maxN) : mono
     return {
-      samples: mono.subarray(s, e),
+      samples,
       sampleRate: sr,
-      offsetSec: s / sr,
-      durationSec: (e - s) / sr,
+      offsetSec: 0,
+      durationSec: samples.length / Math.max(1, sr),
     }
   }
 
@@ -1346,6 +1471,11 @@ export class AudioEngine {
     this.eqListen = 'sample'
     this.stopNoise()
     this.chain = defaultChain()
+    this.tracks = defaultTracks(region.start, region.end)
+    this.selectedTrackId = this.tracks[0]!.id
+    this.masterMix = 100
+    this.trackBuffers.clear()
+    this.clearTrackGains()
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
@@ -1383,6 +1513,90 @@ export class AudioEngine {
     void this.rebuildGraph()
   }
 
+  addTrack(): string | null {
+    const duration = this.buffer?.duration ?? 0
+    const region = this.region(duration)
+    const next = addTrack(this.tracks, region.start, region.end)
+    if (tracksEqual(next, this.tracks)) return null
+    const added = next.find((track) => !this.tracks.some((item) => item.id === track.id))
+    this.tracks = next
+    if (added) {
+      const sourceId = this.selectedTrackId
+      const shared = this.trackBuffers.get(sourceId) ?? this.buffer
+      if (shared) this.trackBuffers.set(added.id, shared)
+      const source = this.tracks.find((track) => track.id === sourceId)
+      if (source?.fileName) this.tracks = patchTrack(this.tracks, added.id, { fileName: source.fileName })
+      this.selectTrack(added.id)
+    } else {
+      this.emit()
+    }
+    return added?.id ?? null
+  }
+
+  duplicateTrack(id: string): string | null {
+    const next = duplicateTrack(this.tracks, id)
+    if (tracksEqual(next, this.tracks)) return null
+    const added = next.find((track) => !this.tracks.some((item) => item.id === track.id))
+    this.tracks = next
+    if (added) {
+      const shared = this.trackBuffers.get(id) ?? (id === this.selectedTrackId ? this.buffer : null)
+      if (shared) this.trackBuffers.set(added.id, shared)
+      this.selectTrack(added.id)
+    } else {
+      this.emit()
+    }
+    return added?.id ?? null
+  }
+
+  removeTrack(id: string): void {
+    const next = removeTrack(this.tracks, id)
+    if (tracksEqual(next, this.tracks)) return
+    this.tracks = next
+    this.trackBuffers.delete(id)
+    this.dropTrackGain(id)
+    if (!this.tracks.some((track) => track.id === this.selectedTrackId)) {
+      this.selectTrack(this.tracks[0]!.id)
+      return
+    }
+    this.applyLiveAudio(0.01)
+    this.refreshCompanionVoices()
+    this.emit()
+  }
+
+  setTrack(id: string, patch: Partial<Omit<MixTrack, 'id'>>): void {
+    const next = patchTrack(this.tracks, id, patch)
+    if (tracksEqual(next, this.tracks)) return
+    this.tracks = next
+    if (id === this.selectedTrackId && (patch.start != null || patch.end != null)) {
+      const track = selectedTrack(this.tracks, id)
+      if (track) this.applyTrackRegion(track)
+    }
+    this.applyLiveAudio(0.01)
+    this.refreshCompanionVoices()
+    this.emit()
+  }
+
+  selectTrack(id: string): void {
+    const track = selectedTrack(this.tracks, id)
+    if (!track) return
+    if (track.id === this.selectedTrackId) return
+    this.syncSelectedTrackRegion()
+    this.selectedTrackId = track.id
+    this.bindWorkingFromTrack(track.id)
+    this.applyTrackRegion(track)
+    this.applyLiveAudio(0.01)
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  setMasterMix(mix: number): void {
+    const next = clampMix(mix)
+    if (next === this.masterMix) return
+    this.masterMix = next
+    this.applyLiveAudio(0.01)
+    this.emit()
+  }
+
   setModuleBypass(instanceId: string, bypassed: boolean): void {
     this.chain = setBypassed(this.chain, instanceId, bypassed)
     const grain = this.chain.find((m) => m.instanceId === instanceId && m.type === 'grain')
@@ -1390,6 +1604,15 @@ export class AudioEngine {
     this.applyBypassRamps()
     if (grain && this.playing) void this.play()
     else this.emit()
+  }
+
+  toggleModuleBypass(instanceId: string): void {
+    const mod = this.chain.find((m) => m.instanceId === instanceId)
+    if (!mod) return
+    if (mod.bypassed && mod.type === 'reverb') {
+      this.params.reverbWet = mixWhenEnablingReverb(this.params.reverbWet)
+    }
+    this.setModuleBypass(instanceId, !mod.bypassed)
   }
 
   setEqBand(index: number, patch: Partial<EqBand>, instanceId?: string): void {
@@ -1410,6 +1633,20 @@ export class AudioEngine {
       return
     }
     this.emit()
+  }
+
+  addEqBand(instanceId?: string): number | null {
+    const id = instanceId ?? this.primaryEqId()
+    const st = this.eqState(id)
+    if (st.bands.length >= EQ_MAX_BANDS) return null
+    const index = st.bands.length
+    st.bands = [...st.bands, defaultEqBandAt(index)]
+    this.eqById.set(id, st)
+    this.syncPrimaryEq()
+    this.syncEqLfoParams(id)
+    this.applyEq(0.03)
+    this.emit()
+    return index
   }
 
   setComb(patch: Partial<CombFilterState>, instanceId?: string): void {
@@ -1543,7 +1780,7 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.fileName = `mic-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.wav`
-    this.applyLoadedBuffer(buffer, true)
+    this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId)
   }
 
   toPreset(): PresetV1 {
@@ -1563,6 +1800,8 @@ export class AudioEngine {
       delayType: this.delayType,
       reverbType: this.reverbType,
       fxLfos: cloneFxLfos(this.fxLfos),
+      tracks: cloneTracks(this.tracks),
+      masterMix: this.masterMix,
     }
   }
 
@@ -1617,6 +1856,17 @@ export class AudioEngine {
     this.syncPrimaryEq()
     this.syncEqLfoParams(this.primaryEqId())
     this.syncLfoClock()
+    const parsedTracks = parseTracks(preset.tracks ?? preset.mixLayers)
+    this.tracks = parsedTracks ?? defaultTracks(region.start, region.end)
+    this.hydrateTrackRegions(region.start, region.end)
+    this.selectedTrackId = this.tracks[0]!.id
+    if (typeof preset.masterMix === 'number') this.masterMix = clampMix(preset.masterMix)
+    const selected = selectedTrack(this.tracks, this.selectedTrackId)
+    if (selected && selected.end > selected.start) {
+      const trackRegion = clampRegion(selected.start, selected.end, duration, MIN_REGION)
+      this.params.start = trackRegion.start
+      this.params.end = trackRegion.end
+    }
     void this.rebuildGraph().then(() => {
       if (this.playing) void this.play()
       else this.emit()
@@ -1653,7 +1903,7 @@ export class AudioEngine {
         gain,
       })
       this.fileName = stemName(this.fileName) + '_sample.wav'
-      this.applyLoadedBuffer(rendered, false, 'full')
+      this.applyLoadedBuffer(rendered, false, 'full', this.selectedTrackId)
       return
     }
     if (!this.sourceBuffer) return
@@ -1674,7 +1924,7 @@ export class AudioEngine {
     if (!this.sourceBuffer) return
     this.stopVoices()
     this.playing = false
-    this.applyLoadedBuffer(this.sourceBuffer, false)
+    this.applyLoadedBuffer(this.sourceBuffer, false, 'inset', this.selectedTrackId)
   }
 
   /** Peak-normalize the current play region in place (does not crop). */
@@ -1731,43 +1981,83 @@ export class AudioEngine {
     buffer: AudioBuffer,
     asSource: boolean,
     regionMode: 'inset' | 'full' = 'inset',
+    trackId = this.selectedTrackId,
+    sampleName?: string,
   ): void {
-    this.buffer = buffer
-    if (asSource) this.sourceBuffer = buffer
-    this.reversed = this.buildReversed(buffer)
-    this.mono = mixToMono(buffer)
+    const target = selectedTrack(this.tracks, trackId) ?? this.tracks[0]
+    const targetId = target?.id ?? this.selectedTrackId
+    this.trackBuffers.set(targetId, buffer)
+    const bindEditor = targetId === this.selectedTrackId
+    if (bindEditor) {
+      this.buffer = buffer
+      if (asSource) this.sourceBuffer = buffer
+      this.reversed = this.buildReversed(buffer)
+      this.mono = mixToMono(buffer)
+    }
+    let start = 0
+    let end = buffer.duration
     if (asSource) {
-      this.sourceMono = this.mono
-      this.sourceMips = []
-      if (this.sourceBuffer) {
-        for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
-          this.sourceMips.push(buildPeakMips(this.sourceBuffer.getChannelData(c)))
+      if (bindEditor) {
+        this.sourceMono = this.mono
+        this.sourceMips = []
+        if (this.sourceBuffer) {
+          for (let c = 0; c < this.sourceBuffer.numberOfChannels; c++) {
+            this.sourceMips.push(buildPeakMips(this.sourceBuffer.getChannelData(c)))
+          }
         }
-      }
-      this.variations = []
-      this.variationSeq = 0
-      this.prepApplied = false
-      this.prep = defaultPrep(buffer.duration)
-      this.prepHistory = resetHistory(this.prep)
-      this.silenceProposal = null
-      this.zeroNotice = null
-      this.resetTempoAnalysis(true)
-      this.stopPreview()
+        this.variations = []
+        this.variationSeq = 0
+        this.prepApplied = false
+        this.prep = defaultPrep(buffer.duration)
+        this.prepHistory = resetHistory(this.prep)
+        this.silenceProposal = null
+        this.zeroNotice = null
+        this.resetTempoAnalysis(true)
+        this.stopPreview()
       this.params = {
         ...this.params,
         start: this.prep.selectionStart,
         end: this.prep.selectionEnd,
       }
-      this.playOffset = this.params.start
+      this.playOffset = 0
+        start = this.params.start
+        end = this.params.end
+      } else {
+        const region = defaultPlayRegion(buffer.duration, MIN_REGION)
+        start = region.start
+        end = region.end
+      }
     } else {
       const region =
         regionMode === 'full'
           ? fullPlayRegion(buffer.duration)
           : defaultPlayRegion(buffer.duration, MIN_REGION)
-      this.params = { ...this.params, start: region.start, end: region.end }
-      this.playOffset = region.start
-      this.resetTempoAnalysis()
+      start = region.start
+      end = region.end
+      if (bindEditor) {
+        this.params = { ...this.params, start, end }
+        this.playOffset = start
+        this.resetTempoAnalysis()
+        if (regionMode === 'full') {
+          this.prepApplied = true
+          this.prep = clampPrep(
+            {
+              ...this.prep,
+              windowStart: 0,
+              windowEnd: buffer.duration,
+              selectionStart: start,
+              selectionEnd: end,
+            },
+            Math.max(this.sourceDuration(), buffer.duration),
+          )
+        }
+      }
     }
+    this.tracks = patchTrack(this.tracks, targetId, {
+      start,
+      end,
+      fileName: sampleName ?? (bindEditor && this.fileName ? this.fileName : this.tracks.find((t) => t.id === targetId)?.fileName ?? null),
+    })
     this.bufferRev++
     this.emit()
   }
@@ -1798,6 +2088,17 @@ export class AudioEngine {
     this.mono = mixToMono(this.buffer)
     this.resetTempoAnalysis()
     this.bufferRev++
+    if (this.buffer) this.trackBuffers.set(this.selectedTrackId, this.buffer)
+    if (this.playing) void this.play()
+    else this.emit()
+  }
+
+  private afterBufferEditKeepTransients(): void {
+    if (!this.buffer) return
+    this.reversed = this.buildReversed(this.buffer)
+    this.mono = mixToMono(this.buffer)
+    this.bufferRev++
+    if (this.buffer) this.trackBuffers.set(this.selectedTrackId, this.buffer)
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -1906,6 +2207,8 @@ export class AudioEngine {
     this.previewGain.gain.value = 1
     this.noiseGain = ctx.createGain()
     this.noiseGain.gain.value = 0
+    this.mixBus = ctx.createGain()
+    this.mixBus.gain.value = 1
 
     for (const mod of normalizeChain(this.chain)) {
       this.slots.set(mod.instanceId, this.createSlot(mod))
@@ -1985,13 +2288,64 @@ export class AudioEngine {
     return slot
   }
 
+  private applyTrackMix(smoothing: number): void {
+    if (!this.ctx || !this.mixBus) return
+    this.ensureTrackGains()
+    const now = this.ctx.currentTime
+    for (const track of this.tracks) {
+      const node = this.trackGains.get(track.id)
+      if (!node) continue
+      rampGainExact(node.gain, trackMixGain(track, this.tracks), now, smoothing)
+    }
+    rampGainExact(this.mixBus.gain, outputMixGain(this.masterMix), now, smoothing)
+  }
+
+  private syncSelectedTrackRegion(): void {
+    const id = this.selectedTrackId
+    if (!this.tracks.some((track) => track.id === id)) return
+    this.tracks = writeTrackRegion(this.tracks, id, this.params.start, this.params.end)
+  }
+
+  private hydrateTrackRegions(start: number, end: number): void {
+    this.tracks = this.tracks.map((track) => {
+      const duration = this.trackBuffers.get(track.id)?.duration ?? this.buffer?.duration ?? 0
+      const hasRegion = track.end > track.start
+      const region = clampRegion(
+        hasRegion ? track.start : start,
+        hasRegion ? track.end : end,
+        duration,
+        MIN_REGION,
+      )
+      return { ...track, start: region.start, end: region.end }
+    })
+  }
+
+  private applyTrackRegion(track: MixTrack): void {
+    const duration = this.trackBuffers.get(track.id)?.duration ?? this.buffer?.duration ?? 0
+    const region = clampRegion(track.start, track.end, duration, MIN_REGION)
+    this.params.start = region.start
+    this.params.end = region.end
+    this.tracks = writeTrackRegion(this.tracks, track.id, region.start, region.end)
+    const span = Math.max(region.end - region.start, 0)
+    this.playOffset = region.start + (this.params.position / 100) * span
+    this.applyRegionChange()
+  }
+
   private connectSlots(): void {
     if (!this.ctx || !this.voiceBus || !this.safetyGain || !this.limiter || !this.analyser) return
     const ordered = this.chain
       .map((m) => this.slots.get(m.instanceId))
       .filter((s): s is Slot => Boolean(s))
     if (ordered.length === 0) return
-    this.voiceBus.connect(ordered[0]!.input)
+    if (this.mixBus) {
+      this.ensureTrackGains()
+      const lead = this.trackGains.get(this.selectedTrackId)
+      if (lead) this.voiceBus.connect(lead)
+      else this.voiceBus.connect(this.mixBus)
+      this.mixBus.connect(ordered[0]!.input)
+    } else {
+      this.voiceBus.connect(ordered[0]!.input)
+    }
     const eqSlots = ordered.filter((s) => s.type === 'eq')
     const firstEq = eqSlots[0]
     const lastEq = eqSlots.at(-1)
@@ -2045,6 +2399,18 @@ export class AudioEngine {
       this.voiceBus?.disconnect()
     } catch {
       /* already disconnected */
+    }
+    try {
+      this.mixBus?.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    for (const gain of this.trackGains.values()) {
+      try {
+        gain.disconnect()
+      } catch {
+        /* already disconnected */
+      }
     }
     try {
       this.limiter?.disconnect()
@@ -2156,15 +2522,25 @@ export class AudioEngine {
         : this.eqListen === 'filters' && mod.type === 'eq'
           ? false
           : mod.bypassed
-      const dry = bypassed ? 1 : dryLevel(mod.type, params)
+      const stereoDelay = mod.type === 'delay' && isDelayStereo(params)
+      const dry =
+        bypassed ? 1 : stereoDelay ? 0 : dryLevel(mod.type, params)
       const wet =
         this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
           ? 0
           : bypassed
             ? 0
-            : wetLevel(mod.type, params)
+            : stereoDelay
+              ? 1
+              : wetLevel(mod.type, params)
       rampGainExact(slot.dry.gain, dry, now, smoothing)
       rampGainExact(slot.wet.gain, wet, now, smoothing)
+      if (mod.type === 'delay' && slot.delayFx && (bypassed || this.spaceLatched)) {
+        rampGainExact(slot.delayFx.chanDryL.gain, 0, now, smoothing)
+        rampGainExact(slot.delayFx.chanDryR.gain, 0, now, smoothing)
+        rampGainExact(slot.delayFx.chanWetL.gain, 1, now, smoothing)
+        rampGainExact(slot.delayFx.chanWetR.gain, 1, now, smoothing)
+      }
       if (mod.type === 'delay' || mod.type === 'reverb') {
         const out = bypassed ? 1 : wetDryFor(mod.type, params).out
         rampGainExact(slot.output.gain, out, now, smoothing)
@@ -2257,39 +2633,39 @@ export class AudioEngine {
     smoothing: number,
     nyquist: number,
   ): void {
-    for (let bandIndex = 0; bandIndex < EQ_BAND_COUNT; bandIndex++) {
+    for (let bandIndex = 0; bandIndex < EQ_MAX_BANDS; bandIndex++) {
       const band = bands[bandIndex]
       const stages = band ? filterStageCount(band) : 0
       for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
         const node = filters[bandIndex * EQ_MAX_STAGES + stage]
         if (!node) continue
         if (!band || band.type === 'off' || stage >= stages) {
-          node.type = 'allpass'
+          if (node.type !== 'allpass') node.type = 'allpass'
           node.frequency.setTargetAtTime(1000, now, smoothing)
           node.Q.setTargetAtTime(0.0001, now, smoothing)
           node.gain.setTargetAtTime(0, now, smoothing)
           continue
         }
-        node.type = band.type
+        if (node.type !== band.type) node.type = band.type
         node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
         node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
         node.gain.setTargetAtTime(band.gain, now, smoothing)
       }
     }
     const combBands = combAsEqBands(comb)
-    const combOffset = EQ_BAND_COUNT * EQ_MAX_STAGES
+    const combOffset = EQ_MAX_BANDS * EQ_MAX_STAGES
     for (let i = 0; i < COMB_MAX_TEETH; i++) {
       const node = filters[combOffset + i]
       if (!node) continue
       const tooth = combBands[i]
       if (!tooth) {
-        node.type = 'allpass'
+        if (node.type !== 'allpass') node.type = 'allpass'
         node.frequency.setTargetAtTime(1000, now, smoothing)
         node.Q.setTargetAtTime(0.0001, now, smoothing)
         node.gain.setTargetAtTime(0, now, smoothing)
         continue
       }
-      node.type = 'peaking'
+      if (node.type !== 'peaking') node.type = 'peaking'
       node.frequency.setTargetAtTime(Math.min(tooth.frequency, nyquist * 0.99), now, smoothing)
       node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, tooth.q)), now, smoothing)
       node.gain.setTargetAtTime(tooth.gain, now, smoothing)
@@ -2338,7 +2714,7 @@ export class AudioEngine {
 
   private lfoTime(): number {
     const now = typeof performance !== 'undefined' ? performance.now() : 0
-    if (this.playing) {
+    if (anyFxLfoActive(this.fxLfos)) {
       if (this.lfoWallMs > 0) this.lfoClockSec += (now - this.lfoWallMs) / 1000
       this.lfoWallMs = now
     } else {
@@ -2353,10 +2729,10 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const active = this.playing && anyFxLfoActive(this.fxLfos)
+    const active = anyFxLfoActive(this.fxLfos)
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
-        this.applyLiveAudio(0.003)
+        this.applyLiveAudio(0.028)
         this.emit()
       }, 16)
     }
@@ -2380,23 +2756,21 @@ export class AudioEngine {
         else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
       }
       if (slot.reverbFx) {
-        if (this.spaceLatched) silenceReverbGraph(slot.reverbFx, now)
-        else {
-          applyReverbGraph(slot.reverbFx, params, this.reverbType, bpm, now, smoothing)
-          const key = reverbImpulseKey(params, this.reverbType)
-          if (key !== this.reverbIrKey) {
-            this.reverbIrKey = key
-            if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
-            const fx = slot.reverbFx
-            if (!fx.conv.buffer) {
-              fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
-            } else {
-              this.reverbIrTimer = window.setTimeout(() => {
-                this.reverbIrTimer = 0
-                if (!this.ctx || !fx) return
-                fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
-              }, 40)
-            }
+        const fx = slot.reverbFx
+        if (this.spaceLatched) silenceReverbGraph(fx, now)
+        else applyReverbGraph(fx, params, this.reverbType, bpm, now, smoothing)
+        const key = reverbImpulseKey(params, this.reverbType)
+        if (key !== this.reverbIrKey || !fx.conv.buffer) {
+          this.reverbIrKey = key
+          if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+          if (!fx.conv.buffer) {
+            fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
+          } else {
+            this.reverbIrTimer = window.setTimeout(() => {
+              this.reverbIrTimer = 0
+              if (!this.ctx || !fx) return
+              fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
+            }, 40)
           }
         }
       }
@@ -2421,13 +2795,14 @@ export class AudioEngine {
           invert: live.invertPhase > 0.5,
         },
         now,
-        0.03,
+        smoothing,
       )
     } else if (gainSlot) {
       gainSlot.output.gain.setTargetAtTime(dbToGain(live.gain), now, 0.03)
     }
     if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(live.outputGain), now, 0.03)
     this.applyEq(smoothing)
+    this.applyTrackMix(smoothing)
     this.applyFxParams(smoothing)
     this.applyBypassRamps(smoothing)
     this.syncEqListen()
@@ -2881,6 +3256,104 @@ export class AudioEngine {
       this.source = null
     }
     this.disconnectVoiceGain()
+    this.stopCompanionVoices()
+  }
+
+  private bindWorkingFromTrack(id: string): void {
+    const buffer = this.trackBuffers.get(id) ?? null
+    this.buffer = buffer
+    if (buffer) {
+      this.reversed = this.buildReversed(buffer)
+      this.mono = mixToMono(buffer)
+      const name = this.tracks.find((track) => track.id === id)?.fileName
+      if (name) this.fileName = name
+    } else {
+      this.reversed = null
+      this.mono = null
+    }
+  }
+
+  private ensureTrackGains(): void {
+    if (!this.ctx || !this.mixBus) return
+    const live = new Set(this.tracks.map((track) => track.id))
+    for (const id of [...this.trackGains.keys()]) {
+      if (!live.has(id)) this.dropTrackGain(id)
+    }
+    for (const track of this.tracks) {
+      let gain = this.trackGains.get(track.id)
+      if (!gain) {
+        gain = this.ctx.createGain()
+        gain.gain.value = trackMixGain(track, this.tracks)
+        this.trackGains.set(track.id, gain)
+      }
+      try {
+        gain.disconnect()
+      } catch {
+        /* first connect */
+      }
+      gain.connect(this.mixBus)
+    }
+  }
+
+  private dropTrackGain(id: string): void {
+    const gain = this.trackGains.get(id)
+    if (!gain) return
+    try {
+      gain.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    this.trackGains.delete(id)
+  }
+
+  private clearTrackGains(): void {
+    for (const id of [...this.trackGains.keys()]) this.dropTrackGain(id)
+  }
+
+  private refreshCompanionVoices(): void {
+    if (this.playing) this.startCompanionVoices()
+  }
+
+  private startCompanionVoices(): void {
+    this.stopCompanionVoices()
+    if (!this.ctx || !this.playing) return
+    this.ensureTrackGains()
+    for (const id of companionTrackIds(this.tracks, this.selectedTrackId)) {
+      const buffer = this.trackBuffers.get(id)
+      const track = this.tracks.find((item) => item.id === id)
+      const gain = this.trackGains.get(id)
+      if (!buffer || !track || !gain) continue
+      const region = clampRegion(track.start, track.end, buffer.duration, MIN_REGION)
+      const src = this.ctx.createBufferSource()
+      src.buffer = buffer
+      src.loop = this.loop
+      src.loopStart = region.start
+      src.loopEnd = Math.max(region.start + MIN_REGION, region.end)
+      src.connect(gain)
+      try {
+        src.start(this.ctx.currentTime, region.start)
+      } catch {
+        continue
+      }
+      this.companionSources.set(id, src)
+    }
+  }
+
+  private stopCompanionVoices(): void {
+    for (const src of this.companionSources.values()) {
+      try {
+        src.onended = null
+        src.stop()
+      } catch {
+        /* already stopped */
+      }
+      try {
+        src.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+    this.companionSources.clear()
   }
 
   private buildSnapshot(): EngineSnapshot {
@@ -2928,6 +3401,9 @@ export class AudioEngine {
       zeroNotice: this.zeroNotice,
       silenceProposal: this.silenceProposal,
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
+      tracks: cloneTracks(this.tracks),
+      selectedTrackId: this.selectedTrackId,
+      masterMix: this.masterMix,
       transients: this.transients.slice(),
       showTransients: this.showTransients,
       tempoSource: this.tempoSource,
@@ -3002,18 +3478,6 @@ function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-function makeTanhCurve(amount: number): Float32Array<ArrayBuffer> {
-  const n = 1024
-  const curve = new Float32Array(new ArrayBuffer(n * 4))
-  const k = 1 + amount * 10
-  const denom = Math.tanh(k)
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * 2 - 1
-    curve[i] = denom === 0 ? x : Math.tanh(k * x) / denom
-  }
-  return curve
-}
-
 function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {
   param.cancelScheduledValues(now)
   if (value <= 1e-5) {
@@ -3030,7 +3494,7 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
 function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).wet
   if (type === 'reverb') return wetDryFor('reverb', params).wet
-  if (type === 'saturation') return params.saturation > 0 ? 1 : 0
+  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).wet
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 1
   return 0
 }
@@ -3038,7 +3502,7 @@ function wetLevel(type: ModuleType, params: Record<ParamId, number>): number {
 function dryLevel(type: ModuleType, params: Record<ParamId, number>): number {
   if (type === 'delay') return wetDryFor('delay', params).dry
   if (type === 'reverb') return wetDryFor('reverb', params).dry
-  if (type === 'saturation') return params.saturation > 0 ? 0 : 1
+  if (type === 'saturation') return saturationDryWet(params.saturation, params.saturationMix).dry
   if (type === 'eq' || type === 'compressor' || type === 'limiter') return 0
   return 1
 }

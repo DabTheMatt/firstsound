@@ -17,6 +17,16 @@ function sinePcm(freq: number, seconds: number, sampleRate = 1000, amp = 0.5): P
   return { sampleRate, channels: [ch] }
 }
 
+describe('defaultPrep', () => {
+  it('selects the whole sample so loop and playhead start at the file origin', () => {
+    const prep = defaultPrep(8.5)
+    expect(prep.selectionStart).toBe(0)
+    expect(prep.selectionEnd).toBe(8.5)
+    expect(prep.windowStart).toBe(0)
+    expect(prep.windowEnd).toBe(8.5)
+  })
+})
+
 describe('autoFadeSeconds', () => {
   it('keeps short transients short and falls back near 10 ms', () => {
     expect(autoFadeSeconds(0.4)).toBeCloseTo(0.005)

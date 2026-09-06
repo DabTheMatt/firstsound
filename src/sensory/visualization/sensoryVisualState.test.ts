@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { lensInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
+import { lensInk, panNorm, sensoryVisualState, spaceZoom } from './sensoryVisualState'
 
 describe('lensInk', () => {
   it('runs warmer as warmth rises', () => {
@@ -23,13 +23,14 @@ describe('sensoryVisualState', () => {
     expect(visual.echo).toBeCloseTo(0.8)
   })
 
-  it('opens haze and depth from space, and zooms the wave away', () => {
+  it('opens haze and depth from space, and grows the wave', () => {
     const rest = sensoryVisualState(defaultSensoryValues(), true)
     const vast = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.9), true)
     expect(vast.haze).toBeGreaterThan(rest.haze)
     expect(vast.depth).toBeGreaterThan(rest.depth)
-    expect(spaceZoom(0)).toBeGreaterThan(spaceZoom(0.9))
-    expect(vast.zoom).toBeLessThan(rest.zoom)
+    expect(spaceZoom(0.9)).toBeGreaterThan(spaceZoom(0))
+    expect(vast.zoom).toBeGreaterThan(rest.zoom)
+    expect(vast.mass).toBeGreaterThan(rest.mass)
   })
 
   it('tints toward the focused axis', () => {
@@ -53,5 +54,13 @@ describe('sensoryVisualState', () => {
     const spaceOnly = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.7), true)
     expect(mixed.ink.r).toBeGreaterThan(spaceOnly.ink.r)
     expect(mixed.ink.g).not.toBeCloseTo(spaceOnly.ink.g, 0)
+  })
+})
+
+describe('panNorm', () => {
+  it('maps engine pan percent onto -1..1', () => {
+    expect(panNorm(0)).toBe(0)
+    expect(panNorm(100)).toBe(1)
+    expect(panNorm(-50)).toBeCloseTo(-0.5)
   })
 })

@@ -7,6 +7,7 @@ import {
   LFO_RATE_DEFAULT,
   LFO_RATE_MAX,
   LFO_RATE_MIN,
+  fxLfoIsActive,
   fxLfoSlotName,
   lfoConnectCopy,
   type FxLfoKind,
@@ -16,8 +17,9 @@ import { engine } from '../../hooks/useEngine'
 import { Segmented } from '../controls/Segmented'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { PlugGlyph } from '../controls/PlugGlyph'
-import { ValueKnob } from '../controls/ValueKnob'
 import { useFxLfoConnect } from './FxLfoConnect'
+import { readLfoOpen, writeLfoOpen } from './lfoOpen'
+import { ValueKnob } from '../controls/ValueKnob'
 import styles from './Inspector.module.css'
 
 const RATE_DEF: ParamDef = {
@@ -40,8 +42,10 @@ type Props = {
 export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
   const [slot, setSlot] = useState(0)
+  const [open, setOpen] = useState(() => readLfoOpen(kind))
   const activeSlot = Math.min(slot, shown - 1)
   const lfo = snap.fxLfos[kind][activeSlot] ?? snap.fxLfos[kind][0]
+  const live = snap.fxLfos[kind].some(fxLfoIsActive)
   const { armed, setArmed } = useFxLfoConnect()
   const connecting = armed?.kind === kind && armed.slot === activeSlot
   const targetLabel = lfo?.target ? PARAMS[lfo.target].label : null
@@ -124,8 +128,29 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
     )
 
   return (
-    <section className={`${styles.lfo} ${compact ? styles.lfoCompact : ''}`} data-lfo-kind={kind}>
-      <h3 className={styles.sub}>{compact ? 'LFO' : 'Modulation / LFO'}</h3>
+    <section
+      className={`${styles.lfo} ${compact ? styles.lfoCompact : ''} ${open ? '' : styles.lfoCollapsed}`}
+      data-lfo-kind={kind}
+    >
+      <div className={styles.lfoHead}>
+        <h3 className={styles.sub}>{compact ? 'LFO' : 'Modulation / LFO'}</h3>
+        <button
+          type="button"
+          className={`${styles.lfoToggle} ${open ? styles.lfoToggleOn : ''} ${live ? styles.lfoToggleLive : ''}`}
+          aria-pressed={open}
+          aria-label={open ? 'Hide LFO' : 'Show LFO'}
+          title={open ? 'Hide LFO' : 'Show LFO'}
+          onClick={() => {
+            const next = !open
+            setOpen(next)
+            writeLfoOpen(kind, next)
+          }}
+        >
+          <LfoToggleIcon />
+        </button>
+      </div>
+      {open ? (
+      <>
       {compact ? null : (
       <p className={styles.help}>
         Connect pins this LFO to a knob on this effect. The stored value is oscillator
@@ -231,6 +256,22 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
         {connecting ? 'Click a knob on this effect, or press Escape to cancel.' : connect.detail ? `Target: ${connect.detail}` : 'No target yet.'}
       </p>
       )}
+      </>
+      ) : null}
     </section>
+  )
+}
+
+function LfoToggleIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M1.5 8 C3.2 8 3.8 3.5 5.5 3.5 S7.8 12.5 9.5 12.5 12.2 8 14.5 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }

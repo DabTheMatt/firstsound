@@ -34,6 +34,31 @@
   min-height: 120px;
 }
 
+.mixDesk {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  gap: 6px;
+}
+
+.trackLanes {
+  flex: 1 1 42%;
+  min-height: 120px;
+  min-width: 0;
+}
+
+.mixStrips {
+  flex: 1 1 58%;
+  min-height: 160px;
+  min-width: 0;
+}
+
+.mixStrips > * {
+  height: 100%;
+}
+
 .splitHandle {
   flex: none;
   height: 10px;
@@ -92,10 +117,75 @@
   display: none;
 }
 
+.trackTabs {
+  position: absolute;
+  top: 0;
+  left: 26px;
+  right: 8px;
+  z-index: 12;
+  display: flex;
+  flex: none;
+  gap: 3px;
+  padding: 0;
+  overflow-x: auto;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+
+.trackTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.trackTab {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+  max-width: 160px;
+  padding: 2px 8px 3px;
+  border: 1px solid var(--border-subtle);
+  border-top: 0;
+  border-radius: 0 0 7px 7px;
+  background: color-mix(in srgb, var(--bg-panel) 86%, transparent);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.trackTabOn {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  border-top: 0;
+  background: color-mix(in srgb, var(--bg-app) 82%, var(--accent-primary) 18%);
+}
+
+.trackTabFile {
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.multiWave {
+  flex: 1 1 auto;
+  min-height: 180px;
+  min-width: 0;
+}
+
 .wavePane {
   position: relative;
   flex: 1 1 auto;
   min-height: 80px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .canvas {
@@ -161,6 +251,18 @@
   cursor: ew-resize;
 }
 
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--playhead);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-app) 50%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 8;
+}
+
 .fadeHandle::before {
   content: '';
   position: absolute;
@@ -168,6 +270,14 @@
   transform: rotate(45deg);
   background: var(--envelope);
   box-shadow: 0 0 0 1.5px var(--bg-app);
+}
+
+.fadeHandle[data-fade='in']::before {
+  background: var(--fade-in, var(--meter-low));
+}
+
+.fadeHandle[data-fade='out']::before {
+  background: var(--fade-out, var(--meter-high));
 }
 
 .fadeHandleOn::before {
@@ -193,6 +303,14 @@
   pointer-events: auto;
   z-index: 5;
   cursor: ns-resize;
+}
+
+.fadeShape[data-fade='in'] {
+  background: var(--fade-in, var(--meter-low));
+}
+
+.fadeShape[data-fade='out'] {
+  background: var(--fade-out, var(--meter-high));
 }
 
 .fadeShapeOn {
@@ -229,11 +347,23 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--accent-primary) 72%, transparent);
+  width: 12px;
+  background: transparent;
   transform: translateX(-50%);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 4;
+  cursor: ew-resize;
+}
+
+.transient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: color-mix(in srgb, var(--transient, var(--spectrum-line)) 88%, transparent);
+  transform: translateX(-50%);
 }
 
 .transient::after {
@@ -241,11 +371,12 @@
   position: absolute;
   top: 0;
   left: 50%;
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 1px;
-  background: var(--accent-primary);
+  background: var(--transient, var(--spectrum-line));
   transform: translateX(-50%);
+  box-shadow: 0 0 0 1px var(--bg-app);
 }
 
 .sensory .playhead {
@@ -289,6 +420,8 @@
 
 .sensory .wavePane {
   min-height: 100%;
+  border: 0;
+  border-radius: 0;
 }
 
 .ruler {

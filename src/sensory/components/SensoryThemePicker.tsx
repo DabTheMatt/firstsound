@@ -37,7 +37,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
         className={styles.trigger}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Theme: ${active.label}`}
+        aria-label={`Atmosphere: ${active.label}`}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -45,6 +45,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
           <span className={styles.dot} style={{ background: active.preview.surface }} />
           <span className={styles.dot} style={{ background: active.preview.accent }} />
         </span>
+        <span className={styles.name}>{active.label}</span>
       </button>
       {open ? (
         <div className={styles.menu} role="listbox" aria-label="Themes">

@@ -92,6 +92,18 @@ describe('applyFxLfos', () => {
     expect(next.reverbWet).toBe(20)
   })
 
+  it('starts at oscillator zero when a phase origin is set', () => {
+    const params = defaultParamValues()
+    params.eq1Freq = 1000
+    const lfos = defaultFxLfos()
+    lfos.eq1[0]!.target = 'eq1Freq'
+    lfos.eq1[0]!.depth = 40
+    lfos.eq1[0]!.rateHz = 1
+    lfos.eq1[0]!.phaseOriginSec = 2.25
+    const next = applyFxLfos(params, lfos, 2.25, defaultLfoHold())
+    expect(next.eq1Freq).toBeCloseTo(1000, 5)
+  })
+
   it('modulates input gain from the input LFO bank', () => {
     const params = defaultParamValues()
     params.gain = -3
@@ -181,6 +193,8 @@ describe('targets', () => {
     expect(isFxLfoTarget('reverb', 'reverbOffset')).toBe(true)
     expect(isFxLfoTarget('reverb', 'reverbInput')).toBe(true)
     expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
+    expect(isFxLfoTarget('saturation', 'saturationMix')).toBe(true)
+    expect(isFxLfoTarget('eq8', 'eq8Freq')).toBe(true)
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
     expect(isFxLfoTarget('eq1', 'eq1Freq')).toBe(true)
     expect(isFxLfoTarget('eq2', 'eq2Freq')).toBe(true)

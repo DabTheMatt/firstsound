@@ -83,9 +83,13 @@ export function watercolorMix(values: SensoryValues, active: SensoryAxisId | nul
   return ink
 }
 
+/** Map engine pan (-100..100) to -1..1 for visuals. */
+export function panNorm(panPct: number): number {
+  return Math.max(-1, Math.min(1, panPct / 100))
+}
 export function spaceZoom(space: number): number {
   const s = Math.min(1, Math.max(0, space))
-  return 1.46 - s * 0.94
+  return 0.72 + s * 0.54
 }
 
 export function sensoryVisualState(
@@ -116,7 +120,7 @@ export function sensoryVisualState(
     glow: Math.min(1, Math.max(0, glow)),
     warmth: Math.min(1, Math.max(0, warmth)),
     depth: 0.12 + space * 0.78,
-    mass: 0.5 + (1 - space) * 0.28 + grain * 0.1 - tight * 0.28,
+    mass: 0.42 + space * 0.4 + grain * 0.1 - tight * 0.28,
     motion,
     haze: 0.04 + space * 0.72,
     echo,

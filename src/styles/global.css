@@ -82,3 +82,8 @@ select:disabled {
   outline: 1.5px solid var(--accent-primary);
   outline-offset: 2px;
 }
+
+select:focus,
+select:focus-visible {
+  outline: none;
+}

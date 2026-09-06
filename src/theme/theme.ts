@@ -84,6 +84,9 @@ const CUSTOM_STYLE_PROPS = [
   '--eq-curve-2',
   '--eq-node-2',
   '--envelope',
+  '--transient',
+  '--fade-in',
+  '--fade-out',
   '--scrim',
 ] as const
 
@@ -178,6 +181,9 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--eq-curve-2', mixCssColor(custom.accent, custom.spectrum, 0.42))
   root.style.setProperty('--eq-node-2', mixCssColor(custom.spectrum, paper, 0.18))
   root.style.setProperty('--envelope', custom.accent)
+  root.style.setProperty('--transient', mixCssColor(custom.spectrum, paper, 0.35))
+  root.style.setProperty('--fade-in', mixCssColor(custom.waveform, '#67b36d', 0.55))
+  root.style.setProperty('--fade-out', mixCssColor(custom.accent, '#df9447', 0.45))
   root.style.setProperty('--scrim', colorWithAlpha(custom.bgApp, 0.55))
 }
 

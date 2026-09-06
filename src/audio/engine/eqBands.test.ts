@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   bandwidthHz,
   bandIsActive,
+  defaultEqBandAt,
   defaultEqBands,
+  eqModuleIsAudible,
   filterStageCount,
   formatEqHz,
   parseEqBands,
@@ -40,6 +42,13 @@ describe('parseEqBands', () => {
     expect(parseEqBands(raw)?.[1]?.bypassed).toBe(true)
     expect(parseEqBands(raw)?.[0]?.bypassed).toBe(false)
   })
+
+  it('accepts 1–8 bands and rejects an oversized list', () => {
+    expect(parseEqBands([defaultEqBandAt(0)])?.length).toBe(1)
+    const eight = Array.from({ length: 8 }, (_, i) => defaultEqBandAt(i))
+    expect(parseEqBands(eight)?.length).toBe(8)
+    expect(parseEqBands([...eight, defaultEqBandAt(0)])).toBeNull()
+  })
 })
 
 describe('filterStageCount', () => {
@@ -59,6 +68,16 @@ describe('stageQ', () => {
     const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
     expect(stageQ(band, 0)).toBe(4)
     expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  })
+})
+
+describe('eqModuleIsAudible', () => {
+  it('is silent when bypassed or every band is off', () => {
+    const bands = defaultEqBands()
+    expect(eqModuleIsAudible(true, [{ ...bands[0]!, type: 'peaking' }])).toBe(false)
+    expect(eqModuleIsAudible(false, bands)).toBe(false)
+    expect(eqModuleIsAudible(false, bands, true)).toBe(true)
+    expect(eqModuleIsAudible(false, [{ ...bands[0]!, type: 'lowpass' }])).toBe(true)
   })
 })
 

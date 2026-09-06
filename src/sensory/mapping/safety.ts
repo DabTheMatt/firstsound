@@ -6,11 +6,11 @@ import type { DspSnapshot } from './mappingEngine'
 /** Caps so sensory morphs stay musical: no speaker-busting wet, no sample melt. */
 export const SENSORY_SAFETY = {
   eqGain: 7.5,
-  reverbWet: 64,
-  reverbDecay: 18,
-  reverbShimmer: 55,
-  delayWet: 56,
-  delayFeedback: 60,
+  reverbWet: 40,
+  reverbDecay: 5.5,
+  reverbShimmer: 6,
+  delayWet: 48,
+  delayFeedback: 40,
   delayModDepth: 38,
   saturation: 34,
   density: 46,
@@ -34,6 +34,10 @@ export function applySensorySafety(dsp: DspSnapshot): void {
   cap(dsp.params, 'reverbShimmer', SENSORY_SAFETY.reverbShimmer, 0)
   cap(dsp.params, 'delayWet', SENSORY_SAFETY.delayWet, 0)
   cap(dsp.params, 'delayFeedback', SENSORY_SAFETY.delayFeedback, 0)
+  dsp.params.delayWetR = dsp.params.delayWet
+  dsp.params.delayFeedbackR = dsp.params.delayFeedback
+  cap(dsp.params, 'delayWetR', SENSORY_SAFETY.delayWet, 0)
+  cap(dsp.params, 'delayFeedbackR', SENSORY_SAFETY.delayFeedback, 0)
   cap(dsp.params, 'delayModDepth', SENSORY_SAFETY.delayModDepth, 0)
   cap(dsp.params, 'saturation', SENSORY_SAFETY.saturation, 0)
   cap(dsp.params, 'density', SENSORY_SAFETY.density)

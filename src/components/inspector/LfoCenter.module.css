@@ -155,29 +155,49 @@
   gap: 1px;
   line-height: 1.15;
   width: 100%;
-  padding-right: 22px;
+  padding-right: 8px;
 }
 
 .connectTile {
-  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   min-width: 7.5em;
   overflow: hidden;
+  border: 1px solid var(--border-default);
   border-radius: 999px;
+  background: transparent;
+}
+
+.connectTile:has(.ghostOn),
+.connectTile:has(.plugOn) {
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.connectTile .ghost,
+.connectTile .ghostOn {
+  border: 0;
+  background: transparent;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .plug {
-  position: absolute;
-  top: 0;
-  right: 5px;
-  bottom: 0;
-  width: 16px;
+  flex: none;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: 26px;
   height: auto;
+  min-height: 22px;
   margin: 0;
   padding: 0;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 2px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -198,5 +218,4 @@
 
 .plug svg {
   display: block;
-  transform: translateY(2px);
 }

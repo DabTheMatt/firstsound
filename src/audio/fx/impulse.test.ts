@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillReverbImpulse, impulseLengthSec } from './impulse'
+import { fillReverbImpulse, impulseLengthSec, IR_PEAK_LIMIT, IR_TARGET_EARLY_RMS } from './impulse'
 
 describe('impulse', () => {
   it('writes a decaying stereo IR', () => {
@@ -36,6 +36,24 @@ describe('impulse', () => {
     }
     const corr = accLR / Math.sqrt(accL * accR)
     expect(corr).toBeLessThan(0.65)
+    let earlyPeak = 0
+    const earlyN = Math.min(n, Math.floor(spec.sampleRate * 0.05))
+    for (let i = 0; i < earlyN; i++) earlyPeak = Math.max(earlyPeak, Math.abs(left[i]!))
+    const tailStart = Math.max(0, n - Math.floor(n * 0.2))
+    let tailAcc = 0
+    for (let i = tailStart; i < n; i++) tailAcc += left[i]! * left[i]!
+    const tailRms = Math.sqrt(tailAcc / Math.max(1, n - tailStart))
+    expect(earlyPeak).toBeGreaterThan(tailRms * 2.5)
+    let peak = 0
+    let earlyEnergy = 0
+    const rmsN = Math.min(n, Math.floor(spec.sampleRate * 0.08))
+    for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
+    for (let i = 0; i < rmsN; i++) earlyEnergy += left[i]! * left[i]! + right[i]! * right[i]!
+    const earlyRms = Math.sqrt(earlyEnergy / (2 * rmsN))
+    expect(peak).toBeGreaterThan(0.08)
+    expect(peak).toBeLessThanOrEqual(IR_PEAK_LIMIT)
+    expect(earlyRms).toBeGreaterThan(IR_TARGET_EARLY_RMS * 0.35)
+    expect(earlyRms).toBeLessThan(0.08)
   })
 
   it('cathedral IRs last long enough for huge spaces', () => {

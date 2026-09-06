@@ -6,7 +6,7 @@ import { readThemeColors, subscribeThemeChange } from '../../theme'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
 import { mixRgb, rgbCss, type Rgb, type SensoryVisualState } from '../visualization/sensoryVisualState'
-import { absEnvelope, blurEnvelope, mountainLayerSpecs } from '../visualization/mountainLayers'
+import { absEnvelope, blurEnvelope, mountainLayerSpecs, normalizeEnvelopePeak } from '../visualization/mountainLayers'
 import styles from './SoundRange.module.css'
 
 type Props = {
@@ -82,7 +82,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           const { min, max } = mips.length
             ? computeMinMaxCached(data, mips, 0, data.length, width)
             : computeMinMax(data, 0, data.length, width)
-          const abs = absEnvelope(min, max)
+          const abs = normalizeEnvelopePeak(absEnvelope(min, max))
           const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
           const dirtBlur = 1 - visual.dirt * 0.72
           cache = {
@@ -107,6 +107,7 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           windowStartFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionStart / sourceDur)) : 0,
           windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
           scene,
+          livePan: engine.getSnapshot().liveParams.pan,
         })
       }
       frame = requestAnimationFrame(tick)

@@ -11,6 +11,8 @@ import {
 } from '../../audio/fx/presets'
 import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, REVERB_TYPES } from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
@@ -184,7 +186,6 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
       {kind === 'delay' ? (
         <>
-          {params(['delayWet', 'delayFeedback'])}
           <Segmented
             label="Channels"
             value={delayStereo ? 'stereo' : 'mono'}
@@ -192,20 +193,31 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
               { value: 'mono', label: 'Mono' },
               { value: 'stereo', label: 'Stereo' },
             ]}
+            wrap
             onChange={(v) => engine.setParam('delayStereo', v === 'stereo' ? 1 : 0)}
           />
           {delayStereo ? (
-            <>
-              <h3 className={styles.sub}>Left</h3>
-              {params(['delayTime'])}
-              <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
-              <h3 className={styles.sub}>Right</h3>
-              {params(['delayTimeR'])}
-              <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
-            </>
+            <div className={styles.lrGrid}>
+              <section className={styles.lrCol} aria-label="Delay left">
+                <div className={styles.lrHead}>
+                  <h3 className={styles.sub}>Left</h3>
+                  <span className={styles.lrTime}>{formatParamValue(snap.params.delayTime, PARAMS.delayTime)}</span>
+                </div>
+                {params(['delayTime', 'delayWet', 'delayFeedback'])}
+                <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+              </section>
+              <section className={styles.lrCol} aria-label="Delay right">
+                <div className={styles.lrHead}>
+                  <h3 className={styles.sub}>Right</h3>
+                  <span className={styles.lrTime}>{formatParamValue(snap.params.delayTimeR, PARAMS.delayTimeR)}</span>
+                </div>
+                {params(['delayTimeR', 'delayWetR', 'delayFeedbackR'])}
+                <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+              </section>
+            </div>
           ) : (
             <>
-              {params(['delayTime'])}
+              {params(['delayWet', 'delayFeedback', 'delayTime'])}
               <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
             </>
           )}
@@ -289,13 +301,23 @@ function SyncRow({
       />
       {on ? (
         <>
-          <Segmented
-            label="Note"
-            value={NOTE_DIVISIONS[Math.round(snap.params[noteId])]?.value ?? '1/4'}
-            options={NOTE_DIVISIONS.map((d) => ({ value: d.value, label: d.label }))}
-            wrap
-            onChange={(v) => engine.setParam(noteId, NOTE_DIVISIONS.findIndex((d) => d.value === v))}
-          />
+          <label className={styles.field}>
+            Note
+            <select
+              className={styles.select}
+              aria-label={label ? `${label} note` : 'Note'}
+              value={NOTE_DIVISIONS[Math.round(snap.params[noteId])]?.value ?? '1/4'}
+              onChange={(event) =>
+                engine.setParam(noteId, NOTE_DIVISIONS.findIndex((d) => d.value === event.target.value))
+              }
+            >
+              {NOTE_DIVISIONS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Segmented
             label="Feel"
             value={NOTE_KINDS[Math.round(snap.params[kindId])]?.value ?? 'straight'}

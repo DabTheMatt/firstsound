@@ -141,7 +141,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 onContextMenu={(event) => {
                   if (fixed) return
                   event.preventDefault()
-                  engine.setModuleBypass(mod.instanceId, !mod.bypassed)
+                  engine.toggleModuleBypass(mod.instanceId)
                 }}
               >
                 {moduleLabel(mod, chain)}
@@ -155,7 +155,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation()
-                    engine.setModuleBypass(mod.instanceId, !mod.bypassed)
+                    engine.toggleModuleBypass(mod.instanceId)
                   }}
                 >
                   <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
