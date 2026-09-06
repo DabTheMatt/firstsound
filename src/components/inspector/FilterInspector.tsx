@@ -3,27 +3,26 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import {
   FILTER_CHARACTER_OPTIONS,
-  FILTER_LFO_SHAPES,
   FILTER_SLOPE_OPTIONS,
   FILTER_TYPE_OPTIONS,
   filterCharacterAt,
-  filterLfoShapeAt,
   filterSlopeAt,
   filterTypeAt,
   optionIndex,
 } from '../../audio/fx/filter'
 import { FILTER_PRESETS } from '../../audio/fx/filterPresets'
 import { filterResponseCurve } from '../../audio/fx/filterResponse'
-import { NOTE_DIVISIONS, NOTE_KINDS } from '../../audio/fx/types'
-import { PARAMS } from '../../audio/parameters/definitions'
+import { FILTER_KNOBS, PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
+import { LfoParamShell } from '../controls/LfoParamShell'
 import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { wheelToNormalized } from '../controls/scrub'
+import { useFxLfoConnect } from './FxLfoConnect'
 import { FxLfoSection } from './FxLfoSection'
 import styles from './FilterInspector.module.css'
 
@@ -48,6 +47,11 @@ export function FilterInspector({ snap, variant, pane }: Props) {
             liveCutoff={live.filterCutoff}
             liveReso={live.filterReso}
           />
+          <div className={variant === 'knob' ? styles.knobs : undefined}>
+            {FILTER_KNOBS.map((id) => (
+              <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
+            ))}
+          </div>
           <div className={styles.toolbar}>
             <button type="button" className={styles.ghost} onClick={() => engine.randomizeFilter()}>
               Randomize
@@ -97,12 +101,6 @@ export function FilterInspector({ snap, variant, pane }: Props) {
             wrap
             onChange={(value) => engine.setParam('filterCharacter', optionIndex(FILTER_CHARACTER_OPTIONS, value))}
           />
-          <div className={variant === 'knob' ? styles.knobs : undefined}>
-            <ParamControl id="filterDrive" value={snap.params.filterDrive} variant={variant} />
-            <ParamControl id="filterMix" value={snap.params.filterMix} variant={variant} />
-          </div>
-          <h3 className={styles.section}>Modulation</h3>
-          <FilterLfoPanel snap={snap} variant={variant} />
           <FilterFollowerPanel snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="filter" variant={variant} />
         </>
@@ -122,80 +120,6 @@ export function FilterInspector({ snap, variant, pane }: Props) {
           <FxLfoSection snap={snap} kind="filter" variant={variant} />
         </>
       )}
-    </div>
-  )
-}
-
-function FilterLfoPanel({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' | 'slider' }) {
-  const sync = snap.params.filterLfoSync > 0.5
-  const shape = filterLfoShapeAt(snap.params.filterLfoShape)
-  return (
-    <div className={styles.mod}>
-      <div className={styles.modHead}>
-        <span>LFO</span>
-        <Toggle
-          pressed={sync}
-          label={sync ? 'Sync' : 'Free'}
-          onToggle={() => engine.setParam('filterLfoSync', sync ? 0 : 1)}
-        />
-      </div>
-      <div className={styles.shapes} role="radiogroup" aria-label="LFO shape">
-        {FILTER_LFO_SHAPES.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={shape === opt.value}
-            className={`${styles.shape} ${shape === opt.value ? styles.shapeOn : ''}`}
-            onClick={() => engine.setParam('filterLfoShape', optionIndex(FILTER_LFO_SHAPES, opt.value))}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-      {sync ? (
-        <div className={styles.syncRow}>
-          <label>
-            Note
-            <select
-              value={NOTE_DIVISIONS[Math.round(snap.params.filterLfoNote)]?.value ?? '1/4'}
-              onChange={(event) =>
-                engine.setParam(
-                  'filterLfoNote',
-                  NOTE_DIVISIONS.findIndex((d) => d.value === event.target.value),
-                )
-              }
-            >
-              {NOTE_DIVISIONS.filter((d) => d.beats <= 4 && d.beats >= 0.125).map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Feel
-            <select
-              value={NOTE_KINDS[Math.round(snap.params.filterLfoNoteKind)]?.value ?? 'straight'}
-              onChange={(event) =>
-                engine.setParam(
-                  'filterLfoNoteKind',
-                  NOTE_KINDS.findIndex((k) => k.value === event.target.value),
-                )
-              }
-            >
-              {NOTE_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <ParamControl id="filterLfoRate" value={snap.params.filterLfoRate} variant={variant} />
-      )}
-      <ParamControl id="filterLfoDepth" value={snap.params.filterLfoDepth} variant={variant} />
     </div>
   )
 }
@@ -233,6 +157,8 @@ function FilterXyPad({
   liveReso: number
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
+  const { armed } = useFxLfoConnect()
+  const connecting = armed?.kind === 'filter'
   const cutoffDef = PARAMS.filterCutoff
   const resoDef = PARAMS.filterReso
   const x = toNormalized(cutoff, cutoffDef)
@@ -300,8 +226,24 @@ function FilterXyPad({
       >
         <span className={styles.ghostDot} style={{ left: `${lx * 100}%`, top: `${(1 - ly) * 100}%` }} />
         <span className={styles.dot} style={{ left: `${x * 100}%`, top: `${(1 - y) * 100}%` }} />
-        <span className={styles.xyHint}>Cutoff</span>
-        <span className={styles.xyHintY}>Reso</span>
+        {connecting ? null : (
+          <>
+            <span className={styles.xyHint}>Cutoff</span>
+            <span className={styles.xyHintY}>Reso</span>
+          </>
+        )}
+        <div className={`${styles.xyPickLayer} ${connecting ? styles.xyPickLayerActive : ''}`}>
+          <div className={styles.xyPickX}>
+            <LfoParamShell id="filterCutoff">
+              <span className={styles.xyPickLabel}>Cutoff</span>
+            </LfoParamShell>
+          </div>
+          <div className={styles.xyPickY}>
+            <LfoParamShell id="filterReso">
+              <span className={styles.xyPickLabel}>Reso</span>
+            </LfoParamShell>
+          </div>
+        </div>
       </div>
       <div className={styles.readout}>
         <strong>{formatParamValue(liveCutoff, cutoffDef)}</strong>
