@@ -35,6 +35,7 @@
 }
 
 .item {
+  position: relative;
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
@@ -163,31 +164,66 @@
 }
 
 .item[data-axis='character'].on {
-  color: #ffc45c;
+  color: #d6d6d0;
 }
 .item[data-axis='space'].on {
-  color: #60d2ff;
+  color: #9c9c98;
 }
 .item[data-axis='echo'].on {
-  color: #c480ff;
+  color: #7a7a76;
 }
 .item[data-axis='grain'].on {
-  color: #8cffb0;
+  color: #b8b8b2;
 }
 .item[data-axis='dirt'].on {
-  color: #e86030;
+  color: #5c5c58;
 }
 .item[data-axis='tight'].on {
-  color: #ecece6;
+  color: #ecece8;
 }
 .item[data-axis='mod'].on {
-  color: #ff5ca8;
+  color: #8a8a86;
 }
 .item[data-axis='drift'].on {
-  color: #5ca8ff;
+  color: #c8c8c2;
 }
 .item[data-axis='pan'].on {
-  color: #ffd678;
+  color: #6e6e6a;
+}
+
+.lfoOn .meter {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 40%, transparent));
+}
+
+.lfoMark {
+  position: absolute;
+  right: -10px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+  animation: lfoPulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lfoMark {
+    animation: none;
+  }
+}
+
+@keyframes lfoPulse {
+  0%,
+  100% {
+    transform: scale(0.75);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
 }
 
 @media (max-width: 720px) {

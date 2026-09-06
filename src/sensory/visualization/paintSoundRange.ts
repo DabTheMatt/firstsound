@@ -189,6 +189,63 @@ function paintEchoGhosts(ctx: CanvasRenderingContext2D, args: RangePaintArgs, ba
   }
 }
 
+function paintFilmGrain(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
+  const { width, height, visual, dpr } = args
+  const n = Math.round(width * (0.22 + visual.dirt * 0.12))
+  ctx.save()
+  ctx.globalCompositeOperation = 'overlay'
+  for (let i = 0; i < n; i++) {
+    const x = hash01(i + 41) * width
+    const y = hash01(i + 91) * height
+    const a = 0.03 + hash01(i + 3) * (0.07 + visual.grain * 0.05)
+    ctx.fillStyle = hash01(i + 11) > 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`
+    ctx.fillRect(x, y, Math.max(1, dpr * 0.7), Math.max(1, dpr * 0.7))
+  }
+  ctx.restore()
+}
+
+function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
+  const { width, height, visual, layers, specs, nowMs, reduced, dpr } = args
+  const env = layers[0]
+  const spec = specs[0]
+  if (!env || !spec) return
+  const split = (0.8 + visual.space * 1.8 + visual.drift * 1.6) * dpr
+  const layout = rangeLayout(height, visual.space)
+  const amp = layout.amp * (1 - visual.tight * 0.22)
+  ctx.save()
+  ctx.globalCompositeOperation = 'screen'
+  ctx.lineWidth = Math.max(0.8, dpr * 0.7)
+  ctx.lineJoin = 'round'
+  ctx.globalAlpha = 0.16 + visual.space * 0.08
+  ctx.strokeStyle = rgbCss(visual.inkRed, 1)
+  ctx.translate(-split, 0)
+  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
+  ctx.restore()
+  ctx.save()
+  ctx.globalCompositeOperation = 'screen'
+  ctx.lineWidth = Math.max(0.8, dpr * 0.7)
+  ctx.lineJoin = 'round'
+  ctx.globalAlpha = 0.16 + visual.space * 0.08
+  ctx.strokeStyle = rgbCss(visual.inkBlue, 1)
+  ctx.translate(split, reduced ? 0 : split * 0.15)
+  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
+  ctx.restore()
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'screen'
+  const left = ctx.createLinearGradient(0, 0, width * 0.2, 0)
+  left.addColorStop(0, rgbCss(visual.inkRed, 0.08 + visual.space * 0.05))
+  left.addColorStop(1, rgbCss(visual.inkRed, 0))
+  ctx.fillStyle = left
+  ctx.fillRect(0, 0, width * 0.24, height)
+  const right = ctx.createLinearGradient(width, 0, width * 0.8, 0)
+  right.addColorStop(0, rgbCss(visual.inkBlue, 0.08 + visual.space * 0.05))
+  right.addColorStop(1, rgbCss(visual.inkBlue, 0))
+  ctx.fillStyle = right
+  ctx.fillRect(width * 0.76, 0, width * 0.24, height)
+  ctx.restore()
+}
+
 function paintDust(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, dpr } = args
   const n = grainDustCount(visual.grain, width)
@@ -294,6 +351,8 @@ export function paintSoundRange(args: RangePaintArgs) {
     paintSelection(ctx, args)
     const layout = rangeLayout(args.height, visual.space)
     paintPlayhead(ctx, args, [layout.base], layout.amp * (1 - visual.tight * 0.22), [layout.dir])
+    paintChromaticFringe(ctx, args)
+    paintFilmGrain(ctx, args)
     return
   }
 
@@ -313,6 +372,8 @@ export function paintSoundRange(args: RangePaintArgs) {
     ctx.fillRect(0, layout.upperBase, args.width, layout.gap)
     paintSelection(ctx, args)
     paintPlayhead(ctx, args, [layout.upperBase, layout.lowerBase], amp, [layout.upperDir, layout.lowerDir])
+    paintChromaticFringe(ctx, args)
+    paintFilmGrain(ctx, args)
     return
   }
 
@@ -326,4 +387,6 @@ export function paintSoundRange(args: RangePaintArgs) {
   if (scene === 'gleam' && !reduced) paintGleam(ctx, args, layout.base, amp)
   paintSelection(ctx, args)
   paintPlayhead(ctx, args, [layout.base], amp, [layout.dir])
+  paintChromaticFringe(ctx, args)
+  paintFilmGrain(ctx, args)
 }

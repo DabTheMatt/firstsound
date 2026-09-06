@@ -21,31 +21,31 @@
 }
 
 .string[data-axis='character'] {
-  color: #ffc45c;
+  color: #d6d6d0;
 }
 .string[data-axis='space'] {
-  color: #60d2ff;
+  color: #9c9c98;
 }
 .string[data-axis='echo'] {
-  color: #c480ff;
+  color: #7a7a76;
 }
 .string[data-axis='grain'] {
-  color: #8cffb0;
+  color: #b8b8b2;
 }
 .string[data-axis='dirt'] {
-  color: #e86030;
+  color: #5c5c58;
 }
 .string[data-axis='tight'] {
-  color: #ecece6;
+  color: #ecece8;
 }
 .string[data-axis='mod'] {
-  color: #ff5ca8;
+  color: #8a8a86;
 }
 .string[data-axis='drift'] {
-  color: #5ca8ff;
+  color: #c8c8c2;
 }
 .string[data-axis='pan'] {
-  color: #ffd678;
+  color: #6e6e6a;
 }
 
 .line {
@@ -117,4 +117,33 @@
 .label.on,
 .label.lit {
   fill: currentColor;
+}
+
+.lfoLine {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.05;
+  stroke-linecap: round;
+  stroke-dasharray: 3.5 8;
+  opacity: 0.72;
+  animation: lfoCrawl var(--lfo-period, 1.6s) linear infinite;
+  pointer-events: none;
+}
+
+.lfoRider {
+  fill: currentColor;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 55%, transparent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lfoLine {
+    animation: none;
+  }
+}
+
+@keyframes lfoCrawl {
+  to {
+    stroke-dashoffset: -46;
+  }
 }

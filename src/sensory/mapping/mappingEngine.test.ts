@@ -164,6 +164,28 @@ describe('mapSensoryToDsp', () => {
     expect(mapped.params.reverbWet).toBeCloseTo(base.params.reverbWet)
   })
 
+  it('binds effect parameters to their LFO banks', () => {
+    const space = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.7))
+    expect(space.fxLfos.reverb[0]?.target).toBe('reverbWet')
+    expect(space.fxLfos.reverb[0]?.depth).toBeGreaterThan(8)
+    const echo = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'echo', 0.8))
+    expect(echo.fxLfos.delay[0]?.target).toBe('delayFeedback')
+    const dirt = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'dirt', 0.9))
+    expect(dirt.fxLfos.saturation[0]?.target).toBe('saturation')
+    const both = mapSensoryToDsp(
+      baseDsp(),
+      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'echo', 0.8), 'drift', 1),
+    )
+    expect(both.fxLfos.delay[0]?.target).toBe('delayFeedback')
+    expect(both.fxLfos.delay[1]?.target).toBe('delayPan')
+    const grainMod = mapSensoryToDsp(
+      baseDsp(),
+      patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'grain', 0.7), 'mod', 0.8),
+    )
+    expect(grainMod.fxLfos.grain[0]?.target).toBe('scatter')
+    expect(grainMod.fxLfos.grain[1]?.target).toBe('motionDepth')
+  })
+
   it('un-bypasses each morph module so sensory axes stay audible', () => {
     const base = baseDsp()
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 0.6)).bypass.reverb).toBe(false)
