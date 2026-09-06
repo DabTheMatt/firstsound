@@ -9,11 +9,13 @@ import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
 import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
+import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
 import type { SensoryValues } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
 import { OverviewStrip } from './OverviewStrip'
+import { ParameterStrings } from './ParameterStrings'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
 import { SoundRange } from './SoundRange'
@@ -77,6 +79,7 @@ export function SensoryShell({
   const [placesOpen, setPlacesOpen] = useState(false)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
+  const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -109,7 +112,20 @@ export function SensoryShell({
     >
       <header className={styles.top}>
         <div className={styles.brandRow}>
-          <p className={styles.brand}>Firstsound</p>
+          <p className={styles.brand}>Field</p>
+          <button
+            type="button"
+            className={`${styles.stringsToggle} ${stringsOn ? styles.stringsOn : ''}`}
+            aria-pressed={stringsOn}
+            aria-label="Show parameter strings"
+            onClick={() => {
+              const next = !stringsOn
+              setStringsOn(next)
+              persistSensoryStrings(next)
+            }}
+          >
+            Strings
+          </button>
         </div>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
@@ -144,6 +160,23 @@ export function SensoryShell({
         }}
         onLoadDemo={onLoadDemo}
       />
+
+      {stringsOn ? (
+        <ParameterStrings
+          values={values}
+          activeId={activeId}
+          onActive={(id) => {
+            onMoodLabel(null)
+            setFeelingId(id)
+          }}
+          onValues={(next) => {
+            onMoodLabel(null)
+            onValues(next)
+          }}
+          onCommit={onCommitSensory}
+          interactive={snap.sampleLoaded}
+        />
+      ) : null}
 
       <FeelingRail
         values={values}

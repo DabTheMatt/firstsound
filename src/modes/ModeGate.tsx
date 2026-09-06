@@ -10,7 +10,7 @@ export function ModeGate({ onChoose }: Props) {
   return (
     <div className={styles.gate}>
       <div className={styles.inner}>
-        <p className={styles.mark}>Firstsound</p>
+        <p className={styles.mark}>Field</p>
         <h1 className={styles.title}>How do you want to shape sound?</h1>
         <div className={styles.choices}>
           <button type="button" className={styles.choice} onClick={() => onChoose('sensory')}>
