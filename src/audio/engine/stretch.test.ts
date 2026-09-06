@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   hannCurve,
   scaledHannCurve,
+  scaledWindowCurve,
   smoothTowardLinear,
   smoothTowardLog,
+  stretchAlgoFromParam,
   stretchLookahead,
   stretchSlew,
   stretchWindow,
+  windowCurve,
 } from './stretch'
 
 describe('stretchWindow', () => {
@@ -25,6 +28,13 @@ describe('stretchWindow', () => {
       expect(w.peak).toBeGreaterThan(0)
       expect(w.peak).toBeLessThanOrEqual(0.62)
     }
+  })
+
+  it('lets density change hop without shrinking the grain', () => {
+    const sparse = stretchWindow(62, 0)
+    const dense = stretchWindow(62, 100)
+    expect(dense.grainSec).toBeCloseTo(sparse.grainSec)
+    expect(dense.hopSec).toBeLessThan(sparse.hopSec)
   })
 })
 
@@ -60,5 +70,16 @@ describe('hannCurve', () => {
   it('scales peak gain', () => {
     const curve = scaledHannCurve(0.4, 16)
     expect(Math.max(...curve)).toBeCloseTo(0.4)
+  })
+
+  it('maps algo param to named windows', () => {
+    expect(stretchAlgoFromParam(0)).toBe('hann')
+    expect(stretchAlgoFromParam(1)).toBe('triangle')
+    expect(stretchAlgoFromParam(2)).toBe('blackman')
+    const tri = windowCurve('triangle', 33)
+    expect(tri[0]).toBeCloseTo(0)
+    expect(Math.max(...tri)).toBeCloseTo(1)
+    const blk = scaledWindowCurve('blackman', 0.5, 24)
+    expect(Math.max(...blk)).toBeLessThanOrEqual(0.5 + 1e-6)
   })
 })

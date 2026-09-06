@@ -20,7 +20,8 @@ import {
   fullPlayRegion,
   parkPlayheadOnStop,
   pitchRatio,
-  playbackNeedsStretch,
+  tapePlaybackRate,
+  usesGrainStretch,
 } from '../parameters/mapping'
 import type {
   EngineMode,
@@ -180,9 +181,10 @@ import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './war
 import { applyStereoStage, createStereoStage, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
-  scaledHannCurve,
+  scaledWindowCurve,
   smoothTowardLinear,
   smoothTowardLog,
+  stretchAlgoFromParam,
   stretchLookahead,
   stretchSlew,
   stretchWindow,
@@ -537,7 +539,11 @@ export class AudioEngine {
     if (this.schedulerId && this.engineMode === 'playback') {
       return clamp(this.stretchHead, start, end)
     }
-    const tempo = Math.max(0.01, this.liveParams().speed)
+    const live = this.liveParams()
+    const tempo =
+      live.stretchEnable > 0.5
+        ? Math.max(0.01, live.speed)
+        : tapePlaybackRate(live.speed, live.pitch)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
     const span = Math.max(end - start, MIN_REGION)
     if (this.direction === 'pingpong') {
@@ -2807,10 +2813,14 @@ export class AudioEngine {
     this.applyBypassRamps(smoothing)
     this.syncEqListen()
     if (this.playing && this.engineMode === 'playback') {
-      if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
+      const stretch = usesGrainStretch(live.speed, live.pitch, live.stretchEnable)
+      if (stretch && !this.schedulerId) {
         this.handoffToStretch(now)
+      } else if (!stretch && this.schedulerId) {
+        this.handoffToTape(now)
       } else if (this.source && !this.schedulerId) {
-        this.source.playbackRate.setTargetAtTime(1, now, 0.03)
+        const rate = live.stretchEnable > 0.5 ? 1 : tapePlaybackRate(live.speed, live.pitch)
+        this.source.playbackRate.setTargetAtTime(rate, now, 0.03)
         if (this.direction !== 'pingpong') {
           const duration = this.buffer?.duration ?? 0
           const { start, end } = this.playbackRegion(duration)
@@ -2868,6 +2878,26 @@ export class AudioEngine {
     this.startStretchPlayback()
   }
 
+  /** Leave grain stretch for tape-rate BufferSource (interpolation off, or back at 1× / 0 st). */
+  private handoffToTape(now: number): void {
+    if (!this.ctx) return
+    const pos = this.getPlayheadSeconds()
+    if (this.schedulerId) {
+      window.clearInterval(this.schedulerId)
+      this.schedulerId = 0
+    }
+    this.playOffset = pos
+    this.playCtxTime = now
+    if (this.direction === 'pingpong') this.startPingPongVoice()
+    else this.startBufferVoice(pos)
+  }
+
+  private voiceTapeRate(): number {
+    const live = this.liveParams()
+    if (live.stretchEnable > 0.5) return 1
+    return tapePlaybackRate(live.speed, live.pitch)
+  }
+
   private startBufferVoice(offset: number): void {
     const buffer = this.activeBuffer()
     if (!this.ctx || !this.voiceBus || !buffer) return
@@ -2885,8 +2915,9 @@ export class AudioEngine {
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = false
-    src.playbackRate.value = 1
-    this.connectFadedVoice(src, fromRel, span, remaining)
+    const rate = this.voiceTapeRate()
+    src.playbackRate.value = rate
+    this.connectFadedVoice(src, fromRel, span, remaining / rate)
     src.start(this.ctx.currentTime, clamped, remaining)
     src.onended = () => {
       if (this.source !== src || !this.playing) return
@@ -2911,8 +2942,9 @@ export class AudioEngine {
     const src = this.ctx.createBufferSource()
     src.buffer = buffer
     src.loop = false
-    src.playbackRate.value = 1
-    this.connectFadedVoice(src, 0, regionSpan, buffer.duration, true)
+    const rate = this.voiceTapeRate()
+    src.playbackRate.value = rate
+    this.connectFadedVoice(src, 0, regionSpan, buffer.duration / rate, true)
     src.start(this.ctx.currentTime, 0)
     src.onended = () => {
       if (this.source !== src || !this.playing) return
@@ -2975,7 +3007,11 @@ export class AudioEngine {
     const duration = this.buffer.duration
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
-    const tempo = Math.max(PARAMS.speed.min, this.liveParams().speed)
+    const live = this.liveParams()
+    const tempo =
+      live.stretchEnable > 0.5
+        ? Math.max(PARAMS.speed.min, live.speed)
+        : tapePlaybackRate(live.speed, live.pitch)
     const fade = this.regionFade
     let curve: Float32Array
     if (this.voiceFadePingPong) {
@@ -3052,7 +3088,7 @@ export class AudioEngine {
 
   private startRegionPlayback(): void {
     const live = this.liveParams()
-    if (playbackNeedsStretch(live.speed, live.pitch)) {
+    if (usesGrainStretch(live.speed, live.pitch, live.stretchEnable)) {
       this.startStretchPlayback()
       return
     }
@@ -3108,7 +3144,7 @@ export class AudioEngine {
     const ctx = this.ctx
     const duration = buffer.duration
     const live = this.liveParams()
-    const grainWin = stretchWindow(live.stretchInterp)
+    const grainWin = stretchWindow(live.stretchInterp, live.stretchDensity)
     const slew = stretchSlew(grainWin.hopSec, live.stretchInterp)
     const horizon = ctx.currentTime + stretchLookahead(grainWin.hopSec)
     const { start, end } = this.playbackRegion(duration)
@@ -3161,7 +3197,11 @@ export class AudioEngine {
         src.playbackRate.value = rate
       }
       const gain = ctx.createGain()
-      const curve = scaledHannCurve(grainWin.peak * fadeAmp, 48)
+      const curve = scaledWindowCurve(
+        stretchAlgoFromParam(live.stretchAlgo),
+        grainWin.peak * fadeAmp,
+        48,
+      )
       try {
         gain.gain.setValueCurveAtTime(curve, t, grainDur)
       } catch {

@@ -17,7 +17,9 @@ import {
   playbackNeedsStretch,
   playbackRate,
   snapPlayheadToRegion,
+  tapePlaybackRate,
   toNormalized,
+  usesGrainStretch,
 } from './mapping'
 
 describe('mapping', () => {
@@ -98,6 +100,12 @@ describe('mapping', () => {
     expect(applyParamValue(8, PARAMS.speed)).toBe(8)
     expect(applyParamValue(-48, PARAMS.pitch)).toBe(-48)
     expect(formatParamValue(62, PARAMS.stretchInterp)).toBe('62 %')
+    expect(formatParamValue(1, PARAMS.stretchEnable)).toBe('On')
+    expect(formatParamValue(0, PARAMS.stretchEnable)).toBe('Off')
+    expect(formatParamValue(62, PARAMS.stretchDensity)).toBe('62 %')
+    expect(formatParamValue(0, PARAMS.stretchAlgo)).toBe('Hann')
+    expect(formatParamValue(1, PARAMS.stretchAlgo)).toBe('Triangle')
+    expect(formatParamValue(2, PARAMS.stretchAlgo)).toBe('Blackman')
   })
 
   it('lets Gain go down to −36 dB', () => {
@@ -126,6 +134,9 @@ describe('mapping', () => {
     expect(playbackNeedsStretch(1, 0)).toBe(false)
     expect(playbackNeedsStretch(2, 0)).toBe(true)
     expect(playbackNeedsStretch(1, 7)).toBe(true)
+    expect(usesGrainStretch(2, 0, 1)).toBe(true)
+    expect(usesGrainStretch(2, 0, 0)).toBe(false)
+    expect(tapePlaybackRate(2, 12)).toBeCloseTo(4)
   })
 
   it('formats pan as L/C/R', () => {
