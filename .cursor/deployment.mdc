@@ -1,1 +1,36 @@
+---
+description: Git workflow and automatic deployment rules
+alwaysApply: true
+---
 
+# Git and deployment workflow
+
+This project uses `main` as the single canonical production branch.
+
+After completing every user-requested change:
+
+1. Save and verify all modified files.
+2. Check the current Git branch and repository status.
+3. Never leave completed work only on a temporary or task branch.
+4. Integrate the completed changes into `main`.
+5. Before integrating, fetch the latest remote state:
+   `git fetch origin`
+6. Make sure changes already present on `origin/main` are preserved.
+7. If another Cursor session has changed `main`, integrate those changes instead of overwriting them.
+8. Resolve only safe, unambiguous conflicts automatically.
+9. Never discard existing changes from another session.
+10. Run the project's build/test command before publishing.
+11. Commit the completed change with a descriptive commit message.
+12. Push the resulting `main` branch to:
+    `origin main`
+13. GitHub Pages deployment is triggered from `main`.
+
+IMPORTANT:
+- `main` is the canonical source of truth.
+- Never force-push.
+- Never use `git reset --hard` against shared/remote work.
+- Never overwrite unrelated changes.
+- Never deploy a temporary branch directly to production.
+- Before pushing, verify that the resulting `main` contains BOTH the existing remote changes and the newly completed work.
+- If a merge conflict cannot be resolved safely without deciding which implementation should win, stop and ask the user.
+- Do not consider a task complete until the changes have been integrated into `main` and pushed successfully.
