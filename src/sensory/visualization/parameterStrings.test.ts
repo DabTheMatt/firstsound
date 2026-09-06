@@ -22,10 +22,10 @@ describe('parameterStrings', () => {
 
   it('keeps endpoints inside the padded frame', () => {
     for (const g of geoms) {
-      expect(g.x1).toBeGreaterThanOrEqual(35)
-      expect(g.x2).toBeGreaterThanOrEqual(35)
-      expect(g.x1).toBeLessThanOrEqual(1200 - 215)
-      expect(g.x2).toBeLessThanOrEqual(1200 - 215)
+      expect(g.x1).toBeGreaterThanOrEqual(167)
+      expect(g.x2).toBeGreaterThanOrEqual(167)
+      expect(g.x1).toBeLessThanOrEqual(1200 - 167)
+      expect(g.x2).toBeLessThanOrEqual(1200 - 167)
       expect(g.y1).toBeGreaterThanOrEqual(87)
       expect(g.y2).toBeGreaterThanOrEqual(87)
       expect(g.y1).toBeLessThanOrEqual(800 - 103)
@@ -34,7 +34,7 @@ describe('parameterStrings', () => {
   })
 
   it('spreads crossings instead of collapsing every string through the center', () => {
-    const cx = (36 + (1200 - 216)) / 2
+    const cx = (168 + (1200 - 168)) / 2
     const cy = (88 + (800 - 104)) / 2
     const throughCenter = geoms.filter((g) => distToString(g, cx, cy) < 10)
     expect(throughCenter.length).toBeLessThan(3)
@@ -44,8 +44,8 @@ describe('parameterStrings', () => {
     const hits = stringIntersections(geoms)
     expect(hits.length).toBeGreaterThan(8)
     for (const hit of hits) {
-      expect(hit.x).toBeGreaterThan(40)
-      expect(hit.x).toBeLessThan(1200)
+      expect(hit.x).toBeGreaterThan(160)
+      expect(hit.x).toBeLessThan(1040)
       expect(hit.y).toBeGreaterThan(80)
       expect(hit.y).toBeLessThan(800)
       expect(hit.a).not.toBe(hit.b)

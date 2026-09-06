@@ -197,6 +197,11 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'limiterAttack':
     case 'compressorRelease':
     case 'compressorAttack':
+    case 'filterEnvAttack':
+    case 'filterEnvRelease':
+    case 'filterAdsAttack':
+    case 'filterAdsDecay':
+    case 'filterAdsRelease':
       return value < 10 ? `${value.toFixed(1)} ms` : `${Math.round(value)} ms`
     case 'reverbDecay':
       return value < 10 ? `${value.toFixed(2)} s` : `${value.toFixed(1)} s`
@@ -205,6 +210,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'motionRate':
     case 'delayModRate':
     case 'reverbModRate':
+    case 'filterLfoRate':
       return `${value.toFixed(2)} Hz`
     case 'filterCutoff':
     case 'reverbDamping':
@@ -217,6 +223,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
         : `${Math.round(value)} Hz`
     case 'filterReso':
       return `${value.toFixed(2)} Q`
+    case 'filterLfoSync':
+    case 'filterEnvDir':
     case 'delaySync':
     case 'delaySyncR':
     case 'delayStereo':

@@ -103,20 +103,28 @@ function morphFor(axis: SensoryAxisId) {
   return EFFECT_MORPHS.find((m) => m.axis === axis)
 }
 
-function pickMorphColor<T extends 'reverbType' | 'distortionType'>(
+function pickWinningMorph<T extends 'reverbType' | 'distortionType' | 'filterType'>(
   values: SensoryValues,
   field: T,
-): NonNullable<EffectMorph[T]> | undefined {
+): EffectMorph | undefined {
   let best = MORPH_GATE
-  let picked: NonNullable<EffectMorph[T]> | undefined
+  let picked: EffectMorph | undefined
   for (const morph of EFFECT_MORPHS) {
     const amount = Math.abs(values[morph.axis as SensoryAxisId] ?? 0)
     const color = morph[field]
     if (!color || amount < best) continue
     best = amount
-    picked = color
+    picked = morph
   }
   return picked
+}
+
+function pickMorphColor<T extends 'reverbType' | 'distortionType'>(
+  values: SensoryValues,
+  field: T,
+): NonNullable<EffectMorph[T]> | undefined {
+  const color = pickWinningMorph(values, field)?.[field]
+  return color ?? undefined
 }
 
 function applyAxisLfos(dsp: DspSnapshot, values: SensoryValues) {
@@ -177,6 +185,17 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
   const distortionType = pickMorphColor(values, 'distortionType')
   if (reverbType) dsp.reverbType = reverbType
   if (distortionType) dsp.distortionType = distortionType
+  const filterMorph = pickWinningMorph(values, 'filterType')
+  if (filterMorph) {
+    const stop = interpolateMorphStop(filterMorph.stops, values[filterMorph.axis as SensoryAxisId] ?? 0)
+    for (const [key, value] of Object.entries(stop.params ?? {})) {
+      const param = key as ParamId
+      const def = PARAMS[param]
+      if (!def || value == null) continue
+      dsp.params[param] = applyParamValue(value, def)
+    }
+    dsp.bypass.filter = false
+  }
   applyAxisLfos(dsp, values)
   if (touched) {
     applySensoryStacking(dsp, values)
@@ -200,6 +219,11 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
       values.fuzz > 0.32 ||
       values.crush > 0.28 ||
       values.fold > 0.32 ||
+      values.sweep > 0.28 ||
+      values.dark > 0.32 ||
+      values.phone > 0.28 ||
+      values.peak > 0.32 ||
+      values.melt > 0.28 ||
       Math.abs(values.character) > 0.85
     if (protect) dsp.bypass.limiter = false
   }

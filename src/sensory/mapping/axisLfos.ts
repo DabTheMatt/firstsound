@@ -127,7 +127,7 @@ export const AXIS_LFOS: readonly AxisLfoBind[] = [
     rate0: 0.14,
     rateSpan: 0.24,
   },
-  {
+    {
     axis: 'well',
     kind: 'eq2',
     slot: 0,
@@ -137,6 +137,39 @@ export const AXIS_LFOS: readonly AxisLfoBind[] = [
     depthSpan: 16,
     rate0: 0.16,
     rateSpan: 0.28,
+  },
+  {
+    axis: 'sweep',
+    kind: 'filter',
+    slot: 0,
+    target: 'filterCutoff',
+    shape: 'sine',
+    depth0: 18,
+    depthSpan: 42,
+    rate0: 0.12,
+    rateSpan: 0.45,
+  },
+  {
+    axis: 'peak',
+    kind: 'filter',
+    slot: 1,
+    target: 'filterReso',
+    shape: 'sine',
+    depth0: 10,
+    depthSpan: 22,
+    rate0: 0.18,
+    rateSpan: 0.4,
+  },
+  {
+    axis: 'melt',
+    kind: 'filter',
+    slot: 2,
+    target: 'filterCutoff',
+    shape: 'triangle',
+    depth0: 12,
+    depthSpan: 28,
+    rate0: 0.08,
+    rateSpan: 0.22,
   },
 ]
 

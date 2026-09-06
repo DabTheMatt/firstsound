@@ -24,9 +24,9 @@ export type StringIntersection = {
 
 export const DEFAULT_STRING_INSETS: StringInsets = {
   top: 88,
-  right: 216,
+  right: 168,
   bottom: 104,
-  left: 36,
+  left: 168,
 }
 
 export function layoutParameterStrings(

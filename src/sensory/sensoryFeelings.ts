@@ -15,7 +15,7 @@ export type SensoryFeeling = {
   ariaLabel: string
 }
 
-/** Right-rail controls. Hybrids braid more than one insert. */
+/** Sensory controls. Hybrids braid more than one insert. */
 export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
   {
     id: 'character',
@@ -247,7 +247,130 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
     visual: 'vinyl',
     ariaLabel: 'Vinyl, clean to dusty record. Double-click to rest.',
   },
+  {
+    id: 'sweep',
+    label: 'sweep',
+    axis: 'sweep',
+    kind: 'unipolar',
+    from: 'open',
+    to: 'sweep',
+    visual: 'sweep',
+    ariaLabel: 'Sweep, open to moving filter. Double-click to rest.',
+  },
+  {
+    id: 'dark',
+    label: 'dark',
+    axis: 'dark',
+    kind: 'unipolar',
+    from: 'open',
+    to: 'dark',
+    visual: 'dark',
+    ariaLabel: 'Dark, open to a warm low-pass. Double-click to rest.',
+  },
+  {
+    id: 'thin',
+    label: 'thin',
+    axis: 'thin',
+    kind: 'unipolar',
+    from: 'full',
+    to: 'thin',
+    visual: 'thin',
+    ariaLabel: 'Thin, full to high-pass. Double-click to rest.',
+  },
+  {
+    id: 'phone',
+    label: 'phone',
+    axis: 'phone',
+    kind: 'unipolar',
+    from: 'wide',
+    to: 'phone',
+    visual: 'phone',
+    ariaLabel: 'Phone, wide to telephone band. Double-click to rest.',
+  },
+  {
+    id: 'notch',
+    label: 'notch',
+    axis: 'notch',
+    kind: 'unipolar',
+    from: 'full',
+    to: 'notch',
+    visual: 'notch',
+    ariaLabel: 'Notch, full to a hollow cut. Double-click to rest.',
+  },
+  {
+    id: 'peak',
+    label: 'peak',
+    axis: 'peak',
+    kind: 'unipolar',
+    from: 'flat',
+    to: 'peak',
+    visual: 'peak',
+    ariaLabel: 'Peak, flat to a singing bump. Double-click to rest.',
+  },
+  {
+    id: 'comb',
+    label: 'comb',
+    axis: 'comb',
+    kind: 'unipolar',
+    from: 'smooth',
+    to: 'comb',
+    visual: 'comb',
+    ariaLabel: 'Comb, smooth to toothed. Double-click to rest.',
+  },
+  {
+    id: 'melt',
+    label: 'melt',
+    axis: 'melt',
+    kind: 'unipolar',
+    from: 'fixed',
+    to: 'melt',
+    visual: 'melt',
+    ariaLabel: 'Melt, fixed to morphing filter. Double-click to rest.',
+  },
 ]
+
+/** Core + space on the left; grit, color, and FILTER types on the right. */
+export const LEFT_RAIL_IDS: readonly SensoryAxisId[] = [
+  'character',
+  'space',
+  'echo',
+  'grain',
+  'dirt',
+  'tight',
+  'mod',
+  'drift',
+  'pan',
+  'veil',
+  'halo',
+  'well',
+  'bloom',
+  'plate',
+  'spring',
+]
+
+export const RIGHT_RAIL_IDS: readonly SensoryAxisId[] = [
+  'shimmer',
+  'reverse',
+  'gate',
+  'fuzz',
+  'crush',
+  'tape',
+  'fold',
+  'vinyl',
+  'sweep',
+  'dark',
+  'thin',
+  'phone',
+  'notch',
+  'peak',
+  'comb',
+  'melt',
+]
+
+export function feelingsForRail(side: 'left' | 'right'): readonly SensoryFeeling[] {
+  const ids = side === 'left' ? LEFT_RAIL_IDS : RIGHT_RAIL_IDS
+  return ids.map((id) => SENSORY_FEELINGS.find((feeling) => feeling.id === id)!)
+}
 
 export function feelingAmount(values: SensoryValues, feeling: SensoryFeeling): number {
   return values[feeling.axis]

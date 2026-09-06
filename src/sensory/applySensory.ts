@@ -1,5 +1,6 @@
 import type { AudioEngine } from '../audio/engine/AudioEngine'
 import { FX_LFO_KINDS, FX_LFO_SLOTS } from '../audio/fx/lfo'
+import type { CreativeFilterType } from '../audio/fx/filter'
 import type { DistortionType, ReverbType } from '../audio/fx/types'
 import { EFFECT_MORPHS } from './mapping/effectMorphs'
 import { MORPH_GATE } from './mapping/morph'
@@ -8,7 +9,7 @@ import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping
 import type { SensoryAxisId } from './sensoryParameters'
 import type { SensoryValues } from './sensoryState'
 
-function strongestMorphColor<T extends 'reverbType' | 'distortionType'>(
+function strongestMorphColor<T extends 'reverbType' | 'distortionType' | 'filterType'>(
   values: SensoryValues | number,
   field: T,
 ): NonNullable<(typeof EFFECT_MORPHS)[number][T]> | undefined {
@@ -31,6 +32,10 @@ export function sensoryReverbType(values: SensoryValues | number): ReverbType {
 
 export function sensoryDistortionType(values: SensoryValues): DistortionType | undefined {
   return strongestMorphColor(values, 'distortionType')
+}
+
+export function sensoryFilterType(values: SensoryValues): CreativeFilterType | undefined {
+  return strongestMorphColor(values, 'filterType')
 }
 
 export function captureDsp(engine: AudioEngine): DspSnapshot {

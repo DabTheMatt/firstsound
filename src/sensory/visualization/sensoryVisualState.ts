@@ -60,6 +60,14 @@ export const AXIS_TINT: Record<SensoryAxisId, Rgb> = {
   tape: { r: 196, g: 140, b: 72 },
   fold: { r: 255, g: 120, b: 196 },
   vinyl: { r: 72, g: 72, b: 68 },
+  sweep: { r: 92, g: 210, b: 196 },
+  dark: { r: 72, g: 56, b: 48 },
+  thin: { r: 210, g: 230, b: 255 },
+  phone: { r: 196, g: 160, b: 72 },
+  notch: { r: 140, g: 92, b: 210 },
+  peak: { r: 255, g: 176, b: 92 },
+  comb: { r: 160, g: 210, b: 120 },
+  melt: { r: 255, g: 140, b: 180 },
 }
 
 const DRIFT_RIGHT: Rgb = { r: 255, g: 168, b: 72 }

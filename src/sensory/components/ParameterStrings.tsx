@@ -78,9 +78,9 @@ export function ParameterStrings({
     const narrow = size.w > 0 && size.w < 720
     return {
       top: 88,
-      right: narrow ? 172 : 216,
+      right: narrow ? 132 : 168,
       bottom: 104,
-      left: narrow ? 20 : 36,
+      left: narrow ? 132 : 168,
     }
   }, [size.w])
 

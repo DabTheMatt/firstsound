@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as R
 import {
   applyFeelingAmount,
   feelingAmount,
+  feelingsForRail,
   restFeeling,
-  SENSORY_FEELINGS,
   type SensoryFeeling,
 } from '../sensoryFeelings'
 import { AXIS_LFO_BY_ID, axisLfoActive } from '../mapping/axisLfos'
@@ -95,7 +95,16 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
   }
 
   return (
-    <div className={`${styles.rail} ${focused ? styles.focused : ''}`} role="listbox" aria-label="Effect feelings">
+    <>
+      {renderRail('left')}
+      {renderRail('right')}
+    </>
+  )
+
+  function renderRail(side: 'left' | 'right') {
+    return (
+    <div className={`${styles.rail} ${styles[side]} ${focused ? styles.focused : ''}`} role="listbox" aria-label={side === 'left' ? 'Effect feelings, left' : 'Effect feelings, right'}>
+      {side === 'left' ? (
       <button
         type="button"
         className={styles.rest}
@@ -108,7 +117,8 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
       >
         rest
       </button>
-      {SENSORY_FEELINGS.map((feeling) => {
+      ) : null}
+      {feelingsForRail(side).map((feeling) => {
         const on = feeling.id === activeId
         const amount = feelingAmount(values, feeling)
         const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
@@ -177,4 +187,5 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
       })}
     </div>
   )
+  }
 }

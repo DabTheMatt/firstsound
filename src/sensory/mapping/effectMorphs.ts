@@ -1,4 +1,32 @@
+import {
+  FILTER_CHARACTER_OPTIONS,
+  FILTER_SLOPE_OPTIONS,
+  FILTER_TYPE_OPTIONS,
+  optionIndex,
+} from '../../audio/fx/filter'
 import type { EffectMorph } from './morph'
+
+const FILTER_KIND = {
+  lowpass: optionIndex(FILTER_TYPE_OPTIONS, 'lowpass'),
+  highpass: optionIndex(FILTER_TYPE_OPTIONS, 'highpass'),
+  bandpass: optionIndex(FILTER_TYPE_OPTIONS, 'bandpass'),
+  notch: optionIndex(FILTER_TYPE_OPTIONS, 'notch'),
+  peak: optionIndex(FILTER_TYPE_OPTIONS, 'peak'),
+  comb: optionIndex(FILTER_TYPE_OPTIONS, 'comb'),
+  morph: optionIndex(FILTER_TYPE_OPTIONS, 'morph'),
+} as const
+
+const FILTER_SLOPE = {
+  12: optionIndex(FILTER_SLOPE_OPTIONS, 12),
+  24: optionIndex(FILTER_SLOPE_OPTIONS, 24),
+} as const
+
+const FILTER_CHAR = {
+  clean: optionIndex(FILTER_CHARACTER_OPTIONS, 'clean'),
+  analog: optionIndex(FILTER_CHARACTER_OPTIONS, 'analog'),
+  warm: optionIndex(FILTER_CHARACTER_OPTIONS, 'warm'),
+  aggressive: optionIndex(FILTER_CHARACTER_OPTIONS, 'aggressive'),
+} as const
 
 /** Designed absolute stops. Rest (t≈0) leaves the captured DSP untouched. */
 export const EFFECT_MORPHS: readonly EffectMorph[] = [
@@ -708,6 +736,322 @@ export const EFFECT_MORPHS: readonly EffectMorph[] = [
       { t: 0, params: { saturation: 0, saturationMix: 70, distortionNoise: 0 } },
       { t: 0.5, params: { saturation: 8, saturationMix: 80, distortionNoise: 8 } },
       { t: 1, params: { saturation: 16, saturationMix: 88, distortionNoise: 16 } },
+    ],
+  },
+  {
+    axis: 'sweep',
+    module: 'filter',
+    filterType: 'lowpass',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 12000,
+          filterReso: 0.7,
+          filterDrive: 0,
+          filterMix: 100,
+          filterLfoDepth: 0,
+          filterEnvAmt: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 1400,
+          filterReso: 3.6,
+          filterDrive: 8,
+          filterMix: 100,
+          filterLfoDepth: 28,
+          filterLfoRate: 0.22,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 520,
+          filterReso: 6.2,
+          filterDrive: 14,
+          filterMix: 100,
+          filterLfoDepth: 55,
+          filterLfoRate: 0.35,
+          filterSlope: FILTER_SLOPE[24],
+        },
+      },
+    ],
+  },
+  {
+    axis: 'dark',
+    module: 'filter',
+    filterType: 'lowpass',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 16000,
+          filterReso: 0.7,
+          filterDrive: 0,
+          filterMix: 100,
+          filterCharacter: FILTER_CHAR.warm,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 900,
+          filterReso: 1.1,
+          filterDrive: 6,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[24],
+          filterCharacter: FILTER_CHAR.warm,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.lowpass,
+          filterCutoff: 380,
+          filterReso: 1.4,
+          filterDrive: 10,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[24],
+          filterCharacter: FILTER_CHAR.warm,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'thin',
+    module: 'filter',
+    filterType: 'highpass',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.highpass,
+          filterCutoff: 40,
+          filterReso: 0.7,
+          filterDrive: 0,
+          filterMix: 100,
+          filterCharacter: FILTER_CHAR.clean,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.highpass,
+          filterCutoff: 220,
+          filterReso: 0.85,
+          filterDrive: 0,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[12],
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.highpass,
+          filterCutoff: 520,
+          filterReso: 1.1,
+          filterDrive: 4,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[12],
+          filterCharacter: FILTER_CHAR.clean,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'phone',
+    module: 'filter',
+    filterType: 'bandpass',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.bandpass,
+          filterCutoff: 1800,
+          filterReso: 0.8,
+          filterDrive: 0,
+          filterMix: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.bandpass,
+          filterCutoff: 1800,
+          filterReso: 2.4,
+          filterDrive: 10,
+          filterMix: 72,
+          filterCharacter: FILTER_CHAR.aggressive,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.bandpass,
+          filterCutoff: 1750,
+          filterReso: 4.2,
+          filterDrive: 16,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[12],
+          filterCharacter: FILTER_CHAR.aggressive,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'notch',
+    module: 'filter',
+    filterType: 'notch',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.notch,
+          filterCutoff: 1200,
+          filterReso: 0.8,
+          filterMix: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.notch,
+          filterCutoff: 1100,
+          filterReso: 2.2,
+          filterMix: 70,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.notch,
+          filterCutoff: 980,
+          filterReso: 4.8,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[12],
+        },
+      },
+    ],
+  },
+  {
+    axis: 'peak',
+    module: 'filter',
+    filterType: 'peak',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.peak,
+          filterCutoff: 1400,
+          filterReso: 0.8,
+          filterMix: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.peak,
+          filterCutoff: 1600,
+          filterReso: 3.2,
+          filterDrive: 6,
+          filterMix: 78,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.peak,
+          filterCutoff: 1850,
+          filterReso: 6.4,
+          filterDrive: 10,
+          filterMix: 100,
+          filterCharacter: FILTER_CHAR.analog,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'comb',
+    module: 'filter',
+    filterType: 'comb',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.comb,
+          filterCutoff: 240,
+          filterReso: 0.7,
+          filterMix: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.comb,
+          filterCutoff: 280,
+          filterReso: 2.4,
+          filterDrive: 6,
+          filterMix: 64,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.comb,
+          filterCutoff: 340,
+          filterReso: 4.6,
+          filterDrive: 12,
+          filterMix: 88,
+          filterCharacter: FILTER_CHAR.warm,
+        },
+      },
+    ],
+  },
+  {
+    axis: 'melt',
+    module: 'filter',
+    filterType: 'morph',
+    stops: [
+      {
+        t: 0,
+        params: {
+          filterKind: FILTER_KIND.morph,
+          filterMorph: 0,
+          filterCutoff: 2400,
+          filterReso: 0.8,
+          filterMix: 0,
+        },
+      },
+      {
+        t: 0.5,
+        params: {
+          filterKind: FILTER_KIND.morph,
+          filterMorph: 42,
+          filterCutoff: 1100,
+          filterReso: 2.2,
+          filterDrive: 6,
+          filterMix: 78,
+        },
+      },
+      {
+        t: 1,
+        params: {
+          filterKind: FILTER_KIND.morph,
+          filterMorph: 82,
+          filterCutoff: 620,
+          filterReso: 3.8,
+          filterDrive: 10,
+          filterMix: 100,
+          filterSlope: FILTER_SLOPE[24],
+        },
+      },
     ],
   },
 ]
