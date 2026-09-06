@@ -678,7 +678,11 @@ export default function App() {
             </div>
           ) : null}
           {dockRight ? (
-            <MeterStrip channels={snap.channelCount} range={meterRange} onRange={setMeterRange} />
+            <MeterStrip
+              channels={snap.params.makeMono > 0.5 ? 1 : snap.channelCount}
+              range={meterRange}
+              onRange={setMeterRange}
+            />
           ) : null}
         </div>
 

@@ -194,6 +194,23 @@
   height: calc(100% - 22px);
 }
 
+.monoBadge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-primary);
+  background: color-mix(in srgb, var(--bg-app) 70%, var(--accent-primary) 30%);
+  color: var(--accent-primary);
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 .fxCanvas {
   position: absolute;
   inset: 0 0 22px 0;

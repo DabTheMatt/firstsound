@@ -743,6 +743,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} />
+            {loaded && snap.params.makeMono > 0.5 ? (
+              <span className={styles.monoBadge}>Mono</span>
+            ) : null}
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
             <div
               ref={overlayRef}
