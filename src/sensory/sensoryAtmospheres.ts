@@ -1,4 +1,4 @@
-import type { ThemePreference } from '../theme/tokens'
+import { THEME_OPTIONS, type ThemePreference } from '../theme/tokens'
 import type { SensorySceneId } from './sensoryScene'
 
 export type SensoryAtmosphere = {
@@ -16,7 +16,7 @@ export const SENSORY_ATMOSPHERES: readonly SensoryAtmosphere[] = [
     label: 'Bloom',
     theme: 'dusk',
     scene: 'range',
-    preview: { bg: '#161412', surface: '#2a2420', accent: '#e07a42' },
+    preview: { bg: '#1b1815', surface: '#2a2621', accent: '#e07a42' },
   },
   {
     id: 'range',
@@ -68,3 +68,19 @@ export const SENSORY_ATMOSPHERES: readonly SensoryAtmosphere[] = [
     preview: { bg: '#071018', surface: '#143044', accent: '#7ee0ff' },
   },
 ]
+
+export function resolveSensoryAtmosphere(
+  scene: SensorySceneId,
+  preference: ThemePreference,
+): SensoryAtmosphere {
+  const exact = SENSORY_ATMOSPHERES.find((a) => a.scene === scene && a.theme === preference)
+  if (exact) return exact
+  const theme = THEME_OPTIONS.find((opt) => opt.id === preference)
+  return {
+    id: `color:${String(preference)}:${scene}`,
+    label: theme?.label ?? 'Color',
+    theme: preference,
+    scene,
+    preview: theme?.preview ?? { bg: '#151616', surface: '#202222', accent: '#e6ad48' },
+  }
+}

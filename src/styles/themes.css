@@ -317,9 +317,9 @@
 [data-theme='dusk'] {
   color-scheme: dark;
 
-  --bg-app: #161412;
-  --bg-panel: #1c1a17;
-  --bg-panel-elevated: #24211d;
+  --bg-app: #1b1815;
+  --bg-panel: #211e1a;
+  --bg-panel-elevated: #2a2621;
   --bg-control: #2d2924;
   --bg-control-hover: #38332d;
   --bg-control-active: #3d3228;
@@ -359,9 +359,9 @@
   --fade-in: var(--meter-low);
   --fade-out: var(--meter-high);
 
-  --ridge-warm: #e56a32;
-  --ridge-mid: #f6efe6;
-  --ridge-cool: #4eb8c6;
+  --ridge-warm: #ec5c24;
+  --ridge-mid: #f8f2e8;
+  --ridge-cool: #38c4d2;
 }
 
 [data-theme='custom'] {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { THEME_OPTIONS, useTheme, type ThemePreference } from '../../theme'
-import { SENSORY_ATMOSPHERES } from '../sensoryAtmospheres'
+import { resolveSensoryAtmosphere, SENSORY_ATMOSPHERES } from '../sensoryAtmospheres'
 import type { SensorySceneId } from '../sensoryScene'
 import styles from './SensoryThemePicker.module.css'
 
@@ -14,10 +14,8 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
   const { preference, setPreference } = useTheme()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const active =
-    SENSORY_ATMOSPHERES.find((a) => a.scene === scene && a.theme === preference) ??
-    SENSORY_ATMOSPHERES.find((a) => a.scene === scene) ??
-    SENSORY_ATMOSPHERES[0]!
+  const active = resolveSensoryAtmosphere(scene, preference)
+  const named = SENSORY_ATMOSPHERES.some((a) => a.id === active.id)
 
   useEffect(() => {
     if (!open) return
@@ -56,7 +54,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
               type="button"
               role="option"
               className={styles.option}
-              aria-selected={opt.id === active.id}
+              aria-selected={named && opt.id === active.id}
               onClick={() => {
                 setPreference(opt.theme)
                 onScene(opt.scene)

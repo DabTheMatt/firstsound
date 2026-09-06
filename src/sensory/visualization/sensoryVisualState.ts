@@ -60,17 +60,17 @@ export type RidgePalette = {
 }
 
 export const DUSK_RIDGE: RidgePalette = {
-  warm: { r: 229, g: 106, b: 50 },
-  mid: { r: 246, g: 239, b: 230 },
-  cool: { r: 78, g: 184, b: 198 },
+  warm: { r: 236, g: 92, b: 36 },
+  mid: { r: 248, g: 242, b: 232 },
+  cool: { r: 56, g: 196, b: 210 },
 }
 
 /** Lateral mountain wash: warm left, cream center, cool right, tinted by ink. */
 export function ridgeInk(fill: Rgb, palette: RidgePalette): { left: Rgb; mid: Rgb; right: Rgb } {
   return {
-    left: mixRgb(palette.warm, fill, 0.42),
-    mid: mixRgb(palette.mid, fill, 0.28),
-    right: mixRgb(palette.cool, fill, 0.42),
+    left: mixRgb(palette.warm, fill, 0.12),
+    mid: mixRgb(palette.mid, fill, 0.08),
+    right: mixRgb(palette.cool, fill, 0.12),
   }
 }
 
