@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
-import { computeMinMax } from '../../audio/engine/peaks'
+import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { Overview } from './Overview'
@@ -257,9 +257,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const selA = Math.min(start, end)
       const selB = Math.max(start, end)
       const foldMono = engine.getSnapshot().params.makeMono > 0.5
-      const mixed = foldMono ? engine.getMono() : null
+      const mixed = foldMono ? engine.getMono() ?? mixToMono(buffer) : null
       const channels = buffer.numberOfChannels
-      const lanes = mixed ? 1 : Math.min(2, channels)
+      const lanes = foldMono ? 1 : Math.min(2, channels)
       for (let lane = 0; lane < lanes; lane++) {
         const data = mixed ?? buffer.getChannelData(Math.min(lane, channels - 1))
         const laneH = height / lanes
