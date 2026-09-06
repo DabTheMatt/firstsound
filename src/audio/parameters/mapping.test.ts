@@ -9,6 +9,7 @@ import {
   fullPlayRegion,
   formatParamValue,
   fromNormalized,
+  quantize,
   parkPlayheadOnStop,
   parseTypedNumber,
   parseTypedParam,
@@ -142,6 +143,18 @@ describe('mapping', () => {
     expect(formatParamValue(0, PARAMS.pan)).toBe('C')
     expect(formatParamValue(-40, PARAMS.pan)).toBe('L 40')
     expect(formatParamValue(25, PARAMS.pan)).toBe('R 25')
+  })
+
+  it('formats distortion output as a short dB readout', () => {
+    expect(formatParamValue(0, PARAMS.distortionOutput)).toBe('0.0 dB')
+    expect(formatParamValue(2.8000000000000003, PARAMS.distortionOutput)).toBe('2.8 dB')
+    expect(formatParamValue(-12.4, PARAMS.distortionOutput)).toBe('-12.4 dB')
+  })
+
+  it('quantizes distortion output without binary float junk', () => {
+    expect(quantize(2.8000000000000003, PARAMS.distortionOutput)).toBe(2.8)
+    expect(applyParamValue(2.84, PARAMS.distortionOutput)).toBe(2.8)
+    expect(String(applyParamValue(2.8, PARAMS.distortionOutput))).toBe('2.8')
   })
 })
 
