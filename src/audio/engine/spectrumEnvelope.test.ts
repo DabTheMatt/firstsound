@@ -29,6 +29,24 @@ describe('spectrumEnvelopePoints', () => {
     expect(pts[0]!.y).toBe(110)
     expect(pts[1]!.y).toBe(10)
   })
+
+  it('lifts bands by a meter-align offset', () => {
+    const edges = logBandEdgesHz(20, 20000, 2)
+    const raw = spectrumEnvelopePoints([-48, -60], edges, 20, 20000, {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+    }, 0, -60)
+    const aligned = spectrumEnvelopePoints([-48, -60], edges, 20, 20000, {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+    }, 0, -60, 39)
+    expect(aligned[0]!.y).toBeLessThan(raw[0]!.y)
+    expect(aligned[0]!.y).toBeCloseTo(15)
+  })
 })
 
 describe('strokeSpectrumEnvelope', () => {
