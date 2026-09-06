@@ -9,15 +9,16 @@ type Props = {
   id: ParamId
   value: number
   variant: 'knob' | 'slider'
+  linked?: boolean
 }
 
-export function ParamControl({ id, value, variant }: Props) {
+export function ParamControl({ id, value, variant, linked = false }: Props) {
   const snap = useEngine()
   const binding = lfoBinding(snap.fxLfos, id)
   const mapped = Boolean(binding)
   const live = mapped ? snap.liveParams[id] : value
   return (
-    <LfoParamShell id={id}>
+    <LfoParamShell id={id} linked={linked}>
       {variant === 'slider' ? (
         <ParamSlider id={id} value={value} liveValue={mapped ? live : undefined} />
       ) : (

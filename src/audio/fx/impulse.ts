@@ -16,7 +16,7 @@ export type ImpulseSpec = {
   freeze: boolean
 }
 
-const MAX_IR_SEC = 12
+const MAX_IR_SEC = 6
 
 export function impulseLengthSec(spec: ImpulseSpec): number {
   if (spec.freeze || spec.type === 'infinite') return Math.min(MAX_IR_SEC, 8)
@@ -25,9 +25,9 @@ export function impulseLengthSec(spec: ImpulseSpec): number {
   if (spec.type === 'ambience' || spec.type === 'room') seconds *= 0.5
   if (spec.type === 'gated') seconds = Math.min(seconds, 0.55 + spec.size * 0.5)
   if (spec.type === 'spring') seconds *= 0.7
-  if (spec.type === 'cloud' || spec.type === 'bloom') seconds *= 1.35
-  if (spec.type === 'cathedral' || spec.type === 'largeHall') seconds *= 1.45
-  if (spec.type === 'shimmer') seconds *= 1.2
+  if (spec.type === 'cloud' || spec.type === 'bloom') seconds *= 1.12
+  if (spec.type === 'cathedral' || spec.type === 'largeHall') seconds *= 1.12
+  if (spec.type === 'shimmer') seconds *= 1.08
   return Math.min(MAX_IR_SEC, Math.max(0.08, seconds))
 }
 
@@ -182,6 +182,13 @@ export function fillReverbImpulse(
 export const IR_EARLY_SEC = 0.08
 export const IR_TARGET_EARLY_RMS = 0.042
 export const IR_PEAK_LIMIT = 0.38
+export const IR_STACK_REF_SEC = 0.4
+export const IR_STACK_K = 0.48
+
+/** Longer IRs keep more overlapping grains in the sum — trim so tails do not climb. */
+export function irStackTrim(durationSec: number): number {
+  return 1 / Math.sqrt(1 + Math.max(0, durationSec - IR_STACK_REF_SEC) * IR_STACK_K)
+}
 
 /**
  * ConvolverNode.normalize uses Chrome's 0.00125 GainCalibration, which turns a
@@ -208,7 +215,8 @@ export function scaleReverbImpulse(
   const earlyRms = Math.sqrt(energy / (2 * earlyN))
   const rmsGain = IR_TARGET_EARLY_RMS / Math.max(earlyRms, 1e-8)
   const peakGain = IR_PEAK_LIMIT / peak
-  const gain = Math.min(rmsGain, peakGain)
+  const stack = irStackTrim(n / sampleRate)
+  const gain = Math.min(rmsGain, peakGain) * stack
   for (let i = 0; i < n; i++) {
     left[i]! *= gain
     right[i]! *= gain

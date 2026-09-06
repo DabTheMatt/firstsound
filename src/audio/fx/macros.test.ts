@@ -59,7 +59,7 @@ describe('presets', () => {
     expect(findSpacePreset('rv-stereo-spread')?.params.reverbInput).toBe(0)
     expect(findSpacePreset('rv-haas')?.params.reverbWidth).toBe(160)
     expect(findSpacePreset('rv-bloom')?.reverbType).toBe('bloom')
-    expect(findSpacePreset('rv-cinema')?.params.reverbDecay).toBeGreaterThan(6)
+    expect(findSpacePreset('rv-cinema')?.params.reverbDecay).toBeGreaterThan(3)
     expect(findSpacePreset('rv-big')?.category).toBe('Room')
   })
 

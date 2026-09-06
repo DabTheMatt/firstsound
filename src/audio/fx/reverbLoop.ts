@@ -14,8 +14,8 @@ export function reverbLoopGains(opts: {
 }): { tank: number; shimmer: number } {
   const shimmerWant = Math.min(0.12, Math.max(0, opts.shimmer01) * 0.18)
   if (opts.freeze) {
-    const tank = 0.42
-    return { tank, shimmer: Math.min(shimmerWant, 0.08) }
+    const tank = 0.22
+    return { tank, shimmer: Math.min(shimmerWant, 0.05) }
   }
   void opts.decaySec
   void opts.sizePct

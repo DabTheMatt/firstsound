@@ -9,7 +9,7 @@ import {
   REVERB_PRESET_CATEGORIES,
   type FxPresetCategory,
 } from '../../audio/fx/presets'
-import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, REVERB_TYPES } from '../../audio/fx/types'
+import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, parseReverbType, REVERB_TYPES } from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
@@ -118,13 +118,24 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
           onChange={(v) => engine.setDelayType(v)}
         />
       ) : (
-        <Segmented
-          label="Reverb type"
-          value={snap.reverbType}
-          options={REVERB_TYPES}
-          wrap
-          onChange={(v) => engine.setReverbType(v)}
-        />
+        <label className={styles.field}>
+          Reverb type
+          <select
+            className={`${styles.select} ${styles.selectOn}`}
+            aria-label="Reverb type"
+            value={snap.reverbType}
+            onChange={(event) => {
+              const type = parseReverbType(event.target.value)
+              if (type) engine.setReverbType(type)
+            }}
+          >
+            {REVERB_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       <h3 className={styles.sub}>Presets</h3>
@@ -164,34 +175,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
           <p className={styles.help}>
             Pick a category, then a space. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
           </p>
-          <label className={styles.field}>
-            Reverb preset
-            <select
-              className={styles.select}
-              aria-label="Reverb preset"
-              value={snap.spacePresetId && findSpacePreset(snap.spacePresetId)?.kind === 'reverb' ? snap.spacePresetId : ''}
-              onChange={(event) => {
-                const preset = findSpacePreset(event.target.value)
-                if (preset) engine.applySpacePreset(preset)
-              }}
-            >
-              <option value="" disabled>
-                Choose a space
-              </option>
-              {REVERB_PRESET_CATEGORIES.map((cat) => (
-                <optgroup key={cat} label={cat}>
-                  {presetsFor('reverb', cat).map((p) => (
-                    <option key={p.id} value={p.id} title={presetHint(p)}>
-                      {p.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-          {snap.spacePresetId && findSpacePreset(snap.spacePresetId)?.kind === 'reverb' ? (
-            <p className={styles.help}>{presetHint(findSpacePreset(snap.spacePresetId)!)}</p>
-          ) : null}
+          <ReverbPresetSelect snap={snap} />
         </>
       )}
 
@@ -270,17 +254,14 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         </>
       ) : (
         <>
-          {params(['reverbDry', 'reverbWet', 'reverbSize', 'reverbDecay'])}
-          <div className={styles.row}>
-            <Toggle
-              pressed={snap.params.reverbCorrelate > 0.5}
-              label="Correlate"
-              onToggle={() => engine.setParam('reverbCorrelate', snap.params.reverbCorrelate > 0.5 ? 0 : 1)}
-            />
-          </div>
-          <p className={styles.help}>
-            Correlate keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
-          </p>
+          <DryWetPair
+            snap={snap}
+            variant={variant}
+            dryId="reverbDry"
+            wetId="reverbWet"
+            correlateId="reverbCorrelate"
+          />
+          {params(['reverbSize', 'reverbDecay'])}
           <h3 className={styles.sub}>Channels</h3>
           <Segmented
             label="Channels"
@@ -307,6 +288,100 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       )}
       <FxLfoSection snap={snap} kind={kind} variant={variant} />
     </>
+  )
+}
+
+function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
+  const selected = snap.spacePresetId ? findSpacePreset(snap.spacePresetId) : undefined
+  const current = selected?.kind === 'reverb' ? selected : undefined
+  return (
+    <>
+      <label className={styles.field}>
+        Reverb preset
+        <select
+          className={`${styles.select} ${current ? styles.selectOn : ''}`}
+          aria-label="Reverb preset"
+          value={current?.id ?? ''}
+          onChange={(event) => {
+            const preset = findSpacePreset(event.target.value)
+            if (preset) engine.applySpacePreset(preset)
+          }}
+        >
+          <option value="" disabled>
+            Choose a space
+          </option>
+          {REVERB_PRESET_CATEGORIES.map((cat) => (
+            <optgroup key={cat} label={cat}>
+              {presetsFor('reverb', cat).map((p) => (
+                <option key={p.id} value={p.id} title={presetHint(p)}>
+                  {p.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {current ? (
+        <p className={styles.selectCurrent}>
+          {current.category} · {current.name}
+        </p>
+      ) : (
+        <p className={styles.help}>No factory space selected.</p>
+      )}
+      {current ? <p className={styles.help}>{presetHint(current)}</p> : null}
+    </>
+  )
+}
+
+function DryWetPair({
+  snap,
+  variant,
+  dryId,
+  wetId,
+  correlateId,
+}: {
+  snap: EngineSnapshot
+  variant: 'knob' | 'slider'
+  dryId: 'reverbDry'
+  wetId: 'reverbWet'
+  correlateId: 'reverbCorrelate'
+}) {
+  const linked = snap.params[correlateId] > 0.5
+  return (
+    <>
+      <div className={styles.mixRow}>
+        <ParamControl id={dryId} value={snap.params[dryId]} variant={variant} linked={linked} />
+        <button
+          type="button"
+          className={`${styles.correlate} ${linked ? styles.correlateOn : ''}`}
+          aria-pressed={linked}
+          aria-label="Correlate Dry and Wet"
+          title={linked ? 'Correlate on — Dry + Wet stay at 100%' : 'Correlate off — Dry and Wet are independent'}
+          onClick={() => engine.setParam(correlateId, linked ? 0 : 1)}
+        >
+          <CorrelateIcon />
+        </button>
+        <ParamControl id={wetId} value={snap.params[wetId]} variant={variant} linked={linked} />
+      </div>
+      <p className={styles.help}>
+        The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+      </p>
+    </>
+  )
+}
+
+function CorrelateIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M7.2 10.8 10.8 7.2M6.3 8.1a2.4 2.4 0 0 1 0-3.4l1.2-1.2a2.4 2.4 0 0 1 3.4 3.4L9.9 8M11.7 9.9a2.4 2.4 0 0 1 0 3.4l-1.2 1.2a2.4 2.4 0 1 1-3.4-3.4L8.1 10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 

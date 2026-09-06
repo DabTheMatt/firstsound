@@ -265,14 +265,68 @@
 .select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
-  padding: 4px 8px;
+  min-height: 36px;
+  padding: 6px 10px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.selectOn {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+}
+
+.selectCurrent {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field .select,
+.field .selectCurrent {
+  color: var(--text-primary);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mixRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 4px 6px;
+  align-items: center;
+  justify-items: center;
+  padding-top: 12px;
+}
+
+.correlate {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-muted);
+}
+
+.correlate svg {
+  display: block;
+}
+
+.correlateOn {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 16%, var(--bg-control));
+  color: var(--accent-primary);
 }
 
 .lrGrid {

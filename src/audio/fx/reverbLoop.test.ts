@@ -24,8 +24,8 @@ describe('reverbLoopGains', () => {
     const live = reverbLoopGains({ decaySec: 8, sizePct: 90, shimmer01: 0.2, huge: true, freeze: false })
     const frozen = reverbLoopGains({ decaySec: 8, sizePct: 90, shimmer01: 0.2, huge: true, freeze: true })
     expect(live.tank).toBe(0)
-    expect(frozen.tank).toBeGreaterThan(0.3)
-    expect(frozen.tank).toBeLessThan(0.5)
+    expect(frozen.tank).toBeGreaterThan(0.15)
+    expect(frozen.tank).toBeLessThan(0.3)
   })
 
   it('keeps shimmer as a quiet feed-forward sparkle', () => {
