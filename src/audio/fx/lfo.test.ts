@@ -162,6 +162,15 @@ describe('parseFxLfos', () => {
     expect(parseFxLfos({ delay: { target: 'gain' } }).delay[0]!.target).toBeNull()
     expect(parseFxLfos({ input: { target: 'gain' } }).input[0]!.target).toBe('gain')
   })
+
+  it('migrates a legacy saturation LFO bank onto distortion', () => {
+    const parsed = parseFxLfos({
+      saturation: { rateHz: 1.2, shape: 'triangle', depth: 22, target: 'saturation' },
+    })
+    expect(parsed.distortion[0]!.target).toBe('saturation')
+    expect(parsed.distortion[0]!.shape).toBe('triangle')
+    expect(parsed.distortion[0]!.depth).toBe(22)
+  })
 })
 
 describe('lfoRangeNormalized', () => {
@@ -192,8 +201,9 @@ describe('targets', () => {
     expect(isFxLfoTarget('delay', 'delayTimeR')).toBe(true)
     expect(isFxLfoTarget('reverb', 'reverbOffset')).toBe(true)
     expect(isFxLfoTarget('reverb', 'reverbInput')).toBe(true)
-    expect(isFxLfoTarget('saturation', 'saturation')).toBe(true)
-    expect(isFxLfoTarget('saturation', 'saturationMix')).toBe(true)
+    expect(isFxLfoTarget('distortion', 'saturation')).toBe(true)
+    expect(isFxLfoTarget('distortion', 'saturationMix')).toBe(true)
+    expect(isFxLfoTarget('distortion', 'distortionBits')).toBe(true)
     expect(isFxLfoTarget('eq8', 'eq8Freq')).toBe(true)
     expect(isFxLfoTarget('grain', 'density')).toBe(true)
     expect(isFxLfoTarget('eq1', 'eq1Freq')).toBe(true)
@@ -236,6 +246,8 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('limiter', 'limiterRelease')).toBe('main')
     expect(inspectorPaneForLfo('limiter', 'limiterAttack')).toBe('advanced')
     expect(inspectorPaneForLfo('limiter', 'limiterInput')).toBe('advanced')
+    expect(inspectorPaneForLfo('distortion', 'saturation')).toBe('main')
+    expect(inspectorPaneForLfo('distortion', 'distortionBits')).toBe('advanced')
   })
 })
 
@@ -275,6 +287,7 @@ describe('moduleTypeForLfoKind', () => {
   it('maps compressor and limiter kinds to chain modules', () => {
     expect(moduleTypeForLfoKind('compressor')).toBe('compressor')
     expect(moduleTypeForLfoKind('limiter')).toBe('limiter')
+    expect(moduleTypeForLfoKind('distortion')).toBe('distortion')
     expect(moduleTypeForLfoKind('input')).toBe('gain')
   })
 })

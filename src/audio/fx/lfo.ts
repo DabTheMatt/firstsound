@@ -11,7 +11,7 @@ export type FxLfoKind =
   | 'reverb'
   | 'compressor'
   | 'limiter'
-  | 'saturation'
+  | 'distortion'
   | 'grain'
   | 'eq1'
   | 'eq2'
@@ -48,7 +48,7 @@ export const FX_LFO_KINDS: FxLfoKind[] = [
   'reverb',
   'compressor',
   'limiter',
-  'saturation',
+  'distortion',
   'grain',
   'eq1',
   'eq2',
@@ -69,7 +69,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   reverb: 'Reverb',
   compressor: 'Compressor',
   limiter: 'Limiter',
-  saturation: 'Saturation',
+  distortion: 'Distortion',
   grain: 'Grain',
   eq1: 'EQ band 1',
   eq2: 'EQ band 2',
@@ -88,7 +88,7 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   reverb: 'r',
   compressor: 'c',
   limiter: 'l',
-  saturation: 's',
+  distortion: 's',
   grain: 'g',
   eq1: 'eq1b',
   eq2: 'eq2b',
@@ -199,7 +199,16 @@ const LIMITER_TARGETS: ParamId[] = [
   'limiterAttack',
 ]
 
-const SATURATION_TARGETS: ParamId[] = ['saturation', 'saturationMix']
+const DISTORTION_TARGETS: ParamId[] = [
+  'saturation',
+  'saturationMix',
+  'distortionTone',
+  'distortionBias',
+  'distortionBits',
+  'distortionDownsample',
+  'distortionNoise',
+  'distortionOutput',
+]
 
 const GRAIN_TARGETS: ParamId[] = [
   'grainSize',
@@ -241,7 +250,7 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   reverb: REVERB_TARGETS,
   compressor: COMPRESSOR_TARGETS,
   limiter: LIMITER_TARGETS,
-  saturation: SATURATION_TARGETS,
+  distortion: DISTORTION_TARGETS,
   grain: GRAIN_TARGETS,
   eq1: [EQ_BAND_LFO_IDS[0]!.freq, EQ_BAND_LFO_IDS[0]!.gain, EQ_BAND_LFO_IDS[0]!.q],
   eq2: [EQ_BAND_LFO_IDS[1]!.freq, EQ_BAND_LFO_IDS[1]!.gain, EQ_BAND_LFO_IDS[1]!.q],
@@ -343,6 +352,10 @@ export function parseFxLfos(raw: unknown): FxLfoMap {
   if (!raw || typeof raw !== 'object') return next
   const rec = raw as Partial<Record<FxLfoKind | 'eq', unknown>>
   for (const kind of FX_LFO_KINDS) next[kind] = parseFxLfoBank(rec[kind], kind)
+  const legacySat = (rec as { saturation?: unknown }).saturation
+  if (legacySat != null && rec.distortion == null) {
+    next.distortion = parseFxLfoBank(legacySat, 'distortion')
+  }
   // Migrate legacy single `eq` bank onto band 1 (and redistribute targets when possible).
   if (rec.eq != null) {
     const legacy = parseFxLfoBank(rec.eq, 'eq1')
@@ -472,7 +485,7 @@ export function anyFxLfoActive(lfos: FxLfoMap): boolean {
 
 export function moduleTypeForLfoKind(
   kind: FxLfoKind,
-): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'saturation' | 'grain' | 'eq' | 'gain' {
+): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'grain' | 'eq' | 'gain' {
   switch (kind) {
     case 'input':
       return 'gain'
@@ -510,6 +523,18 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
     kind === 'limiter' &&
     target &&
     (target === 'limiterInput' || target === 'limiterAttack')
+  ) {
+    return 'advanced'
+  }
+  if (
+    kind === 'distortion' &&
+    target &&
+    (target === 'distortionTone' ||
+      target === 'distortionBias' ||
+      target === 'distortionBits' ||
+      target === 'distortionDownsample' ||
+      target === 'distortionNoise' ||
+      target === 'distortionOutput')
   ) {
     return 'advanced'
   }

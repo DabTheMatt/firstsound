@@ -72,6 +72,13 @@ describe('defaultChain', () => {
     expect(chain.find((m) => m.type === 'compressor')?.bypassed).toBe(true)
     expect(chain.find((m) => m.type === 'limiter')?.bypassed).toBe(true)
   })
+
+  it('hosts distortion instead of a standalone saturation module', () => {
+    const chain = defaultChain()
+    expect(chain.some((m) => m.type === 'distortion')).toBe(true)
+    expect(chain.some((m) => m.instanceId === 'distortion-1')).toBe(true)
+    expect(chain.find((m) => m.type === 'distortion')?.bypassed).toBe(true)
+  })
 })
 
 describe('parseChain', () => {
@@ -92,6 +99,17 @@ describe('parseChain', () => {
       { instanceId: 'output-1', type: 'output', bypassed: false },
     ])
     expect(next?.some((m) => m.type === 'compressor')).toBe(true)
+  })
+
+  it('migrates a saved saturation module onto distortion', () => {
+    const next = parseChain([
+      { instanceId: 'gain-1', type: 'gain', bypassed: false },
+      { instanceId: 'saturation-1', type: 'saturation', bypassed: false },
+      { instanceId: 'output-1', type: 'output', bypassed: false },
+    ] as unknown)
+    expect(next?.some((m) => m.type === 'distortion')).toBe(true)
+    expect(next?.some((m) => m.instanceId === 'distortion-1')).toBe(true)
+    expect(next?.find((m) => m.type === 'distortion')?.bypassed).toBe(false)
   })
 })
 

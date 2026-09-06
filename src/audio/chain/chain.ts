@@ -8,7 +8,7 @@ export type ModuleType =
   | 'gain'
   | 'grain'
   | 'eq'
-  | 'saturation'
+  | 'distortion'
   | 'delay'
   | 'reverb'
   | 'compressor'
@@ -25,7 +25,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
   gain: 'Input',
   grain: 'Grain',
   eq: 'EQ',
-  saturation: 'Saturation',
+  distortion: 'Distortion',
   delay: 'Delay',
   reverb: 'Reverb',
   compressor: 'Compressor',
@@ -37,7 +37,7 @@ export const MODULE_LABELS: Record<ModuleType, string> = {
 export const INSERTABLE_TYPES: ModuleType[] = [
   'grain',
   'eq',
-  'saturation',
+  'distortion',
   'delay',
   'reverb',
   'compressor',
@@ -51,7 +51,7 @@ export function defaultChain(): ChainModule[] {
     { instanceId: 'gain-1', type: 'gain', bypassed: false },
     { instanceId: 'grain-1', type: 'grain', bypassed: true },
     { instanceId: 'eq-1', type: 'eq', bypassed: true },
-    { instanceId: 'saturation-1', type: 'saturation', bypassed: true },
+    { instanceId: 'distortion-1', type: 'distortion', bypassed: true },
     { instanceId: 'delay-1', type: 'delay', bypassed: true },
     { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
     { instanceId: 'compressor-1', type: 'compressor', bypassed: true },
@@ -167,14 +167,29 @@ export function parseChain(raw: unknown): ChainModule[] | null {
     if (!item || typeof item !== 'object') return null
     const rec = item as Partial<ChainModule>
     if (typeof rec.instanceId !== 'string' || !rec.instanceId) return null
-    if (!isModuleType(rec.type)) return null
+    const migrated = migrateModule(rec.type, rec.instanceId)
+    if (!migrated) return null
     parsed.push({
-      instanceId: rec.instanceId,
-      type: rec.type,
+      instanceId: migrated.instanceId,
+      type: migrated.type,
       bypassed: Boolean(rec.bypassed),
     })
   }
   return normalizeChain(parsed)
+}
+
+function migrateModule(
+  type: unknown,
+  instanceId: string,
+): { type: ModuleType; instanceId: string } | null {
+  if (type === 'saturation') {
+    return {
+      type: 'distortion',
+      instanceId: instanceId.replace(/^saturation/, 'distortion'),
+    }
+  }
+  if (!isModuleType(type)) return null
+  return { type, instanceId }
 }
 
 function isModuleType(value: unknown): value is ModuleType {
@@ -182,7 +197,7 @@ function isModuleType(value: unknown): value is ModuleType {
     value === 'gain' ||
     value === 'grain' ||
     value === 'eq' ||
-    value === 'saturation' ||
+    value === 'distortion' ||
     value === 'delay' ||
     value === 'reverb' ||
     value === 'compressor' ||

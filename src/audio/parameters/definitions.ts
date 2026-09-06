@@ -359,6 +359,63 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     unit: '%',
     mapping: 'linear',
   },
+  distortionTone: {
+    id: 'distortionTone',
+    label: 'Tone',
+    min: 0,
+    max: 100,
+    defaultValue: 58,
+    unit: '%',
+    mapping: 'linear',
+  },
+  distortionBias: {
+    id: 'distortionBias',
+    label: 'Bias',
+    min: 0,
+    max: 100,
+    defaultValue: 50,
+    unit: '%',
+    mapping: 'linear',
+  },
+  distortionBits: {
+    id: 'distortionBits',
+    label: 'Bits',
+    min: 1,
+    max: 16,
+    defaultValue: 16,
+    unit: 'bit',
+    mapping: 'linear',
+    step: 1,
+  },
+  distortionDownsample: {
+    id: 'distortionDownsample',
+    label: 'Rate',
+    min: 1,
+    max: 64,
+    defaultValue: 1,
+    unit: '×',
+    mapping: 'linear',
+    step: 1,
+  },
+  distortionNoise: {
+    id: 'distortionNoise',
+    label: 'Noise',
+    min: 0,
+    max: 100,
+    defaultValue: 0,
+    unit: '%',
+    mapping: 'linear',
+  },
+  distortionOutput: {
+    id: 'distortionOutput',
+    label: 'Output',
+    min: -24,
+    max: 12,
+    defaultValue: 0,
+    unit: 'dB',
+    mapping: 'linear',
+    step: 0.1,
+  },
   reverbSize: {
     id: 'reverbSize',
     label: 'Size',
@@ -1122,6 +1179,15 @@ export const COMPRESSOR_ADV_KNOBS: ParamId[] = [
 ]
 export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterCeiling', 'limiterRelease']
 export const LIMITER_ADV_KNOBS: ParamId[] = ['limiterInput', 'limiterAttack']
+export const DISTORTION_MAIN_KNOBS: ParamId[] = ['saturation', 'saturationMix']
+export const DISTORTION_ADV_KNOBS: ParamId[] = [
+  'distortionTone',
+  'distortionBias',
+  'distortionBits',
+  'distortionDownsample',
+  'distortionNoise',
+  'distortionOutput',
+]
 export const OUTPUT_KNOBS: ParamId[] = ['gain']
 
 export function defaultParamValues(): Record<ParamId, number> {

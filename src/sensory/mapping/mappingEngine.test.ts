@@ -171,7 +171,7 @@ describe('mapSensoryToDsp', () => {
     const echo = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'echo', 0.8))
     expect(echo.fxLfos.delay[0]?.target).toBe('delayFeedback')
     const dirt = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'dirt', 0.9))
-    expect(dirt.fxLfos.saturation[0]?.target).toBe('saturation')
+    expect(dirt.fxLfos.distortion[0]?.target).toBe('saturation')
     const both = mapSensoryToDsp(
       baseDsp(),
       patchSensoryValue(patchSensoryValue(defaultSensoryValues(), 'echo', 0.8), 'drift', 1),
@@ -191,7 +191,7 @@ describe('mapSensoryToDsp', () => {
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'space', 0.6)).bypass.reverb).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'echo', 0.6)).bypass.delay).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'grain', 0.6)).bypass.grain).toBe(false)
-    expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'dirt', 0.6)).bypass.saturation).toBe(false)
+    expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'dirt', 0.6)).bypass.distortion).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'tight', 0.6)).bypass.compressor).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'mod', 0.6)).bypass.grain).toBe(false)
     expect(mapSensoryToDsp(base, patchSensoryValue(defaultSensoryValues(), 'drift', 0.6)).bypass.delay).toBe(false)
