@@ -10,6 +10,7 @@ export function spectrumEnvelopePoints(
   plot: { left: number; right: number; top: number; bottom: number },
   dbCeil = 0,
   dbFloor = -100,
+  dbOffset = 0,
 ): EnvelopePoint[] {
   const n = dbs.length
   if (n < 1) return []
@@ -19,7 +20,8 @@ export function spectrumEnvelopePoints(
   for (let i = 0; i < n; i++) {
     const hz = bandCenterHz(edges, i)
     const t = Math.log(Math.max(minHz, hz) / Math.max(1, minHz)) / logSpan
-    const u = Math.min(1, Math.max(0, (dbCeil - (dbs[i] ?? dbFloor)) / dbSpan))
+    const db = (dbs[i] ?? dbFloor) + dbOffset
+    const u = Math.min(1, Math.max(0, (dbCeil - db) / dbSpan))
     out.push({
       x: plot.left + t * (plot.right - plot.left),
       y: plot.top + u * (plot.bottom - plot.top),

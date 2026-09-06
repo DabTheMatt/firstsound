@@ -35,6 +35,34 @@ export const SLOW_RELEASE = 0.045
 
 export const SPECTRUM_FLOOR_DB = -100
 
+/** Lift FFT bins so the displayed peak sits with the loudness meter (bin dB is much lower). */
+export const SPECTRUM_METER_ALIGN_MAX_DB = 48
+
+export function maxBandDb(dbs: ArrayLike<number> | null | undefined, floorDb = SPECTRUM_FLOOR_DB): number {
+  if (!dbs || dbs.length < 1) return floorDb
+  let peak = floorDb
+  for (let i = 0; i < dbs.length; i++) {
+    const db = dbs[i] ?? floorDb
+    if (db > peak) peak = db
+  }
+  return peak
+}
+
+/**
+ * dB to add to FFT bands so their peak matches the time-domain meter.
+ * Never pulls the plot down — only boosts a quiet spectrum.
+ */
+export function spectrumMeterAlignDb(
+  spectrumPeakDb: number,
+  meterPeakDb: number,
+  floorDb = SPECTRUM_FLOOR_DB,
+  maxBoostDb = SPECTRUM_METER_ALIGN_MAX_DB,
+): number {
+  if (!Number.isFinite(spectrumPeakDb) || spectrumPeakDb <= floorDb + 1) return 0
+  if (!Number.isFinite(meterPeakDb)) return 0
+  return Math.min(maxBoostDb, Math.max(0, meterPeakDb - spectrumPeakDb))
+}
+
 export function logBandEdgesHz(minHz: number, maxHz: number, bandCount: number = SPECTRUM_BAND_COUNT): Float32Array {
   const n = Math.max(1, bandCount)
   const lo = Math.max(1, minHz)
