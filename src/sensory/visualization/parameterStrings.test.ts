@@ -22,14 +22,25 @@ describe('parameterStrings', () => {
 
   it('keeps endpoints inside the padded frame', () => {
     for (const g of geoms) {
-      expect(g.x1).toBeGreaterThanOrEqual(36)
-      expect(g.x2).toBeLessThanOrEqual(1200 - 216)
-      expect(g.y1).toBeGreaterThanOrEqual(88)
-      expect(g.y2).toBeLessThanOrEqual(800 - 104)
+      expect(g.x1).toBeGreaterThanOrEqual(35)
+      expect(g.x2).toBeGreaterThanOrEqual(35)
+      expect(g.x1).toBeLessThanOrEqual(1200 - 215)
+      expect(g.x2).toBeLessThanOrEqual(1200 - 215)
+      expect(g.y1).toBeGreaterThanOrEqual(87)
+      expect(g.y2).toBeGreaterThanOrEqual(87)
+      expect(g.y1).toBeLessThanOrEqual(800 - 103)
+      expect(g.y2).toBeLessThanOrEqual(800 - 103)
     }
   })
 
-  it('crosses opposing strings so the field reads as a web', () => {
+  it('spreads crossings instead of collapsing every string through the center', () => {
+    const cx = (36 + (1200 - 216)) / 2
+    const cy = (88 + (800 - 104)) / 2
+    const throughCenter = geoms.filter((g) => distToString(g, cx, cy) < 10)
+    expect(throughCenter.length).toBeLessThan(3)
+  })
+
+  it('crosses strings so the field reads as a web', () => {
     const hits = stringIntersections(geoms)
     expect(hits.length).toBeGreaterThan(8)
     for (const hit of hits) {

@@ -5,6 +5,10 @@
   pointer-events: none;
 }
 
+.idle .hit {
+  pointer-events: none;
+}
+
 .svg {
   display: block;
   width: 100%;

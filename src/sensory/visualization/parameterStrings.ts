@@ -39,25 +39,22 @@ export function layoutParameterStrings(
   const y0 = insets.top
   const x1 = Math.max(x0 + 8, width - insets.right)
   const y1 = Math.max(y0 + 8, height - insets.bottom)
-  const horizIds = ids.filter((_, i) => i % 2 === 0)
-  const vertIds = ids.filter((_, i) => i % 2 === 1)
-  const out: ParameterStringGeom[] = []
-
-  horizIds.forEach((id, h) => {
-    const u = (h + 0.5) / horizIds.length
-    const yA = y0 + u * (y1 - y0)
-    const yB = y1 - u * (y1 - y0)
-    out.push({ id, x1: x0, y1: yA, x2: x1, y2: yB })
+  const cx = (x0 + x1) / 2
+  const cy = (y0 + y1) / 2
+  const rx = (x1 - x0) / 2
+  const ry = (y1 - y0) / 2
+  const n = ids.length || 1
+  return ids.map((id, i) => {
+    const a0 = (i * Math.PI * 2) / n - Math.PI / 2
+    const a1 = a0 + Math.PI * (0.52 + (i % 5) * 0.09)
+    return {
+      id,
+      x1: cx + Math.cos(a0) * rx,
+      y1: cy + Math.sin(a0) * ry,
+      x2: cx + Math.cos(a1) * rx,
+      y2: cy + Math.sin(a1) * ry,
+    }
   })
-
-  vertIds.forEach((id, v) => {
-    const u = (v + 0.5) / vertIds.length
-    const xA = x0 + u * (x1 - x0)
-    const xB = x1 - u * (x1 - x0)
-    out.push({ id, x1: xA, y1: y0, x2: xB, y2: y1 })
-  })
-
-  return ids.map((id) => out.find((row) => row.id === id)!).filter(Boolean)
 }
 
 export function amountToT(amount: number, kind: 'unipolar' | 'bipolar'): number {

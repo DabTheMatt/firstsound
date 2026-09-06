@@ -26,6 +26,7 @@ type Props = {
   onActive: (id: SensoryAxisId | null) => void
   onValues: (values: SensoryValues) => void
   onCommit: () => void
+  interactive?: boolean
 }
 
 const HIT_PX = 18
@@ -38,7 +39,14 @@ function feelingOf(id: SensoryAxisId) {
   return SENSORY_FEELINGS.find((f) => f.id === id)!
 }
 
-export function ParameterStrings({ values, activeId, onActive, onValues, onCommit }: Props) {
+export function ParameterStrings({
+  values,
+  activeId,
+  onActive,
+  onValues,
+  onCommit,
+  interactive = true,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const valuesRef = useRef(values)
   const drag = useRef<{ pointerId: number; id: SensoryAxisId } | null>(null)
@@ -125,7 +133,11 @@ export function ParameterStrings({ values, activeId, onActive, onValues, onCommi
   }
 
   return (
-    <div ref={wrapRef} className={styles.layer} aria-hidden={geoms.length === 0}>
+    <div
+      ref={wrapRef}
+      className={`${styles.layer} ${interactive ? '' : styles.idle}`}
+      aria-hidden={geoms.length === 0}
+    >
       {geoms.length > 0 ? (
         <svg className={styles.svg} viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label="Parameter strings">
           {crosses.map((hit) => {

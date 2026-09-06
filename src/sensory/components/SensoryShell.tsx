@@ -174,6 +174,7 @@ export function SensoryShell({
             onValues(next)
           }}
           onCommit={onCommitSensory}
+          interactive={snap.sampleLoaded}
         />
       ) : null}
 
