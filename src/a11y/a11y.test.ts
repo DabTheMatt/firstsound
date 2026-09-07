@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
-import { applySliderKey, isTransportShortcutTarget } from './keyboard'
+import { applySliderKey, isTypingFromTag, isTransportShortcutTarget } from './keyboard'
 import { parseA11ySettings } from './settings'
 import { formatAccessibleValue } from './valueText'
 import { SENSORY_AXIS_IDS } from '../sensory/sensoryParameters'
@@ -49,8 +49,18 @@ describe('slider keyboard', () => {
     })
   })
 
-  it('leaves space for transport when focus is not on a control', () => {
+  it('uses space for transport except while typing text', () => {
     expect(isTransportShortcutTarget(null)).toBe(true)
+    expect(isTypingFromTag('BUTTON')).toBe(false)
+    expect(isTypingFromTag('A')).toBe(false)
+    expect(isTypingFromTag('INPUT', 'file')).toBe(false)
+    expect(isTypingFromTag('INPUT', 'checkbox')).toBe(false)
+    expect(isTypingFromTag('INPUT', 'range')).toBe(false)
+    expect(isTypingFromTag('SELECT')).toBe(false)
+    expect(isTypingFromTag('INPUT', 'text')).toBe(true)
+    expect(isTypingFromTag('INPUT', 'search')).toBe(true)
+    expect(isTypingFromTag('TEXTAREA')).toBe(true)
+    expect(isTypingFromTag('DIV', '', true)).toBe(true)
   })
 })
 
