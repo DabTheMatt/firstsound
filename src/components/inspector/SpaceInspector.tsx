@@ -6,6 +6,7 @@ import {
   findSpacePreset,
   presetHint,
   presetsFor,
+  presetsForReverbType,
   REVERB_PRESET_CATEGORIES,
   type FxPresetCategory,
 } from '../../audio/fx/presets'
@@ -174,7 +175,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       ) : (
         <>
           <p className={styles.help}>
-            Pick a category, then a space. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
+            Type picks the algorithm. Preset lists only factory spaces for that type. Własny has no factory list — set the knobs yourself. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
           </p>
           <ReverbPresetSelect snap={snap} />
         </>
@@ -294,7 +295,10 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
 function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
   const selected = snap.spacePresetId ? findSpacePreset(snap.spacePresetId) : undefined
-  const current = selected?.kind === 'reverb' ? selected : undefined
+  const matchesType = selected?.kind === 'reverb' && selected.reverbType === snap.reverbType
+  const current = matchesType ? selected : undefined
+  const typePresets = presetsForReverbType(snap.reverbType)
+  const custom = snap.reverbType === 'custom'
   return (
     <>
       <label className={styles.field}>
@@ -303,22 +307,19 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
           className={`${styles.select} ${current ? styles.selectOn : ''}`}
           aria-label="Reverb preset"
           value={current?.id ?? ''}
+          disabled={custom || typePresets.length === 0}
           onChange={(event) => {
             const preset = findSpacePreset(event.target.value)
             if (preset) engine.applySpacePreset(preset)
           }}
         >
           <option value="" disabled>
-            Choose a space
+            {custom ? 'Własny' : typePresets.length === 0 ? 'No factory spaces' : 'Choose a space'}
           </option>
-          {REVERB_PRESET_CATEGORIES.map((cat) => (
-            <optgroup key={cat} label={cat}>
-              {presetsFor('reverb', cat).map((p) => (
-                <option key={p.id} value={p.id} title={presetHint(p)}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
+          {typePresets.map((p) => (
+            <option key={p.id} value={p.id} title={presetHint(p)}>
+              {p.name}
+            </option>
           ))}
         </select>
       </label>
@@ -326,8 +327,10 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
         <p className={styles.selectCurrent}>
           {current.category} · {current.name}
         </p>
+      ) : custom ? (
+        <p className={styles.help}>Custom space — knobs are not a factory preset.</p>
       ) : (
-        <p className={styles.help}>No factory space selected.</p>
+        <p className={styles.help}>No factory space selected for this type.</p>
       )}
       {current ? <p className={styles.help}>{presetHint(current)}</p> : null}
     </>

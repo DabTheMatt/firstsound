@@ -43,6 +43,7 @@ export type ReverbType =
   | 'cloud'
   | 'bloom'
   | 'infinite'
+  | 'custom'
 
 export type NoteDivision = '1/64' | '1/32' | '1/16' | '1/8' | '1/4' | '1/2' | '1/1' | '2/1'
 
@@ -99,6 +100,7 @@ export const REVERB_TYPES: { value: ReverbType; label: string }[] = [
   { value: 'cloud', label: 'Cloud' },
   { value: 'bloom', label: 'Bloom' },
   { value: 'infinite', label: 'Infinite' },
+  { value: 'custom', label: 'Własny' },
 ]
 
 export const NOTE_DIVISIONS: { value: NoteDivision; label: string; beats: number }[] = [
