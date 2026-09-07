@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultEqBands } from './eqBands'
-import { eqMagnitudeDb } from './eqResponse'
+import { eqMagnitudeDb, logFreqAxis } from './eqResponse'
 
 describe('eqMagnitudeDb', () => {
   it('is near 0 dB when every band is off', () => {
@@ -57,6 +57,30 @@ describe('eqMagnitudeDb', () => {
     const hp96 = defaultEqBands()
     hp96[1] = { type: 'highpass', frequency: 79, gain: 0, q: 0.7, slope: 96 }
     expect(eqMagnitudeDb(hp96, 20, 48000)).toBeLessThan(eqMagnitudeDb(hp48, 20, 48000) - 20)
+  })
+
+  it('a 96 dB/oct high-pass at Q ≈ 1 does not boost the cutoff', () => {
+    const bands = defaultEqBands()
+    bands[0] = { type: 'highpass', frequency: 117, gain: 0, q: 0.99, slope: 96 }
+    const cutoff = eqMagnitudeDb(bands, 117, 48000)
+    const pass = eqMagnitudeDb(bands, 2000, 48000)
+    const near = eqMagnitudeDb(bands, 160, 48000)
+    expect(pass).toBeCloseTo(0, 0)
+    expect(cutoff).toBeLessThan(0)
+    expect(near).toBeLessThan(3)
+    expect(eqMagnitudeDb(bands, 20, 48000)).toBeLessThan(-80)
+    let peak = -Infinity
+    for (const hz of logFreqAxis(256, 20, 20000)) {
+      peak = Math.max(peak, eqMagnitudeDb(bands, hz, 48000))
+    }
+    expect(peak).toBeLessThan(3)
+  })
+
+  it('a Butterworth steep high-pass sits near -3 dB at the labelled cutoff', () => {
+    const bands = defaultEqBands()
+    bands[0] = { type: 'highpass', frequency: 117, gain: 0, q: Math.SQRT1_2, slope: 96 }
+    expect(eqMagnitudeDb(bands, 117, 48000)).toBeGreaterThan(-6)
+    expect(eqMagnitudeDb(bands, 117, 48000)).toBeLessThan(0)
   })
 
   it('steeper high-shelf keeps the same high-end gain', () => {

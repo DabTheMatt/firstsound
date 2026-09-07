@@ -148,10 +148,39 @@ export function filterStageCount(band: EqBand): number {
   return 1
 }
 
-/** First stage uses the band Q (resonance); extra LP/HP stages stay Butterworth. */
+/**
+ * Q of each biquad in an even-order Butterworth (order = 2 × stageCount).
+ * Low-Q sections first so a cascade does not ring internally.
+ */
+export function butterworthBiquadQs(stageCount: number): number[] {
+  const nStages = Math.max(1, Math.min(EQ_MAX_STAGES, Math.round(stageCount)))
+  const order = nStages * 2
+  const qs: number[] = []
+  for (let k = nStages - 1; k >= 0; k--) {
+    qs.push(1 / (2 * Math.sin((Math.PI * (2 * k + 1)) / (2 * order))))
+  }
+  return qs
+}
+
+/**
+ * Web Audio `lowpass` / `highpass` take Q in dB: α uses 10^(Q/20), not cookbook Q.
+ * Peaking, notch, bandpass, and allpass keep linear Q.
+ */
+export function webAudioBiquadQ(type: EqFilterType | BiquadFilterType, linearQ: number): number {
+  const q = Math.min(32, Math.max(0.025, linearQ))
+  if (type === 'lowpass' || type === 'highpass') return 20 * Math.log10(q)
+  return q
+}
+
+/** LP/HP: Butterworth poles. User Q scales only the last (highest-Q) section. */
 export function stageQ(band: EqBand, stageIndex: number): number {
-  if (stageIndex === 0) return band.q
-  return 1 / Math.SQRT2
+  if (band.type !== 'lowpass' && band.type !== 'highpass') return band.q
+  const stages = Math.max(1, filterStageCount(band))
+  const proto = butterworthBiquadQs(stages)
+  const section = proto[stageIndex] ?? proto[proto.length - 1] ?? Math.SQRT1_2
+  if (stageIndex !== stages - 1) return section
+  const reso = Math.min(32, Math.max(0.05, band.q)) / Math.SQRT1_2
+  return section * reso
 }
 
 export function parseEqBands(raw: unknown): EqBand[] | null {

@@ -9,11 +9,13 @@ import {
   formatEqHz,
   parseEqBands,
   parseFilterSlope,
+  butterworthBiquadQs,
   qFromBandwidth,
   slopeFromNormalized,
   slopeToNormalized,
   nearestFilterSlope,
   stageQ,
+  webAudioBiquadQ,
 } from './eqBands'
 
 describe('parseFilterSlope', () => {
@@ -78,10 +80,43 @@ describe('filterStageCount', () => {
 })
 
 describe('stageQ', () => {
-  it('keeps user Q on the first stage and Butterworth on the rest', () => {
-    const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: 4, slope: 24 as const }
-    expect(stageQ(band, 0)).toBe(4)
-    expect(stageQ(band, 1)).toBeCloseTo(1 / Math.SQRT2)
+  it('uses Butterworth section Qs scaled so 0.707 is maximally flat', () => {
+    const band = { type: 'lowpass' as const, frequency: 800, gain: 0, q: Math.SQRT1_2, slope: 24 as const }
+    expect(stageQ(band, 0)).toBeCloseTo(0.5412, 3)
+    expect(stageQ(band, 1)).toBeCloseTo(1.3065, 3)
+  })
+
+  it('applies user Q on a 12 dB/oct section', () => {
+    const flat = { type: 'highpass' as const, frequency: 120, gain: 0, q: Math.SQRT1_2, slope: 12 as const }
+    const peaked = { ...flat, q: 1.4 }
+    expect(stageQ(flat, 0)).toBeCloseTo(Math.SQRT1_2, 3)
+    expect(stageQ(peaked, 0)).toBeGreaterThan(stageQ(flat, 0) * 1.5)
+  })
+
+  it('keeps extra steep-slope sections Butterworth when Q is only slightly above 0.7', () => {
+    const band = { type: 'highpass' as const, frequency: 117, gain: 0, q: 0.99, slope: 96 as const }
+    expect(stageQ(band, 0)).toBeCloseTo(butterworthBiquadQs(8)[0]!, 4)
+    expect(stageQ(band, 7)).toBeGreaterThan(butterworthBiquadQs(8)[7]!)
+  })
+})
+
+describe('butterworthBiquadQs', () => {
+  it('matches classic 4th- and 8th-order tables', () => {
+    expect(butterworthBiquadQs(1)[0]).toBeCloseTo(Math.SQRT1_2, 4)
+    const fourth = butterworthBiquadQs(2)
+    expect(fourth[0]).toBeCloseTo(0.5412, 3)
+    expect(fourth[1]).toBeCloseTo(1.3065, 3)
+    expect(butterworthBiquadQs(4)).toHaveLength(4)
+    expect(butterworthBiquadQs(8)).toHaveLength(8)
+  })
+})
+
+describe('webAudioBiquadQ', () => {
+  it('converts cookbook Q to dB for lowpass and highpass only', () => {
+    expect(webAudioBiquadQ('highpass', Math.SQRT1_2)).toBeCloseTo(-3.01, 2)
+    expect(webAudioBiquadQ('lowpass', 1)).toBeCloseTo(0, 5)
+    expect(webAudioBiquadQ('peaking', 4)).toBe(4)
+    expect(webAudioBiquadQ('notch', 8)).toBe(8)
   })
 })
 

@@ -13,6 +13,7 @@ import {
   morphMixGains,
   peakGainFromReso,
 } from './filter'
+import { webAudioBiquadQ } from '../engine/eqBands'
 
 export type FilterGraph = {
   analyser: AnalyserNode
@@ -49,7 +50,7 @@ function writeBiquad(
 ): void {
   if (node.type !== type) node.type = type
   node.frequency.setTargetAtTime(Math.min(Math.max(hz, FILTER_CUTOFF_MIN), nyquist * 0.99), now, smoothing)
-  node.Q.setTargetAtTime(Math.min(24, Math.max(0.05, q)), now, smoothing)
+  node.Q.setTargetAtTime(webAudioBiquadQ(type, Math.min(24, Math.max(0.05, q))), now, smoothing)
   node.gain.setTargetAtTime(gainDb, now, smoothing)
 }
 

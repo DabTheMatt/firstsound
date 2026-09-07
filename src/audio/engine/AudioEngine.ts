@@ -176,6 +176,7 @@ import {
   filterStageCount,
   parseEqBands,
   stageQ,
+  webAudioBiquadQ,
   bandIsActive,
   bandUsesGain,
   type EqBand,
@@ -2884,7 +2885,7 @@ export class AudioEngine {
           }
           if (node.type !== band.type) node.type = band.type
           node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
-          node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, stageQ(band, stage))), now, smoothing)
+          node.Q.setTargetAtTime(webAudioBiquadQ(band.type, stageQ(band, stage)), now, smoothing)
           node.gain.setTargetAtTime(stageGain, now, smoothing)
         }
     }

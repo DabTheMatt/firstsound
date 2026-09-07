@@ -1,4 +1,5 @@
 import type { ParamId } from '../parameters/types'
+import { webAudioBiquadQ } from '../engine/eqBands'
 import {
   delayFeedbackGains,
   delayFlutterSeconds,
@@ -166,7 +167,7 @@ function makeLoopFilter(ctx: AudioContext, type: BiquadFilterType, frequency: nu
   const f = ctx.createBiquadFilter()
   f.type = type
   f.frequency.value = frequency
-  f.Q.value = 0.5
+  f.Q.value = webAudioBiquadQ(type, 0.5)
   return f
 }
 
@@ -346,7 +347,7 @@ export function createDelayGraph(
   const env = ctx.createBiquadFilter()
   env.type = 'lowpass'
   env.frequency.value = 14
-  env.Q.value = 0.7
+  env.Q.value = webAudioBiquadQ('lowpass', 0.7)
   dryTap.connect(abs)
   abs.connect(env)
   env.connect(duckAmt)
@@ -481,10 +482,10 @@ export function applyDelayGraph(
   g.hpR.frequency.setTargetAtTime(loop.hp, now, smoothing)
   g.lpL.frequency.setTargetAtTime(loop.lp, now, smoothing)
   g.lpR.frequency.setTargetAtTime(loop.lp, now, smoothing)
-  g.hpL.Q.setTargetAtTime(loop.q, now, smoothing)
-  g.hpR.Q.setTargetAtTime(loop.q, now, smoothing)
-  g.lpL.Q.setTargetAtTime(loop.q, now, smoothing)
-  g.lpR.Q.setTargetAtTime(loop.q, now, smoothing)
+  g.hpL.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
+  g.hpR.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
+  g.lpL.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
+  g.lpR.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
   const curve = makeDriveCurve(params.delayDrive / 100)
   g.driveL.curve = curve
   g.driveR.curve = curve
@@ -577,10 +578,13 @@ export function createReverbGraph(
   tankFb.gain.value = 0
   const hp = ctx.createBiquadFilter()
   hp.type = 'highpass'
+  hp.Q.value = webAudioBiquadQ('highpass', Math.SQRT1_2)
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
+  lp.Q.value = webAudioBiquadQ('lowpass', Math.SQRT1_2)
   const damp = ctx.createBiquadFilter()
   damp.type = 'lowpass'
+  damp.Q.value = webAudioBiquadQ('lowpass', Math.SQRT1_2)
   const tiltLow = ctx.createBiquadFilter()
   tiltLow.type = 'lowshelf'
   tiltLow.frequency.value = 180
@@ -670,6 +674,7 @@ export function createReverbGraph(
   const env = ctx.createBiquadFilter()
   env.type = 'lowpass'
   env.frequency.value = 12
+  env.Q.value = webAudioBiquadQ('lowpass', 0.7)
   dryTap.connect(abs)
   abs.connect(env)
   env.connect(duckAmt)

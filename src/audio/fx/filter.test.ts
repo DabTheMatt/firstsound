@@ -28,6 +28,8 @@ describe('filter types and slopes', () => {
     expect(filterStageQs(12)).toHaveLength(1)
     expect(filterStageQs(24)).toHaveLength(2)
     expect(filterStageQs(48)).toHaveLength(4)
+    expect(filterStageQs(24)[0]).toBeCloseTo(0.5412, 3)
+    expect(filterStageQs(24)[1]).toBeCloseTo(1.3065, 3)
   })
 })
 

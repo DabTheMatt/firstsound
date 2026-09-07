@@ -1,3 +1,4 @@
+import { butterworthBiquadQs } from '../engine/eqBands'
 import { equalPowerDryWet } from './dryWet'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue, clamp, fromNormalized, toNormalized } from '../parameters/mapping'
@@ -115,20 +116,9 @@ export function filterLfoShapeAt(index: number): FilterLfoShape {
 
 /** Cascaded 2nd-order Q values. 6 dB uses a single soft pole (Q 0.5). */
 export function filterStageQs(slope: FilterSlopeDb): number[] {
-  switch (slope) {
-    case 6:
-      return [0.5]
-    case 12:
-      return [0.7071]
-    case 18:
-      return [0.54, 0.5]
-    case 24:
-      return [0.5412, 1.3065]
-    case 36:
-      return [0.5177, 0.7071, 1.9319]
-    case 48:
-      return [0.5098, 0.6013, 0.8999, 2.5628]
-  }
+  if (slope === 6) return [0.5]
+  if (slope === 18) return [0.54, 0.5]
+  return butterworthBiquadQs(Math.max(1, Math.round(slope / 12)))
 }
 
 export type FilterCharacterModel = {

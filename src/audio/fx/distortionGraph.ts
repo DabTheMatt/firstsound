@@ -1,4 +1,5 @@
 import { dbToGain } from '../parameters/mapping'
+import { webAudioBiquadQ } from '../engine/eqBands'
 import type { ParamId } from '../parameters/types'
 import {
   defaultDistortionProcState,
@@ -29,11 +30,11 @@ export function createDistortionGraph(
   const hp = ctx.createBiquadFilter()
   hp.type = 'highpass'
   hp.frequency.value = 30
-  hp.Q.value = 0.5
+  hp.Q.value = webAudioBiquadQ('highpass', 0.5)
   const lp = ctx.createBiquadFilter()
   lp.type = 'lowpass'
   lp.frequency.value = 14000
-  lp.Q.value = 0.5
+  lp.Q.value = webAudioBiquadQ('lowpass', 0.5)
   const pre = ctx.createGain()
   pre.gain.value = 1
   const shaper = ctx.createWaveShaper()

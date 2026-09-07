@@ -1,4 +1,5 @@
 import { forceMonoDiscrete, forceStereoDiscrete } from '../engine/stereoStage'
+import { webAudioBiquadQ } from '../engine/eqBands'
 import type { ParamId } from '../parameters/types'
 import {
   MS_HAAS_MAX_SEC,
@@ -132,7 +133,7 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
   const sideHpf = ctx.createBiquadFilter()
   sideHpf.type = 'highpass'
   sideHpf.frequency.value = MS_SIDE_HPF_MIN
-  sideHpf.Q.value = 0.7
+  sideHpf.Q.value = webAudioBiquadQ('highpass', 0.7)
   forceMonoDiscrete(sideHpfDry)
   forceMonoDiscrete(sideHpfWet)
   sideSum.connect(sideHpfDry)
