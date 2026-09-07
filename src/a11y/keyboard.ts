@@ -39,7 +39,6 @@ export function applySliderKey(
 }
 
 const TEXTISH_INPUT_TYPES = new Set([
-  '',
   'text',
   'search',
   'email',
@@ -53,6 +52,37 @@ const TEXTISH_INPUT_TYPES = new Set([
   'week',
   'time',
 ])
+
+export function isSpaceKey(event: { code?: string; key?: string }): boolean {
+  return event.code === 'Space' || event.key === ' ' || event.key === 'Spacebar'
+}
+
+/** Drops the extra click browsers fire when Space activates a focused button. */
+export function createSpaceActivationGuard() {
+  let armed = false
+  let clearTimer = 0
+  return {
+    arm() {
+      armed = true
+      if (clearTimer) window.clearTimeout(clearTimer)
+      clearTimer = window.setTimeout(() => {
+        armed = false
+        clearTimer = 0
+      }, 50)
+    },
+    onClick(event: Event) {
+      if (!armed) return false
+      armed = false
+      if (clearTimer) {
+        window.clearTimeout(clearTimer)
+        clearTimer = 0
+      }
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      return true
+    },
+  }
+}
 
 /** True when Space should insert a character instead of toggling transport. */
 export function isTypingFromTag(tagName: string, inputType = '', isContentEditable = false): boolean {
