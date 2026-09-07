@@ -20,6 +20,8 @@ import {
   fullPlayRegion,
   parkPlayheadOnStop,
   pitchRatio,
+  snapPlayheadToRegion,
+  wrapPlayheadIntoRegion,
   playbackNeedsStretch,
 } from '../parameters/mapping'
 import type {
@@ -1662,11 +1664,31 @@ export class AudioEngine {
   }
 
   private applyRegionChange(): void {
-    if (this.playing && this.engineMode === 'playback' && this.direction === 'pingpong') {
-      void this.play()
-    } else {
+    if (this.playing && this.engineMode === 'playback') this.retargetPlayingRegion()
+    else this.applyLiveAudio()
+  }
+
+  /** Keep the playing voice on the same fragment the playhead shows after a loop edit. */
+  private retargetPlayingRegion(): void {
+    if (!this.playing || this.engineMode !== 'playback' || !this.ctx) {
       this.applyLiveAudio()
+      return
     }
+    const duration = this.buffer?.duration ?? 0
+    const { start, end } = this.playbackRegion(duration)
+    const reverse = this.direction === 'reverse'
+    const shown = this.getPlayheadSeconds()
+    const head = this.loop
+      ? wrapPlayheadIntoRegion(shown, start, end, MIN_REGION)
+      : snapPlayheadToRegion(shown, start, end, reverse)
+    this.playOffset = head
+    this.playCtxTime = this.ctx.currentTime
+    this.stretchHead = head
+    this.filterEnvOrigin = this.lfoClockSec
+    this.stopVoices()
+    this.startRegionPlayback()
+    this.startCompanionVoices()
+    this.applyLiveAudio()
   }
 
   resetParam(id: ParamId): void {

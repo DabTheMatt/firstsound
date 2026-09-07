@@ -18,6 +18,7 @@ import {
   playbackNeedsStretch,
   playbackRate,
   snapPlayheadToRegion,
+  wrapPlayheadIntoRegion,
   toNormalized,
 } from './mapping'
 
@@ -191,6 +192,19 @@ describe('stop playhead', () => {
     expect(snapPlayheadToRegion(0, 18, 65, false)).toBe(18)
     expect(snapPlayheadToRegion(0, 18, 65, true)).toBe(65)
     expect(snapPlayheadToRegion(20, 18, 65, false)).toBe(20)
+  })
+
+  it('keeps a playhead already inside the new loop', () => {
+    expect(snapPlayheadToRegion(4.2, 3, 6, false)).toBe(4.2)
+    expect(snapPlayheadToRegion(6, 3, 6, false)).toBe(6)
+    expect(snapPlayheadToRegion(2.9, 3, 6, false)).toBe(3)
+    expect(snapPlayheadToRegion(6.1, 3, 6, true)).toBe(6)
+  })
+
+  it('wraps a running playhead into a moved loop instead of leaving it on the old fragment', () => {
+    expect(wrapPlayheadIntoRegion(5, 6, 8)).toBe(7)
+    expect(wrapPlayheadIntoRegion(7, 6, 8)).toBe(7)
+    expect(wrapPlayheadIntoRegion(1.5, 2, 4)).toBe(3.5)
   })
 })
 
