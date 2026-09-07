@@ -99,6 +99,14 @@ export function snapPlayheadToRegion(
   return time
 }
 
+/** Wrap a running playhead into a new loop so the clock stays on the sounding fragment. */
+export function wrapPlayheadIntoRegion(time: number, start: number, end: number, minLen = 0.05): number {
+  const span = Math.max(end - start, minLen)
+  if (time >= start && time <= end) return time
+  const rel = (time - start) % span
+  return start + (rel < 0 ? rel + span : rel)
+}
+
 /** Inset region so start/end handles are visible, like the FIELD mockup. */
 export function defaultPlayRegion(
   duration: number,
