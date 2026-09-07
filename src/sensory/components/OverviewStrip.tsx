@@ -38,9 +38,11 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const lastTap = useRef(0)
   const drag = useRef<{ pointerId: number; originFrac: number; moved: boolean; mode: 'select' | 'start' | 'end' } | null>(
     null,
   )
+
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -138,13 +140,25 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     } catch {
       /* already released */
     }
-    if (state.moved) onRegionCommit()
-    else seekAt(fracAt(event))
+    if (state.moved) {
+      onRegionCommit()
+      return
+    }
+    const now = performance.now()
+    if (now - lastTap.current < 380) {
+      lastTap.current = 0
+      const view = sourceTimes(duration)
+      const full = fullPlayRegion(view.workDur)
+      engine.setRegion(full.start, full.end)
+      onRegionCommit()
+      return
+    }
+    lastTap.current = now
+    seekAt(fracAt(event))
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!loaded || duration <= 0 || event.button !== 0) return
-    event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     const frac = fracAt(event)
     const view = sourceTimes(duration)

@@ -1,7 +1,7 @@
 .layer {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 5;
   pointer-events: none;
 }
 
@@ -74,9 +74,10 @@
 
 .line {
   fill: none;
-  stroke: color-mix(in srgb, currentColor 42%, var(--text-primary) 18%);
-  stroke-width: 1.15;
+  stroke: color-mix(in srgb, currentColor 78%, var(--text-primary) 22%);
+  stroke-width: 1.7;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, currentColor 45%, transparent));
 }
 
 .hit {

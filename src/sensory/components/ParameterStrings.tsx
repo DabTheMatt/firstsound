@@ -107,6 +107,7 @@ export function ParameterStrings({
     const feeling = feelingOf(geom.id)
     const amount = tToAmount(projectT(geom, x, y), feeling.kind)
     onActive(geom.id)
+    onEditing(geom.id)
     onValues(applyFeelingAmount(valuesRef.current, feeling, amount))
   }
 
@@ -174,8 +175,8 @@ export function ParameterStrings({
             const t = amountToT(amount, feeling.kind)
             const bead = pointAlong(geom, t)
             const pose = stringLabelPose(geom)
-            const on = geom.id === activeId
-            const lit = Math.abs(amount) > 0.04
+            const on = true
+            const lit = true
             const tone = `${on ? styles.on : ''} ${lit ? styles.lit : ''}`
             const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
             const lfo = AXIS_LFO_BY_ID[geom.id]
