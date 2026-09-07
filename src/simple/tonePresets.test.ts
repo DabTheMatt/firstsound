@@ -6,21 +6,23 @@ import { eqLooksFlat, matchSimpleTone, toneBandsAt } from './tonePresets'
 describe('fade steps', () => {
   it('hides millisecond values behind named lengths', () => {
     expect(fadeStepFromSeconds(0)).toBe('none')
-    expect(fadeStepFromSeconds(0.04)).toBe('short')
-    expect(fadeStepFromSeconds(0.12)).toBe('medium')
-    expect(fadeStepFromSeconds(0.3)).toBe('long')
-    expect(fadeSecondsForStep('long', 0.4)).toBeLessThan(0.28)
+    expect(fadeStepFromSeconds(0.08)).toBe('short')
+    expect(fadeStepFromSeconds(0.18)).toBe('medium')
+    expect(fadeStepFromSeconds(0.4)).toBe('long')
+    expect(fadeSecondsForStep('long', 0.4)).toBeLessThan(0.2)
   })
 })
 
 describe('simple tone presets', () => {
-  it('keeps full-strength moves subtle', () => {
+  it('keeps full-strength moves audible without extreme boosts', () => {
     const bass = toneBandsAt('bass', 1)
     const low = bass[0]
     expect(low?.type).toBe('lowshelf')
-    expect(Math.abs(low?.gain ?? 0)).toBeLessThanOrEqual(3)
+    expect(low?.gain ?? 0).toBeGreaterThan(4)
+    expect(Math.abs(low?.gain ?? 0)).toBeLessThanOrEqual(8)
     const voice = toneBandsAt('voice', 1)
-    expect(voice.some((band) => Math.abs(band.gain) > 4)).toBe(false)
+    expect(voice.some((band) => (band.gain ?? 0) > 3)).toBe(true)
+    expect(voice.some((band) => Math.abs(band.gain) > 8)).toBe(false)
   })
 
   it('matches a written preset and reports custom otherwise', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
-import { formatRangeClock } from '../audio/engine/formatTime'
+import { formatSimpleClock } from '../audio/engine/formatTime'
 import type { EditState } from '../app/editorState'
 import type { WaveformHandle } from '../components/waveform/Waveform'
 import { Waveform } from '../components/waveform/Waveform'
@@ -18,6 +18,7 @@ import {
   DEFAULT_TONE_AMOUNT,
   FEATURED_TONE_IDS,
   SIMPLE_TONE_IDS,
+  clampToneAmount,
   matchSimpleTone,
   toneBandsAt,
   type SimpleToneId,
@@ -130,10 +131,12 @@ export function SimpleShell({
 
   const applyTone = (id: SimpleToneId, nextAmount = amount) => {
     exitOriginal()
-    const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, nextAmount))
+    const strength = clampToneAmount(id === 'natural' ? nextAmount : Math.max(nextAmount, 0.45))
+    const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, strength))
     writeDsp(engine, dsp)
     liveDspRef.current = dsp
-    setAmount(nextAmount)
+    setAmount(strength)
+    void engine.unlock()
     onToneCommit()
   }
 
@@ -268,7 +271,7 @@ export function SimpleShell({
             {snap.playing ? '❚❚' : '▶'}
           </button>
           <p className={styles.clock} aria-live="off">
-            {t.simple.clock(formatRangeClock(now), formatRangeClock(regionLen || snap.duration))}
+            {t.simple.clock(formatSimpleClock(now), formatSimpleClock(regionLen || snap.duration))}
           </p>
           <div className={styles.history}>
             <button type="button" className={styles.ghost} disabled={!canUndo} onClick={onUndo}>
@@ -282,6 +285,7 @@ export function SimpleShell({
         </div>
 
         <div className={styles.tools}>
+          <div className={styles.toolsBody}>
           <p className={styles.status} aria-live="polite">
             {status ?? ''}
           </p>
@@ -372,6 +376,7 @@ export function SimpleShell({
                   const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(tone.id, next))
                   writeDsp(engine, dsp)
                   liveDspRef.current = dsp
+                  void engine.unlock()
                 }}
                 onPointerUp={() => onToneCommit()}
                 onKeyUp={() => onToneCommit()}
@@ -398,6 +403,7 @@ export function SimpleShell({
               {t.simple.restore}
             </button>
           </section>
+          </div>
 
           <div className={styles.bottom}>
             <div className={styles.ab} role="radiogroup" aria-label={t.simple.compare}>

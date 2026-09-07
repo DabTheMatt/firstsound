@@ -45,6 +45,20 @@ export function formatRangeClock(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** Simple-mode clock keeps tenths so sub-second trims are not shown as 0:00. */
+export function formatSimpleClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
+  const m = Math.floor(seconds / 60)
+  let remainder = seconds - m * 60
+  let tenth = Math.round(remainder * 10) / 10
+  if (tenth >= 60) {
+    return `${m + 1}:00.0`
+  }
+  const whole = Math.floor(tenth)
+  const frac = Math.round((tenth - whole) * 10)
+  return `${m}:${String(whole).padStart(2, '0')}.${frac}`
+}
+
 /** Millisecond digits that match the current zoom (never claims sample accuracy). */
 export function timecodeDigits(viewSpanSeconds: number): number {
   return viewSpanSeconds > 0 && viewSpanSeconds < 0.4 ? 4 : 3
