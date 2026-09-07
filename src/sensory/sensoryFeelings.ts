@@ -329,43 +329,30 @@ export const SENSORY_FEELINGS: readonly SensoryFeeling[] = [
   },
 ]
 
-/** Core + space on the left; grit, color, and FILTER types on the right. */
+/**
+ * Twelve sensory controls in the interface.
+ * Grain / space / time / bloom on the left; spectral bloom, reverse, melt, dust, stereo, tone on the right.
+ * Other axes stay in the model for mappings and places, but do not crowd the rails.
+ */
 export const LEFT_RAIL_IDS: readonly SensoryAxisId[] = [
-  'character',
+  'grain',
   'space',
   'echo',
-  'grain',
-  'dirt',
-  'tight',
-  'mod',
-  'drift',
-  'pan',
+  'bloom',
   'veil',
   'halo',
-  'well',
-  'bloom',
-  'plate',
-  'spring',
 ]
 
 export const RIGHT_RAIL_IDS: readonly SensoryAxisId[] = [
   'shimmer',
   'reverse',
-  'gate',
-  'fuzz',
-  'crush',
-  'tape',
-  'fold',
-  'vinyl',
-  'sweep',
-  'dark',
-  'thin',
-  'phone',
-  'notch',
-  'peak',
-  'comb',
   'melt',
+  'vinyl',
+  'drift',
+  'character',
 ]
+
+export const RAIL_AXIS_IDS: readonly SensoryAxisId[] = [...LEFT_RAIL_IDS, ...RIGHT_RAIL_IDS]
 
 export function feelingsForRail(side: 'left' | 'right'): readonly SensoryFeeling[] {
   const ids = side === 'left' ? LEFT_RAIL_IDS : RIGHT_RAIL_IDS

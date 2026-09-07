@@ -7,9 +7,9 @@ import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
-import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
+import type { SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
-import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
+import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import type { SensoryValues } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
@@ -64,7 +64,7 @@ export function SensoryShell({
   onLoadDemo,
   onSave: _onSave,
   onRecord: _onRecord,
-  onRegionCommit: _onRegionCommit,
+  onRegionCommit,
   onFades: _onFades,
   onFadesCommit: _onFadesCommit,
   mode,
@@ -79,7 +79,7 @@ export function SensoryShell({
   const [placesOpen, setPlacesOpen] = useState(false)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
-  const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
+  const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -113,19 +113,6 @@ export function SensoryShell({
       <header className={styles.top}>
         <div className={styles.brandRow}>
           <p className={styles.brand}>Field</p>
-          <button
-            type="button"
-            className={`${styles.stringsToggle} ${stringsOn ? styles.stringsOn : ''}`}
-            aria-pressed={stringsOn}
-            aria-label="Show parameter strings"
-            onClick={() => {
-              const next = !stringsOn
-              setStringsOn(next)
-              persistSensoryStrings(next)
-            }}
-          >
-            Strings
-          </button>
         </div>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
@@ -159,31 +146,35 @@ export function SensoryShell({
           void engine.unlock().then(() => engine.togglePlay())
         }}
         onLoadDemo={onLoadDemo}
+        onRegionCommit={onRegionCommit}
       />
 
-      {stringsOn ? (
-        <ParameterStrings
-          values={values}
-          activeId={activeId}
-          onActive={(id) => {
-            onMoodLabel(null)
-            setFeelingId(id)
-          }}
-          onValues={(next) => {
-            onMoodLabel(null)
-            onValues(next)
-          }}
-          onCommit={onCommitSensory}
-          interactive={snap.sampleLoaded}
-        />
-      ) : null}
+      <ParameterStrings
+        values={values}
+        activeId={activeId}
+        editingId={editingId}
+        onActive={(id) => {
+          onMoodLabel(null)
+          setFeelingId(id)
+        }}
+        onEditing={(id) => setEditingId(id)}
+        onValues={(next) => {
+          onMoodLabel(null)
+          onValues(next)
+        }}
+        onCommit={onCommitSensory}
+        interactive={snap.sampleLoaded}
+      />
 
       <FeelingRail
         values={values}
         activeId={activeId}
         onActive={(id) => {
           onMoodLabel(null)
-          setFeelingId(id && SENSORY_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
+          setFeelingId(id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
+        }}
+        onEditing={(id) => {
+          setEditingId(id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
@@ -208,7 +199,12 @@ export function SensoryShell({
             <span className={styles.tri} aria-hidden="true" />
           )}
         </button>
-        <OverviewStrip duration={snap.sourceDuration || snap.duration} loaded={snap.sampleLoaded} contentRev={snap.bufferRev} />
+        <OverviewStrip
+          duration={snap.sourceDuration || snap.duration}
+          loaded={snap.sampleLoaded}
+          contentRev={snap.bufferRev}
+          onRegionCommit={onRegionCommit}
+        />
         <PlayheadClock duration={snap.duration} compact />
       </div>
 

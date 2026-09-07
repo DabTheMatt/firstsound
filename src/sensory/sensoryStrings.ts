@@ -1,8 +1,8 @@
 export const SENSORY_STRINGS_STORAGE_KEY = 'firstsound.sensoryStrings'
 
-export function parseSensoryStrings(raw: string | null | undefined): boolean {
-  if (raw === '0' || raw === 'false' || raw === 'off') return false
-  return true
+/** Strings stay hidden until a parameter is being edited. Stored "on" is ignored. */
+export function parseSensoryStrings(_raw: string | null | undefined): boolean {
+  return false
 }
 
 export function readStoredSensoryStrings(): boolean {

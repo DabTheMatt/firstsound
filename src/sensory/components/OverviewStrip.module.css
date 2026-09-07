@@ -1,9 +1,9 @@
 .wrap {
   position: relative;
-  width: min(42vw, 420px);
-  height: 28px;
-  cursor: pointer;
-  opacity: 0.7;
+  width: min(52vw, 560px);
+  height: 36px;
+  cursor: ew-resize;
+  opacity: 0.82;
 }
 
 .strip {

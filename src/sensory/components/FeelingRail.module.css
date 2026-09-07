@@ -91,6 +91,55 @@
   color: color-mix(in srgb, var(--text-primary) 78%, transparent);
 }
 
+.item[data-axis='grain'].on,
+.item[data-axis='grain'].lit {
+  color: #8ed9a8;
+}
+.item[data-axis='space'].on,
+.item[data-axis='space'].lit {
+  color: #6ec8e8;
+}
+.item[data-axis='echo'].on,
+.item[data-axis='echo'].lit {
+  color: #b48ce8;
+}
+.item[data-axis='bloom'].on,
+.item[data-axis='bloom'].lit {
+  color: #a8c4e8;
+}
+.item[data-axis='veil'].on,
+.item[data-axis='veil'].lit {
+  color: #8a9ab0;
+}
+.item[data-axis='halo'].on,
+.item[data-axis='halo'].lit {
+  color: #d8d0b8;
+}
+.item[data-axis='shimmer'].on,
+.item[data-axis='shimmer'].lit {
+  color: #ead68a;
+}
+.item[data-axis='reverse'].on,
+.item[data-axis='reverse'].lit {
+  color: #a08ce8;
+}
+.item[data-axis='melt'].on,
+.item[data-axis='melt'].lit {
+  color: #e88cb0;
+}
+.item[data-axis='vinyl'].on,
+.item[data-axis='vinyl'].lit {
+  color: #c4a888;
+}
+.item[data-axis='drift'].on,
+.item[data-axis='drift'].lit {
+  color: #6ea8e8;
+}
+.item[data-axis='character'].on,
+.item[data-axis='character'].lit {
+  color: #e8b45c;
+}
+
 .item.dim {
   opacity: 0.58;
   filter: none;

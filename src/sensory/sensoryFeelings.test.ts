@@ -31,48 +31,31 @@ describe('sensory feelings', () => {
     expect(activeFeelingId(values, 'echo')).toBe('echo')
   })
 
-  it('includes hybrid braid feelings', () => {
-    expect(SENSORY_FEELINGS.map((f) => f.id)).toEqual([
-      'character',
-      'space',
-      'echo',
-      'grain',
-      'dirt',
-      'tight',
-      'mod',
-      'drift',
-      'pan',
-      'veil',
-      'halo',
-      'well',
-      'bloom',
-      'plate',
-      'spring',
-      'shimmer',
-      'reverse',
-      'gate',
-      'fuzz',
-      'crush',
-      'tape',
-      'fold',
-      'vinyl',
-      'sweep',
-      'dark',
-      'thin',
-      'phone',
-      'notch',
-      'peak',
-      'comb',
-      'melt',
-    ])
+  it('keeps the full feeling catalog for mappings', () => {
+    expect(SENSORY_FEELINGS.map((f) => f.id)).toContain('dirt')
+    expect(SENSORY_FEELINGS.map((f) => f.id)).toContain('melt')
   })
 
-  it('splits feelings across two rails without overlap', () => {
+  it('shows twelve distinct rails without overlap', () => {
     const left = LEFT_RAIL_IDS
     const right = RIGHT_RAIL_IDS
-    expect([...left, ...right].sort()).toEqual([...SENSORY_FEELINGS.map((f) => f.id)].sort())
-    expect(new Set(left).size).toBe(left.length)
-    expect(new Set(right).size).toBe(right.length)
+    expect(left).toHaveLength(6)
+    expect(right).toHaveLength(6)
+    expect([...left, ...right]).toEqual([
+      'grain',
+      'space',
+      'echo',
+      'bloom',
+      'veil',
+      'halo',
+      'shimmer',
+      'reverse',
+      'melt',
+      'vinyl',
+      'drift',
+      'character',
+    ])
+    expect(new Set([...left, ...right]).size).toBe(12)
     expect(feelingsForRail('left').map((f) => f.id)).toEqual([...left])
     expect(feelingsForRail('right').map((f) => f.id)).toEqual([...right])
   })

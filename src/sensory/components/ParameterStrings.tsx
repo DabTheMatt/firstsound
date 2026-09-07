@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import {
   applyFeelingAmount,
   feelingAmount,
+  RAIL_AXIS_IDS,
   restFeeling,
   SENSORY_FEELINGS,
 } from '../sensoryFeelings'
@@ -24,7 +25,10 @@ import styles from './ParameterStrings.module.css'
 type Props = {
   values: SensoryValues
   activeId: SensoryAxisId | null
+  /** Shown only while a parameter is being dragged or keyed. */
+  editingId: SensoryAxisId | null
   onActive: (id: SensoryAxisId | null) => void
+  onEditing: (id: SensoryAxisId | null) => void
   onValues: (values: SensoryValues) => void
   onCommit: () => void
   interactive?: boolean
@@ -43,7 +47,9 @@ function feelingOf(id: SensoryAxisId) {
 export function ParameterStrings({
   values,
   activeId,
+  editingId,
   onActive,
+  onEditing,
   onValues,
   onCommit,
   interactive = true,
@@ -85,10 +91,11 @@ export function ParameterStrings({
   }, [size.w])
 
   const geoms = useMemo(
-    () => (size.w > 8 && size.h > 8 ? layoutParameterStrings(size.w, size.h, insets) : []),
+    () => (size.w > 8 && size.h > 8 ? layoutParameterStrings(size.w, size.h, insets, RAIL_AXIS_IDS) : []),
     [size.w, size.h, insets],
   )
-  const crosses = useMemo(() => stringIntersections(geoms), [geoms])
+  const shown = useMemo(() => geoms.filter((g) => g.id === editingId), [geoms, editingId])
+  const crosses = useMemo(() => stringIntersections(shown), [shown])
 
   const localPoint = (event: ReactPointerEvent) => {
     const rect = wrapRef.current?.getBoundingClientRect()
@@ -112,6 +119,7 @@ export function ParameterStrings({
     } catch {
       /* already released */
     }
+    onEditing(null)
     onCommit()
   }
 
@@ -123,16 +131,19 @@ export function ParameterStrings({
     if (event.key === 'Home' || event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       onActive(id)
+      onEditing(id)
       onValues(restFeeling(values, feeling))
       return
     }
     if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
       event.preventDefault()
       onActive(id)
+      onEditing(id)
       onValues(applyFeelingAmount(values, feeling, clamp(amount + step, lo, 1)))
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
       event.preventDefault()
       onActive(id)
+      onEditing(id)
       onValues(applyFeelingAmount(values, feeling, clamp(amount - step, lo, 1)))
     }
   }
@@ -141,9 +152,9 @@ export function ParameterStrings({
     <div
       ref={wrapRef}
       className={`${styles.layer} ${interactive ? '' : styles.idle}`}
-      aria-hidden={geoms.length === 0}
+      aria-hidden={shown.length === 0}
     >
-      {geoms.length > 0 ? (
+      {shown.length > 0 ? (
         <svg className={styles.svg} viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label="Parameter strings">
           {crosses.map((hit) => {
             const hot = hit.a === activeId || hit.b === activeId
@@ -157,7 +168,7 @@ export function ParameterStrings({
               />
             )
           })}
-          {geoms.map((geom) => {
+          {shown.map((geom) => {
             const feeling = feelingOf(geom.id)
             const amount = feelingAmount(values, feeling)
             const t = amountToT(amount, feeling.kind)
@@ -197,8 +208,9 @@ export function ParameterStrings({
                     event.stopPropagation()
                     event.currentTarget.setPointerCapture(event.pointerId)
                     const p = localPoint(event)
-                    const target = nearestString(geoms, p.x, p.y, HIT_PX) ?? geom
+                    const target = nearestString(shown, p.x, p.y, HIT_PX) ?? geom
                     drag.current = { pointerId: event.pointerId, id: target.id }
+                    onEditing(target.id)
                     applyAt(target, p.x, p.y)
                   }}
                   onPointerMove={(event) => {
@@ -208,7 +220,7 @@ export function ParameterStrings({
                       end(event)
                       return
                     }
-                    const locked = geoms.find((g) => g.id === state.id)
+                    const locked = shown.find((g) => g.id === state.id)
                     if (!locked) return
                     const p = localPoint(event)
                     applyAt(locked, p.x, p.y)
@@ -218,12 +230,16 @@ export function ParameterStrings({
                   onDoubleClick={(event) => {
                     event.preventDefault()
                     onActive(geom.id)
+                    onEditing(null)
                     onValues(restFeeling(values, feeling))
                     onCommit()
                   }}
                   onKeyDown={(event) => onKey(event, geom.id)}
                   onKeyUp={(event) => {
-                    if (event.key.startsWith('Arrow') || event.key === 'Home') onCommit()
+                    if (event.key.startsWith('Arrow') || event.key === 'Home') {
+                      onEditing(null)
+                      onCommit()
+                    }
                   }}
                 />
                 <line
