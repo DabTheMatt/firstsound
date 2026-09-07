@@ -157,49 +157,51 @@ function FilterLfoPanel({ snap, variant }: { snap: EngineSnapshot; variant: 'kno
           </button>
         ))}
       </div>
-      {sync ? (
-        <div className={styles.syncRow}>
-          <label>
-            Note
-            <select
-              value={NOTE_DIVISIONS[Math.round(snap.params.filterLfoNote)]?.value ?? '1/4'}
-              onChange={(event) =>
-                engine.setParam(
-                  'filterLfoNote',
-                  NOTE_DIVISIONS.findIndex((d) => d.value === event.target.value),
-                )
-              }
-            >
-              {NOTE_DIVISIONS.filter((d) => d.beats <= 4 && d.beats >= 0.125).map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Feel
-            <select
-              value={NOTE_KINDS[Math.round(snap.params.filterLfoNoteKind)]?.value ?? 'straight'}
-              onChange={(event) =>
-                engine.setParam(
-                  'filterLfoNoteKind',
-                  NOTE_KINDS.findIndex((k) => k.value === event.target.value),
-                )
-              }
-            >
-              {NOTE_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <ParamControl id="filterLfoRate" value={snap.params.filterLfoRate} variant={variant} />
-      )}
-      <ParamControl id="filterLfoDepth" value={snap.params.filterLfoDepth} variant={variant} />
+      <div className={variant === 'knob' ? styles.knobs : styles.lfoParams}>
+        {sync ? (
+          <div className={styles.syncRow}>
+            <label>
+              Note
+              <select
+                value={NOTE_DIVISIONS[Math.round(snap.params.filterLfoNote)]?.value ?? '1/4'}
+                onChange={(event) =>
+                  engine.setParam(
+                    'filterLfoNote',
+                    NOTE_DIVISIONS.findIndex((d) => d.value === event.target.value),
+                  )
+                }
+              >
+                {NOTE_DIVISIONS.filter((d) => d.beats <= 4 && d.beats >= 0.125).map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Feel
+              <select
+                value={NOTE_KINDS[Math.round(snap.params.filterLfoNoteKind)]?.value ?? 'straight'}
+                onChange={(event) =>
+                  engine.setParam(
+                    'filterLfoNoteKind',
+                    NOTE_KINDS.findIndex((k) => k.value === event.target.value),
+                  )
+                }
+              >
+                {NOTE_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <ParamControl id="filterLfoRate" value={snap.params.filterLfoRate} variant={variant} />
+        )}
+        <ParamControl id="filterLfoDepth" value={snap.params.filterLfoDepth} variant={variant} />
+      </div>
     </div>
   )
 }
