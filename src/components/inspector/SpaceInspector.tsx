@@ -219,7 +219,16 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                   <h3 className={styles.sub}>Left</h3>
                   <span className={styles.lrTime}>{formatParamValue(snap.params.delayTime, PARAMS.delayTime)}</span>
                 </div>
-                {params(['delayDry', 'delayWet', 'delayTime', 'delayFeedback'])}
+                <DryWetPair
+                  snap={snap}
+                  variant={variant}
+                  dryId="delayDry"
+                  wetId="delayWet"
+                  correlateId="delayCorrelate"
+                  layout="vertical"
+                  showHelp={false}
+                />
+                {params(['delayTime', 'delayFeedback'])}
                 <div className={styles.syncCluster}>
                   <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
                 </div>
@@ -229,7 +238,16 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                   <h3 className={styles.sub}>Right</h3>
                   <span className={styles.lrTime}>{formatParamValue(snap.params.delayTimeR, PARAMS.delayTimeR)}</span>
                 </div>
-                {params(['delayDryR', 'delayWetR', 'delayTimeR', 'delayFeedbackR'])}
+                <DryWetPair
+                  snap={snap}
+                  variant={variant}
+                  dryId="delayDryR"
+                  wetId="delayWetR"
+                  correlateId="delayCorrelate"
+                  layout="vertical"
+                  showHelp={false}
+                />
+                {params(['delayTimeR', 'delayFeedbackR'])}
                 <div className={styles.syncCluster}>
                   <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
                 </div>
@@ -237,21 +255,23 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
             </div>
           ) : (
             <>
-              {params(['delayDry', 'delayWet', 'delayFeedback', 'delayTime'])}
+              <DryWetPair
+                snap={snap}
+                variant={variant}
+                dryId="delayDry"
+                wetId="delayWet"
+                correlateId="delayCorrelate"
+                layout="vertical"
+                showHelp={false}
+              />
+              {params(['delayFeedback', 'delayTime'])}
               <div className={styles.syncCluster}>
                 <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
               </div>
             </>
           )}
-          <div className={styles.row}>
-            <Toggle
-              pressed={snap.params.delayCorrelate > 0.5}
-              label="Correlate"
-              onToggle={() => engine.setParam('delayCorrelate', snap.params.delayCorrelate > 0.5 ? 0 : 1)}
-            />
-          </div>
           <p className={styles.help}>
-            Correlate keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+            The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
           </p>
         </>
       ) : (
@@ -343,20 +363,31 @@ function DryWetPair({
   dryId,
   wetId,
   correlateId,
+  layout = 'horizontal',
+  showHelp = true,
 }: {
   snap: EngineSnapshot
   variant: 'knob' | 'slider'
-  dryId: 'reverbDry'
-  wetId: 'reverbWet'
-  correlateId: 'reverbCorrelate'
+  dryId: 'reverbDry' | 'delayDry' | 'delayDryR'
+  wetId: 'reverbWet' | 'delayWet' | 'delayWetR'
+  correlateId: 'reverbCorrelate' | 'delayCorrelate'
+  layout?: 'horizontal' | 'vertical'
+  showHelp?: boolean
 }) {
   const linked = snap.params[correlateId] > 0.5
+  const vertical = layout === 'vertical'
+  const dashClass = vertical
+    ? `${styles.mixDashVert} ${linked ? styles.mixDashVertOn : ''}`
+    : `${styles.mixDash} ${linked ? styles.mixDashOn : ''}`
+  const linkClass = vertical
+    ? `${styles.mixLinkVert} ${variant === 'slider' ? styles.mixLinkVertSlider : ''}`
+    : `${styles.mixLink} ${variant === 'slider' ? styles.mixLinkSlider : ''}`
   return (
     <>
-      <div className={styles.mixRow}>
+      <div className={vertical ? styles.mixCol : styles.mixRow}>
         <ParamControl id={dryId} value={snap.params[dryId]} variant={variant} />
-        <div className={`${styles.mixLink} ${variant === 'slider' ? styles.mixLinkSlider : ''}`}>
-          <span className={`${styles.mixDash} ${linked ? styles.mixDashOn : ''}`} />
+        <div className={linkClass}>
+          <span className={dashClass} />
           <button
             type="button"
             className={`${styles.correlate} ${linked ? styles.correlateOn : ''}`}
@@ -367,13 +398,15 @@ function DryWetPair({
           >
             <PlugGlyph />
           </button>
-          <span className={`${styles.mixDash} ${linked ? styles.mixDashOn : ''}`} />
+          <span className={dashClass} />
         </div>
         <ParamControl id={wetId} value={snap.params[wetId]} variant={variant} />
       </div>
-      <p className={styles.help}>
-        The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
-      </p>
+      {showHelp ? (
+        <p className={styles.help}>
+          The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+        </p>
+      ) : null}
     </>
   )
 }

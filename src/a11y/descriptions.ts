@@ -74,7 +74,7 @@ export const PARAM_DESCRIPTIONS: Record<ParamId, LocalizedText> = {
   delayDryR: d('Sets the unprocessed delay input level on the right path.', 'Ustawia poziom suchego sygnału delay na ścieżce prawej.'),
   delayWet: d('Sets the delayed signal level on the left or mono path.', 'Ustawia poziom opóźnionego sygnału na ścieżce lewej lub mono.'),
   delayWetR: d('Sets the delayed signal level on the right path.', 'Ustawia poziom opóźnionego sygnału na ścieżce prawej.'),
-  delayCorrelate: d('Adjusts stereo correlation of the delay returns.', 'Reguluje korelację stereo powrotów delay.'),
+  delayCorrelate: d('Links delay Dry and Wet so they stay complementary. Turn it off to set the two levels independently.', 'Łączy Dry i Wet delay tak, by zawsze uzupełniały się do 100%. Wyłącz, by ustawiać poziomy niezależnie.'),
   delayOutput: d('Sets the overall delay module output level.', 'Ustawia ogólny poziom wyjściowy modułu delay.'),
   delayTime: d('Sets the left or mono delay time.', 'Ustawia czas opóźnienia lewego lub mono.'),
   delayTimeR: d('Sets the right delay time.', 'Ustawia czas opóźnienia prawego.'),

@@ -115,6 +115,29 @@ describe('applyDelayCorrelation', () => {
     expect(p.delayDryR).toBe(75)
     expect(p.delayWetR).toBe(25)
   })
+
+  it('lowers Wet when Dry rises while Correlate is on', () => {
+    const p = defaultParamValues()
+    p.delayCorrelate = 1
+    p.delayDry = 80
+    p.delayWet = 20
+    applyDelayCorrelation(p, 'dry')
+    expect(p.delayDry).toBe(80)
+    expect(p.delayWet).toBe(20)
+    p.delayDry = 100
+    applyDelayCorrelation(p, 'dry')
+    expect(p.delayWet).toBe(0)
+  })
+
+  it('leaves Wet alone when Correlate is off', () => {
+    const p = defaultParamValues()
+    p.delayCorrelate = 0
+    p.delayDry = 100
+    p.delayWet = 40
+    applyDelayCorrelation(p, 'dry')
+    expect(p.delayDry).toBe(100)
+    expect(p.delayWet).toBe(40)
+  })
 })
 
 describe('delaySendLevels', () => {
