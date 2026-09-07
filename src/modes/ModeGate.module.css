@@ -36,7 +36,7 @@
 
 .choices {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 18px;
   width: 100%;
 }
@@ -84,7 +84,7 @@
   color: var(--text-muted);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .choices {
     grid-template-columns: 1fr;
   }

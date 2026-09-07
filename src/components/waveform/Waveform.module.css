@@ -441,6 +441,73 @@
   border-radius: 0;
 }
 
+.simple {
+  gap: 0;
+}
+
+.simple .wrap {
+  flex: 1;
+  min-height: 168px;
+}
+
+.simple .wavePane {
+  border: 0;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+}
+
+.simpleEdge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  transform: translateX(-50%);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  z-index: 14;
+  cursor: ew-resize;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.simpleEdge::before {
+  content: '';
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: var(--text-primary);
+  opacity: 0.5;
+}
+
+.simpleEdge::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
+  border: 2px solid var(--text-primary);
+}
+
+.simpleEdgeHot::after {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+
+.simpleEdge:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
 .ruler {
   position: absolute;
   left: 0;

@@ -14,6 +14,7 @@ import {
   fadeShapeHandleLayout,
   fadeParkedOnLoopNode,
   hitsLoopNodeY,
+  resolveSimpleWaveformDrag,
   resolveWaveformDrag,
 } from './handleLayout'
 
@@ -145,5 +146,14 @@ describe('fadeLengthFromDiamondTime', () => {
     expect(clampFadeLengthToLoop(9, 1, 5)).toBe(4)
     expect(fadeLengthFromDiamondTime('in', 1, 5, 0.2)).toBe(0)
     expect(fadeLengthFromDiamondTime('out', 1, 5, 6)).toBe(0)
+  })
+})
+
+describe('resolveSimpleWaveformDrag', () => {
+  it('uses large full-height trim targets', () => {
+    expect(resolveSimpleWaveformDrag({ altOrMiddle: false, x: 10, startX: 20, endX: 300, hitPx: 44 })).toBe('start')
+    expect(resolveSimpleWaveformDrag({ altOrMiddle: false, x: 290, startX: 20, endX: 300, hitPx: 44 })).toBe('end')
+    expect(resolveSimpleWaveformDrag({ altOrMiddle: false, x: 160, startX: 20, endX: 300, hitPx: 44 })).toBe('playhead')
+    expect(resolveSimpleWaveformDrag({ altOrMiddle: true, x: 160, startX: 20, endX: 300, hitPx: 44 })).toBe('pan')
   })
 })

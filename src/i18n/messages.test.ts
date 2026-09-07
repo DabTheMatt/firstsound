@@ -13,6 +13,13 @@ describe('i18n catalogs', () => {
     }
   })
 
+  it('covers simple tone names in both locales', () => {
+    for (const id of ['natural', 'voice', 'bass', 'rumble', 'bright', 'warm', 'harsh', 'clean']) {
+      expect(EN.simple.tones[id]?.label).toBeTruthy()
+      expect(PL.simple.tones[id]?.label).toBeTruthy()
+    }
+  })
+
   it('covers every ParamId in Polish', () => {
     for (const id of Object.keys(PARAMS) as ParamId[]) {
       expect(PL_PARAMS[id]).toBeTruthy()

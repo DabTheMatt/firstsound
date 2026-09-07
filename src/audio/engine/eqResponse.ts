@@ -38,7 +38,7 @@ export function logFreqAxis(count: number, minHz = 10, maxHz = 25000): number[] 
   return out
 }
 
-function biquadCoeffs(
+export function biquadCoeffs(
   type: EqFilterType,
   freq: number,
   q: number,

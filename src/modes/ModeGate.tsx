@@ -16,6 +16,10 @@ export function ModeGate({ onChoose }: Props) {
         <p className={styles.mark}>Field</p>
         <h1 className={styles.title}>{t.gate.title}</h1>
         <div className={styles.choices}>
+          <button type="button" className={styles.choice} onClick={() => onChoose('simple')}>
+            <span className={styles.choiceName}>{t.gate.simple}</span>
+            <span className={styles.choiceCopy}>{t.gate.simpleCopy}</span>
+          </button>
           <button type="button" className={styles.choice} onClick={() => onChoose('sensory')}>
             <span className={styles.choiceName}>{t.gate.listen}</span>
             <span className={styles.choiceCopy}>{t.gate.listenCopy}</span>

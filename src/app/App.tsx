@@ -32,6 +32,7 @@ import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
 import { SensoryShell } from '../sensory/components/SensoryShell'
+import { SimpleShell } from '../simple/SimpleShell'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import styles from './App.module.css'
 
@@ -44,7 +45,7 @@ type Hist = {
   fadeCurve: FadeCurve
   fadeInBend: number
   fadeOutBend: number
-  layer: 'region' | 'sensory'
+  layer: 'region' | 'sensory' | 'dsp'
   sensory?: SensoryValues
   dsp?: DspSnapshot
   sensoryBase?: DspSnapshot
@@ -100,6 +101,9 @@ function histEqual(a: Hist, b: Hist): boolean {
     if (!a.sensory || !b.sensory) return false
     return sensoryValuesEqual(a.sensory, b.sensory)
   }
+  if ((a.layer === 'dsp' || b.layer === 'dsp') && a.dsp && b.dsp) {
+    return dspSnapshotsEqual(a.dsp, b.dsp)
+  }
   return true
 }
 
@@ -144,9 +148,13 @@ export default function App() {
   const sensoryBaseRef = useRef<DspSnapshot>(captureDsp(engine))
   const appliedRef = useRef<DspSnapshot>(captureDsp(engine))
   const editRef = useRef(edit)
+  const uiModeRef = useRef(uiMode)
   useEffect(() => {
     editRef.current = edit
   }, [edit])
+  useEffect(() => {
+    uiModeRef.current = uiMode
+  }, [uiMode])
   useEffect(() => {
     sensoryRef.current = sensory
   }, [sensory])
@@ -160,7 +168,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (uiMode === 'sensory' || (viz !== 'spectrum' && viz !== 'split' && viz !== 'eq-split')) {
+    if (uiMode === 'sensory' || uiMode === 'simple' || (viz !== 'spectrum' && viz !== 'split' && viz !== 'eq-split')) {
       engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
     }
   }, [uiMode, viz])
@@ -249,15 +257,18 @@ export default function App() {
   const commit = useCallback((layer: Hist['layer'] = 'region') => {
     const e = editRef.current
     const current = engine.getSnapshot()
+    const resolved: Hist['layer'] = uiModeRef.current === 'simple' && layer === 'region' ? 'dsp' : layer
     const extra: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'> =
-      layer === 'sensory'
+      resolved === 'sensory'
         ? {
-            layer,
+            layer: resolved,
             sensory: { ...sensoryRef.current },
             dsp: captureDsp(engine),
             sensoryBase: cloneDsp(sensoryBaseRef.current),
           }
-        : { layer: 'region' }
+        : resolved === 'dsp'
+          ? { layer: resolved, dsp: captureDsp(engine), sensoryBase: cloneDsp(sensoryBaseRef.current) }
+          : { layer: 'region' }
     setHistory((h) =>
       commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, extra), histEqual),
     )
@@ -509,6 +520,61 @@ export default function App() {
     )
   }
 
+  if (uiMode === 'simple') {
+    return (
+      <>
+        <SkipLink />
+        <LiveAnnouncer />
+        <SimpleShell
+          snap={snap}
+          edit={edit}
+          waveRef={waveRef}
+          menuOpen={moreOpen}
+          onToggleMenu={() => setMenuOpen((v) => !v)}
+          menu={settingsMenu}
+          dragging={dragging}
+          onDragOver={() => setDragging(true)}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(file) => void loadSample(file)}
+          onLoadSample={() => sampleInput.current?.click()}
+          onLoadDemo={() => {
+            void engine.unlock().then(() => engine.loadDemoTone())
+          }}
+          onRegionCommit={() => commit('dsp')}
+          onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
+          onFadesCommit={() => commit('dsp')}
+          onToneCommit={() => commit('dsp')}
+          onUndo={() => applyHistory(undoHistory(history))}
+          onRedo={() => applyHistory(redoHistory(history))}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          onRestoreOriginal={() => {
+            engine.revertToSource()
+            engine.resetAll()
+            setEdit(DEFAULT_EDIT)
+            const dsp = captureDsp(engine)
+            appliedRef.current = cloneDsp(dsp)
+            sensoryBaseRef.current = cloneDsp(dsp)
+            commit('dsp')
+          }}
+          onLevelLoudness={() => {
+            engine.normalizeRegion()
+            commit('dsp')
+          }}
+          onAutoFix={() => {
+            engine.normalizeRegion()
+            const dsp = captureDsp(engine)
+            writeDsp(engine, { ...dsp, bypass: { ...dsp.bypass, eq: false, limiter: false } })
+            commit('dsp')
+          }}
+          mode={uiMode}
+          onMode={chooseMode}
+        />
+        {fileInputs}
+      </>
+    )
+  }
+
   if (uiMode === 'sensory') {
     return (
       <>
@@ -597,7 +663,7 @@ export default function App() {
           }}
           compact={sheet}
           minimal={isPhoneLayout}
-          modeSwitch={<ModeSwitch mode="technical" onChange={chooseMode} />}
+          modeSwitch={<ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />}
         />
         {lfoCenterOpen ? (
           <>

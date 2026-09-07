@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { parseUiMode } from './uiMode'
 
 describe('parseUiMode', () => {
-  it('accepts the two interface layers', () => {
+  it('accepts the three interface layers', () => {
+    expect(parseUiMode('simple')).toBe('simple')
     expect(parseUiMode('sensory')).toBe('sensory')
     expect(parseUiMode('technical')).toBe('technical')
   })

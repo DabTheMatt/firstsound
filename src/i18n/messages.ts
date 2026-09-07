@@ -14,10 +14,93 @@ export type FeelingCopy = {
   aria: string
 }
 
+export type SimpleToneCopy = {
+  label: string
+  hint: string
+  aria: string
+}
+
+export type SimpleMessages = {
+  fileUntitled: string
+  trim: string
+  setStart: string
+  setEnd: string
+  length: (value: string) => string
+  startEnd: string
+  fadeIn: string
+  fadeOut: string
+  fadeNone: string
+  fadeShort: string
+  fadeMedium: string
+  fadeLong: string
+  fadeInNone: string
+  fadeInShort: string
+  fadeInMedium: string
+  fadeInLong: string
+  fadeOutNone: string
+  fadeOutShort: string
+  fadeOutMedium: string
+  fadeOutLong: string
+  fadeInAria: (step: string) => string
+  fadeOutAria: (step: string) => string
+  regionStartAria: (value: string) => string
+  regionEndAria: (value: string) => string
+  closeSheet: string
+  levelVolume: string
+  levelHint: string
+  levelDone: string
+  tone: string
+  moreTones: string
+  lessTones: string
+  customTone: string
+  amount: string
+  amountLess: string
+  amountMore: string
+  autoFix: string
+  autoDone: string
+  compare: string
+  original: string
+  after: string
+  undo: string
+  redo: string
+  restore: string
+  restoreConfirm: string
+  restoreYes: string
+  restoreNo: string
+  save: string
+  saveTitle: string
+  saveName: string
+  saveFormat: string
+  saveFile: string
+  moreSettings: string
+  hideSettings: string
+  sampleRate: string
+  bitDepth: string
+  channels: string
+  stereo: string
+  mono: string
+  wav: string
+  mp3: string
+  loadSample: string
+  play: string
+  pause: string
+  clock: (now: string, total: string) => string
+  tones: Record<string, SimpleToneCopy>
+}
+
 export type Messages = {
   lang: { group: string; en: string; pl: string }
-  gate: { title: string; listen: string; listenCopy: string; control: string; controlCopy: string }
-  mode: { group: string; sensory: string; technical: string }
+  gate: {
+    title: string
+    simple: string
+    simpleCopy: string
+    listen: string
+    listenCopy: string
+    control: string
+    controlCopy: string
+  }
+  mode: { group: string; simple: string; sensory: string; technical: string }
+  simple: SimpleMessages
   header: {
     loadSample: string
     record: string
@@ -275,12 +358,122 @@ export const EN: Messages = {
   lang: { group: 'Language', en: 'EN', pl: 'PL' },
   gate: {
     title: 'How do you want to shape sound?',
+    simple: 'Simple',
+    simpleCopy: 'Fix a sample in a few clear steps.',
     listen: 'Listen',
     listenCopy: 'Shape sound by feeling.',
     control: 'Control',
     controlCopy: 'Shape sound by parameters.',
   },
-  mode: { group: 'Interface mode', sensory: 'Sensory', technical: 'Technical' },
+  mode: { group: 'Interface mode', simple: 'Simple', sensory: 'Sensory', technical: 'Technical' },
+  simple: {
+    fileUntitled: 'No sample',
+    trim: 'Trim',
+    setStart: 'Set start',
+    setEnd: 'Set end',
+    length: (value) => `Length: ${value} s`,
+    startEnd: 'Start and end',
+    fadeIn: 'Gentle start',
+    fadeOut: 'Gentle ending',
+    fadeNone: 'None',
+    fadeShort: 'Short',
+    fadeMedium: 'Medium',
+    fadeLong: 'Long',
+    fadeInNone: 'None',
+    fadeInShort: 'Short',
+    fadeInMedium: 'Medium',
+    fadeInLong: 'Long',
+    fadeOutNone: 'None',
+    fadeOutShort: 'Short',
+    fadeOutMedium: 'Medium',
+    fadeOutLong: 'Long',
+    fadeInAria: (step) => `Gentle start: ${step}`,
+    fadeOutAria: (step) => `Gentle ending: ${step}`,
+    regionStartAria: (value) => `Sample start: ${value} seconds`,
+    regionEndAria: (value) => `Sample end: ${value} seconds`,
+    closeSheet: 'Close',
+    levelVolume: 'Even out loudness',
+    levelHint: 'Set a safe, even loudness.',
+    levelDone: 'Loudness evened out',
+    tone: 'Improve the sound',
+    moreTones: 'More options',
+    lessTones: 'Fewer options',
+    customTone: 'Custom setting',
+    amount: 'Effect strength',
+    amountLess: 'Less',
+    amountMore: 'More',
+    autoFix: 'Improve automatically',
+    autoDone: 'Sound improved',
+    compare: 'Compare',
+    original: 'Original',
+    after: 'After changes',
+    undo: 'Undo',
+    redo: 'Redo',
+    restore: 'Restore original',
+    restoreConfirm: 'This removes several changes. Restore the original sample?',
+    restoreYes: 'Restore',
+    restoreNo: 'Keep edits',
+    save: 'Save',
+    saveTitle: 'Save file',
+    saveName: 'Name',
+    saveFormat: 'Format',
+    saveFile: 'Save file',
+    moreSettings: 'More settings',
+    hideSettings: 'Fewer settings',
+    sampleRate: 'Sample rate',
+    bitDepth: 'Bit depth',
+    channels: 'Channels',
+    stereo: 'Stereo',
+    mono: 'Mono',
+    wav: 'WAV',
+    mp3: 'MP3',
+    loadSample: 'Open a sample',
+    play: 'Play',
+    pause: 'Pause',
+    clock: (now, total) => `${now} / ${total}`,
+    tones: {
+      natural: {
+        label: 'Natural',
+        hint: 'A light touch. Almost no change.',
+        aria: 'Sound preset: natural',
+      },
+      voice: {
+        label: 'Clearer voice',
+        hint: 'More speech detail, less rumble.',
+        aria: 'Sound preset: clearer voice',
+      },
+      bass: {
+        label: 'More bass',
+        hint: 'A controlled lift in the low end.',
+        aria: 'Sound preset: more bass',
+      },
+      rumble: {
+        label: 'Less rumble',
+        hint: 'Tame a boomy low middle.',
+        aria: 'Sound preset: less rumble',
+      },
+      bright: {
+        label: 'Brighter',
+        hint: 'A little more air up top.',
+        aria: 'Sound preset: brighter',
+      },
+      warm: {
+        label: 'Warmer',
+        hint: 'More body, a softer top.',
+        aria: 'Sound preset: warmer',
+      },
+      harsh: {
+        label: 'Less harsh',
+        hint: 'Soften sharp highs.',
+        aria: 'Sound preset: less harsh',
+      },
+      clean: {
+        label: 'Cleaner',
+        hint: 'Trim extra low end and mud.',
+        aria: 'Sound preset: cleaner',
+      },
+    },
+  },
   header: {
     loadSample: 'Load sample',
     record: 'Record',
@@ -631,12 +824,122 @@ export const PL: Messages = {
   lang: { group: 'Język', en: 'EN', pl: 'PL' },
   gate: {
     title: 'Jak chcesz kształtować dźwięk?',
+    simple: 'Prosty',
+    simpleCopy: 'Szybko popraw sample w kilku czytelnych krokach.',
     listen: 'Słuch',
     listenCopy: 'Kształtuj dźwięk odczuciem.',
     control: 'Sterowanie',
     controlCopy: 'Kształtuj dźwięk parametrami.',
   },
-  mode: { group: 'Tryb interfejsu', sensory: 'Sensoryczny', technical: 'Techniczny' },
+  mode: { group: 'Tryb interfejsu', simple: 'Prosty', sensory: 'Sensoryczny', technical: 'Techniczny' },
+  simple: {
+    fileUntitled: 'Brak sampla',
+    trim: 'Przytnij',
+    setStart: 'Ustaw początek',
+    setEnd: 'Ustaw koniec',
+    length: (value) => `Długość: ${value} s`,
+    startEnd: 'Początek i koniec',
+    fadeIn: 'Łagodny początek',
+    fadeOut: 'Łagodne zakończenie',
+    fadeNone: 'Brak',
+    fadeShort: 'Krótki',
+    fadeMedium: 'Średni',
+    fadeLong: 'Długi',
+    fadeInNone: 'Brak',
+    fadeInShort: 'Krótki',
+    fadeInMedium: 'Średni',
+    fadeInLong: 'Długi',
+    fadeOutNone: 'Brak',
+    fadeOutShort: 'Krótkie',
+    fadeOutMedium: 'Średnie',
+    fadeOutLong: 'Długie',
+    fadeInAria: (step) => `Łagodny początek: ${step}`,
+    fadeOutAria: (step) => `Łagodne zakończenie: ${step}`,
+    regionStartAria: (value) => `Początek sampla: ${value} sekund`,
+    regionEndAria: (value) => `Koniec sampla: ${value} sekund`,
+    closeSheet: 'Zamknij',
+    levelVolume: 'Wyrównaj głośność',
+    levelHint: 'Ustaw bezpieczny, równy poziom głośności.',
+    levelDone: 'Głośność wyrównana',
+    tone: 'Popraw brzmienie',
+    moreTones: 'Więcej opcji',
+    lessTones: 'Mniej opcji',
+    customTone: 'Własne ustawienie',
+    amount: 'Siła efektu',
+    amountLess: 'Mniej',
+    amountMore: 'Więcej',
+    autoFix: 'Popraw automatycznie',
+    autoDone: 'Dźwięk poprawiony',
+    compare: 'Porównaj',
+    original: 'Oryginał',
+    after: 'Po zmianach',
+    undo: 'Cofnij',
+    redo: 'Ponów',
+    restore: 'Przywróć oryginał',
+    restoreConfirm: 'To usunie kilka zmian. Przywrócić oryginalny sample?',
+    restoreYes: 'Przywróć',
+    restoreNo: 'Zostaw zmiany',
+    save: 'Zapisz',
+    saveTitle: 'Zapisz plik',
+    saveName: 'Nazwa',
+    saveFormat: 'Format',
+    saveFile: 'Zapisz plik',
+    moreSettings: 'Więcej ustawień',
+    hideSettings: 'Mniej ustawień',
+    sampleRate: 'Częstotliwość próbkowania',
+    bitDepth: 'Głębia bitowa',
+    channels: 'Kanały',
+    stereo: 'Stereo',
+    mono: 'Mono',
+    wav: 'WAV',
+    mp3: 'MP3',
+    loadSample: 'Otwórz sample',
+    play: 'Odtwórz',
+    pause: 'Zatrzymaj',
+    clock: (now, total) => `${now} / ${total}`,
+    tones: {
+      natural: {
+        label: 'Naturalnie',
+        hint: 'Minimalna ingerencja, lekka korekcja.',
+        aria: 'Preset brzmienia: naturalnie',
+      },
+      voice: {
+        label: 'Wyraźniejszy głos',
+        hint: 'Czytelniejszy środek i góra, mniej zbędnego dołu.',
+        aria: 'Preset brzmienia: wyraźniejszy głos',
+      },
+      bass: {
+        label: 'Więcej basu',
+        hint: 'Kontrolowane zwiększenie niskich częstotliwości.',
+        aria: 'Preset brzmienia: więcej basu',
+      },
+      rumble: {
+        label: 'Mniej dudnienia',
+        hint: 'Mniej problematycznego niskiego środka.',
+        aria: 'Preset brzmienia: mniej dudnienia',
+      },
+      bright: {
+        label: 'Jaśniej',
+        hint: 'Delikatnie więcej wysokich częstotliwości.',
+        aria: 'Preset brzmienia: jaśniej',
+      },
+      warm: {
+        label: 'Cieplej',
+        hint: 'Więcej niskiego środka i łagodniejsza góra.',
+        aria: 'Preset brzmienia: cieplej',
+      },
+      harsh: {
+        label: 'Mniej ostro',
+        hint: 'Mniej agresywnych wysokich częstotliwości.',
+        aria: 'Preset brzmienia: mniej ostro',
+      },
+      clean: {
+        label: 'Czyściej',
+        hint: 'Lekka korekcja zbędnego dołu i mętnych częstotliwości.',
+        aria: 'Preset brzmienia: czyściej',
+      },
+    },
+  },
   header: {
     loadSample: 'Wczytaj sample',
     record: 'Nagraj',

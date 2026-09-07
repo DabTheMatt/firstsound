@@ -42,6 +42,7 @@ import {
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
+  resolveSimpleWaveformDrag,
   resolveWaveformDrag,
 } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
@@ -78,9 +79,10 @@ type Props = {
   onFadesCommit?: () => void
   contentRev?: number
   fxMode?: 'delay' | 'reverb' | null
-  appearance?: 'studio' | 'sensory'
+  appearance?: 'studio' | 'sensory' | 'simple'
   followPlayhead?: boolean
   emptyLabel?: string
+  trimHandles?: boolean
 }
 
 export type WaveformHandle = {
@@ -156,11 +158,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     appearance = 'studio',
     followPlayhead = false,
     emptyLabel,
+    trimHandles = false,
   },
   ref,
 ) {
   const { t } = useI18n()
   const sensory = appearance === 'sensory'
+  const simple = appearance === 'simple'
   const snap = useEngine()
   const showTransients = snap.showTransients
   const transients = showTransients ? snap.transients : []
@@ -199,8 +203,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   }, [start, end, duration, normalizeView, tool, autoSnap])
 
   useEffect(() => {
-    handlePx.current = window.matchMedia('(pointer: coarse)').matches ? 44 : 22
-  }, [])
+    handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22
+  }, [simple])
 
   useImperativeHandle(ref, () => ({
     fitSample: () => setView(fitView(duration)),
@@ -484,7 +488,15 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const transientAttr = (event.target as HTMLElement | null)?.closest?.('[data-transient]') as HTMLElement | null
     const fadeInX = timeToFrac(fadeDiamondLayout({ side: 'in', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
     const fadeOutX = timeToFrac(fadeDiamondLayout({ side: 'out', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
-    const mode: DragMode = resolveWaveformDrag({
+    const mode: DragMode = simple
+      ? resolveSimpleWaveformDrag({
+          altOrMiddle: event.altKey || event.button === 1,
+          x,
+          startX,
+          endX,
+          hitPx: hit,
+        })
+      : resolveWaveformDrag({
       altOrMiddle: event.altKey || event.button === 1,
       shift: event.shiftKey,
       x,
@@ -512,7 +524,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       mode === 'end' ||
       mode === 'transient'
 
-    if (!usingRegionHandle && fxMode && tool === 'select') {
+    if (!usingRegionHandle && fxMode && tool === 'select' && !simple) {
       const snap = engine.getSnapshot()
       const taps = delayTaps(snap.params, snap.delayType, snap.params.bpm)
       const tail = reverbTail(snap.params, snap.reverbType, snap.params.bpm)
@@ -723,8 +735,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
 
-  return (
-    <div className={`${styles.editor} ${sensory ? styles.sensory : ''}`}>
+    return (
+    <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
       <div className={`${styles.stage} ${splitStage ? styles.split : ''}`}>
         <div
           className={styles.wrap}
@@ -734,7 +746,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
           <div className={styles.wavePane}>
-            {!sensory && snap.tracks.length > 0 ? (
+            {!sensory && !simple && snap.tracks.length > 0 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
                 {snap.tracks.map((track) => {
                   const on = track.id === snap.selectedTrackId
@@ -759,7 +771,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             {loaded && snap.params.makeMono > 0.5 ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
-            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} aria-hidden="true" />
+            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || simple} aria-hidden="true" />
             <div
               ref={overlayRef}
               className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
@@ -775,7 +787,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     className={styles.regionFrame}
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
-                  {!sensory ? (
+                  {!sensory && !simple ? (
                     <>
                   <div
                     className={`${styles.fadeHandle} ${fadeFocus === 'in' ? styles.fadeHandleOn : ''}`}
@@ -828,6 +840,23 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     />
                   ) : null}
                     </>
+                  ) : simple ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`${styles.simpleEdge} ${trimHandles ? styles.simpleEdgeHot : ''}`}
+                        data-edge="start"
+                        style={{ left: `${startPct}%` }}
+                        aria-label={t.simple.regionStartAria(start.toFixed(1))}
+                      />
+                      <button
+                        type="button"
+                        className={`${styles.simpleEdge} ${trimHandles ? styles.simpleEdgeHot : ''}`}
+                        data-edge="end"
+                        style={{ left: `${endPct}%` }}
+                        aria-label={t.simple.regionEndAria(end.toFixed(1))}
+                      />
+                    </>
                   ) : (
                     <>
                       <button
@@ -847,7 +876,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     </>
                   )}
                   <div ref={playheadRef} className={styles.playhead} />
-                  {showTransients && !sensory
+                  {showTransients && !sensory && !simple
                     ? transients.map((t, i) => {
                         const left = pct(t)
                         if (left < -1 || left > 101) return null
@@ -873,7 +902,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 </div>
               )}
             </div>
-            <div className={styles.ruler} hidden={sensory}>
+            <div className={styles.ruler} hidden={sensory || simple}>
               {loaded
                 ? ticks.map((mark) => (
                     <span key={mark.t} className={styles.tick} style={{ left: `${mark.frac * 100}%` }}>
@@ -885,7 +914,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 && !sensory ? (
+          {loaded && duration > 0 && !sensory && !simple ? (
             <Overview
               duration={duration}
               start={start}

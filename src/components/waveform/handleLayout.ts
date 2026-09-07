@@ -133,3 +133,23 @@ export function fadeLengthFromDiamondTime(side: 'in' | 'out', start: number, end
 export function fadeKnobMaxSec(regionSec: number): number {
   return Math.max(8, Math.max(0, regionSec))
 }
+
+export type SimpleWaveformDragKind = 'start' | 'end' | 'pan' | 'playhead'
+
+/** Full-height trim edges for Simple mode — 44px targets, no fade diamonds. */
+export function resolveSimpleWaveformDrag(opts: {
+  altOrMiddle: boolean
+  x: number
+  startX: number
+  endX: number
+  hitPx: number
+}): SimpleWaveformDragKind {
+  if (opts.altOrMiddle) return 'pan'
+  const hit = Math.max(44, opts.hitPx)
+  const nearStart = Math.abs(opts.x - opts.startX) < hit
+  const nearEnd = Math.abs(opts.x - opts.endX) < hit
+  if (nearStart && nearEnd) return Math.abs(opts.x - opts.startX) <= Math.abs(opts.x - opts.endX) ? 'start' : 'end'
+  if (nearStart) return 'start'
+  if (nearEnd) return 'end'
+  return 'playhead'
+}

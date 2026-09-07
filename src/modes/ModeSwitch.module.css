@@ -21,6 +21,18 @@
   border-radius: 999px;
 }
 
+.compact {
+  gap: 0;
+  padding: 2px;
+}
+
+.compact .opt {
+  padding: 6px 7px;
+  min-height: 32px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
 .opt.on {
   color: var(--text-primary);
   background: color-mix(in srgb, var(--text-primary) 10%, transparent);

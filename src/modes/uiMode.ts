@@ -1,9 +1,11 @@
 export const UI_MODE_STORAGE_KEY = 'firstsound.uiMode'
 
-export type UiMode = 'sensory' | 'technical'
+export const UI_MODES = ['simple', 'sensory', 'technical'] as const
+
+export type UiMode = (typeof UI_MODES)[number]
 
 export function parseUiMode(raw: string | null | undefined): UiMode | null {
-  if (raw === 'sensory' || raw === 'technical') return raw
+  if (raw === 'simple' || raw === 'sensory' || raw === 'technical') return raw
   return null
 }
 
