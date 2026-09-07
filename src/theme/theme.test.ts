@@ -26,6 +26,8 @@ describe('theme tokens', () => {
     expect(parseThemePreference('user:s12abc')).toBe('user:s12abc')
     expect(THEME_IDS).toContain('light-studio')
     expect(THEME_IDS).toContain('dusk')
+    expect(THEME_IDS).toContain('low-vision')
+    expect(parseThemePreference('low-vision')).toBe('low-vision')
     expect(THEME_IDS).toContain('custom')
     expect(parseThemePreference('dusk')).toBe('dusk')
   })

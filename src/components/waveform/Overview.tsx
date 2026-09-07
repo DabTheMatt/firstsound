@@ -184,7 +184,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
       aria-label={t.waveform.overviewAria}
       onPointerDown={onPointerDown}
     >
-      <canvas ref={canvasRef} className={styles.canvas} />
+      <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
       {duration > 0 ? (
         <>
           <div
@@ -198,15 +198,15 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
             <button
               type="button"
               className={`${styles.edge} ${styles.edgeL}`}
-              aria-label="Zoom view start"
-              title="Drag to zoom"
+              aria-label={t.waveform.zoomViewStart}
+              title={t.waveform.zoomViewStart}
               onPointerDown={(e) => onResizeEdge('start', e)}
             />
             <button
               type="button"
               className={`${styles.edge} ${styles.edgeR}`}
-              aria-label="Zoom view end"
-              title="Drag to zoom"
+              aria-label={t.waveform.zoomViewEnd}
+              title={t.waveform.zoomViewEnd}
               onPointerDown={(e) => onResizeEdge('end', e)}
             />
           </div>

@@ -83,6 +83,8 @@ export type Messages = {
     regionEnd: string
     tracksAria: string
     overviewAria: string
+    zoomViewStart: string
+    zoomViewEnd: string
   }
   transport: {
     play: string
@@ -118,6 +120,13 @@ export type Messages = {
     bypassShort: string
     kill: (name: string) => string
     killTitle: (name: string) => string
+    moveEarlier: string
+    moveLater: string
+    movedBefore: (moved: string, other: string) => string
+    movedAfter: (moved: string, other: string) => string
+    bypassOn: (name: string) => string
+    bypassOff: (name: string) => string
+    bypassedTag: string
   }
   modules: Record<ModuleType, string>
   inspector: {
@@ -151,6 +160,7 @@ export type Messages = {
     panning: string
     bypassed: string
     active: string
+    mute: string
     sampleTempo: string
     source: string
     taps: string
@@ -226,10 +236,38 @@ export type Messages = {
     resetClipTitle: string
     clip: string
     range: string
+    strip: string
+    peak: (channel: string) => string
+    clipState: (state: string) => string
+    clipOn: string
+    clipOff: string
+    readout: (channel: string, value: string) => string
   }
   lfo: {
     center: string
     lead: (slots: number) => string
+  }
+  a11y: {
+    title: string
+    theme: string
+    reduceMotion: string
+    larger: string
+    focus: string
+    tips: string
+    sr: string
+    srHelp: string
+    shortcuts: string
+    shortcutsHelp: string
+    shortcutsTitle: string
+    shortcutTab: string
+    shortcutArrows: string
+    shortcutShiftArrows: string
+    shortcutHomeEnd: string
+    shortcutPage: string
+    shortcutReset: string
+    shortcutSpace: string
+    shortcutEsc: string
+    skipToMain: string
   }
 }
 
@@ -316,6 +354,8 @@ export const EN: Messages = {
     regionEnd: 'Region end',
     tracksAria: 'Tracks',
     overviewAria: 'Sample overview. Click to set the playhead.',
+    zoomViewStart: 'Zoom view start',
+    zoomViewEnd: 'Zoom view end',
   },
   transport: {
     play: 'Play',
@@ -351,6 +391,13 @@ export const EN: Messages = {
     bypassShort: 'Bypass',
     kill: (name) => `Kill ${name}`,
     killTitle: (name) => `Kill ${name} tails`,
+    moveEarlier: 'Move earlier in the signal chain',
+    moveLater: 'Move later in the signal chain',
+    movedBefore: (moved, other) => `${moved} moved before ${other}.`,
+    movedAfter: (moved, other) => `${moved} moved after ${other}.`,
+    bypassOn: (name) => `${name} bypass, on`,
+    bypassOff: (name) => `${name} bypass, off`,
+    bypassedTag: 'Bypassed',
   },
   modules: {
     gain: 'Input',
@@ -398,6 +445,7 @@ export const EN: Messages = {
     panning: 'Panning',
     bypassed: 'Bypassed',
     active: 'Active',
+    mute: 'Mute',
     sampleTempo: 'Sample tempo',
     source: 'Source',
     taps: 'Taps',
@@ -436,6 +484,7 @@ export const EN: Messages = {
       'light-studio': 'Light Studio',
       oled: 'OLED',
       dusk: 'Dusk',
+      'low-vision': 'High Contrast / Low Vision',
       custom: 'Custom',
     },
   },
@@ -544,10 +593,38 @@ export const EN: Messages = {
     resetClipTitle: 'Reset clip indicator',
     clip: 'Clip',
     range: 'Meter range',
+    strip: 'Output meters',
+    peak: (channel) => `Peak meter ${channel}`,
+    clipState: (state) => `Clip indicator, ${state}. Activate to reset.`,
+    clipOn: 'clipping',
+    clipOff: 'clear',
+    readout: (channel, value) => `${channel} peak ${value}`,
   },
   lfo: {
     center: 'LFO center',
     lead: (slots) => `Running modulators and their targets. Up to ${slots} LFOs on each effect.`,
+  },
+  a11y: {
+    title: 'Accessibility',
+    theme: 'High Contrast / Low Vision Theme',
+    reduceMotion: 'Reduce motion',
+    larger: 'Larger interface',
+    focus: 'Enhanced focus',
+    tips: 'Tooltips / parameter descriptions',
+    sr: 'Screen reader optimizations',
+    srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
+    shortcuts: 'Transport keyboard shortcuts',
+    shortcutsHelp: 'When on, Space plays or pauses if focus is not on a control. Tab is never captured.',
+    shortcutsTitle: 'Keyboard shortcuts',
+    shortcutTab: 'Tab / Shift+Tab: move between controls',
+    shortcutArrows: 'Arrow keys: change the focused knob or slider',
+    shortcutShiftArrows: 'Shift+Arrow: fine adjustment',
+    shortcutHomeEnd: 'Home / End: minimum / maximum',
+    shortcutPage: 'Page Up / Page Down: larger steps',
+    shortcutReset: 'Delete or Backspace: reset the focused parameter',
+    shortcutSpace: 'Space: play or pause when focus is not on a control',
+    shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
+    skipToMain: 'Skip to main controls',
   },
 }
 
@@ -634,6 +711,8 @@ export const PL: Messages = {
     regionEnd: 'Koniec regionu',
     tracksAria: 'Ślady',
     overviewAria: 'Przegląd sampla. Kliknij, aby ustawić głowicę.',
+    zoomViewStart: 'Powiększ od początku widoku',
+    zoomViewEnd: 'Powiększ od końca widoku',
   },
   transport: {
     play: 'Odtwórz',
@@ -669,6 +748,13 @@ export const PL: Messages = {
     bypassShort: 'Omijaj',
     kill: (name) => `Utnij ${name}`,
     killTitle: (name) => `Utnij ogony ${name}`,
+    moveEarlier: 'Przesuń wcześniej w torze',
+    moveLater: 'Przesuń później w torze',
+    movedBefore: (moved, other) => `${moved} przeniesiono przed ${other}.`,
+    movedAfter: (moved, other) => `${moved} przeniesiono za ${other}.`,
+    bypassOn: (name) => `${name} bypass, włączony`,
+    bypassOff: (name) => `${name} bypass, wyłączony`,
+    bypassedTag: 'Wyłączony',
   },
   modules: {
     gain: 'Wejście',
@@ -716,6 +802,7 @@ export const PL: Messages = {
     panning: 'Panorama',
     bypassed: 'Omijany',
     active: 'Aktywny',
+    mute: 'Wycisz',
     sampleTempo: 'Tempo sampla',
     source: 'Źródło',
     taps: 'Odbicia',
@@ -754,6 +841,7 @@ export const PL: Messages = {
       'light-studio': 'Light Studio',
       oled: 'OLED',
       dusk: 'Dusk',
+      'low-vision': 'Wysoki kontrast / słabowidzący',
       custom: 'Własny',
     },
   },
@@ -862,10 +950,38 @@ export const PL: Messages = {
     resetClipTitle: 'Reset wskaźnika clip',
     clip: 'Clip',
     range: 'Zakres miernika',
+    strip: 'Metery wyjścia',
+    peak: (channel) => `Metr szczytowy ${channel}`,
+    clipState: (state) => `Wskaźnik przesterowania, ${state}. Aktywuj, aby wyzerować.`,
+    clipOn: 'przesterowanie',
+    clipOff: 'czysty',
+    readout: (channel, value) => `${channel} szczyt ${value}`,
   },
   lfo: {
     center: 'Centrum LFO',
     lead: (slots) => `Działające modulacje i ich cele. Do ${slots} LFO na każdy efekt.`,
+  },
+  a11y: {
+    title: 'Dostępność',
+    theme: 'Wysoki kontrast / słabowidzący',
+    reduceMotion: 'Ogranicz animacje',
+    larger: 'Większy interfejs',
+    focus: 'Wzmocniony fokus',
+    tips: 'Podpowiedzi / opisy parametrów',
+    sr: 'Optymalizacje czytnika ekranu',
+    srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
+    shortcuts: 'Skróty klawiszowe transportu',
+    shortcutsHelp: 'Gdy włączone, spacja odtwarza lub pauzuje, jeśli fokus nie jest na kontrolce. Tab nigdy nie jest przechwytywany.',
+    shortcutsTitle: 'Skróty klawiszowe',
+    shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
+    shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
+    shortcutShiftArrows: 'Shift+strzałka: precyzyjna regulacja',
+    shortcutHomeEnd: 'Home / End: minimum / maksimum',
+    shortcutPage: 'Page Up / Page Down: większy krok',
+    shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
+    shortcutSpace: 'Spacja: odtwarzanie lub pauza, gdy fokus nie jest na kontrolce',
+    shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
+    skipToMain: 'Przejdź do głównych parametrów',
   },
 }
 

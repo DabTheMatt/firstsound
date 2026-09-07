@@ -554,7 +554,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
 
   if (!active) return null
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} role="region" aria-label="Spectrum analyzer">
       <div className={styles.stage}>
       <div
         className={styles.chrome}
@@ -721,7 +721,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         <canvas
           ref={canvasRef}
           className={styles.canvas}
-          aria-label="Spectrum analyzer"
+          aria-hidden="true"
           onPointerMove={(event) => {
             if (drag.current) return
             const canvas = canvasRef.current

@@ -7,6 +7,7 @@ import {
   type SensoryFeeling,
 } from '../sensoryFeelings'
 import { AXIS_LFO_BY_ID, axisLfoActive } from '../mapping/axisLfos'
+import { applySliderKey, sensoryDescription } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { defaultSensoryValues, type SensoryValues } from '../sensoryState'
@@ -44,7 +45,7 @@ function levelText(
 }
 
 export function FeelingRail({ values, activeId, onActive, onEditing, onValues, onCommit }: Props) {
-  const { t, feeling: feelingCopy } = useI18n()
+  const { t, locale, feeling: feelingCopy } = useI18n()
   const drag = useRef<{
     pointerId: number
     originY: number
@@ -83,27 +84,19 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
   }
 
   const onKey = (event: KeyboardEvent<HTMLButtonElement>, feeling: SensoryFeeling) => {
-    const step = event.shiftKey ? 0.04 : 0.12
     const amount = feelingAmount(values, feeling)
-    const lo = feeling.kind === 'bipolar' ? -1 : 0
-    if (event.key === 'Home' || event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault()
-      onActive(feeling.id)
-      onEditing(feeling.id)
+    const n = feeling.kind === 'bipolar' ? (amount + 1) / 2 : amount
+    const next = applySliderKey(event, n)
+    if (!next) return
+    event.preventDefault()
+    onActive(feeling.id)
+    onEditing(feeling.id)
+    if (next.kind === 'reset') {
       onValues(restFeeling(values, feeling))
       return
     }
-    if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
-      event.preventDefault()
-      onActive(feeling.id)
-      onEditing(feeling.id)
-      onValues(applyFeelingAmount(values, feeling, clamp(amount + step, lo, 1)))
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
-      event.preventDefault()
-      onActive(feeling.id)
-      onEditing(feeling.id)
-      onValues(applyFeelingAmount(values, feeling, clamp(amount - step, lo, 1)))
-    }
+    const amt = feeling.kind === 'bipolar' ? next.normalized * 2 - 1 : next.normalized
+    onValues(applyFeelingAmount(values, feeling, amt))
   }
 
   return (
@@ -115,7 +108,7 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
 
   function renderRail(side: 'left' | 'right') {
     return (
-    <div className={`${styles.rail} ${styles[side]} ${focused ? styles.focused : ''}`} role="listbox" aria-label={side === 'left' ? t.sensory.feelingsLeft : t.sensory.feelingsRight}>
+    <div className={`${styles.rail} ${styles[side]} ${focused ? styles.focused : ''}`} role="group" aria-label={side === 'left' ? t.sensory.feelingsLeft : t.sensory.feelingsRight}>
       {side === 'left' ? (
       <button
         type="button"
@@ -141,15 +134,15 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
           <button
             key={feeling.id}
             type="button"
-            role="option"
+            role="slider"
             data-axis={feeling.id}
             className={`${styles.item} ${on ? styles.on : ''} ${focused && !on ? styles.dim : ''} ${Math.abs(amount) > 0.04 ? styles.lit : ''} ${lfoOn ? styles.lfoOn : ''}`}
-            aria-selected={on}
             aria-label={copy.aria}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={now}
             aria-valuetext={levelText(feeling, amount, copy, t.sensory.restLevel)}
+            aria-describedby={`feeling-desc-${feeling.id}`}
             title={`${copy.from} → ${copy.to}. ${t.sensory.doubleClickRest}`}
             onPointerDown={(event) => {
               if (event.button !== 0) return
@@ -192,6 +185,9 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
               }
             }}
           >
+            <span id={`feeling-desc-${feeling.id}`} className="sr-only">
+              {sensoryDescription(feeling.id, locale)}
+            </span>
             <FeelingIcon feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
             {lfoOn ? <span className={styles.lfoMark} aria-hidden="true" /> : null}
             <span className={styles.copy}>

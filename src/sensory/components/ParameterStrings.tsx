@@ -9,6 +9,7 @@ import {
 import { AXIS_LFO_BY_ID, axisLfoActive, resolvedAxisLfo } from '../mapping/axisLfos'
 import type { SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
+import { applySliderKey, formatPercentValue, sensoryDescription } from '../../a11y'
 import { useI18n } from '../../i18n'
 import {
   amountToT,
@@ -37,10 +38,6 @@ type Props = {
 
 const HIT_PX = 18
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n))
-}
-
 function feelingOf(id: SensoryAxisId) {
   return SENSORY_FEELINGS.find((f) => f.id === id)!
 }
@@ -55,7 +52,7 @@ export function ParameterStrings({
   onCommit,
   interactive = true,
 }: Props) {
-  const { t, feeling: feelingCopy } = useI18n()
+  const { t, locale, feeling: feelingCopy } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const valuesRef = useRef(values)
   const drag = useRef<{ pointerId: number; id: SensoryAxisId } | null>(null)
@@ -128,27 +125,19 @@ export function ParameterStrings({
 
   const onKey = (event: KeyboardEvent<SVGLineElement>, id: SensoryAxisId) => {
     const feeling = feelingOf(id)
-    const step = event.shiftKey ? 0.04 : 0.12
     const amount = feelingAmount(values, feeling)
-    const lo = feeling.kind === 'bipolar' ? -1 : 0
-    if (event.key === 'Home' || event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault()
-      onActive(id)
-      onEditing(id)
+    const n = feeling.kind === 'bipolar' ? (amount + 1) / 2 : amount
+    const next = applySliderKey(event, n)
+    if (!next) return
+    event.preventDefault()
+    onActive(id)
+    onEditing(id)
+    if (next.kind === 'reset') {
       onValues(restFeeling(values, feeling))
       return
     }
-    if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
-      event.preventDefault()
-      onActive(id)
-      onEditing(id)
-      onValues(applyFeelingAmount(values, feeling, clamp(amount + step, lo, 1)))
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
-      event.preventDefault()
-      onActive(id)
-      onEditing(id)
-      onValues(applyFeelingAmount(values, feeling, clamp(amount - step, lo, 1)))
-    }
+    const amt = feeling.kind === 'bipolar' ? next.normalized * 2 - 1 : next.normalized
+    onValues(applyFeelingAmount(values, feeling, amt))
   }
 
   return (
@@ -206,6 +195,8 @@ export function ParameterStrings({
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={now}
+                  aria-valuetext={formatPercentValue(feeling.kind === 'bipolar' ? (amount + 1) / 2 : amount, locale)}
+                  aria-describedby={`string-desc-${geom.id}`}
                   onPointerDown={(event) => {
                     if (event.button !== 0) return
                     event.preventDefault()
@@ -274,6 +265,7 @@ export function ParameterStrings({
                     </circle>
                   </>
                 ) : null}
+                <title id={`string-desc-${geom.id}`}>{sensoryDescription(geom.id, locale)}</title>
                 <circle className={`${styles.node} ${tone}`} cx={bead.x} cy={bead.y} r={on ? 5.5 : 3.6} />
                 <text
                   className={`${styles.label} ${tone}`}

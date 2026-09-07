@@ -98,6 +98,7 @@ export function CompactTransport({
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
           aria-pressed={loop}
+          aria-label="Loop selection"
           onClick={() => engine.setLoop(!loop)}
         >
           {t.transport.loop}

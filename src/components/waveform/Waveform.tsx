@@ -729,6 +729,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         <div
           className={styles.wrap}
           hidden={!showWave}
+          role="region"
+          aria-label="Waveform editor"
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
           <div className={styles.wavePane}>
@@ -753,11 +755,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 })}
               </div>
             ) : null}
-            <canvas ref={canvasRef} className={styles.canvas} />
+            <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
             {loaded && snap.params.makeMono > 0.5 ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
-            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
+            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} aria-hidden="true" />
             <div
               ref={overlayRef}
               className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}

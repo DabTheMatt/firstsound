@@ -19,6 +19,9 @@ export function Toggle({ pressed, label, onToggle, compact }: Props) {
         onToggle()
       }}
     >
+      <span className={styles.mark} aria-hidden="true">
+        {pressed ? '●' : '○'}
+      </span>
       {label}
     </button>
   )

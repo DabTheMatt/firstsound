@@ -211,7 +211,8 @@ export function applyResolvedTheme(theme: ThemeId): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   root.dataset.theme = theme
-  const dark = theme === 'light-studio' ? false : theme === 'custom' ? isDarkColor(currentCustom.bgApp) : true
+  const dark =
+    theme === 'light-studio' ? false : theme === 'custom' ? isDarkColor(currentCustom.bgApp) : true
   root.style.colorScheme = dark ? 'dark' : 'light'
   if (theme === 'custom') applyCustomCss(root, currentCustom)
   else clearCustomCss(root)

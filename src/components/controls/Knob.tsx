@@ -2,6 +2,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, parseTypedParam, toNormalized } from '../../audio/parameters/mapping'
 import { lfoRangeNormalized } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
+import { formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { ValueKnob } from './ValueKnob'
@@ -28,7 +29,7 @@ type Props = {
 }
 
 export function Knob({ id, value, liveValue, lfoDepth }: Props) {
-  const { paramLabel } = useI18n()
+  const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const live = liveValue ?? value
   const mapped = liveValue != null
@@ -37,6 +38,8 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
     <ValueKnob
       label={paramLabel(id)}
       valueText={formatParamValue(value, def)}
+      valueTextAccessible={formatAccessibleValue(live, def, locale)}
+      description={paramDescription(id, locale)}
       visualValueText={mapped ? formatParamValue(live, def) : undefined}
       baseValueText={mapped ? formatParamValue(value, def) : undefined}
       normalized={baseN}

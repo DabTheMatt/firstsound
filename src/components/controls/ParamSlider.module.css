@@ -13,11 +13,11 @@
 }
 
 .label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--font-size-label, 10px);
+  font-weight: var(--font-weight-label, 500);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .readouts {
@@ -33,14 +33,16 @@
 }
 
 .value {
-  font-size: 12px;
+  font-size: var(--font-size-value, 12px);
+  font-weight: var(--font-weight-value, 500);
   font-variant-numeric: tabular-nums;
   color: var(--accent-primary);
 }
 
 .track {
   position: relative;
-  height: 44px;
+  min-height: var(--hit-min, 44px);
+  height: var(--hit-min, 44px);
   border-radius: 8px;
   background: var(--bg-control);
   overflow: hidden;

@@ -15,7 +15,7 @@ export function TransportButton({ playing, onToggle, disabled }: Props) {
       className={styles.play}
       onClick={onToggle}
       disabled={disabled}
-      aria-label={playing ? t.transport.stop : t.transport.play}
+      aria-label={playing ? t.transport.pause : t.transport.play}
     >
       {playing ? (
         <svg className={styles.icon} width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

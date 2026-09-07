@@ -218,7 +218,7 @@ export function SoundRange({
 
   return (
     <div className={styles.range}>
-      <canvas ref={canvasRef} className={styles.canvas} />
+      <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
       <div
         className={`${styles.fade} ${scene === 'canyon' ? styles.fadeCanyon : ''} ${scene === 'mirror' ? styles.fadeMirror : ''}`}
         aria-hidden="true"

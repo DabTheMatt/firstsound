@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { applySliderKey } from '../../a11y/keyboard'
 import { wheelToNormalized } from './scrub'
 import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
 import styles from './Knob.module.css'
@@ -6,6 +7,8 @@ import styles from './Knob.module.css'
 type Props = {
   label: string
   valueText: string
+  valueTextAccessible?: string
+  description?: string
   normalized: number
   visualNormalized?: number
   visualValueText?: string
@@ -31,6 +34,8 @@ const DRAG_PX = 140
 export function ValueKnob({
   label,
   valueText,
+  valueTextAccessible,
+  description,
   normalized,
   visualNormalized,
   visualValueText,
@@ -47,10 +52,14 @@ export function ValueKnob({
   bipolar = false,
   markerNormalized,
 }: Props) {
-  const dialRef = useRef<HTMLButtonElement>(null)
+  const dialRef = useRef<HTMLDivElement>(null)
   const valueRef = useRef(normalized)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
+  const [tipOpen, setTipOpen] = useState(false)
+  const labelId = useId()
+  const descId = useId()
+  const spoken = valueTextAccessible ?? valueText
 
   useEffect(() => {
     valueRef.current = normalized
@@ -71,7 +80,7 @@ export function ValueKnob({
     return () => el.removeEventListener('wheel', onWheel)
   }, [onChange])
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const target = event.currentTarget
     target.setPointerCapture(event.pointerId)
@@ -120,6 +129,24 @@ export function ValueKnob({
     target.addEventListener('lostpointercapture', up)
   }
 
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      setDraft(valueText)
+      setEditing(true)
+      return
+    }
+    if (event.key === 'Escape') {
+      setTipOpen(false)
+      return
+    }
+    const next = applySliderKey(event, valueRef.current)
+    if (!next) return
+    event.preventDefault()
+    if (next.kind === 'reset') onReset?.()
+    else onChange(next.normalized)
+  }
+
   const shown = visualNormalized ?? normalized
   const shownText = visualValueText ?? valueText
   const cx = 42
@@ -141,19 +168,40 @@ export function ValueKnob({
     markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
 
   return (
-    <div className={`${styles.knob} ${compact ? styles.compact : ''}`}>
-      <p className={styles.label}>{label}</p>
-      <button
+    <div
+      className={`${styles.knob} ${compact ? styles.compact : ''}`}
+      onMouseEnter={() => setTipOpen(true)}
+      onMouseLeave={() => setTipOpen(false)}
+    >
+      <p className={styles.label} id={labelId}>
+        {label}
+      </p>
+      {description ? (
+        <p id={descId} className="sr-only">
+          {description}
+        </p>
+      ) : null}
+      {description && tipOpen ? (
+        <span className={styles.tip} role="tooltip">
+          {description}
+        </span>
+      ) : null}
+      <div
         ref={dialRef}
-        type="button"
+        role="slider"
+        tabIndex={0}
         className={styles.dial}
-        aria-label={`${label} ${shownText}`}
+        aria-labelledby={labelId}
+        aria-describedby={description ? descId : undefined}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={now ?? Number(shown.toFixed(3))}
-        aria-valuetext={shownText}
+        aria-valuetext={spoken}
         onPointerDown={onPointerDown}
         onDoubleClick={() => onReset?.()}
+        onKeyDown={onKeyDown}
+        onFocus={() => setTipOpen(true)}
+        onBlur={() => setTipOpen(false)}
       >
         <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
@@ -209,7 +257,7 @@ export function ValueKnob({
             strokeLinecap="round"
           />
         </svg>
-      </button>
+      </div>
       {editing ? (
         <input
           className={styles.valueInput}

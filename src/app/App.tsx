@@ -5,7 +5,8 @@ import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
-import { isTypingTarget } from './keys'
+import { isTypingTarget, isTransportShortcutTarget } from './keys'
+import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
@@ -104,6 +105,7 @@ function histEqual(a: Hist, b: Hist): boolean {
 
 export default function App() {
   const { t } = useI18n()
+  const { settings: a11y } = useA11ySettings()
   const snap = useEngine()
   const { mode, width: viewportWidth } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
@@ -150,6 +152,14 @@ export default function App() {
   }, [sensory])
 
   useEffect(() => {
+    const onFocusIn = (event: FocusEvent) => {
+      scrollFocusedIntoView(event.target)
+    }
+    document.addEventListener('focusin', onFocusIn)
+    return () => document.removeEventListener('focusin', onFocusIn)
+  }, [])
+
+  useEffect(() => {
     if (uiMode === 'sensory' || (viz !== 'spectrum' && viz !== 'split' && viz !== 'eq-split')) {
       engine.setSpectrumFftSize(ANALYSER_FFT_IDLE)
     }
@@ -174,8 +184,14 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        setLfoCenterOpen(false)
+        return
+      }
       if (isTypingTarget(event.target)) return
       if (event.code === 'Space') {
+        if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
         event.preventDefault()
         event.stopPropagation()
         if (event.repeat) return
@@ -202,6 +218,7 @@ export default function App() {
     const onKeyUp = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target)) return
       if (event.code === 'Space') {
+        if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
         event.preventDefault()
         event.stopPropagation()
       }
@@ -212,7 +229,7 @@ export default function App() {
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('keyup', onKeyUp, true)
     }
-  }, [])
+  }, [a11y.shortcutsEnabled])
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
   const waveRef = useRef<WaveformHandle>(null)
@@ -432,6 +449,7 @@ export default function App() {
         <button type="button" onClick={() => applyHistory(redoHistory(history))}>
           {t.settings.redo}
         </button>
+        <A11ySettings />
       </div>
     ),
     [history, snap.hasSource, snap.recording, t],
@@ -474,7 +492,7 @@ export default function App() {
         aria-label={t.settings.close}
         onClick={() => setMenuOpen(false)}
       />
-      <div className={styles.settingsFly} ref={settingsRef}>
+      <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
         {actions}
       </div>
     </>
@@ -483,6 +501,8 @@ export default function App() {
   if (uiMode === null) {
     return (
       <>
+        <SkipLink />
+        <LiveAnnouncer />
         <ModeGate onChoose={chooseMode} />
         {fileInputs}
       </>
@@ -492,6 +512,8 @@ export default function App() {
   if (uiMode === 'sensory') {
     return (
       <>
+        <SkipLink />
+        <LiveAnnouncer />
         <SensoryShell
           snap={snap}
           edit={edit}
@@ -546,6 +568,8 @@ export default function App() {
         if (file) void loadSample(file)
       }}
     >
+      <SkipLink />
+      <LiveAnnouncer />
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         style={
@@ -596,7 +620,7 @@ export default function App() {
               aria-label={t.settings.close}
               onClick={() => setMenuOpen(false)}
             />
-            <div className={styles.settingsFly} ref={settingsRef}>
+            <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
               {actions}
             </div>
           </>
@@ -607,6 +631,7 @@ export default function App() {
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
+        <div id="main-controls">
         <SignalChain
           chain={snap.chain}
           selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
@@ -614,6 +639,7 @@ export default function App() {
           touch={compact}
           minimal={isPhoneLayout}
         />
+        </div>
 
         <WaveformToolbar
           tool={tool}

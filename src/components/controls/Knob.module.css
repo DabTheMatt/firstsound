@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: var(--control-gap, 2px);
   width: 100%;
   max-width: 96px;
   min-width: 0;
@@ -11,26 +11,30 @@
   user-select: none;
   -webkit-user-select: none;
   padding-top: 12px;
+  position: relative;
 }
 
 .label {
   margin: 2px 0 0;
   width: 100%;
   padding: 0 4px;
-  font-size: 9px;
-  font-weight: 500;
+  font-size: var(--font-size-label, 9px);
+  font-weight: var(--font-weight-label, 500);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.25;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .dial {
   width: 84px;
   height: 84px;
+  min-width: var(--hit-min, 44px);
+  min-height: var(--hit-min, 44px);
   max-width: 100%;
   padding: 0;
   border: 0;
@@ -38,6 +42,7 @@
   color: inherit;
   touch-action: none;
   flex: none;
+  cursor: ns-resize;
 }
 
 .dial svg {
@@ -55,15 +60,37 @@
   width: 100%;
   max-width: 100%;
   padding: 0 2px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--font-size-value, 12px);
+  font-weight: var(--font-weight-value, 500);
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: var(--accent-primary);
   line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 4px);
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: min(220px, 70vw);
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-panel-elevated);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+html[data-a11y-tips='off'] .tip {
+  display: none;
 }
 
 .baseValue {

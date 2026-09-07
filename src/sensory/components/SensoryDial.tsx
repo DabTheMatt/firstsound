@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { applySliderKey } from '../../a11y/keyboard'
 import type { SensoryDialSpec } from '../sensoryParameters'
 import { dialAmount, valueFromDial } from '../sensoryState'
 import styles from './SensoryDial.module.css'
@@ -75,20 +76,11 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
   }
 
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
-    const step = event.shiftKey ? 0.02 : 0.08
-    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      applyAmount(amount + step)
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-      event.preventDefault()
-      applyAmount(amount - step)
-    } else if (event.key === 'Home') {
-      event.preventDefault()
-      applyAmount(0)
-    } else if (event.key === 'End') {
-      event.preventDefault()
-      applyAmount(1)
-    }
+    const next = applySliderKey(event, amount)
+    if (!next) return
+    event.preventDefault()
+    if (next.kind === 'reset') applyAmount(bipolar ? 0.5 : 0)
+    else applyAmount(next.normalized)
   }
 
   const valueNow = bipolar ? Math.round(axisValue * 100) : Math.round(amount * 100)

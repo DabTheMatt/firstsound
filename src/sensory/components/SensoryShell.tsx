@@ -139,6 +139,7 @@ export function SensoryShell({
       </header>
       {menuOpen ? menu : null}
 
+      <div id="main-controls">
       <SoundRange
         duration={snap.sourceDuration || snap.duration}
         loaded={snap.sampleLoaded}
@@ -185,6 +186,7 @@ export function SensoryShell({
         }}
         onCommit={onCommitSensory}
       />
+      </div>
 
       <div className={styles.bar}>
         <button

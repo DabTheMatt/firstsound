@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   INSERTABLE_TYPES,
@@ -8,6 +8,7 @@ import {
   type ChainModule,
   type ModuleType,
 } from '../../audio/chain/chain'
+import { announce } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
@@ -33,6 +34,27 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const closeAdd = () => {
     setOpenAdd(null)
     setMenuPos(null)
+  }
+
+  useEffect(() => {
+    if (openAdd == null) return
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') closeAdd()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openAdd])
+
+  const moveModule = (index: number, dir: -1 | 1) => {
+    const mod = chain[index]
+    if (!mod || isFixedType(mod.type)) return
+    const dest = index + dir
+    if (dest < 1 || dest >= chain.length - 1) return
+    const other = chain[dest]
+    engine.reorderModules(index, dest)
+    if (!other) return
+    const vars = [moduleName(mod.type), moduleName(other.type)] as const
+    announce(dir < 0 ? t.chain.movedBefore(vars[0], vars[1]) : t.chain.movedAfter(vars[0], vars[1]))
   }
 
   const beginReorder = (index: number) => {
@@ -103,6 +125,16 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 type="button"
                 className={styles.tab}
                 aria-pressed={active}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
+                  if (fixed) return
+                  if ((event.altKey || event.metaKey) && event.key === 'ArrowLeft') {
+                    event.preventDefault()
+                    moveModule(index, -1)
+                  } else if ((event.altKey || event.metaKey) && event.key === 'ArrowRight') {
+                    event.preventDefault()
+                    moveModule(index, 1)
+                  }
+                }}
                 onPointerDown={(event) => {
                   if (fixed) return
                   if (touch) {
@@ -146,12 +178,42 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 }}
               >
                 {moduleLabel(mod, chain, t.modules)}
+                {mod.bypassed ? <span className={styles.bypassTag}>{t.chain.bypassedTag}</span> : null}
               </button>
+              {!fixed ? (
+                <div className={styles.moves}>
+                  <button
+                    type="button"
+                    className={styles.move}
+                    aria-label={t.chain.moveEarlier}
+                    disabled={index <= 1}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      moveModule(index, -1)
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.move}
+                    aria-label={t.chain.moveLater}
+                    disabled={index >= chain.length - 2}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      moveModule(index, 1)
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+              ) : null}
               {!fixed ? (
                 <button
                   type="button"
                   className={`${styles.power} ${mod.bypassed ? styles.powerOff : styles.powerOn}`}
-                  aria-label={mod.bypassed ? t.chain.enable(moduleName(mod.type)) : t.chain.bypass(moduleName(mod.type))}
+                  aria-label={mod.bypassed ? t.chain.bypassOn(moduleName(mod.type)) : t.chain.bypassOff(moduleName(mod.type))}
+                  aria-pressed={mod.bypassed}
                   title={mod.bypassed ? t.chain.enableShort : t.chain.bypassShort}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {

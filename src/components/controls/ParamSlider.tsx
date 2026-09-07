@@ -1,7 +1,8 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
+import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './ParamSlider.module.css'
@@ -13,12 +14,16 @@ type Props = {
 }
 
 export function ParamSlider({ id, value, liveValue }: Props) {
-  const { paramLabel } = useI18n()
+  const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
   const shown = toNormalized(liveValue ?? value, def)
   const shownValue = liveValue ?? value
   const trackRef = useRef<HTMLDivElement>(null)
+  const labelId = useId()
+  const descId = useId()
+  const spoken = formatAccessibleValue(shownValue, def, locale)
+  const description = paramDescription(id, locale)
 
   useEffect(() => {
     const el = trackRef.current
@@ -65,10 +70,20 @@ export function ParamSlider({ id, value, liveValue }: Props) {
     target.addEventListener('pointercancel', up)
   }
 
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const next = applySliderKey(event, n)
+    if (!next) return
+    event.preventDefault()
+    if (next.kind === 'reset') engine.resetParam(id)
+    else engine.setParam(id, fromNormalized(next.normalized, def))
+  }
+
   return (
     <div className={styles.row}>
       <div className={styles.meta}>
-        <span className={styles.label}>{paramLabel(id)}</span>
+        <span className={styles.label} id={labelId}>
+          {paramLabel(id)}
+        </span>
         <span className={styles.readouts}>
           {liveValue != null ? (
             <span className={styles.baseValue} title="Stored value (LFO zero)">
@@ -78,17 +93,23 @@ export function ParamSlider({ id, value, liveValue }: Props) {
           <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
         </span>
       </div>
+      <p id={descId} className="sr-only">
+        {description}
+      </p>
       <div
         ref={trackRef}
         className={styles.track}
         role="slider"
-        aria-label={paramLabel(id)}
+        tabIndex={0}
+        aria-labelledby={labelId}
+        aria-describedby={descId}
         aria-valuemin={def.min}
         aria-valuemax={def.max}
         aria-valuenow={Number(shownValue.toFixed(3))}
-        aria-valuetext={formatParamValue(shownValue, def)}
+        aria-valuetext={spoken}
         onPointerDown={onPointerDown}
         onDoubleClick={() => engine.resetParam(id)}
+        onKeyDown={onKeyDown}
       >
         <span className={styles.fill} style={{ width: `${shown * 100}%` }} />
       </div>

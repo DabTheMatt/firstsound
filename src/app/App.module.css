@@ -342,6 +342,24 @@
   }
 }
 
+:global(html[data-theme='low-vision']) .page,
+:global(html[data-ui-scale='large']) .page {
+  overflow: auto;
+  max-height: none;
+  height: auto;
+  min-height: 100%;
+}
+
+:global(html[data-theme='low-vision']) .shell,
+:global(html[data-ui-scale='large']) .shell {
+  overflow: auto;
+}
+
+:global(html[data-theme='low-vision']) .work,
+:global(html[data-ui-scale='large']) .work {
+  min-height: 12rem;
+}
+
 .sheet .shell,
 .dock-bottom .work {
   grid-template-columns: minmax(0, 1fr);

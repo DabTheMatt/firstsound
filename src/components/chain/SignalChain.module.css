@@ -156,9 +156,59 @@
   background: var(--bg-control-hover);
 }
 
+.bypassTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.moves {
+  display: flex;
+  flex-direction: column;
+  margin-left: 2px;
+}
+
+.move {
+  min-width: 22px;
+  min-height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.move:disabled {
+  opacity: 0.35;
+}
+
+html[data-theme='low-vision'] .move,
+html[data-ui-scale='large'] .move {
+  min-width: var(--hit-min);
+  min-height: calc(var(--hit-min) / 2);
+}
+
+html[data-theme='low-vision'] .power,
+html[data-ui-scale='large'] .power {
+  width: 28px;
+  height: 28px;
+}
+
+html[data-theme='low-vision'] .tab,
+html[data-ui-scale='large'] .tab {
+  min-height: var(--hit-min);
+}
+
 .tile.bypassed {
-  color: var(--text-disabled);
-  opacity: 0.7;
+  color: var(--text-secondary);
+  opacity: 1;
+  border-style: dashed;
 }
 
 .power {
@@ -183,7 +233,9 @@
 }
 
 .powerOff {
-  color: var(--text-disabled);
+  color: var(--text-primary);
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
 }
 
 .power:hover {

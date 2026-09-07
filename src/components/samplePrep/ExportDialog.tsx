@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
@@ -41,6 +41,14 @@ export function ExportDialog({ snap, onClose }: Props) {
   const estimated = useMemo(() => Math.max(0, prep.selectionEnd - prep.selectionStart), [prep])
   const originalHz = snap.sourceSampleRate
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   const exportNow = () => {
     const result = engine.exportWav({
       name,
@@ -57,7 +65,7 @@ export function ExportDialog({ snap, onClose }: Props) {
   }
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-labelledby="export-title" onClick={onClose}>
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-labelledby="export-title" onClick={onClose}>
       <form
         className={styles.panel}
         onClick={(e) => e.stopPropagation()}

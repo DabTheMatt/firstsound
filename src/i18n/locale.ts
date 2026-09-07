@@ -3,6 +3,7 @@ export const UI_LOCALE_STORAGE_KEY = 'field.uiLocale'
 export const LOCALES = ['en', 'pl'] as const
 
 export type Locale = (typeof LOCALES)[number]
+export type LocalizedText = Record<Locale, string>
 
 export function parseLocale(raw: string | null | undefined): Locale | null {
   if (raw === 'en' || raw === 'pl') return raw

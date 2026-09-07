@@ -35,8 +35,15 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
       if (node && wrapRef.current?.contains(node)) return
       setOpen(false)
     }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('pointerdown', onPointer)
-    return () => document.removeEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
   const active =

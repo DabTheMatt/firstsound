@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
+import { formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { ValueKnob } from '../controls/ValueKnob'
@@ -24,13 +25,14 @@ type Props = {
 }
 
 export function MeterStrip({ channels, range, onRange }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
   const leftHoldRef = useRef<HTMLDivElement>(null)
   const rightHoldRef = useRef<HTMLDivElement>(null)
   const [clipped, setClipped] = useState(false)
+  const [meterReadout, setMeterReadout] = useState('—')
   const hold = useRef({ l: Number.NEGATIVE_INFINITY, r: Number.NEGATIVE_INFINITY, t: 0 })
 
   useEffect(() => {
@@ -77,12 +79,13 @@ export function MeterStrip({ channels, range, onRange }: Props) {
   const sweet = meterSweetBand(minDb)
 
   return (
-    <div className={styles.strip}>
+    <div className={styles.strip} role="region" aria-label={t.meters.strip}>
       <div className={styles.clipRow}>
         <button
           type="button"
           className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
-          aria-label={t.meters.resetClip}
+          aria-pressed={clipped}
+          aria-label={t.meters.clipState(clipped ? t.meters.clipOn : t.meters.clipOff)}
           title={t.meters.resetClipTitle}
           onClick={() => setClipped(false)}
         >
@@ -110,7 +113,17 @@ export function MeterStrip({ channels, range, onRange }: Props) {
             )
           })}
         </div>
-        <div className={styles.meters}>
+        <div
+          className={styles.meters}
+          tabIndex={0}
+          role="group"
+          aria-label={t.meters.peak(stereo ? 'L R' : 'M')}
+          onFocus={() => {
+            const l = hold.current.l
+            const text = Number.isFinite(l) ? `${l.toFixed(1)} dB` : '—'
+            setMeterReadout(t.meters.readout(stereo ? 'L' : 'M', text))
+          }}
+        >
           <div className={styles.lane}>
             <LaneHashes marks={marks} minDb={minDb} />
             <div ref={leftRef} className={styles.fill} />
@@ -127,10 +140,15 @@ export function MeterStrip({ channels, range, onRange }: Props) {
           ) : null}
         </div>
       </div>
+      <p className="sr-only" aria-live="off">
+        {meterReadout}
+      </p>
       <div className={styles.outKnob}>
         <ValueKnob
-          label="Out"
+          label={t.mix.out}
           valueText={formatParamValue(snap.params.outputGain, PARAMS.outputGain)}
+          valueTextAccessible={formatAccessibleValue(snap.params.outputGain, PARAMS.outputGain, locale)}
+          description={paramDescription('outputGain', locale)}
           normalized={toNormalized(snap.params.outputGain, PARAMS.outputGain)}
           min={PARAMS.outputGain.min}
           max={PARAMS.outputGain.max}

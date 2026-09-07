@@ -208,7 +208,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
         onRegionCommit()
       }}
     >
-      <canvas ref={canvasRef} className={styles.strip} />
+      <canvas ref={canvasRef} className={styles.strip} aria-hidden="true" />
       <div ref={playheadRef} className={styles.playhead} aria-hidden="true" />
     </div>
   )

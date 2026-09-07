@@ -447,9 +447,11 @@ function ModuleInspector({
       ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
     )
   return (
-    <>
+    <section className={styles.module} aria-labelledby={`module-${instanceId}-title`}>
       <div className={styles.head}>
-        <h2 className={styles.title}>{mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}</h2>
+        <h2 className={styles.title} id={`module-${instanceId}-title`}>
+          {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
+        </h2>
         <div className={styles.headActions}>
           {type !== 'gain' && type !== 'output' ? (
             <Toggle
@@ -608,10 +610,10 @@ function ModuleInspector({
       {type === 'output' ? (
         <>
           {params(OUT_IDS)}
-          <Toggle pressed={snap.muted} label="Mute" onToggle={() => engine.setMuted(!snap.muted)} />
+          <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
         </>
       ) : null}
-    </>
+    </section>
   )
 }
 
