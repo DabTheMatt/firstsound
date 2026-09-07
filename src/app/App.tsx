@@ -567,6 +567,14 @@ export default function App() {
             writeDsp(engine, { ...dsp, bypass: { ...dsp.bypass, eq: false, limiter: false } })
             commit('dsp')
           }}
+          onApplyTrim={() => {
+            void engine.trimPlayRegion().then((ok) => {
+              if (!ok) return
+              setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+              waveRef.current?.fitSample()
+              commit('dsp')
+            })
+          }}
           mode={uiMode}
           onMode={chooseMode}
         />

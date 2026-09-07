@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { absEnvelope, blurEnvelope, contourCount, echoGhostSpecs, grainBandCount, grainDustCount, mountainLayerSpecs, normalizeEnvelopePeak } from './mountainLayers'
+import { absEnvelope, blurEnvelope, contourCount, echoGhostSpecs, grainBandCount, grainDustCount, mountainLayerSpecs, normalizeEnvelopeDisplay, normalizeEnvelopePeak } from './mountainLayers'
 
 describe('mountainLayerSpecs', () => {
   it('adds a far ridge when there is motion', () => {
@@ -10,6 +10,13 @@ describe('mountainLayerSpecs', () => {
   it('adds distant ridges as space opens', () => {
     expect(mountainLayerSpecs(0.4, 0, 0.3).length).toBe(5)
     expect(mountainLayerSpecs(0.4, 0, 0.7).length).toBe(6)
+  })
+
+  it('softens later ridges as haze (veil/bloom) rises', () => {
+    const clear = mountainLayerSpecs(0.4, 0, 0, 0)
+    const hazy = mountainLayerSpecs(0.4, 0, 0, 0.8)
+    expect(hazy[1]!.blur).toBeGreaterThan(clear[1]!.blur)
+    expect(hazy.length).toBeGreaterThan(clear.length)
   })
 
   it('recedes later ridges on z', () => {
@@ -76,5 +83,21 @@ describe('normalizeEnvelopePeak', () => {
     const out = normalizeEnvelopePeak(src)
     expect(out[1]).toBeCloseTo(1)
     expect(out[0]).toBeCloseTo(0.5)
+  })
+})
+
+describe('normalizeEnvelopeDisplay', () => {
+  it('lifts a quiet fragment so the range can fill the frame', () => {
+    const quiet = new Float32Array([0.02, 0.04, 0.03, 0.025])
+    const out = normalizeEnvelopeDisplay(quiet)
+    expect(Math.max(...out)).toBeGreaterThan(0.85)
+    expect(out[1]).toBeGreaterThan(out[0])
+  })
+
+  it('does not let a single click flatten the rest of the fragment', () => {
+    const clicky = new Float32Array([0.12, 0.14, 1, 0.13, 0.11])
+    const out = normalizeEnvelopeDisplay(clicky)
+    expect(out[2]).toBe(1)
+    expect(out[1]).toBeGreaterThan(0.2)
   })
 })

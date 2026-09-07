@@ -14,20 +14,21 @@ export type EchoGhostSpec = {
   drop: number
 }
 
-export function mountainLayerSpecs(mass: number, motion: number, space = 0): readonly MountainLayerSpec[] {
+export function mountainLayerSpecs(mass: number, motion: number, space = 0, haze = 0): readonly MountainLayerSpec[] {
   const m = Math.min(1, Math.max(0, mass))
   const s = Math.min(1, Math.max(0, space))
+  const h = Math.min(1, Math.max(0, haze))
   const near = 1 - s
-  const far = motion > 0.28 || s > 0.22
+  const far = motion > 0.28 || s > 0.22 || h > 0.35
   const vast = s > 0.55
   const layers: MountainLayerSpec[] = [
-    { scale: 1.02 + near * 0.38 + m * 0.1, blur: 1, alpha: 0.34 + near * 0.16, drop: 0, z: 0 },
-    { scale: 0.72 + m * 0.08, blur: 7 + s * 8, alpha: 0.18, drop: 0.07 + s * 0.04, z: 0.22 + s * 0.08 },
-    { scale: 0.46, blur: 16 + s * 12, alpha: 0.12 + s * 0.04, drop: 0.14 + s * 0.06, z: 0.4 + s * 0.1 },
-    { scale: 0.28, blur: 26 + s * 14, alpha: 0.08 + s * 0.05, drop: 0.2 + s * 0.07, z: 0.58 + s * 0.1 },
+    { scale: 1.02 + near * 0.38 + m * 0.1, blur: 1 + h * 4, alpha: 0.34 + near * 0.16, drop: 0, z: 0 },
+    { scale: 0.72 + m * 0.08, blur: 7 + s * 8 + h * 10, alpha: 0.18, drop: 0.07 + s * 0.04, z: 0.22 + s * 0.08 },
+    { scale: 0.46, blur: 16 + s * 12 + h * 12, alpha: 0.12 + s * 0.04, drop: 0.14 + s * 0.06, z: 0.4 + s * 0.1 },
+    { scale: 0.28, blur: 26 + s * 14 + h * 14, alpha: 0.08 + s * 0.05, drop: 0.2 + s * 0.07, z: 0.58 + s * 0.1 },
   ]
-  if (far) layers.push({ scale: 0.16, blur: 34 + s * 12, alpha: 0.05 + s * 0.05, drop: 0.26 + s * 0.08, z: 0.74 })
-  if (vast) layers.push({ scale: 0.1, blur: 48, alpha: 0.045, drop: 0.34, z: 0.9 })
+  if (far) layers.push({ scale: 0.16, blur: 34 + s * 12 + h * 10, alpha: 0.05 + s * 0.05, drop: 0.26 + s * 0.08, z: 0.74 })
+  if (vast) layers.push({ scale: 0.1, blur: 48 + h * 8, alpha: 0.045, drop: 0.34, z: 0.9 })
   return layers
 }
 
@@ -105,5 +106,27 @@ export function normalizeEnvelopePeak(values: Float32Array): Float32Array {
   const out = new Float32Array(values.length)
   const g = 1 / peak
   for (let i = 0; i < values.length; i++) out[i] = (values[i] ?? 0) * g
+  return out
+}
+
+/**
+ * Fill the displayed fragment: lift quiet regions without letting one click flatten the rest.
+ * Uses a target between mean energy and peak, then clips to 1.
+ */
+export function normalizeEnvelopeDisplay(values: Float32Array): Float32Array {
+  if (values.length === 0) return values
+  let peak = 1e-6
+  let acc = 0
+  for (let i = 0; i < values.length; i++) {
+    const v = Math.abs(values[i] ?? 0)
+    peak = Math.max(peak, v)
+    acc += v
+  }
+  if (peak < 0.18) return normalizeEnvelopePeak(values)
+  const mean = acc / values.length
+  const target = Math.min(peak, Math.max(mean * 2.15, peak * 0.4, 1e-6))
+  const g = 1 / target
+  const out = new Float32Array(values.length)
+  for (let i = 0; i < values.length; i++) out[i] = Math.min(1, (values[i] ?? 0) * g)
   return out
 }

@@ -237,7 +237,19 @@ describe('mapSensoryToDsp', () => {
     const mapped = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 1))
     expect(mapped.params.reverbCorrelate).toBe(1)
     expect(mapped.params.reverbDry + mapped.params.reverbWet).toBeCloseTo(100)
-    expect(mapped.reverbType).toBe('hall')
+    expect(mapped.reverbType).toBe('cathedral')
+  })
+
+  it('walks Space through different reverb presets instead of one hall', () => {
+    const near = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.16))
+    const mid = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 0.42))
+    const far = mapSensoryToDsp(baseDsp(), patchSensoryValue(defaultSensoryValues(), 'space', 1))
+    expect(near.reverbType).toBe('room')
+    expect(mid.reverbType).toBe('hall')
+    expect(far.reverbType).toBe('cathedral')
+    expect(far.params.reverbDecay).toBeGreaterThan(mid.params.reverbDecay)
+    expect(mid.params.reverbDecay).toBeGreaterThan(near.params.reverbDecay)
+    expect(far.params.reverbSize).toBeGreaterThan(near.params.reverbSize)
   })
 
   it('opens plate, bloom, and fuzz as dedicated effect models', () => {

@@ -71,10 +71,15 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
         : computeMinMax(data, 0, data.length, width)
       const mid = height / 2
       const half = height * 0.42
+      let peak = 1e-6
+      for (let x = 0; x < width; x++) {
+        peak = Math.max(peak, Math.abs(peaks.max[x] ?? 0), Math.abs(peaks.min[x] ?? 0))
+      }
+      const g = 1 / peak
       ctx.fillStyle = colorWithAlpha(colors.waveform, 0.42)
       for (let x = 0; x < width; x++) {
-        const hi = peaks.max[x] ?? 0
-        const lo = peaks.min[x] ?? 0
+        const hi = (peaks.max[x] ?? 0) * g
+        const lo = (peaks.min[x] ?? 0) * g
         ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
       }
       const sel0 = (view.start / view.sourceDur) * width

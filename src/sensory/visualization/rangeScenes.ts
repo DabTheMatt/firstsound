@@ -37,9 +37,9 @@ export function gleamRayCount(energy: number): number {
   return Math.max(3, Math.round(4 + Math.min(1, Math.max(0, energy)) * 8))
 }
 
-/** Tiny stereo color offset for drift — keep it sub-pixel so ridges stay readable. */
-export function chromaticShift(drift: number, dpr: number): { r: number; g: number; b: number } {
-  const mag = Math.min(1, Math.max(0, drift)) * 1.4 * dpr
+/** Tiny RGB split from analog dirt (tape, vinyl). Keep it sub-pixel so ridges stay readable. */
+export function chromaticShift(chroma: number, dpr: number): { r: number; g: number; b: number } {
+  const mag = Math.min(1, Math.max(0, chroma)) * 1.4 * dpr
   return { r: -mag, g: mag * 0.12, b: mag }
 }
 

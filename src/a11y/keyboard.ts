@@ -38,21 +38,40 @@ export function applySliderKey(
   return { kind: 'value', normalized: Math.min(1, Math.max(0, normalized + delta)) }
 }
 
-export function isTypingTarget(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
-  const tag = target.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+const TEXTISH_INPUT_TYPES = new Set([
+  '',
+  'text',
+  'search',
+  'email',
+  'password',
+  'url',
+  'tel',
+  'number',
+  'date',
+  'datetime-local',
+  'month',
+  'week',
+  'time',
+])
+
+/** True when Space should insert a character instead of toggling transport. */
+export function isTypingFromTag(tagName: string, inputType = '', isContentEditable = false): boolean {
+  if (isContentEditable) return true
+  const tag = tagName.toUpperCase()
+  if (tag === 'TEXTAREA') return true
+  if (tag === 'INPUT') return TEXTISH_INPUT_TYPES.has(inputType.toLowerCase())
   return false
 }
 
-/** Space should activate the focused control, not steal transport. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  if (!target || !(target instanceof HTMLElement)) return false
+  const type = target instanceof HTMLInputElement ? target.type : ''
+  return isTypingFromTag(target.tagName, type, target.isContentEditable)
+}
+
+/** Space always toggles play/pause unless the user is typing in a text field. */
 export function isTransportShortcutTarget(target: EventTarget | null): boolean {
-  if (isTypingTarget(target)) return false
-  if (!target || !(target instanceof Element)) return true
-  return !target.closest(
-    'button, a, [role="button"], [role="slider"], [role="switch"], [role="tab"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="option"], [role="dialog"], [role="menu"], [role="listbox"], [contenteditable="true"]',
-  )
+  return !isTypingTarget(target)
 }
 
 export function scrollFocusedIntoView(target: EventTarget | null): void {
