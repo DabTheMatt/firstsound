@@ -468,6 +468,12 @@
   inset: 0;
 }
 
+.simple .regionFrame {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  border-left: 2px solid var(--text-primary);
+  border-right: 2px solid var(--text-primary);
+}
+
 .simpleEdge {
   position: absolute;
   top: 0;
@@ -495,27 +501,45 @@
 .simpleEdge::before {
   content: '';
   position: absolute;
-  top: 10%;
-  bottom: 10%;
-  left: 50%;
-  width: 3px;
-  transform: translateX(-50%);
-  border-radius: 3px;
+  top: 8%;
+  bottom: 8%;
+  width: 2px;
+  border-radius: 2px;
   background: var(--text-primary);
-  opacity: 0.5;
+  opacity: 0.9;
+}
+
+.simpleEdgeStart::before {
+  left: 0;
+  transform: none;
+}
+
+.simpleEdgeEnd::before {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 .simpleEdge::after {
   content: '';
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 22px;
-  height: 44px;
-  transform: translate(-50%, -50%);
-  border-radius: 14px;
+  width: 18px;
+  height: 36px;
+  border-radius: 11px;
   background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
   border: 2px solid var(--text-primary);
+}
+
+.simpleEdgeStart::after {
+  left: 3px;
+  transform: translateY(-50%);
+}
+
+.simpleEdgeEnd::after {
+  left: auto;
+  right: 3px;
+  transform: translateY(-50%);
 }
 
 .simpleEdgeHot::after {

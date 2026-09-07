@@ -90,7 +90,15 @@
   flex-direction: column;
   gap: 10px;
   flex: none;
+  min-width: 0;
   min-height: 0;
+}
+
+.toolsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 
 .transport {
@@ -185,8 +193,7 @@
 .segOn,
 .abOn {
   background: color-mix(in srgb, var(--text-primary) 16%, transparent);
-  outline: 2px solid var(--text-primary);
-  outline-offset: -2px;
+  box-shadow: inset 0 0 0 1.5px var(--text-primary);
 }
 
 .trimRow {
@@ -264,7 +271,11 @@
 
 .amount input {
   width: 100%;
-  min-height: 44px;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  min-height: 28px;
+  box-sizing: border-box;
   accent-color: var(--text-primary);
 }
 
@@ -277,15 +288,17 @@
 
 .bottom {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   flex: none;
   padding-top: 4px;
+  min-width: 0;
 }
 
 .ab {
   display: flex;
   gap: 4px;
+  min-width: 0;
   padding: 4px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
@@ -438,34 +451,111 @@
 }
 
 .desktop .shell {
-  width: min(1280px, 100%);
-  padding: 20px 28px;
+  width: 100%;
+  max-width: none;
+  padding: 16px 28px 18px;
+  gap: 12px;
+}
+
+.desktop {
+  overflow-x: hidden;
 }
 
 .desktop .main {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   grid-template-rows: minmax(0, 1fr);
-  gap: 20px 28px;
+  gap: 16px 24px;
   overflow: hidden;
 }
 
 .desktop .stageCol {
   min-height: 0;
+  min-width: 0;
 }
 
 .desktop .wave,
 .desktop .wave > * {
-  min-height: 320px;
+  min-height: 0;
+  height: 100%;
+}
+
+.desktop .play {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.desktop .transport {
+  min-height: 48px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
 }
 
 .desktop .tools {
-  overflow: auto;
-  padding-bottom: 8px;
+  overflow: hidden;
+  padding-bottom: 0;
+  gap: 8px;
+}
+
+.desktop .toolsBody {
+  overflow-x: hidden;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+  scrollbar-width: thin;
+}
+
+.desktop .status,
+.desktop .custom {
+  min-height: 0;
+}
+
+.desktop .action,
+.desktop .chip,
+.desktop .auto,
+.desktop .save,
+.desktop .saveFile,
+.desktop .tile {
+  min-height: 34px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.desktop .tile {
+  min-height: 52px;
+  padding: 8px 10px;
+  gap: 2px;
 }
 
 .desktop .tiles {
   grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.desktop .trimRow,
+.desktop .amount {
+  min-height: 0;
+}
+
+.desktop .amount {
+  gap: 4px;
+}
+
+.desktop .ab button,
+.desktop .ghost,
+.desktop .link {
+  min-height: 34px;
+  font-size: 12px;
+}
+
+.desktop .save {
+  min-width: 96px;
+  padding: 0 14px;
+}
+
+.desktop .auto {
+  min-height: 36px;
 }
 
 .desktop .sheetScrim {

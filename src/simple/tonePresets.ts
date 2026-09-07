@@ -21,32 +21,36 @@ type ToneStop = Partial<EqBand> & { index: number }
 
 const TONE_STOPS: Record<SimpleToneId, readonly ToneStop[]> = {
   natural: [
-    { index: 0, type: 'highpass', frequency: 30, q: 0.7, slope: 12, gain: 0 },
-    { index: 3, type: 'highshelf', frequency: 10000, q: 0.7, slope: 12, gain: 0.4 },
+    { index: 0, type: 'highpass', frequency: 40, q: 0.7, slope: 12, gain: 0 },
+    { index: 3, type: 'highshelf', frequency: 11000, q: 0.7, slope: 12, gain: 1.4 },
   ],
   voice: [
-    { index: 0, type: 'highpass', frequency: 90, q: 0.7, slope: 12, gain: 0 },
-    { index: 1, type: 'peaking', frequency: 280, q: 0.9, slope: 12, gain: -1.8 },
-    { index: 2, type: 'peaking', frequency: 2800, q: 1, slope: 12, gain: 1.6 },
-    { index: 3, type: 'highshelf', frequency: 9000, q: 0.7, slope: 12, gain: 1.2 },
+    { index: 0, type: 'highpass', frequency: 100, q: 0.7, slope: 12, gain: 0 },
+    { index: 1, type: 'peaking', frequency: 260, q: 0.9, slope: 12, gain: -3.6 },
+    { index: 2, type: 'peaking', frequency: 3000, q: 1, slope: 12, gain: 4.8 },
+    { index: 3, type: 'highshelf', frequency: 8500, q: 0.7, slope: 12, gain: 3.2 },
   ],
-  bass: [{ index: 0, type: 'lowshelf', frequency: 110, q: 0.7, slope: 12, gain: 2.4 }],
+  bass: [
+    { index: 0, type: 'lowshelf', frequency: 105, q: 0.75, slope: 12, gain: 6.5 },
+    { index: 1, type: 'peaking', frequency: 60, q: 0.8, slope: 12, gain: 2.2 },
+  ],
   rumble: [
-    { index: 0, type: 'highpass', frequency: 70, q: 0.7, slope: 12, gain: 0 },
-    { index: 1, type: 'peaking', frequency: 220, q: 1.1, slope: 12, gain: -2.4 },
+    { index: 0, type: 'highpass', frequency: 90, q: 0.7, slope: 12, gain: 0 },
+    { index: 1, type: 'peaking', frequency: 200, q: 1.1, slope: 12, gain: -4.5 },
   ],
-  bright: [{ index: 3, type: 'highshelf', frequency: 8000, q: 0.7, slope: 12, gain: 2 }],
+  bright: [{ index: 3, type: 'highshelf', frequency: 6500, q: 0.7, slope: 12, gain: 5.8 }],
   warm: [
-    { index: 1, type: 'peaking', frequency: 380, q: 0.8, slope: 12, gain: 1.6 },
-    { index: 3, type: 'highshelf', frequency: 9000, q: 0.7, slope: 12, gain: -1.4 },
+    { index: 1, type: 'peaking', frequency: 380, q: 0.8, slope: 12, gain: 3.8 },
+    { index: 3, type: 'highshelf', frequency: 9000, q: 0.7, slope: 12, gain: -3 },
   ],
   harsh: [
-    { index: 2, type: 'peaking', frequency: 4200, q: 1.2, slope: 12, gain: -2.2 },
-    { index: 3, type: 'highshelf', frequency: 11000, q: 0.7, slope: 12, gain: -1.6 },
+    { index: 2, type: 'peaking', frequency: 4000, q: 1.2, slope: 12, gain: -5.5 },
+    { index: 3, type: 'highshelf', frequency: 11000, q: 0.7, slope: 12, gain: -3.2 },
   ],
   clean: [
-    { index: 0, type: 'highpass', frequency: 55, q: 0.7, slope: 12, gain: 0 },
-    { index: 1, type: 'peaking', frequency: 320, q: 1, slope: 12, gain: -1.5 },
+    { index: 0, type: 'highpass', frequency: 75, q: 0.7, slope: 12, gain: 0 },
+    { index: 1, type: 'peaking', frequency: 320, q: 1, slope: 12, gain: -2.8 },
+    { index: 3, type: 'highshelf', frequency: 12000, q: 0.7, slope: 12, gain: 1.6 },
   ],
 }
 
