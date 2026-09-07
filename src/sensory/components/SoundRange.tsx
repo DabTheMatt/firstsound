@@ -138,21 +138,22 @@ export function SoundRange({
       if (buffer && sourceDur > 0) {
         const data = buffer.getChannelData(0)
         const span = sampleIndexSpan(data.length, sourceDur, view.regionStart, view.regionEnd)
-        const key = `${contentRev}:${width}:${span.i0}:${span.i1}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}`
+        const key = `${contentRev}:${width}:${span.i0}:${span.i1}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}:${visual.haze.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
             ? computeMinMaxCached(data, mips, span.i0, span.i1, width)
             : computeMinMax(data, span.i0, span.i1, width)
           const abs = normalizeEnvelopePeak(absEnvelope(min, max))
-          const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
+          const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)
           const dirtBlur = 1 - visual.dirt * 0.72
+          const hazeBlur = 1 + visual.haze * 0.85
           cache = {
             key,
-            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr * dirtBlur)),
+            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr * dirtBlur * hazeBlur)),
           }
         }
-        const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
+        const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)
         paintSoundRange({
           ctx,
           width,

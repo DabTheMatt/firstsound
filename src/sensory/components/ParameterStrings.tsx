@@ -27,8 +27,10 @@ import styles from './ParameterStrings.module.css'
 type Props = {
   values: SensoryValues
   activeId: SensoryAxisId | null
-  /** Shown only while a parameter is being dragged or keyed. */
+  /** Shown only while a parameter is being dragged or keyed, unless `visible`. */
   editingId: SensoryAxisId | null
+  /** When true, the full string field stays on. */
+  visible?: boolean
   onActive: (id: SensoryAxisId | null) => void
   onEditing: (id: SensoryAxisId | null) => void
   onValues: (values: SensoryValues) => void
@@ -46,6 +48,7 @@ export function ParameterStrings({
   values,
   activeId,
   editingId,
+  visible = false,
   onActive,
   onEditing,
   onValues,
@@ -93,7 +96,10 @@ export function ParameterStrings({
     () => (size.w > 8 && size.h > 8 ? layoutParameterStrings(size.w, size.h, insets, RAIL_AXIS_IDS) : []),
     [size.w, size.h, insets],
   )
-  const shown = useMemo(() => geoms.filter((g) => g.id === editingId), [geoms, editingId])
+  const shown = useMemo(
+    () => (visible ? geoms : geoms.filter((g) => g.id === editingId)),
+    [geoms, editingId, visible],
+  )
   const crosses = useMemo(() => stringIntersections(shown), [shown])
 
   const localPoint = (event: ReactPointerEvent) => {
@@ -167,8 +173,8 @@ export function ParameterStrings({
             const along = amountToT(amount, feeling.kind)
             const bead = pointAlong(geom, along)
             const pose = stringLabelPose(geom)
-            const on = true
-            const lit = true
+            const on = Math.abs(amount) > 0.02
+            const lit = activeId === geom.id || editingId === geom.id
             const tone = `${on ? styles.on : ''} ${lit ? styles.lit : ''}`
             const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
             const lfo = AXIS_LFO_BY_ID[geom.id]

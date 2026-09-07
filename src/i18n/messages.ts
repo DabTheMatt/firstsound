@@ -269,6 +269,7 @@ export type Messages = {
   sensory: {
     strings: string
     stringsAria: string
+    stringsHideAria: string
     menu: string
     play: string
     pause: string
@@ -683,6 +684,7 @@ export const EN: Messages = {
   sensory: {
     strings: 'Strings',
     stringsAria: 'Show parameter strings',
+    stringsHideAria: 'Hide parameter strings',
     menu: 'Menu',
     play: 'Play',
     pause: 'Pause',
@@ -1149,6 +1151,7 @@ export const PL: Messages = {
   sensory: {
     strings: 'Struny',
     stringsAria: 'Pokaż struny parametrów',
+    stringsHideAria: 'Ukryj struny parametrów',
     menu: 'Menu',
     play: 'Odtwórz',
     pause: 'Pauza',

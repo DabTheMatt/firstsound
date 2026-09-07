@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSensoryValues, patchSensoryValue } from '../sensoryState'
-import { DUSK_RIDGE, landscapeStops, lensInk, lerpVisualState, panNorm, ridgeInk, sensoryVisualState, spaceZoom } from './sensoryVisualState'
+import {
+  blurAmount,
+  chromaticAmount,
+  DUSK_RIDGE,
+  filmGrainAmount,
+  landscapeStops,
+  lensInk,
+  lerpVisualState,
+  panNorm,
+  pulseAmount,
+  ridgeInk,
+  sensoryVisualState,
+  spaceZoom,
+} from './sensoryVisualState'
 
 describe('lensInk', () => {
   it('runs warmer as warmth rises', () => {
@@ -55,6 +68,27 @@ describe('sensoryVisualState', () => {
     expect(mixed.ink.r).toBeGreaterThan(spaceOnly.ink.r)
     expect(mixed.ink.b).not.toBe(spaceOnly.ink.b)
     expect(Math.abs(mixed.ink.g - spaceOnly.ink.g) + Math.abs(mixed.ink.b - spaceOnly.ink.b)).toBeGreaterThan(0.5)
+  })
+
+  it('maps analog dirt to chromatic fringe, grain to film grain, veil to blur, and mod to pulse', () => {
+    const rest = defaultSensoryValues()
+    expect(chromaticAmount(rest)).toBe(0)
+    expect(filmGrainAmount(rest)).toBe(0)
+    expect(pulseAmount(rest, false)).toBe(0)
+    const vinyl = patchSensoryValue(rest, 'vinyl', 0.9)
+    const tape = patchSensoryValue(rest, 'tape', 0.9)
+    const space = patchSensoryValue(rest, 'space', 0.9)
+    expect(chromaticAmount(vinyl)).toBeGreaterThan(chromaticAmount(space))
+    expect(chromaticAmount(tape)).toBeGreaterThan(chromaticAmount(space))
+    const grain = patchSensoryValue(rest, 'grain', 0.8)
+    expect(filmGrainAmount(grain)).toBeGreaterThan(filmGrainAmount(vinyl))
+    const veil = patchSensoryValue(rest, 'veil', 0.8)
+    expect(blurAmount(veil)).toBeGreaterThan(blurAmount(rest))
+    expect(sensoryVisualState(veil, true).haze).toBeGreaterThan(sensoryVisualState(rest, true).haze)
+    expect(pulseAmount(patchSensoryValue(rest, 'mod', 0.8), false)).toBeGreaterThan(0.5)
+    expect(pulseAmount(patchSensoryValue(rest, 'mod', 0.8), true)).toBe(0)
+    expect(sensoryVisualState(vinyl, true).chroma).toBeGreaterThan(sensoryVisualState(space, true).chroma)
+    expect(sensoryVisualState(grain, true).filmGrain).toBeGreaterThan(sensoryVisualState(vinyl, true).filmGrain)
   })
 })
 

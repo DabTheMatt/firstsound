@@ -7,7 +7,8 @@ describe('rangeScenes', () => {
     expect(canyonWallInset(1, 1000)).toBeGreaterThan(canyonWallInset(0, 1000))
   })
 
-  it('splits drift into opposing RGB offsets', () => {
+  it('splits analog dirt into opposing RGB offsets', () => {
+    expect(chromaticShift(0, 1).r).toBeCloseTo(0)
     const c = chromaticShift(1, 1)
     expect(c.r).toBeLessThan(0)
     expect(c.b).toBeGreaterThan(0)

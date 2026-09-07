@@ -12,6 +12,13 @@ describe('mountainLayerSpecs', () => {
     expect(mountainLayerSpecs(0.4, 0, 0.7).length).toBe(6)
   })
 
+  it('softens later ridges as haze (veil/bloom) rises', () => {
+    const clear = mountainLayerSpecs(0.4, 0, 0, 0)
+    const hazy = mountainLayerSpecs(0.4, 0, 0, 0.8)
+    expect(hazy[1]!.blur).toBeGreaterThan(clear[1]!.blur)
+    expect(hazy.length).toBeGreaterThan(clear.length)
+  })
+
   it('recedes later ridges on z', () => {
     const layers = mountainLayerSpecs(0.4, 0.5, 0.4)
     expect(layers[0]?.z).toBe(0)
