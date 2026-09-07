@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { reloadInstalledApp } from '../../app/reloadApp'
+import { useI18n } from '../../i18n'
 import { useRuntimeStats } from '../../app/useRuntimeStats'
 import { useStandaloneDisplay } from '../../app/useStandaloneDisplay'
 import styles from './RuntimeStatus.module.css'
@@ -9,6 +10,7 @@ type Props = {
 }
 
 export function RuntimeStatus({ variant = 'default' }: Props) {
+  const { t } = useI18n()
   const standalone = useStandaloneDisplay()
   const { memoryLabel, cpuLabel } = useRuntimeStats()
   const [busy, setBusy] = useState(false)
@@ -37,9 +39,9 @@ export function RuntimeStatus({ variant = 'default' }: Props) {
           className={styles.refresh}
           onClick={onRefresh}
           disabled={busy}
-          title="Reload the installed app and drop stale caches"
+          title={t.runtime.refreshTitle}
         >
-          {busy ? 'Refreshing' : 'Refresh app'}
+          {busy ? t.runtime.refreshing : t.runtime.refresh}
         </button>
       ) : null}
     </div>

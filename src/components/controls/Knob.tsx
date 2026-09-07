@@ -3,6 +3,7 @@ import { formatParamValue, fromNormalized, parseTypedParam, toNormalized } from 
 import { lfoRangeNormalized } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { ValueKnob } from './ValueKnob'
 
 const BIPOLAR: ReadonlySet<ParamId> = new Set([
@@ -27,13 +28,14 @@ type Props = {
 }
 
 export function Knob({ id, value, liveValue, lfoDepth }: Props) {
+  const { paramLabel } = useI18n()
   const def = PARAMS[id]
   const live = liveValue ?? value
   const mapped = liveValue != null
   const baseN = toNormalized(value, def)
   return (
     <ValueKnob
-      label={def.label}
+      label={paramLabel(id)}
       valueText={formatParamValue(value, def)}
       visualValueText={mapped ? formatParamValue(live, def) : undefined}
       baseValueText={mapped ? formatParamValue(value, def) : undefined}

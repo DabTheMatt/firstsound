@@ -10,6 +10,7 @@ import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues
 import type { SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
+import { LanguageSwitch, useI18n } from '../../i18n'
 import type { SensoryValues } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
@@ -76,6 +77,7 @@ export function SensoryShell({
   onMoodLabel,
   sampleInput = null,
 }: Props) {
+  const { t } = useI18n()
   const [placesOpen, setPlacesOpen] = useState(false)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
@@ -113,6 +115,7 @@ export function SensoryShell({
       <header className={styles.top}>
         <div className={styles.brandRow}>
           <p className={styles.brand}>Field</p>
+          <LanguageSwitch variant="editorial" />
         </div>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
@@ -125,7 +128,7 @@ export function SensoryShell({
           <button
             type="button"
             className={styles.menuBtn}
-            aria-label="Menu"
+            aria-label={t.sensory.menu}
             aria-expanded={menuOpen}
             data-settings-toggle=""
             onClick={onToggleMenu}
@@ -188,7 +191,7 @@ export function SensoryShell({
           type="button"
           className={styles.play}
           disabled={!snap.sampleLoaded}
-          aria-label={snap.playing ? 'Pause' : 'Play'}
+          aria-label={snap.playing ? t.sensory.pause : t.sensory.play}
           onClick={() => {
             void engine.unlock().then(() => engine.togglePlay())
           }}
@@ -213,14 +216,16 @@ export function SensoryShell({
         onPick={(id) => {
           const next = emotionalValues(id)
           onValues(next)
-          onMoodLabel(EMOTIONAL_STATES.find((s) => s.id === id)?.label ?? id)
+          onMoodLabel(t.sensory.emotions[id] ?? EMOTIONAL_STATES.find((s) => s.id === id)?.label ?? id)
           setPlacesOpen(false)
           onCommitSensory()
         }}
         onSurprise={() => {
           const next = surpriseSensoryValues()
           onValues(next)
-          onMoodLabel(surpriseLabel(next))
+          const raw = surpriseLabel(next)
+          const found = EMOTIONAL_STATES.find((s) => s.label === raw)
+          onMoodLabel(found ? t.sensory.emotions[found.id] : raw)
           setPlacesOpen(false)
           onCommitSensory()
         }}

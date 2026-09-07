@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n'
 import styles from './InspectorEye.module.css'
 
 type Props = {
@@ -6,7 +7,8 @@ type Props = {
 }
 
 export function InspectorEye({ open, onClick }: Props) {
-  const label = open ? 'Hide inspector' : 'Show inspector'
+  const { t } = useI18n()
+  const label = open ? t.inspector.hide : t.inspector.show
   return (
     <button
       type="button"

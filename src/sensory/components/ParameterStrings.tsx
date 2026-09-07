@@ -9,6 +9,7 @@ import {
 import { AXIS_LFO_BY_ID, axisLfoActive, resolvedAxisLfo } from '../mapping/axisLfos'
 import type { SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
+import { useI18n } from '../../i18n'
 import {
   amountToT,
   layoutParameterStrings,
@@ -54,6 +55,7 @@ export function ParameterStrings({
   onCommit,
   interactive = true,
 }: Props) {
+  const { t, feeling: feelingCopy } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const valuesRef = useRef(values)
   const drag = useRef<{ pointerId: number; id: SensoryAxisId } | null>(null)
@@ -156,7 +158,7 @@ export function ParameterStrings({
       aria-hidden={shown.length === 0}
     >
       {shown.length > 0 ? (
-        <svg className={styles.svg} viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label="Parameter strings">
+        <svg className={styles.svg} viewBox={`0 0 ${size.w} ${size.h}`} role="group" aria-label={t.sensory.parameterStrings}>
           {crosses.map((hit) => {
             const hot = hit.a === activeId || hit.b === activeId
             return (
@@ -171,9 +173,10 @@ export function ParameterStrings({
           })}
           {shown.map((geom) => {
             const feeling = feelingOf(geom.id)
+            const copy = feelingCopy(feeling.id)
             const amount = feelingAmount(values, feeling)
-            const t = amountToT(amount, feeling.kind)
-            const bead = pointAlong(geom, t)
+            const along = amountToT(amount, feeling.kind)
+            const bead = pointAlong(geom, along)
             const pose = stringLabelPose(geom)
             const on = true
             const lit = true
@@ -199,7 +202,7 @@ export function ParameterStrings({
                   y2={geom.y2}
                   tabIndex={0}
                   role="slider"
-                  aria-label={lfoOn ? `${feeling.ariaLabel} LFO connected.` : feeling.ariaLabel}
+                  aria-label={lfoOn ? `${copy.aria} ${t.sensory.lfoConnected}` : copy.aria}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={now}
@@ -280,7 +283,7 @@ export function ParameterStrings({
                   textAnchor="middle"
                   dominantBaseline="middle"
                 >
-                  {feeling.label}
+                  {copy.label}
                 </text>
               </g>
             )

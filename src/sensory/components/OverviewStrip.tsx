@@ -3,6 +3,7 @@ import { isDocumentHidden } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { fullPlayRegion } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import { regionFromDrag, workingTimeFromSource } from '../visualization/sampleRegion'
 import styles from './OverviewStrip.module.css'
@@ -34,6 +35,7 @@ function sourceTimes(duration: number) {
 }
 
 export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: Props) {
+  const { t } = useI18n()
   const snap = useEngine()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
@@ -193,7 +195,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     <div
       ref={wrapRef}
       className={styles.wrap}
-      aria-label="Sample overview. Drag to select a fragment."
+      aria-label={t.sensory.overviewDrag}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}

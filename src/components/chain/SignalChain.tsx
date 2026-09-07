@@ -4,12 +4,12 @@ import {
   INSERTABLE_TYPES,
   isFixedType,
   MAX_CHAIN_MIDDLE,
-  MODULE_LABELS,
   moduleLabel,
   type ChainModule,
   type ModuleType,
 } from '../../audio/chain/chain'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
 
 type Props = {
@@ -21,6 +21,7 @@ type Props = {
 }
 
 export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false }: Props) {
+  const { t, moduleName } = useI18n()
   const [reorder, setReorder] = useState(false)
   const [openAdd, setOpenAdd] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -49,7 +50,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   }
 
   return (
-    <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label="Signal chain">
+    <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label={t.chain.aria}>
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
         const active = mod.instanceId === selectedId
@@ -74,9 +75,9 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                     <button
                       type="button"
                       className={styles.add}
-                      aria-label="Add effect"
+                      aria-label={t.chain.addEffect}
                       aria-expanded={openAdd === index - 1}
-                      title="Add effect"
+                      title={t.chain.addEffect}
                       onClick={(event) => {
                         event.stopPropagation()
                         const slot = index - 1
@@ -144,14 +145,14 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   engine.toggleModuleBypass(mod.instanceId)
                 }}
               >
-                {moduleLabel(mod, chain)}
+                {moduleLabel(mod, chain, t.modules)}
               </button>
               {!fixed ? (
                 <button
                   type="button"
                   className={`${styles.power} ${mod.bypassed ? styles.powerOff : styles.powerOn}`}
-                  aria-label={mod.bypassed ? `Enable ${MODULE_LABELS[mod.type]}` : `Bypass ${MODULE_LABELS[mod.type]}`}
-                  title={mod.bypassed ? 'Enable' : 'Bypass'}
+                  aria-label={mod.bypassed ? t.chain.enable(moduleName(mod.type)) : t.chain.bypass(moduleName(mod.type))}
+                  title={mod.bypassed ? t.chain.enableShort : t.chain.bypassShort}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -181,8 +182,8 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
               <button
                 type="button"
                 className={styles.kill}
-                aria-label={`Kill ${MODULE_LABELS[mod.type]}`}
-                title={`Kill ${MODULE_LABELS[mod.type]} tails`}
+                aria-label={t.chain.kill(moduleName(mod.type))}
+                title={t.chain.killTitle(moduleName(mod.type))}
                 onClick={(event) => {
                   event.stopPropagation()
                   engine.killFx(mod.type === 'delay' ? 'delay' : 'reverb')
@@ -209,7 +210,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   className={styles.menuItem}
                   onClick={() => insert(type, openAdd)}
                 >
-                  {MODULE_LABELS[type]}
+                  {t.modules[type]}
                 </button>
               ))}
             </div>,

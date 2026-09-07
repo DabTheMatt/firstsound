@@ -2,19 +2,21 @@ import { useRef } from 'react'
 import { MAX_TRACKS, trackMixGain } from '../../audio/mix/tracks'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import styles from './MixConsole.module.css'
 
 export function MixConsole() {
+  const { t } = useI18n()
   const snap = useEngine()
   const tracks = snap.tracks
   const selectedId = snap.selectedTrackId
   const canAdd = tracks.length < MAX_TRACKS
 
   return (
-    <div className={styles.console} aria-label="Mixer">
+    <div className={styles.console} aria-label={t.mix.mixer}>
       <header className={styles.head}>
         <div>
-          <h2 className={styles.title}>Mixer</h2>
+          <h2 className={styles.title}>{t.mix.mixer}</h2>
           <p className={styles.lead}>
             One strip per track plus Output. Load a sample on any strip. All unmuted tracks sum into Output.
           </p>
@@ -42,7 +44,7 @@ export function MixConsole() {
                 <input
                   className={styles.name}
                   value={track.name}
-                  aria-label="Track name"
+                  aria-label={t.mix.trackName}
                   onChange={(event) => engine.setTrack(track.id, { name: event.target.value })}
                   onClick={(event) => event.stopPropagation()}
                 />
@@ -61,7 +63,7 @@ export function MixConsole() {
                   onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
                   onClick={(event) => event.stopPropagation()}
                 />
-                <span className={styles.faderLabel}>Mix</span>
+                <span className={styles.faderLabel}>{t.mix.mix}</span>
               </label>
               <div className={styles.toggles}>
                 <button
@@ -117,8 +119,8 @@ export function MixConsole() {
         })}
         <article className={`${styles.strip} ${styles.stripMaster}`}>
           <header className={styles.stripHead}>
-            <span className={styles.masterName}>Output</span>
-            <span className={styles.sampleName}>Master</span>
+            <span className={styles.masterName}>{t.mix.output}</span>
+            <span className={styles.sampleName}>{t.mix.master}</span>
           </header>
           <label className={styles.faderWrap}>
             <span className={styles.faderValue}>{Math.round(snap.masterMix)}</span>
@@ -129,12 +131,12 @@ export function MixConsole() {
               max={150}
               step={1}
               value={snap.masterMix}
-              aria-label="Output mix"
+              aria-label={t.mix.outputMix}
               onChange={(event) => engine.setMasterMix(Number(event.target.value))}
             />
-            <span className={styles.faderLabel}>Out</span>
+            <span className={styles.faderLabel}>{t.mix.out}</span>
           </label>
-          <p className={styles.masterHint}>Sums every audible track into the effect chain.</p>
+          <p className={styles.masterHint}>{t.mix.masterHint}</p>
         </article>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { TransportButton } from '../controls/TransportButton'
 import styles from './CompactTransport.module.css'
 
@@ -37,6 +38,7 @@ export function CompactTransport({
   onExport,
   onUseSample,
 }: Props) {
+  const { t } = useI18n()
   const length = Math.max(0, end - start)
   const playheadRef = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -62,8 +64,8 @@ export function CompactTransport({
           type="button"
           className={styles.icon}
           disabled={disabled}
-          aria-label="Play from start of sample"
-          title="Play from the start of the sample, not the selection"
+          aria-label={t.transport.playFromStart}
+          title={t.transport.playFromStartTitle}
           onClick={() => {
             void engine.unlock().then(() => engine.playFromStart())
           }}
@@ -75,7 +77,7 @@ export function CompactTransport({
             type="button"
             className={styles.icon}
             disabled={disabled}
-            aria-label="Stop"
+            aria-label={t.transport.stop}
             onClick={() => engine.stop()}
           >
             ■
@@ -85,11 +87,11 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
-            aria-label="Kill effects"
-            title="Kill delay and reverb tails"
+            aria-label={t.transport.killFx}
+            title={t.transport.killFxTitle}
             onClick={() => engine.killFx('all')}
           >
-            Kill FX
+            {t.transport.killFx}
           </button>
         ) : null}
         <button
@@ -98,30 +100,30 @@ export function CompactTransport({
           aria-pressed={loop}
           onClick={() => engine.setLoop(!loop)}
         >
-          Loop
+          {t.transport.loop}
         </button>
         {!minimal ? (
-          <button type="button" className={styles.icon} disabled={!canUndo} aria-label="Undo" onClick={onUndo}>
-            Undo
+          <button type="button" className={styles.icon} disabled={!canUndo} aria-label={t.transport.undo} onClick={onUndo}>
+            {t.transport.undo}
           </button>
         ) : null}
         {!minimal ? (
-          <button type="button" className={styles.icon} disabled={!canRedo} aria-label="Redo" onClick={onRedo}>
-            Redo
+          <button type="button" className={styles.icon} disabled={!canRedo} aria-label={t.transport.redo} onClick={onRedo}>
+            {t.transport.redo}
           </button>
         ) : null}
       </div>
       <p className={styles.times}>
-        <span className={styles.head} ref={playheadRef} title="Playhead">
+        <span className={styles.head} ref={playheadRef} title={t.transport.playhead}>
           {formatTimecode(start)}
         </span>
         {!minimal ? (
-          <span className={styles.selRange} title="Selection">
+          <span className={styles.selRange} title={t.transport.selection}>
             {formatTimecode(start)} — {formatTimecode(end)}
           </span>
         ) : null}
         <strong>{length.toFixed(3)} s</strong>
-        <span className={styles.bpm} title="Sample tempo used by delay/reverb sync">
+        <span className={styles.bpm} title={t.transport.bpmTitle}>
           {bpm.toFixed(1)} BPM
         </span>
       </p>
@@ -130,41 +132,41 @@ export function CompactTransport({
           <button
             type="button"
             disabled={disabled}
-            title="Jump the playhead to the start of the selection (loop in)"
-            aria-label="Selection start"
+            title={t.transport.selStartTitle}
+            aria-label={t.transport.selStart}
             onClick={() => engine.seekSeconds(start, 'region')}
           >
-            Sel start
+            {t.transport.selStart}
           </button>
           <button
             type="button"
             disabled={disabled}
-            title="Jump the playhead to the end of the selection (loop out)"
-            aria-label="Selection end"
+            title={t.transport.selEndTitle}
+            aria-label={t.transport.selEnd}
             onClick={() => engine.seekSeconds(end, 'region')}
           >
-            Sel end
+            {t.transport.selEnd}
           </button>
         </div>
       ) : null}
       <div className={styles.cta}>
         {!minimal ? (
           <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
-            Export
+            {t.transport.export}
           </button>
         ) : null}
         <button
           type="button"
           className={styles.use}
           disabled={disabled}
-          title="Bake the current selection into a new sample (fades included) and load it as the working clip."
-          aria-label="Use as sample: bake the selection into the working clip"
+          title={t.transport.useTitle}
+          aria-label={t.transport.useTitle}
           onClick={onUseSample}
         >
-          {minimal ? 'Use' : 'Use as Sample'}
+          {minimal ? t.transport.use : t.transport.useAsSample}
         </button>
       </div>
-      {!minimal ? <p className={styles.useHint}>Bakes this selection (with fades) into the working sample.</p> : null}
+      {!minimal ? <p className={styles.useHint}>{t.transport.useHint}</p> : null}
     </div>
   )
 }
