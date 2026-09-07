@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fadeSecondsForStep, fadeStepFromSeconds } from './fadeSteps'
 import { applyToneToChannels } from './applyToneEq'
-import { eqLooksFlat, matchSimpleTone, toneBandsAt } from './tonePresets'
+import { eqLooksFlat, matchSimpleTone, SIMPLE_TONE_IDS, toneBandsAt } from './tonePresets'
 
 describe('fade steps', () => {
   it('hides millisecond values behind named lengths', () => {
@@ -31,6 +31,18 @@ describe('simple tone presets', () => {
     const custom = toneBandsAt('bass', 1)
     custom[2] = { ...custom[2]!, type: 'peaking', frequency: 1800, gain: 6, q: 4, slope: 12 }
     expect(matchSimpleTone(custom, false).id).toBe('custom')
+  })
+
+  it('keeps every preset identity across the full slider, including below 10%', () => {
+    for (const id of SIMPLE_TONE_IDS) {
+      for (let amount = 0; amount <= 100; amount += 1) {
+        const t = amount / 100
+        const bands = toneBandsAt(id, t)
+        const matched = matchSimpleTone(bands, false, id)
+        expect(matched.id, `${id} at ${amount}%`).toBe(id)
+        if (amount > 0) expect(matched.id).not.toBe('custom')
+      }
+    }
   })
 
   it('applies EQ to PCM without exploding amplitude', () => {

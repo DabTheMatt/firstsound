@@ -533,6 +533,10 @@
   gap: 6px;
 }
 
+.desktop .tools .tiles {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 .desktop .trimRow,
 .desktop .amount {
   min-height: 0;
