@@ -33,6 +33,17 @@ describe('simple tone presets', () => {
     expect(matchSimpleTone(custom, false).id).toBe('custom')
   })
 
+  it('keeps the selected tone when effect strength is below 10%', () => {
+    for (const id of ['voice', 'bass', 'bright', 'warm', 'clean', 'harsh'] as const) {
+      const bands = toneBandsAt(id, 0.08)
+      const matched = matchSimpleTone(bands, false)
+      expect(matched.id).toBe(id)
+      expect(matched.amount).toBeGreaterThan(0)
+      expect(matchSimpleTone(bands, false, id).id).toBe(id)
+    }
+    expect(matchSimpleTone(toneBandsAt('bass', 0), false, 'bass')).toEqual({ id: 'bass', amount: 0 })
+  })
+
   it('applies EQ to PCM without exploding amplitude', () => {
     const sine = new Float32Array(512)
     for (let i = 0; i < sine.length; i++) sine[i] = Math.sin((i / 512) * Math.PI * 8)

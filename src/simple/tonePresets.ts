@@ -13,9 +13,22 @@ export const SIMPLE_TONE_IDS = [
 
 export type SimpleToneId = (typeof SIMPLE_TONE_IDS)[number]
 
-export const FEATURED_TONE_IDS: readonly SimpleToneId[] = ['natural', 'voice', 'bass', 'bright']
+export const FEATURED_TONE_IDS: readonly SimpleToneId[] = [
+  'natural',
+  'voice',
+  'bass',
+  'bright',
+  'warm',
+  'clean',
+  'harsh',
+]
 
 export const DEFAULT_TONE_AMOUNT = 0.7
+
+/** Amounts used when matching live EQ back to a Simple tone preset. */
+export const TONE_MATCH_AMOUNTS = [
+  0.04, 0.08, 0.1, 0.15, 0.2, 0.25, 0.35, 0.45, 0.55, 0.7, 0.85, 1,
+] as const
 
 type ToneStop = Partial<EqBand> & { index: number }
 
@@ -80,8 +93,8 @@ export function toneBandsAt(id: SimpleToneId, amount: number): EqBand[] {
     if (next.type === 'highpass' || next.type === 'lowpass') {
       const restHz = next.type === 'highpass' ? 20 : 18000
       next.frequency = lerp(restHz, stop.frequency ?? next.frequency, t)
-      if (t < 0.08) next.type = 'off'
-    } else if (Math.abs(next.gain) < 0.05) {
+      if (t <= 0) next.type = 'off'
+    } else if (t <= 0 || Math.abs(next.gain) < 0.02) {
       next.type = 'off'
       next.gain = 0
     }
@@ -116,17 +129,40 @@ export function eqLooksFlat(bands: readonly EqBand[], bypassed: boolean): boolea
 
 export type MatchedTone = { id: SimpleToneId | 'custom'; amount: number }
 
-export function matchSimpleTone(bands: EqBand[], eqBypassed: boolean): MatchedTone {
-  if (eqLooksFlat(bands, eqBypassed)) return { id: 'natural', amount: 0 }
+function bestAmountForTone(id: SimpleToneId, bands: EqBand[]): { amount: number; score: number } {
+  let amount = DEFAULT_TONE_AMOUNT
+  let score = Number.POSITIVE_INFINITY
+  for (const candidate of TONE_MATCH_AMOUNTS) {
+    const next = bandsDistance(bands, toneBandsAt(id, candidate))
+    if (next < score) {
+      score = next
+      amount = candidate
+    }
+  }
+  return { amount, score }
+}
+
+export function matchSimpleTone(
+  bands: EqBand[],
+  eqBypassed: boolean,
+  preferred?: SimpleToneId | 'custom',
+): MatchedTone {
+  const preferId = preferred && preferred !== 'custom' ? preferred : null
+  if (eqLooksFlat(bands, eqBypassed)) {
+    if (preferId) return { id: preferId, amount: 0 }
+    return { id: 'natural', amount: 0 }
+  }
+  if (preferId) {
+    const preferredMatch = bestAmountForTone(preferId, bands)
+    if (preferredMatch.score < 3.2) return { id: preferId, amount: preferredMatch.amount }
+  }
   let best: MatchedTone = { id: 'custom', amount: DEFAULT_TONE_AMOUNT }
   let bestScore = 2.4
   for (const id of SIMPLE_TONE_IDS) {
-    for (const amount of [0.35, 0.5, 0.7, 0.85, 1]) {
-      const score = bandsDistance(bands, toneBandsAt(id, amount))
-      if (score < bestScore) {
-        bestScore = score
-        best = { id, amount }
-      }
+    const next = bestAmountForTone(id, bands)
+    if (next.score < bestScore) {
+      bestScore = next.score
+      best = { id, amount: next.amount }
     }
   }
   return best

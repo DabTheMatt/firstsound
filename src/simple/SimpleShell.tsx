@@ -89,6 +89,8 @@ export function SimpleShell({
   const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const [sheet, setSheet] = useState<Sheet>('none')
   const [amount, setAmount] = useState(DEFAULT_TONE_AMOUNT)
+  const [activeTone, setActiveTone] = useState<SimpleToneId | 'custom'>('natural')
+  const [draggingAmount, setDraggingAmount] = useState(false)
   const [listenOriginal, setListenOriginal] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [now, setNow] = useState(0)
@@ -100,7 +102,9 @@ export function SimpleShell({
   const [saveMono, setSaveMono] = useState(false)
   const liveDspRef = useRef(captureDsp(engine))
 
-  const tone = matchSimpleTone(snap.eqBands, Boolean(snap.chain.find((m) => m.type === 'eq')?.bypassed))
+  const eqBypassed = Boolean(snap.chain.find((m) => m.type === 'eq')?.bypassed)
+  const tone = matchSimpleTone(snap.eqBands, eqBypassed, activeTone)
+  const sliderValue = draggingAmount || tone.id === 'custom' ? amount : tone.amount
   const regionLen = Math.max(0, snap.params.end - snap.params.start)
   const fadeInStep = fadeStepFromSeconds(edit.fadeIn)
   const fadeOutStep = fadeStepFromSeconds(edit.fadeOut)
@@ -129,15 +133,28 @@ export function SimpleShell({
     setListenOriginal(false)
   }
 
-  const applyTone = (id: SimpleToneId, nextAmount = amount) => {
-    exitOriginal()
-    const strength = clampToneAmount(id === 'natural' ? nextAmount : Math.max(nextAmount, 0.45))
+  const writeTone = (id: SimpleToneId, nextAmount: number) => {
+    const strength = clampToneAmount(nextAmount)
     const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, strength))
     writeDsp(engine, dsp)
     liveDspRef.current = dsp
+    setActiveTone(id)
     setAmount(strength)
     void engine.unlock()
+    return strength
+  }
+
+  const applyTone = (id: SimpleToneId, nextAmount = amount) => {
+    exitOriginal()
+    const strength = id === 'natural' ? nextAmount : Math.max(nextAmount, 0.45)
+    writeTone(id, strength)
     onToneCommit()
+  }
+
+  const applyAmount = (nextAmount: number) => {
+    if (tone.id === 'custom') return
+    exitOriginal()
+    writeTone(tone.id, nextAmount)
   }
 
   const setFade = (side: 'in' | 'out', step: FadeStepId) => {
@@ -362,23 +379,26 @@ export function SimpleShell({
                 min={0}
                 max={1}
                 step={0.01}
-                value={amount}
+                value={sliderValue}
                 disabled={tone.id === 'custom'}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.round(amount * 100)}
+                aria-valuenow={Math.round(sliderValue * 100)}
                 aria-label={t.simple.amount}
+                onPointerDown={() => setDraggingAmount(true)}
                 onChange={(event) => {
                   const next = Number(event.target.value)
                   setAmount(next)
-                  if (tone.id === 'custom') return
-                  exitOriginal()
-                  const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(tone.id, next))
-                  writeDsp(engine, dsp)
-                  liveDspRef.current = dsp
-                  void engine.unlock()
+                  applyAmount(next)
                 }}
-                onPointerUp={() => onToneCommit()}
+                onPointerUp={() => {
+                  setDraggingAmount(false)
+                  onToneCommit()
+                }}
+                onPointerCancel={() => {
+                  setDraggingAmount(false)
+                  onToneCommit()
+                }}
                 onKeyUp={() => onToneCommit()}
               />
               <span className={styles.amountEnds}>
