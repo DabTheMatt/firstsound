@@ -172,10 +172,18 @@
 }
 
 .knobs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-evenly;
+  gap: 4px;
+}
+
+.lfoParams {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  justify-items: center;
 }
 
 .mod {
@@ -215,6 +223,9 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: center;
 }
 
 .syncRow label {
