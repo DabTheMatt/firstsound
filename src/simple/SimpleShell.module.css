@@ -1,23 +1,25 @@
 .page {
   height: 100%;
-  min-height: 100%;
+  min-height: var(--app-height, 100dvh);
+  width: 100%;
   display: flex;
   justify-content: center;
   background: var(--bg-app);
   color: var(--text-primary);
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+  box-sizing: border-box;
 }
 
 .shell {
-  width: min(520px, 100%);
+  width: 100%;
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px 16px calc(96px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .header {
@@ -25,6 +27,7 @@
   align-items: center;
   gap: 8px;
   flex: none;
+  min-height: 44px;
 }
 
 .file {
@@ -45,6 +48,7 @@
 .menuBtn {
   width: 44px;
   height: 44px;
+  flex: none;
   border: 0;
   background: transparent;
   color: var(--text-primary);
@@ -52,8 +56,25 @@
   letter-spacing: 0.12em;
 }
 
+.main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.stageCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
 .wave {
-  flex: 1 1 42%;
+  flex: 1 1 auto;
   min-height: 180px;
   display: flex;
   flex-direction: column;
@@ -64,11 +85,21 @@
   min-height: 180px;
 }
 
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: none;
+  min-height: 0;
+}
+
 .transport {
   display: grid;
-  grid-template-columns: 64px 1fr auto;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
+  flex: none;
+  min-height: 64px;
 }
 
 .play {
@@ -115,10 +146,17 @@
   opacity: 0.35;
 }
 
-.status {
+.status,
+.custom {
   margin: 0;
+  min-height: 1.25em;
   font-size: 14px;
   color: var(--text-primary);
+}
+
+.custom {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .actions {
@@ -139,6 +177,7 @@
   background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-primary);
   font-size: 13px;
+  box-sizing: border-box;
 }
 
 .actionOn,
@@ -146,7 +185,8 @@
 .segOn,
 .abOn {
   background: color-mix(in srgb, var(--text-primary) 16%, transparent);
-  box-shadow: inset 0 0 0 2px var(--text-primary);
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
 }
 
 .trimRow {
@@ -154,13 +194,21 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-height: 48px;
 }
 
-.length,
-.hint,
-.custom {
+.length {
   margin: 0;
   font-size: 13px;
+  color: var(--text-muted);
+  min-height: 1.25em;
+}
+
+.actionHints {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  min-height: 1.25em;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -174,6 +222,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  min-height: 28px;
 }
 
 .toneHead h2,
@@ -197,7 +246,7 @@
   gap: 4px;
   padding: 12px 14px;
   text-align: left;
-  min-height: 72px;
+  min-height: 76px;
 }
 
 .tile small {
@@ -210,6 +259,7 @@
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
+  min-height: 86px;
 }
 
 .amount input {
@@ -226,18 +276,11 @@
 }
 
 .bottom {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  z-index: 4;
-  width: min(520px, 100%);
-  transform: translateX(-50%);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
-  padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  box-sizing: border-box;
-  background: var(--bg-app);
+  flex: none;
+  padding-top: 4px;
 }
 
 .ab {
@@ -280,7 +323,7 @@
 }
 
 .sheet {
-  width: min(520px, 100%);
+  width: min(560px, 100%);
   max-height: 82%;
   overflow: auto;
   background: var(--bg-panel-elevated);
@@ -350,10 +393,89 @@
   outline: 2px dashed color-mix(in srgb, var(--text-primary) 30%, transparent);
 }
 
-@media (min-width: 720px) {
-  .shell {
-    padding-bottom: 24px;
-  }
+.phone .wave,
+.phone .wave > * {
+  min-height: 168px;
+  height: min(30vh, 240px);
+  flex: none;
+}
+
+.phone .stageCol {
+  flex: none;
+}
+
+.phone .tools {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.phone .bottom,
+.tablet .bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--bg-app);
+  padding-bottom: 4px;
+}
+
+.tablet .shell,
+.desktop .shell {
+  padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+  gap: 14px;
+}
+
+.tablet .wave,
+.tablet .wave > * {
+  min-height: 260px;
+}
+
+.tablet .tiles {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.tablet .sheet {
+  width: min(720px, 100%);
+}
+
+.desktop .shell {
+  width: min(1280px, 100%);
+  padding: 20px 28px;
+}
+
+.desktop .main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px 28px;
+  overflow: hidden;
+}
+
+.desktop .stageCol {
+  min-height: 0;
+}
+
+.desktop .wave,
+.desktop .wave > * {
+  min-height: 320px;
+}
+
+.desktop .tools {
+  overflow: auto;
+  padding-bottom: 8px;
+}
+
+.desktop .tiles {
+  grid-template-columns: 1fr 1fr;
+}
+
+.desktop .sheetScrim {
+  align-items: center;
+}
+
+.desktop .sheet {
+  width: min(480px, calc(100% - 48px));
+  max-height: 86%;
+  border-radius: 20px;
 }
 
 :global(html[data-low-vision='on']) .page,

@@ -143,11 +143,14 @@ export function resolveSimpleWaveformDrag(opts: {
   startX: number
   endX: number
   hitPx: number
+  edge?: 'start' | 'end'
 }): SimpleWaveformDragKind {
   if (opts.altOrMiddle) return 'pan'
+  if (opts.edge === 'start') return 'start'
+  if (opts.edge === 'end') return 'end'
   const hit = Math.max(44, opts.hitPx)
-  const nearStart = Math.abs(opts.x - opts.startX) < hit
-  const nearEnd = Math.abs(opts.x - opts.endX) < hit
+  const nearStart = Math.abs(opts.x - opts.startX) <= hit
+  const nearEnd = Math.abs(opts.x - opts.endX) <= hit
   if (nearStart && nearEnd) return Math.abs(opts.x - opts.startX) <= Math.abs(opts.x - opts.endX) ? 'start' : 'end'
   if (nearStart) return 'start'
   if (nearEnd) return 'end'

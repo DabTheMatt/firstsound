@@ -156,4 +156,17 @@ describe('resolveSimpleWaveformDrag', () => {
     expect(resolveSimpleWaveformDrag({ altOrMiddle: false, x: 160, startX: 20, endX: 300, hitPx: 44 })).toBe('playhead')
     expect(resolveSimpleWaveformDrag({ altOrMiddle: true, x: 160, startX: 20, endX: 300, hitPx: 44 })).toBe('pan')
   })
+
+  it('prefers an explicit trim handle over playhead scrub', () => {
+    expect(
+      resolveSimpleWaveformDrag({
+        altOrMiddle: false,
+        x: 80,
+        startX: 20,
+        endX: 300,
+        hitPx: 44,
+        edge: 'start',
+      }),
+    ).toBe('start')
+  })
 })
