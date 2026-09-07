@@ -586,6 +586,17 @@ function ModuleInspector({
             onChange={(v) => engine.setDistortionType(v)}
           />
           <p className={styles.help}>{distortionHelp(snap.distortionType)}</p>
+          <div className={styles.row}>
+            <button
+              type="button"
+              className={styles.ghost}
+              aria-label={t.transport.killNoise}
+              title={t.transport.killNoiseTitle}
+              onClick={() => engine.killNoise()}
+            >
+              {t.transport.killNoise}
+            </button>
+          </div>
           {params(DISTORTION_MAIN_KNOBS)}
           <FxLfoSection snap={snap} kind="distortion" variant={variant} />
         </>

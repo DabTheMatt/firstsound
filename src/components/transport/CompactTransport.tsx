@@ -94,6 +94,17 @@ export function CompactTransport({
             {t.transport.killFx}
           </button>
         ) : null}
+        {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            aria-label={t.transport.killNoise}
+            title={t.transport.killNoiseTitle}
+            onClick={() => engine.killNoise()}
+          >
+            {t.transport.killNoise}
+          </button>
+        ) : null}
         <button
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}

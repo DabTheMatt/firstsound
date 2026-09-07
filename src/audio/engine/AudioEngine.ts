@@ -90,7 +90,7 @@ import {
 import { migrateSpaceParams } from '../fx/migrate'
 import { applyDelayCorrelation, applyReverbCorrelation } from '../fx/dryWet'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
-import { distortionDryWet } from '../fx/distortion'
+import { distortionDryWet, NOISE_CUT_TAU_SEC, NOISE_PAUSE_FADE_TAU_SEC } from '../fx/distortion'
 import {
   applyDistortionGraph,
   createDistortionGraph,
@@ -256,6 +256,7 @@ export type EngineSnapshot = {
   reverbType: ReverbType
   distortionType: DistortionType
   distortionNoiseKind: DistortionNoiseKind
+  noiseMuted: boolean
   fxLfos: FxLfoMap
   lfoShown: Record<FxLfoKind, number>
   spacePresetId: string | null
@@ -372,6 +373,8 @@ export class AudioEngine {
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
   private spaceLatched = false
+  private noiseMuted = false
+  private noiseFadeTau = NOISE_CUT_TAU_SEC
   private spacePresetId: string | null = null
   private regionFade: {
     fadeIn: number
@@ -674,6 +677,8 @@ export class AudioEngine {
     this.filterEnvOrigin = this.lfoClockSec
     this.filterFollower = 0
     if (this.spaceLatched) this.spaceLatched = false
+    if (this.noiseMuted) this.noiseMuted = false
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.applyLiveAudio()
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playbackRegion(duration)
@@ -707,15 +712,40 @@ export class AudioEngine {
     if (this.engineMode === 'grain') {
       this.params.position = applyParamValue(this.direction === 'reverse' ? 100 : 0, PARAMS.position)
     }
+    this.noiseMuted = true
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.killFx('all')
     this.playFullSample = false
     this.applyLiveAudio()
     this.emit()
   }
 
+  /** Keep the playhead; fade distortion noise instead of cutting it. */
+  pause(): void {
+    if (!this.playing) return
+    this.playOffset = this.getPlayheadSeconds()
+    this.stopVoices()
+    this.playing = false
+    this.lfoWallMs = 0
+    this.syncLfoClock()
+    if (this.ctx) this.playCtxTime = this.ctx.currentTime
+    this.noiseMuted = true
+    this.noiseFadeTau = NOISE_PAUSE_FADE_TAU_SEC
+    this.applyLiveAudio(NOISE_PAUSE_FADE_TAU_SEC)
+    this.emit()
+  }
+
   togglePlay(): void {
-    if (this.playing) this.stop()
+    if (this.playing) this.pause()
     else void this.play()
+  }
+
+  /** Silence the distortion noise generator. Drive / mix stay put. */
+  killNoise(): void {
+    this.noiseMuted = true
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
+    this.applyLiveAudio(0.01)
+    this.emit()
   }
 
   playFromStart(): void {
@@ -820,6 +850,7 @@ export class AudioEngine {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
       const turningReverbStereoOn = id === 'reverbStereo' && value > 0.5 && this.params.reverbStereo <= 0.5
       this.params[id] = applyParamValue(value, PARAMS[id])
+      if (id === 'distortionNoise' && this.noiseMuted) this.noiseMuted = false
       if (turningStereoOn) this.copyDelayLeftToRight()
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       if (id === 'reverbCorrelate' && this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('enable')
@@ -863,6 +894,7 @@ export class AudioEngine {
       this.params[key] = applyParamValue(value, PARAMS[key])
     }
     this.syncTimeFromClock('bpm')
+    if ('distortionNoise' in patch && this.noiseMuted) this.noiseMuted = false
     if (this.params.reverbCorrelate >= 0.5) {
       this.syncReverbCorrelation(
         'reverbDry' in patch && !('reverbWet' in patch) ? 'dry' : 'wet',
@@ -948,6 +980,8 @@ export class AudioEngine {
   setDistortionType(type: DistortionType): void {
     if (this.distortionType === type) return
     this.distortionType = type
+    this.noiseMuted = false
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
     const color = distortionTypeColorPatch(type)
     for (const key of Object.keys(color) as ParamId[]) {
       const value = color[key]
@@ -1671,6 +1705,8 @@ export class AudioEngine {
     this.comb = defaultCombFilter()
     this.eqListen = 'sample'
     this.stopNoise()
+    this.noiseMuted = false
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.chain = defaultChain()
     this.tracks = defaultTracks(region.start, region.end)
     this.selectedTrackId = this.tracks[0]!.id
@@ -2019,6 +2055,8 @@ export class AudioEngine {
     this.reverbType = parseReverbType(preset.reverbType) ?? 'hall'
     this.distortionType = parseDistortionType(preset.distortionType) ?? 'saturation'
     this.distortionNoiseKind = parseDistortionNoiseKind(preset.distortionNoiseKind) ?? 'white'
+    this.noiseMuted = false
+    this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.fxLfos = parseFxLfos(preset.fxLfos)
     this.lfoHold = defaultLfoHold()
     this.lfoShown = lfoShownFromMap(this.fxLfos)
@@ -3031,6 +3069,9 @@ export class AudioEngine {
           this.distortionNoiseKind,
           now,
           smoothing,
+          this.ctx.sampleRate,
+          this.noiseMuted,
+          this.noiseFadeTau,
         )
       }
       if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
@@ -3700,6 +3741,7 @@ export class AudioEngine {
       reverbType: this.reverbType,
       distortionType: this.distortionType,
       distortionNoiseKind: this.distortionNoiseKind,
+      noiseMuted: this.noiseMuted,
       fxLfos: cloneFxLfos(this.fxLfos),
       lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,

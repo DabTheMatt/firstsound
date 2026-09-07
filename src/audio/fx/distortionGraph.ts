@@ -4,6 +4,7 @@ import type { ParamId } from '../parameters/types'
 import {
   defaultDistortionProcState,
   makeDistortionCurve,
+  noiseSlewCoeff,
   processDistortionBuffer,
   toneToFilters,
   type DistortionProcState,
@@ -81,6 +82,9 @@ export function applyDistortionGraph(
   noiseKind: DistortionNoiseKind,
   now: number,
   smoothing: number,
+  sampleRate = 48000,
+  noiseMuted = false,
+  noiseFadeTauSec = 0.02,
 ): void {
   const profile = distortionTypeProfile(type)
   const tone = toneToFilters(params.distortionTone)
@@ -98,7 +102,8 @@ export function applyDistortionGraph(
   }
   g.state.bits = params.distortionBits
   g.state.hold = params.distortionDownsample
-  g.state.noise = params.distortionNoise / 100
+  g.state.noise = noiseMuted ? 0 : params.distortionNoise / 100
+  g.state.noiseSlew = noiseSlewCoeff(sampleRate, noiseFadeTauSec)
   g.state.noiseKind = noiseKind
   const out = dbToGain(params.distortionOutput)
   g.post.gain.setTargetAtTime(out, now, smoothing)

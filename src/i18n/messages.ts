@@ -177,6 +177,8 @@ export type Messages = {
     playFromStartTitle: string
     killFx: string
     killFxTitle: string
+    killNoise: string
+    killNoiseTitle: string
     loop: string
     undo: string
     redo: string
@@ -558,6 +560,8 @@ export const EN: Messages = {
     playFromStartTitle: 'Play from the start of the sample, not the selection',
     killFx: 'Kill FX',
     killFxTitle: 'Kill delay and reverb tails',
+    killNoise: 'Kill noise',
+    killNoiseTitle: 'Silence the distortion noise generator',
     loop: 'Loop',
     undo: 'Undo',
     redo: 'Redo',
@@ -1024,6 +1028,8 @@ export const PL: Messages = {
     playFromStartTitle: 'Odtwórz od początku sampla, nie od zaznaczenia',
     killFx: 'Kill FX',
     killFxTitle: 'Utnij ogony delay i pogłosu',
+    killNoise: 'Kill noise',
+    killNoiseTitle: 'Wycisz generator szumu zniekształcenia',
     loop: 'Pętla',
     undo: 'Cofnij',
     redo: 'Ponów',

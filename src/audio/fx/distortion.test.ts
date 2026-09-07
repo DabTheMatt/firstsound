@@ -4,6 +4,9 @@ import {
   distortionDryWet,
   makeDistortionCurve,
   makeTanhCurve,
+  noiseSlewCoeff,
+  NOISE_CUT_TAU_SEC,
+  NOISE_PAUSE_FADE_TAU_SEC,
   processDistortionBuffer,
   saturationDryWet,
   shapeSample,
@@ -96,6 +99,47 @@ describe('processDistortionBuffer', () => {
     expect(outL[3]).toBeCloseTo(0.1)
     expect(outL[4]).toBeCloseTo(0.5)
     expect(outL[7]).toBeCloseTo(0.5)
+  })
+
+  it('adds noise on silence and slews to zero when muted', () => {
+    const silent = new Float32Array(64)
+    const outL = new Float32Array(64)
+    const outR = new Float32Array(64)
+    const state = defaultDistortionProcState()
+    state.noise = 0.5
+    state.noiseSlew = 1
+    processDistortionBuffer(silent, silent, outL, outR, state)
+    const energy = outL.reduce((sum, s) => sum + s * s, 0)
+    expect(energy).toBeGreaterThan(0.001)
+
+    state.noise = 0
+    state.noiseSlew = 1
+    processDistortionBuffer(silent, silent, outL, outR, state)
+    expect(outL.every((s) => s === 0)).toBe(true)
+    expect(outR.every((s) => s === 0)).toBe(true)
+  })
+
+  it('fades noise over samples instead of cutting when slew is slow', () => {
+    const silent = new Float32Array(8)
+    const outL = new Float32Array(8)
+    const state = defaultDistortionProcState()
+    state.noise = 0.8
+    state.noiseGain = 0.8
+    state.noiseSlew = 0.2
+    state.noise = 0
+    processDistortionBuffer(silent, silent, outL, new Float32Array(8), state)
+    expect(Math.abs(outL[0] ?? 0)).toBeGreaterThan(0)
+    expect(state.noiseGain).toBeGreaterThan(0.1)
+    expect(state.noiseGain).toBeLessThan(0.8)
+  })
+})
+
+describe('noise slew', () => {
+  it('pause fade is slower than a stop cut', () => {
+    expect(NOISE_PAUSE_FADE_TAU_SEC).toBeGreaterThan(NOISE_CUT_TAU_SEC * 8)
+    const pause = noiseSlewCoeff(48000, NOISE_PAUSE_FADE_TAU_SEC)
+    const cut = noiseSlewCoeff(48000, NOISE_CUT_TAU_SEC)
+    expect(pause).toBeLessThan(cut)
   })
 })
 

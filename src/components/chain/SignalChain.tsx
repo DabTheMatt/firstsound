@@ -242,15 +242,20 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 </button>
               ) : null}
             </div>
-            {mod.type === 'delay' || mod.type === 'reverb' ? (
+            {mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'distortion' ? (
               <button
                 type="button"
                 className={styles.kill}
-                aria-label={t.chain.kill(moduleName(mod.type))}
-                title={t.chain.killTitle(moduleName(mod.type))}
+                aria-label={
+                  mod.type === 'distortion' ? t.transport.killNoise : t.chain.kill(moduleName(mod.type))
+                }
+                title={
+                  mod.type === 'distortion' ? t.transport.killNoiseTitle : t.chain.killTitle(moduleName(mod.type))
+                }
                 onClick={(event) => {
                   event.stopPropagation()
-                  engine.killFx(mod.type === 'delay' ? 'delay' : 'reverb')
+                  if (mod.type === 'distortion') engine.killNoise()
+                  else engine.killFx(mod.type === 'delay' ? 'delay' : 'reverb')
                 }}
               >
                 ×

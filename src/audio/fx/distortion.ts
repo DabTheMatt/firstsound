@@ -139,6 +139,17 @@ export function saturationDryWet(drivePct: number, mixPct: number): { dry: numbe
   return distortionDryWet('saturation', drivePct, mixPct, 16, 1, 0)
 }
 
+/** Fast cut when Stop / Kill noise. */
+export const NOISE_CUT_TAU_SEC = 0.012
+/** Audible fade after Pause. */
+export const NOISE_PAUSE_FADE_TAU_SEC = 0.28
+
+export function noiseSlewCoeff(sampleRate: number, tauSec: number): number {
+  const sr = Math.max(1, sampleRate)
+  const tau = Math.max(1 / sr, tauSec)
+  return 1 - Math.exp(-1 / (tau * sr))
+}
+
 export type DistortionProcState = {
   bits: number
   hold: number
@@ -146,6 +157,8 @@ export type DistortionProcState = {
   heldL: number
   heldR: number
   noise: number
+  noiseGain: number
+  noiseSlew: number
   noiseKind: DistortionNoiseKind
   seed: number
   pinkB0: number
@@ -162,6 +175,8 @@ export function defaultDistortionProcState(): DistortionProcState {
     heldL: 0,
     heldR: 0,
     noise: 0,
+    noiseGain: 0,
+    noiseSlew: 1,
     noiseKind: 'white',
     seed: 1,
     pinkB0: 0,
@@ -199,13 +214,16 @@ export function processDistortionBuffer(
   const n = Math.min(inputL.length, outputL.length)
   const hold = Math.max(1, Math.round(state.hold))
   const crush = state.bits < 15.95
-  const noisy = state.noise > 0.0004
+  const slew = clamp(state.noiseSlew, 0, 1)
+  if (slew >= 1) state.noiseGain = state.noise
+  const noisy = state.noise > 0.0004 || state.noiseGain > 0.0004
   if (!crush && hold <= 1 && !noisy) {
     outputL.set(inputL.subarray(0, n))
     outputR.set(inputR.subarray(0, Math.min(n, inputR.length)))
     return
   }
   for (let i = 0; i < n; i++) {
+    if (slew < 1) state.noiseGain += (state.noise - state.noiseGain) * slew
     if (state.count === 0) {
       const l = inputL[i] ?? 0
       const r = inputR[i] ?? l
@@ -216,9 +234,9 @@ export function processDistortionBuffer(
     if (state.count >= hold) state.count = 0
     let l = state.heldL
     let r = state.heldR
-    if (noisy) {
-      l += nextNoise(state) * state.noise
-      r += nextNoise(state) * state.noise
+    if (state.noiseGain > 0.0004) {
+      l += nextNoise(state) * state.noiseGain
+      r += nextNoise(state) * state.noiseGain
     }
     outputL[i] = clamp(l, -1, 1)
     outputR[i] = clamp(r, -1, 1)
