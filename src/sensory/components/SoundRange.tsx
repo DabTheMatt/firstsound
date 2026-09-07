@@ -214,7 +214,6 @@ export function SoundRange({
       /* already released */
     }
     if (state.moved) onRegionCommit()
-    else seekToFrac(fracAt(event))
   }
 
   return (
@@ -233,7 +232,9 @@ export function SoundRange({
             if (event.button !== 0) return
             event.preventDefault()
             event.currentTarget.setPointerCapture(event.pointerId)
-            drag.current = { pointerId: event.pointerId, originFrac: fracAt(event), moved: false }
+            const frac = fracAt(event)
+            drag.current = { pointerId: event.pointerId, originFrac: frac, moved: false }
+            seekToFrac(frac)
           }}
           onPointerMove={(event) => {
             const state = drag.current

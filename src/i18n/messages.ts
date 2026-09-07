@@ -82,6 +82,7 @@ export type Messages = {
     regionStart: string
     regionEnd: string
     tracksAria: string
+    overviewAria: string
   }
   transport: {
     play: string
@@ -314,6 +315,7 @@ export const EN: Messages = {
     regionStart: 'Region start',
     regionEnd: 'Region end',
     tracksAria: 'Tracks',
+    overviewAria: 'Sample overview. Click to set the playhead.',
   },
   transport: {
     play: 'Play',
@@ -461,8 +463,8 @@ export const EN: Messages = {
     themes: 'Themes',
     color: 'Color',
     places: 'Places',
-    selectRegion: 'Select a sample region, or double-click to play',
-    overviewDrag: 'Sample overview. Drag to select a fragment.',
+    selectRegion: 'Click to set the playhead, drag to select a region, or double-click to play',
+    overviewDrag: 'Sample overview. Click to set the playhead. Drag to select a fragment.',
     balanced: 'balanced',
     atmospheres: {
       bloom: 'Bloom',
@@ -631,6 +633,7 @@ export const PL: Messages = {
     regionStart: 'Początek regionu',
     regionEnd: 'Koniec regionu',
     tracksAria: 'Ślady',
+    overviewAria: 'Przegląd sampla. Kliknij, aby ustawić głowicę.',
   },
   transport: {
     play: 'Odtwórz',
@@ -778,8 +781,8 @@ export const PL: Messages = {
     themes: 'Motywy',
     color: 'Kolor',
     places: 'Miejsca',
-    selectRegion: 'Zaznacz region sampla albo kliknij dwukrotnie, aby odtworzyć',
-    overviewDrag: 'Przegląd sampla. Przeciągnij, aby zaznaczyć fragment.',
+    selectRegion: 'Kliknij, aby ustawić głowicę, przeciągnij, aby zaznaczyć region, albo kliknij dwukrotnie, aby odtworzyć',
+    overviewDrag: 'Przegląd sampla. Kliknij, aby ustawić głowicę. Przeciągnij, aby zaznaczyć fragment.',
     balanced: 'równowaga',
     atmospheres: {
       bloom: 'Rozkwit',

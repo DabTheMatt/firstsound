@@ -4,6 +4,8 @@ import {
   fitView,
   fracToTime,
   panView,
+  overviewPointerMoved,
+  overviewPointerTime,
   resizeViewEdge,
   timeToFrac,
   verticalGain,
@@ -61,6 +63,18 @@ describe('viewport', () => {
     const clamped = panView(view, 100, 10)
     expect(clamped.end).toBe(10)
     expect(clamped.end - clamped.start).toBeCloseTo(4)
+  })
+
+  it('maps an overview click onto the sample', () => {
+    expect(overviewPointerTime(50, 0, 100, 10)).toBeCloseTo(5)
+    expect(overviewPointerTime(-4, 0, 100, 10)).toBe(0)
+    expect(overviewPointerTime(140, 0, 100, 10)).toBe(10)
+    expect(overviewPointerTime(20, 0, 0, 10)).toBe(0)
+  })
+
+  it('treats a tiny overview nudge as a click', () => {
+    expect(overviewPointerMoved(40, 40.2, 200)).toBe(false)
+    expect(overviewPointerMoved(40, 80, 200)).toBe(true)
   })
 
   it('shrinks the overview frame by dragging an edge', () => {
