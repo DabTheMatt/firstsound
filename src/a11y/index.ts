@@ -3,7 +3,14 @@ import { ControlTooltip } from './ControlTooltip'
 import { LiveAnnouncer } from './LiveAnnouncer'
 import { SkipLink } from './SkipLink'
 import { announce } from './liveRegion'
-import { applySliderKey, isTransportShortcutTarget, isTypingTarget, scrollFocusedIntoView } from './keyboard'
+import {
+  applySliderKey,
+  createSpaceActivationGuard,
+  isSpaceKey,
+  isTransportShortcutTarget,
+  isTypingTarget,
+  scrollFocusedIntoView,
+} from './keyboard'
 import { formatAccessibleValue, formatPercentValue } from './valueText'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS, paramDescription, sensoryDescription } from './descriptions'
 import { bootstrapA11y, useA11ySettings } from './useA11ySettings'
@@ -21,6 +28,8 @@ export {
   SkipLink,
   announce,
   applySliderKey,
+  createSpaceActivationGuard,
+  isSpaceKey,
   isTransportShortcutTarget,
   isTypingTarget,
   scrollFocusedIntoView,

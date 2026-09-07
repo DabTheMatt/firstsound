@@ -5,7 +5,7 @@ import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
-import { isTypingTarget, isTransportShortcutTarget } from './keys'
+import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
@@ -191,6 +191,7 @@ export default function App() {
   }, [menuOpen])
 
   useEffect(() => {
+    const clickGuard = createSpaceActivationGuard()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMenuOpen(false)
@@ -198,12 +199,14 @@ export default function App() {
         return
       }
       if (isTypingTarget(event.target)) return
-      if (event.code === 'Space') {
+      if (isSpaceKey(event)) {
         if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
         event.preventDefault()
-        event.stopPropagation()
+        event.stopImmediatePropagation()
         if (event.repeat) return
-        void engine.unlock().then(() => engine.togglePlay())
+        clickGuard.arm()
+        void engine.unlock()
+        engine.togglePlay()
         return
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
@@ -225,17 +228,21 @@ export default function App() {
     }
     const onKeyUp = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target)) return
-      if (event.code === 'Space') {
-        if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
-        event.preventDefault()
-        event.stopPropagation()
-      }
+      if (!isSpaceKey(event)) return
+      if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    const onClick = (event: MouseEvent) => {
+      clickGuard.onClick(event)
     }
     window.addEventListener('keydown', onKey, true)
     window.addEventListener('keyup', onKeyUp, true)
+    window.addEventListener('click', onClick, true)
     return () => {
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('keyup', onKeyUp, true)
+      window.removeEventListener('click', onClick, true)
     }
   }, [a11y.shortcutsEnabled])
   const sampleInput = useRef<HTMLInputElement>(null)
