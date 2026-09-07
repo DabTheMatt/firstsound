@@ -264,12 +264,14 @@ export function SimpleShell({
           <p className={styles.clock} aria-live="off">
             {t.simple.clock(formatRangeClock(now), formatRangeClock(regionLen || snap.duration))}
           </p>
-          <button type="button" className={styles.ghost} disabled={!canUndo} onClick={onUndo}>
-            {t.simple.undo}
-          </button>
-          <button type="button" className={styles.ghost} disabled={!canRedo} onClick={onRedo}>
-            {t.simple.redo}
-          </button>
+          <div className={styles.history}>
+            <button type="button" className={styles.ghost} disabled={!canUndo} onClick={onUndo}>
+              {t.simple.undo}
+            </button>
+            <button type="button" className={styles.ghost} disabled={!canRedo} onClick={onRedo}>
+              {t.simple.redo}
+            </button>
+          </div>
         </div>
 
         {status ? <p className={styles.status}>{status}</p> : null}
@@ -384,6 +386,9 @@ export function SimpleShell({
           >
             {t.simple.autoFix}
           </button>
+          <button type="button" className={styles.link} onClick={() => setSheet('restore')}>
+            {t.simple.restore}
+          </button>
         </section>
 
         <div className={styles.bottom}>
@@ -411,9 +416,6 @@ export function SimpleShell({
             {t.simple.save}
           </button>
         </div>
-        <button type="button" className={styles.restore} onClick={() => setSheet('restore')}>
-          {t.simple.restore}
-        </button>
       </div>
 
       {sheet !== 'none' ? (
