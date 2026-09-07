@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { THEME_OPTIONS, useTheme, type ThemePreference } from '../../theme'
+import { THEME_OPTIONS, useTheme, type ThemePreference, type ThemeId } from '../../theme'
 import { resolveSensoryAtmosphere, SENSORY_ATMOSPHERES } from '../sensoryAtmospheres'
+import { useI18n } from '../../i18n'
 import type { SensorySceneId } from '../sensoryScene'
 import styles from './SensoryThemePicker.module.css'
 
@@ -11,11 +12,13 @@ type Props = {
 }
 
 export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
+  const { t } = useI18n()
   const { preference, setPreference } = useTheme()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const active = resolveSensoryAtmosphere(scene, preference)
   const named = SENSORY_ATMOSPHERES.some((a) => a.id === active.id)
+  const namedLabel = t.sensory.atmospheres[active.id] ?? t.theme.names[active.theme as ThemeId] ?? active.label
 
   useEffect(() => {
     if (!open) return
@@ -35,7 +38,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
         className={styles.trigger}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Atmosphere: ${active.label}`}
+        aria-label={t.sensory.atmosphereNamed(namedLabel)}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -43,11 +46,11 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
           <span className={styles.dot} style={{ background: active.preview.surface }} />
           <span className={styles.dot} style={{ background: active.preview.accent }} />
         </span>
-        <span className={styles.name}>{active.label}</span>
+        <span className={styles.name}>{namedLabel}</span>
       </button>
       {open ? (
-        <div className={styles.menu} role="listbox" aria-label="Themes">
-          <p className={styles.title}>Atmosphere</p>
+        <div className={styles.menu} role="listbox" aria-label={t.sensory.themes}>
+          <p className={styles.title}>{t.sensory.atmosphere}</p>
           {SENSORY_ATMOSPHERES.map((opt) => (
             <button
               key={opt.id}
@@ -66,10 +69,10 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
                 <span className={styles.dot} style={{ background: opt.preview.surface }} />
                 <span className={styles.dot} style={{ background: opt.preview.accent }} />
               </span>
-              {opt.label}
+              {t.sensory.atmospheres[opt.id] ?? opt.label}
             </button>
           ))}
-          <p className={styles.title}>Color</p>
+          <p className={styles.title}>{t.sensory.color}</p>
           {THEME_OPTIONS.filter((opt) => opt.id !== 'system' && opt.id !== 'custom').map((opt) => (
             <button
               key={opt.id}
@@ -87,7 +90,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
                 <span className={styles.dot} style={{ background: opt.preview.surface }} />
                 <span className={styles.dot} style={{ background: opt.preview.accent }} />
               </span>
-              {opt.label}
+              {t.theme.names[opt.id as ThemeId] ?? opt.label}
             </button>
           ))}
           <button
@@ -98,7 +101,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
               onPlaces()
             }}
           >
-            Places
+            {t.sensory.places}
           </button>
         </div>
       ) : null}

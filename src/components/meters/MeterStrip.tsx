@@ -3,6 +3,7 @@ import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { ValueKnob } from '../controls/ValueKnob'
 import { timeDomainPeakDb } from '../../audio/engine/timePeak'
 import {
@@ -23,6 +24,7 @@ type Props = {
 }
 
 export function MeterStrip({ channels, range, onRange }: Props) {
+  const { t } = useI18n()
   const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
@@ -80,12 +82,12 @@ export function MeterStrip({ channels, range, onRange }: Props) {
         <button
           type="button"
           className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
-          aria-label="Reset clip"
-          title="Reset clip indicator"
+          aria-label={t.meters.resetClip}
+          title={t.meters.resetClipTitle}
           onClick={() => setClipped(false)}
         >
           <span className={styles.led} aria-hidden="true" />
-          <span className={styles.clipLabel}>Clip</span>
+          <span className={styles.clipLabel}>{t.meters.clip}</span>
         </button>
       </div>
       <div className={styles.body}>
@@ -140,7 +142,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       <select
         className={styles.select}
         value={range}
-        aria-label="Meter range"
+        aria-label={t.meters.range}
         onChange={(e) => onRange(e.target.value as MeterRange)}
       >
         <option value="normal">−60</option>

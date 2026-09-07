@@ -11,6 +11,7 @@ import {
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { LfoShapeIcon } from '../controls/LfoShapePicker'
 import { PlugGlyph } from '../controls/PlugGlyph'
 import { useFxLfoConnect } from './FxLfoConnect'
@@ -35,6 +36,7 @@ function kindConnectScore(snap: EngineSnapshot, kind: FxLfoKind): number {
 }
 
 export function LfoCenter({ snap, onReveal }: Props) {
+  const { t } = useI18n()
   const { armed, setArmed } = useFxLfoConnect()
   const kinds = [...FX_LFO_KINDS].sort((a, b) => {
     const diff = kindConnectScore(snap, b) - kindConnectScore(snap, a)
@@ -42,12 +44,10 @@ export function LfoCenter({ snap, onReveal }: Props) {
     return FX_LFO_KINDS.indexOf(a) - FX_LFO_KINDS.indexOf(b)
   })
   return (
-    <div className={styles.panel} role="dialog" aria-label="LFO control center">
+    <div className={styles.panel} role="dialog" aria-label={t.header.lfoCenter}>
       <header className={styles.head}>
-        <h2 className={styles.title}>LFO center</h2>
-        <p className={styles.lead}>
-          Running modulators and their targets. Up to {FX_LFO_SLOTS} LFOs on each effect.
-        </p>
+        <h2 className={styles.title}>{t.lfo.center}</h2>
+        <p className={styles.lead}>{t.lfo.lead(FX_LFO_SLOTS)}</p>
       </header>
       {kinds.map((kind) => (
         <KindBlock

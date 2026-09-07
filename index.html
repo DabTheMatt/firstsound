@@ -40,6 +40,14 @@
           document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px')
         } catch (e) {}
         try {
+          var storedLocale = localStorage.getItem('field.uiLocale')
+          if (storedLocale === 'pl' || storedLocale === 'en') {
+            document.documentElement.lang = storedLocale
+          } else if (String(navigator.language || '').toLowerCase().indexOf('pl') === 0) {
+            document.documentElement.lang = 'pl'
+          }
+        } catch (e) {}
+        try {
           var stored = localStorage.getItem('field.theme') || 'studio-dark'
           var theme = stored
           if (stored === 'system') {

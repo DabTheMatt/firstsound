@@ -14,6 +14,7 @@ import {
   type SensoryVisualState,
 } from '../visualization/sensoryVisualState'
 import { absEnvelope, blurEnvelope, mountainLayerSpecs, normalizeEnvelopePeak } from '../visualization/mountainLayers'
+import { useI18n } from '../../i18n'
 import styles from './SoundRange.module.css'
 
 type Props = {
@@ -63,6 +64,7 @@ function sourceView() {
 }
 
 export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogglePlay, onLoadDemo }: Props) {
+  const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
@@ -168,10 +170,10 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
         aria-hidden="true"
       />
       {loaded ? (
-        <button type="button" className={styles.hit} aria-label="Play or pause" onDoubleClick={onTogglePlay} />
+        <button type="button" className={styles.hit} aria-label={t.sensory.playPause} onDoubleClick={onTogglePlay} />
       ) : (
         <button type="button" className={styles.empty} onClick={onLoadDemo}>
-          Load demo tone
+          {t.sensory.loadDemo}
         </button>
       )}
     </div>

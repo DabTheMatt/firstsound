@@ -3,6 +3,7 @@ import { formatTimecode } from '../../audio/engine/formatTime'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import styles from './ExportDialog.module.css'
 
@@ -20,6 +21,7 @@ const RATES = [
 ] as const
 
 export function ExportDialog({ snap, onClose }: Props) {
+  const { t } = useI18n()
   const prep = snap.prep
   const partial =
     isTrimmed(prep, snap.sourceDuration) ||
@@ -64,7 +66,7 @@ export function ExportDialog({ snap, onClose }: Props) {
           exportNow()
         }}
       >
-        <h2 id="export-title">Export sample</h2>
+        <h2 id="export-title">{t.export.title}</h2>
         <label className={styles.field}>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -75,13 +77,13 @@ export function ExportDialog({ snap, onClose }: Props) {
             <option value="wav">WAV</option>
           </select>
         </label>
-        <p className={styles.hint}>FLAC and AIFF are listed only when this build can encode them.</p>
+        <p className={styles.hint}>{t.export.hintCodec}</p>
         <label className={styles.field}>
           Sample rate
           <select value={rate} onChange={(e) => setRate(e.target.value)}>
             {RATES.map((r) => (
               <option key={r.value} value={r.value}>
-                {r.value === 'original' ? `Original (${originalHz || '—'} Hz)` : r.label}
+                {r.value === 'original' ? `${t.export.original} (${originalHz || '—'} Hz)` : r.label}
               </option>
             ))}
           </select>
@@ -113,7 +115,7 @@ export function ExportDialog({ snap, onClose }: Props) {
           <input type="checkbox" checked={applyNormalize} onChange={(e) => setApplyNormalize(e.target.checked)} />
           Normalize to {DEFAULT_NORMALIZE_DBFS} dBFS
         </label>
-        <p className={styles.hint}>Estimated duration {formatTimecode(estimated)}</p>
+        <p className={styles.hint}>{t.export.estimated(formatTimecode(estimated))}</p>
         <div className={styles.actions}>
           <button type="button" onClick={onClose}>
             Cancel

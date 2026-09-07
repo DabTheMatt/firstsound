@@ -2,6 +2,7 @@ import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react
 import { isDocumentHidden } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './OverviewStrip.module.css'
 
@@ -12,6 +13,7 @@ type Props = {
 }
 
 export function OverviewStrip({ duration, loaded, contentRev }: Props) {
+  const { t } = useI18n()
   const snap = useEngine()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
@@ -112,7 +114,7 @@ export function OverviewStrip({ duration, loaded, contentRev }: Props) {
     <div
       ref={wrapRef}
       className={styles.wrap}
-      aria-label="Sample overview"
+      aria-label={t.sensory.overview}
       onPointerDown={onPointer}
     >
       <canvas ref={canvasRef} className={styles.strip} />

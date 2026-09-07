@@ -8,6 +8,7 @@ import {
 } from '../sensoryFeelings'
 import { AXIS_LFO_BY_ID, axisLfoActive } from '../mapping/axisLfos'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { defaultSensoryValues, type SensoryValues } from '../sensoryState'
 import { FeelingIcon } from './FeelingIcon'
 import styles from './FeelingRail.module.css'
@@ -26,17 +27,23 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n))
 }
 
-function levelText(feeling: SensoryFeeling, amount: number): string {
+function levelText(
+  feeling: SensoryFeeling,
+  amount: number,
+  copy: { from: string; to: string },
+  rest: string,
+): string {
   if (feeling.kind === 'bipolar') {
     const pct = Math.round(Math.abs(amount) * 100)
-    if (pct === 0) return 'rest'
-    return amount < 0 ? `${pct} tight` : `${pct} open`
+    if (pct === 0) return rest
+    return amount < 0 ? `${pct} ${copy.from}` : `${pct} ${copy.to}`
   }
   const pct = Math.round(amount * 100)
-  return pct === 0 ? 'rest' : `${pct}`
+  return pct === 0 ? rest : `${pct}`
 }
 
 export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: Props) {
+  const { t, feeling: feelingCopy } = useI18n()
   const drag = useRef<{
     pointerId: number
     originY: number
@@ -103,19 +110,19 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
 
   function renderRail(side: 'left' | 'right') {
     return (
-    <div className={`${styles.rail} ${styles[side]} ${focused ? styles.focused : ''}`} role="listbox" aria-label={side === 'left' ? 'Effect feelings, left' : 'Effect feelings, right'}>
+    <div className={`${styles.rail} ${styles[side]} ${focused ? styles.focused : ''}`} role="listbox" aria-label={side === 'left' ? t.sensory.feelingsLeft : t.sensory.feelingsRight}>
       {side === 'left' ? (
       <button
         type="button"
         className={styles.rest}
-        aria-label="Rest all sensory effects to the starting position"
+        aria-label={t.sensory.restAll}
         onClick={() => {
           onActive(null)
           onValues(defaultSensoryValues())
           onCommit()
         }}
       >
-        rest
+        {t.sensory.rest}
       </button>
       ) : null}
       {feelingsForRail(side).map((feeling) => {
@@ -123,6 +130,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
         const amount = feelingAmount(values, feeling)
         const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
         const lfoOn = Boolean(AXIS_LFO_BY_ID[feeling.id] && axisLfoActive(amount))
+        const copy = feelingCopy(feeling.id)
         return (
           <button
             key={feeling.id}
@@ -131,12 +139,12 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
             data-axis={feeling.id}
             className={`${styles.item} ${on ? styles.on : ''} ${focused && !on ? styles.dim : ''} ${Math.abs(amount) > 0.04 ? styles.lit : ''} ${lfoOn ? styles.lfoOn : ''}`}
             aria-selected={on}
-            aria-label={feeling.ariaLabel}
+            aria-label={copy.aria}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={now}
-            aria-valuetext={levelText(feeling, amount)}
-            title={`${feeling.from} → ${feeling.to}. Double-click to rest.`}
+            aria-valuetext={levelText(feeling, amount, copy, t.sensory.restLevel)}
+            title={`${copy.from} → ${copy.to}. ${t.sensory.doubleClickRest}`}
             onPointerDown={(event) => {
               if (event.button !== 0) return
               event.preventDefault()
@@ -176,11 +184,11 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
             <FeelingIcon feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
             {lfoOn ? <span className={styles.lfoMark} aria-hidden="true" /> : null}
             <span className={styles.copy}>
-              <span className={styles.label}>{feeling.label}</span>
+              <span className={styles.label}>{copy.label}</span>
               <span className={styles.rangeHint}>
-                {feeling.from}–{feeling.to}
+                {copy.from}–{copy.to}
               </span>
-              <span className={styles.level}>{levelText(feeling, amount)}</span>
+              <span className={styles.level}>{levelText(feeling, amount, copy, t.sensory.restLevel)}</span>
             </span>
           </button>
         )

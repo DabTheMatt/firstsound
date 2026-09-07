@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n'
 import styles from './TransportButton.module.css'
 
 type Props = {
@@ -7,13 +8,14 @@ type Props = {
 }
 
 export function TransportButton({ playing, onToggle, disabled }: Props) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       className={styles.play}
       onClick={onToggle}
       disabled={disabled}
-      aria-label={playing ? 'Stop' : 'Play'}
+      aria-label={playing ? t.transport.stop : t.transport.play}
     >
       {playing ? (
         <svg className={styles.icon} width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">

@@ -7,10 +7,13 @@ import {
   useTheme,
   userThemePreference,
   type ThemePreference,
+  type ThemeId,
 } from '../../theme'
+import { useI18n } from '../../i18n'
 import styles from './ThemePicker.module.css'
 
 export function ThemePicker({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n()
   const {
     preference,
     setPreference,
@@ -39,7 +42,15 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
   const active =
     THEME_OPTIONS.find((opt) => opt.id === preference) ??
     savedThemes.find((t) => userThemePreference(t.id) === preference)
-  const triggerLabel = active && 'label' in active ? active.label : active && 'name' in active ? active.name : 'Theme'
+  const triggerLabel = active && 'label' in active
+    ? active.id === 'system'
+      ? t.theme.system
+      : active.id === 'custom'
+        ? t.theme.custom
+        : t.theme.names[active.id as ThemeId] ?? active.label
+    : active && 'name' in active
+      ? active.name
+      : t.theme.group
   const preview =
     editing || isUserThemePreference(preference)
       ? { bg: customColors.bgApp, surface: customColors.bgElevated, accent: customColors.accent }
@@ -52,7 +63,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         className={styles.trigger}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Theme: ${triggerLabel}`}
+        aria-label={t.theme.named(triggerLabel)}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -63,7 +74,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         <span className={styles.triggerLabel}>{triggerLabel}</span>
       </button>
       {open ? (
-        <div className={styles.menu} role="listbox" aria-label="Theme">
+        <div className={styles.menu} role="listbox" aria-label={t.theme.group}>
           {THEME_OPTIONS.map((opt) => {
             const swatch =
               opt.id === 'custom'
@@ -83,13 +94,17 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
                   <span className={styles.dot} style={{ background: swatch.surface }} />
                   <span className={styles.dot} style={{ background: swatch.accent }} />
                 </span>
-                {opt.label}
+                {opt.id === 'system'
+                  ? t.theme.system
+                  : opt.id === 'custom'
+                    ? t.theme.custom
+                    : t.theme.names[opt.id as ThemeId] ?? opt.label}
               </button>
             )
           })}
           {savedThemes.length > 0 ? (
             <>
-              <p className={styles.customTitle}>My themes</p>
+              <p className={styles.customTitle}>{t.theme.myThemes}</p>
               {savedThemes.map((theme) => {
                 const id = userThemePreference(theme.id)
                 return (
@@ -111,7 +126,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
                     <button
                       type="button"
                       className={styles.delete}
-                      aria-label={`Delete ${theme.name}`}
+                      aria-label={t.theme.deleteNamed(theme.name)}
                       onClick={() => removeSavedTheme(theme.id)}
                     >
                       ×
@@ -123,15 +138,15 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
           ) : null}
           {editing ? (
             <div className={styles.custom}>
-              <p className={styles.customTitle}>Element colors</p>
-              <p className={styles.help}>Starts from the theme you had open. Save to keep it in My themes.</p>
+              <p className={styles.customTitle}>{t.theme.elementColors}</p>
+              <p className={styles.help}>{t.theme.help}</p>
               {CUSTOM_COLOR_FIELDS.map((field) => (
                 <label key={field.id} className={styles.colorRow}>
-                  <span>{field.label}</span>
+                  <span>{t.theme.colors[field.id] ?? field.label}</span>
                   <input
                     type="color"
                     value={normalizeHex(customColors[field.id])}
-                    aria-label={field.label}
+                    aria-label={t.theme.colors[field.id] ?? field.label}
                     onChange={(event) => setCustomColor(field.id, event.target.value)}
                   />
                 </label>
@@ -148,12 +163,12 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
                   className={styles.name}
                   value={saveName}
                   maxLength={40}
-                  aria-label="Theme name"
+                  aria-label={t.theme.themeName}
                   placeholder={nextSavedThemeName(savedThemes)}
                   onChange={(event) => setSaveName(event.target.value)}
                 />
                 <button type="submit" className={styles.save}>
-                  Save
+                  {t.theme.save}
                 </button>
               </form>
             </div>

@@ -2,6 +2,7 @@ import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
+import { LanguageSwitch, useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { ThemePicker } from './ThemePicker'
 import styles from './AppHeader.module.css'
@@ -31,23 +32,24 @@ export function AppHeader({
   minimal = false,
   modeSwitch,
 }: Props) {
+  const { t } = useI18n()
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
   const folded = snap.params.makeMono > 0.5
   const ch = folded
-    ? 'Mono'
+    ? t.header.mono
     : snap.channelCount === 1
       ? 'M'
       : snap.channelCount === 2
-        ? 'Stereo'
+        ? t.header.stereo
         : snap.channelCount
-          ? `${snap.channelCount} ch`
+          ? t.header.channels(snap.channelCount)
           : '—'
   return (
     <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
       <div className={styles.brand}>
         <span className={styles.wordmark}>Field</span>
         <button type="button" className={styles.file} onClick={onLoadSample}>
-          {snap.fileName || 'Load sample'}
+          {snap.fileName || t.header.loadSample}
         </button>
         {!minimal ? (
           <button
@@ -56,7 +58,7 @@ export function AppHeader({
             aria-pressed={snap.recording}
             onClick={onRecord}
           >
-            {snap.recording ? 'Stop' : 'Record'}
+            {snap.recording ? t.header.stop : t.header.record}
           </button>
         ) : null}
         {!minimal ? <ThemePicker /> : null}
@@ -64,9 +66,9 @@ export function AppHeader({
           <button
             type="button"
             className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
-            aria-label="LFO control center"
+            aria-label={t.header.lfoCenter}
             aria-expanded={lfoCenterOpen}
-            title="LFO control center"
+            title={t.header.lfoCenter}
             onClick={onToggleLfoCenter}
           >
             <svg viewBox="0 0 20 12" width="18" height="12" aria-hidden="true">
@@ -92,15 +94,16 @@ export function AppHeader({
         <RuntimeStatus />
       </div>
       <div className={styles.trailing}>
+        <LanguageSwitch />
         {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
           <button
             type="button"
             className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
-            aria-label="LFO control center"
+            aria-label={t.header.lfoCenter}
             aria-expanded={lfoCenterOpen}
-            title="LFO control center"
+            title={t.header.lfoCenter}
             onClick={onToggleLfoCenter}
           >
             <svg viewBox="0 0 20 12" width="16" height="10" aria-hidden="true">
@@ -121,18 +124,18 @@ export function AppHeader({
             aria-pressed={snap.recording}
             onClick={onRecord}
           >
-            {snap.recording ? 'Stop' : 'Rec'}
+            {snap.recording ? t.header.stop : t.header.rec}
           </button>
         ) : null}
         <button
           type="button"
           className={styles.settings}
-          aria-label="Settings"
+          aria-label={t.header.settings}
           aria-expanded={settingsOpen}
           data-settings-toggle=""
           onClick={onToggleSettings}
         >
-          {compact ? '☰' : 'Settings'}
+          {compact ? '☰' : t.header.settings}
         </button>
       </div>
     </header>
