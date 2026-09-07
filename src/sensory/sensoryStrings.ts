@@ -1,15 +1,15 @@
 export const SENSORY_STRINGS_STORAGE_KEY = 'firstsound.sensoryStrings'
 
-/** Strings stay hidden until a parameter is being edited. Stored "on" is ignored. */
-export function parseSensoryStrings(_raw: string | null | undefined): boolean {
-  return false
+/** Overlay of parameter strings. Default is off. */
+export function parseSensoryStrings(raw: string | null | undefined): boolean {
+  return raw === '1'
 }
 
 export function readStoredSensoryStrings(): boolean {
   try {
     return parseSensoryStrings(localStorage.getItem(SENSORY_STRINGS_STORAGE_KEY))
   } catch {
-    return true
+    return false
   }
 }
 

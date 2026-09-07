@@ -1,5 +1,6 @@
 import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
+import { editFilmGrainBoost } from './changeLayers'
 
 export type Rgb = { r: number; g: number; b: number }
 
@@ -11,6 +12,10 @@ export type SensoryVisualState = {
   mass: number
   motion: number
   haze: number
+  chroma: number
+  filmGrain: number
+  pulse: number
+  changeEnergy: number
   echo: number
   character: number
   space: number
@@ -126,6 +131,59 @@ export function watercolorMix(values: SensoryValues, active: SensoryAxisId | nul
   return ink
 }
 
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n))
+}
+
+function axisMag(values: SensoryValues, id: SensoryAxisId): number {
+  return Math.max(0, values[id])
+}
+
+/** Analog dirt and vinyl artifacts split RGB — not the room size. */
+export function chromaticAmount(values: SensoryValues): number {
+  return clamp01(
+    axisMag(values, 'tape') * 0.92 +
+      axisMag(values, 'vinyl') * 0.84 +
+      axisMag(values, 'crush') * 0.28 +
+      axisMag(values, 'dirt') * 0.2 +
+      axisMag(values, 'fold') * 0.16,
+  )
+}
+
+/** Film grain from the grain engine, with a little crush and vinyl dust. */
+export function filmGrainAmount(values: SensoryValues): number {
+  return clamp01(
+    axisMag(values, 'grain') +
+      axisMag(values, 'crush') * 0.22 +
+      axisMag(values, 'dirt') * 0.14 +
+      axisMag(values, 'vinyl') * 0.1,
+  )
+}
+
+/** Optical blur from veil, bloom, melt, and a little space. */
+export function blurAmount(values: SensoryValues): number {
+  return clamp01(
+    0.04 +
+      axisMag(values, 'veil') * 0.72 +
+      axisMag(values, 'bloom') * 0.4 +
+      axisMag(values, 'melt') * 0.32 +
+      axisMag(values, 'space') * 0.28 +
+      axisMag(values, 'vinyl') * 0.1,
+  )
+}
+
+/** Breathing pulse from modulation, shimmer, and orbit. */
+export function pulseAmount(values: SensoryValues, reducedMotion: boolean): number {
+  if (reducedMotion) return 0
+  return clamp01(
+    axisMag(values, 'mod') * 0.85 +
+      axisMag(values, 'shimmer') * 0.48 +
+      axisMag(values, 'pan') * 0.32 +
+      axisMag(values, 'halo') * 0.22 +
+      axisMag(values, 'gate') * 0.16,
+  )
+}
+
 export function lerpNum(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
@@ -149,6 +207,10 @@ export function lerpVisualState(from: SensoryVisualState, to: SensoryVisualState
     mass: lerpNum(from.mass, to.mass, u),
     motion: lerpNum(from.motion, to.motion, u),
     haze: lerpNum(from.haze, to.haze, u),
+    chroma: lerpNum(from.chroma, to.chroma, u),
+    filmGrain: lerpNum(from.filmGrain, to.filmGrain, u),
+    pulse: lerpNum(from.pulse, to.pulse, u),
+    changeEnergy: lerpNum(from.changeEnergy, to.changeEnergy, u),
     echo: lerpNum(from.echo, to.echo, u),
     character: lerpNum(from.character, to.character, u),
     space: lerpNum(from.space, to.space, u),
@@ -227,7 +289,12 @@ export function sensoryVisualState(
   if (crush > 0.08) ink = mixRgb(ink, AXIS_TINT.crush, crush * 0.35)
   ink = watercolorMix(values, activeAxis, ink)
 
-  const motion = reducedMotion ? 0 : mod * 0.85 + grain * 0.18 + pan * 0.4 + fold * 0.12
+  const chroma = chromaticAmount(values)
+  const editAmt = activeAxis ? values[activeAxis] : 0
+  const changeEnergy = activeAxis ? Math.min(1, 0.28 + Math.abs(editAmt) * 0.72) : 0
+  const filmGrain = Math.min(1, filmGrainAmount(values) + editFilmGrainBoost(activeAxis, editAmt))
+  const pulse = Math.min(1, pulseAmount(values, reducedMotion) + changeEnergy * 0.18)
+  const motion = reducedMotion ? 0 : pulse * 0.72 + grain * 0.18 + pan * 0.22 + fold * 0.12 + changeEnergy * 0.2
   const zoom = spaceZoom(space)
   return {
     sharpness: 0.42 + character * 0.4 - dirt * 0.16 + tight * 0.14 - fuzz * 0.1,
@@ -236,7 +303,11 @@ export function sensoryVisualState(
     depth: 0.12 + space * 0.78 + well * 0.22 + veil * 0.16 + bloom * 0.18 + reverse * 0.1,
     mass: 0.42 + space * 0.4 + grain * 0.1 + well * 0.12 - tight * 0.28 + spring * 0.06,
     motion,
-    haze: 0.04 + space * 0.72 + veil * 0.38 + bloom * 0.2 + vinyl * 0.12,
+    haze: Math.min(1, blurAmount(values) + changeEnergy * 0.08),
+    chroma,
+    filmGrain,
+    pulse,
+    changeEnergy,
     echo,
     character,
     space,
@@ -251,9 +322,9 @@ export function sensoryVisualState(
     ink,
     inkLeft: mixRgb(ink, AXIS_TINT.drift, 0.45 + drift * 0.5),
     inkRight: mixRgb(ink, DRIFT_RIGHT, 0.45 + drift * 0.5),
-    inkRed: mixRgb(ink, CHROMA_R, 0.55 + drift * 0.4),
-    inkGreen: mixRgb(ink, CHROMA_G, 0.4 + drift * 0.3),
-    inkBlue: mixRgb(ink, CHROMA_B, 0.55 + drift * 0.4),
+    inkRed: mixRgb(ink, CHROMA_R, 0.55 + chroma * 0.4),
+    inkGreen: mixRgb(ink, CHROMA_G, 0.4 + chroma * 0.3),
+    inkBlue: mixRgb(ink, CHROMA_B, 0.55 + chroma * 0.4),
   }
 }
 
@@ -266,6 +337,10 @@ export function visualCssVars(visual: SensoryVisualState): Record<string, string
     '--sensory-mass': String(visual.mass),
     '--sensory-motion': String(visual.motion),
     '--sensory-haze': String(visual.haze),
+    '--sensory-chroma': String(visual.chroma),
+    '--sensory-film-grain': String(visual.filmGrain),
+    '--sensory-pulse': String(visual.pulse),
+    '--sensory-change': String(visual.changeEnergy),
     '--sensory-echo': String(visual.echo),
     '--sensory-character': String(visual.character),
     '--sensory-space': String(visual.space),

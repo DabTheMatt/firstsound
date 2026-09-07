@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
-import { formatRangeClock } from '../audio/engine/formatTime'
+import { formatSimpleClock } from '../audio/engine/formatTime'
 import type { EditState } from '../app/editorState'
 import type { WaveformHandle } from '../components/waveform/Waveform'
 import { Waveform } from '../components/waveform/Waveform'
 import { downloadBlob } from '../features/sample/files'
+import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { LanguageSwitch, useI18n } from '../i18n'
 import { ModeSwitch } from '../modes/ModeSwitch'
@@ -17,6 +18,7 @@ import {
   DEFAULT_TONE_AMOUNT,
   FEATURED_TONE_IDS,
   SIMPLE_TONE_IDS,
+  clampToneAmount,
   matchSimpleTone,
   toneBandsAt,
   type SimpleToneId,
@@ -49,6 +51,7 @@ type Props = {
   onRestoreOriginal: () => void
   onLevelLoudness: () => void
   onAutoFix: () => void
+  onApplyTrim: () => void
   mode: UiMode
   onMode: (mode: UiMode) => void
 }
@@ -77,12 +80,14 @@ export function SimpleShell({
   onRestoreOriginal,
   onLevelLoudness,
   onAutoFix,
+  onApplyTrim,
   mode,
   onMode,
 }: Props) {
   const { t, locale } = useI18n()
+  const { mode: layoutMode } = useLayoutMode()
+  const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const [sheet, setSheet] = useState<Sheet>('none')
-  const [trimOn, setTrimOn] = useState(false)
   const [amount, setAmount] = useState(DEFAULT_TONE_AMOUNT)
   const [listenOriginal, setListenOriginal] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -126,10 +131,12 @@ export function SimpleShell({
 
   const applyTone = (id: SimpleToneId, nextAmount = amount) => {
     exitOriginal()
-    const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, nextAmount))
+    const strength = clampToneAmount(id === 'natural' ? nextAmount : Math.max(nextAmount, 0.45))
+    const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, strength))
     writeDsp(engine, dsp)
     liveDspRef.current = dsp
-    setAmount(nextAmount)
+    setAmount(strength)
+    void engine.unlock()
     onToneCommit()
   }
 
@@ -189,7 +196,7 @@ export function SimpleShell({
 
   return (
     <div
-      className={`${styles.page} ${dragging ? styles.drop : ''}`}
+      className={`${styles.page} ${styles[frame]} ${dragging ? styles.drop : ''}`}
       onDragOver={(event) => {
         event.preventDefault()
         onDragOver()
@@ -206,7 +213,7 @@ export function SimpleShell({
           <button type="button" className={styles.file} onClick={onLoadSample}>
             {snap.fileName || t.simple.fileUntitled}
           </button>
-          <ModeSwitch mode={mode} onChange={onMode} compact />
+          <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
           <LanguageSwitch variant="editorial" />
           <button
             type="button"
@@ -221,6 +228,8 @@ export function SimpleShell({
         </header>
         {menuOpen ? menu : null}
 
+        <div className={styles.main}>
+        <div className={styles.stageCol}>
         <div className={styles.wave}>
           <Waveform
             ref={waveRef}
@@ -245,7 +254,7 @@ export function SimpleShell({
             onFadesCommit={onFadesCommit}
             onRegionCommit={onRegionCommit}
             appearance="simple"
-            trimHandles={trimOn}
+            trimHandles
             emptyLabel={t.simple.loadSample}
             onLoadDemo={onLoadDemo}
           />
@@ -262,7 +271,7 @@ export function SimpleShell({
             {snap.playing ? '❚❚' : '▶'}
           </button>
           <p className={styles.clock} aria-live="off">
-            {t.simple.clock(formatRangeClock(now), formatRangeClock(regionLen || snap.duration))}
+            {t.simple.clock(formatSimpleClock(now), formatSimpleClock(regionLen || snap.duration))}
           </p>
           <div className={styles.history}>
             <button type="button" className={styles.ghost} disabled={!canUndo} onClick={onUndo}>
@@ -273,75 +282,79 @@ export function SimpleShell({
             </button>
           </div>
         </div>
-
-        {status ? <p className={styles.status}>{status}</p> : null}
-
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={`${styles.action} ${trimOn ? styles.actionOn : ''}`}
-            aria-pressed={trimOn}
-            disabled={!snap.sampleLoaded}
-            onClick={() => setTrimOn((v) => !v)}
-          >
-            {t.simple.trim}
-          </button>
-          <button type="button" className={styles.action} disabled={!snap.sampleLoaded} onClick={() => setSheet('fades')}>
-            {t.simple.startEnd}
-          </button>
-          <button
-            type="button"
-            className={styles.action}
-            disabled={!snap.sampleLoaded}
-            onClick={() => {
-              exitOriginal()
-              onLevelLoudness()
-              setStatus(t.simple.levelDone)
-            }}
-          >
-            {t.simple.levelVolume}
-          </button>
         </div>
-        {trimOn ? (
+
+        <div className={styles.tools}>
+          <div className={styles.toolsBody}>
+          <p className={styles.status} aria-live="polite">
+            {status ?? ''}
+          </p>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.action}
+              disabled={!snap.sampleLoaded}
+              onClick={onApplyTrim}
+            >
+              {t.simple.trim}
+            </button>
+            <button type="button" className={styles.action} disabled={!snap.sampleLoaded} onClick={() => setSheet('fades')}>
+              {t.simple.startEnd}
+            </button>
+            <button
+              type="button"
+              className={styles.action}
+              disabled={!snap.sampleLoaded}
+              onClick={() => {
+                exitOriginal()
+                onLevelLoudness()
+                setStatus(t.simple.levelDone)
+              }}
+            >
+              {t.simple.levelVolume}
+            </button>
+          </div>
           <div className={styles.trimRow}>
-            <button type="button" className={styles.chip} onClick={() => setEdgeFromPlayhead('start')}>
+            <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('start')}>
               {t.simple.setStart}
             </button>
-            <button type="button" className={styles.chip} onClick={() => setEdgeFromPlayhead('end')}>
+            <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('end')}>
               {t.simple.setEnd}
             </button>
             <p className={styles.length}>{t.simple.length(formatSimpleSeconds(regionLen, locale))}</p>
           </div>
-        ) : null}
-        <p className={styles.hint}>{t.simple.levelHint}</p>
+          <div className={styles.actionHints}>
+            <span />
+            <span />
+            <span>{t.simple.levelHint}</span>
+          </div>
 
-        <section className={styles.tones} aria-label={t.simple.tone}>
-          <div className={styles.toneHead}>
-            <h2>{t.simple.tone}</h2>
-            <button type="button" className={styles.link} onClick={() => setSheet('tones')}>
-              {t.simple.moreTones}
-            </button>
-          </div>
-          <div className={styles.tiles}>
-            {visibleTones.map((id) => {
-              const on = tone.id === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={`${styles.tile} ${on ? styles.tileOn : ''}`}
-                  aria-pressed={on}
-                  aria-label={t.simple.tones[id]?.aria}
-                  onClick={() => applyTone(id)}
-                >
-                  <span>{t.simple.tones[id]?.label}</span>
-                  <small>{t.simple.tones[id]?.hint}</small>
-                </button>
-              )
-            })}
-          </div>
-          {tone.id === 'custom' ? <p className={styles.custom}>{t.simple.customTone}</p> : null}
-          {tone.id !== 'custom' ? (
+          <section className={styles.tones} aria-label={t.simple.tone}>
+            <div className={styles.toneHead}>
+              <h2>{t.simple.tone}</h2>
+              <button type="button" className={styles.link} onClick={() => setSheet('tones')}>
+                {t.simple.moreTones}
+              </button>
+            </div>
+            <div className={styles.tiles}>
+              {visibleTones.map((id) => {
+                const on = tone.id === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${styles.tile} ${on ? styles.tileOn : ''}`}
+                    aria-pressed={on}
+                    aria-label={t.simple.tones[id]?.aria}
+                    onClick={() => applyTone(id)}
+                  >
+                    <span>{t.simple.tones[id]?.label}</span>
+                    <small>{t.simple.tones[id]?.hint}</small>
+                  </button>
+                )
+              })}
+            </div>
+            <p className={styles.custom}>{tone.id === 'custom' ? t.simple.customTone : ''}</p>
             <label className={styles.amount}>
               <span>{t.simple.amount}</span>
               <input
@@ -350,6 +363,7 @@ export function SimpleShell({
                 max={1}
                 step={0.01}
                 value={amount}
+                disabled={tone.id === 'custom'}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(amount * 100)}
@@ -357,12 +371,12 @@ export function SimpleShell({
                 onChange={(event) => {
                   const next = Number(event.target.value)
                   setAmount(next)
-                  if (tone.id !== 'custom') {
-                    exitOriginal()
-                    const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(tone.id, next))
-                    writeDsp(engine, dsp)
-                    liveDspRef.current = dsp
-                  }
+                  if (tone.id === 'custom') return
+                  exitOriginal()
+                  const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(tone.id, next))
+                  writeDsp(engine, dsp)
+                  liveDspRef.current = dsp
+                  void engine.unlock()
                 }}
                 onPointerUp={() => onToneCommit()}
                 onKeyUp={() => onToneCommit()}
@@ -372,49 +386,51 @@ export function SimpleShell({
                 <span>{t.simple.amountMore}</span>
               </span>
             </label>
-          ) : null}
-          <button
-            type="button"
-            className={styles.auto}
-            disabled={!snap.sampleLoaded}
-            onClick={() => {
-              exitOriginal()
-              applyTone('clean', 0.55)
-              onAutoFix()
-              setStatus(t.simple.autoDone)
-            }}
-          >
-            {t.simple.autoFix}
-          </button>
-          <button type="button" className={styles.link} onClick={() => setSheet('restore')}>
-            {t.simple.restore}
-          </button>
-        </section>
-
-        <div className={styles.bottom}>
-          <div className={styles.ab} role="radiogroup" aria-label={t.simple.compare}>
             <button
               type="button"
-              role="radio"
-              aria-checked={listenOriginal}
-              className={listenOriginal ? styles.abOn : ''}
-              onClick={() => toggleCompare(true)}
+              className={styles.auto}
+              disabled={!snap.sampleLoaded}
+              onClick={() => {
+                exitOriginal()
+                applyTone('clean', 0.55)
+                onAutoFix()
+                setStatus(t.simple.autoDone)
+              }}
             >
-              {t.simple.original}
+              {t.simple.autoFix}
             </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!listenOriginal}
-              className={!listenOriginal ? styles.abOn : ''}
-              onClick={() => toggleCompare(false)}
-            >
-              {t.simple.after}
+            <button type="button" className={styles.link} onClick={() => setSheet('restore')}>
+              {t.simple.restore}
+            </button>
+          </section>
+          </div>
+
+          <div className={styles.bottom}>
+            <div className={styles.ab} role="radiogroup" aria-label={t.simple.compare}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={listenOriginal}
+                className={listenOriginal ? styles.abOn : ''}
+                onClick={() => toggleCompare(true)}
+              >
+                {t.simple.original}
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!listenOriginal}
+                className={!listenOriginal ? styles.abOn : ''}
+                onClick={() => toggleCompare(false)}
+              >
+                {t.simple.after}
+              </button>
+            </div>
+            <button type="button" className={styles.save} disabled={!snap.sampleLoaded} onClick={() => setSheet('save')}>
+              {t.simple.save}
             </button>
           </div>
-          <button type="button" className={styles.save} disabled={!snap.sampleLoaded} onClick={() => setSheet('save')}>
-            {t.simple.save}
-          </button>
+        </div>
         </div>
       </div>
 

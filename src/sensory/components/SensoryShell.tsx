@@ -9,6 +9,7 @@ import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
 import type { SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
+import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import { LanguageSwitch, useI18n } from '../../i18n'
 import type { SensoryValues } from '../sensoryState'
@@ -82,6 +83,7 @@ export function SensoryShell({
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
+  const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
   const reduced = useMemo(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -127,6 +129,21 @@ export function SensoryShell({
           />
           <button
             type="button"
+            className={styles.stringsBtn}
+            aria-pressed={stringsOn}
+            aria-label={stringsOn ? t.sensory.stringsHideAria : t.sensory.stringsAria}
+            onClick={() => {
+              setStringsOn((on) => {
+                const next = !on
+                persistSensoryStrings(next)
+                return next
+              })
+            }}
+          >
+            {t.sensory.strings}
+          </button>
+          <button
+            type="button"
             className={styles.menuBtn}
             aria-label={t.sensory.menu}
             aria-expanded={menuOpen}
@@ -157,6 +174,7 @@ export function SensoryShell({
         values={values}
         activeId={activeId}
         editingId={editingId}
+        visible={stringsOn}
         onActive={(id) => {
           onMoodLabel(null)
           setFeelingId(id)
@@ -234,8 +252,10 @@ export function SensoryShell({
       />
       {sampleInput}
       <div className={styles.atmosphere} aria-hidden="true">
+        <div className={styles.blur} />
         <div className={styles.chroma} />
         <div className={styles.grain} />
+        <div className={styles.pulse} />
       </div>
     </div>
   )

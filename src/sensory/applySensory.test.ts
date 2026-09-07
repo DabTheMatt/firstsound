@@ -3,9 +3,10 @@ import { sensoryDistortionType, sensoryFilterType, sensoryReverbType } from './a
 import { defaultSensoryValues, patchSensoryValue } from './sensoryState'
 
 describe('sensoryReverbType', () => {
-  it('stays on a hall IR at rest and for Space', () => {
+  it('stays hall at rest and walks Space through later room presets', () => {
     expect(sensoryReverbType(defaultSensoryValues())).toBe('hall')
-    expect(sensoryReverbType(patchSensoryValue(defaultSensoryValues(), 'space', 1))).toBe('hall')
+    expect(sensoryReverbType(patchSensoryValue(defaultSensoryValues(), 'space', 0.16))).toBe('room')
+    expect(sensoryReverbType(patchSensoryValue(defaultSensoryValues(), 'space', 1))).toBe('cathedral')
   })
 
   it('follows dedicated reverb feelings', () => {

@@ -6,8 +6,9 @@ import { EFFECT_MORPHS } from './mapping/effectMorphs'
 import { MORPH_GATE } from './mapping/morph'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
+import { sensoryReverbJourney } from './mapping/reverbJourney'
 import type { SensoryAxisId } from './sensoryParameters'
-import type { SensoryValues } from './sensoryState'
+import { defaultSensoryValues, type SensoryValues } from './sensoryState'
 
 function strongestMorphColor<T extends 'reverbType' | 'distortionType' | 'filterType'>(
   values: SensoryValues | number,
@@ -27,7 +28,10 @@ function strongestMorphColor<T extends 'reverbType' | 'distortionType' | 'filter
 }
 
 export function sensoryReverbType(values: SensoryValues | number): ReverbType {
-  return strongestMorphColor(values, 'reverbType') ?? 'hall'
+  if (typeof values === 'number') {
+    return sensoryReverbJourney({ ...defaultSensoryValues(), space: values }).type
+  }
+  return sensoryReverbJourney(values).type
 }
 
 export function sensoryDistortionType(values: SensoryValues): DistortionType | undefined {

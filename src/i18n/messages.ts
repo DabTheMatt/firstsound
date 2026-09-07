@@ -271,6 +271,7 @@ export type Messages = {
   sensory: {
     strings: string
     stringsAria: string
+    stringsHideAria: string
     menu: string
     play: string
     pause: string
@@ -687,6 +688,7 @@ export const EN: Messages = {
   sensory: {
     strings: 'Strings',
     stringsAria: 'Show parameter strings',
+    stringsHideAria: 'Hide parameter strings',
     menu: 'Menu',
     play: 'Play',
     pause: 'Pause',
@@ -810,7 +812,7 @@ export const EN: Messages = {
     sr: 'Screen reader optimizations',
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
-    shortcutsHelp: 'When on, Space plays or pauses if focus is not on a control. Tab is never captured.',
+    shortcutsHelp: 'When on, Space always plays or pauses, even if a button such as Load sample has focus. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -818,7 +820,7 @@ export const EN: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maximum',
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
-    shortcutSpace: 'Space: play or pause when focus is not on a control',
+    shortcutSpace: 'Space: play or pause (always, except while typing)',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
   },
@@ -1155,6 +1157,7 @@ export const PL: Messages = {
   sensory: {
     strings: 'Struny',
     stringsAria: 'Pokaż struny parametrów',
+    stringsHideAria: 'Ukryj struny parametrów',
     menu: 'Menu',
     play: 'Odtwórz',
     pause: 'Pauza',
@@ -1278,7 +1281,7 @@ export const PL: Messages = {
     sr: 'Optymalizacje czytnika ekranu',
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',
-    shortcutsHelp: 'Gdy włączone, spacja odtwarza lub pauzuje, jeśli fokus nie jest na kontrolce. Tab nigdy nie jest przechwytywany.',
+    shortcutsHelp: 'Gdy włączone, spacja zawsze odtwarza lub pauzuje, nawet gdy fokus jest na przycisku takim jak Wczytaj sample. Tab nigdy nie jest przechwytywany.',
     shortcutsTitle: 'Skróty klawiszowe',
     shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
     shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
@@ -1286,7 +1289,7 @@ export const PL: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maksimum',
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
-    shortcutSpace: 'Spacja: odtwarzanie lub pauza, gdy fokus nie jest na kontrolce',
+    shortcutSpace: 'Spacja: odtwarzanie lub pauza (zawsze, poza pisaniem w polu tekstowym)',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
   },

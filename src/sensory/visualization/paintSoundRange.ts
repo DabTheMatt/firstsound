@@ -1,6 +1,7 @@
 import { forPaintX, ridgeSampleStep } from '../../app/frameBudget'
 import type { SensorySceneId } from '../sensoryScene'
 import { gleamRayCount, mirrorLayout, rangeLayout } from './rangeScenes'
+import { changeLayerSpecs } from './changeLayers'
 import {
   contourCount,
   echoGhostSpecs,
@@ -189,15 +190,28 @@ function paintEchoGhosts(ctx: CanvasRenderingContext2D, args: RangePaintArgs, ba
   }
 }
 
+function paintChangeLayers(ctx: CanvasRenderingContext2D, args: RangePaintArgs, base: number, amp: number, dir: 1 | -1) {
+  const energy = args.visual.changeEnergy
+  if (energy < 0.03) return
+  const phase = args.reduced ? 0.32 : (args.nowMs / 1500) % 1
+  const shells = changeLayerSpecs(energy, phase)
+  for (const shell of shells) {
+    if (shell.alpha < 0.012) continue
+    paintRidgeStack(ctx, args, base, amp * shell.scale, dir, 0, shell.alpha, shell.drop)
+  }
+}
+
 function paintFilmGrain(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, dpr } = args
-  const n = Math.round(width * (0.22 + visual.dirt * 0.12))
+  const grain = visual.filmGrain
+  if (grain < 0.04) return
+  const n = Math.round(width * (0.16 + grain * 0.42))
   ctx.save()
   ctx.globalCompositeOperation = 'overlay'
   for (let i = 0; i < n; i++) {
     const x = hash01(i + 41) * width
     const y = hash01(i + 91) * height
-    const a = 0.03 + hash01(i + 3) * (0.07 + visual.grain * 0.05)
+    const a = 0.03 + hash01(i + 3) * (0.06 + grain * 0.12)
     ctx.fillStyle = hash01(i + 11) > 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`
     ctx.fillRect(x, y, Math.max(1, dpr * 0.7), Math.max(1, dpr * 0.7))
   }
@@ -206,17 +220,19 @@ function paintFilmGrain(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
 
 function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, layers, specs, nowMs, reduced, dpr } = args
+  const chroma = visual.chroma
+  if (chroma < 0.04) return
   const env = layers[0]
   const spec = specs[0]
   if (!env || !spec) return
-  const split = (0.8 + visual.space * 1.8 + visual.drift * 1.6) * dpr
+  const split = (0.6 + chroma * 3.2) * dpr
   const layout = rangeLayout(height, visual.space)
   const amp = layout.amp * (1 - visual.tight * 0.22)
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
   ctx.lineWidth = Math.max(0.8, dpr * 0.7)
   ctx.lineJoin = 'round'
-  ctx.globalAlpha = 0.16 + visual.space * 0.08
+  ctx.globalAlpha = 0.12 + chroma * 0.28
   ctx.strokeStyle = rgbCss(visual.inkRed, 1)
   ctx.translate(-split, 0)
   strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
@@ -225,7 +241,7 @@ function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArg
   ctx.globalCompositeOperation = 'screen'
   ctx.lineWidth = Math.max(0.8, dpr * 0.7)
   ctx.lineJoin = 'round'
-  ctx.globalAlpha = 0.16 + visual.space * 0.08
+  ctx.globalAlpha = 0.12 + chroma * 0.28
   ctx.strokeStyle = rgbCss(visual.inkBlue, 1)
   ctx.translate(split, reduced ? 0 : split * 0.15)
   strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
@@ -234,12 +250,12 @@ function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArg
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
   const left = ctx.createLinearGradient(0, 0, width * 0.2, 0)
-  left.addColorStop(0, rgbCss(visual.inkRed, 0.08 + visual.space * 0.05))
+  left.addColorStop(0, rgbCss(visual.inkRed, 0.05 + chroma * 0.14))
   left.addColorStop(1, rgbCss(visual.inkRed, 0))
   ctx.fillStyle = left
   ctx.fillRect(0, 0, width * 0.24, height)
   const right = ctx.createLinearGradient(width, 0, width * 0.8, 0)
-  right.addColorStop(0, rgbCss(visual.inkBlue, 0.08 + visual.space * 0.05))
+  right.addColorStop(0, rgbCss(visual.inkBlue, 0.05 + chroma * 0.14))
   right.addColorStop(1, rgbCss(visual.inkBlue, 0))
   ctx.fillStyle = right
   ctx.fillRect(width * 0.76, 0, width * 0.24, height)
@@ -248,7 +264,7 @@ function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArg
 
 function paintDust(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, dpr } = args
-  const n = grainDustCount(visual.grain, width)
+  const n = grainDustCount(visual.filmGrain, width)
   if (n < 2) return
   const tint = mixRgb(visual.ink, { r: 220, g: 230, b: 210 }, 0.55)
   ctx.save()
@@ -256,7 +272,7 @@ function paintDust(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
     const x = hash01(i) * width
     const y = height * (0.18 + hash01(i + 19) * 0.62)
     const r = (0.4 + hash01(i + 7) * 1.2) * dpr
-    ctx.fillStyle = rgbCss(tint, 0.05 + visual.grain * 0.14 * hash01(i + 3))
+    ctx.fillStyle = rgbCss(tint, 0.05 + visual.filmGrain * 0.14 * hash01(i + 3))
     ctx.beginPath()
     ctx.arc(x, y, r, 0, Math.PI * 2)
     ctx.fill()
@@ -340,6 +356,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   paintHazeBand(ctx, args, args.height * 0.12, args.height)
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
+  paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
 }
 
@@ -363,6 +380,7 @@ export function paintSoundRange(args: RangePaintArgs) {
     paintRidgeStack(ctx, args, layout.upperBase, amp, layout.upperDir)
     paintRidgeStack(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintEchoGhosts(ctx, args, layout.lowerBase, amp, layout.lowerDir)
+    paintChangeLayers(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintDust(ctx, args)
     const haze = ctx.createLinearGradient(0, layout.upperBase, 0, layout.lowerBase)
     haze.addColorStop(0, 'rgba(8,12,20,0)')
@@ -383,6 +401,7 @@ export function paintSoundRange(args: RangePaintArgs) {
   paintHazeBand(ctx, args, args.height * 0.08, args.height * 0.55)
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
+  paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
   if (scene === 'gleam' && !reduced) paintGleam(ctx, args, layout.base, amp)
   paintSelection(ctx, args)
