@@ -8,7 +8,7 @@ import {
   type ChainModule,
   type ModuleType,
 } from '../../audio/chain/chain'
-import { announce } from '../../a11y'
+import { announce, useA11ySettings } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
@@ -23,6 +23,8 @@ type Props = {
 
 export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false }: Props) {
   const { t, moduleName } = useI18n()
+  const { settings } = useA11ySettings()
+  const lowVision = settings.lowVision
   const [reorder, setReorder] = useState(false)
   const [openAdd, setOpenAdd] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
@@ -178,9 +180,9 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 }}
               >
                 {moduleLabel(mod, chain, t.modules)}
-                {mod.bypassed ? <span className={styles.bypassTag}>{t.chain.bypassedTag}</span> : null}
+                {lowVision && mod.bypassed ? <span className={styles.bypassTag}>{t.chain.bypassedTag}</span> : null}
               </button>
-              {!fixed ? (
+              {lowVision && !fixed ? (
                 <div className={styles.moves}>
                   <button
                     type="button"

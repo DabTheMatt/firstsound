@@ -1,5 +1,6 @@
 @import './themes.css';
 @import './a11y.css';
+@import './low-vision.css';
 
 :root {
   --radius-shell: 22px;
@@ -79,8 +80,13 @@ select:disabled {
   cursor: default;
 }
 
+:focus-visible {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 select:focus,
 select:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 2px;
 }

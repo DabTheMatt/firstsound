@@ -1,4 +1,3 @@
-import { useTheme } from '../theme'
 import { useI18n } from '../i18n'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
@@ -6,8 +5,6 @@ import styles from './A11ySettings.module.css'
 export function A11ySettings() {
   const { t } = useI18n()
   const { settings, setSettings } = useA11ySettings()
-  const { preference, setPreference } = useTheme()
-  const lowVision = preference === 'low-vision'
   const a = t.a11y
 
   return (
@@ -18,8 +15,8 @@ export function A11ySettings() {
       <label className={styles.check}>
         <input
           type="checkbox"
-          checked={lowVision}
-          onChange={(event) => setPreference(event.target.checked ? 'low-vision' : 'studio-dark')}
+          checked={settings.lowVision}
+          onChange={(event) => setSettings({ lowVision: event.target.checked })}
         />
         <span>{a.theme}</span>
       </label>

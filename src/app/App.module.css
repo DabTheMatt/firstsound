@@ -342,7 +342,7 @@
   }
 }
 
-:global(html[data-theme='low-vision']) .page,
+:global(html[data-low-vision='on']) .page,
 :global(html[data-ui-scale='large']) .page {
   overflow: auto;
   max-height: none;
@@ -350,12 +350,12 @@
   min-height: 100%;
 }
 
-:global(html[data-theme='low-vision']) .shell,
+:global(html[data-low-vision='on']) .shell,
 :global(html[data-ui-scale='large']) .shell {
   overflow: auto;
 }
 
-:global(html[data-theme='low-vision']) .work,
+:global(html[data-low-vision='on']) .work,
 :global(html[data-ui-scale='large']) .work {
   min-height: 12rem;
 }

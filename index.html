@@ -50,6 +50,15 @@
         try {
           var stored = localStorage.getItem('field.theme') || 'studio-dark'
           var theme = stored
+          var a11y = {}
+          try {
+            a11y = JSON.parse(localStorage.getItem('field.a11y') || '{}')
+          } catch (err) {
+            a11y = {}
+          }
+          var lowVision = stored === 'low-vision' || a11y.lowVision === true
+          if (stored === 'low-vision') stored = 'studio-dark'
+          theme = stored
           if (stored === 'system') {
             theme = window.matchMedia('(prefers-color-scheme: light)').matches
               ? 'light-studio'
@@ -63,10 +72,10 @@
             'light-studio': 1,
             dusk: 1,
             oled: 1,
-            'low-vision': 1,
           }
           if (!known[theme]) theme = 'studio-dark'
           document.documentElement.setAttribute('data-theme', theme)
+          document.documentElement.setAttribute('data-low-vision', lowVision ? 'on' : 'off')
           document.documentElement.style.colorScheme =
             theme === 'light-studio' ? 'light' : 'dark'
         } catch (e) {

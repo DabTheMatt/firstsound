@@ -1,13 +1,13 @@
-/* Accessibility tokens, density, focus, motion, and forced colors. */
+/* Shared accessibility tokens. Low Vision chrome lives in low-vision.css. */
 
 :root {
   --focus-ring: var(--accent-primary);
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
   --hit-min: 32px;
-  --control-gap: 6px;
-  --font-size-label: 0.6875rem;
-  --font-size-value: 0.75rem;
+  --control-gap: 2px;
+  --font-size-label: 9px;
+  --font-size-value: 12px;
   --font-weight-label: 500;
   --font-weight-value: 500;
 }
@@ -24,29 +24,17 @@
   border: 0;
 }
 
-:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset);
-  z-index: 3;
-  scroll-margin-block: 96px;
-  scroll-margin-inline: 16px;
-}
-
 html[data-focus='enhanced'] {
   --focus-ring-width: 3px;
   --focus-ring-offset: 3px;
 }
 
-html[data-theme='low-vision'] {
-  --focus-ring: #ffe600;
-  --focus-ring-width: 3px;
-  --focus-ring-offset: 3px;
-  --hit-min: 44px;
-  --control-gap: 12px;
-  --font-size-label: 0.8125rem;
-  --font-size-value: 1rem;
-  --font-weight-label: 600;
-  --font-weight-value: 700;
+html[data-focus='enhanced'] :focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  z-index: 3;
+  scroll-margin-block: 96px;
+  scroll-margin-inline: 16px;
 }
 
 html[data-ui-scale='large'] {
@@ -56,7 +44,6 @@ html[data-ui-scale='large'] {
   --font-size-value: 0.9375rem;
 }
 
-html[data-theme='low-vision'] body,
 html[data-ui-scale='large'] body {
   font-weight: 400;
 }
@@ -103,14 +90,7 @@ html[data-reduce-motion='on'] *::after {
   }
 }
 
-@media (min-resolution: 2dppx) {
-  html[data-theme='low-vision'] {
-    -webkit-font-smoothing: auto;
-  }
-}
-
 @media (min-width: 1px) {
-  html[data-theme='low-vision'] .page,
   html[data-ui-scale='large'] .page {
     overflow: auto;
   }

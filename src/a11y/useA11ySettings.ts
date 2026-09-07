@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { applyThemePreference, getThemePreference, invalidateThemeColors } from '../theme'
 import {
   applyA11yDom,
+  migrateLegacyLowVisionTheme,
   persistA11ySettings,
   readStoredA11ySettings,
   type A11ySettings,
@@ -21,13 +23,19 @@ export function getA11ySettings(): A11ySettings {
 export function persistAndApplyA11y(next: A11ySettings): A11ySettings {
   persistA11ySettings(next)
   applyA11yDom(next)
+  if (!next.lowVision) applyThemePreference(getThemePreference())
+  invalidateThemeColors()
   document.dispatchEvent(new CustomEvent(CHANGE))
+  document.dispatchEvent(new CustomEvent('field-theme-change'))
   return next
 }
 
 export function bootstrapA11y(): A11ySettings {
-  const settings = readStoredA11ySettings()
-  applyA11yDom(settings)
+  const migrated = migrateLegacyLowVisionTheme()
+  const settings = persistAndApplyA11y({
+    ...readStoredA11ySettings(),
+    ...(migrated ? { lowVision: true } : {}),
+  })
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onMotion = () => applyA11yDom(readStoredA11ySettings())

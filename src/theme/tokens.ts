@@ -8,7 +8,6 @@ export const THEME_IDS = [
   'light-studio',
   'oled',
   'dusk',
-  'low-vision',
   'custom',
 ] as const
 
@@ -61,7 +60,6 @@ export const THEME_OPTIONS: {
   { id: 'light-studio', label: 'Light Studio', preview: { bg: '#E7E7E3', surface: '#F8F8F5', accent: '#A96E13' } },
   { id: 'oled', label: 'OLED', preview: { bg: '#050606', surface: '#0E1111', accent: '#DFAF55' } },
   { id: 'dusk', label: 'Dusk', preview: { bg: '#1b1815', surface: '#2a2621', accent: '#E07A42' } },
-  { id: 'low-vision', label: 'High Contrast / Low Vision', preview: { bg: '#000000', surface: '#161616', accent: '#FFE600' } },
   { id: 'custom', label: 'Custom', preview: { bg: '#151616', surface: '#202222', accent: '#E6AD48' } },
 ]
 

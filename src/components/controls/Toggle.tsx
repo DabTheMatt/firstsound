@@ -1,3 +1,4 @@
+import { useA11ySettings } from '../../a11y'
 import styles from './Toggle.module.css'
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 }
 
 export function Toggle({ pressed, label, onToggle, compact }: Props) {
+  const { settings } = useA11ySettings()
   return (
     <button
       type="button"
@@ -19,9 +21,11 @@ export function Toggle({ pressed, label, onToggle, compact }: Props) {
         onToggle()
       }}
     >
-      <span className={styles.mark} aria-hidden="true">
-        {pressed ? '●' : '○'}
-      </span>
+      {settings.lowVision ? (
+        <span className={styles.mark} aria-hidden="true">
+          {pressed ? '●' : '○'}
+        </span>
+      ) : null}
       {label}
     </button>
   )

@@ -69,19 +69,21 @@ describe('a11y settings and i18n', () => {
   it('parses stored accessibility flags', () => {
     expect(parseA11ySettings({ reduceMotion: true, extra: 1 }).reduceMotion).toBe(true)
     expect(parseA11ySettings(null).shortcutsEnabled).toBe(true)
+    expect(parseA11ySettings(null).lowVision).toBe(false)
   })
 
   it('looks up localized chrome copy', () => {
     expect(PL.a11y.skipToMain).toContain('Przejdź')
-    expect(EN.theme.names['low-vision']).toContain('Low Vision')
-    expect(PL.theme.names['low-vision']).toContain('słabowidzący')
+    expect(EN.a11y.theme).toContain('Low Vision')
+    expect(PL.a11y.theme).toContain('słabowidzący')
     expect(EN.chain.movedBefore('Delay', 'Reverb')).toBe('Delay moved before Reverb.')
   })
 
-  it('parses locale and low-vision theme ids', () => {
+  it('keeps Low Vision out of the color theme catalog', () => {
     expect(parseLocale('pl')).toBe('pl')
     expect(parseLocale('de')).toBe(null)
-    expect(parseThemePreference('low-vision')).toBe('low-vision')
-    expect(THEME_IDS).toContain('low-vision')
+    expect(parseThemePreference('low-vision')).toBe('studio-dark')
+    expect(THEME_IDS).not.toContain('low-vision')
+    expect(parseA11ySettings({ lowVision: true }).lowVision).toBe(true)
   })
 })
