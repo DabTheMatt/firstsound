@@ -16,6 +16,7 @@ type Props = {
   values: SensoryValues
   activeId: string | null
   onActive: (id: string | null) => void
+  onEditing: (id: string | null) => void
   onValues: (values: SensoryValues) => void
   onCommit: () => void
 }
@@ -36,7 +37,7 @@ function levelText(feeling: SensoryFeeling, amount: number): string {
   return pct === 0 ? 'rest' : `${pct}`
 }
 
-export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: Props) {
+export function FeelingRail({ values, activeId, onActive, onEditing, onValues, onCommit }: Props) {
   const drag = useRef<{
     pointerId: number
     originY: number
@@ -70,6 +71,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
     } catch {
       /* already released */
     }
+    onEditing(null)
     onCommit()
   }
 
@@ -80,16 +82,19 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
     if (event.key === 'Home' || event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       onActive(feeling.id)
+      onEditing(feeling.id)
       onValues(restFeeling(values, feeling))
       return
     }
     if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
       event.preventDefault()
       onActive(feeling.id)
+      onEditing(feeling.id)
       onValues(applyFeelingAmount(values, feeling, clamp(amount + step, lo, 1)))
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
       event.preventDefault()
       onActive(feeling.id)
+      onEditing(feeling.id)
       onValues(applyFeelingAmount(values, feeling, clamp(amount - step, lo, 1)))
     }
   }
@@ -111,6 +116,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
         aria-label="Rest all sensory effects to the starting position"
         onClick={() => {
           onActive(null)
+          onEditing(null)
           onValues(defaultSensoryValues())
           onCommit()
         }}
@@ -142,6 +148,7 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
               event.preventDefault()
               event.currentTarget.setPointerCapture(event.pointerId)
               onActive(feeling.id)
+              onEditing(feeling.id)
               drag.current = {
                 pointerId: event.pointerId,
                 originY: event.clientY,
@@ -165,12 +172,16 @@ export function FeelingRail({ values, activeId, onActive, onValues, onCommit }: 
             onDoubleClick={(event) => {
               event.preventDefault()
               onActive(feeling.id)
+              onEditing(null)
               onValues(restFeeling(values, feeling))
               onCommit()
             }}
             onKeyDown={(event) => onKey(event, feeling)}
             onKeyUp={(event) => {
-              if (event.key.startsWith('Arrow') || event.key === 'Home') onCommit()
+              if (event.key.startsWith('Arrow') || event.key === 'Home') {
+                onEditing(null)
+                onCommit()
+              }
             }}
           >
             <FeelingIcon feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />

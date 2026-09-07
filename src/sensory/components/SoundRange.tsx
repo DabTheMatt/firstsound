@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
@@ -6,6 +6,13 @@ import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
+import {
+  lerpTime,
+  playheadInView,
+  regionFromDrag,
+  sampleIndexSpan,
+  workingTimeFromSource,
+} from '../visualization/sampleRegion'
 import {
   lerpVisualState,
   mixRgb,
@@ -24,6 +31,7 @@ type Props = {
   scene: SensorySceneId
   onTogglePlay: () => void
   onLoadDemo: () => void
+  onRegionCommit: () => void
 }
 
 function themeInk(visual: SensoryVisualState): Rgb {
@@ -62,10 +70,20 @@ function sourceView() {
   return { source, sourceDur, workDur, windowStart, windowEnd, regionStart, regionEnd, head }
 }
 
-export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogglePlay, onLoadDemo }: Props) {
+export function SoundRange({
+  duration,
+  loaded,
+  visual,
+  contentRev,
+  scene,
+  onTogglePlay,
+  onLoadDemo,
+  onRegionCommit,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
+  const drag = useRef<{ pointerId: number; originFrac: number; moved: boolean } | null>(null)
 
   useEffect(() => {
     visualRef.current = visual
@@ -117,12 +135,13 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
       const sourceDur = view.sourceDur || duration
       if (buffer && sourceDur > 0) {
         const data = buffer.getChannelData(0)
-        const key = `${contentRev}:${width}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}`
+        const span = sampleIndexSpan(data.length, sourceDur, view.regionStart, view.regionEnd)
+        const key = `${contentRev}:${width}:${span.i0}:${span.i1}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
           const { min, max } = mips.length
-            ? computeMinMaxCached(data, mips, 0, data.length, width)
-            : computeMinMax(data, 0, data.length, width)
+            ? computeMinMaxCached(data, mips, span.i0, span.i1, width)
+            : computeMinMax(data, span.i0, span.i1, width)
           const abs = normalizeEnvelopePeak(absEnvelope(min, max))
           const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space)
           const dirtBlur = 1 - visual.dirt * 0.72
@@ -144,9 +163,9 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
           specs,
           nowMs: reduced ? 0 : performance.now(),
           reduced,
-          playFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.head / sourceDur)) : 0,
-          windowStartFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionStart / sourceDur)) : 0,
-          windowEndFrac: sourceDur > 0 ? Math.min(1, Math.max(0, view.regionEnd / sourceDur)) : 1,
+          playFrac: playheadInView(view.head, view.regionStart, view.regionEnd),
+          windowStartFrac: 0,
+          windowEndFrac: 1,
           scene,
           ridge: themeRidge(ink),
         })
@@ -160,6 +179,42 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
     }
   }, [duration, loaded, contentRev, scene])
 
+  const fracAt = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)))
+  }
+
+  const seekToFrac = (frac: number) => {
+    const view = sourceView()
+    const t = lerpTime(view.regionStart, view.regionEnd, frac)
+    engine.seekSeconds(workingTimeFromSource(t, view.windowStart, view.workDur || duration))
+  }
+
+  const selectFromDrag = (origin: number, next: number) => {
+    const view = sourceView()
+    const a = lerpTime(view.regionStart, view.regionEnd, origin)
+    const b = lerpTime(view.regionStart, view.regionEnd, next)
+    const region = regionFromDrag(
+      workingTimeFromSource(a, view.windowStart, view.workDur),
+      workingTimeFromSource(b, view.windowStart, view.workDur),
+      view.workDur || duration,
+    )
+    engine.setRegion(region.start, region.end)
+  }
+
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const state = drag.current
+    if (!state || state.pointerId !== event.pointerId) return
+    drag.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+    if (state.moved) onRegionCommit()
+    else seekToFrac(fracAt(event))
+  }
+
   return (
     <div className={styles.range}>
       <canvas ref={canvasRef} className={styles.canvas} />
@@ -168,7 +223,34 @@ export function SoundRange({ duration, loaded, visual, contentRev, scene, onTogg
         aria-hidden="true"
       />
       {loaded ? (
-        <button type="button" className={styles.hit} aria-label="Play or pause" onDoubleClick={onTogglePlay} />
+        <button
+          type="button"
+          className={styles.hit}
+          aria-label="Select a sample region, or double-click to play"
+          onPointerDown={(event) => {
+            if (event.button !== 0) return
+            event.preventDefault()
+            event.currentTarget.setPointerCapture(event.pointerId)
+            drag.current = { pointerId: event.pointerId, originFrac: fracAt(event), moved: false }
+          }}
+          onPointerMove={(event) => {
+            const state = drag.current
+            if (!state || state.pointerId !== event.pointerId) return
+            if (event.buttons === 0) {
+              endDrag(event)
+              return
+            }
+            const next = fracAt(event)
+            if (Math.abs(next - state.originFrac) > 0.008) state.moved = true
+            if (state.moved) selectFromDrag(state.originFrac, next)
+          }}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onDoubleClick={(event) => {
+            event.preventDefault()
+            onTogglePlay()
+          }}
+        />
       ) : (
         <button type="button" className={styles.empty} onClick={onLoadDemo}>
           Load demo tone

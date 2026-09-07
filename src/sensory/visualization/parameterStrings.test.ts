@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import { SENSORY_AXIS_IDS } from '../sensoryParameters'
 import {
   amountToT,
@@ -18,6 +19,11 @@ describe('parameterStrings', () => {
   it('lays out one labeled string per sensory axis', () => {
     expect(geoms.map((g) => g.id)).toEqual([...SENSORY_AXIS_IDS])
     expect(new Set(geoms.map((g) => g.id)).size).toBe(SENSORY_AXIS_IDS.length)
+  })
+
+  it('can lay out only the twelve rail strings', () => {
+    const rails = layoutParameterStrings(1200, 800, undefined, RAIL_AXIS_IDS)
+    expect(rails.map((g) => g.id)).toEqual([...RAIL_AXIS_IDS])
   })
 
   it('keeps endpoints inside the padded frame', () => {
