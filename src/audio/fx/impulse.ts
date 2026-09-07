@@ -43,6 +43,7 @@ export function typeStereoSpread(type: ReverbType): number {
     case 'spring':
       return 0.36
     case 'hall':
+    case 'custom':
       return 0.8
     case 'largeHall':
     case 'cathedral':
@@ -130,7 +131,12 @@ export function fillReverbImpulse(
       l += chirp + chirp2
       r += chirp * 0.35 - chirp2
     }
-    if (spec.type === 'hall' || spec.type === 'largeHall' || spec.type === 'cathedral') {
+    if (
+      spec.type === 'hall' ||
+      spec.type === 'largeHall' ||
+      spec.type === 'cathedral' ||
+      spec.type === 'custom'
+    ) {
       const wall = Math.sin(i * (0.007 + spec.size * 0.003) + kPhase(i)) * env * 0.12
       l += wall
       r -= wall * 0.92

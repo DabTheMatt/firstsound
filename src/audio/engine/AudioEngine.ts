@@ -1024,6 +1024,10 @@ export class AudioEngine {
   setReverbType(type: ReverbType): void {
     if (this.reverbType === type) return
     this.reverbType = type
+    const preset = this.spacePresetId ? findSpacePreset(this.spacePresetId) : undefined
+    if (!preset || preset.kind !== 'reverb' || preset.reverbType !== type) {
+      this.spacePresetId = null
+    }
     this.reverbIrKey = ''
     this.applyLiveAudio()
     this.emit()

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
 import { applyDelayMacro, applyReverbMacro, delayMacroNormalized } from './macros'
 import { migrateSpaceParams } from './migrate'
-import { defaultPresetFor, findSpacePreset, SPACE_PRESETS } from './presets'
+import { defaultPresetFor, findSpacePreset, presetsForReverbType, SPACE_PRESETS } from './presets'
+import { parseReverbType, REVERB_TYPES } from './types'
 
 describe('macros', () => {
   it('time macro writes delayTime and disables sync', () => {
@@ -72,5 +73,17 @@ describe('presets', () => {
     expect(drumDelay?.params.delayFeedback).toBeLessThan(20)
     expect(roomRev?.reverbType).toBe('room')
     expect(ambientRev?.category).toBe('Ambient')
+  })
+
+  it('lists only factory presets that match the reverb type', () => {
+    const rooms = presetsForReverbType('room')
+    expect(rooms.length).toBeGreaterThan(0)
+    expect(rooms.every((p) => p.reverbType === 'room')).toBe(true)
+    expect(rooms.some((p) => p.id === 'rv-small')).toBe(true)
+    expect(rooms.some((p) => p.id === 'rv-vocal-hall')).toBe(false)
+    expect(presetsForReverbType('plate').every((p) => p.reverbType === 'plate')).toBe(true)
+    expect(presetsForReverbType('custom')).toEqual([])
+    expect(parseReverbType('custom')).toBe('custom')
+    expect(REVERB_TYPES.some((t) => t.value === 'custom' && t.label === 'Własny')).toBe(true)
   })
 })
