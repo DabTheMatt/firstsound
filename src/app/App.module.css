@@ -197,7 +197,7 @@
   z-index: 12;
   min-width: 220px;
   max-width: min(320px, calc(100vw - 24px));
-  max-height: min(72vh, 560px);
+  max-height: min(85vh, 720px);
   overflow: auto;
   padding: 6px;
   background: var(--bg-panel-elevated);
