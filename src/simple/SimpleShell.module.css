@@ -355,3 +355,15 @@
     padding-bottom: 24px;
   }
 }
+
+:global(html[data-low-vision='on']) .page,
+:global(html[data-ui-scale='large']) .page {
+  height: 100%;
+  overflow: hidden;
+}
+
+:global(html[data-low-vision='on']) .shell,
+:global(html[data-ui-scale='large']) .shell {
+  overflow: auto;
+  min-height: 0;
+}

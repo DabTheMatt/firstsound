@@ -45,12 +45,17 @@
 
 .check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-height: 44px;
-  padding: 0 6px;
+  padding: 8px 6px;
   color: var(--text-primary);
   font-size: 13px;
+  line-height: 1.3;
+}
+
+.check span {
+  overflow-wrap: anywhere;
 }
 
 .check input {
@@ -73,4 +78,16 @@
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.shortcuts {
+  padding: 0 4px 4px;
+}
+
+.shortcuts summary {
+  cursor: pointer;
+  list-style: revert;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }

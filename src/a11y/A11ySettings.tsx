@@ -70,17 +70,19 @@ export function A11ySettings() {
         <span>{a.shortcuts}</span>
       </label>
       <p className={styles.help}>{a.shortcutsHelp}</p>
-      <h3 className={styles.sub}>{a.shortcutsTitle}</h3>
-      <ul className={styles.list}>
-        <li>{a.shortcutTab}</li>
-        <li>{a.shortcutArrows}</li>
-        <li>{a.shortcutShiftArrows}</li>
-        <li>{a.shortcutHomeEnd}</li>
-        <li>{a.shortcutPage}</li>
-        <li>{a.shortcutReset}</li>
-        <li>{a.shortcutSpace}</li>
-        <li>{a.shortcutEsc}</li>
-      </ul>
+      <details className={styles.shortcuts}>
+        <summary className={styles.sub}>{a.shortcutsTitle}</summary>
+        <ul className={styles.list}>
+          <li>{a.shortcutTab}</li>
+          <li>{a.shortcutArrows}</li>
+          <li>{a.shortcutShiftArrows}</li>
+          <li>{a.shortcutHomeEnd}</li>
+          <li>{a.shortcutPage}</li>
+          <li>{a.shortcutReset}</li>
+          <li>{a.shortcutSpace}</li>
+          <li>{a.shortcutEsc}</li>
+        </ul>
+      </details>
     </section>
   )
 }

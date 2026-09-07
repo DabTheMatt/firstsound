@@ -157,3 +157,14 @@
   padding: 0 8px;
   font-size: 9px;
 }
+
+:global(html[data-low-vision='on']) .header,
+:global(html[data-ui-scale='large']) .header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+:global(html[data-low-vision='on']) .trailing,
+:global(html[data-ui-scale='large']) .trailing {
+  justify-content: flex-start;
+}

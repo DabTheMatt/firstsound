@@ -176,3 +176,9 @@
   background: var(--bg-control);
   opacity: 1;
 }
+
+:global(html[data-low-vision='on']) .bar,
+:global(html[data-ui-scale='large']) .bar {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}

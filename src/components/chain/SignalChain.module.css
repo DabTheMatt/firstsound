@@ -8,6 +8,14 @@
   min-height: 44px;
 }
 
+:global(html[data-low-vision='on']) .chain,
+:global(html[data-ui-scale='large']) .chain {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: 8px;
+  max-width: 100%;
+}
+
 .chain::-webkit-scrollbar {
   display: none;
 }
