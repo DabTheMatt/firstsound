@@ -3,6 +3,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import styles from './ParamSlider.module.css'
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 }
 
 export function ParamSlider({ id, value, liveValue }: Props) {
+  const { paramLabel } = useI18n()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
   const shown = toNormalized(liveValue ?? value, def)
@@ -66,7 +68,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   return (
     <div className={styles.row}>
       <div className={styles.meta}>
-        <span className={styles.label}>{def.label}</span>
+        <span className={styles.label}>{paramLabel(id)}</span>
         <span className={styles.readouts}>
           {liveValue != null ? (
             <span className={styles.baseValue} title="Stored value (LFO zero)">
@@ -80,7 +82,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
         ref={trackRef}
         className={styles.track}
         role="slider"
-        aria-label={def.label}
+        aria-label={paramLabel(id)}
         aria-valuemin={def.min}
         aria-valuemax={def.max}
         aria-valuenow={Number(shownValue.toFixed(3))}

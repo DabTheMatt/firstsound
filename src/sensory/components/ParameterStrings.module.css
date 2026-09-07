@@ -1,7 +1,7 @@
 .layer {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 5;
   pointer-events: none;
 }
 
@@ -21,53 +21,63 @@
 }
 
 .string[data-axis='character'] {
-  color: #d6d6d0;
+  color: #e8b45c;
 }
 .string[data-axis='space'] {
-  color: #9c9c98;
+  color: #6ec8e8;
 }
 .string[data-axis='echo'] {
-  color: #7a7a76;
+  color: #b48ce8;
 }
 .string[data-axis='grain'] {
-  color: #b8b8b2;
+  color: #8ed9a8;
 }
 .string[data-axis='dirt'] {
-  color: #5c5c58;
+  color: #e87848;
 }
 .string[data-axis='tight'] {
   color: #ecece8;
 }
 .string[data-axis='mod'] {
-  color: #8a8a86;
+  color: #e86aa8;
 }
 .string[data-axis='drift'] {
-  color: #c8c8c2;
+  color: #6ea8e8;
 }
 .string[data-axis='pan'] {
-  color: #6e6e6a;
+  color: #b4b4b0;
 }
 .string[data-axis='veil'] {
-  color: #8a8c90;
+  color: #8a9ab0;
 }
 .string[data-axis='halo'] {
-  color: #d4d4ce;
+  color: #d8d0b8;
 }
 .string[data-axis='well'] {
   color: #5a5854;
 }
-.string[data-axis='vinyl'] {
-  color: #5a5a56;
+.string[data-axis='bloom'] {
+  color: #a8c4e8;
 }
-.string[data-axis='sweep'] {
-  color: #7ec4b8;
+.string[data-axis='shimmer'] {
+  color: #ead68a;
+}
+.string[data-axis='reverse'] {
+  color: #a08ce8;
+}
+.string[data-axis='vinyl'] {
+  color: #8a7a68;
+}
+.string[data-axis='melt'] {
+  color: #e88cb0;
 }
 
 .line {
   fill: none;
-  stroke: color-mix(in srgb, currentColor 42%, var(--text-primary) 18%);
-  stroke-width: 1.15;
+  stroke: color-mix(in srgb, currentColor 78%, var(--text-primary) 22%);
+  stroke-width: 1.7;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, currentColor 45%, transparent));
 }
 
 .hit {

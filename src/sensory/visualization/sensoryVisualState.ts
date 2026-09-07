@@ -82,9 +82,9 @@ export type RidgePalette = {
 }
 
 export const DUSK_RIDGE: RidgePalette = {
-  warm: { r: 236, g: 92, b: 36 },
-  mid: { r: 248, g: 242, b: 232 },
-  cool: { r: 56, g: 196, b: 210 },
+  warm: { r: 236, g: 108, b: 52 },
+  mid: { r: 248, g: 236, b: 214 },
+  cool: { r: 48, g: 196, b: 214 },
 }
 
 /** Lateral mountain wash: warm left, cream center, cool right, tinted by ink. */
@@ -121,7 +121,7 @@ export function watercolorMix(values: SensoryValues, active: SensoryAxisId | nul
     const mag = Math.abs(values[id])
     if (mag < 0.015) continue
     const focus = active === id ? 0.1 : 0
-    ink = mixRgb(ink, AXIS_TINT[id], Math.min(0.28, mag * 0.2 + focus))
+    ink = mixRgb(ink, AXIS_TINT[id], Math.min(0.38, mag * 0.28 + focus))
   }
   return ink
 }
@@ -176,9 +176,9 @@ export function landscapeStops(
 ): { left: Rgb; crest: Rgb; right: Rgb } {
   const wash = ridgeInk(visual.ink, palette)
   return {
-    left: mixRgb(wash.left, WARM, visual.warmth * 0.18),
-    crest: mixRgb(wash.mid, LIGHT, visual.glow * 0.16),
-    right: mixRgb(wash.right, COLD, visual.space * 0.1 + visual.drift * 0.08),
+    left: mixRgb(wash.left, WARM, visual.warmth * 0.28),
+    crest: mixRgb(wash.mid, LIGHT, visual.glow * 0.22),
+    right: mixRgb(wash.right, COLD, visual.space * 0.16 + visual.drift * 0.12),
   }
 }
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { VizMode, WaveTool } from '../../app/editorState'
+import { useI18n } from '../../i18n'
 import styles from './WaveformToolbar.module.css'
 
 type Props = {
@@ -23,7 +24,7 @@ export type ViewAction =
   | 'normalize-view'
   | 'reset-zoom'
 
-const TOOLS: { id: WaveTool; label: string }[] = [{ id: 'select', label: 'Edit' }]
+const TOOLS: { id: WaveTool; key: 'edit' }[] = [{ id: 'select', key: 'edit' }]
 
 export function WaveformToolbar({
   tool,
@@ -38,6 +39,7 @@ export function WaveformToolbar({
   normalizeView,
   minimal = false,
 }: Props) {
+  const { t } = useI18n()
   const tools = TOOLS
 
   return (
@@ -52,32 +54,32 @@ export function WaveformToolbar({
               aria-pressed={tool === item.id}
               onClick={() => onTool(item.id)}
             >
-              {item.label}
+              {t.waveform[item.key]}
             </button>
           ))}
           {onTrim ? (
-            <IconButton label="Trim to selection" caption="Trim" onClick={onTrim}>
+            <IconButton label={t.waveform.trimTitle} caption={t.waveform.trim} onClick={onTrim}>
               <TrimIcon />
             </IconButton>
           ) : null}
         </div>
       ) : null}
       <div className={styles.views}>
-        <IconButton label="Fit sample" caption="Fit" onClick={() => onView('fit-sample')}>
+        <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
           <FitIcon />
         </IconButton>
         {!minimal ? (
-          <IconButton label="Fit selection" caption="Sel" onClick={() => onView('fit-selection')}>
+          <IconButton label={t.waveform.fitSelection} caption={t.waveform.sel} onClick={() => onView('fit-selection')}>
             <FitSelIcon />
           </IconButton>
         ) : null}
-        <IconButton label="Zoom to selection" caption="Zoom" onClick={() => onView('zoom-selection')}>
+        <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
           <ZoomSelIcon />
         </IconButton>
         {!minimal ? (
           <IconButton
-            label="Normalize view"
-            caption="Norm"
+            label={t.waveform.normalizeView}
+            caption={t.waveform.norm}
             pressed={normalizeView}
             onClick={() => onView('normalize-view')}
           >
@@ -85,13 +87,13 @@ export function WaveformToolbar({
           </IconButton>
         ) : null}
         {!minimal ? (
-          <IconButton label="Reset zoom" caption="Reset" onClick={() => onView('reset-zoom')}>
+          <IconButton label={t.waveform.resetZoom} caption={t.waveform.reset} onClick={() => onView('reset-zoom')}>
             <ResetIcon />
           </IconButton>
         ) : null}
         <IconButton
-          label="Single-track waveform"
-          caption="Wave"
+          label={t.waveform.waveTitle}
+          caption={t.waveform.wave}
           pressed={viz === 'waveform'}
           onClick={() => onViz('waveform')}
         >
@@ -99,8 +101,8 @@ export function WaveformToolbar({
         </IconButton>
         {!minimal ? (
           <IconButton
-            label="Multi-track waveform"
-            caption="Multi"
+            label={t.waveform.multiTitle}
+            caption={t.waveform.multi}
             pressed={viz === 'waveform-multi'}
             onClick={() => onViz('waveform-multi')}
           >
@@ -108,7 +110,7 @@ export function WaveformToolbar({
           </IconButton>
         ) : null}
         <IconButton
-          label="Spectrum"
+          label={t.waveform.spectrum}
           caption="FFT"
           pressed={viz === 'spectrum'}
           onClick={() => onViz('spectrum')}
@@ -117,8 +119,8 @@ export function WaveformToolbar({
         </IconButton>
         {!minimal ? (
           <IconButton
-            label="Split view"
-            caption="Split"
+            label={t.waveform.splitTitle}
+            caption={t.waveform.split}
             pressed={viz === 'split'}
             onClick={() => onViz('split')}
           >
@@ -127,7 +129,7 @@ export function WaveformToolbar({
         ) : null}
         {!minimal ? (
           <IconButton
-            label="EQ console"
+            label={t.waveform.eqTitle}
             caption="EQ"
             pressed={viz === 'eq-split'}
             onClick={() => onViz('eq-split')}
@@ -137,8 +139,8 @@ export function WaveformToolbar({
         ) : null}
         {!minimal ? (
           <IconButton
-            label="Tracks and mixer"
-            caption="Tracks"
+            label={t.waveform.tracksTitle}
+            caption={t.waveform.tracks}
             pressed={viz === 'mix-split'}
             onClick={() => onViz('mix-split')}
           >
@@ -148,11 +150,11 @@ export function WaveformToolbar({
       </div>
       {!minimal ? (
         <div className={styles.zoom}>
-          <button type="button" className={styles.icon} aria-label="Zoom out" onClick={onZoomOut}>
+          <button type="button" className={styles.icon} aria-label={t.waveform.zoomOut} onClick={onZoomOut}>
             −
           </button>
           <span
-            title="Scroll to zoom"
+            title={t.waveform.scrollZoom}
             onWheel={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -162,7 +164,7 @@ export function WaveformToolbar({
           >
             {zoomLabel}
           </span>
-          <button type="button" className={styles.icon} aria-label="Zoom in" onClick={onZoomIn}>
+          <button type="button" className={styles.icon} aria-label={t.waveform.zoomIn} onClick={onZoomIn}>
             +
           </button>
         </div>

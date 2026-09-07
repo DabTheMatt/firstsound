@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { MODULE_LABELS, eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
+import { eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
@@ -41,6 +41,7 @@ import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
+import { useI18n } from '../../i18n'
 import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, type DistortionType } from '../../audio/fx/types'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
@@ -170,6 +171,7 @@ function ToolInspector({
   knobs: boolean
   onHideInspector?: () => void
 }) {
+  const { t } = useI18n()
   const length = Math.max(0, snap.params.end - snap.params.start)
   const fadeMaxSec = fadeKnobMaxSec(length)
   const maxMs = Math.round(fadeMaxSec * 1000)
@@ -178,21 +180,21 @@ function ToolInspector({
   return (
     <>
       <div className={styles.head}>
-        <h2 className={styles.title}>Edit</h2>
+        <h2 className={styles.title}>{t.inspector.edit}</h2>
         {onHideInspector ? (
           <div className={styles.headActions}>
             <InspectorEye open onClick={onHideInspector} />
           </div>
         ) : null}
       </div>
-      <Readout label="Start" value={formatTimecode(snap.params.start)} />
-      <Readout label="End" value={formatTimecode(snap.params.end)} />
-      <Readout label="Length" value={formatTimecode(length)} />
+      <Readout label={t.inspector.start} value={formatTimecode(snap.params.start)} />
+      <Readout label={t.inspector.end} value={formatTimecode(snap.params.end)} />
+      <Readout label={t.inspector.length} value={formatTimecode(length)} />
       <div className={styles.fine}>
         <button type="button" onClick={() => onFine('start', -0.001)}>
           −1 ms
         </button>
-        <span>Start</span>
+        <span>{t.inspector.start}</span>
         <button type="button" onClick={() => onFine('start', 0.001)}>
           +1 ms
         </button>
@@ -201,32 +203,31 @@ function ToolInspector({
         <button type="button" onClick={() => onFine('end', -0.001)}>
           −1 ms
         </button>
-        <span>End</span>
+        <span>{t.inspector.end}</span>
         <button type="button" onClick={() => onFine('end', 0.001)}>
           +1 ms
         </button>
       </div>
       <Toggle
         pressed={edit.autoSnap}
-        label="Zero crossing"
+        label={t.inspector.zeroCrossing}
         onToggle={() => onEdit({ autoSnap: !edit.autoSnap })}
       />
       <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('start')}>
-        Snap Start
+        {t.inspector.snapStart}
       </button>
       <button type="button" className={styles.ghost} onClick={() => engine.snapToZero('end')}>
-        Snap End
+        {t.inspector.snapEnd}
       </button>
       {snap.engineMode === 'grain' ? (
         <p className={styles.help}>
-          Grain plays from the cursor, so region fades are easy to miss. Use Playback to hear
-          fade-in and fade-out on the selection.
+          {t.inspector.grainFadesHelp}
         </p>
       ) : null}
       {knobs ? (
         <div className={styles.knobs}>
           <ValueKnob
-            label="Fade In"
+            label={t.inspector.fadeIn}
             valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
             normalized={Math.min(1, edit.fadeIn / fadeMaxSec)}
             min={0}
@@ -243,7 +244,7 @@ function ToolInspector({
             }}
           />
           <ValueKnob
-            label="Fade Out"
+            label={t.inspector.fadeOut}
             valueText={`${Math.round(edit.fadeOut * 1000)} ms`}
             normalized={Math.min(1, edit.fadeOut / fadeMaxSec)}
             min={0}
@@ -290,7 +291,7 @@ function ToolInspector({
             min={0}
             max={maxMs}
             value={Math.round(edit.fadeIn * 1000)}
-            aria-label="Fade in"
+            aria-label={t.inspector.fadeIn}
             onChange={(e) => onEdit({ fadeIn: Number(e.target.value) / 1000, fadeAuto: false, fadeFocus: 'in' })}
             onPointerUp={onCommit}
           />
@@ -300,20 +301,20 @@ function ToolInspector({
             min={0}
             max={maxMs}
             value={Math.round(edit.fadeOut * 1000)}
-            aria-label="Fade out"
+            aria-label={t.inspector.fadeOut}
             onChange={(e) => onEdit({ fadeOut: Number(e.target.value) / 1000, fadeAuto: false, fadeFocus: 'out' })}
             onPointerUp={onCommit}
           />
         </>
       )}
       <Segmented
-        label="Curve"
+        label={t.inspector.curve}
         value={edit.fadeCurve}
         options={[
-          { value: 'linear', label: 'Lin', title: 'Linear' },
-          { value: 'equalPower', label: 'EqPow', title: 'Equal Power' },
-          { value: 'exponential', label: 'Exp', title: 'Exponential' },
-          { value: 'sCurve', label: 'S', title: 'S-Curve' },
+          { value: 'linear', label: t.inspector.linear, title: 'Linear' },
+          { value: 'equalPower', label: t.inspector.equalPower, title: 'Equal Power' },
+          { value: 'exponential', label: t.inspector.exponential, title: 'Exponential' },
+          { value: 'sCurve', label: t.inspector.sCurve, title: 'S-Curve' },
         ]}
         wrap
         onChange={(fadeCurve) => {
@@ -334,7 +335,7 @@ function ToolInspector({
           onCommit?.()
         }}
       >
-        Auto 10 ms
+        {t.inspector.auto10}
       </button>
       <button
         type="button"
@@ -344,7 +345,7 @@ function ToolInspector({
           onCommit?.()
         }}
       >
-        Fades Off
+        {t.inspector.fadesOff}
       </button>
       <button
         type="button"
@@ -361,13 +362,13 @@ function ToolInspector({
               })
         }
       >
-        Trim
+        {t.inspector.trim}
       </button>
       <button type="button" className={styles.ghost} onClick={() => engine.normalizeRegion()}>
-        Normalize
+        {t.inspector.normalize}
       </button>
       <button type="button" className={styles.ghost} onClick={() => engine.reverseRegion()}>
-        Reverse
+        {t.inspector.reverse}
       </button>
     </>
   )
@@ -384,8 +385,9 @@ function InspectorTabs({
   mainLabel?: string
   advancedLabel?: string
 }) {
+  const { t } = useI18n()
   return (
-    <div className={styles.paneTabs} role="tablist" aria-label="Effect settings">
+    <div className={styles.paneTabs} role="tablist" aria-label={t.inspector.effectSettings}>
       <button
         type="button"
         role="tab"
@@ -423,6 +425,7 @@ function ModuleInspector({
   paneHint?: 'main' | 'advanced'
   onHideInspector?: () => void
 }) {
+  const { t } = useI18n()
   const [paneById, setPaneById] = useState<Record<string, 'main' | 'advanced'>>({})
   const mod = snap.chain.find((m) => m.instanceId === instanceId)
   useEffect(() => {
@@ -446,12 +449,12 @@ function ModuleInspector({
   return (
     <>
       <div className={styles.head}>
-        <h2 className={styles.title}>{mod ? moduleLabel(mod, snap.chain) : MODULE_LABELS[type]}</h2>
+        <h2 className={styles.title}>{mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}</h2>
         <div className={styles.headActions}>
           {type !== 'gain' && type !== 'output' ? (
             <Toggle
               pressed={!mod?.bypassed}
-              label={mod?.bypassed ? 'Bypassed' : 'Active'}
+              label={mod?.bypassed ? t.inspector.bypassed : t.inspector.active}
               onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
@@ -459,10 +462,10 @@ function ModuleInspector({
             <button
               type="button"
               className={styles.remove}
-              aria-label={`Remove ${MODULE_LABELS[mod.type]}`}
+              aria-label={`${t.inspector.remove} ${t.modules[mod.type]}`}
               onClick={() => engine.removeModule(instanceId)}
             >
-              Remove
+              {t.inspector.remove}
             </button>
           ) : null}
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
@@ -472,8 +475,8 @@ function ModuleInspector({
         <InspectorTabs
           value={pane}
           onChange={setPane}
-          mainLabel={type === 'gain' ? 'Gain' : 'Main'}
-          advancedLabel={type === 'gain' ? 'Panning' : 'Advanced'}
+          mainLabel={type === 'gain' ? t.inspector.gain : t.inspector.main}
+          advancedLabel={type === 'gain' ? t.inspector.panning : t.inspector.advanced}
         />
       ) : null}
       {type === 'gain' && pane === 'main' ? (
@@ -1137,6 +1140,7 @@ function EqEditor({
 }
 
 function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' | 'slider' }) {
+  const { t } = useI18n()
   const source =
     snap.tempoSource === 'detected'
       ? 'detected'
@@ -1147,7 +1151,7 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
           : 'default 120'
   return (
     <div className={styles.tempo}>
-      <h3 className={styles.sub}>Sample tempo</h3>
+      <h3 className={styles.sub}>{t.inspector.sampleTempo}</h3>
       <p className={styles.help}>
         Delay and reverb BPM sync use this tempo. Detect tempo from the sample, mark hits on the
         waveform and drag them to warp the audio, or tap along while the sample plays.

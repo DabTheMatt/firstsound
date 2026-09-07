@@ -34,9 +34,11 @@
 
 .hit {
   position: absolute;
-  inset: 12% 20% 22%;
+  inset: 10% 16% 18%;
   border: 0;
   background: transparent;
+  cursor: text;
+  touch-action: none;
 }
 
 .empty {

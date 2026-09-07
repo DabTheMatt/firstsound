@@ -21,7 +21,7 @@
 .atmosphere {
   position: absolute;
   inset: 0;
-  z-index: 14;
+  z-index: 2;
   pointer-events: none;
   overflow: hidden;
 }
@@ -30,19 +30,20 @@
   position: absolute;
   inset: -2px;
   mix-blend-mode: screen;
-  opacity: calc(0.18 + var(--sensory-space, 0) * 0.12 + var(--sensory-drift, 0) * 0.08);
+  opacity: calc(0.28 + var(--sensory-space, 0) * 0.16 + var(--sensory-drift, 0) * 0.1);
   background:
     linear-gradient(
       90deg,
-      rgba(255, 56, 72, 0.16) 0%,
-      rgba(255, 56, 72, 0.04) 7%,
-      transparent 16%,
-      transparent 84%,
-      rgba(48, 170, 255, 0.05) 93%,
-      rgba(48, 170, 255, 0.16) 100%
+      rgba(255, 72, 86, 0.22) 0%,
+      rgba(255, 120, 64, 0.08) 10%,
+      transparent 18%,
+      transparent 82%,
+      rgba(64, 196, 255, 0.08) 90%,
+      rgba(72, 168, 255, 0.22) 100%
     ),
-    radial-gradient(ellipse at 18% 42%, rgba(255, 40, 70, 0.07), transparent 42%),
-    radial-gradient(ellipse at 82% 58%, rgba(40, 160, 255, 0.07), transparent 42%);
+    radial-gradient(ellipse at 22% 38%, rgba(255, 92, 48, 0.12), transparent 46%),
+    radial-gradient(ellipse at 78% 62%, rgba(48, 196, 220, 0.12), transparent 46%),
+    radial-gradient(ellipse at 50% 80%, rgba(186, 120, 255, 0.07), transparent 40%);
   transform: translateX(calc(var(--sensory-drift, 0) * 1.2px));
 }
 
@@ -126,15 +127,21 @@
 }
 
 .mirror {
-  background: #07090e;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(72, 140, 210, 0.16), transparent 42%),
+    #07090e;
 }
 
 .canyon {
-  background: #100c0a;
+  background:
+    radial-gradient(ellipse at 18% 72%, rgba(210, 86, 42, 0.16), transparent 48%),
+    #100c0a;
 }
 
 .gleam {
-  background: #061018;
+  background:
+    radial-gradient(ellipse at 72% 28%, rgba(64, 196, 210, 0.18), transparent 46%),
+    #061018;
 }
 
 .drop {
@@ -190,29 +197,6 @@
   align-items: center;
   gap: 14px;
   justify-self: start;
-}
-
-.stringsToggle {
-  border: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
-  background: transparent;
-  color: color-mix(in srgb, var(--text-primary) 48%, transparent);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  font-size: 9px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-}
-
-.stringsToggle:hover,
-.stringsToggle:focus-visible {
-  color: var(--text-primary);
-  outline: none;
-}
-
-.stringsOn {
-  color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--text-primary) 48%, transparent);
 }
 
 .top > * {

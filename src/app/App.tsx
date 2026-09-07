@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
-import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT, AUDIO_IMPORT_HINT } from '../features/sample/files'
+import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT } from '../features/sample/files'
 import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
@@ -25,6 +25,7 @@ import { ExportDialog } from '../components/samplePrep/ExportDialog'
 import { ModeGate } from '../modes/ModeGate'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import { persistUiMode, readStoredUiMode, type UiMode } from '../modes/uiMode'
+import { useI18n } from '../i18n'
 import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
@@ -102,6 +103,7 @@ function histEqual(a: Hist, b: Hist): boolean {
 }
 
 export default function App() {
+  const { t } = useI18n()
   const snap = useEngine()
   const { mode, width: viewportWidth } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
@@ -371,9 +373,9 @@ export default function App() {
   const actions = useMemo(
     () => (
       <div className={styles.moreMenu}>
-          <p className={styles.hint}>{AUDIO_IMPORT_HINT}</p>
+          <p className={styles.hint}>{t.settings.hint}</p>
           <button type="button" onClick={() => sampleInput.current?.click()}>
-            Load sample
+            {t.settings.loadSample}
           </button>
         <button
           type="button"
@@ -382,16 +384,16 @@ export default function App() {
             else void engine.startMicRecord()
           }}
         >
-          {snap.recording ? 'Stop recording' : 'Record microphone'}
+          {snap.recording ? t.settings.stopRecording : t.settings.recordMic}
         </button>
         <button
           type="button"
           onClick={() => downloadJson('field-preset.json', engine.toPreset())}
         >
-          Save preset
+          {t.settings.savePreset}
         </button>
         <button type="button" onClick={() => presetInput.current?.click()}>
-          Load preset
+          {t.settings.loadPreset}
         </button>
         <button
           type="button"
@@ -399,7 +401,7 @@ export default function App() {
             void engine.unlock().then(() => engine.loadDemoTone())
           }}
         >
-          Load demo tone
+          {t.settings.loadDemo}
         </button>
         <button
           type="button"
@@ -409,14 +411,14 @@ export default function App() {
             setMenuOpen(false)
           }}
         >
-          Edit sample
+          {t.settings.editSample}
         </button>
         <button type="button" onClick={() => engine.resetAll()}>
-          Reset all
+          {t.settings.resetAll}
         </button>
         {snap.hasSource ? (
           <button type="button" onClick={() => engine.revertToSource()}>
-            Revert to source
+            {t.settings.revertSource}
           </button>
         ) : null}
         <button
@@ -425,14 +427,14 @@ export default function App() {
             applyHistory(undoHistory(history))
           }}
         >
-          Undo
+          {t.settings.undo}
         </button>
         <button type="button" onClick={() => applyHistory(redoHistory(history))}>
-          Redo
+          {t.settings.redo}
         </button>
       </div>
     ),
-    [history, snap.hasSource, snap.recording],
+    [history, snap.hasSource, snap.recording, t],
   )
 
   const fileInputs = (
@@ -469,7 +471,7 @@ export default function App() {
       <button
         type="button"
         className={styles.settingsScrim}
-        aria-label="Close settings"
+        aria-label={t.settings.close}
         onClick={() => setMenuOpen(false)}
       />
       <div className={styles.settingsFly} ref={settingsRef}>
@@ -578,7 +580,7 @@ export default function App() {
             <button
               type="button"
               className={styles.settingsScrim}
-              aria-label="Close LFO center"
+              aria-label={t.settings.closeLfo}
               onClick={() => setLfoCenterOpen(false)}
             />
             <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
@@ -591,7 +593,7 @@ export default function App() {
             <button
               type="button"
               className={styles.settingsScrim}
-              aria-label="Close settings"
+              aria-label={t.settings.close}
               onClick={() => setMenuOpen(false)}
             />
             <div className={styles.settingsFly} ref={settingsRef}>
@@ -601,7 +603,7 @@ export default function App() {
         ) : null}
 
         {snap.audioStatus === 'blocked' ? (
-          <p className={styles.banner}>Audio is paused by the browser. Tap Play to resume.</p>
+          <p className={styles.banner}>{t.banner.audioBlocked}</p>
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
@@ -699,7 +701,7 @@ export default function App() {
                   )
                 }
               >
-                Inspector
+                {t.banner.inspector}
               </button>
             ) : null}
             {isPhoneLayout || activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
@@ -740,7 +742,7 @@ export default function App() {
           />
         </div>
 
-        <p className={styles.sr}>Selection {formatTimecode(snap.params.start)} to {formatTimecode(snap.params.end)}</p>
+        <p className={styles.sr}>{t.transport.selectionSr(formatTimecode(snap.params.start), formatTimecode(snap.params.end))}</p>
 
         {fileInputs}
       </main>

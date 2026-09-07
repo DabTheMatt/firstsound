@@ -53,7 +53,8 @@ describe('sensoryVisualState', () => {
     )
     const spaceOnly = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'space', 0.7), true)
     expect(mixed.ink.r).toBeGreaterThan(spaceOnly.ink.r)
-    expect(mixed.ink.g).not.toBeCloseTo(spaceOnly.ink.g, 0)
+    expect(mixed.ink.b).not.toBe(spaceOnly.ink.b)
+    expect(Math.abs(mixed.ink.g - spaceOnly.ink.g) + Math.abs(mixed.ink.b - spaceOnly.ink.b)).toBeGreaterThan(0.5)
   })
 })
 

@@ -11,6 +11,7 @@ import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engin
 import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
 import type { WaveTool, VizMode, MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { EqConsole } from '../eq/EqConsole'
@@ -154,10 +155,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     fxMode = null,
     appearance = 'studio',
     followPlayhead = false,
-    emptyLabel = 'Load a sample to begin',
+    emptyLabel,
   },
   ref,
 ) {
+  const { t } = useI18n()
   const sensory = appearance === 'sensory'
   const snap = useEngine()
   const showTransients = snap.showTransients
@@ -731,7 +733,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         >
           <div className={styles.wavePane}>
             {!sensory && snap.tracks.length > 0 ? (
-              <div className={styles.trackTabs} role="tablist" aria-label="Tracks">
+              <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
                 {snap.tracks.map((track) => {
                   const on = track.id === snap.selectedTrackId
                   return (
@@ -753,7 +755,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} />
             {loaded && snap.params.makeMono > 0.5 ? (
-              <span className={styles.monoBadge}>Mono</span>
+              <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory} />
             <div
@@ -778,7 +780,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     data-fade="in"
                     data-fade-role="length"
                     style={fadeHandleStyle('in')}
-                    aria-label="Fade in"
+                            aria-label={t.waveform.fadeIn}
                   >
                     <FadeArcIcon side="in" />
                   </div>
@@ -787,7 +789,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     data-fade="out"
                     data-fade-role="length"
                     style={fadeHandleStyle('out')}
-                    aria-label="Fade out"
+                    aria-label={t.waveform.fadeOut}
                   >
                     <FadeArcIcon side="out" />
                   </div>
@@ -811,7 +813,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       className={styles.handle}
                       data-edge="start"
                       style={{ left: `${startPct}%`, top: LOOP_HANDLE_TOP_PX }}
-                      aria-label="Region start"
+                      aria-label={t.waveform.regionStart}
                     />
                   ) : null}
                   {!panning && endPct >= 0 && endPct <= 100 ? (
@@ -820,7 +822,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       className={styles.handle}
                       data-edge="end"
                       style={{ left: `${endPct}%`, top: LOOP_HANDLE_TOP_PX }}
-                      aria-label="Region end"
+                      aria-label={t.waveform.regionEnd}
                     />
                   ) : null}
                     </>
@@ -831,14 +833,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         className={styles.sensoryEdge}
                         data-edge="start"
                         style={{ left: `${startPct}%` }}
-                        aria-label="Region start"
+                        aria-label={t.waveform.regionStart}
                       />
                       <button
                         type="button"
                         className={styles.sensoryEdge}
                         data-edge="end"
                         style={{ left: `${endPct}%` }}
-                        aria-label="Region end"
+                        aria-label={t.waveform.regionEnd}
                       />
                     </>
                   )}
@@ -862,9 +864,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 </>
               ) : (
                 <div className={styles.empty}>
-                  <span>{emptyLabel}</span>
+                  <span>{emptyLabel ?? t.waveform.empty}</span>
                   <button type="button" className={styles.demo} onClick={onLoadDemo}>
-                    Load demo tone
+                    {t.waveform.loadDemo}
                   </button>
                 </div>
               )}

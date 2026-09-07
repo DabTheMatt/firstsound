@@ -125,8 +125,12 @@ export function nextInstanceId(type: ModuleType, chain: readonly ChainModule[]):
   return `${type}-${n}`
 }
 
-export function moduleLabel(mod: ChainModule, chain: readonly ChainModule[]): string {
-  const base = MODULE_LABELS[mod.type]
+export function moduleLabel(
+  mod: ChainModule,
+  chain: readonly ChainModule[],
+  labels: Record<ModuleType, string> = MODULE_LABELS,
+): string {
+  const base = labels[mod.type]
   const same = chain.filter((m) => m.type === mod.type)
   if (same.length <= 1) return base
   const n = same.findIndex((m) => m.instanceId === mod.instanceId) + 1
