@@ -27,9 +27,8 @@ import styles from './ParameterStrings.module.css'
 type Props = {
   values: SensoryValues
   activeId: SensoryAxisId | null
-  /** Shown only while a parameter is being dragged or keyed, unless `visible`. */
   editingId: SensoryAxisId | null
-  /** When true, the full string field stays on. */
+  /** When false, strings stay hidden even while a rail is being edited. */
   visible?: boolean
   onActive: (id: SensoryAxisId | null) => void
   onEditing: (id: SensoryAxisId | null) => void
@@ -96,10 +95,7 @@ export function ParameterStrings({
     () => (size.w > 8 && size.h > 8 ? layoutParameterStrings(size.w, size.h, insets, RAIL_AXIS_IDS) : []),
     [size.w, size.h, insets],
   )
-  const shown = useMemo(
-    () => (visible ? geoms : geoms.filter((g) => g.id === editingId)),
-    [geoms, editingId, visible],
-  )
+  const shown = useMemo(() => (visible ? geoms : []), [geoms, visible])
   const crosses = useMemo(() => stringIntersections(shown), [shown])
 
   const localPoint = (event: ReactPointerEvent) => {

@@ -1,5 +1,6 @@
 import { SENSORY_AXIS_IDS, type SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
+import { editFilmGrainBoost } from './changeLayers'
 
 export type Rgb = { r: number; g: number; b: number }
 
@@ -14,6 +15,7 @@ export type SensoryVisualState = {
   chroma: number
   filmGrain: number
   pulse: number
+  changeEnergy: number
   echo: number
   character: number
   space: number
@@ -208,6 +210,7 @@ export function lerpVisualState(from: SensoryVisualState, to: SensoryVisualState
     chroma: lerpNum(from.chroma, to.chroma, u),
     filmGrain: lerpNum(from.filmGrain, to.filmGrain, u),
     pulse: lerpNum(from.pulse, to.pulse, u),
+    changeEnergy: lerpNum(from.changeEnergy, to.changeEnergy, u),
     echo: lerpNum(from.echo, to.echo, u),
     character: lerpNum(from.character, to.character, u),
     space: lerpNum(from.space, to.space, u),
@@ -287,9 +290,11 @@ export function sensoryVisualState(
   ink = watercolorMix(values, activeAxis, ink)
 
   const chroma = chromaticAmount(values)
-  const filmGrain = filmGrainAmount(values)
-  const pulse = pulseAmount(values, reducedMotion)
-  const motion = reducedMotion ? 0 : pulse * 0.72 + grain * 0.18 + pan * 0.22 + fold * 0.12
+  const editAmt = activeAxis ? values[activeAxis] : 0
+  const changeEnergy = activeAxis ? Math.min(1, 0.28 + Math.abs(editAmt) * 0.72) : 0
+  const filmGrain = Math.min(1, filmGrainAmount(values) + editFilmGrainBoost(activeAxis, editAmt))
+  const pulse = Math.min(1, pulseAmount(values, reducedMotion) + changeEnergy * 0.18)
+  const motion = reducedMotion ? 0 : pulse * 0.72 + grain * 0.18 + pan * 0.22 + fold * 0.12 + changeEnergy * 0.2
   const zoom = spaceZoom(space)
   return {
     sharpness: 0.42 + character * 0.4 - dirt * 0.16 + tight * 0.14 - fuzz * 0.1,
@@ -298,10 +303,11 @@ export function sensoryVisualState(
     depth: 0.12 + space * 0.78 + well * 0.22 + veil * 0.16 + bloom * 0.18 + reverse * 0.1,
     mass: 0.42 + space * 0.4 + grain * 0.1 + well * 0.12 - tight * 0.28 + spring * 0.06,
     motion,
-    haze: blurAmount(values),
+    haze: Math.min(1, blurAmount(values) + changeEnergy * 0.08),
     chroma,
     filmGrain,
     pulse,
+    changeEnergy,
     echo,
     character,
     space,
@@ -334,6 +340,7 @@ export function visualCssVars(visual: SensoryVisualState): Record<string, string
     '--sensory-chroma': String(visual.chroma),
     '--sensory-film-grain': String(visual.filmGrain),
     '--sensory-pulse': String(visual.pulse),
+    '--sensory-change': String(visual.changeEnergy),
     '--sensory-echo': String(visual.echo),
     '--sensory-character': String(visual.character),
     '--sensory-space': String(visual.space),

@@ -20,7 +20,7 @@ import {
   type Rgb,
   type SensoryVisualState,
 } from '../visualization/sensoryVisualState'
-import { absEnvelope, blurEnvelope, mountainLayerSpecs, normalizeEnvelopePeak } from '../visualization/mountainLayers'
+import { absEnvelope, blurEnvelope, mountainLayerSpecs, normalizeEnvelopeDisplay } from '../visualization/mountainLayers'
 import { useI18n } from '../../i18n'
 import styles from './SoundRange.module.css'
 
@@ -144,13 +144,15 @@ export function SoundRange({
           const { min, max } = mips.length
             ? computeMinMaxCached(data, mips, span.i0, span.i1, width)
             : computeMinMax(data, span.i0, span.i1, width)
-          const abs = normalizeEnvelopePeak(absEnvelope(min, max))
+          const abs = normalizeEnvelopeDisplay(absEnvelope(min, max))
           const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)
           const dirtBlur = 1 - visual.dirt * 0.72
           const hazeBlur = 1 + visual.haze * 0.85
           cache = {
             key,
-            layers: specs.map((spec) => blurEnvelope(abs, spec.blur * dpr * dirtBlur * hazeBlur)),
+            layers: specs.map((spec) =>
+              normalizeEnvelopeDisplay(blurEnvelope(abs, spec.blur * dpr * dirtBlur * hazeBlur)),
+            ),
           }
         }
         const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)

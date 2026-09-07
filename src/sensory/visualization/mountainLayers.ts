@@ -108,3 +108,25 @@ export function normalizeEnvelopePeak(values: Float32Array): Float32Array {
   for (let i = 0; i < values.length; i++) out[i] = (values[i] ?? 0) * g
   return out
 }
+
+/**
+ * Fill the displayed fragment: lift quiet regions without letting one click flatten the rest.
+ * Uses a target between mean energy and peak, then clips to 1.
+ */
+export function normalizeEnvelopeDisplay(values: Float32Array): Float32Array {
+  if (values.length === 0) return values
+  let peak = 1e-6
+  let acc = 0
+  for (let i = 0; i < values.length; i++) {
+    const v = Math.abs(values[i] ?? 0)
+    peak = Math.max(peak, v)
+    acc += v
+  }
+  if (peak < 0.18) return normalizeEnvelopePeak(values)
+  const mean = acc / values.length
+  const target = Math.min(peak, Math.max(mean * 2.15, peak * 0.4, 1e-6))
+  const g = 1 / target
+  const out = new Float32Array(values.length)
+  for (let i = 0; i < values.length; i++) out[i] = Math.min(1, (values[i] ?? 0) * g)
+  return out
+}

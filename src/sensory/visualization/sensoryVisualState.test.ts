@@ -52,6 +52,8 @@ describe('sensoryVisualState', () => {
     const focused = sensoryVisualState(values, true, 'dirt')
     expect(focused.ink.r).toBeGreaterThan(idle.ink.r - 1)
     expect(focused.activeAxis).toBe('dirt')
+    expect(focused.changeEnergy).toBeGreaterThan(idle.changeEnergy)
+    expect(focused.filmGrain).toBeGreaterThan(idle.filmGrain)
   })
 
   it('dissolves several axis tints like watercolors', () => {

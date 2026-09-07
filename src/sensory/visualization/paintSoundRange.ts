@@ -1,6 +1,7 @@
 import { forPaintX, ridgeSampleStep } from '../../app/frameBudget'
 import type { SensorySceneId } from '../sensoryScene'
 import { gleamRayCount, mirrorLayout, rangeLayout } from './rangeScenes'
+import { changeLayerSpecs } from './changeLayers'
 import {
   contourCount,
   echoGhostSpecs,
@@ -189,6 +190,17 @@ function paintEchoGhosts(ctx: CanvasRenderingContext2D, args: RangePaintArgs, ba
   }
 }
 
+function paintChangeLayers(ctx: CanvasRenderingContext2D, args: RangePaintArgs, base: number, amp: number, dir: 1 | -1) {
+  const energy = args.visual.changeEnergy
+  if (energy < 0.03) return
+  const phase = args.reduced ? 0.32 : (args.nowMs / 1500) % 1
+  const shells = changeLayerSpecs(energy, phase)
+  for (const shell of shells) {
+    if (shell.alpha < 0.012) continue
+    paintRidgeStack(ctx, args, base, amp * shell.scale, dir, 0, shell.alpha, shell.drop)
+  }
+}
+
 function paintFilmGrain(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, dpr } = args
   const grain = visual.filmGrain
@@ -344,6 +356,7 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   paintHazeBand(ctx, args, args.height * 0.12, args.height)
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
+  paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
 }
 
@@ -367,6 +380,7 @@ export function paintSoundRange(args: RangePaintArgs) {
     paintRidgeStack(ctx, args, layout.upperBase, amp, layout.upperDir)
     paintRidgeStack(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintEchoGhosts(ctx, args, layout.lowerBase, amp, layout.lowerDir)
+    paintChangeLayers(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintDust(ctx, args)
     const haze = ctx.createLinearGradient(0, layout.upperBase, 0, layout.lowerBase)
     haze.addColorStop(0, 'rgba(8,12,20,0)')
@@ -387,6 +401,7 @@ export function paintSoundRange(args: RangePaintArgs) {
   paintHazeBand(ctx, args, args.height * 0.08, args.height * 0.55)
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
+  paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
   if (scene === 'gleam' && !reduced) paintGleam(ctx, args, layout.base, amp)
   paintSelection(ctx, args)

@@ -12,6 +12,7 @@ import type { SensoryValues } from '../sensoryState'
 import { defaultSensoryValues } from '../sensoryState'
 import { EFFECT_MORPHS } from './effectMorphs'
 import { applyMorphStopToBands, interpolateMorphStop, MORPH_GATE, type EffectMorph } from './morph'
+import { journeyHasReverb, sensoryReverbJourney } from './reverbJourney'
 import { applySensorySafety } from './safety'
 import { applySensoryStacking } from './stacking'
 
@@ -162,9 +163,22 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     distortionType: base.distortionType,
   }
   let touched = false
+  if (journeyHasReverb(values)) {
+    const journey = sensoryReverbJourney(values)
+    for (const [key, value] of Object.entries(journey.params)) {
+      const param = key as ParamId
+      const def = PARAMS[param]
+      if (!def || value == null) continue
+      dsp.params[param] = applyParamValue(value, def)
+    }
+    dsp.reverbType = journey.type
+    dsp.bypass.reverb = false
+    touched = true
+  }
   for (const id of SENSORY_AXIS_IDS) {
     const t = values[id]
     if (Math.abs(t) < MORPH_GATE) continue
+    if (id === 'space') continue
     const morph = morphFor(id)
     if (!morph) continue
     const stop = interpolateMorphStop(morph.stops, t)
@@ -181,9 +195,7 @@ export function mapSensoryToDsp(base: DspSnapshot, values: SensoryValues): Mappe
     }
     touched = true
   }
-  const reverbType = pickMorphColor(values, 'reverbType')
   const distortionType = pickMorphColor(values, 'distortionType')
-  if (reverbType) dsp.reverbType = reverbType
   if (distortionType) dsp.distortionType = distortionType
   const filterMorph = pickWinningMorph(values, 'filterType')
   if (filterMorph) {
