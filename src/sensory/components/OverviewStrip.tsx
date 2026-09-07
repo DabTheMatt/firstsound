@@ -154,7 +154,6 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
       return
     }
     lastTap.current = now
-    seekAt(fracAt(event))
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -169,6 +168,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     if (Math.abs(frac - startF) < edge) mode = 'start'
     else if (Math.abs(frac - endF) < edge) mode = 'end'
     drag.current = { pointerId: event.pointerId, originFrac: frac, moved: false, mode }
+    if (mode === 'select') seekAt(frac)
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -193,7 +193,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     <div
       ref={wrapRef}
       className={styles.wrap}
-      aria-label="Sample overview. Drag to select a fragment."
+      aria-label="Sample overview. Click to set the playhead. Drag to select a fragment."
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}

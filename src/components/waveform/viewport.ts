@@ -72,6 +72,19 @@ export function panView(view: View, delta: number, duration: number): View {
   return clampView({ start: view.start + delta, end: view.end + delta }, duration, span)
 }
 
+/** Sample time under a pointer on the full-file overview strip. */
+export function overviewPointerTime(clientX: number, left: number, width: number, duration: number): number {
+  if (duration <= 0 || width <= 0) return 0
+  const frac = Math.min(1, Math.max(0, (clientX - left) / width))
+  return frac * duration
+}
+
+/** True once the pointer has left a click and become an overview drag. */
+export function overviewPointerMoved(originX: number, clientX: number, width: number, frac = 0.006): boolean {
+  if (width <= 0) return false
+  return Math.abs(clientX - originX) / width > frac
+}
+
 /** Drag a viewport edge on the overview strip to zoom the current view. */
 export function resizeViewEdge(
   view: View,

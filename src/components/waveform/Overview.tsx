@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
-import { clampView, resizeViewEdge, timeToFrac, type View } from './viewport'
+import { clampView, overviewPointerMoved, overviewPointerTime, resizeViewEdge, timeToFrac, type View } from './viewport'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Overview.module.css'
 
@@ -17,8 +17,8 @@ type Props = {
 
 /**
  * Minimap of the whole file (independent of zoom). Shows the current viewport,
- * the selection and the playhead; dragging pans the main viewport. Edge handles
- * shrink/grow the frame to zoom the waveform view.
+ * the selection and the playhead. A click parks the playhead; dragging pans the
+ * main viewport. Edge handles shrink/grow the frame to zoom the waveform view.
  */
 export function Overview({ duration, start, end, view, onScrub, contentRev = 0, silence }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -85,7 +85,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
     return () => cancelAnimationFrame(frame)
   }, [duration])
 
-  const scrubTo = (clientX: number, target: HTMLDivElement) => {
+  const panTo = (clientX: number, target: HTMLDivElement) => {
     const rect = target.getBoundingClientRect()
     const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
     const span = view.end - view.start
@@ -93,11 +93,19 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
     onScrub(clampView({ start: center - span / 2, end: center + span / 2 }, duration, span))
   }
 
+  const seekTo = (clientX: number, target: HTMLDivElement) => {
+    const rect = target.getBoundingClientRect()
+    engine.seekSeconds(overviewPointerTime(clientX, rect.left, rect.width, duration), 'sample')
+  }
+
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (duration <= 0) return
     event.preventDefault()
     const target = event.currentTarget
     target.setPointerCapture(event.pointerId)
+    const originX = event.clientX
+    let moved = false
+    seekTo(event.clientX, target)
     const up = (e: PointerEvent) => {
       try {
         target.releasePointerCapture(e.pointerId)
@@ -114,9 +122,10 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
         up(e)
         return
       }
-      scrubTo(e.clientX, target)
+      const rect = target.getBoundingClientRect()
+      if (!moved && overviewPointerMoved(originX, e.clientX, rect.width)) moved = true
+      if (moved) panTo(e.clientX, target)
     }
-    scrubTo(event.clientX, target)
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerup', up)
     target.addEventListener('pointercancel', up)
@@ -168,7 +177,11 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
   const selWidth = duration > 0 ? ((end - start) / duration) * 100 : 0
 
   return (
-    <div className={styles.overview} onPointerDown={onPointerDown}>
+    <div
+      className={styles.overview}
+      aria-label="Sample overview. Click to set the playhead."
+      onPointerDown={onPointerDown}
+    >
       <canvas ref={canvasRef} className={styles.canvas} />
       {duration > 0 ? (
         <>

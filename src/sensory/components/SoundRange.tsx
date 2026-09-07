@@ -212,7 +212,6 @@ export function SoundRange({
       /* already released */
     }
     if (state.moved) onRegionCommit()
-    else seekToFrac(fracAt(event))
   }
 
   return (
@@ -226,12 +225,14 @@ export function SoundRange({
         <button
           type="button"
           className={styles.hit}
-          aria-label="Select a sample region, or double-click to play"
+          aria-label="Click to set the playhead, drag to select a region, or double-click to play"
           onPointerDown={(event) => {
             if (event.button !== 0) return
             event.preventDefault()
             event.currentTarget.setPointerCapture(event.pointerId)
-            drag.current = { pointerId: event.pointerId, originFrac: fracAt(event), moved: false }
+            const frac = fracAt(event)
+            drag.current = { pointerId: event.pointerId, originFrac: frac, moved: false }
+            seekToFrac(frac)
           }}
           onPointerMove={(event) => {
             const state = drag.current
