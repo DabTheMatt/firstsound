@@ -495,6 +495,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           startX,
           endX,
           hitPx: hit,
+          edge: handleAttr?.dataset.edge === 'start' || handleAttr?.dataset.edge === 'end' ? handleAttr.dataset.edge : undefined,
         })
       : resolveWaveformDrag({
       altOrMiddle: event.altKey || event.button === 1,
@@ -842,19 +843,41 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     </>
                   ) : simple ? (
                     <>
-                      <button
-                        type="button"
-                        className={`${styles.simpleEdge} ${trimHandles ? styles.simpleEdgeHot : ''}`}
+                      <div
+                        className={`${styles.simpleEdge} ${styles.simpleEdgeStart} ${trimHandles ? styles.simpleEdgeHot : ''}`}
                         data-edge="start"
                         style={{ left: `${startPct}%` }}
+                        role="slider"
+                        tabIndex={0}
+                        aria-valuemin={0}
+                        aria-valuemax={end}
+                        aria-valuenow={start}
                         aria-label={t.simple.regionStartAria(start.toFixed(1))}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                          event.preventDefault()
+                          const step = event.shiftKey ? 0.01 : 0.05
+                          engine.setParam('start', start + (event.key === 'ArrowRight' ? step : -step))
+                          onRegionCommit()
+                        }}
                       />
-                      <button
-                        type="button"
-                        className={`${styles.simpleEdge} ${trimHandles ? styles.simpleEdgeHot : ''}`}
+                      <div
+                        className={`${styles.simpleEdge} ${styles.simpleEdgeEnd} ${trimHandles ? styles.simpleEdgeHot : ''}`}
                         data-edge="end"
                         style={{ left: `${endPct}%` }}
+                        role="slider"
+                        tabIndex={0}
+                        aria-valuemin={start}
+                        aria-valuemax={duration}
+                        aria-valuenow={end}
                         aria-label={t.simple.regionEndAria(end.toFixed(1))}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                          event.preventDefault()
+                          const step = event.shiftKey ? 0.01 : 0.05
+                          engine.setParam('end', end + (event.key === 'ArrowRight' ? step : -step))
+                          onRegionCommit()
+                        }}
                       />
                     </>
                   ) : (
