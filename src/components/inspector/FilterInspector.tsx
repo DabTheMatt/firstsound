@@ -10,7 +10,8 @@ import {
   filterTypeAt,
   optionIndex,
 } from '../../audio/fx/filter'
-import { FILTER_PRESETS } from '../../audio/fx/filterPresets'
+import { FILTER_PRESETS, type FilterPresetId } from '../../audio/fx/filterPresets'
+import { PresetMenu } from '../controls/PresetMenu'
 import { filterResponseCurve } from '../../audio/fx/filterResponse'
 import { FILTER_KNOBS, PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
@@ -61,18 +62,16 @@ export function FilterInspector({ snap, variant, pane }: Props) {
               Reset
             </button>
           </div>
-          <div className={styles.presets} role="list">
-            {FILTER_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={styles.preset}
-                onClick={() => engine.applyFilterPreset(preset.id)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          <PresetMenu
+            label="Filter presets"
+            categories={['Factory']}
+            presets={FILTER_PRESETS.map((preset) => ({
+              id: preset.id,
+              name: preset.label,
+              category: 'Factory',
+            }))}
+            onApply={(id) => engine.applyFilterPreset(id as FilterPresetId)}
+          />
           <Segmented
             label="Filter type"
             value={kind}

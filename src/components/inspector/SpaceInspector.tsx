@@ -6,7 +6,14 @@ import {
   presetsFor,
   presetsForReverbType,
 } from '../../audio/fx/presets'
-import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, parseReverbType, REVERB_TYPES } from '../../audio/fx/types'
+import {
+  DELAY_TYPES,
+  NOTE_DIVISIONS,
+  NOTE_KINDS,
+  parseDelayType,
+  parseReverbType,
+  REVERB_TYPES,
+} from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
@@ -105,13 +112,24 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
   ) : (
     <>
       {kind === 'delay' ? (
-        <Segmented
-          label="Delay type"
-          value={snap.delayType}
-          options={DELAY_TYPES}
-          wrap
-          onChange={(v) => engine.setDelayType(v)}
-        />
+        <label className={styles.field}>
+          Delay type
+          <select
+            className={`${styles.select} ${styles.selectOn}`}
+            aria-label="Delay type"
+            value={snap.delayType}
+            onChange={(event) => {
+              const type = parseDelayType(event.target.value)
+              if (type) engine.setDelayType(type)
+            }}
+          >
+            {DELAY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : (
         <label className={styles.field}>
           Reverb type

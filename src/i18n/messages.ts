@@ -1137,7 +1137,7 @@ export const PL: Messages = {
     group: 'Motyw',
     named: (name) => `Motyw: ${name}`,
     system: 'System',
-    custom: 'Własny',
+    custom: 'Custom',
     myThemes: 'Moje motywy',
     elementColors: 'Kolory elementów',
     help: 'Zaczyna od motywu, który miałeś otwarty. Zapisz, aby trafił do Moich motywów.',
@@ -1163,7 +1163,7 @@ export const PL: Messages = {
       'light-studio': 'Light Studio',
       oled: 'OLED',
       dusk: 'Dusk',
-      custom: 'Własny',
+      custom: 'Custom',
     },
   },
   sensory: {

@@ -1,7 +1,7 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -50,10 +50,10 @@
 }
 
 .help {
-  margin: 4px 0 8px;
+  margin: 8px 0 12px;
   color: var(--text-muted);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .readout {
@@ -244,8 +244,8 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 4px 0 10px;
+  gap: 10px;
+  margin: 8px 0 14px;
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -311,7 +311,7 @@
   gap: 0;
   align-items: start;
   justify-items: center;
-  padding-top: 12px;
+  padding-top: 20px;
 }
 
 .mixCol {
@@ -482,15 +482,15 @@
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  margin: 8px 0;
+  margin: 12px 0 16px;
 }
 
 .eq {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
 .eqViz {

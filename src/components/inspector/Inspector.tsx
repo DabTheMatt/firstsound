@@ -733,6 +733,9 @@ function LimiterEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
+          <div className={styles.eqViz}>
+            <LimiterPlot kind="limiter" />
+          </div>
           {params(LIMITER_MAIN_KNOBS)}
           <PresetMenu
             label="Limiter presets"
