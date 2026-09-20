@@ -53,7 +53,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Interpolation',
     min: 0,
     max: 1,
-    defaultValue: 1,
+    defaultValue: 0,
     unit: '',
     mapping: 'linear',
     step: 1,

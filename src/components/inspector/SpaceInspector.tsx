@@ -175,7 +175,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       ) : (
         <>
           <p className={styles.help}>
-            Type picks the algorithm. Preset lists only factory spaces for that type. Własny has no factory list — set the knobs yourself. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
+            Type picks the algorithm. Preset lists only factory spaces for that type. Custom has no factory list — set the knobs yourself. Dry and Wet stay complementary when Correlate is on. Stereo In 0% sums the sample first (clean space from a mono file).
           </p>
           <ReverbPresetSelect snap={snap} />
         </>
@@ -334,7 +334,7 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
           }}
         >
           <option value="" disabled>
-            {custom ? 'Własny' : typePresets.length === 0 ? 'No factory spaces' : 'Choose a space'}
+            {custom ? 'Custom' : typePresets.length === 0 ? 'No factory spaces' : 'Choose a space'}
           </option>
           {typePresets.map((p) => (
             <option key={p.id} value={p.id} title={presetHint(p)}>

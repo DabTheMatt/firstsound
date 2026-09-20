@@ -82,16 +82,26 @@ export function spectrumEqOverlayY(
   return Math.min(bottom, Math.max(top, y))
 }
 
-export function freqToX(hz: number, width: number, maxHz = EQ_MAX_HZ, minHz = EQ_MIN_HZ): number {
-  const hi = Math.max(maxHz, minHz * 1.01)
-  const t = Math.log(Math.min(hi, Math.max(minHz, hz)) / minHz) / Math.log(hi / minHz)
-  return t * width
+import { hzToX as mapHzToX, xToHz, type FreqScaleKind } from './freqScale'
+
+export function freqToX(
+  hz: number,
+  width: number,
+  maxHz = EQ_MAX_HZ,
+  minHz = EQ_MIN_HZ,
+  scale: FreqScaleKind = 'log',
+): number {
+  return mapHzToX(hz, minHz, Math.max(maxHz, minHz * 1.01), 0, width, scale)
 }
 
-export function xToFreq(x: number, width: number, maxHz = EQ_MAX_HZ, minHz = EQ_MIN_HZ): number {
-  const hi = Math.max(maxHz, minHz * 1.01)
-  const t = Math.min(1, Math.max(0, x / Math.max(1, width)))
-  return minHz * (hi / minHz) ** t
+export function xToFreq(
+  x: number,
+  width: number,
+  maxHz = EQ_MAX_HZ,
+  minHz = EQ_MIN_HZ,
+  scale: FreqScaleKind = 'log',
+): number {
+  return xToHz(x, minHz, Math.max(maxHz, minHz * 1.01), 0, width, scale)
 }
 
 export function dbToY(

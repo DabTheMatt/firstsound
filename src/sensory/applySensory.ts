@@ -55,6 +55,9 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   delete patch.start
   delete patch.end
   engine.setParams(patch)
+  for (const type of ['grain', 'eq', 'filter', 'midside', 'distortion', 'delay', 'reverb', 'compressor', 'limiter'] as const) {
+    if (dsp.bypass[type] === false) engine.ensureModule(type)
+  }
   dsp.eqBands.forEach((band, i) => {
     engine.setEqBand(i, band)
   })

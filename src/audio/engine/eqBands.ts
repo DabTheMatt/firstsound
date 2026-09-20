@@ -53,15 +53,16 @@ export const FILTER_SLOPES: { value: FilterSlope; label: string }[] = [
   { value: 96, label: '96' },
 ]
 
-export const EQ_MAX_BANDS = 8
+export const EQ_MAX_BANDS = 32
 export const EQ_DEFAULT_BAND_COUNT = 4
-/** Alias used by the biquad pool: always allocate the maximum. */
-export const EQ_BAND_COUNT = EQ_MAX_BANDS
+export const EQ_POOL_BANDS = 8
+/** Alias used by the biquad pool: start with 8 bands, grow toward EQ_MAX_BANDS. */
+export const EQ_BAND_COUNT = EQ_POOL_BANDS
 export const EQ_MAX_STAGES = 8
 export const COMB_MAX_TEETH = 16
 export const EQ_MIN_HZ = 10
 export const EQ_MAX_HZ = 25000
-export const EQ_NODE_COUNT = EQ_MAX_BANDS * EQ_MAX_STAGES + COMB_MAX_TEETH
+export const EQ_NODE_COUNT = EQ_POOL_BANDS * EQ_MAX_STAGES + COMB_MAX_TEETH
 
 const EQ_BAND_DEFAULT_HZ = [80, 400, 2500, 12000, 160, 800, 5000, 16000] as const
 
@@ -84,11 +85,13 @@ export function qFromBandwidth(frequency: number, widthHz: number): number {
 }
 
 export function defaultEqBandAt(index: number): EqBand {
-  const i = Math.max(0, Math.min(EQ_MAX_BANDS - 1, Math.round(index)))
+  const i = Math.max(0, Math.round(index))
   const q = i === 0 || i === 3 ? 0.7 : 1
+  const listed = EQ_BAND_DEFAULT_HZ[i]
+  const frequency = listed ?? Math.min(EQ_MAX_HZ, 80 * 1.45 ** (i % 16))
   return {
     type: 'off',
-    frequency: EQ_BAND_DEFAULT_HZ[i] ?? 1000,
+    frequency,
     gain: 0,
     q,
     slope: 12,

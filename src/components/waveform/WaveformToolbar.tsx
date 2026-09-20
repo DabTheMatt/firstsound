@@ -13,6 +13,8 @@ type Props = {
   onZoomOut: () => void
   onView: (action: ViewAction) => void
   onTrim?: () => void
+  onAutoFade?: () => void
+  autoFade?: boolean
   normalizeView: boolean
   minimal?: boolean
 }
@@ -36,6 +38,8 @@ export function WaveformToolbar({
   onZoomOut,
   onView,
   onTrim,
+  onAutoFade,
+  autoFade = false,
   normalizeView,
   minimal = false,
 }: Props) {
@@ -47,19 +51,29 @@ export function WaveformToolbar({
       {!minimal ? (
         <div className={styles.tools}>
           {tools.map((item) => (
-            <button
+            <IconButton
               key={item.id}
-              type="button"
-              className={`${styles.tool} ${tool === item.id ? styles.active : ''}`}
-              aria-pressed={tool === item.id}
+              label={t.waveform[item.key]}
+              caption={t.waveform[item.key]}
+              pressed={tool === item.id}
               onClick={() => onTool(item.id)}
             >
-              {t.waveform[item.key]}
-            </button>
+              <EditIcon />
+            </IconButton>
           ))}
           {onTrim ? (
             <IconButton label={t.waveform.trimTitle} caption={t.waveform.trim} onClick={onTrim}>
               <TrimIcon />
+            </IconButton>
+          ) : null}
+          {onAutoFade ? (
+            <IconButton
+              label={t.waveform.autoFadeTitle}
+              caption={t.waveform.autoFade}
+              pressed={autoFade}
+              onClick={onAutoFade}
+            >
+              <AutoFadeIcon />
             </IconButton>
           ) : null}
         </div>
@@ -198,6 +212,36 @@ function IconButton({
       {children}
       <span className={styles.caption}>{caption}</span>
     </button>
+  )
+}
+
+function EditIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M4 13.5l.8-3.2 6.4-6.4a1.2 1.2 0 0 1 1.7 1.7L6.5 12l-3.2.8zM11.2 4.2l1.7 1.7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function AutoFadeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M3 14V4l5 5 5-5v10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
 

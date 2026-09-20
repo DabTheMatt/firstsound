@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT } from '../features/sample/files'
+import { saveUserPreset } from '../audio/fx/userPresets'
 import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
@@ -427,9 +428,20 @@ export default function App() {
         >
           {t.settings.savePreset}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const name = window.prompt('Name this instrument preset for this browser')
+            if (!name) return
+            saveUserPreset(name, engine.toPreset())
+          }}
+        >
+          Save my preset
+        </button>
         <button type="button" onClick={() => presetInput.current?.click()}>
           {t.settings.loadPreset}
         </button>
+        <p className={styles.hint}>{t.settings.loadPresetHint}</p>
         <button
           type="button"
           onClick={() => {
@@ -746,6 +758,11 @@ export default function App() {
               commit()
             })
           }}
+          onAutoFade={() => {
+            setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
+            commit()
+          }}
+          autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
         />
 
@@ -789,7 +806,7 @@ export default function App() {
           ) : null}
           {dockRight ? (
             <MeterStrip
-              channels={snap.params.makeMono > 0.5 ? 1 : snap.channelCount}
+              channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
               range={meterRange}
               onRange={setMeterRange}
             />

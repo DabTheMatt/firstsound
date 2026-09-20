@@ -4,6 +4,7 @@ import {
   effectiveInterpAlgo,
   goertzelMagnitude,
   overlapAddResample,
+  resampleInto,
   sampleAt,
   stretchInterpAlgoAt,
 } from './resample'
@@ -25,6 +26,17 @@ describe('stretchInterpAlgoAt', () => {
   it('falls back to nearest when interpolation is off', () => {
     expect(effectiveInterpAlgo(0, 3)).toBe('nearest')
     expect(effectiveInterpAlgo(1, 3)).toBe('sinc')
+  })
+})
+
+describe('resampleInto', () => {
+  it('fades unwindowed edges so nearest-neighbor grains do not click', () => {
+    const dest = new Float32Array(32)
+    dest.fill(1)
+    resampleInto(dest, 32, new Float32Array(64).fill(1), 0, 1, 'nearest', false, 1)
+    expect(dest[0]).toBeCloseTo(0)
+    expect(dest[16]).toBeCloseTo(1)
+    expect(dest[31]).toBeCloseTo(0)
   })
 })
 

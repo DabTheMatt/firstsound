@@ -107,6 +107,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
         aria-valuemax={def.max}
         aria-valuenow={Number(shownValue.toFixed(3))}
         aria-valuetext={spoken}
+        title={description}
         onPointerDown={onPointerDown}
         onDoubleClick={() => engine.resetParam(id)}
         onKeyDown={onKeyDown}

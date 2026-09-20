@@ -170,6 +170,7 @@ export function ValueKnob({
   return (
     <div
       className={`${styles.knob} ${compact ? styles.compact : ''}`}
+      title={description}
       onMouseEnter={() => setTipOpen(true)}
       onMouseLeave={() => setTipOpen(false)}
     >

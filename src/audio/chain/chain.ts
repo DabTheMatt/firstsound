@@ -52,7 +52,8 @@ export const INSERTABLE_TYPES: ModuleType[] = [
 
 export const MAX_CHAIN_MIDDLE = 12
 
-export function defaultChain(): ChainModule[] {
+/** Full factory rack used by tests and sensory mapping. */
+export function factoryChain(): ChainModule[] {
   return [
     { instanceId: 'gain-1', type: 'gain', bypassed: false },
     { instanceId: 'grain-1', type: 'grain', bypassed: true },
@@ -64,6 +65,14 @@ export function defaultChain(): ChainModule[] {
     { instanceId: 'reverb-1', type: 'reverb', bypassed: true },
     { instanceId: 'compressor-1', type: 'compressor', bypassed: true },
     { instanceId: 'limiter-1', type: 'limiter', bypassed: true },
+    { instanceId: 'output-1', type: 'output', bypassed: false },
+  ]
+}
+
+/** New sessions start with Input → Output; effects are added from the chain. */
+export function defaultChain(): ChainModule[] {
+  return [
+    { instanceId: 'gain-1', type: 'gain', bypassed: false },
     { instanceId: 'output-1', type: 'output', bypassed: false },
   ]
 }

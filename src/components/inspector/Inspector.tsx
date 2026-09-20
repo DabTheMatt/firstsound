@@ -36,7 +36,10 @@ import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { engine } from '../../hooks/useEngine'
+import { PresetMenu } from '../controls/PresetMenu'
 import { LfoParamShell } from '../controls/LfoParamShell'
+import { EQ_PRESET_CATEGORIES, EQ_PRESETS } from '../../audio/fx/eqPresets'
+import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
@@ -491,34 +494,35 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
-          <div className={styles.row}>
+          <div className={styles.stack}>
             <Toggle
               pressed={snap.params.stretchInterpOn > 0.5}
               label="Interpolation"
+              title="Reconstructs in-between samples when Speed or Pitch leave 1× / 0 st. Off by default to keep the original grain edges."
               onToggle={() =>
                 engine.setParam('stretchInterpOn', snap.params.stretchInterpOn > 0.5 ? 0 : 1)
               }
             />
+            <label className={styles.field} title="Pitch and speed interpolation algorithm">
+              Algorithm
+              <select
+                className={styles.select}
+                aria-label="Pitch and speed interpolation algorithm"
+                disabled={snap.params.stretchInterpOn <= 0.5}
+                value={STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value ?? 'cubic'}
+                onChange={(event) => {
+                  const i = STRETCH_INTERP_ALGOS.findIndex((a) => a.value === event.target.value)
+                  if (i >= 0) engine.setParam('stretchInterpAlgo', i)
+                }}
+              >
+                {STRETCH_INTERP_ALGOS.map((a) => (
+                  <option key={a.value} value={a.value} title={a.title}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <label className={styles.field}>
-            Algorithm
-            <select
-              className={styles.select}
-              aria-label="Pitch and speed interpolation algorithm"
-              disabled={snap.params.stretchInterpOn <= 0.5}
-              value={STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value ?? 'cubic'}
-              onChange={(event) => {
-                const i = STRETCH_INTERP_ALGOS.findIndex((a) => a.value === event.target.value)
-                if (i >= 0) engine.setParam('stretchInterpAlgo', i)
-              }}
-            >
-              {STRETCH_INTERP_ALGOS.map((a) => (
-                <option key={a.value} value={a.value} title={a.title}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          </label>
           <p className={styles.help}>
             Speed changes tempo without pitch; Pitch transposes without tempo. Pitching down or
             slowing lengthens the overlap-add grains so low frequencies can come through.
@@ -539,13 +543,27 @@ function ModuleInspector({
           {params(PAN_IDS)}
           <div className={styles.row}>
             <Toggle
-              pressed={snap.params.makeMono > 0.5}
+              pressed={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5}
               label="Make mono"
-              onToggle={() => engine.setParam('makeMono', snap.params.makeMono > 0.5 ? 0 : 1)}
+              title="Sum left and right into one channel. Visualizations and meters follow."
+              onToggle={() =>
+                engine.setChannelLayout(
+                  snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 'original' : 'mono',
+                )
+              }
+            />
+            <Toggle
+              pressed={snap.channelLayout === 'stereo'}
+              label="Make stereo"
+              title="Duplicate a mono file onto left and right so each side can be processed."
+              onToggle={() =>
+                engine.setChannelLayout(snap.channelLayout === 'stereo' ? 'original' : 'stereo')
+              }
             />
             <Toggle
               pressed={snap.params.invertPhase > 0.5}
               label="Invert phase"
+              title="Flips polarity of the input."
               onToggle={() => engine.setParam('invertPhase', snap.params.invertPhase > 0.5 ? 0 : 1)}
             />
           </div>
@@ -562,6 +580,12 @@ function ModuleInspector({
             }
           />
           {params(GRAIN_MAIN_IDS)}
+          <PresetMenu
+            label="Grain presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('grain')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <FxLfoSection snap={snap} kind="grain" variant={variant} />
         </>
       ) : null}
@@ -598,6 +622,12 @@ function ModuleInspector({
             </button>
           </div>
           {params(DISTORTION_MAIN_KNOBS)}
+          <PresetMenu
+            label="Distortion presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('distortion')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <FxLfoSection snap={snap} kind="distortion" variant={variant} />
         </>
       ) : null}
@@ -655,6 +685,12 @@ function CompressorEditor({
             <LimiterPlot kind="compressor" />
           </div>
           {params(COMPRESSOR_MAIN_KNOBS)}
+          <PresetMenu
+            label="Compressor presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('compressor')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <FxLfoSection snap={snap} kind="compressor" variant={variant} />
         </>
       ) : (
@@ -698,6 +734,12 @@ function LimiterEditor({
       {pane === 'main' ? (
         <>
           {params(LIMITER_MAIN_KNOBS)}
+          <PresetMenu
+            label="Limiter presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('limiter')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
       ) : (
@@ -746,6 +788,12 @@ function EqEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
+      <PresetMenu
+        label="EQ presets"
+        categories={EQ_PRESET_CATEGORIES}
+        presets={EQ_PRESETS.map((p) => ({ id: p.id, name: p.name, category: p.category, hint: p.hint }))}
+        onApply={(id) => engine.applyEqPreset(id, instanceId)}
+      />
       <Segmented
         label="EQ listen"
         value={snap.eqListen}

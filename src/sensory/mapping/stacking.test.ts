@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../../audio/parameters/definitions'
 import { defaultEqBands } from '../../audio/engine/eqBands'
-import { defaultChain } from '../../audio/chain/chain'
+import { factoryChain } from '../../audio/chain/chain'
 import { defaultSensoryValues } from '../sensoryState'
 import { mapSensoryToDsp, snapshotFromEngine } from './mappingEngine'
 import { driftHaasMs, stackingEnergy } from './stacking'
@@ -10,7 +10,7 @@ function baseDsp() {
   return snapshotFromEngine({
     params: defaultParamValues(),
     eqBands: defaultEqBands(),
-    chain: defaultChain(),
+    chain: factoryChain(),
   })
 }
 

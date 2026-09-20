@@ -95,7 +95,7 @@ describe('a11y settings and i18n', () => {
   })
 
   it('keeps Low Vision out of the color theme catalog', () => {
-    expect(parseLocale('pl')).toBe('pl')
+    expect(parseLocale('pl')).toBe('en')
     expect(parseLocale('de')).toBe(null)
     expect(parseThemePreference('low-vision')).toBe('studio-dark')
     expect(THEME_IDS).not.toContain('low-vision')

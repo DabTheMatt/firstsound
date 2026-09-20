@@ -62,6 +62,8 @@ import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/edi
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { hzToX as mapHzToX, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
   EQ_BAND_LFO_IDS,
   eqBandLfoKind,
@@ -136,9 +138,15 @@ function dbToY(db: number, top: number, bottom: number, minDb: number): number {
   return top + t * (bottom - top)
 }
 
-function hzToX(hz: number, minHz: number, maxHz: number, left: number, right: number): number {
-  const t = Math.log(Math.max(minHz, hz) / minHz) / Math.log(maxHz / minHz)
-  return left + t * (right - left)
+function hzToX(
+  hz: number,
+  minHz: number,
+  maxHz: number,
+  left: number,
+  right: number,
+  scale: FreqScaleKind = 'log',
+): number {
+  return mapHzToX(hz, minHz, maxHz, left, right, scale)
 }
 
 function chainToneGainAtHz(
@@ -198,6 +206,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const plotRef = useRef<HTMLDivElement>(null)
+  const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
+  const freqScaleRef = useRef(freqScale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
@@ -221,6 +231,11 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   useEffect(() => {
     meterMinRef.current = meterDbMin(meterRange)
   }, [meterRange])
+
+  useEffect(() => {
+    freqScaleRef.current = freqScale
+    persistFreqScale(freqScale)
+  }, [freqScale])
 
   useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
 
@@ -259,6 +274,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
       }
       engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
       const live = engine.getSnapshot()
+      const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -315,7 +331,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         ctx.textBaseline = 'top'
         for (const hz of FREQ_SCALE_HZ) {
           if (hz > maxHz) continue
-          const x = hzToX(hz, minHz, maxHz, left, right)
+          const x = hzToX(hz, minHz, maxHz, left, right, scale)
           ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, 0.7)
           ctx.beginPath()
           ctx.moveTo(x, top)
@@ -328,7 +344,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.85)
         for (const tick of musicalScaleHz(minHz, maxHz)) {
-          const x = hzToX(tick.hz, minHz, maxHz, left, right)
+          const x = hzToX(tick.hz, minHz, maxHz, left, right, scale)
           ctx.fillText(tick.label, x, top - 2 * dpr)
         }
 
@@ -367,8 +383,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               : peakStroke
           if (showBars) {
             for (let i = 0; i < bands; i++) {
-              const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right)
-              const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right)
+              const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right, scale)
+              const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right, scale)
               const bandW = Math.max(1, x1 - x0)
               const center = bandCenterHz(edges, i)
               const region = regionForHz(center)
@@ -538,7 +554,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     const y = event.clientY - rect.top
     const band = (snap.eqById[d.instanceId]?.bands ?? snap.eqBands)[d.index]
     if (!band) return
-    const frequency = xToFreq(x, rect.width, EQ_MAX_HZ)
+    const frequency = xToFreq(x, rect.width, EQ_MAX_HZ, EQ_MIN_HZ, freqScaleRef.current)
     const db = eqYToDb(y, rect.height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
     engine.setEqBand(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY), d.instanceId)
   }
@@ -595,6 +611,36 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               </select>
             </label>
           ) : null}
+          <label className={styles.bands}>
+            Scale
+            <select
+              aria-label="Frequency scale"
+              title="Change how Hertz are spaced across the FFT"
+              value={freqScale}
+              onChange={(event) => setFreqScale(event.target.value as FreqScaleKind)}
+            >
+              {FREQ_SCALE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} title={opt.title}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.bands}>
+            EQ ch
+            <select
+              aria-label="EQ channel"
+              title="Shared EQ, or independent left / right curves"
+              value={snap.eqChannelMode}
+              onChange={(event) => engine.setEqChannelMode(event.target.value as (typeof EQ_CHANNEL_MODES)[number]['value'])}
+            >
+              {EQ_CHANNEL_MODES.map((opt) => (
+                <option key={opt.value} value={opt.value} title={opt.title}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className={styles.bands}>
             Bands
             <select
@@ -763,7 +809,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             const eqName = eqMods.length > 1 ? moduleLabel(mod, snap.chain) : 'EQ'
             return liveBands.map((band, index) => {
             if (band.type === 'off') return null
-            const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
+            const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ, EQ_MIN_HZ, freqScale) * 100
             const yPct = spectrumEqOverlayY(
               eqNodePlotDb(liveBands, band.frequency, snap.sampleRate || 44100),
               0,

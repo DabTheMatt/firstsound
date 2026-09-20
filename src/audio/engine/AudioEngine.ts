@@ -103,6 +103,7 @@ import { distortionTypeColorPatch, distortionTypeProfile } from '../fx/distortio
 import {
   applyFilterModulation,
   FILTER_PARAM_IDS,
+  filterLfoShapeAt,
   filterModNeedsClock,
   followerEnvelope,
   rmsFromTimeDomain,
@@ -174,7 +175,7 @@ import {
   COMB_MAX_TEETH,
   EQ_MAX_BANDS,
   EQ_MAX_STAGES,
-  EQ_NODE_COUNT,
+  EQ_POOL_BANDS,
   filterStageCount,
   parseEqBands,
   stageQ,
@@ -184,6 +185,22 @@ import {
   type EqBand,
   type EqFilterType,
 } from './eqBands'
+import {
+  cloneEqBands,
+  createEqGraph,
+  eqBandsForChannel,
+  growEqGraph,
+  type EqChannelMode,
+  type EqGraph,
+} from './eqGraph'
+import {
+  copyChannel,
+  duplicateMonoToStereo,
+  mixChannelsToMono,
+  type ChannelLayoutMode,
+} from './channelLayout'
+import { findEqPreset } from '../fx/eqPresets'
+import { findModulePreset } from '../fx/modulePresets'
 import {
   addTrack,
   clampMix,
@@ -226,6 +243,13 @@ import {
 } from './stretch'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
+export type EqModuleState = {
+  bands: EqBand[]
+  bandsL: EqBand[]
+  bandsR: EqBand[]
+  comb: CombFilterState
+}
+
 export type AudioStatus = 'idle' | 'blocked' | 'running'
 
 export type EngineSnapshot = {
@@ -246,12 +270,16 @@ export type EngineSnapshot = {
   liveParams: Record<ParamId, number>
   chain: ChainModule[]
   eqBands: EqBand[]
-  eqById: Record<string, { bands: EqBand[]; comb: CombFilterState }>
+  eqById: Record<string, EqModuleState>
   eqPlotBands: EqBand[]
   comb: CombFilterState
   eqListen: EqListenMode
+  eqChannelMode: EqChannelMode
+  channelLayout: ChannelLayoutMode
   limiterReduction: number
   recording: boolean
+  recordSeconds: number
+  recordPeaks: Float32Array
   recordError: string | null
   muted: boolean
   delayType: DelayType
@@ -331,7 +359,7 @@ type Slot = {
   output: GainNode
   dry: GainNode
   wet: GainNode
-  eq?: BiquadFilterNode[]
+  eq?: EqGraph
   shaper?: WaveShaperNode
   distortionFx?: DistortionGraph
   filterFx?: FilterGraph
@@ -427,10 +455,12 @@ export class AudioEngine {
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
   private chain: ChainModule[] = defaultChain()
-  private eqById = new Map<string, { bands: EqBand[]; comb: CombFilterState }>()
+  private eqById = new Map<string, EqModuleState>()
   private eqBands: EqBand[] = defaultEqBands()
   private comb: CombFilterState = defaultCombFilter()
   private eqListen: EqListenMode = 'sample'
+  private eqChannelMode: EqChannelMode = 'shared'
+  private channelLayout: ChannelLayoutMode = 'original'
   private noiseGain: GainNode | null = null
   private noiseSource: AudioBufferSourceNode | null = null
   private recStream: MediaStream | null = null
@@ -438,8 +468,11 @@ export class AudioEngine {
   private recProc: ScriptProcessorNode | null = null
   private recMute: GainNode | null = null
   private recChunks: Float32Array[] = []
+  private recPreview: number[] = []
   private recording = false
   private recordError: string | null = null
+  private hiddenPlaying = false
+  private grainDensitySlew = 8
   private listeners = new Set<Listener>()
   private snapshot: EngineSnapshot
   private source: AudioBufferSourceNode | null = null
@@ -864,7 +897,14 @@ export class AudioEngine {
       else if (id === 'delayDryR') this.syncDelayCorrelation('dryR')
       else if (id === 'delayWetR') this.syncDelayCorrelation('wetR')
       this.syncTimeFromClock(id)
-      this.applyLiveAudio()
+      const clicky =
+        id === 'speed' ||
+        id === 'pitch' ||
+        id === 'grainSize' ||
+        id === 'density' ||
+        id === 'stretchInterp' ||
+        id === 'grainPitch'
+      this.applyLiveAudio(clicky ? 0.07 : 0.03)
       this.syncLfoClock()
       if (id === 'reverbWet' || id === 'reverbDry') this.engageReverbFromMix()
       if (id === 'delayWet' || id === 'delayWetR' || id === 'delayDry' || id === 'delayDryR') this.engageDelayFromMix()
@@ -1015,6 +1055,101 @@ export class AudioEngine {
 
   applyFilterPreset(id: FilterPresetId): void {
     this.setParams(filterPresetPatch(id))
+    this.wireFilterPresetLfo(id)
+  }
+
+  applyEqPreset(id: string, instanceId?: string): void {
+    const preset = findEqPreset(id)
+    if (!preset) return
+    const eqId = instanceId ?? this.primaryEqId()
+    if (!this.chain.some((m) => m.instanceId === eqId)) this.ensureModule('eq')
+    const st = this.eqState(eqId)
+    const bands = cloneEqBands(preset.bands)
+    if (this.eqChannelMode === 'left') st.bandsL = bands
+    else if (this.eqChannelMode === 'right') st.bandsR = bands
+    else st.bands = bands
+    this.eqById.set(eqId, st)
+    this.syncPrimaryEq()
+    this.syncEqLfoParams(eqId)
+    this.applyEq(0.03)
+    const mod = this.chain.find((m) => m.instanceId === eqId)
+    if (mod?.bypassed) this.setModuleBypass(eqId, false)
+    else this.emit()
+  }
+
+  applyModulePreset(id: string): void {
+    const preset = findModulePreset(id)
+    if (!preset) return
+    this.setParams(preset.params)
+    if (preset.distortionType) this.setDistortionType(preset.distortionType)
+    this.ensureModule(preset.kind === 'grain' ? 'grain' : preset.kind)
+    if (preset.kind === 'grain') this.setEngineMode('grain')
+    if (preset.lfo) {
+      this.setFxLfo(preset.kind === 'filter' ? 'filter' : 'input', 0, {
+        ...defaultFxLfo(),
+        target: preset.lfo.target,
+        depth: preset.lfo.depth,
+        rateHz: preset.lfo.rateHz,
+        shape: preset.lfo.shape,
+      })
+    } else if (preset.kind === 'filter') {
+      this.setFxLfo('filter', 0, { target: null, depth: 0 })
+    }
+    const mod = this.chain.find((m) => m.type === preset.kind)
+    if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+  }
+
+  private wireFilterPresetLfo(_id: FilterPresetId): void {
+    const depth = this.params.filterLfoDepth
+    if (!(depth > 1)) {
+      this.setFxLfo('filter', 0, { target: null, depth: 0 })
+      return
+    }
+    const shapeRaw = filterLfoShapeAt(this.params.filterLfoShape)
+    const shape =
+      shapeRaw === 'triangle' || shapeRaw === 'square' || shapeRaw === 'saw' || shapeRaw === 'snh' || shapeRaw === 'sine'
+        ? shapeRaw
+        : 'sine'
+    this.setFxLfo('filter', 0, {
+      ...defaultFxLfo(),
+      target: 'filterCutoff',
+      depth: Math.min(1, depth / 100),
+      rateHz: Math.max(0.05, this.params.filterLfoRate || 0.2),
+      shape,
+    })
+  }
+
+  setChannelLayout(mode: ChannelLayoutMode): void {
+    this.channelLayout = mode
+    this.params.makeMono = mode === 'mono' ? 1 : 0
+    this.applyPlaybackLayout()
+    this.applyLiveAudio(0.02)
+    this.emit()
+  }
+
+  setEqChannelMode(mode: EqChannelMode): void {
+    if (this.eqChannelMode === mode) return
+    if (this.eqChannelMode === 'shared' && mode !== 'shared') {
+      for (const st of this.eqById.values()) {
+        if (!st.bandsL.length) st.bandsL = cloneEqBands(st.bands)
+        if (!st.bandsR.length) st.bandsR = cloneEqBands(st.bands)
+      }
+    }
+    if (mode === 'shared' && this.eqChannelMode !== 'shared') {
+      for (const st of this.eqById.values()) {
+        const from = this.eqChannelMode === 'right' ? st.bandsR : st.bandsL
+        if (from.length) st.bands = cloneEqBands(from)
+      }
+    }
+    this.eqChannelMode = mode
+    this.applyEq(0.03)
+    this.emit()
+  }
+
+  ensureModule(type: ModuleType): string | null {
+    const existing = this.chain.find((m) => m.type === type)
+    if (existing) return existing.instanceId
+    return this.insertModule(type, Math.max(0, this.chain.length - 2))
   }
 
   randomizeFilter(): void {
@@ -1878,16 +2013,18 @@ export class AudioEngine {
   setEqBand(index: number, patch: Partial<EqBand>, instanceId?: string): void {
     const id = instanceId ?? this.primaryEqId()
     const st = this.eqState(id)
-    const band = st.bands[index]
+    const current = this.eqEditBands(st)
+    const band = current[index]
     if (!band) return
-    st.bands = st.bands.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    const next = current.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    this.writeEqEditBands(st, next)
     this.eqById.set(id, st)
     this.syncPrimaryEq()
     this.syncEqLfoParams(id)
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
     const mod = this.chain.find((m) => m.instanceId === id)
-    const engaged = st.bands.some(bandIsActive)
+    const engaged = next.some(bandIsActive)
     if (engaged && mod?.bypassed) {
       this.setModuleBypass(id, false)
       return
@@ -1898,10 +2035,13 @@ export class AudioEngine {
   addEqBand(instanceId?: string): number | null {
     const id = instanceId ?? this.primaryEqId()
     const st = this.eqState(id)
-    if (st.bands.length >= EQ_MAX_BANDS) return null
-    const index = st.bands.length
-    st.bands = [...st.bands, defaultEqBandAt(index)]
+    const current = this.eqEditBands(st)
+    if (current.length >= EQ_MAX_BANDS) return null
+    const index = current.length
+    this.writeEqEditBands(st, [...current, defaultEqBandAt(index)])
     this.eqById.set(id, st)
+    const slot = this.slots.get(id)
+    if (slot?.eq && this.ctx) growEqGraph(this.ctx, slot.eq, this.eqEditBands(st).length)
     this.syncPrimaryEq()
     this.syncEqLfoParams(id)
     this.applyEq(0.03)
@@ -1969,14 +2109,24 @@ export class AudioEngine {
       // Prefer speaker playback while the mic is open (iOS play-and-record).
       setPlayAndRecordAudioSession()
       this.recStream = stream
-      this.recChunks = []
+    this.recChunks = []
+    this.recPreview = []
       const src = this.ctx.createMediaStreamSource(stream)
       const proc = this.ctx.createScriptProcessor(4096, 1, 1)
       const mute = this.ctx.createGain()
       mute.gain.value = 0
       proc.onaudioprocess = (event) => {
         if (!this.recording) return
-        this.recChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+        const block = new Float32Array(event.inputBuffer.getChannelData(0))
+        this.recChunks.push(block)
+        const hop = 256
+        for (let i = 0; i < block.length; i += hop) {
+          let peak = 0
+          const end = Math.min(block.length, i + hop)
+          for (let s = i; s < end; s++) peak = Math.max(peak, Math.abs(block[s] ?? 0))
+          this.recPreview.push(peak)
+        }
+        if (this.recPreview.length % 8 === 0) this.emit()
       }
       src.connect(proc)
       proc.connect(mute)
@@ -1998,6 +2148,7 @@ export class AudioEngine {
     this.recording = false
     const chunks = this.recChunks
     this.recChunks = []
+    this.recPreview = []
     try {
       this.recProc?.disconnect()
     } catch {
@@ -2255,10 +2406,17 @@ export class AudioEngine {
     this.trackBuffers.set(targetId, buffer)
     const bindEditor = targetId === this.selectedTrackId
     if (bindEditor) {
-      this.buffer = buffer
-      if (asSource) this.sourceBuffer = buffer
-      this.reversed = this.buildReversed(buffer)
-      this.mono = mixToMono(buffer)
+      if (asSource) {
+        this.sourceBuffer = buffer
+        this.channelLayout = 'original'
+        this.params.makeMono = 0
+        this.buffer = buffer
+      } else {
+        this.buffer = buffer
+      }
+      this.reversed = this.buildReversed(this.buffer)
+      this.mono = mixToMono(this.buffer)
+      if (asSource) this.applyPlaybackLayout()
     }
     let start = 0
     let end = buffer.duration
@@ -2525,13 +2683,11 @@ export class AudioEngine {
       return slot
     }
     if (mod.type === 'eq') {
-      const bands: BiquadFilterNode[] = []
-      for (let i = 0; i < EQ_NODE_COUNT; i++) bands.push(ctx.createBiquadFilter())
+      const graph = createEqGraph(ctx, EQ_POOL_BANDS)
       input.connect(wet)
-      wet.connect(bands[0]!)
-      for (let i = 0; i < bands.length - 1; i++) bands[i]!.connect(bands[i + 1]!)
-      bands.at(-1)!.connect(output)
-      slot.eq = bands
+      wet.connect(graph.input)
+      graph.output.connect(output)
+      slot.eq = graph
     }
     if (mod.type === 'filter') {
       input.connect(wet)
@@ -2657,6 +2813,8 @@ export class AudioEngine {
     }
     const last = ordered.at(-1)!
     last.output.connect(this.limiter)
+    forceStereoUpmix(this.limiter)
+    forceStereoUpmix(this.safetyGain)
     this.limiter.connect(this.safetyGain)
     this.safetyGain.connect(this.ctx.destination)
     this.limiter.connect(this.analyser)
@@ -2852,9 +3010,19 @@ export class AudioEngine {
     if (this.visibilityBound || typeof document === 'undefined') return
     this.visibilityBound = true
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible' || !this.ctx) return
+      if (!this.ctx) return
+      if (document.visibilityState === 'hidden') {
+        this.hiddenPlaying = this.playing
+        if (this.playing) this.pause()
+        void this.ctx.suspend()
+        return
+      }
       void this.ctx.resume().then(() => {
         this.audioStatus = this.ctx?.state === 'running' ? 'running' : 'blocked'
+        if (this.hiddenPlaying) {
+          this.hiddenPlaying = false
+          void this.play()
+        }
         this.emit()
       })
     })
@@ -2873,14 +3041,12 @@ export class AudioEngine {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
       const overlay = slot.instanceId === this.primaryEqId()
-      this.writeEqFilters(
-        slot.eq,
-        overlay ? this.liveEqBands(st.bands, live) : st.bands,
-        overlay ? this.liveComb(st.comb, live) : st.comb,
-        now,
-        smoothing,
-        nyquist,
-      )
+      const shared = overlay ? this.liveEqBands(st.bands, live) : st.bands
+      const leftBands = eqBandsForChannel(this.eqChannelMode, 'left', shared, st.bandsL, st.bandsR)
+      const rightBands = eqBandsForChannel(this.eqChannelMode, 'right', shared, st.bandsL, st.bandsR)
+      const comb = overlay ? this.liveComb(st.comb, live) : st.comb
+      this.writeEqFilters(slot.eq.left, leftBands, comb, now, smoothing, nyquist)
+      this.writeEqFilters(slot.eq.right, rightBands, comb, now, smoothing, nyquist)
     }
   }
 
@@ -2932,7 +3098,7 @@ export class AudioEngine {
     smoothing: number,
     nyquist: number,
   ): void {
-    for (let bandIndex = 0; bandIndex < EQ_MAX_BANDS; bandIndex++) {
+    for (let bandIndex = 0; bandIndex < Math.max(bands.length, EQ_POOL_BANDS); bandIndex++) {
       const band = bands[bandIndex]
         const stages = band ? filterStageCount(band) : 0
         const stageGain =
@@ -2954,7 +3120,7 @@ export class AudioEngine {
         }
     }
     const combBands = combAsEqBands(comb)
-    const combOffset = EQ_MAX_BANDS * EQ_MAX_STAGES
+    const combOffset = Math.max(0, filters.length - COMB_MAX_TEETH)
     for (let i = 0; i < COMB_MAX_TEETH; i++) {
       const node = filters[combOffset + i]
       if (!node) continue
@@ -3555,11 +3721,12 @@ export class AudioEngine {
     const horizon = ctx.currentTime + LOOKAHEAD
     const live = this.liveParams()
     const density = Math.max(live.density * Math.max(live.speed, 0.25), 0.5)
-    const interval = 1 / density
+    this.grainDensitySlew = smoothTowardLog(Math.max(this.grainDensitySlew, 0.5), density, 0.22)
+    const interval = 1 / this.grainDensitySlew
     const grainDur = live.grainSize / 1000
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
-    const amp = 0.35 / Math.sqrt(density / 8)
+    const amp = 0.35 / Math.sqrt(this.grainDensitySlew / 8)
     this.advanceMotion()
 
     while (this.nextGrainTime < horizon) {
@@ -3586,7 +3753,7 @@ export class AudioEngine {
       )
       const src = ctx.createBufferSource()
       const gain = ctx.createGain()
-      const attack = Math.min(0.012, grainDur * 0.25)
+      const attack = Math.min(0.02, grainDur * 0.3)
       const releaseStart = Math.max(attack, grainDur - grainDur * 0.35)
       const peak = amp * fadeAmp
       gain.gain.setValueAtTime(0, t)
@@ -3755,8 +3922,12 @@ export class AudioEngine {
       eqPlotBands: this.plotEqBands(),
       comb: { ...this.comb },
       eqListen: this.eqListen,
+      eqChannelMode: this.eqChannelMode,
+      channelLayout: this.channelLayout,
       limiterReduction: this.getLimiterReduction(),
       recording: this.recording,
+      recordSeconds: this.recPreview.length * (256 / Math.max(1, this.ctx?.sampleRate ?? 48000)),
+      recordPeaks: Float32Array.from(this.recPreview),
       recordError: this.recordError,
       muted: this.muted,
       delayType: this.delayType,
@@ -3801,7 +3972,7 @@ export class AudioEngine {
     return this.chain.find((m) => m.type === 'eq')?.instanceId ?? 'eq-1'
   }
 
-  private eqState(instanceId: string): { bands: EqBand[]; comb: CombFilterState } {
+  private eqState(instanceId: string): EqModuleState {
     let st = this.eqById.get(instanceId)
     if (!st) {
       st = cloneEqState()
@@ -3810,8 +3981,47 @@ export class AudioEngine {
     return st
   }
 
+  private eqEditBands(st: EqModuleState): EqBand[] {
+    if (this.eqChannelMode === 'left') return st.bandsL.length ? st.bandsL : st.bands
+    if (this.eqChannelMode === 'right') return st.bandsR.length ? st.bandsR : st.bands
+    return st.bands
+  }
+
+  private writeEqEditBands(st: EqModuleState, bands: EqBand[]): void {
+    if (this.eqChannelMode === 'left') st.bandsL = bands
+    else if (this.eqChannelMode === 'right') st.bandsR = bands
+    else st.bands = bands
+  }
+
+  private applyPlaybackLayout(): void {
+    const src = this.sourceBuffer
+    if (!src || !this.ctx) return
+    if (this.channelLayout === 'original') {
+      this.buffer = src
+    } else if (this.channelLayout === 'mono') {
+      const lanes: Float32Array[] = []
+      for (let c = 0; c < src.numberOfChannels; c++) lanes.push(copyChannel(src.getChannelData(c)))
+      const mixed = mixChannelsToMono(lanes)
+      const next = this.ctx.createBuffer(1, src.length, src.sampleRate)
+      next.copyToChannel(mixed, 0)
+      this.buffer = next
+    } else {
+      const leftSrc = src.getChannelData(0)
+      const stereo =
+        src.numberOfChannels < 2
+          ? duplicateMonoToStereo(leftSrc)
+          : { left: copyChannel(leftSrc), right: copyChannel(src.getChannelData(1)) }
+      const next = this.ctx.createBuffer(2, src.length, src.sampleRate)
+      next.copyToChannel(stereo.left, 0)
+      next.copyToChannel(stereo.right, 1)
+      this.buffer = next
+    }
+    this.reversed = this.buildReversed(this.buffer)
+    this.mono = mixToMono(this.buffer)
+  }
+
   private seedEqStates(): void {
-    const next = new Map<string, { bands: EqBand[]; comb: CombFilterState }>()
+    const next = new Map<string, EqModuleState>()
     for (const mod of this.chain) {
       if (mod.type !== 'eq') continue
       next.set(mod.instanceId, this.eqById.get(mod.instanceId) ?? cloneEqState())
@@ -3822,7 +4032,7 @@ export class AudioEngine {
 
   private syncPrimaryEq(): void {
     const st = this.eqState(this.primaryEqId())
-    this.eqBands = st.bands.map((b) => ({ ...b }))
+    this.eqBands = this.eqEditBands(st).map((b) => ({ ...b }))
     this.comb = { ...st.comb }
   }
 
@@ -3831,15 +4041,20 @@ export class AudioEngine {
     for (const mod of this.chain) {
       if (mod.type !== 'eq' || mod.bypassed) continue
       const st = this.eqState(mod.instanceId)
-      out.push(...st.bands, ...combAsEqBands(st.comb))
+      out.push(...this.eqEditBands(st), ...combAsEqBands(st.comb))
     }
     return out
   }
 
-  private snapshotEqById(): Record<string, { bands: EqBand[]; comb: CombFilterState }> {
-    const rec: Record<string, { bands: EqBand[]; comb: CombFilterState }> = {}
+  private snapshotEqById(): Record<string, EqModuleState> {
+    const rec: Record<string, EqModuleState> = {}
     for (const [id, st] of this.eqById) {
-      rec[id] = { bands: st.bands.map((b) => ({ ...b })), comb: { ...st.comb } }
+      rec[id] = {
+        bands: this.eqEditBands(st).map((b) => ({ ...b })),
+        bandsL: st.bandsL.map((b) => ({ ...b })),
+        bandsR: st.bandsR.map((b) => ({ ...b })),
+        comb: { ...st.comb },
+      }
     }
     return rec
   }
@@ -3850,8 +4065,13 @@ export const engine = new AudioEngine()
 function cloneEqState(
   bands: EqBand[] = defaultEqBands(),
   comb: CombFilterState = defaultCombFilter(),
-): { bands: EqBand[]; comb: CombFilterState } {
-  return { bands: bands.map((b) => ({ ...b })), comb: { ...comb } }
+): EqModuleState {
+  return {
+    bands: bands.map((b) => ({ ...b })),
+    bandsL: [],
+    bandsR: [],
+    comb: { ...comb },
+  }
 }
 
 function waitMs(ms: number): Promise<void> {

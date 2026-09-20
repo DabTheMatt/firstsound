@@ -11,7 +11,7 @@ import type { SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
-import { LanguageSwitch, useI18n } from '../../i18n'
+import { useI18n } from '../../i18n'
 import type { SensoryValues } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { EmotionalStates } from './EmotionalStates'
@@ -117,7 +117,6 @@ export function SensoryShell({
       <header className={styles.top}>
         <div className={styles.brandRow}>
           <p className={styles.brand}>Field</p>
-          <LanguageSwitch variant="editorial" />
         </div>
         <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>

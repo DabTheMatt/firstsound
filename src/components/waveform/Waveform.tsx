@@ -264,6 +264,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.clearRect(0, 0, width, height)
+      const recording = engine.getSnapshot().recording
+      if (recording) {
+        const peaks = engine.getSnapshot().recordPeaks
+        const colors = readThemeColors()
+        ctx.fillStyle = colors.waveform
+        const n = Math.max(1, peaks.length)
+        const mid = height / 2
+        const half = height * 0.42
+        for (let x = 0; x < width; x++) {
+          const i = Math.min(n - 1, Math.floor((x / width) * n))
+          const amp = peaks[i] ?? 0
+          ctx.fillRect(x, mid - amp * half, 1, Math.max(1, amp * half * 2))
+        }
+        ctx.fillStyle = colors.accent
+        const pulse = 0.35 + 0.2 * Math.sin(performance.now() / 180)
+        ctx.globalAlpha = pulse
+        ctx.fillRect(width - 10, 8, 6, 6)
+        ctx.globalAlpha = 1
+        return
+      }
       if (!buffer || duration <= 0) return
       const colors = readThemeColors()
       const selA = Math.min(start, end)
@@ -341,15 +361,21 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       strokeFade(fadeOriginTime('in', start, end), start + inDur, 'in', fadeInBend)
       strokeFade(end - outDur, fadeOriginTime('out', start, end), 'out', fadeOutBend)
     }
-    draw()
+    let frame = 0
+    const tick = () => {
+      draw()
+      if (engine.getSnapshot().recording) frame = requestAnimationFrame(tick)
+    }
+    tick()
     const ro = new ResizeObserver(draw)
     ro.observe(canvas)
     const unsub = subscribeThemeChange(draw)
     return () => {
+      cancelAnimationFrame(frame)
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.recording])
 
   useEffect(() => {
     let frame = 0

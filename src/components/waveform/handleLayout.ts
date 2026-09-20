@@ -55,17 +55,13 @@ export function resolveWaveformDrag(opts: {
   if (opts.altOrMiddle) return 'pan'
   const nearStart = Math.abs(opts.x - opts.startX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
   const nearEnd = Math.abs(opts.x - opts.endX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
-  const fadeInParked = fadeParkedOnLoopNode(opts.fadeInX, opts.startX, opts.hitPx)
-  const fadeOutParked = fadeParkedOnLoopNode(opts.fadeOutX, opts.endX, opts.hitPx)
   if (opts.edge === 'start') return 'start'
   if (opts.edge === 'end') return 'end'
   if (opts.fadeSide === 'in' && opts.fadeRole === 'shape') return 'fadeInShape'
   if (opts.fadeSide === 'out' && opts.fadeRole === 'shape') return 'fadeOutShape'
-  if (opts.fadeSide === 'in' && fadeInParked) return 'start'
-  if (opts.fadeSide === 'out' && fadeOutParked) return 'end'
-  if (opts.transient && !nearStart && !nearEnd) return 'transient'
   if (opts.fadeSide === 'in') return 'fadeIn'
   if (opts.fadeSide === 'out') return 'fadeOut'
+  if (opts.transient && !nearStart && !nearEnd) return 'transient'
   if (nearStart) return 'start'
   if (nearEnd) return 'end'
   if (opts.shift) return 'move'

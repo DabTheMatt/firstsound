@@ -57,11 +57,13 @@ describe('parseEqBands', () => {
     expect(parseEqBands(raw)?.[0]?.bypassed).toBe(false)
   })
 
-  it('accepts 1–8 bands and rejects an oversized list', () => {
+  it('accepts 1–32 bands and rejects an oversized list', () => {
     expect(parseEqBands([defaultEqBandAt(0)])?.length).toBe(1)
     const eight = Array.from({ length: 8 }, (_, i) => defaultEqBandAt(i))
     expect(parseEqBands(eight)?.length).toBe(8)
-    expect(parseEqBands([...eight, defaultEqBandAt(0)])).toBeNull()
+    const many = Array.from({ length: 32 }, (_, i) => defaultEqBandAt(i))
+    expect(parseEqBands(many)?.length).toBe(32)
+    expect(parseEqBands([...many, defaultEqBandAt(0)])).toBeNull()
   })
 })
 

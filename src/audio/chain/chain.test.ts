@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultChain,
+  factoryChain,
   insertChainModule,
   moduleLabel,
   nextInstanceId,
@@ -15,7 +16,7 @@ import {
 
 describe('reorderChain', () => {
   it('moves a middle module and keeps gain/output pinned', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const grain = chain[1]!
     const next = reorderChain(chain, 1, 4)
     expect(next[0]?.type).toBe('gain')
@@ -24,13 +25,13 @@ describe('reorderChain', () => {
   })
 
   it('refuses to move gain or output', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     expect(reorderChain(chain, 0, 3)[0]?.type).toBe('gain')
     expect(reorderChain(chain, chain.length - 1, 2).at(-1)?.type).toBe('output')
   })
 
   it('clamps destination into the movable window', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const eq = chain[2]!
     const next = reorderChain(chain, 2, 0)
     expect(next[0]?.type).toBe('gain')
@@ -40,7 +41,7 @@ describe('reorderChain', () => {
 
 describe('setBypassed', () => {
   it('toggles an effect and ignores gain/output', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     expect(chain.find((m) => m.instanceId === 'delay-1')?.bypassed).toBe(true)
     const on = setBypassed(chain, 'delay-1', false)
     expect(on.find((m) => m.instanceId === 'delay-1')?.bypassed).toBe(false)
@@ -49,7 +50,7 @@ describe('setBypassed', () => {
   })
 
   it('starts grain and FX bypassed', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     expect(chain.filter((m) => m.type !== 'gain' && m.type !== 'output').every((m) => m.bypassed)).toBe(
       true,
     )
@@ -66,8 +67,14 @@ describe('normalizeChain', () => {
 })
 
 describe('defaultChain', () => {
+  it('starts with only input and output', () => {
+    expect(defaultChain().map((m) => m.type)).toEqual(['gain', 'output'])
+  })
+})
+
+describe('factoryChain', () => {
   it('places a bypassed compressor just before the limiter', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const types = chain.map((m) => m.type)
     expect(types.indexOf('compressor')).toBeLessThan(types.indexOf('limiter'))
     expect(chain.find((m) => m.type === 'compressor')?.bypassed).toBe(true)
@@ -75,7 +82,7 @@ describe('defaultChain', () => {
   })
 
   it('places FILTER after EQ and before distortion', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const types = chain.map((m) => m.type)
     expect(types.indexOf('eq')).toBeLessThan(types.indexOf('filter'))
     expect(types.indexOf('filter')).toBeLessThan(types.indexOf('distortion'))
@@ -83,7 +90,7 @@ describe('defaultChain', () => {
   })
 
   it('places Mid/Side after FILTER and before distortion', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const types = chain.map((m) => m.type)
     expect(types.indexOf('filter')).toBeLessThan(types.indexOf('midside'))
     expect(types.indexOf('midside')).toBeLessThan(types.indexOf('distortion'))
@@ -91,7 +98,7 @@ describe('defaultChain', () => {
   })
 
   it('hosts distortion instead of a standalone saturation module', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     expect(chain.some((m) => m.type === 'distortion')).toBe(true)
     expect(chain.some((m) => m.instanceId === 'distortion-1')).toBe(true)
     expect(chain.find((m) => m.type === 'distortion')?.bypassed).toBe(true)
@@ -132,7 +139,7 @@ describe('parseChain', () => {
 
 describe('insertChainModule', () => {
   it('inserts a second EQ between neighbours', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     const eqIndex = chain.findIndex((m) => m.type === 'eq')
     const next = insertChainModule(chain, 'eq', eqIndex)
     expect(next.filter((m) => m.type === 'eq')).toHaveLength(2)
@@ -143,7 +150,7 @@ describe('insertChainModule', () => {
   })
 
   it('refuses Input/Output and numbers extra labels', () => {
-    const chain = insertChainModule(defaultChain(), 'eq', 2)
+    const chain = insertChainModule(factoryChain(), 'eq', 2)
     expect(insertChainModule(chain, 'gain', 0)).toEqual(chain)
     expect(nextInstanceId('eq', chain)).toBe('eq-3')
     const second = chain.find((m) => m.instanceId === 'eq-2')!
@@ -155,14 +162,14 @@ describe('insertChainModule', () => {
   })
 
   it('removes a middle module but keeps endpoints', () => {
-    const gone = removeChainModule(defaultChain(), 'eq-1')
+    const gone = removeChainModule(factoryChain(), 'eq-1')
     expect(gone.some((m) => m.type === 'eq')).toBe(false)
     expect(gone[0]?.type).toBe('gain')
     expect(removeChainModule(gone, 'gain-1')[0]?.type).toBe('gain')
   })
 
   it('removes the limiter and does not put it back', () => {
-    const gone = removeChainModule(defaultChain(), 'limiter-1')
+    const gone = removeChainModule(factoryChain(), 'limiter-1')
     expect(gone.some((m) => m.type === 'limiter')).toBe(false)
     expect(gone.at(-1)?.type).toBe('output')
     expect(insertChainModule(gone, 'limiter', gone.length - 2).some((m) => m.type === 'limiter')).toBe(

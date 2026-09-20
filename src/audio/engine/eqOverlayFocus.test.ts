@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultChain, insertChainModule, moduleLabel } from '../chain/chain'
+import { factoryChain, insertChainModule, moduleLabel } from '../chain/chain'
 import {
   clampEqOverlayFocus,
   EQ_OVERLAY_ALL,
@@ -10,7 +10,7 @@ import {
 
 describe('eq overlay focus', () => {
   it('lists All plus one option per EQ instance', () => {
-    const chain = insertChainModule(defaultChain(), 'eq', 9)
+    const chain = insertChainModule(factoryChain(), 'eq', 9)
     const opts = eqOverlayOptions(chain)
     const eqs = chain.filter((m) => m.type === 'eq')
     expect(opts[0]?.value).toBe(EQ_OVERLAY_ALL)
@@ -20,14 +20,14 @@ describe('eq overlay focus', () => {
   })
 
   it('clamps stale instance ids to All', () => {
-    const chain = defaultChain()
+    const chain = factoryChain()
     expect(clampEqOverlayFocus('eq-9', chain)).toBe(EQ_OVERLAY_ALL)
     expect(clampEqOverlayFocus('eq-1', chain)).toBe('eq-1')
     expect(clampEqOverlayFocus(EQ_OVERLAY_ALL, chain)).toBe(EQ_OVERLAY_ALL)
   })
 
   it('only the first EQ uses shared LFO params', () => {
-    const chain = insertChainModule(defaultChain(), 'eq', 9)
+    const chain = insertChainModule(factoryChain(), 'eq', 9)
     const eqs = chain.filter((m) => m.type === 'eq')
     expect(eqInstanceUsesSharedLfo(chain, eqs[0]!.instanceId)).toBe(true)
     expect(eqInstanceUsesSharedLfo(chain, eqs[1]!.instanceId)).toBe(false)

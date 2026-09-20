@@ -259,12 +259,12 @@
 .fadeHandle {
   position: absolute;
   top: 44px;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   transform: translateX(-50%);
   background: transparent;
   pointer-events: auto;
-  z-index: 13;
+  z-index: 16;
   cursor: ew-resize;
 }
 
@@ -344,7 +344,7 @@
   border: 0;
   padding: 0;
   pointer-events: auto;
-  z-index: 13;
+  z-index: 12;
   cursor: ew-resize;
 }
 

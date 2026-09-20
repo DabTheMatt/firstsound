@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { detectBrowserLocale, parseLocale } from './locale'
 
 describe('parseLocale', () => {
-  it('accepts en and pl', () => {
+  it('maps Polish ids to English', () => {
     expect(parseLocale('en')).toBe('en')
-    expect(parseLocale('pl')).toBe('pl')
+    expect(parseLocale('pl')).toBe('en')
   })
 
   it('rejects unknown values', () => {
@@ -15,9 +15,9 @@ describe('parseLocale', () => {
 })
 
 describe('detectBrowserLocale', () => {
-  it('picks Polish from pl and pl-PL', () => {
-    expect(detectBrowserLocale('pl')).toBe('pl')
-    expect(detectBrowserLocale('pl-PL')).toBe('pl')
+  it('always uses English', () => {
+    expect(detectBrowserLocale('pl')).toBe('en')
+    expect(detectBrowserLocale('pl-PL')).toBe('en')
   })
 
   it('defaults to English', () => {

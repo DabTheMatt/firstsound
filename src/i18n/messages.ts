@@ -121,6 +121,7 @@ export type Messages = {
     stopRecording: string
     savePreset: string
     loadPreset: string
+    loadPresetHint: string
     loadDemo: string
     editSample: string
     resetAll: string
@@ -162,6 +163,8 @@ export type Messages = {
     mono: string
     fadeIn: string
     fadeOut: string
+    autoFade: string
+    autoFadeTitle: string
     regionStart: string
     regionEnd: string
     tracksAria: string
@@ -212,6 +215,7 @@ export type Messages = {
     bypassOn: (name: string) => string
     bypassOff: (name: string) => string
     bypassedTag: string
+    dragHint: string
   }
   modules: Record<ModuleType, string>
   inspector: {
@@ -497,7 +501,8 @@ export const EN: Messages = {
     recordMic: 'Record microphone',
     stopRecording: 'Stop recording',
     savePreset: 'Save preset',
-    loadPreset: 'Load preset',
+    loadPreset: 'Load instrument preset',
+    loadPresetHint: 'Opens a FIELD JSON file saved with Save preset. Restores the full engine, chain, and EQ.',
     loadDemo: 'Load demo tone',
     editSample: 'Edit sample',
     resetAll: 'Reset all',
@@ -546,6 +551,8 @@ export const EN: Messages = {
     mono: 'Mono',
     fadeIn: 'Fade in',
     fadeOut: 'Fade out',
+    autoFade: 'Auto',
+    autoFadeTitle: 'Auto fade — 10 ms fade-in and fade-out',
     regionStart: 'Region start',
     regionEnd: 'Region end',
     tracksAria: 'Tracks',
@@ -596,6 +603,7 @@ export const EN: Messages = {
     bypassOn: (name) => `${name} bypass, on`,
     bypassOff: (name) => `${name} bypass, off`,
     bypassedTag: 'Bypassed',
+    dragHint: 'Drag to reorder this effect. Input and Output stay fixed.',
   },
   modules: {
     gain: 'Input',
@@ -967,6 +975,7 @@ export const PL: Messages = {
     stopRecording: 'Zatrzymaj nagranie',
     savePreset: 'Zapisz preset',
     loadPreset: 'Wczytaj preset',
+    loadPresetHint: 'Otwiera plik JSON FIELD zapisany przez Zapisz preset.',
     loadDemo: 'Wczytaj ton demo',
     editSample: 'Edytuj sample',
     resetAll: 'Reset wszystkiego',
@@ -1015,6 +1024,8 @@ export const PL: Messages = {
     mono: 'Mono',
     fadeIn: 'Fade in',
     fadeOut: 'Fade out',
+    autoFade: 'Auto',
+    autoFadeTitle: 'Auto fade — 10 ms fade-in and fade-out',
     regionStart: 'Początek regionu',
     regionEnd: 'Koniec regionu',
     tracksAria: 'Ślady',
@@ -1065,6 +1076,7 @@ export const PL: Messages = {
     bypassOn: (name) => `${name} bypass, włączony`,
     bypassOff: (name) => `${name} bypass, wyłączony`,
     bypassedTag: 'Wyłączony',
+    dragHint: 'Przeciągnij, aby zmienić kolejność. Wejście i wyjście zostają na miejscu.',
   },
   modules: {
     gain: 'Wejście',

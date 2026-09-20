@@ -26,20 +26,21 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
   const [reorder, setReorder] = useState(false)
-  const [openAdd, setOpenAdd] = useState<number | null>(null)
+  const [openAdd, setOpenAdd] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const drag = useRef<{ id: string; from: number } | null>(null)
   const press = useRef<number | null>(null)
   const middle = chain.filter((m) => !isFixedType(m.type)).length
   const canAdd = middle < MAX_CHAIN_MIDDLE
+  const insertAfter = Math.max(0, chain.length - 2)
 
   const closeAdd = () => {
-    setOpenAdd(null)
+    setOpenAdd(false)
     setMenuPos(null)
   }
 
   useEffect(() => {
-    if (openAdd == null) return
+    if (!openAdd) return
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') closeAdd()
     }
@@ -67,8 +68,8 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     closeAdd()
   }
 
-  const insert = (type: ModuleType, afterIndex: number) => {
-    const id = engine.insertModule(type, afterIndex)
+  const insert = (type: ModuleType) => {
+    const id = engine.insertModule(type, insertAfter)
     closeAdd()
     if (id) onSelect(id)
   }
@@ -78,55 +79,18 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
         const active = mod.instanceId === selectedId
+        const lastBeforeOut = index === chain.length - 2
         return (
           <div key={mod.instanceId} className={styles.item}>
-            {index > 0 ? (
-              <span className={styles.gap}>
-                <span className={styles.arrow} aria-hidden="true">
-                  <svg viewBox="0 0 14 16" width="14" height="16">
-                    <path
-                      d="M2 8h8M7 4l4 4-4 4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                {canAdd ? (
-                  <span className={`${styles.addWrap} ${openAdd === index - 1 ? styles.addOpen : ''}`}>
-                    <button
-                      type="button"
-                      className={styles.add}
-                      aria-label={t.chain.addEffect}
-                      aria-expanded={openAdd === index - 1}
-                      title={t.chain.addEffect}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        const slot = index - 1
-                        if (openAdd === slot) {
-                          closeAdd()
-                          return
-                        }
-                        const rect = event.currentTarget.getBoundingClientRect()
-                        setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
-                        setOpenAdd(slot)
-                      }}
-                    >
-                      +
-                    </button>
-                  </span>
-                ) : null}
-              </span>
-            ) : null}
             <div
-              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed && reorder ? styles.locked : ''}`}
+              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed ? styles.locked : styles.movable}`}
+              title={fixed ? moduleName(mod.type) : t.chain.dragHint}
             >
               <button
                 type="button"
                 className={styles.tab}
                 aria-pressed={active}
+                title={moduleName(mod.type)}
                 onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
                   if (fixed) return
                   if ((event.altKey || event.metaKey) && event.key === 'ArrowLeft') {
@@ -161,7 +125,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   setReorder(false)
                 }}
                 onPointerEnter={() => {
-                  if (!drag.current || drag.current.id === mod.instanceId) return
+                  if (!drag.current || drag.current.id === mod.instanceId || fixed) return
                   const from = chain.findIndex((m) => m.instanceId === drag.current?.id)
                   if (from >= 0) engine.reorderModules(from, index)
                 }}
@@ -242,42 +206,42 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 </button>
               ) : null}
             </div>
-            {mod.type === 'delay' || mod.type === 'reverb' || mod.type === 'distortion' ? (
-              <button
-                type="button"
-                className={styles.kill}
-                aria-label={
-                  mod.type === 'distortion' ? t.transport.killNoise : t.chain.kill(moduleName(mod.type))
-                }
-                title={
-                  mod.type === 'distortion' ? t.transport.killNoiseTitle : t.chain.killTitle(moduleName(mod.type))
-                }
-                onClick={(event) => {
-                  event.stopPropagation()
-                  if (mod.type === 'distortion') engine.killNoise()
-                  else engine.killFx(mod.type === 'delay' ? 'delay' : 'reverb')
-                }}
-              >
-                ×
-              </button>
+            {lastBeforeOut && canAdd && !minimal ? (
+              <span className={`${styles.addWrap} ${openAdd ? styles.addOpen : ''}`}>
+                <button
+                  type="button"
+                  className={styles.add}
+                  aria-label={t.chain.addEffect}
+                  aria-expanded={openAdd}
+                  title={t.chain.addEffect}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    if (openAdd) {
+                      closeAdd()
+                      return
+                    }
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
+                    setOpenAdd(true)
+                  }}
+                >
+                  +
+                </button>
+              </span>
             ) : null}
           </div>
         )
       })}
-      {openAdd != null && menuPos
+      {openAdd && menuPos
         ? createPortal(
-            <div
-              className={styles.menu}
-              role="menu"
-              style={{ top: menuPos.top, left: menuPos.left }}
-            >
+            <div className={styles.menu} role="menu" style={{ top: menuPos.top, left: menuPos.left }}>
               {INSERTABLE_TYPES.map((type) => (
                 <button
                   key={type}
                   type="button"
                   role="menuitem"
                   className={styles.menuItem}
-                  onClick={() => insert(type, openAdd)}
+                  onClick={() => insert(type)}
                 >
                   {t.modules[type]}
                 </button>

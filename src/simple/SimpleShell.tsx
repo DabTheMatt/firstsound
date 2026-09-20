@@ -7,7 +7,7 @@ import { Waveform } from '../components/waveform/Waveform'
 import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
-import { LanguageSwitch, useI18n } from '../i18n'
+import { useI18n } from '../i18n'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import type { UiMode } from '../modes/uiMode'
 import { captureDsp, writeDsp } from '../sensory/applySensory'
@@ -231,7 +231,6 @@ export function SimpleShell({
             {snap.fileName || t.simple.fileUntitled}
           </button>
           <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
-          <LanguageSwitch variant="editorial" />
           <button
             type="button"
             className={styles.menuBtn}

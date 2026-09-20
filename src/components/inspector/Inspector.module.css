@@ -466,11 +466,19 @@
   margin-top: 14px;
 }
 
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+  margin: 8px 0;
 }
 
 .eq {

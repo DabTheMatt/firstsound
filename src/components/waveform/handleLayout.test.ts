@@ -108,8 +108,8 @@ describe('resolveWaveformDrag', () => {
     hitPx: 22,
   }
 
-  it('moves the loop end when the fade-out diamond is parked on it', () => {
-    expect(resolveWaveformDrag({ ...base, fadeSide: 'out', fadeRole: 'length' })).toBe('end')
+  it('keeps a fade-out diamond as a fade drag even when parked on the loop end', () => {
+    expect(resolveWaveformDrag({ ...base, fadeSide: 'out', fadeRole: 'length' })).toBe('fadeOut')
   })
 
   it('keeps a pulled-away fade-out diamond as a fade drag', () => {

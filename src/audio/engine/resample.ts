@@ -93,6 +93,15 @@ export function hannAt(i: number, n: number): number {
   return 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)))
 }
 
+/** Short equal-power ramps at grain edges — stops clicks when interpolation is off. */
+export function edgeFadeAt(i: number, n: number, fadeSamples: number): number {
+  if (n <= 1) return 1
+  const fade = Math.max(1, Math.min(fadeSamples, Math.floor(n / 4)))
+  if (i < fade) return i / fade
+  if (i > n - 1 - fade) return (n - 1 - i) / fade
+  return 1
+}
+
 /** Fill `dest[0..count)` from `src` starting at fractional `pos`, stepping by `step`. */
 export function resampleInto(
   dest: Float32Array,
@@ -106,9 +115,11 @@ export function resampleInto(
 ): void {
   const n = Math.max(0, Math.min(count, dest.length))
   const g = Number.isFinite(gain) ? gain : 1
+  const edge = Math.max(8, Math.floor(n * 0.04))
   for (let i = 0; i < n; i++) {
     const s = sampleAt(src, pos + i * step, algo, step)
-    dest[i] = s * g * (windowed ? hannAt(i, n) : 1)
+    const env = windowed ? hannAt(i, n) : edgeFadeAt(i, n, edge)
+    dest[i] = s * g * env
   }
 }
 

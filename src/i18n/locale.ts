@@ -6,13 +6,12 @@ export type Locale = (typeof LOCALES)[number]
 export type LocalizedText = Record<Locale, string>
 
 export function parseLocale(raw: string | null | undefined): Locale | null {
-  if (raw === 'en' || raw === 'pl') return raw
+  if (raw === 'en' || raw === 'pl') return 'en'
   return null
 }
 
-export function detectBrowserLocale(language: string | null | undefined): Locale {
-  const lang = (language ?? '').toLowerCase()
-  return lang === 'pl' || lang.startsWith('pl-') ? 'pl' : 'en'
+export function detectBrowserLocale(_language: string | null | undefined): Locale {
+  return 'en'
 }
 
 export function readStoredLocale(): Locale | null {
@@ -37,5 +36,5 @@ export function applyDocumentLocale(locale: Locale): void {
 }
 
 export function initialLocale(): Locale {
-  return readStoredLocale() ?? detectBrowserLocale(typeof navigator === 'undefined' ? undefined : navigator.language)
+  return 'en'
 }

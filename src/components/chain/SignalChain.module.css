@@ -1,11 +1,12 @@
 .chain {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
   flex: none;
   min-height: 44px;
+  padding: 4px 0;
 }
 
 :global(html[data-low-vision='on']) .chain,
@@ -24,6 +25,7 @@
   display: flex;
   align-items: center;
   flex: none;
+  gap: 8px;
 }
 
 .kill {
@@ -75,15 +77,15 @@
 .add {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 32px;
+  height: 32px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
   background: var(--bg-control);
-  color: var(--text-muted);
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
 }
@@ -261,8 +263,21 @@ html[data-low-vision='on'] .powerOff {
   background: var(--accent-soft);
 }
 
+.movable:hover {
+  outline: 1px dashed var(--accent-primary);
+  cursor: grab;
+}
+
+.movable:hover .tab {
+  cursor: grab;
+}
+
+.reordering .movable {
+  cursor: grabbing;
+}
+
 .locked {
-  opacity: 0.35;
+  opacity: 1;
 }
 
 .reordering .tile:not(.locked) .tab {
