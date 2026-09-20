@@ -89,29 +89,19 @@ describe('filter modulation', () => {
     expect(high.filterCutoff).toBeGreaterThan(low.filterCutoff)
   })
 
-  it('sweeps cutoff from dedicated LFO rate and depth', () => {
+  it('leaves cutoff alone when only the legacy LFO params are set', () => {
     const params = defaultParamValues()
     params.filterCutoff = 1000
     params.filterLfoDepth = 80
     params.filterLfoRate = 1
-    params.filterLfoShape = 0
-    params.filterLfoSync = 0
-    const lo = applyFilterModulation(params, {
-      timeSec: 0.75,
-      playing: true,
-      envOriginSec: 0,
-      follower01: 0,
-      snh: { index: -1, value: 0 },
-    })
-    const hi = applyFilterModulation(params, {
+    const next = applyFilterModulation(params, {
       timeSec: 0.25,
       playing: true,
       envOriginSec: 0,
       follower01: 0,
       snh: { index: -1, value: 0 },
     })
-    expect(hi.filterCutoff).toBeGreaterThan(params.filterCutoff)
-    expect(lo.filterCutoff).toBeLessThan(params.filterCutoff)
+    expect(next.filterCutoff).toBeCloseTo(1000, 5)
   })
 
   it('lets a bipolar ADSR amount close the filter', () => {

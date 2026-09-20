@@ -1,6 +1,11 @@
 .loop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
   min-height: 32px;
-  padding: 0 14px;
+  padding: 8px 14px;
+  margin: 0;
   border-radius: 999px;
   border: 1.5px solid var(--border-strong);
   background: var(--bg-control);

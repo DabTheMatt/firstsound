@@ -102,7 +102,6 @@ export function FilterInspector({ snap, variant, pane }: Props) {
             wrap
             onChange={(value) => engine.setParam('filterCharacter', optionIndex(FILTER_CHARACTER_OPTIONS, value))}
           />
-          <h3 className={styles.section}>Modulation</h3>
           <FilterFollowerPanel snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="filter" variant={variant} />
         </>

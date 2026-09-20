@@ -252,11 +252,7 @@ export type FilterModRuntime = {
 }
 
 export function filterModNeedsClock(params: Record<ParamId, number>): boolean {
-  return (
-    params.filterLfoDepth > 0.4 ||
-    params.filterEnvAmt > 0.4 ||
-    Math.abs(params.filterAdsAmt) > 0.4
-  )
+  return params.filterEnvAmt > 0.4 || Math.abs(params.filterAdsAmt) > 0.4
 }
 
 function offsetCutoff(baseHz: number, bipolar: number): number {
@@ -274,23 +270,6 @@ export function applyFilterModulation(
   let cutoff = params.filterCutoff
   const track = clamp(params.filterPitchTrack, 0, 100) / 100
   if (track > 0) cutoff *= 2 ** ((params.pitch * track) / 12)
-
-  const depth = clamp(params.filterLfoDepth, 0, 100) / 100
-  if (depth > 0) {
-    const rate = filterLfoRateHz(params)
-    const shape = filterLfoShapeAt(params.filterLfoShape)
-    const phase = runtime.timeSec * rate
-    const p = phase - Math.floor(phase)
-    if (shape === 'snh') {
-      const index = Math.floor(Math.max(0, runtime.timeSec) * rate)
-      if (runtime.snh.index !== index) {
-        runtime.snh.index = index
-        runtime.snh.value = (runtime.rand ?? Math.random)() * 2 - 1
-      }
-    }
-    const wave = filterLfoWave(p, shape, runtime.snh.value)
-    cutoff = offsetCutoff(cutoff, wave * depth * 0.5)
-  }
 
   const envAmt = clamp(params.filterEnvAmt, 0, 100) / 100
   if (envAmt > 0) {
