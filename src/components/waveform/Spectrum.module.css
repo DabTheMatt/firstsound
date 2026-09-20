@@ -7,7 +7,6 @@
 
 .chrome {
   position: absolute;
-  right: 8px;
   z-index: 5;
   display: flex;
   flex-wrap: wrap;
@@ -59,11 +58,12 @@
   padding: 3px 10px;
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-app) 55%, transparent);
   color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  cursor: pointer;
 }
 
 .bands:hover {
@@ -73,11 +73,13 @@
 
 .bands select {
   border: 0;
-  background: transparent;
+  background-color: transparent;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
   text-transform: none;
+  cursor: pointer;
+  min-width: 4.5rem;
   outline: none;
   box-shadow: none;
   appearance: none;

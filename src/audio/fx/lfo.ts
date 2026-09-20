@@ -270,6 +270,11 @@ export const EQ_BAND_LFO_IDS: { freq: ParamId; gain: ParamId; q: ParamId }[] = [
   { freq: 'eq8Freq', gain: 'eq8Gain', q: 'eq8Q' },
 ]
 
+/** Shared LFO params exist for the first eight bands; extra bands stay unmodulated. */
+export function eqBandLfoIds(index: number): { freq: ParamId; gain: ParamId; q: ParamId } | null {
+  return EQ_BAND_LFO_IDS[index] ?? null
+}
+
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
 
 const INPUT_TARGETS: ParamId[] = [

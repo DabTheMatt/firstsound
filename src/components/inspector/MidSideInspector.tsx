@@ -9,6 +9,8 @@ import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import { ParamControl } from '../controls/ParamControl'
+import { PresetMenu } from '../controls/PresetMenu'
+import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { Toggle } from '../controls/Toggle'
 import { wheelToNormalized } from '../controls/scrub'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
@@ -55,6 +57,12 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
             Side down).
           </p>
           <StereoField snap={snap} />
+          <PresetMenu
+            label="Mid/Side presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('midside')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <div className={styles.monitor}>
             <Toggle
               pressed={snap.params.msSoloMid > 0.5}

@@ -100,7 +100,7 @@ export const REVERB_TYPES: { value: ReverbType; label: string }[] = [
   { value: 'cloud', label: 'Cloud' },
   { value: 'bloom', label: 'Bloom' },
   { value: 'infinite', label: 'Infinite' },
-  { value: 'custom', label: 'Własny' },
+  { value: 'custom', label: 'Custom' },
 ]
 
 export const NOTE_DIVISIONS: { value: NoteDivision; label: string; beats: number }[] = [

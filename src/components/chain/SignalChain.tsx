@@ -29,7 +29,12 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const [openAdd, setOpenAdd] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const drag = useRef<{ id: string; from: number } | null>(null)
+  const hoverIndex = useRef<number | null>(null)
   const press = useRef<number | null>(null)
+  const chainRef = useRef(chain)
+  useEffect(() => {
+    chainRef.current = chain
+  }, [chain])
   const middle = chain.filter((m) => !isFixedType(m.type)).length
   const canAdd = middle < MAX_CHAIN_MIDDLE
   const insertAfter = Math.max(0, chain.length - 2)
@@ -64,9 +69,43 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     const mod = chain[index]
     if (!mod || isFixedType(mod.type)) return
     drag.current = { id: mod.instanceId, from: index }
+    hoverIndex.current = index
     setReorder(true)
     closeAdd()
   }
+
+  const finishReorder = () => {
+    const active = drag.current
+    const dest = hoverIndex.current
+    const live = chainRef.current
+    drag.current = null
+    hoverIndex.current = null
+    setReorder(false)
+    if (!active || dest == null) return
+    const from = live.findIndex((m) => m.instanceId === active.id)
+    if (from < 0 || dest === from) return
+    if (isFixedType(live[dest]?.type ?? 'gain')) return
+    engine.reorderModules(from, dest)
+    const moved = live[from]
+    const other = live[dest]
+    if (!moved || !other) return
+    announce(
+      dest < from
+        ? t.chain.movedBefore(moduleName(moved.type), moduleName(other.type))
+        : t.chain.movedAfter(moduleName(moved.type), moduleName(other.type)),
+    )
+  }
+
+  useEffect(() => {
+    if (!reorder) return
+    const end = () => finishReorder()
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+    return () => {
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+    }
+  }, [reorder])
 
   const insert = (type: ModuleType) => {
     const id = engine.insertModule(type, insertAfter)
@@ -115,19 +154,14 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                     window.clearTimeout(press.current)
                     press.current = null
                   }
-                  drag.current = null
-                  setReorder(false)
                 }}
                 onPointerCancel={() => {
                   if (press.current) window.clearTimeout(press.current)
                   press.current = null
-                  drag.current = null
-                  setReorder(false)
                 }}
                 onPointerEnter={() => {
                   if (!drag.current || drag.current.id === mod.instanceId || fixed) return
-                  const from = chain.findIndex((m) => m.instanceId === drag.current?.id)
-                  if (from >= 0) engine.reorderModules(from, index)
+                  hoverIndex.current = index
                 }}
                 onClick={() => {
                   if (press.current) {

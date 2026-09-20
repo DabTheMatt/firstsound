@@ -217,7 +217,7 @@
   right: 0;
   z-index: 12;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   padding: 18px 22px 8px;
   pointer-events: none;

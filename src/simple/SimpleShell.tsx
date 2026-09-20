@@ -230,7 +230,9 @@ export function SimpleShell({
           <button type="button" className={styles.file} onClick={onLoadSample}>
             {snap.fileName || t.simple.fileUntitled}
           </button>
-          <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
+          <div className={styles.modeSlot}>
+            <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
+          </div>
           <button
             type="button"
             className={styles.menuBtn}

@@ -6,6 +6,7 @@ import {
   defaultFxLfos,
   defaultLfoHold,
   eqBandHasLfo,
+  eqBandLfoIds,
   liveEqBandsFromParams,
   eqModuleHasLiveCurve,
   fxLfoSlotName,
@@ -314,5 +315,14 @@ describe('moduleTypeForLfoKind', () => {
     expect(moduleTypeForLfoKind('input')).toBe('gain')
     expect(moduleTypeForLfoKind('filter')).toBe('filter')
     expect(moduleTypeForLfoKind('midside')).toBe('midside')
+  })
+})
+
+describe('eqBandLfoIds', () => {
+  it('covers the first eight bands and leaves extra bands free of shared LFO params', () => {
+    expect(eqBandLfoIds(0)?.freq).toBe('eq1Freq')
+    expect(eqBandLfoIds(7)?.freq).toBe('eq8Freq')
+    expect(eqBandLfoIds(8)).toBeNull()
+    expect(eqBandLfoIds(31)).toBeNull()
   })
 })
