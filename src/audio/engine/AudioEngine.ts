@@ -3009,14 +3009,14 @@ export class AudioEngine {
   private bindVisibility(): void {
     if (this.visibilityBound || typeof document === 'undefined') return
     this.visibilityBound = true
-    document.addEventListener('visibilitychange', () => {
+    const hide = () => {
       if (!this.ctx) return
-      if (document.visibilityState === 'hidden') {
-        this.hiddenPlaying = this.playing
-        if (this.playing) this.pause()
-        void this.ctx.suspend()
-        return
-      }
+      this.hiddenPlaying = this.playing
+      if (this.playing) this.pause()
+      void this.ctx.suspend()
+    }
+    const show = () => {
+      if (!this.ctx) return
       void this.ctx.resume().then(() => {
         this.audioStatus = this.ctx?.state === 'running' ? 'running' : 'blocked'
         if (this.hiddenPlaying) {
@@ -3025,7 +3025,15 @@ export class AudioEngine {
         }
         this.emit()
       })
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') hide()
+      else show()
     })
+    window.addEventListener('pagehide', hide)
+    window.addEventListener('freeze', hide)
+    window.addEventListener('pageshow', show)
+    window.addEventListener('resume', show)
   }
 
   setFilterType(type: FilterType): void {
