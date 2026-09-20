@@ -44,7 +44,7 @@ import {
   type SpectrumBandCount,
   type SpectrumFollowMode,
 } from '../../audio/engine/spectrumBands'
-import { bandCenterHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import {
   clampEqOverlayFocus,
   eqInstanceUsesSharedLfo,
@@ -89,6 +89,7 @@ type SpectrumPrefs = {
   layer: Layer
   bands: SpectrumBandCount
   regionColors: boolean
+  eqFreqColors: boolean
   legendOpen: boolean
   showBars: boolean
   showLine: boolean
@@ -102,6 +103,7 @@ function loadPrefs(): SpectrumPrefs {
       layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : 'both',
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
       regionColors: raw?.regionColors !== false,
+      eqFreqColors: raw?.eqFreqColors === true,
       legendOpen: raw?.legendOpen !== false,
       showBars: raw?.showBars !== false,
       showLine: raw?.showLine !== false,
@@ -112,6 +114,7 @@ function loadPrefs(): SpectrumPrefs {
       layer: 'both',
       bands: SPECTRUM_BAND_COUNT,
       regionColors: true,
+      eqFreqColors: false,
       legendOpen: true,
       showBars: true,
       showLine: true,
@@ -436,7 +439,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const st = live.eqById[mod.instanceId]
           return eqModuleIsAudible(mod.bypassed, st?.bands ?? [], Boolean(st?.comb.enabled))
         })
-        const showPre = layer === 'pre' || (layer === 'both' && toneAudible)
+        const showPre = layer === 'pre' || layer === 'both'
         const showPost = layer === 'post' || layer === 'both'
         const prePeaks = readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch)
         const postPeaks = readAnalyserPeaks(engine.getAnalyser('eq'), sr, bands, minHz, postScratch)
@@ -574,10 +577,19 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
       <div className={styles.stage}>
       <div
         className={styles.chrome}
-        style={{ top: 6, left: SPECTRUM_PLOT_PAD.left }}
+        style={{ top: SPECTRUM_PLOT_PAD.top, left: SPECTRUM_PLOT_PAD.left, right: SPECTRUM_PLOT_PAD.right }}
       >
         <div className={styles.chromeLeft}>
-          <label className={styles.bands}>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             Layer
             <select
               aria-label="EQ spectrum layer"
@@ -592,7 +604,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             </select>
           </label>
           {eqMods.length > 1 ? (
-            <label className={styles.bands}>
+            <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
               EQ
               <select
                 aria-label="EQ overlay"
@@ -611,7 +632,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               </select>
             </label>
           ) : null}
-          <label className={styles.bands}>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             Scale
             <select
               aria-label="Frequency scale"
@@ -626,7 +656,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               ))}
             </select>
           </label>
-          <label className={styles.bands}>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             EQ ch
             <select
               aria-label="EQ channel"
@@ -641,7 +680,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               ))}
             </select>
           </label>
-          <label className={styles.bands}>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             Bands
             <select
               aria-label="FFT band count"
@@ -657,7 +705,16 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               ))}
             </select>
           </label>
-          <label className={styles.bands}>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             Follow
             <select
               aria-label="Spectrum envelope follow"
@@ -675,6 +732,20 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           </label>
         </div>
         <div className={styles.chromeRight}>
+          <button
+            type="button"
+            className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
+            aria-pressed={prefs.eqFreqColors}
+            aria-label={prefs.eqFreqColors ? 'EQ nodes use instance color' : 'Color EQ nodes by frequency'}
+            title="Color EQ nodes by frequency band"
+            onClick={() => setPrefs((p) => ({ ...p, eqFreqColors: !p.eqFreqColors }))}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <circle cx="4" cy="8" r="2.2" fill="#d97706" />
+              <circle cx="8" cy="8" r="2.2" fill="#16a34a" />
+              <circle cx="12" cy="8" r="2.2" fill="#7c3aed" />
+            </svg>
+          </button>
           <button
             type="button"
             className={`${styles.iconTap} ${prefs.regionColors ? styles.on : ''}`}
@@ -827,6 +898,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                   (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
                 ),
             )
+            const nodeColor = prefs.eqFreqColors ? eqBandColorForHz(band.frequency) : tone.node
+            const curveColor = prefs.eqFreqColors ? nodeColor : tone.curve
             return (
               <button
                 key={`${mod.instanceId}-${index}`}
@@ -836,10 +909,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                   {
                     left: `${xPct}%`,
                     top: `${Math.min(100, Math.max(0, yPct))}%`,
-                    background: dim ? undefined : tone.node,
-                    borderColor: tone.curve,
-                    '--eq-curve': tone.curve,
-                    '--eq-node-selected': tone.node,
+                    background: dim ? undefined : nodeColor,
+                    borderColor: curveColor,
+                    '--eq-curve': curveColor,
+                    '--eq-node-selected': nodeColor,
                     zIndex: selected ? 4 : 2,
                   } as CSSProperties
                 }

@@ -30,6 +30,10 @@
   min-height: 44px;
 }
 
+.modeSlot {
+  margin-left: auto;
+}
+
 .file {
   min-width: 0;
   flex: 1;

@@ -33,7 +33,7 @@ const PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
 
 export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [mode, setMode] = useState<LimiterPlotMode>('curve')
+  const [mode, setMode] = useState<LimiterPlotMode>('wave')
   const modeRef = useRef(mode)
   const kindRef = useRef(kind)
 

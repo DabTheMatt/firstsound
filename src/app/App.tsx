@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT } from '../features/sample/files'
-import { saveUserPreset } from '../audio/fx/userPresets'
+import { deleteUserPreset, loadUserPresets, mergeUserPresets, parseUserPresetPack, saveUserPreset } from '../audio/fx/userPresets'
 import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
@@ -115,6 +115,7 @@ export default function App() {
   const { mode, width: viewportWidth } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
   const [menuOpen, setMenuOpen] = useState(false)
+  const [libraryTick, setLibraryTick] = useState(0)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
@@ -329,7 +330,7 @@ export default function App() {
   }
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
-    const mod = snap.chain.find((m) => m.instanceId === instanceId)
+    const mod = engine.getSnapshot().chain.find((m) => m.instanceId === instanceId)
     if (!mod) return
     setFocus({ kind: 'module', instanceId, type: mod.type, pane })
     if (mode === 'sheet') setSheetLevel('medium')
@@ -434,9 +435,54 @@ export default function App() {
             const name = window.prompt('Name this instrument preset for this browser')
             if (!name) return
             saveUserPreset(name, engine.toPreset())
+            setLibraryTick((n) => n + 1)
           }}
         >
-          Save my preset
+          Save to library
+        </button>
+        <p className={styles.hint}>
+          Library lives in this browser. Export a pack to share or back up. There is no account server.
+        </p>
+        {loadUserPresets().length ? (
+          <ul className={styles.presetLib}>
+            {loadUserPresets().map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    engine.applyPreset(item.preset)
+                    setMenuOpen(false)
+                  }}
+                >
+                  {item.name}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${item.name}`}
+                  onClick={() => {
+                    deleteUserPreset(item.id)
+                    setLibraryTick((n) => n + 1)
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={styles.hint}>No saved library presets yet.</p>
+        )}
+        <button
+          type="button"
+          onClick={() =>
+            downloadJson('field-preset-library.json', {
+              format: 'field-preset-library',
+              version: 1,
+              presets: loadUserPresets(),
+            })
+          }
+        >
+          Export library
         </button>
         <button type="button" onClick={() => presetInput.current?.click()}>
           {t.settings.loadPreset}
@@ -482,7 +528,7 @@ export default function App() {
         <A11ySettings />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, t],
+    [history, snap.hasSource, snap.recording, t, libraryTick],
   )
 
   const fileInputs = (
@@ -507,7 +553,15 @@ export default function App() {
           event.target.value = ''
           if (!file) return
           const text = await file.text()
-          const preset = parsePreset(JSON.parse(text) as unknown)
+          const json = JSON.parse(text) as unknown
+          const pack = parseUserPresetPack(json)
+          const rec = json && typeof json === 'object' ? (json as { format?: unknown }) : null
+          if (rec?.format === 'field-preset-library' && pack.length) {
+            mergeUserPresets(pack)
+            setLibraryTick((n) => n + 1)
+            return
+          }
+          const preset = parsePreset(json)
           if (preset) engine.applyPreset(preset)
         }}
       />

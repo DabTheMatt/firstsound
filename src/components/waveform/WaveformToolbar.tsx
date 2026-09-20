@@ -29,7 +29,7 @@ export type ViewAction =
 const TOOLS: { id: WaveTool; key: 'edit' }[] = [{ id: 'select', key: 'edit' }]
 
 export function WaveformToolbar({
-  tool,
+  tool: _tool,
   onTool,
   viz,
   onViz,
@@ -39,7 +39,7 @@ export function WaveformToolbar({
   onView,
   onTrim,
   onAutoFade,
-  autoFade = false,
+  autoFade: _autoFade = false,
   normalizeView,
   minimal = false,
 }: Props) {
@@ -55,7 +55,6 @@ export function WaveformToolbar({
               key={item.id}
               label={t.waveform[item.key]}
               caption={t.waveform[item.key]}
-              pressed={tool === item.id}
               onClick={() => onTool(item.id)}
             >
               <EditIcon />
@@ -70,7 +69,6 @@ export function WaveformToolbar({
             <IconButton
               label={t.waveform.autoFadeTitle}
               caption={t.waveform.autoFade}
-              pressed={autoFade}
               onClick={onAutoFade}
             >
               <AutoFadeIcon />

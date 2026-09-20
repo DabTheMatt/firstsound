@@ -2683,7 +2683,8 @@ export class AudioEngine {
       return slot
     }
     if (mod.type === 'eq') {
-      const graph = createEqGraph(ctx, EQ_POOL_BANDS)
+      const st = this.eqState(mod.instanceId)
+      const graph = createEqGraph(ctx, Math.max(EQ_POOL_BANDS, this.eqEditBands(st).length))
       input.connect(wet)
       wet.connect(graph.input)
       graph.output.connect(output)
@@ -2791,7 +2792,14 @@ export class AudioEngine {
     } else if (this.analyserPre) {
       this.voiceBus.connect(this.analyserPre)
     }
-    if (lastTone && this.analyserEq) lastTone.output.connect(this.analyserEq)
+    for (let i = 0; i < ordered.length - 1; i++) {
+      ordered[i]!.output.connect(ordered[i + 1]!.input)
+    }
+    const last = ordered.at(-1)!
+    if (this.analyserEq) {
+      if (lastTone) lastTone.output.connect(this.analyserEq)
+      else last.output.connect(this.analyserEq)
+    }
     const limSlot = ordered.find((s) => s.type === 'limiter')
     if (limSlot && this.analyserLimiterPre) {
       limSlot.input.connect(this.analyserLimiterPre)
@@ -2808,10 +2816,6 @@ export class AudioEngine {
       this.analyserCompressorPre.connect(silent)
       silent.connect(this.ctx.destination)
     }
-    for (let i = 0; i < ordered.length - 1; i++) {
-      ordered[i]!.output.connect(ordered[i + 1]!.input)
-    }
-    const last = ordered.at(-1)!
     last.output.connect(this.limiter)
     forceStereoUpmix(this.limiter)
     forceStereoUpmix(this.safetyGain)
@@ -2872,8 +2876,15 @@ export class AudioEngine {
     }
   }
 
+  private graphRebuildQueued = false
+
   private async rebuildGraph(): Promise<void> {
-    if (!this.ctx || this.reconnecting) {
+    if (!this.ctx) {
+      this.emit()
+      return
+    }
+    if (this.reconnecting) {
+      this.graphRebuildQueued = true
       this.emit()
       return
     }
@@ -2908,6 +2919,11 @@ export class AudioEngine {
     this.syncEqListen()
     this.rampSafety(this.muted ? 0.0001 : 1)
     this.reconnecting = false
+    if (this.graphRebuildQueued) {
+      this.graphRebuildQueued = false
+      void this.rebuildGraph()
+      return
+    }
     this.emit()
   }
 

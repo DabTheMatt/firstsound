@@ -84,6 +84,6 @@ describe('presets', () => {
     expect(presetsForReverbType('plate').every((p) => p.reverbType === 'plate')).toBe(true)
     expect(presetsForReverbType('custom')).toEqual([])
     expect(parseReverbType('custom')).toBe('custom')
-    expect(REVERB_TYPES.some((t) => t.value === 'custom' && t.label === 'Własny')).toBe(true)
+    expect(REVERB_TYPES.some((t) => t.value === 'custom' && t.label === 'Custom')).toBe(true)
   })
 })

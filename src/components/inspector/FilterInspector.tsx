@@ -10,7 +10,8 @@ import {
   filterTypeAt,
   optionIndex,
 } from '../../audio/fx/filter'
-import { FILTER_PRESETS } from '../../audio/fx/filterPresets'
+import { FILTER_PRESETS, type FilterPresetId } from '../../audio/fx/filterPresets'
+import { PresetMenu } from '../controls/PresetMenu'
 import { filterResponseCurve } from '../../audio/fx/filterResponse'
 import { FILTER_KNOBS, PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
@@ -19,12 +20,12 @@ import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ParamControl } from '../controls/ParamControl'
-import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { wheelToNormalized } from '../controls/scrub'
 import { useFxLfoConnect } from './FxLfoConnect'
 import { FxLfoSection } from './FxLfoSection'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
+import inspectorStyles from './Inspector.module.css'
 import styles from './FilterInspector.module.css'
 
 type Props = {
@@ -61,47 +62,73 @@ export function FilterInspector({ snap, variant, pane }: Props) {
               Reset
             </button>
           </div>
-          <div className={styles.presets} role="list">
-            {FILTER_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={styles.preset}
-                onClick={() => engine.applyFilterPreset(preset.id)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <Segmented
-            label="Filter type"
-            value={kind}
-            options={FILTER_TYPE_OPTIONS}
-            wrap
-            onChange={(value) => engine.setParam('filterKind', optionIndex(FILTER_TYPE_OPTIONS, value))}
+          <PresetMenu
+            label="Filter presets"
+            categories={['Factory']}
+            presets={FILTER_PRESETS.map((preset) => ({
+              id: preset.id,
+              name: preset.label,
+              category: 'Factory',
+            }))}
+            onApply={(id) => engine.applyFilterPreset(id as FilterPresetId)}
           />
+          <label className={inspectorStyles.field}>
+            Filter type
+            <select
+              className={`${inspectorStyles.select} ${inspectorStyles.selectOn}`}
+              aria-label="Filter type"
+              value={kind}
+              onChange={(event) =>
+                engine.setParam('filterKind', optionIndex(FILTER_TYPE_OPTIONS, event.target.value as (typeof FILTER_TYPE_OPTIONS)[number]['value']))
+              }
+            >
+              {FILTER_TYPE_OPTIONS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {kind === 'morph' ? (
             <ParamControl id="filterMorph" value={snap.params.filterMorph} variant={variant} />
           ) : null}
-          <Segmented
-            label="Slope"
-            value={String(filterSlopeAt(snap.params.filterSlope))}
-            options={FILTER_SLOPE_OPTIONS.map((s) => ({ value: String(s.value), label: `${s.label} dB` }))}
-            wrap
-            onChange={(value) =>
-              engine.setParam(
-                'filterSlope',
-                optionIndex(FILTER_SLOPE_OPTIONS, Number(value) as (typeof FILTER_SLOPE_OPTIONS)[number]['value']),
-              )
-            }
-          />
-          <Segmented
-            label="Character"
-            value={filterCharacterAt(snap.params.filterCharacter)}
-            options={FILTER_CHARACTER_OPTIONS}
-            wrap
-            onChange={(value) => engine.setParam('filterCharacter', optionIndex(FILTER_CHARACTER_OPTIONS, value))}
-          />
+          <label className={inspectorStyles.field}>
+            Slope
+            <select
+              className={`${inspectorStyles.select} ${inspectorStyles.selectOn}`}
+              aria-label="Filter slope"
+              value={String(filterSlopeAt(snap.params.filterSlope))}
+              onChange={(event) =>
+                engine.setParam(
+                  'filterSlope',
+                  optionIndex(FILTER_SLOPE_OPTIONS, Number(event.target.value) as (typeof FILTER_SLOPE_OPTIONS)[number]['value']),
+                )
+              }
+            >
+              {FILTER_SLOPE_OPTIONS.map((s) => (
+                <option key={s.value} value={String(s.value)}>
+                  {s.label} dB
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={inspectorStyles.field}>
+            Character
+            <select
+              className={`${inspectorStyles.select} ${inspectorStyles.selectOn}`}
+              aria-label="Filter character"
+              value={filterCharacterAt(snap.params.filterCharacter)}
+              onChange={(event) =>
+                engine.setParam('filterCharacter', optionIndex(FILTER_CHARACTER_OPTIONS, event.target.value as (typeof FILTER_CHARACTER_OPTIONS)[number]['value']))
+              }
+            >
+              {FILTER_CHARACTER_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <FilterFollowerPanel snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="filter" variant={variant} />
         </>

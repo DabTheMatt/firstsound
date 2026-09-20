@@ -1,16 +1,19 @@
-import { useMemo, useState } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import {
   DELAY_PRESET_CATEGORIES,
-  defaultPresetFor,
   findSpacePreset,
   presetHint,
   presetsFor,
   presetsForReverbType,
-  REVERB_PRESET_CATEGORIES,
-  type FxPresetCategory,
 } from '../../audio/fx/presets'
-import { DELAY_TYPES, NOTE_DIVISIONS, NOTE_KINDS, parseReverbType, REVERB_TYPES } from '../../audio/fx/types'
+import {
+  DELAY_TYPES,
+  NOTE_DIVISIONS,
+  NOTE_KINDS,
+  parseDelayType,
+  parseReverbType,
+  REVERB_TYPES,
+} from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
@@ -72,9 +75,6 @@ const REVERB_ADV: ParamId[] = [
 ]
 
 export function SpaceInspector({ snap, kind, variant, pane }: Props) {
-  const [category, setCategory] = useState<FxPresetCategory>('Vocals')
-  const cats = kind === 'delay' ? DELAY_PRESET_CATEGORIES : REVERB_PRESET_CATEGORIES
-  const presets = useMemo(() => presetsFor(kind, category), [kind, category])
   const delayStereo = isDelayStereo(snap.params)
   const reverbStereo = isReverbStereo(snap.params)
   const params = (ids: ParamId[]) =>
@@ -112,13 +112,24 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
   ) : (
     <>
       {kind === 'delay' ? (
-        <Segmented
-          label="Delay type"
-          value={snap.delayType}
-          options={DELAY_TYPES}
-          wrap
-          onChange={(v) => engine.setDelayType(v)}
-        />
+        <label className={styles.field}>
+          Delay type
+          <select
+            className={`${styles.select} ${styles.selectOn}`}
+            aria-label="Delay type"
+            value={snap.delayType}
+            onChange={(event) => {
+              const type = parseDelayType(event.target.value)
+              if (type) engine.setDelayType(type)
+            }}
+          >
+            {DELAY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : (
         <label className={styles.field}>
           Reverb type
@@ -144,33 +155,9 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       {kind === 'delay' ? (
         <>
           <p className={styles.help}>
-            Categories load a starting sound. Delay type sets analog / tape / digital tone (filters, drive, wow) without changing Time or Dry/Wet. Dry and Wet are independent unless Correlate is on. Feedback stays below unity so each repeat fades.
+            Type sets analog / tape / digital tone. Presets load Time, feedback, and mix starting points. Dry and Wet stay complementary when Correlate is on.
           </p>
-          <Segmented
-            label="Preset category"
-            value={category}
-            options={cats.map((c) => ({ value: c, label: c }))}
-            wrap
-            onChange={(c) => {
-              setCategory(c)
-              const preset = defaultPresetFor(kind, c)
-              if (preset) engine.applySpacePreset(preset)
-            }}
-          />
-          <div className={styles.presets}>
-            {presets.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.preset} ${snap.spacePresetId === p.id ? styles.presetOn : ''}`}
-                title={presetHint(p)}
-                onClick={() => engine.applySpacePreset(p)}
-              >
-                <span>{p.name}</span>
-                <em>{presetHint(p)}</em>
-              </button>
-            ))}
-          </div>
+          <DelayPresetSelect snap={snap} />
         </>
       ) : (
         <>
@@ -309,6 +296,50 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         </>
       )}
       <FxLfoSection snap={snap} kind={kind} variant={variant} />
+    </>
+  )
+}
+
+function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
+  const selected = snap.spacePresetId ? findSpacePreset(snap.spacePresetId) : undefined
+  const current = selected?.kind === 'delay' ? selected : undefined
+  const grouped = DELAY_PRESET_CATEGORIES.map((category) => ({
+    category,
+    items: presetsFor('delay', category),
+  })).filter((g) => g.items.length > 0)
+  return (
+    <>
+      <label className={styles.field}>
+        Delay preset
+        <select
+          className={`${styles.select} ${current ? styles.selectOn : ''}`}
+          aria-label="Delay preset"
+          value={current?.id ?? ''}
+          onChange={(event) => {
+            const preset = findSpacePreset(event.target.value)
+            if (preset) engine.applySpacePreset(preset)
+          }}
+        >
+          <option value="">Choose a preset</option>
+          {grouped.map((group) => (
+            <optgroup key={group.category} label={group.category}>
+              {group.items.map((p) => (
+                <option key={p.id} value={p.id} title={presetHint(p)}>
+                  {p.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {current ? (
+        <p className={styles.selectCurrent}>
+          {current.category} · {current.name}
+        </p>
+      ) : (
+        <p className={styles.help}>No factory delay selected.</p>
+      )}
+      {current ? <p className={styles.help}>{presetHint(current)}</p> : null}
     </>
   )
 }

@@ -14,7 +14,7 @@ export type ModulePresetCategory =
   | 'Creative'
   | 'Lo-Fi'
 
-export type ModulePresetKind = 'grain' | 'filter' | 'distortion' | 'compressor' | 'limiter'
+export type ModulePresetKind = 'grain' | 'filter' | 'distortion' | 'compressor' | 'limiter' | 'midside'
 
 export type ModulePreset = {
   id: string
@@ -213,6 +213,22 @@ export const MODULE_PRESETS: ModulePreset[] = [
       filterMix: 100,
       filterLfoDepth: 0,
     },
+  },
+  {
+    id: 'ms-wide',
+    name: 'Wide',
+    kind: 'midside',
+    category: 'Utility',
+    hint: 'Wider sides, mid stays put',
+    params: { msWidth: 140, msBalance: 0, msRotate: 0 },
+  },
+  {
+    id: 'ms-center',
+    name: 'Focus mid',
+    kind: 'midside',
+    category: 'Vocals',
+    hint: 'Narrower sides for a centered lead',
+    params: { msWidth: 70, msBalance: 8, msRotate: 0 },
   },
 ]
 

@@ -118,7 +118,6 @@ export function SensoryShell({
         <div className={styles.brandRow}>
           <p className={styles.brand}>Field</p>
         </div>
-        <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
         <div className={styles.tools}>
           <RuntimeStatus variant="editorial" />
           <SensoryThemePicker
@@ -141,6 +140,7 @@ export function SensoryShell({
           >
             {t.sensory.strings}
           </button>
+          <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
           <button
             type="button"
             className={styles.menuBtn}

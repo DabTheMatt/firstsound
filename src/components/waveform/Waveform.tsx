@@ -516,7 +516,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const fadeOutX = timeToFrac(fadeDiamondLayout({ side: 'out', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
     const mode: DragMode = simple
       ? resolveSimpleWaveformDrag({
-          altOrMiddle: event.altKey || event.button === 1,
+      altOrMiddle: event.altKey || event.button === 1 || event.buttons === 4,
           x,
           startX,
           endX,
@@ -524,7 +524,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           edge: handleAttr?.dataset.edge === 'start' || handleAttr?.dataset.edge === 'end' ? handleAttr.dataset.edge : undefined,
         })
       : resolveWaveformDrag({
-      altOrMiddle: event.altKey || event.button === 1,
+      altOrMiddle: event.altKey || event.button === 1 || event.buttons === 4,
       shift: event.shiftKey,
       x,
       y,
@@ -641,6 +641,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       setView(panView(originView, delta, duration))
       return
     }
+    if (mode === 'playhead') {
+      const dx = Math.abs(event.clientX - originX)
+      if (dx > 8) {
+        drag.current.mode = 'pan'
+        setPanning(true)
+        const spanSec = originView.end - originView.start
+        const delta = -((event.clientX - originX) / Math.max(1, rect.width)) * spanSec
+        setView(panView(originView, delta, duration))
+        return
+      }
+      engine.seekSeconds(next, 'sample')
+      return
+    }
     if (mode === 'start') engine.setParam('start', next)
     else if (mode === 'end') engine.setParam('end', next)
     else if (mode === 'fadeIn') {
@@ -670,7 +683,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         ),
       })
     }
-    else if (mode === 'playhead') engine.seekSeconds(next, 'sample')
     else if (mode === 'transient' && drag.current.transientIndex != null) {
       engine.setTransientTime(drag.current.transientIndex, next)
     }
