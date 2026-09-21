@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
+import { waveformLaneLayout } from '../../audio/engine/stereoStage'
 import type { WaveTool, VizMode, MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -288,19 +289,28 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const colors = readThemeColors()
       const selA = Math.min(start, end)
       const selB = Math.max(start, end)
-      const foldMono = engine.getSnapshot().params.makeMono > 0.5
+      const snapNow = engine.getSnapshot()
+      const foldMono = snapNow.channelLayout === 'mono' || snapNow.params.makeMono > 0.5
       const mixed = foldMono ? engine.getMono() ?? mixToMono(buffer) : null
-      const channels = buffer.numberOfChannels
-      const lanes = foldMono ? 1 : Math.min(2, channels)
+      const layout = waveformLaneLayout({
+        foldMono,
+        stereoLayout: snapNow.channelLayout === 'stereo',
+        sourceChannels: buffer.numberOfChannels,
+        panPct: snapNow.liveParams.pan,
+        leftDb: snapNow.liveParams.channelGainL,
+        rightDb: snapNow.liveParams.channelGainR,
+      })
+      const lanes = layout.lanes
       for (let lane = 0; lane < lanes; lane++) {
-        const data = mixed ?? buffer.getChannelData(Math.min(lane, channels - 1))
+        const srcCh = buffer.numberOfChannels < 2 ? 0 : Math.min(lane, buffer.numberOfChannels - 1)
+        const data = mixed ?? buffer.getChannelData(srcCh)
         const laneH = height / lanes
         const top0 = lane * laneH
         const samplesPerSec = data.length / duration
         const s = Math.floor(view.start * samplesPerSec)
         const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
         const { min, max, peak } = computeMinMax(data, s, e, width)
-        const gain = normalizeView ? verticalGain(peak) : 1
+        const gain = (normalizeView ? verticalGain(peak) : 1) * (layout.gains[lane] ?? 1)
         const mid = top0 + laneH / 2
         const half = laneH * 0.42
         const span = Math.max(0.0001, view.end - view.start)
@@ -375,7 +385,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.recording])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR, snap.channelLayout, snap.recording, snap.liveParams.pan, snap.liveParams.channelGainL, snap.liveParams.channelGainR])
 
   useEffect(() => {
     let frame = 0
@@ -807,7 +817,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
-            {loaded && snap.params.makeMono > 0.5 ? (
+            {loaded && (snap.channelLayout === 'mono' || snap.params.makeMono > 0.5) ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || simple} aria-hidden="true" />

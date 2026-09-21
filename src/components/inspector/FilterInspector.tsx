@@ -323,7 +323,7 @@ function FilterResponse({ snap }: { snap: EngineSnapshot }) {
       const colors = readThemeColors()
       const live = engine.getSnapshot()
       const sr = live.sampleRate || 48000
-      const freqs = logFreqAxis(96, 20, 20000)
+      const freqs = logFreqAxis(96, 20, 22000)
       const curve = filterResponseCurve(live.liveParams, freqs, sr)
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp

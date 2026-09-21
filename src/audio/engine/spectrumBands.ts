@@ -94,8 +94,11 @@ export function fftLastUsableHz(sampleRate: number, binCount: number): number {
   return (fftLastUsableBin(binCount) * sampleRate) / (binCount * 2)
 }
 
+/** FFT / EQ overlay top of axis (Hz). Nyquist still caps below this. */
+export const SPECTRUM_AXIS_MAX_HZ = 22_000
+
 /** Plot / band top: Nyquist, capped to the EQ axis so log bands match the UI. */
-export function spectrumMaxHz(sampleRate: number, capHz: number): number {
+export function spectrumMaxHz(sampleRate: number, capHz: number = SPECTRUM_AXIS_MAX_HZ): number {
   if (!(sampleRate > 0)) return Math.max(1, capHz)
   return Math.min(capHz, sampleRate / 2)
 }

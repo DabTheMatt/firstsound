@@ -8,11 +8,14 @@
 .chrome {
   position: absolute;
   z-index: 5;
+  top: 8px;
+  left: 8px;
+  right: 8px;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   padding: 0;
   pointer-events: none;
 }
@@ -21,8 +24,8 @@
 .chromeRight {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 8px;
   pointer-events: auto;
 }
 
@@ -52,16 +55,17 @@
 
 .bands {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 26px;
-  padding: 3px 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 0;
+  padding: 4px 8px 5px;
   border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-app) 55%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-control) 82%, transparent);
   color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 9px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -73,25 +77,17 @@
 
 .bands select {
   border: 0;
-  background-color: transparent;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
-  min-width: 4.5rem;
+  min-width: 5.5rem;
+  min-height: 22px;
   outline: none;
   box-shadow: none;
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 12px;
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - 6px) 46%,
-    calc(100% - 2px) 46%;
-  background-size: 4px 4px;
-  background-repeat: no-repeat;
 }
 
 .bands select:focus,
@@ -128,7 +124,7 @@
 .legendDock {
   position: absolute;
   top: 52px;
-  right: 8px;
+  right: 12px;
   z-index: 3;
   display: flex;
   flex-direction: column;

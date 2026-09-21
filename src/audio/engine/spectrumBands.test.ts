@@ -15,6 +15,8 @@ import {
   maxBandDb,
   alignedBandDb,
   spectrumMeterAlignDb,
+  spectrumMaxHz,
+  SPECTRUM_AXIS_MAX_HZ,
 } from './spectrumBands'
 
 describe('logBandEdgesHz', () => {
@@ -166,5 +168,14 @@ describe('alignedBandDb', () => {
   it('does not lift analyser-floor bins with the meter offset', () => {
     expect(alignedBandDb(-100, 39)).toBe(-100)
     expect(alignedBandDb(-48, 39)).toBeCloseTo(-9)
+  })
+})
+
+describe('spectrumMaxHz', () => {
+  it('caps the FFT axis at 22 kHz below Nyquist', () => {
+    expect(SPECTRUM_AXIS_MAX_HZ).toBe(22000)
+    expect(spectrumMaxHz(48000)).toBe(22000)
+    expect(spectrumMaxHz(44100)).toBe(22000)
+    expect(spectrumMaxHz(32000)).toBe(16000)
   })
 })

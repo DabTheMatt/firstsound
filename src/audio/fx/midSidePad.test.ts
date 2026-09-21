@@ -10,20 +10,20 @@ describe('mid/side stereo pad', () => {
     })
   })
 
-  it('maps width onto the horizontal axis, matching Side on the goniometer', () => {
+  it('maps width onto the horizontal axis', () => {
     expect(padFromMidSide(0, 0).x).toBe(0)
     expect(padFromMidSide(200, 0).x).toBe(1)
   })
 
-  it('maps mid-only balance to the top and side-only to the bottom', () => {
-    expect(padFromMidSide(100, -100).y).toBe(1)
+  it('maps near/mid to the bottom and far/side to the top of the pad', () => {
     expect(padFromMidSide(100, 100).y).toBe(0)
+    expect(padFromMidSide(100, -100).y).toBe(1)
   })
 
   it('round-trips pad coordinates into width and balance', () => {
     expect(midSideFromPad(0, 0.5)).toEqual({ msWidth: 0, msBalance: 0 })
     expect(midSideFromPad(1, 1).msWidth).toBe(200)
-    expect(midSideFromPad(0.5, 1).msBalance).toBe(-100)
     expect(midSideFromPad(0.5, 0).msBalance).toBe(100)
+    expect(midSideFromPad(0.5, 1).msBalance).toBe(-100)
   })
 })

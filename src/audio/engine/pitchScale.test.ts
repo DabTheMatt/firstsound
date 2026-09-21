@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FREQ_SCALE_HZ,
   formatFreqTick,
   formatHoverFreq,
+  freqTickIsMajor,
   hzFromLogAxis,
   hzToNoteName,
   midiToHz,
@@ -26,7 +28,13 @@ describe('pitchScale', () => {
   it('formats frequency ticks', () => {
     expect(formatFreqTick(20)).toBe('20')
     expect(formatFreqTick(1000)).toBe('1k')
-    expect(formatFreqTick(25000)).toBe('25k')
+    expect(formatFreqTick(22000)).toBe('22k')
+  })
+
+  it('marks major ticks on the dense 22 kHz grid', () => {
+    expect(FREQ_SCALE_HZ.at(-1)).toBe(22000)
+    expect(freqTickIsMajor(100)).toBe(true)
+    expect(freqTickIsMajor(30)).toBe(false)
   })
 
   it('inverts a log frequency axis', () => {

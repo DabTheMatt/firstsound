@@ -278,6 +278,7 @@ export type EngineSnapshot = {
   channelLayout: ChannelLayoutMode
   limiterReduction: number
   recording: boolean
+  recMonitor: number
   recordSeconds: number
   recordPeaks: Float32Array
   recordError: string | null
@@ -467,6 +468,7 @@ export class AudioEngine {
   private recSource: MediaStreamAudioSourceNode | null = null
   private recProc: ScriptProcessorNode | null = null
   private recMute: GainNode | null = null
+  private recMonitor = 0
   private recChunks: Float32Array[] = []
   private recPreview: number[] = []
   private recording = false
@@ -866,7 +868,15 @@ export class AudioEngine {
 
   setMuted(muted: boolean): void {
     this.muted = muted
-    this.rampSafety(muted ? 0.0001 : 1)
+    this.rampSafety(this.playbackSafetyGain())
+    this.emit()
+  }
+
+  setRecMonitor(value: number): void {
+    this.recMonitor = Math.min(1, Math.max(0, value))
+    if (this.ctx && this.recMute) {
+      this.recMute.gain.setTargetAtTime(this.recMonitor, this.ctx.currentTime, 0.02)
+    }
     this.emit()
   }
 
@@ -2106,6 +2116,9 @@ export class AudioEngine {
         this.emit()
         return
       }
+      if (this.playing) this.pause()
+      this.recording = true
+      this.rampSafety(this.playbackSafetyGain())
       // Prefer speaker playback while the mic is open (iOS play-and-record).
       setPlayAndRecordAudioSession()
       this.recStream = stream
@@ -2114,7 +2127,7 @@ export class AudioEngine {
       const src = this.ctx.createMediaStreamSource(stream)
       const proc = this.ctx.createScriptProcessor(4096, 1, 1)
       const mute = this.ctx.createGain()
-      mute.gain.value = 0
+      mute.gain.value = this.recMonitor
       proc.onaudioprocess = (event) => {
         if (!this.recording) return
         const block = new Float32Array(event.inputBuffer.getChannelData(0))
@@ -2134,11 +2147,12 @@ export class AudioEngine {
       this.recSource = src
       this.recProc = proc
       this.recMute = mute
-      this.recording = true
       this.emit()
     } catch {
+      this.recording = false
       stream.getTracks().forEach((t) => t.stop())
       this.recordError = 'Microphone opened, but recording could not start.'
+      this.rampSafety(this.playbackSafetyGain())
       this.emit()
     }
   }
@@ -2170,6 +2184,7 @@ export class AudioEngine {
     this.recStream?.getTracks().forEach((t) => t.stop())
     this.recStream = null
     setPlaybackAudioSession()
+    this.rampSafety(this.playbackSafetyGain())
     if (!this.ctx || chunks.length === 0) {
       this.emit()
       return
@@ -2595,7 +2610,7 @@ export class AudioEngine {
     this.voiceBus.gain.value = 1
     forceStereoUpmix(this.voiceBus)
     this.safetyGain = ctx.createGain()
-    this.safetyGain.gain.value = this.muted ? 0.0001 : 1
+    this.safetyGain.gain.value = this.playbackSafetyGain()
     this.limiter = ctx.createDynamicsCompressor()
     this.limiter.threshold.value = -0.1
     this.limiter.knee.value = 0
@@ -2917,7 +2932,7 @@ export class AudioEngine {
     this.applyLiveAudio()
     this.applyBypassRamps(0.01)
     this.syncEqListen()
-    this.rampSafety(this.muted ? 0.0001 : 1)
+    this.rampSafety(this.playbackSafetyGain())
     this.reconnecting = false
     if (this.graphRebuildQueued) {
       this.graphRebuildQueued = false
@@ -2953,6 +2968,11 @@ export class AudioEngine {
         this.reverbIrKey = ''
       }
     }
+  }
+
+  private playbackSafetyGain(): number {
+    if (this.recording || this.muted) return 0.0001
+    return 1
   }
 
   private rampSafety(value: number): void {
@@ -3950,6 +3970,7 @@ export class AudioEngine {
       channelLayout: this.channelLayout,
       limiterReduction: this.getLimiterReduction(),
       recording: this.recording,
+      recMonitor: this.recMonitor,
       recordSeconds: this.recPreview.length * (256 / Math.max(1, this.ctx?.sampleRate ?? 48000)),
       recordPeaks: Float32Array.from(this.recPreview),
       recordError: this.recordError,

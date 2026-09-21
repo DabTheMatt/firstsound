@@ -149,6 +149,34 @@ export function applyStereoStage(
   stage.output.gain.setTargetAtTime(1, now, smoothing)
 }
 
+/** Equal-power pan used by the stereo stage, as linear lane gains. */
+export function equalPowerPanGains(panPct: number): { left: number; right: number } {
+  const theta = ((panNorm(panPct) + 1) / 2) * (Math.PI / 2)
+  return { left: Math.cos(theta), right: Math.sin(theta) }
+}
+
+/**
+ * How many waveform lanes to draw, and the amplitude scale for each.
+ * Make stereo duplicates a mono file onto L/R; pan and balance scale the lanes.
+ */
+export function waveformLaneLayout(opts: {
+  foldMono: boolean
+  stereoLayout: boolean
+  sourceChannels: number
+  panPct: number
+  leftDb: number
+  rightDb: number
+}): { lanes: 1 | 2; gains: [number, number] } {
+  if (opts.foldMono) return { lanes: 1, gains: [1, 1] }
+  const stereo = opts.stereoLayout || opts.sourceChannels >= 2
+  if (!stereo) return { lanes: 1, gains: [1, 1] }
+  const pan = equalPowerPanGains(opts.panPct)
+  return {
+    lanes: 2,
+    gains: [dbToGain(opts.leftDb) * pan.left, dbToGain(opts.rightDb) * pan.right],
+  }
+}
+
 function snapAudioParam(param: AudioParam, value: number, now: number): void {
   param.cancelScheduledValues(now)
   param.setValueAtTime(value, now)

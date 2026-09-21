@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MAX_HZ, EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
@@ -84,15 +84,15 @@ export function EqCurve({
         const bins = new Float32Array(analyser.frequencyBinCount)
         analyser.getFloatFrequencyData(bins)
         const fftSr = engine.getSnapshot().sampleRate || sr
-        const plotMax = spectrumMaxHz(fftSr, EQ_MAX_HZ)
+        const plotMax = spectrumMaxHz(fftSr)
         const peaks = bandPeakDb(bins, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ, plotMax)
         const edges = logBandEdgesHz(EQ_MIN_HZ, plotMax, EQ_MINI_BAND_COUNT)
         const gap = Math.max(1, Math.floor((width / EQ_MINI_BAND_COUNT) * 0.12))
         const zeroY = dbToY(0, height)
         ctx.fillStyle = colorWithAlpha(colors.spectrum, 0.42)
         for (let i = 0; i < EQ_MINI_BAND_COUNT; i++) {
-          const x0 = freqToX(edges[i] ?? EQ_MIN_HZ, width, EQ_MAX_HZ)
-          const x1 = freqToX(edges[i + 1] ?? plotMax, width, EQ_MAX_HZ)
+          const x0 = freqToX(edges[i] ?? EQ_MIN_HZ, width, plotMax)
+          const x1 = freqToX(edges[i + 1] ?? plotMax, width, plotMax)
           const mag = peaks[i] ?? -100
           const t = Math.min(1, Math.max(0, (0 - mag) / 90))
           const y = zeroY + t * (height - zeroY)
@@ -108,8 +108,9 @@ export function EqCurve({
       ctx.lineTo(width, zeroY)
       ctx.stroke()
       const live = engine.getSnapshot()
+      const plotMax = spectrumMaxHz(live.sampleRate || sr)
       const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
-      const freqs = logFreqAxis(width, EQ_MIN_HZ, EQ_MAX_HZ)
+      const freqs = logFreqAxis(width, EQ_MIN_HZ, plotMax)
       const tone = eqTone(toneIndex, colors)
       const yAt = (db: number) => Math.min(height, Math.max(0, dbToY(db, height)))
       ctx.save()
@@ -177,7 +178,8 @@ export function EqCurve({
     const y = event.clientY - rect.top
     const band = bands[d.index]
     if (!band) return
-    const frequency = xToFreq(x, rect.width, EQ_MAX_HZ)
+    const plotMax = spectrumMaxHz(sr)
+    const frequency = xToFreq(x, rect.width, plotMax)
     const db = yToDb(y, rect.height)
     onDragBand?.(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY))
   }
@@ -196,7 +198,7 @@ export function EqCurve({
       <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
       {bands.map((band, index) => {
         if (band.type === 'off') return null
-        const xPct = freqToX(band.frequency, 1, EQ_MAX_HZ) * 100
+        const xPct = freqToX(band.frequency, 1, spectrumMaxHz(sr)) * 100
         const liveBands = liveEqBandsFromParams(bands, engine.getSnapshot().liveParams, modulate)
         const yPct =
           dbToY(eqNodePlotDb(liveBands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100

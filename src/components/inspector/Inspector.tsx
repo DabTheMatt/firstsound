@@ -494,6 +494,38 @@ function ModuleInspector({
             onChange={(d) => engine.setDirection(d)}
           />
           {params(GAIN_IDS)}
+          <h3 className={styles.sub}>Channels</h3>
+          <p className={styles.help}>
+            Make mono sums left and right. Make stereo copies a mono file onto both sides so pan and
+            balance can act. Waveform lanes follow these controls.
+          </p>
+          <div className={styles.row}>
+            <Toggle
+              pressed={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5}
+              label="Make mono"
+              title="Sum left and right into one channel. Visualizations and meters follow."
+              onToggle={() =>
+                engine.setChannelLayout(
+                  snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 'original' : 'mono',
+                )
+              }
+            />
+            <Toggle
+              pressed={snap.channelLayout === 'stereo'}
+              label="Make stereo"
+              title="Duplicate a mono file onto left and right so each side can be processed."
+              onToggle={() =>
+                engine.setChannelLayout(snap.channelLayout === 'stereo' ? 'original' : 'stereo')
+              }
+            />
+            <Toggle
+              pressed={snap.params.invertPhase > 0.5}
+              label="Invert phase"
+              title="Flips polarity of the input."
+              onToggle={() => engine.setParam('invertPhase', snap.params.invertPhase > 0.5 ? 0 : 1)}
+            />
+          </div>
+          {params(PAN_IDS)}
           <div className={styles.stack}>
             <Toggle
               pressed={snap.params.stretchInterpOn > 0.5}
@@ -803,6 +835,20 @@ function EqEditor({
         presets={EQ_PRESETS.map((p) => ({ id: p.id, name: p.name, category: p.category, hint: p.hint }))}
         onApply={(id) => engine.applyEqPreset(id, instanceId)}
       />
+      {bands.length < EQ_MAX_BANDS ? (
+        <div className={styles.eqAddBar}>
+          <button
+            type="button"
+            className={styles.ghost}
+            onClick={() => {
+              const next = engine.addEqBand(instanceId)
+              if (next != null) setOpenBand(next)
+            }}
+          >
+            Add band ({bands.length}/{EQ_MAX_BANDS})
+          </button>
+        </div>
+      ) : null}
       <Segmented
         label="EQ listen"
         value={snap.eqListen}

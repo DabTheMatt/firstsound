@@ -37,7 +37,16 @@ export function musicalScaleHz(minHz = 10, maxHz = 25000): { hz: number; label: 
   return out
 }
 
-export const FREQ_SCALE_HZ = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 25000] as const
+/** Dense analyzer grid, labeled through 22 kHz. */
+export const FREQ_SCALE_HZ = [
+  20, 30, 40, 50, 60, 80, 100, 200, 300, 400, 500, 800, 1000, 2000, 3000, 4000, 6000, 8000, 10000, 20000, 22000,
+] as const
+
+const FREQ_TICK_MAJOR = new Set([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 22000])
+
+export function freqTickIsMajor(hz: number): boolean {
+  return FREQ_TICK_MAJOR.has(hz)
+}
 
 export function formatFreqTick(hz: number): string {
   if (hz >= 1000) return `${hz / 1000}k`
