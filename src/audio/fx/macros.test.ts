@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
 import { applyDelayMacro, applyReverbMacro, delayMacroNormalized } from './macros'
 import { migrateSpaceParams } from './migrate'
-import { defaultPresetFor, findSpacePreset, presetsForReverbType, SPACE_PRESETS } from './presets'
+import {
+  defaultPresetFor,
+  findSpacePreset,
+  presetsForDelayType,
+  presetsForReverbType,
+  SPACE_PRESETS,
+} from './presets'
 import { parseReverbType, REVERB_TYPES } from './types'
 
 describe('macros', () => {
@@ -85,5 +91,15 @@ describe('presets', () => {
     expect(presetsForReverbType('custom')).toEqual([])
     expect(parseReverbType('custom')).toBe('custom')
     expect(REVERB_TYPES.some((t) => t.value === 'custom' && t.label === 'Custom')).toBe(true)
+  })
+
+  it('lists only factory presets that match the delay type', () => {
+    const analog = presetsForDelayType('analog')
+    expect(analog.length).toBeGreaterThan(0)
+    expect(analog.every((p) => p.delayType === 'analog')).toBe(true)
+    expect(analog.some((p) => p.id === 'dly-analog')).toBe(true)
+    expect(analog.some((p) => p.id === 'dly-tape')).toBe(false)
+    expect(presetsForDelayType('tape').every((p) => p.delayType === 'tape')).toBe(true)
+    expect(presetsForDelayType('digital').some((p) => p.id === 'dly-1-4')).toBe(true)
   })
 })

@@ -91,6 +91,32 @@
   text-align: center;
 }
 
+.enable {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.enable:hover {
+  background: var(--bg-control-hover);
+}
+
+.enableOff {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.enableOn {
+  color: var(--text-muted);
+}
+
 .console {
   display: flex;
   flex-direction: column;

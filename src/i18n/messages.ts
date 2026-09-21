@@ -155,6 +155,9 @@ export type Messages = {
     splitTitle: string
     split: string
     eqTitle: string
+    eqEnable: string
+    eqOn: string
+    eqAdd: string
     tracksTitle: string
     tracks: string
     zoomOut: string
@@ -545,6 +548,9 @@ export const EN: Messages = {
     splitTitle: 'Split view',
     split: 'Split',
     eqTitle: 'EQ console',
+    eqEnable: 'Enable EQ',
+    eqOn: 'EQ on',
+    eqAdd: 'Add EQ',
     tracksTitle: 'Tracks and mixer',
     tracks: 'Tracks',
     zoomOut: 'Zoom out',
@@ -1020,6 +1026,9 @@ export const PL: Messages = {
     splitTitle: 'Widok dzielony',
     split: 'Split',
     eqTitle: 'Konsola EQ',
+    eqEnable: 'Włącz EQ',
+    eqOn: 'EQ włączone',
+    eqAdd: 'Dodaj EQ',
     tracksTitle: 'Ślady i mikser',
     tracks: 'Ślady',
     zoomOut: 'Oddal',

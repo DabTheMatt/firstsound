@@ -83,8 +83,8 @@ type Layer = 'pre' | 'post' | 'both'
 
 const SPECTRUM_PREF_KEY = 'field.spectrum'
 
-/** Inset so chrome, notes, and Hz labels sit on the plot with a small margin. */
-export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 8, bottom: 26 }
+/** Top pad keeps note names (C1–C8) above the FFT; bottom pad keeps Hz ticks. */
+export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 36, bottom: 26 }
 
 type SpectrumPrefs = {
   layer: Layer
@@ -328,7 +328,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
         ctx.font = `${7 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        ctx.fillText('dB', 4 * dpr, top + 11 * dpr)
+        ctx.fillText('dB', 4 * dpr, top - 3 * dpr)
 
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'center'
@@ -349,11 +349,11 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         }
 
         ctx.textBaseline = 'bottom'
-        ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.8)
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         for (const tick of musicalScaleHz(minHz, maxHz)) {
           const x = hzToX(tick.hz, minHz, maxHz, left, right, scale)
-          ctx.fillText(tick.label, x, bottom - 3 * dpr)
+          ctx.fillText(tick.label, x, top - 4 * dpr)
         }
 
         let postEqGains: Float32Array | null = null

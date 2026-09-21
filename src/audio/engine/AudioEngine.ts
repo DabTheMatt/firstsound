@@ -1902,6 +1902,7 @@ export class AudioEngine {
     this.chain = next
     if (added?.type === 'eq') this.eqById.set(added.instanceId, cloneEqState())
     if (added?.type === 'grain') this.engineMode = 'grain'
+    this.emit()
     void this.rebuildGraph()
     return added?.instanceId ?? null
   }

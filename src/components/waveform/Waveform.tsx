@@ -84,6 +84,7 @@ type Props = {
   followPlayhead?: boolean
   emptyLabel?: string
   trimHandles?: boolean
+  onSelectModule?: (instanceId: string) => void
 }
 
 export type WaveformHandle = {
@@ -160,6 +161,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     followPlayhead = false,
     emptyLabel,
     trimHandles = false,
+    onSelectModule,
   },
   ref,
 ) {
@@ -1078,7 +1080,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               }}
             />
             <div className={styles.eqConsole} style={{ flex: 1 - eqShare }}>
-              <EqConsole />
+              <EqConsole onFocusModule={onSelectModule} />
             </div>
           </>
         ) : null}
