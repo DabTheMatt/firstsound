@@ -115,6 +115,30 @@ export function CompactTransport({
           {t.transport.loop}
         </button>
         {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            disabled={disabled}
+            title={t.transport.selStartTitle}
+            aria-label={t.transport.selStart}
+            onClick={() => engine.seekSeconds(start, 'region')}
+          >
+            {t.transport.selStart}
+          </button>
+        ) : null}
+        {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            disabled={disabled}
+            title={t.transport.selEndTitle}
+            aria-label={t.transport.selEnd}
+            onClick={() => engine.seekSeconds(end, 'region')}
+          >
+            {t.transport.selEnd}
+          </button>
+        ) : null}
+        {!minimal ? (
           <button type="button" className={styles.icon} disabled={!canUndo} aria-label={t.transport.undo} onClick={onUndo}>
             {t.transport.undo}
           </button>
@@ -139,28 +163,6 @@ export function CompactTransport({
           {bpm.toFixed(1)} BPM
         </span>
       </p>
-      {!minimal ? (
-        <div className={styles.jumps}>
-          <button
-            type="button"
-            disabled={disabled}
-            title={t.transport.selStartTitle}
-            aria-label={t.transport.selStart}
-            onClick={() => engine.seekSeconds(start, 'region')}
-          >
-            {t.transport.selStart}
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            title={t.transport.selEndTitle}
-            aria-label={t.transport.selEnd}
-            onClick={() => engine.seekSeconds(end, 'region')}
-          >
-            {t.transport.selEnd}
-          </button>
-        </div>
-      ) : null}
       <div className={styles.cta}>
         {!minimal ? (
           <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>

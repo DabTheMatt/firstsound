@@ -10,13 +10,19 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { eqTone, readThemeColors } from '../../theme'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import styles from './EqConsole.module.css'
 
+type Props = {
+  onFocusModule?: (instanceId: string) => void
+}
+
 /** Mixer-style EQ strips under the FFT: one column per enabled band. */
-export function EqConsole() {
+export function EqConsole({ onFocusModule }: Props) {
+  const { t } = useI18n()
   const snap = useEngine()
   const eqs = snap.chain.filter((m) => m.type === 'eq')
   const many = eqs.length > 1
@@ -26,11 +32,33 @@ export function EqConsole() {
   useEffect(() => subscribeEqOverlayFocus(setFocusRaw), [])
 
   const visible = eqs.filter((mod) => eqOverlayIncludes(focus, mod.instanceId))
+  const needsEq = eqs.length === 0
+  const bypassed = visible.filter((mod) => mod.bypassed)
+  const canEnable = needsEq || bypassed.length > 0
+
+  const enableEq = () => {
+    if (needsEq) {
+      const id = engine.insertModule('eq', Math.max(0, snap.chain.length - 2))
+      if (id) onFocusModule?.(id)
+      return
+    }
+    for (const mod of bypassed) engine.setModuleBypass(mod.instanceId, false)
+    const first = visible[0] ?? eqs[0]
+    if (first) onFocusModule?.(first.instanceId)
+  }
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {many ? (
-        <div className={styles.consoleHead}>
+      <div className={styles.consoleHead}>
+        <button
+          type="button"
+          className={`${styles.enable} ${canEnable ? styles.enableOff : styles.enableOn}`}
+          aria-pressed={!canEnable}
+          onClick={enableEq}
+        >
+          {needsEq ? t.waveform.eqAdd : canEnable ? t.waveform.eqEnable : t.waveform.eqOn}
+        </button>
+        {many ? (
           <label className={styles.focus}>
             EQ
             <select
@@ -48,8 +76,8 @@ export function EqConsole() {
               ))}
             </select>
           </label>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       <div className={styles.strips}>
         {visible.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []

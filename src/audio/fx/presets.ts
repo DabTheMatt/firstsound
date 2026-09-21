@@ -259,6 +259,11 @@ export function presetsForReverbType(type: ReverbType): SpacePreset[] {
   return SPACE_PRESETS.filter((p) => p.kind === 'reverb' && p.reverbType === type)
 }
 
+/** Factory delays whose algorithm matches the inspector type. */
+export function presetsForDelayType(type: DelayType): SpacePreset[] {
+  return SPACE_PRESETS.filter((p) => p.kind === 'delay' && p.delayType === type)
+}
+
 export function defaultPresetFor(kind: 'delay' | 'reverb', category: FxPresetCategory): SpacePreset | undefined {
   return presetsFor(kind, category)[0]
 }

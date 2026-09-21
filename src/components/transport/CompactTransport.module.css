@@ -1,11 +1,11 @@
 .bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
+  gap: 8px 12px;
+  min-height: 44px;
   flex: none;
-  padding: 8px 2px 4px;
+  padding: 4px 2px 2px;
 }
 
 .compact {
@@ -16,12 +16,12 @@
 .transport {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .icon,
 .loop,
-.jumps button,
 .export {
   min-height: 44px;
   min-width: 44px;
@@ -37,7 +37,6 @@
 
 .icon:hover,
 .loop:hover,
-.jumps button:hover,
 .export:hover {
   background: var(--bg-control-hover);
 }
@@ -80,23 +79,14 @@
   letter-spacing: 0.04em;
 }
 
-.jumps {
-  display: flex;
-  gap: 6px;
-}
-
 .cta {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 
-.compact .jumps,
 .compact .cta {
   grid-column: 1 / -1;
-}
-
-.compact .cta {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
 }

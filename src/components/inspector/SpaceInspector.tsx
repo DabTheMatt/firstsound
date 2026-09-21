@@ -1,10 +1,9 @@
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import {
-  DELAY_PRESET_CATEGORIES,
   findSpacePreset,
   presetHint,
-  presetsFor,
   presetsForReverbType,
+  presetsForDelayType,
 } from '../../audio/fx/presets'
 import {
   DELAY_TYPES,
@@ -155,7 +154,7 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
       {kind === 'delay' ? (
         <>
           <p className={styles.help}>
-            Type sets analog / tape / digital tone. Presets load Time, feedback, and mix starting points. Dry and Wet stay complementary when Correlate is on.
+            Type sets analog / tape / digital tone. The preset list shows only factory delays for that type. Dry and Wet stay complementary when Correlate is on.
           </p>
           <DelayPresetSelect snap={snap} />
         </>
@@ -302,11 +301,9 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
 
 function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
   const selected = snap.spacePresetId ? findSpacePreset(snap.spacePresetId) : undefined
-  const current = selected?.kind === 'delay' ? selected : undefined
-  const grouped = DELAY_PRESET_CATEGORIES.map((category) => ({
-    category,
-    items: presetsFor('delay', category),
-  })).filter((g) => g.items.length > 0)
+  const matchesType = selected?.kind === 'delay' && selected.delayType === snap.delayType
+  const current = matchesType ? selected : undefined
+  const typePresets = presetsForDelayType(snap.delayType)
   return (
     <>
       <label className={styles.field}>
@@ -315,20 +312,19 @@ function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
           className={`${styles.select} ${current ? styles.selectOn : ''}`}
           aria-label="Delay preset"
           value={current?.id ?? ''}
+          disabled={typePresets.length === 0}
           onChange={(event) => {
             const preset = findSpacePreset(event.target.value)
             if (preset) engine.applySpacePreset(preset)
           }}
         >
-          <option value="">Choose a preset</option>
-          {grouped.map((group) => (
-            <optgroup key={group.category} label={group.category}>
-              {group.items.map((p) => (
-                <option key={p.id} value={p.id} title={presetHint(p)}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
+          <option value="" disabled>
+            {typePresets.length === 0 ? 'No factory delays' : 'Choose a delay'}
+          </option>
+          {typePresets.map((p) => (
+            <option key={p.id} value={p.id} title={presetHint(p)}>
+              {p.name}
+            </option>
           ))}
         </select>
       </label>
@@ -337,7 +333,7 @@ function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
           {current.category} · {current.name}
         </p>
       ) : (
-        <p className={styles.help}>No factory delay selected.</p>
+        <p className={styles.help}>No factory delay selected for this type.</p>
       )}
       {current ? <p className={styles.help}>{presetHint(current)}</p> : null}
     </>

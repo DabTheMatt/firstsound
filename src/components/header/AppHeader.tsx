@@ -2,6 +2,7 @@ import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
+import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { ThemePicker } from './ThemePicker'
@@ -61,6 +62,7 @@ export function AppHeader({
             {snap.recording ? t.header.stop : t.header.record}
           </button>
         ) : null}
+        {!minimal ? <MonitorMix value={snap.recMonitor} label={t.mix.monitor} hint={t.mix.monitorHint} /> : null}
         {!minimal ? <ThemePicker /> : null}
         {!minimal ? (
           <button
@@ -126,6 +128,7 @@ export function AppHeader({
             {snap.recording ? t.header.stop : t.header.rec}
           </button>
         ) : null}
+        {minimal ? <MonitorMix value={snap.recMonitor} label={t.mix.monitor} hint={t.mix.monitorHint} compact /> : null}
         <button
           type="button"
           className={styles.settings}
@@ -138,5 +141,35 @@ export function AppHeader({
         </button>
       </div>
     </header>
+  )
+}
+
+function MonitorMix({
+  value,
+  label,
+  hint,
+  compact = false,
+}: {
+  value: number
+  label: string
+  hint: string
+  compact?: boolean
+}) {
+  const pct = Math.round(value * 100)
+  return (
+    <label className={`${styles.monitor} ${compact ? styles.monitorCompact : ''}`} title={hint}>
+      <span>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={pct}
+        aria-label={label}
+        aria-valuetext={`${pct}%`}
+        onChange={(event) => engine.setRecMonitor(Number(event.target.value) / 100)}
+      />
+      <em>{pct}%</em>
+    </label>
   )
 }

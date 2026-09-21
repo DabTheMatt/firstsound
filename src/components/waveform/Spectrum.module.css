@@ -8,14 +8,14 @@
 .chrome {
   position: absolute;
   z-index: 5;
-  top: 8px;
-  left: 8px;
+  top: 4px;
+  left: 48px;
   right: 8px;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 6px;
   padding: 0;
   pointer-events: none;
 }
@@ -24,8 +24,8 @@
 .chromeRight {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
   pointer-events: auto;
 }
 
@@ -55,14 +55,14 @@
 
 .bands {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  min-height: 0;
-  padding: 4px 8px 5px;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 2px 8px;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-control) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-app) 62%, transparent);
   color: var(--text-muted);
   font-size: 9px;
   letter-spacing: 0.1em;
@@ -79,13 +79,13 @@
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
-  min-width: 5.5rem;
-  min-height: 22px;
+  min-width: 4.2rem;
+  min-height: 20px;
   outline: none;
   box-shadow: none;
 }
@@ -123,7 +123,7 @@
 
 .legendDock {
   position: absolute;
-  top: 52px;
+  top: 36px;
   right: 12px;
   z-index: 3;
   display: flex;

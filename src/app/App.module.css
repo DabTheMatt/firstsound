@@ -40,10 +40,10 @@
   width: 100%;
   min-height: 0;
   background: var(--bg-app);
-  padding: 10px 14px 12px;
+  padding: 6px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   overflow: hidden;
   position: relative;
 }
@@ -58,11 +58,11 @@
 }
 
 .dock-right .work {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 64px;
 }
 
 .inspectorHidden.dock-right .work {
-  grid-template-columns: minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1fr) 64px;
 }
 
 .waveCol {

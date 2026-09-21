@@ -330,9 +330,11 @@ export default function App() {
   }
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
-    const mod = engine.getSnapshot().chain.find((m) => m.instanceId === instanceId)
+    const live = engine.getSnapshot().chain
+    const mod = live.find((m) => m.instanceId === instanceId)
     if (!mod) return
     setFocus({ kind: 'module', instanceId, type: mod.type, pane })
+    setInspectorOpen(true)
     if (mode === 'sheet') setSheetLevel('medium')
   }
 
@@ -850,6 +852,7 @@ export default function App() {
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}
+              onSelectModule={selectModule}
             />
           </div>
           {dockRight && inspectorOpen ? <aside className={styles.inspector}>{inspector}</aside> : null}

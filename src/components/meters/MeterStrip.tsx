@@ -145,6 +145,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       </p>
       <div className={styles.outKnob}>
         <ValueKnob
+          compact
           label={t.mix.out}
           valueText={formatParamValue(snap.params.outputGain, PARAMS.outputGain)}
           valueTextAccessible={formatAccessibleValue(snap.params.outputGain, PARAMS.outputGain, locale)}
@@ -155,20 +156,6 @@ export function MeterStrip({ channels, range, onRange }: Props) {
           now={Number(snap.params.outputGain.toFixed(3))}
           onChange={(n) => engine.setParam('outputGain', fromNormalized(n, PARAMS.outputGain))}
           onReset={() => engine.resetParam('outputGain')}
-        />
-      </div>
-      <div className={styles.outKnob}>
-        <ValueKnob
-          label={t.mix.monitor}
-          valueText={`${Math.round(snap.recMonitor * 100)}%`}
-          valueTextAccessible={`Monitor ${Math.round(snap.recMonitor * 100)} percent`}
-          description={t.mix.monitorHint}
-          normalized={snap.recMonitor}
-          min={0}
-          max={100}
-          now={Math.round(snap.recMonitor * 100)}
-          onChange={(n) => engine.setRecMonitor(n)}
-          onReset={() => engine.setRecMonitor(0)}
         />
       </div>
       <select
