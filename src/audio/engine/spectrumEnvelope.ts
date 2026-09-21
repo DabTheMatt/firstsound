@@ -1,3 +1,4 @@
+import { hzToX, type FreqScaleKind } from './freqScale'
 import { bandCenterHz } from './spectrumRegions'
 
 export type EnvelopePoint = { x: number; y: number }
@@ -11,20 +12,19 @@ export function spectrumEnvelopePoints(
   dbCeil = 0,
   dbFloor = -100,
   dbOffset = 0,
+  scale: FreqScaleKind = 'log',
 ): EnvelopePoint[] {
   const n = dbs.length
   if (n < 1) return []
-  const logSpan = Math.log(Math.max(maxHz, minHz * 1.01) / Math.max(1, minHz))
   const dbSpan = dbCeil - dbFloor || 1
   const out: EnvelopePoint[] = []
   for (let i = 0; i < n; i++) {
     const hz = bandCenterHz(edges, i)
-    const t = Math.log(Math.max(minHz, hz) / Math.max(1, minHz)) / logSpan
     const raw = dbs[i] ?? dbFloor
     const db = raw <= dbFloor + 1 ? dbFloor : raw + dbOffset
     const u = Math.min(1, Math.max(0, (dbCeil - db) / dbSpan))
     out.push({
-      x: plot.left + t * (plot.right - plot.left),
+      x: hzToX(hz, minHz, maxHz, plot.left, plot.right, scale),
       y: plot.top + u * (plot.bottom - plot.top),
     })
   }

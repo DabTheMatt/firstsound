@@ -2,9 +2,9 @@ import { PARAMS } from '../parameters/definitions'
 import { fromNormalized, toNormalized } from '../parameters/mapping'
 
 /**
- * XY pad for the goniometer overlay.
- * Horizontal = width (same axis as Side on the scope).
- * Vertical = M/S balance with Mid at the top, Side at the bottom.
+ * Stereo-stage pad.
+ * X = width (L/R speaker spread).
+ * Y follows xyFromClient (1 at the top): far/side at the top, near/mid at the bottom.
  */
 export function padFromMidSide(width: number, balance: number): { x: number; y: number } {
   return {

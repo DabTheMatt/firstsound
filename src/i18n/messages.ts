@@ -319,6 +319,8 @@ export type Messages = {
     master: string
     outputMix: string
     out: string
+    monitor: string
+    monitorHint: string
     masterHint: string
   }
   meters: {
@@ -569,7 +571,7 @@ export const EN: Messages = {
     killFx: 'Kill FX',
     killFxTitle: 'Kill delay and reverb tails',
     killNoise: 'Kill noise',
-    killNoiseTitle: 'Silence the distortion noise generator',
+    killNoiseTitle: 'Mutes the distortion Noise generator only — not mic feedback or other FX. Use Kill FX for delay/reverb tails.',
     loop: 'Loop',
     undo: 'Undo',
     redo: 'Redo',
@@ -792,6 +794,8 @@ export const EN: Messages = {
     master: 'Master',
     outputMix: 'Output mix',
     out: 'Out',
+    monitor: 'Monitor',
+    monitorHint: 'Mic level in the speakers while recording. Keep at 0 without headphones to avoid feedback.',
     masterHint: 'Sums every audible track into the effect chain.',
   },
   meters: {
@@ -1042,7 +1046,7 @@ export const PL: Messages = {
     killFx: 'Kill FX',
     killFxTitle: 'Utnij ogony delay i pogłosu',
     killNoise: 'Kill noise',
-    killNoiseTitle: 'Wycisz generator szumu zniekształcenia',
+    killNoiseTitle: 'Wycisza tylko generator szumu w Distortion — nie sprzężenie mikrofonu. Tails delay/reverb: Kill FX.',
     loop: 'Pętla',
     undo: 'Cofnij',
     redo: 'Ponów',
@@ -1265,6 +1269,8 @@ export const PL: Messages = {
     master: 'Master',
     outputMix: 'Mix wyjścia',
     out: 'Out',
+    monitor: 'Monitor',
+    monitorHint: 'Poziom mikrofonu w głośnikach podczas nagrania. Bez słuchawek zostaw 0, żeby uniknąć sprzężenia.',
     masterHint: 'Sumuje każdy słyszalny ślad do łańcucha efektów.',
   },
   meters: {

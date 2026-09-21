@@ -52,9 +52,8 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
       {pane === 'main' ? (
         <>
           <p className={styles.lead}>
-            The dots are a goniometer: left–right is Side (width), up–down is Mid. Drag the handle
-            with the left mouse button held — horizontal is Width, vertical is M/S Balance (Mid up,
-            Side down).
+            A listening stage: you sit at the bottom, speakers at the top. Width spreads the
+            panorama left–right. Drag toward yourself for more Mid, away for more Side.
           </p>
           <StereoField snap={snap} />
           <PresetMenu
@@ -208,17 +207,45 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
       const theme = readThemeColors()
       ctx.fillStyle = colorWithAlpha(theme.bgApp, 0.22)
       ctx.fillRect(0, 0, w, h)
+      const live = engine.getSnapshot()
+      const widthN = Math.min(1, Math.max(0, live.liveParams.msWidth / 200))
+      const spread = 0.16 + widthN * 0.72
       const cx = w / 2
-      const cy = h / 2
-      const r = Math.min(w, h) * 0.42
+      const listenerY = h - 20
+      const speakerY = 28
+      const leftX = cx - spread * (w / 2)
+      const rightX = cx + spread * (w / 2)
       ctx.strokeStyle = theme.borderSubtle
       ctx.lineWidth = 1
       ctx.beginPath()
-      ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.moveTo(cx - r, cy)
-      ctx.lineTo(cx + r, cy)
-      ctx.moveTo(cx, cy - r)
-      ctx.lineTo(cx, cy + r)
+      ctx.moveTo(leftX, speakerY)
+      ctx.lineTo(cx, listenerY)
+      ctx.lineTo(rightX, speakerY)
+      ctx.stroke()
+      const drawSpeaker = (x: number, label: string) => {
+        ctx.fillStyle = colorWithAlpha(theme.accent, 0.85)
+        ctx.beginPath()
+        ctx.moveTo(x - 7, speakerY - 4)
+        ctx.lineTo(x + 7, speakerY - 4)
+        ctx.lineTo(x + 10, speakerY + 6)
+        ctx.lineTo(x - 10, speakerY + 6)
+        ctx.closePath()
+        ctx.fill()
+        ctx.fillStyle = theme.textMuted
+        ctx.font = '9px ui-sans-serif, system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillText(label, x, speakerY - 6)
+      }
+      drawSpeaker(leftX, 'L')
+      drawSpeaker(rightX, 'R')
+      ctx.fillStyle = colorWithAlpha(theme.textPrimary, 0.9)
+      ctx.beginPath()
+      ctx.arc(cx, listenerY, 5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = colorWithAlpha(theme.accent, 0.45)
+      ctx.beginPath()
+      ctx.arc(cx, listenerY, 9, Math.PI * 1.15, Math.PI * 1.85)
       ctx.stroke()
       const has = engine.copyMidSideScope(left, right)
       if (has) {
@@ -234,12 +261,16 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
         if (corrHintRef.current) corrHintRef.current.textContent = phaseWarn ? 'Phase risk in mono' : 'Correlation'
         ctx.fillStyle = colorWithAlpha(theme.accent, 0.55)
         const step = 4
+        const reach = listenerY - speakerY - 12
         for (let i = 0; i < fL.length; i += step) {
           const L = fL[i] ?? 0
           const R = fR[i] ?? 0
-          const px = cx + ((L - R) * r) / Math.SQRT2
-          const py = cy - ((L + R) * r) / Math.SQRT2
-          ctx.fillRect(px, py, 1.4, 1.4)
+          const mag = Math.abs(L) + Math.abs(R) + 1e-6
+          const pan = (R - L) / mag
+          const energy = Math.min(1, Math.hypot(L, R))
+          const px = cx + pan * spread * (w / 2) * 0.92
+          const py = speakerY + 10 + (1 - energy) * reach
+          ctx.fillRect(px, py, 1.5, 1.5)
         }
       }
       frame = window.requestAnimationFrame(paint)
@@ -271,7 +302,7 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
         ref={wrapRef}
         className={styles.scopeWrap}
         role="application"
-        aria-label="Stereo field. Hold the left mouse button to drag. X is width, Y is M/S balance with mid at the top."
+        aria-label="Listening stage. Drag left and right to set width. Drag down toward the listener for more Mid, up for more Side."
         tabIndex={0}
         onPointerDown={(event) => {
           if (!isPrimaryPadPress(event)) return
@@ -332,8 +363,8 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
         <canvas ref={canvasRef} className={styles.scope} />
         <span className={styles.padGhost} style={{ left: `${live.x * 100}%`, top: `${(1 - live.y) * 100}%` }} />
         <span className={styles.padDot} style={{ left: `${x * 100}%`, top: `${(1 - y) * 100}%` }} />
-        <span className={styles.hintX}>Narrow — Width — Wide</span>
-        <span className={styles.hintY}>Mid ↑  Side ↓</span>
+        <span className={styles.hintX}>Near / Mid</span>
+        <span className={styles.hintY}>Far / Side</span>
       </div>
       <div ref={corrRowRef} className={styles.corr}>
         <span>−1</span>

@@ -499,6 +499,15 @@
   gap: 8px;
 }
 
+.eqAddBar {
+  position: sticky;
+  top: 44px;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 0 8px;
+  background: var(--bg-panel);
+}
+
 .band {
   border-top: 1px solid var(--border-subtle);
   padding: 8px 10px 10px;
