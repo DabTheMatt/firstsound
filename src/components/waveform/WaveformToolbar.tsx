@@ -49,7 +49,7 @@ export function WaveformToolbar({
   return (
     <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`}>
       {!minimal ? (
-        <div className={styles.tools}>
+        <div className={styles.edit}>
           {tools.map((item) => (
             <IconButton
               key={item.id}
@@ -74,21 +74,15 @@ export function WaveformToolbar({
               <AutoFadeIcon />
             </IconButton>
           ) : null}
-        </div>
-      ) : null}
-      <div className={styles.views}>
-        <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
-          <FitIcon />
-        </IconButton>
-        {!minimal ? (
+          <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
+            <FitIcon />
+          </IconButton>
           <IconButton label={t.waveform.fitSelection} caption={t.waveform.sel} onClick={() => onView('fit-selection')}>
             <FitSelIcon />
           </IconButton>
-        ) : null}
-        <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
-          <ZoomSelIcon />
-        </IconButton>
-        {!minimal ? (
+          <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
+            <ZoomSelIcon />
+          </IconButton>
           <IconButton
             label={t.waveform.normalizeView}
             caption={t.waveform.norm}
@@ -97,12 +91,21 @@ export function WaveformToolbar({
           >
             <NormIcon />
           </IconButton>
-        ) : null}
-        {!minimal ? (
           <IconButton label={t.waveform.resetZoom} caption={t.waveform.reset} onClick={() => onView('reset-zoom')}>
             <ResetIcon />
           </IconButton>
-        ) : null}
+        </div>
+      ) : (
+        <div className={styles.edit}>
+          <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
+            <FitIcon />
+          </IconButton>
+          <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
+            <ZoomSelIcon />
+          </IconButton>
+        </div>
+      )}
+      <div className={styles.views}>
         <IconButton
           label={t.waveform.waveTitle}
           caption={t.waveform.wave}

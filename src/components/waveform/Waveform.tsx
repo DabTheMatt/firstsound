@@ -788,7 +788,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     return (
     <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
-      <div className={`${styles.stage} ${splitStage ? styles.split : ''}`}>
+      <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
           className={styles.wrap}
           hidden={!showWave}
@@ -1040,9 +1040,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             style={
               viz === 'split'
                 ? { flex: 1 - waveShare }
-                : viz === 'eq-split'
-                  ? { flex: eqShare }
-                  : undefined
+                : undefined
             }
           >
             <Spectrum active={showSpec} meterRange={meterRange} />
@@ -1079,7 +1077,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 }
               }}
             />
-            <div className={styles.eqConsole} style={{ flex: 1 - eqShare }}>
+            <div
+              className={styles.eqConsole}
+              style={{ maxHeight: `${Math.round((1 - eqShare) * 100)}%` }}
+            >
               <EqConsole onFocusModule={onSelectModule} />
             </div>
           </>

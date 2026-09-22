@@ -2,12 +2,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: none;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 36px;
   padding: 0;
 }
 
-.tools,
+.edit,
 .views {
   display: flex;
   align-items: center;
@@ -17,11 +18,12 @@
   min-width: 0;
 }
 
-.tools {
+.edit {
   flex: none;
 }
 
 .views {
+  margin-left: auto;
   flex: none;
 }
 
@@ -79,7 +81,7 @@
   display: flex;
   align-items: center;
   gap: 0;
-  margin-left: auto;
+  flex: none;
 }
 
 .zoom span {

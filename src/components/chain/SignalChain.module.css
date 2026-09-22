@@ -5,8 +5,8 @@
   overflow-x: auto;
   scrollbar-width: none;
   flex: none;
-  min-height: 44px;
-  padding: 4px 0;
+  min-height: 36px;
+  padding: 0;
 }
 
 :global(html[data-low-vision='on']) .chain,

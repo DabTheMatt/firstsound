@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   bandUsesGain,
   bandUsesWidth,
@@ -18,13 +18,13 @@ import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/param
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
+import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { eqTone, readThemeColors } from '../../theme'
-import { colorWithAlpha } from '../../theme/cssColor'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from '../inspector/FxLfoSection'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
-import { eqBandAccentVars } from './eqBandStyle'
+import { eqStripAccentVars } from './eqBandStyle'
 import styles from './EqConsole.module.css'
 
 type Props = {
@@ -37,6 +37,8 @@ type Props = {
 }
 
 export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 0 }: Props) {
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
   const ids = EQ_BAND_LFO_IDS[index]
   if (!ids) return null
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
@@ -50,12 +52,11 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
   const showGain = bandUsesGain(band.type) || band.type === 'off'
   const showWidth = bandUsesWidth(band.type)
   const tone = eqTone(toneIndex, readThemeColors())
-  const accent = {
-    ...eqBandAccentVars(band.frequency),
-    '--eq-instance': tone.curve,
-    '--accent-primary': tone.curve,
-    '--accent-soft': colorWithAlpha(tone.curve, 0.22),
-  } as CSSProperties
+  const accent = eqStripAccentVars({
+    frequencyHz: band.frequency,
+    instanceCurve: tone.curve,
+    freqColors,
+  }) as CSSProperties
 
   return (
     <article

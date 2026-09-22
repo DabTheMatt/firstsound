@@ -85,17 +85,17 @@ export function AppHeader({
           </button>
         ) : null}
       </div>
-      {!minimal ? (
-        <p className={styles.meta}>
-          <span>{rate}</span>
-          <span>{ch}</span>
-          <span>{snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}</span>
-        </p>
-      ) : null}
-      <div className={styles.runtime}>
-        <RuntimeStatus />
-      </div>
       <div className={styles.trailing}>
+        <div className={styles.runtime}>
+          <RuntimeStatus />
+        </div>
+        {!minimal ? (
+          <p className={styles.meta}>
+            <span>{rate}</span>
+            <span>{ch}</span>
+            <span>{snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}</span>
+          </p>
+        ) : null}
         {modeSwitch}
         {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
