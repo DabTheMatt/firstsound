@@ -24,14 +24,26 @@
 }
 
 .eqConsole {
-  flex: 1;
-  min-height: 120px;
+  flex: 0 1 auto;
+  min-height: 0;
   min-width: 0;
 }
 
 .split .eqConsole {
-  flex: none;
-  min-height: 120px;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.eqStage .spec,
+.split.eqStage .spec {
+  flex: 1 1 auto;
+  min-height: 140px;
+}
+
+.eqStage .eqConsole,
+.split.eqStage .eqConsole {
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
 .mixDesk {

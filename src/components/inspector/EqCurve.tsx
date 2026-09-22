@@ -18,6 +18,7 @@ import {
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
+import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -157,6 +158,7 @@ export function EqCurve({
   }, [bands, sr, selectedBand, comb, toneIndex, modulate])
 
   const onNodePointerDown = (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!isPrimaryPointerDown(event)) return
     event.preventDefault()
     event.stopPropagation()
     onSelectBand?.(index)
@@ -173,6 +175,10 @@ export function EqCurve({
     const d = drag.current
     const wrap = wrapRef.current
     if (!d || d.pointerId !== event.pointerId || !wrap) return
+    if (!isPrimaryPointerHeld(event)) {
+      drag.current = null
+      return
+    }
     const rect = wrap.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top

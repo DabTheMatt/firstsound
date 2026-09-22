@@ -67,9 +67,9 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  flex: 0 0 116px;
+  flex: 1 1 116px;
   min-width: 108px;
-  max-width: 140px;
+  max-width: none;
   padding: 6px 4px 8px;
   border-right: 1px solid var(--border-subtle);
 }
@@ -180,9 +180,10 @@
 
 .params {
   display: grid;
-  grid-template-rows: repeat(3, 124px);
+  grid-template-rows: repeat(3, minmax(72px, 1fr));
   width: 100%;
-  flex: none;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .params > * {

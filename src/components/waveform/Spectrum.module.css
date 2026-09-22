@@ -202,8 +202,6 @@
   background: var(--eq-node-selected, var(--accent-primary));
   border-color: var(--eq-curve, var(--accent-primary));
   color: var(--bg-app);
-  min-width: 18px;
-  height: 18px;
 }
 
 .node:active {

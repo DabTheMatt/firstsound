@@ -27,7 +27,6 @@ import {
   SLOW_ATTACK,
   SLOW_RELEASE,
   SPECTRUM_BAND_CHOICES,
-  SPECTRUM_BAND_COUNT,
   SPECTRUM_FOLLOW_MODES,
   alignedBandDb,
   bandPeakDb,
@@ -42,8 +41,6 @@ import {
   spectrumMaxHz,
   SPECTRUM_AXIS_MAX_HZ,
   spectrumMeterAlignDb,
-  type SpectrumBandCount,
-  type SpectrumFollowMode,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import {
@@ -72,6 +69,8 @@ import {
   liveEqBandsFromParams,
 } from '../../audio/fx/lfo'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
+import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
+import { loadSpectrumPrefs, persistSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -79,58 +78,8 @@ type Props = {
   meterRange?: MeterRange
 }
 
-type Layer = 'pre' | 'post' | 'both'
-
-const SPECTRUM_PREF_KEY = 'field.spectrum'
-
 /** Top: chrome row, then note names (C1–C8). Bottom: Hz ticks. */
 export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 52, bottom: 26 }
-
-type SpectrumPrefs = {
-  layer: Layer
-  bands: SpectrumBandCount
-  regionColors: boolean
-  eqFreqColors: boolean
-  legendOpen: boolean
-  showBars: boolean
-  showLine: boolean
-  follow: SpectrumFollowMode
-}
-
-function loadPrefs(): SpectrumPrefs {
-  try {
-    const raw = JSON.parse(localStorage.getItem(SPECTRUM_PREF_KEY) ?? 'null') as Partial<SpectrumPrefs> | null
-    return {
-      layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : 'both',
-      bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
-      regionColors: raw?.regionColors !== false,
-      eqFreqColors: raw?.eqFreqColors === true,
-      legendOpen: raw?.legendOpen !== false,
-      showBars: raw?.showBars !== false,
-      showLine: raw?.showLine !== false,
-      follow: clampSpectrumFollowMode(raw?.follow),
-    }
-  } catch {
-    return {
-      layer: 'both',
-      bands: SPECTRUM_BAND_COUNT,
-      regionColors: true,
-      eqFreqColors: false,
-      legendOpen: true,
-      showBars: true,
-      showLine: true,
-      follow: 'peak',
-    }
-  }
-}
-
-function persistPrefs(prefs: SpectrumPrefs): void {
-  try {
-    localStorage.setItem(SPECTRUM_PREF_KEY, JSON.stringify(prefs))
-  } catch {
-    /* private mode */
-  }
-}
 
 function emptyBands(n: number): Float32Array {
   return new Float32Array(n).fill(-100)
@@ -212,7 +161,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   const plotRef = useRef<HTMLDivElement>(null)
   const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const freqScaleRef = useRef(freqScale)
-  const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadPrefs())
+  const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
@@ -243,13 +192,15 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
 
   useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
 
+  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
+
   useEffect(() => {
     eqFocusRef.current = eqFocus
   }, [eqFocus])
 
   useEffect(() => {
     prefsRef.current = prefs
-    persistPrefs(prefs)
+    persistSpectrumPrefs(prefs)
     preFast.current = emptyBands(prefs.bands)
     preSlow.current = emptyBands(prefs.bands)
     postFast.current = emptyBands(prefs.bands)
@@ -564,6 +515,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     index: number,
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => {
+    if (!isPrimaryPointerDown(event)) return
     event.preventDefault()
     event.stopPropagation()
     setSelectedBand({ instanceId, index })
@@ -582,6 +534,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     const d = drag.current
     const plot = plotRef.current
     if (!d || d.pointerId !== event.pointerId || !plot) return
+    if (!isPrimaryPointerHeld(event)) {
+      drag.current = null
+      return
+    }
     const rect = plot.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
@@ -625,7 +581,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               aria-label="EQ spectrum layer"
               value={prefs.layer}
               onChange={(event) =>
-                setPrefs((p) => ({ ...p, layer: event.target.value as Layer }))
+                setPrefs((p) => ({ ...p, layer: event.target.value as SpectrumLayer }))
               }
             >
               <option value="pre">Before</option>

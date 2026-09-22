@@ -780,7 +780,7 @@ export default function App() {
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
-        <div id="main-controls">
+        <div id="main-controls" className={styles.chromeRow}>
         <SignalChain
           chain={snap.chain}
           selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
@@ -788,7 +788,6 @@ export default function App() {
           touch={compact}
           minimal={isPhoneLayout}
         />
-        </div>
 
         <WaveformToolbar
           tool={tool}
@@ -821,6 +820,7 @@ export default function App() {
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
         />
+        </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
           <div className={styles.waveCol}>
