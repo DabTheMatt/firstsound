@@ -52,7 +52,7 @@
   white-space: nowrap;
   border: 0;
   background: transparent;
-  color: var(--accent-primary);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   padding: 0;

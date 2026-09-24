@@ -147,18 +147,23 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 36px;
-  border: 1px solid var(--border-default);
+  min-height: 32px;
+  border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-disabled);
 }
 
 .tile.active {
   color: var(--accent-primary);
   border-color: var(--accent-primary);
-  background: transparent;
+  background: var(--accent-soft);
   box-shadow: none;
+}
+
+.tile.active .tab {
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .tile:hover:not(.active):not(.bypassed) {
@@ -245,6 +250,10 @@ html[data-low-vision='on'] .tile.bypassed {
 }
 
 .powerOn {
+  color: var(--text-muted);
+}
+
+.tile.active .powerOn {
   color: var(--accent-primary);
 }
 

@@ -23,9 +23,10 @@ export function resolveLayoutMode(input: LayoutInput): LayoutMode {
 
 export function inspectorWidth(mode: LayoutMode, viewportWidth: number): number {
   if (mode !== 'dock-right') return 0
-  if (viewportWidth < 1180) return 280
-  if (viewportWidth < 1400) return 320
-  return 360
+  if (viewportWidth < 1180) return 304
+  if (viewportWidth < 1440) return 368
+  if (viewportWidth < 1720) return 408
+  return 440
 }
 
 export function meterColumnWidth(mode: LayoutMode): number {

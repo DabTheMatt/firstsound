@@ -49,7 +49,9 @@ export function WaveformToolbar({
   return (
     <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`}>
       {!minimal ? (
-        <div className={styles.edit}>
+        <div className={`${styles.cluster} ${styles.tools}`}>
+          <span className={styles.kicker}>{t.waveform.edit}</span>
+          <div className={styles.edit}>
           {tools.map((item) => (
             <IconButton
               key={item.id}
@@ -94,18 +96,24 @@ export function WaveformToolbar({
           <IconButton label={t.waveform.resetZoom} caption={t.waveform.reset} onClick={() => onView('reset-zoom')}>
             <ResetIcon />
           </IconButton>
+          </div>
         </div>
       ) : (
-        <div className={styles.edit}>
+        <div className={`${styles.cluster} ${styles.tools}`}>
+          <span className={styles.kicker}>{t.waveform.edit}</span>
+          <div className={styles.edit}>
           <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
             <FitIcon />
           </IconButton>
           <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
             <ZoomSelIcon />
           </IconButton>
+          </div>
         </div>
       )}
-      <div className={styles.views}>
+      <div className={`${styles.cluster} ${styles.view}`}>
+        <span className={styles.kicker}>{t.waveform.viewGroup}</span>
+        <div className={styles.views}>
         <IconButton
           label={t.waveform.waveTitle}
           caption={t.waveform.wave}
@@ -162,6 +170,7 @@ export function WaveformToolbar({
             <MixSplitIcon />
           </IconButton>
         ) : null}
+        </div>
       </div>
       {!minimal ? (
         <div className={styles.zoom}>
