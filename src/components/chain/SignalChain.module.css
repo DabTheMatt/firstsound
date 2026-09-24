@@ -157,7 +157,7 @@
 .tile.active {
   color: var(--accent-primary);
   border-color: var(--accent-primary);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel));
   box-shadow: none;
 }
 
