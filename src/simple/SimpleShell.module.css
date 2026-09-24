@@ -2,18 +2,22 @@
   height: 100%;
   min-height: var(--app-height, 100dvh);
   width: 100%;
+  max-width: 100%;
   display: flex;
   justify-content: center;
   background: var(--bg-app);
   color: var(--text-primary);
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .shell {
   width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -28,6 +32,8 @@
   gap: 8px;
   flex: none;
   min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .modeSlot {
@@ -63,6 +69,8 @@
 .main {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -74,6 +82,8 @@
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   flex: 1 1 auto;
 }
 
@@ -92,10 +102,14 @@
 .tools {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   flex: none;
   min-width: 0;
   min-height: 0;
+  background: var(--bg-panel);
+  border-radius: 20px;
+  padding: 14px 14px 12px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .toolsBody {
@@ -171,15 +185,30 @@
   color: var(--text-muted);
 }
 
-.actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+.section {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.action {
+  width: 100%;
 }
 
 .action,
 .chip,
-.auto,
+.utility,
 .save,
 .saveFile,
 .tile {
@@ -188,7 +217,8 @@
   border: 0;
   background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
@@ -200,12 +230,16 @@
   box-shadow: inset 0 0 0 1.5px var(--text-primary);
 }
 
+.ab button.abOn {
+  background: var(--text-primary);
+  color: var(--bg-app);
+  box-shadow: none;
+}
+
 .trimRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  min-height: 48px;
 }
 
 .length {
@@ -215,28 +249,6 @@
   min-height: 1.25em;
 }
 
-.actionHints {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  min-height: 1.25em;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.tones {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.toneHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  min-height: 28px;
-}
-
-.toneHead h2,
 .sheet h2 {
   margin: 0;
   font-size: 15px;
@@ -245,24 +257,39 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 148px), 1fr));
   gap: 8px;
+  min-width: 0;
 }
 
 .tile {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-start;
   padding: 12px 14px;
   text-align: left;
-  min-height: 76px;
+  min-height: 64px;
+  min-width: 0;
+  line-height: 1.25;
+  white-space: normal;
 }
 
-.tile small {
+.utilities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.utility {
+  width: 100%;
+  min-height: 44px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 450;
   color: var(--text-muted);
-  font-size: 11px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
 }
 
 .amount {
@@ -278,7 +305,8 @@
   max-width: 100%;
   min-width: 0;
   margin: 0;
-  min-height: 28px;
+  height: 44px;
+  min-height: 44px;
   box-sizing: border-box;
   accent-color: var(--text-primary);
 }
@@ -291,8 +319,8 @@
 }
 
 .bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   flex: none;
   padding-top: 4px;
@@ -310,23 +338,29 @@
 
 .ab button {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ab button.abOn {
+  background: var(--text-primary);
+  color: var(--bg-app);
+  box-shadow: none;
 }
 
 .save {
-  min-width: 120px;
+  width: 100%;
+  min-height: 52px;
   padding: 0 18px;
   background: var(--text-primary);
   color: var(--bg-app);
-}
-
-.auto {
-  min-height: 48px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .sheetScrim {
@@ -367,16 +401,20 @@
 
 .segments {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 
 .segments button {
   min-height: 44px;
+  min-width: 0;
   border: 0;
   border-radius: 12px;
   background: color-mix(in srgb, var(--text-primary) 8%, transparent);
   color: var(--text-primary);
+  font-size: 13px;
+  padding: 0 4px;
 }
 
 .saveForm,
@@ -412,8 +450,8 @@
 
 .phone .wave,
 .phone .wave > * {
-  min-height: 168px;
-  height: min(30vh, 240px);
+  min-height: 148px;
+  height: min(26vh, 200px);
   flex: none;
 }
 
@@ -421,9 +459,24 @@
   flex: none;
 }
 
+.phone .shell {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .phone .tools {
   flex: 1 1 auto;
+  min-width: 0;
   overflow: auto;
+}
+
+.phone .segments,
+.phone .utilities {
+  grid-template-columns: 1fr;
+}
+
+.phone .segments {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .phone .bottom,
@@ -431,8 +484,13 @@
   position: sticky;
   bottom: 0;
   z-index: 2;
-  background: var(--bg-app);
+  background: var(--bg-panel);
+  padding-top: 8px;
   padding-bottom: 4px;
+}
+
+.bottom .link {
+  align-self: center;
 }
 
 .tablet .shell,
@@ -441,13 +499,20 @@
   gap: 14px;
 }
 
-.tablet .wave,
-.tablet .wave > * {
-  min-height: 260px;
+.tablet .stageCol {
+  flex: none;
 }
 
-.tablet .tiles {
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+.tablet .wave,
+.tablet .wave > * {
+  min-height: 180px;
+  height: min(32vh, 280px);
+  flex: none;
+}
+
+.tablet .tools {
+  flex: 1 1 auto;
+  overflow: auto;
 }
 
 .tablet .sheet {
@@ -467,9 +532,9 @@
 
 .desktop .main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 1.75fr) minmax(320px, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 16px 24px;
+  gap: 16px 20px;
   overflow: hidden;
 }
 
@@ -497,8 +562,8 @@
 
 .desktop .tools {
   overflow: hidden;
-  padding-bottom: 0;
-  gap: 8px;
+  padding: 16px 16px 14px;
+  gap: 12px;
 }
 
 .desktop .toolsBody {
@@ -515,55 +580,13 @@
   min-height: 0;
 }
 
-.desktop .action,
-.desktop .chip,
-.desktop .auto,
-.desktop .save,
-.desktop .saveFile,
 .desktop .tile {
-  min-height: 34px;
-  border-radius: 10px;
-  font-size: 12px;
+  min-height: 56px;
 }
 
-.desktop .tile {
-  min-height: 52px;
-  padding: 8px 10px;
-  gap: 2px;
-}
-
-.desktop .tiles {
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.desktop .tools .tiles {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-
-.desktop .trimRow,
-.desktop .amount {
-  min-height: 0;
-}
-
-.desktop .amount {
-  gap: 4px;
-}
-
-.desktop .ab button,
 .desktop .ghost,
 .desktop .link {
-  min-height: 34px;
-  font-size: 12px;
-}
-
-.desktop .save {
-  min-width: 96px;
-  padding: 0 14px;
-}
-
-.desktop .auto {
-  min-height: 36px;
+  min-height: 44px;
 }
 
 .desktop .sheetScrim {

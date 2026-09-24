@@ -17,7 +17,6 @@ import { fadeSecondsForStep, fadeStepFromSeconds, FADE_STEP_IDS, type FadeStepId
 import {
   DEFAULT_TONE_AMOUNT,
   FEATURED_TONE_IDS,
-  SIMPLE_TONE_IDS,
   clampToneAmount,
   matchSimpleTone,
   toneBandsAt,
@@ -25,7 +24,7 @@ import {
 } from './tonePresets'
 import styles from './SimpleShell.module.css'
 
-type Sheet = 'none' | 'fades' | 'tones' | 'save' | 'restore'
+type Sheet = 'none' | 'save' | 'restore'
 
 type Props = {
   snap: EngineSnapshot
@@ -307,7 +306,9 @@ export function SimpleShell({
           <p className={styles.status} aria-live="polite">
             {status ?? ''}
           </p>
-          <div className={styles.actions}>
+
+          <section className={styles.section} aria-labelledby="simple-cut">
+            <h2 id="simple-cut">{t.simple.cut}</h2>
             <button
               type="button"
               className={styles.action}
@@ -316,44 +317,57 @@ export function SimpleShell({
             >
               {t.simple.trim}
             </button>
-            <button type="button" className={styles.action} disabled={!snap.sampleLoaded} onClick={() => setSheet('fades')}>
-              {t.simple.startEnd}
-            </button>
-            <button
-              type="button"
-              className={styles.action}
-              disabled={!snap.sampleLoaded}
-              onClick={() => {
-                exitOriginal()
-                onLevelLoudness()
-                setStatus(t.simple.levelDone)
-              }}
-            >
-              {t.simple.levelVolume}
-            </button>
-          </div>
-          <div className={styles.trimRow}>
-            <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('start')}>
-              {t.simple.setStart}
-            </button>
-            <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('end')}>
-              {t.simple.setEnd}
-            </button>
-            <p className={styles.length}>{t.simple.length(formatSimpleSeconds(regionLen, locale))}</p>
-          </div>
-          <div className={styles.actionHints}>
-            <span />
-            <span />
-            <span>{t.simple.levelHint}</span>
-          </div>
-
-          <section className={styles.tones} aria-label={t.simple.tone}>
-            <div className={styles.toneHead}>
-              <h2>{t.simple.tone}</h2>
-              <button type="button" className={styles.link} onClick={() => setSheet('tones')}>
-                {t.simple.moreTones}
+            <div className={styles.trimRow}>
+              <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('start')}>
+                {t.simple.setStart}
+              </button>
+              <button type="button" className={styles.chip} disabled={!snap.sampleLoaded} onClick={() => setEdgeFromPlayhead('end')}>
+                {t.simple.setEnd}
               </button>
             </div>
+            <p className={styles.length}>{t.simple.length(formatSimpleSeconds(regionLen, locale))}</p>
+            <p className={styles.sheetLabel} id="fade-in-label">
+              {t.simple.fadeIn}
+            </p>
+            <div className={styles.segments} role="radiogroup" aria-labelledby="fade-in-label">
+              {FADE_STEP_IDS.map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  role="radio"
+                  aria-checked={fadeInStep === step}
+                  aria-label={t.simple.fadeInAria(fadeInCopy[step])}
+                  className={fadeInStep === step ? styles.segOn : ''}
+                  disabled={!snap.sampleLoaded}
+                  onClick={() => setFade('in', step)}
+                >
+                  {fadeInCopy[step]}
+                </button>
+              ))}
+            </div>
+            <p className={styles.sheetLabel} id="fade-out-label">
+              {t.simple.fadeOut}
+            </p>
+            <div className={styles.segments} role="radiogroup" aria-labelledby="fade-out-label">
+              {FADE_STEP_IDS.map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  role="radio"
+                  aria-checked={fadeOutStep === step}
+                  aria-label={t.simple.fadeOutAria(fadeOutCopy[step])}
+                  className={fadeOutStep === step ? styles.segOn : ''}
+                  disabled={!snap.sampleLoaded}
+                  onClick={() => setFade('out', step)}
+                >
+                  {fadeOutCopy[step]}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className={styles.section} aria-labelledby="simple-improve">
+            <h2 id="simple-improve">{t.simple.tone}</h2>
             <div className={styles.tiles}>
               {visibleTones.map((id) => {
                 const on = tone.id === id
@@ -364,24 +378,54 @@ export function SimpleShell({
                     className={`${styles.tile} ${on ? styles.tileOn : ''}`}
                     aria-pressed={on}
                     aria-label={t.simple.tones[id]?.aria}
+                    disabled={!snap.sampleLoaded}
                     onClick={() => applyTone(id)}
                   >
                     <span>{t.simple.tones[id]?.label}</span>
-                    <small>{t.simple.tones[id]?.hint}</small>
                   </button>
                 )
               })}
             </div>
-            <p className={styles.custom}>{tone.id === 'custom' ? t.simple.customTone : ''}</p>
+            {tone.id === 'custom' ? <p className={styles.custom}>{t.simple.customTone}</p> : null}
+            <div className={styles.utilities}>
+              <button
+                type="button"
+                className={styles.utility}
+                disabled={!snap.sampleLoaded}
+                onClick={() => {
+                  exitOriginal()
+                  onLevelLoudness()
+                  setStatus(t.simple.levelDone)
+                }}
+              >
+                {t.simple.levelVolume}
+              </button>
+              <button
+                type="button"
+                className={styles.utility}
+                disabled={!snap.sampleLoaded}
+                onClick={() => {
+                  exitOriginal()
+                  applyTone('clean', 0.55)
+                  onAutoFix()
+                  setStatus(t.simple.autoDone)
+                }}
+              >
+                {t.simple.autoFix}
+              </button>
+            </div>
+          </section>
+
+          <section className={styles.section} aria-labelledby="simple-strength">
+            <h2 id="simple-strength">{t.simple.amount}</h2>
             <label className={styles.amount}>
-              <span>{t.simple.amount}</span>
               <input
                 type="range"
                 min={0}
                 max={1}
                 step={0.01}
                 value={sliderValue}
-                disabled={tone.id === 'custom'}
+                disabled={tone.id === 'custom' || !snap.sampleLoaded}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(sliderValue * 100)}
@@ -407,48 +451,38 @@ export function SimpleShell({
                 <span>{t.simple.amountMore}</span>
               </span>
             </label>
-            <button
-              type="button"
-              className={styles.auto}
-              disabled={!snap.sampleLoaded}
-              onClick={() => {
-                exitOriginal()
-                applyTone('clean', 0.55)
-                onAutoFix()
-                setStatus(t.simple.autoDone)
-              }}
-            >
-              {t.simple.autoFix}
-            </button>
-            <button type="button" className={styles.link} onClick={() => setSheet('restore')}>
-              {t.simple.restore}
-            </button>
           </section>
           </div>
 
           <div className={styles.bottom}>
-            <div className={styles.ab} role="radiogroup" aria-label={t.simple.compare}>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={listenOriginal}
-                className={listenOriginal ? styles.abOn : ''}
-                onClick={() => toggleCompare(true)}
-              >
-                {t.simple.original}
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!listenOriginal}
-                className={!listenOriginal ? styles.abOn : ''}
-                onClick={() => toggleCompare(false)}
-              >
-                {t.simple.after}
-              </button>
-            </div>
+            <section className={styles.section} aria-labelledby="simple-compare">
+              <h2 id="simple-compare">{t.simple.compare}</h2>
+              <div className={styles.ab} role="radiogroup" aria-label={t.simple.compare}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={listenOriginal}
+                  className={listenOriginal ? styles.abOn : ''}
+                  onClick={() => toggleCompare(true)}
+                >
+                  {t.simple.original}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!listenOriginal}
+                  className={!listenOriginal ? styles.abOn : ''}
+                  onClick={() => toggleCompare(false)}
+                >
+                  {t.simple.after}
+                </button>
+              </div>
+            </section>
             <button type="button" className={styles.save} disabled={!snap.sampleLoaded} onClick={() => setSheet('save')}>
-              {t.simple.save}
+              {t.simple.saveFile}
+            </button>
+            <button type="button" className={styles.link} onClick={() => setSheet('restore')}>
+              {t.simple.restore}
             </button>
           </div>
         </div>
@@ -464,73 +498,6 @@ export function SimpleShell({
             onClick={(event) => event.stopPropagation()}
           >
             <button type="button" className={styles.sheetGrab} aria-label={t.simple.closeSheet} onClick={() => setSheet('none')} />
-            {sheet === 'fades' ? (
-              <>
-                <h2>{t.simple.startEnd}</h2>
-                <p className={styles.sheetLabel} id="fade-in-label">
-                  {t.simple.fadeIn}
-                </p>
-                <div className={styles.segments} role="radiogroup" aria-labelledby="fade-in-label">
-                  {FADE_STEP_IDS.map((step) => (
-                    <button
-                      key={step}
-                      type="button"
-                      role="radio"
-                      aria-checked={fadeInStep === step}
-                      aria-label={t.simple.fadeInAria(fadeInCopy[step])}
-                      className={fadeInStep === step ? styles.segOn : ''}
-                      onClick={() => setFade('in', step)}
-                    >
-                      {fadeInCopy[step]}
-                    </button>
-                  ))}
-                </div>
-                <p className={styles.sheetLabel} id="fade-out-label">
-                  {t.simple.fadeOut}
-                </p>
-                <div className={styles.segments} role="radiogroup" aria-labelledby="fade-out-label">
-                  {FADE_STEP_IDS.map((step) => (
-                    <button
-                      key={step}
-                      type="button"
-                      role="radio"
-                      aria-checked={fadeOutStep === step}
-                      aria-label={t.simple.fadeOutAria(fadeOutCopy[step])}
-                      className={fadeOutStep === step ? styles.segOn : ''}
-                      onClick={() => setFade('out', step)}
-                    >
-                      {fadeOutCopy[step]}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-            {sheet === 'tones' ? (
-              <>
-                <h2>{t.simple.tone}</h2>
-                <div className={styles.tiles}>
-                  {SIMPLE_TONE_IDS.map((id) => {
-                    const on = tone.id === id
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        className={`${styles.tile} ${on ? styles.tileOn : ''}`}
-                        aria-pressed={on}
-                        aria-label={t.simple.tones[id]?.aria}
-                        onClick={() => {
-                          applyTone(id)
-                          setSheet('none')
-                        }}
-                      >
-                        <span>{t.simple.tones[id]?.label}</span>
-                        <small>{t.simple.tones[id]?.hint}</small>
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            ) : null}
             {sheet === 'save' ? (
               <form
                 className={styles.saveForm}
