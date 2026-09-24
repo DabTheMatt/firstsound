@@ -8,9 +8,10 @@ type Props = {
   onChange: (type: EqFilterType) => void
   bypassed?: boolean
   onBypass?: () => void
+  showBypass?: boolean
 }
 
-export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass }: Props) {
+export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, showBypass = true }: Props) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const current = EQ_FILTER_TYPES.find((t) => t.value === value) ?? EQ_FILTER_TYPES[0]!
@@ -41,7 +42,7 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass }
           <EqFilterIcon type={value} />
           <span>{current.short}</span>
         </button>
-        {onBypass ? (
+        {showBypass && onBypass ? (
           <button
             type="button"
             className={`${styles.power} ${bypassed ? styles.powerOff : styles.powerOn}`}

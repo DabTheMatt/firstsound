@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { type CSSProperties, type ReactNode } from 'react'
 import {
   bandUsesGain,
   bandUsesWidth,
   bandwidthHz,
+  EQ_FILTER_TYPES,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
   formatEqHz,
@@ -12,14 +13,15 @@ import {
   nearestFilterSlope,
   type EqBand,
 } from '../../audio/engine/eqBands'
+import { selectEqBand } from '../../audio/engine/eqBandSelection'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PARAMS } from '../../audio/parameters/definitions'
+import type { ParamId } from '../../audio/parameters/types'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
-import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
-import { eqTone, readThemeColors } from '../../theme'
+import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from '../inspector/FxLfoSection'
@@ -33,53 +35,65 @@ type Props = {
   index: number
   band: EqBand
   label: string
-  toneIndex?: number
+  selected?: boolean
 }
 
-export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 0 }: Props) {
-  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
-  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+export function EqBandStrip({ snap, instanceId, index, band, label, selected = false }: Props) {
   const ids = EQ_BAND_LFO_IDS[index]
-  if (!ids) return null
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
   const modulate = eqInstanceUsesSharedLfo(snap.chain, instanceId)
-  const liveFreq = modulate ? (snap.liveParams[ids.freq] ?? band.frequency) : band.frequency
-  const liveGain = modulate ? (snap.liveParams[ids.gain] ?? band.gain) : band.gain
-  const liveQ = modulate ? (snap.liveParams[ids.q] ?? band.q) : band.q
-  const freqLfo = modulate ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
-  const gainLfo = modulate ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
-  const qLfo = modulate ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
+  const liveFreq = modulate && ids ? (snap.liveParams[ids.freq] ?? band.frequency) : band.frequency
+  const liveGain = modulate && ids ? (snap.liveParams[ids.gain] ?? band.gain) : band.gain
+  const liveQ = modulate && ids ? (snap.liveParams[ids.q] ?? band.q) : band.q
+  const freqLfo = modulate && ids ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
+  const gainLfo = modulate && ids ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
+  const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
   const showGain = bandUsesGain(band.type) || band.type === 'off'
   const showWidth = bandUsesWidth(band.type)
-  const tone = eqTone(toneIndex, readThemeColors())
   const accent = eqStripAccentVars({
     frequencyHz: band.frequency,
-    instanceCurve: tone.curve,
-    freqColors,
+    instanceCurve: eqBandColorForHz(band.frequency),
+    freqColors: true,
   }) as CSSProperties
+  const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
 
   return (
     <article
-      className={`${styles.strip} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
+      className={`${styles.strip} ${selected ? styles.stripOn : ''} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
       style={accent}
+      onPointerDown={() => selectEqBand({ instanceId, index })}
     >
       <header className={styles.stripHead}>
-        <span className={styles.stripLabel}>{label}</span>
+        <span className={styles.stripIndex}>{index + 1}</span>
+        <span className={styles.stripMeta}>
+          <span className={styles.stripLabel}>{label}</span>
+          <span className={styles.stripType}>{typeLabel}</span>
+        </span>
+        <button
+          type="button"
+          className={`${styles.power} ${styles.powerHeader} ${band.bypassed ? styles.powerOff : styles.powerOn}`}
+          aria-label={band.bypassed ? 'Enable filter' : 'Bypass filter'}
+          title={band.bypassed ? 'Enable' : 'Bypass'}
+          onClick={() => setBand({ bypassed: !band.bypassed })}
+        >
+          <PowerMark />
+        </button>
       </header>
-      <EqFilterTypeMenu
-        value={band.type}
-        onChange={(type) =>
-          setBand(
-            (type === 'highpass' || type === 'lowpass') && band.slope < 24
-              ? { type, slope: 48 }
-              : { type },
-          )
-        }
-        bypassed={Boolean(band.bypassed)}
-        onBypass={() => setBand({ bypassed: !band.bypassed })}
-      />
+      <div className={styles.typeRow}>
+        <EqFilterTypeMenu
+          value={band.type}
+          showBypass={false}
+          onChange={(type) =>
+            setBand(
+              (type === 'highpass' || type === 'lowpass') && band.slope < 24
+                ? { type, slope: 48 }
+                : { type },
+            )
+          }
+        />
+      </div>
       <div className={styles.params}>
-      <LfoParamShell id={ids.freq}>
+      <ParamSlot id={ids?.freq}>
         <ValueKnob
           compact
           label="Freq"
@@ -99,7 +113,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
             return true
           }}
         />
-      </LfoParamShell>
+      </ParamSlot>
       {band.type === 'highpass' || band.type === 'lowpass' ? (
         <div className={styles.knobSlot}>
           <ValueKnob
@@ -120,7 +134,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
           />
         </div>
       ) : showGain ? (
-        <LfoParamShell id={ids.gain}>
+        <ParamSlot id={ids?.gain}>
           <ValueKnob
             compact
             label="Gain"
@@ -140,12 +154,12 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
               return true
             }}
           />
-        </LfoParamShell>
+        </ParamSlot>
       ) : (
         <div className={styles.slotPlaceholder} aria-hidden="true" />
       )}
       {showWidth ? (
-        <LfoParamShell id={ids.q}>
+        <ParamSlot id={ids?.q}>
           <ValueKnob
             compact
             label="Width"
@@ -165,9 +179,9 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
               return true
             }}
           />
-        </LfoParamShell>
+        </ParamSlot>
       ) : (
-        <LfoParamShell id={ids.q}>
+        <ParamSlot id={ids?.q}>
           <ValueKnob
             compact
             label="Q"
@@ -187,11 +201,39 @@ export function EqBandStrip({ snap, instanceId, index, band, label, toneIndex = 
               return true
             }}
           />
-        </LfoParamShell>
+        </ParamSlot>
       )}
       </div>
-      {modulate ? <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact /> : null}
+      {modulate && ids ? (
+        <div className={styles.lfoSlot}>
+          <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact />
+        </div>
+      ) : null}
     </article>
+  )
+}
+
+function PowerMark() {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <path d="M8 2.5v5.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M5.15 4.35a4.2 4.2 0 1 0 5.7 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function ParamSlot({ id, children }: { id?: ParamId; children: ReactNode }) {
+  if (!id) return <div className={styles.knobSlot}>{children}</div>
+  return (
+    <LfoParamShell id={id}>
+      <div className={styles.knobSlot}>{children}</div>
+    </LfoParamShell>
   )
 }
 

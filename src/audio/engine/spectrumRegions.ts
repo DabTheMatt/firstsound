@@ -1,5 +1,3 @@
-import { EQ_MAX_HZ, EQ_MIN_HZ } from './eqBands'
-import { mixCssColor } from '../../theme/cssColor'
 
 /** Mixing-oriented FFT band tints. Center frequency picks the region. */
 
@@ -45,14 +43,7 @@ export function bandCenterHz(edges: ArrayLike<number>, index: number): number {
   return Math.sqrt(lo * hi)
 }
 
-const EQ_STRIP_LOW = '#7a5cff'
-const EQ_STRIP_HIGH = '#e86b3a'
-
-/** EQ strip / node color from stored (base) Hz: violet at lows, orange at highs. */
+/** Same hue the spectrum bar and frequency-scale legend use at this Hz. */
 export function eqBandColorForHz(hz: number): string {
-  const lo = Math.log(EQ_MIN_HZ)
-  const hi = Math.log(EQ_MAX_HZ)
-  const n = Number.isFinite(hz) ? hz : EQ_MIN_HZ
-  const t = (Math.log(Math.min(EQ_MAX_HZ, Math.max(EQ_MIN_HZ, n))) - lo) / (hi - lo)
-  return mixCssColor(EQ_STRIP_LOW, EQ_STRIP_HIGH, t)
+  return regionForHz(Number.isFinite(hz) ? hz : 0).color
 }

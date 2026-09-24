@@ -202,6 +202,8 @@
   background: var(--eq-node-selected, var(--accent-primary));
   border-color: var(--eq-curve, var(--accent-primary));
   color: var(--bg-app);
+  filter: brightness(1.22);
+  box-shadow: 0 0 0 2px var(--eq-curve, var(--accent-primary));
 }
 
 .node:active {

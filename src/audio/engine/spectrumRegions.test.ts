@@ -22,10 +22,11 @@ describe('spectrumRegions', () => {
     expect(c).toBeLessThan(edges[1]!)
   })
 
-  it('tints EQ bands from log frequency, violet at lows and orange at highs', () => {
-    expect(eqBandColorForHz(10)).toBe('#7a5cff')
-    expect(eqBandColorForHz(25000)).toBe('#e86b3a')
-    expect(eqBandColorForHz(40)).not.toBe(eqBandColorForHz(8000))
+  it('uses the spectrum region hue for the same frequency', () => {
+    expect(eqBandColorForHz(10)).toBe(regionForHz(10).color)
+    expect(eqBandColorForHz(25000)).toBe(regionForHz(25000).color)
+    expect(eqBandColorForHz(40)).toBe('#7a5cff')
+    expect(eqBandColorForHz(14000)).toBe('#e85a7a')
     expect(eqBandColorForHz(80)).not.toBe(eqBandColorForHz(12000))
   })
 })

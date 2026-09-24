@@ -55,9 +55,11 @@
 .strips {
   display: flex;
   flex: 1 1 auto;
+  align-items: stretch;
   min-height: 0;
+  height: 100%;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   gap: 0;
   padding: 4px 6px 8px;
 }
@@ -65,13 +67,19 @@
 .strip {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1 1 116px;
-  min-width: 108px;
-  max-width: none;
-  padding: 6px 4px 8px;
+  align-items: stretch;
+  gap: 6px;
+  flex: 0 0 148px;
+  width: 148px;
+  min-width: 148px;
+  max-width: 148px;
+  height: 100%;
+  min-height: 0;
+  padding: 6px 8px 8px;
   border-right: 1px solid var(--border-subtle);
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .strip :global([data-lfo-kind]) {
@@ -83,12 +91,67 @@
 }
 
 .stripOff {
-  opacity: 0.55;
+  opacity: 0.72;
+}
+
+.stripAdd {
+  opacity: 0.85;
+}
+
+.stripOn {
+  box-shadow: inset 0 0 0 1px var(--eq-band, var(--accent-primary));
+  filter: brightness(1.08);
 }
 
 .stripHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
   width: 100%;
+  min-height: 22px;
+  flex: none;
+}
+
+.stripMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.stripIndex {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--eq-band, var(--text-primary));
+}
+
+.stripAdd .stripLabel {
+  grid-column: 1 / -1;
   text-align: center;
+}
+
+.stripType {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.powerHeader {
+  position: static;
+  justify-self: end;
+}
+
+.typeRow {
+  flex: none;
+  width: 100%;
+}
+
+.lfoSlot {
+  flex: none;
+  width: 100%;
+  min-width: 0;
 }
 
 .enable {
@@ -179,32 +242,37 @@
 }
 
 .params {
-  display: grid;
-  grid-template-rows: repeat(3, minmax(72px, 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: none;
 }
 
 .params > * {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  width: 100%;
+  height: auto;
   min-height: 0;
+}
+
+.strip :global([data-param-id]) {
+  height: auto;
+  align-items: stretch;
 }
 
 .knobSlot {
   width: 100%;
-  height: 100%;
+  height: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 0;
 }
 
 .slotPlaceholder {
   width: 100%;
-  height: 100%;
+  min-height: 92px;
 }
 
 .typeWrap {

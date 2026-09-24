@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { EqBand } from './eqBands'
 import {
+  bellFromPlotPoint,
   clampEqOverlayDb,
   dbToY,
   eqBandDragPatch,
@@ -71,6 +72,28 @@ describe('eq plot mapping', () => {
   it('clamps spectrum gain to ±18 dB', () => {
     expect(eqBandDragPatch(peak(), 1000, 40, 1, 0).gain).toBe(SPECTRUM_EQ_MAX_DB)
     expect(eqBandDragPatch(peak(), 1000, -40, 1, 0).gain).toBe(SPECTRUM_EQ_MIN_DB)
+  })
+
+  it('maps a double-click through the active frequency scale into a clamped bell', () => {
+    const width = 400
+    const height = 200
+    const hz = 3200
+    const log = bellFromPlotPoint(freqToX(hz, width, 20000, 20, 'log'), 40, width, height, 20000, 20, 'log')
+    const lin = bellFromPlotPoint(freqToX(hz, width, 20000, 20, 'linear'), 40, width, height, 20000, 20, 'linear')
+    expect(log.type).toBe('peaking')
+    expect(log.q).toBe(0.7)
+    expect(log.frequency).toBeCloseTo(hz, 3)
+    expect(lin.frequency).toBeCloseTo(hz, 3)
+    expect(freqToX(hz, width, 20000, 20, 'log')).not.toBeCloseTo(
+      freqToX(hz, width, 20000, 20, 'linear'),
+      0,
+    )
+    const high = bellFromPlotPoint(width + 80, -40, width, height, 20000, 20, 'log')
+    expect(high.frequency).toBeLessThanOrEqual(25000)
+    expect(high.gain).toBe(18)
+    const low = bellFromPlotPoint(-20, height + 40, width, height, 20000, 20, 'mel')
+    expect(low.frequency).toBeGreaterThanOrEqual(10)
+    expect(low.gain).toBe(-18)
   })
 
   it('uses 48 bands on the mini FFT', () => {

@@ -24,14 +24,17 @@
 }
 
 .eqConsole {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 360px;
+  min-height: 220px;
+  max-height: 720px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .split .eqConsole {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 360px;
+  min-height: 220px;
+  max-height: 720px;
 }
 
 .eqStage .spec,
@@ -42,8 +45,16 @@
 
 .eqStage .eqConsole,
 .split.eqStage .eqConsole {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 360px;
+  min-height: 220px;
+  max-height: 720px;
+}
+
+.eqSplitHandle {
+  height: 14px;
+  background:
+    linear-gradient(var(--text-muted), var(--text-muted)) center / 36px 2px no-repeat,
+    var(--bg-control);
 }
 
 .mixDesk {

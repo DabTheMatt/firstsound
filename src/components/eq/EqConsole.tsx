@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import { moduleLabel } from '../../audio/chain/chain'
 import { EQ_MAX_BANDS, type EqFilterType } from '../../audio/engine/eqBands'
 import {
@@ -10,8 +11,6 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { engine, useEngine } from '../../hooks/useEngine'
-import { useI18n } from '../../i18n'
-import { eqTone, readThemeColors } from '../../theme'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import styles from './EqConsole.module.css'
@@ -22,43 +21,22 @@ type Props = {
 
 /** Mixer-style EQ strips under the FFT: one column per enabled band. */
 export function EqConsole({ onFocusModule }: Props) {
-  const { t } = useI18n()
   const snap = useEngine()
   const eqs = snap.chain.filter((m) => m.type === 'eq')
   const many = eqs.length > 1
   const [focusRaw, setFocusRaw] = useState(() => loadEqOverlayFocus())
   const focus = clampEqOverlayFocus(focusRaw, snap.chain)
+  const [selected, setSelected] = useState<EqBandSelection | null>(null)
 
   useEffect(() => subscribeEqOverlayFocus(setFocusRaw), [])
+  useEffect(() => subscribeEqBandSelection(setSelected), [])
 
   const visible = eqs.filter((mod) => eqOverlayIncludes(focus, mod.instanceId))
-  const needsEq = eqs.length === 0
-  const bypassed = visible.filter((mod) => mod.bypassed)
-  const canEnable = needsEq || bypassed.length > 0
-
-  const enableEq = () => {
-    if (needsEq) {
-      const id = engine.insertModule('eq', Math.max(0, snap.chain.length - 2))
-      if (id) onFocusModule?.(id)
-      return
-    }
-    for (const mod of bypassed) engine.setModuleBypass(mod.instanceId, false)
-    const first = visible[0] ?? eqs[0]
-    if (first) onFocusModule?.(first.instanceId)
-  }
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      <div className={styles.consoleHead}>
-        <button
-          type="button"
-          className={`${styles.enable} ${canEnable ? styles.enableOff : styles.enableOn}`}
-          aria-pressed={!canEnable}
-          onClick={enableEq}
-        >
-          {needsEq ? t.waveform.eqAdd : canEnable ? t.waveform.eqEnable : t.waveform.eqOn}
-        </button>
-        {many ? (
+      {many ? (
+        <div className={styles.consoleHead}>
           <label className={styles.focus}>
             EQ
             <select
@@ -76,13 +54,21 @@ export function EqConsole({ onFocusModule }: Props) {
               ))}
             </select>
           </label>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div className={styles.strips}>
+        {eqs.length === 0 ? (
+          <AddEqStrip
+            instanceId={null}
+            index={-1}
+            label="EQ · ADD"
+            chainLength={snap.chain.length}
+            onFocusModule={onFocusModule}
+          />
+        ) : null}
         {visible.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []
           const name = many ? moduleLabel(mod, snap.chain) : 'EQ'
-          const toneIndex = eqs.findIndex((m) => m.instanceId === mod.instanceId)
           const enabled = bands.flatMap((band, index) =>
             band.type === 'off'
               ? []
@@ -94,7 +80,7 @@ export function EqConsole({ onFocusModule }: Props) {
                     index={index}
                     band={band}
                     label={`${name} · ${index + 1}`}
-                    toneIndex={Math.max(0, toneIndex)}
+                    selected={selected?.instanceId === mod.instanceId && selected.index === index}
                   />,
                 ],
           )
@@ -107,8 +93,9 @@ export function EqConsole({ onFocusModule }: Props) {
                 key={`${mod.instanceId}-add`}
                 instanceId={mod.instanceId}
                 index={offIndex}
-                label={`${name} · add`}
-                toneIndex={Math.max(0, toneIndex)}
+                label="EQ · ADD"
+                chainLength={snap.chain.length}
+                onFocusModule={onFocusModule}
               />
             ) : null,
           ]
@@ -122,17 +109,18 @@ function AddEqStrip({
   instanceId,
   index,
   label,
-  toneIndex,
+  chainLength,
+  onFocusModule,
 }: {
-  instanceId: string
+  instanceId: string | null
   index: number
   label: string
-  toneIndex: number
+  chainLength: number
+  onFocusModule?: (instanceId: string) => void
 }) {
   const [picked, setPicked] = useState<EqFilterType>('off')
-  const tone = eqTone(toneIndex, readThemeColors())
   return (
-    <article className={`${styles.strip} ${styles.stripOff}`} style={{ ['--eq-instance' as string]: tone.curve }}>
+    <article className={`${styles.strip} ${styles.stripAdd}`}>
       <header className={styles.stripHead}>
         <span className={styles.stripLabel}>{label}</span>
       </header>
@@ -141,12 +129,23 @@ function AddEqStrip({
         onChange={(type) => {
           setPicked('off')
           if (type === 'off') return
+          let id = instanceId
+          if (!id) {
+            id = engine.insertModule('eq', Math.max(0, chainLength - 2))
+            if (id) onFocusModule?.(id)
+          }
+          if (!id) return
+          const apply = (bandIndex: number) => {
+            const slope = type === 'highpass' || type === 'lowpass' ? 48 : undefined
+            engine.setEqBand(bandIndex, slope ? { type, slope } : { type }, id!)
+            selectEqBand({ instanceId: id!, index: bandIndex })
+          }
           if (index >= 0) {
-            engine.setEqBand(index, { type }, instanceId)
+            apply(index)
             return
           }
-          const next = engine.addEqBand(instanceId)
-          if (next != null) engine.setEqBand(next, { type }, instanceId)
+          const next = engine.addEqBand(id)
+          if (next != null) apply(next)
         }}
       />
     </article>

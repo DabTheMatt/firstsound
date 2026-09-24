@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
+  bellFromPlotPoint,
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
@@ -14,6 +15,7 @@ import {
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
 import { EQ_MIN_HZ, eqModuleIsAudible } from '../../audio/engine/eqBands'
+import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
   FREQ_SCALE_HZ,
   formatFreqTick,
@@ -42,7 +44,8 @@ import {
   SPECTRUM_AXIS_MAX_HZ,
   spectrumMeterAlignDb,
 } from '../../audio/engine/spectrumBands'
-import { bandCenterHz, eqBandColorForHz, regionForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { bandCenterHz, eqBandColorForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
+import { placeEqBell } from '../eq/placeEqBell'
 import {
   clampEqOverlayFocus,
   eqInstanceUsesSharedLfo,
@@ -165,7 +168,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
-  const [selectedBand, setSelectedBand] = useState<{ instanceId: string; index: number } | null>(null)
+  const [selectedBand, setSelectedBand] = useState<EqBandSelection | null>(null)
   const prefsRef = useRef(prefs)
   const eqFocusRef = useRef(eqFocus)
   const meterMinRef = useRef(meterDbMin(meterRange))
@@ -191,6 +194,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   }, [freqScale])
 
   useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
+  useEffect(() => subscribeEqBandSelection(setSelectedBand), [])
 
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
 
@@ -346,9 +350,9 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right, scale)
               const bandW = Math.max(1, x1 - x0)
               const center = bandCenterHz(edges, i)
-              const region = regionForHz(center)
-              const barFill = fill ?? region.color
-              const barLine = line ?? region.color
+              const regionColor = eqBandColorForHz(center)
+              const barFill = fill ?? regionColor
+              const barLine = line ?? regionColor
               const slowDb = alignedBandDb(slow[i] ?? -100, alignDb)
               const fastDb = alignedBandDb(fast[i] ?? -100, alignDb)
               const slowY = dbToY(slowDb, top, bottom, dbFloor)
@@ -518,7 +522,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     if (!isPrimaryPointerDown(event)) return
     event.preventDefault()
     event.stopPropagation()
-    setSelectedBand({ instanceId, index })
+    selectEqBand({ instanceId, index })
     event.currentTarget.setPointerCapture(event.pointerId)
     const bands = snap.eqById[instanceId]?.bands ?? snap.eqBands
     drag.current = {
@@ -825,6 +829,36 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ref={canvasRef}
           className={styles.canvas}
           aria-hidden="true"
+          onDoubleClick={(event) => {
+            if (drag.current) return
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const rect = canvas.getBoundingClientRect()
+            const x = event.clientX - rect.left
+            const y = event.clientY - rect.top
+            const left = SPECTRUM_PLOT_PAD.left
+            const right = rect.width - SPECTRUM_PLOT_PAD.right
+            const top = SPECTRUM_PLOT_PAD.top
+            const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
+            if (x < left || x > right || y < top || y > bottom) return
+            const live = engine.getSnapshot()
+            const plotMax = spectrumMaxHz(live.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
+            const bell = bellFromPlotPoint(
+              x - left,
+              y - top,
+              Math.max(1, right - left),
+              Math.max(1, bottom - top),
+              plotMax,
+              EQ_MIN_HZ,
+              freqScaleRef.current,
+            )
+            const focus = eqFocusRef.current
+            const target =
+              focus !== 'all' && eqMods.some((mod) => mod.instanceId === focus)
+                ? focus
+                : (eqMods[0]?.instanceId ?? null)
+            placeEqBell(target, live.chain.length, bell)
+          }}
           onPointerMove={(event) => {
             if (drag.current) return
             const canvas = canvasRef.current
@@ -862,7 +896,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             const bands = snap.eqById[mod.instanceId]?.bands ?? []
             const modulate = eqInstanceUsesSharedLfo(snap.chain, mod.instanceId)
             const liveBands = liveEqBandsFromParams(bands, snap.liveParams, modulate)
-            const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
             const eqName = eqMods.length > 1 ? moduleLabel(mod, snap.chain) : 'EQ'
             return liveBands.map((band, index) => {
             if (band.type === 'off') return null
@@ -885,8 +918,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                   (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
                 ),
             )
-            const nodeColor = prefs.eqFreqColors ? eqBandColorForHz(band.frequency) : tone.node
-            const curveColor = prefs.eqFreqColors ? nodeColor : tone.curve
+            const nodeColor = eqBandColorForHz(band.frequency)
+            const curveColor = nodeColor
             return (
               <button
                 key={`${mod.instanceId}-${index}`}
@@ -906,6 +939,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                 title={`${eqName} band ${index + 1} ${band.type}`}
                 aria-label={`${eqName} band ${index + 1} ${band.type}`}
                 onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
+                onDoubleClick={(event) => event.stopPropagation()}
                 onPointerMove={onNodePointerMove}
                 onPointerUp={onNodePointerUp}
                 onPointerCancel={onNodePointerUp}

@@ -122,6 +122,27 @@ export function yToDb(
   return maxDb - (y / Math.max(1, height)) * (maxDb - minDb)
 }
 
+/** Bell created by double-clicking the EQ plot. Uses the active frequency scale. */
+export function bellFromPlotPoint(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  maxHz: number,
+  minHz = EQ_MIN_HZ,
+  scale: FreqScaleKind = 'log',
+): { type: 'peaking'; frequency: number; gain: number; q: number } {
+  const frequency = Math.min(
+    EQ_MAX_HZ,
+    Math.max(EQ_MIN_HZ, xToFreq(x, width, maxHz, minHz, scale)),
+  )
+  const gain = Math.min(
+    SPECTRUM_EQ_MAX_DB,
+    Math.max(SPECTRUM_EQ_MIN_DB, yToDb(y, height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)),
+  )
+  return { type: 'peaking', frequency, gain, q: 0.7 }
+}
+
 /** Vertical node placement: gain for bells/shelves, a Q-mapped dB for width filters. */
 export function nodeDisplayDb(band: EqBand): number {
   if (bandUsesGain(band.type)) return band.gain

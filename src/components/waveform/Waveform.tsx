@@ -96,7 +96,9 @@ export type WaveformHandle = {
 }
 
 const SPLIT_PREF = 'field.splitWave'
-const EQ_SPLIT_PREF = 'field.splitEq'
+const EQ_STRIPS_PREF = 'field.eqStripHeight'
+const EQ_STRIPS_MIN = 220
+const EQ_STRIPS_MAX = 720
 
 function loadSplitShare(): number {
   try {
@@ -108,14 +110,19 @@ function loadSplitShare(): number {
   return 0.64
 }
 
-function loadEqSplitShare(): number {
+function loadEqStripHeight(): number {
   try {
-    const n = Number(localStorage.getItem(EQ_SPLIT_PREF))
-    if (Number.isFinite(n) && n >= 0.28 && n <= 0.82) return n
+    const n = Number(localStorage.getItem(EQ_STRIPS_PREF))
+    if (Number.isFinite(n) && n >= EQ_STRIPS_MIN && n <= EQ_STRIPS_MAX) return n
   } catch {
     /* private mode */
   }
-  return 0.62
+  return 360
+}
+
+function clampEqStripHeight(px: number, stageHeight: number): number {
+  const max = Math.max(EQ_STRIPS_MIN, Math.min(EQ_STRIPS_MAX, stageHeight - 150))
+  return Math.min(max, Math.max(EQ_STRIPS_MIN, px))
 }
 
 type DragMode =
@@ -180,9 +187,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [panning, setPanning] = useState(false)
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
-  const [eqShare, setEqShare] = useState(loadEqSplitShare)
-  const eqShareRef = useRef(eqShare)
-  const splitDrag = useRef<{ y: number; share: number; kind: 'wave' | 'eq' } | null>(null)
+  const [eqStripHeight, setEqStripHeight] = useState(loadEqStripHeight)
+  const eqStripHeightRef = useRef(eqStripHeight)
+  const splitDrag = useRef<{ y: number; share?: number; height?: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
@@ -198,8 +205,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   }, [waveShare])
 
   useEffect(() => {
-    eqShareRef.current = eqShare
-  }, [eqShare])
+    eqStripHeightRef.current = eqStripHeight
+  }, [eqStripHeight])
 
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
@@ -1014,7 +1021,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             }}
             onPointerMove={(event) => {
               const drag = splitDrag.current
-              if (!drag || drag.kind !== 'wave') return
+              if (!drag || drag.kind !== 'wave' || drag.share == null) return
               const stage = event.currentTarget.parentElement
               if (!stage) return
               const h = stage.getBoundingClientRect().height
@@ -1050,28 +1057,28 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           <>
             <button
               type="button"
-              className={styles.splitHandle}
-              aria-label="Resize FFT and EQ console"
+              className={`${styles.splitHandle} ${styles.eqSplitHandle}`}
+              aria-label="Resize FFT and EQ strips"
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId)
-                splitDrag.current = { y: event.clientY, share: eqShareRef.current, kind: 'eq' }
+                splitDrag.current = { y: event.clientY, height: eqStripHeightRef.current, kind: 'eq' }
               }}
               onPointerMove={(event) => {
                 const drag = splitDrag.current
-                if (!drag || drag.kind !== 'eq') return
+                if (!drag || drag.kind !== 'eq' || drag.height == null) return
                 const stage = event.currentTarget.parentElement
                 if (!stage) return
                 const h = stage.getBoundingClientRect().height
                 if (h < 80) return
-                const next = Math.min(0.82, Math.max(0.28, drag.share + (event.clientY - drag.y) / h))
-                eqShareRef.current = next
-                setEqShare(next)
+                const next = clampEqStripHeight(drag.height + (drag.y - event.clientY), h)
+                eqStripHeightRef.current = next
+                setEqStripHeight(next)
               }}
               onPointerUp={() => {
                 if (!splitDrag.current || splitDrag.current.kind !== 'eq') return
                 splitDrag.current = null
                 try {
-                  localStorage.setItem(EQ_SPLIT_PREF, String(eqShareRef.current))
+                  localStorage.setItem(EQ_STRIPS_PREF, String(eqStripHeightRef.current))
                 } catch {
                   /* private mode */
                 }
@@ -1079,7 +1086,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
             <div
               className={styles.eqConsole}
-              style={{ maxHeight: `${Math.round((1 - eqShare) * 100)}%` }}
+              style={{ height: eqStripHeight, flexBasis: eqStripHeight }}
             >
               <EqConsole onFocusModule={onSelectModule} />
             </div>
