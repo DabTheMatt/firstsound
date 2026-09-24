@@ -178,7 +178,10 @@ export function SensoryShell({
           onMoodLabel(null)
           setFeelingId(id)
         }}
-        onEditing={(id) => setEditingId(id)}
+        onEditing={(id) => {
+          setEditingId(id)
+          if (!id) setFeelingId(null)
+        }}
         onValues={(next) => {
           onMoodLabel(null)
           onValues(next)
@@ -195,7 +198,9 @@ export function SensoryShell({
           setFeelingId(id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
         }}
         onEditing={(id) => {
-          setEditingId(id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null)
+          const next = id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null
+          setEditingId(next)
+          if (!next) setFeelingId(null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
