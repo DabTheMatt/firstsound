@@ -175,6 +175,7 @@ export type Messages = {
     overviewAria: string
     zoomViewStart: string
     zoomViewEnd: string
+    viewGroup: string
   }
   transport: {
     play: string
@@ -205,6 +206,7 @@ export type Messages = {
   }
   chain: {
     aria: string
+    group: string
     addEffect: string
     enable: (name: string) => string
     bypass: (name: string) => string
@@ -569,6 +571,7 @@ export const EN: Messages = {
     overviewAria: 'Sample overview. Click to set the playhead.',
     zoomViewStart: 'Zoom view start',
     zoomViewEnd: 'Zoom view end',
+    viewGroup: 'View',
   },
   transport: {
     play: 'Play',
@@ -599,6 +602,7 @@ export const EN: Messages = {
   },
   chain: {
     aria: 'Signal chain',
+    group: 'Chain',
     addEffect: 'Add effect',
     enable: (name) => `Enable ${name}`,
     bypass: (name) => `Bypass ${name}`,
@@ -1048,6 +1052,7 @@ export const PL: Messages = {
     overviewAria: 'Przegląd sampla. Kliknij, aby ustawić głowicę.',
     zoomViewStart: 'Powiększ od początku widoku',
     zoomViewEnd: 'Powiększ od końca widoku',
+    viewGroup: 'Widok',
   },
   transport: {
     play: 'Odtwórz',
@@ -1078,6 +1083,7 @@ export const PL: Messages = {
   },
   chain: {
     aria: 'Łańcuch sygnału',
+    group: 'Tor',
     addEffect: 'Dodaj efekt',
     enable: (name) => `Włącz ${name}`,
     bypass: (name) => `Omijaj ${name}`,

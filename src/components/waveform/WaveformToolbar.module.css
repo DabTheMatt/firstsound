@@ -1,30 +1,66 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
+  gap: 8px;
+  flex: none;
   min-width: 0;
-  min-height: 36px;
-  padding: 0;
+  min-height: 32px;
+  padding: 0 2px;
+}
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 6px 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.tools {
+  flex: 1 1 auto;
+}
+
+.view {
+  flex: none;
+  margin-left: auto;
+}
+
+.kicker {
+  flex: none;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
 }
 
 .edit,
 .views {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   overflow-x: auto;
   scrollbar-width: none;
   min-width: 0;
 }
 
 .edit {
-  flex: none;
+  flex: 1 1 auto;
 }
 
 .views {
-  margin-left: auto;
   flex: none;
+}
+
+.tools .iconBtn {
+  color: var(--text-disabled);
+}
+
+.view .iconBtn {
+  color: var(--text-muted);
 }
 
 .tool,
@@ -43,14 +79,14 @@
 }
 
 .iconBtn {
-  padding: 4px 6px 2px;
+  padding: 2px 5px 1px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 40px;
-  min-height: 36px;
+  gap: 1px;
+  min-width: 36px;
+  min-height: 28px;
 }
 
 .caption {
@@ -71,10 +107,12 @@
   background: var(--bg-control-hover);
 }
 
-.active {
+.active,
+.tools .iconBtn.active,
+.view .iconBtn.active {
   color: var(--accent-primary);
   background: var(--accent-soft);
-  box-shadow: inset 0 -2px 0 var(--accent-primary);
+  box-shadow: none;
 }
 
 .zoom {
@@ -96,9 +134,10 @@
 }
 
 .zoom .icon {
-  min-width: 32px;
-  min-height: 36px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0 6px;
+  color: var(--text-disabled);
 }
 
 .minimal {
