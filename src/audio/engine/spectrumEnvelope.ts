@@ -31,7 +31,29 @@ export function spectrumEnvelopePoints(
   return out
 }
 
-/** Smooth polyline through band centers (midpoint quadratics). */
+/** Catmull-Rom segment that passes through both band points. */
+function curveThrough(
+  ctx: CanvasRenderingContext2D,
+  points: EnvelopePoint[],
+): void {
+  const n = points.length
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[i - 1] ?? points[i]!
+    const p1 = points[i]!
+    const p2 = points[i + 1]!
+    const p3 = points[i + 2] ?? p2
+    ctx.bezierCurveTo(
+      p1.x + (p2.x - p0.x) / 6,
+      p1.y + (p2.y - p0.y) / 6,
+      p2.x - (p3.x - p1.x) / 6,
+      p2.y - (p3.y - p1.y) / 6,
+      p2.x,
+      p2.y,
+    )
+  }
+}
+
+/** Smooth polyline that passes through every band center. */
 export function strokeSpectrumEnvelope(ctx: CanvasRenderingContext2D, points: EnvelopePoint[]): void {
   if (points.length === 0) return
   const first = points[0]!
@@ -41,15 +63,7 @@ export function strokeSpectrumEnvelope(ctx: CanvasRenderingContext2D, points: En
     ctx.stroke()
     return
   }
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]!
-    const cur = points[i]!
-    const mx = (prev.x + cur.x) / 2
-    const my = (prev.y + cur.y) / 2
-    ctx.quadraticCurveTo(prev.x, prev.y, mx, my)
-  }
-  const last = points[points.length - 1]!
-  ctx.lineTo(last.x, last.y)
+  curveThrough(ctx, points)
   ctx.stroke()
 }
 
@@ -64,14 +78,7 @@ export function fillSpectrumEnvelope(
   ctx.beginPath()
   ctx.moveTo(first.x, bottom)
   ctx.lineTo(first.x, first.y)
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]!
-    const cur = points[i]!
-    const mx = (prev.x + cur.x) / 2
-    const my = (prev.y + cur.y) / 2
-    ctx.quadraticCurveTo(prev.x, prev.y, mx, my)
-  }
-  ctx.lineTo(last.x, last.y)
+  curveThrough(ctx, points)
   ctx.lineTo(last.x, bottom)
   ctx.closePath()
   ctx.fill()

@@ -9,6 +9,7 @@ import {
   midiToHz,
   midiToNoteName,
   musicalScaleHz,
+  visibleAxisLabelIndices,
 } from './pitchScale'
 
 describe('pitchScale', () => {
@@ -41,6 +42,29 @@ describe('pitchScale', () => {
     expect(hzFromLogAxis(0, 20, 20000)).toBeCloseTo(20)
     expect(hzFromLogAxis(1, 20, 20000)).toBeCloseTo(20000)
     expect(hzFromLogAxis(0.5, 20, 20000)).toBeCloseTo(Math.sqrt(20 * 20000))
+  })
+
+  it('hides colliding frequency labels and keeps major ticks', () => {
+    const labels = [20, 30, 40, 50, 60, 80, 100].map((hz, index) => ({
+      x: index * 12,
+      width: 18,
+      major: hz === 20 || hz === 50 || hz === 100,
+    }))
+    const visible = visibleAxisLabelIndices(labels, 4)
+    expect(visible.has(0)).toBe(true)
+    expect(visible.has(3)).toBe(true)
+    expect(visible.has(6)).toBe(true)
+    expect(visible.has(1)).toBe(false)
+    expect(visible.has(2)).toBe(false)
+    const boxes = [...visible].map((index) => labels[index]!)
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!
+        const b = boxes[j]!
+        const gap = Math.abs(a.x - b.x) - a.width / 2 - b.width / 2
+        expect(gap).toBeGreaterThanOrEqual(4)
+      }
+    }
   })
 
   it('formats a cursor readout with note name', () => {
