@@ -170,8 +170,21 @@ export function ParameterStrings({
             const bead = pointAlong(geom, along)
             const pose = stringLabelPose(geom)
             const on = Math.abs(amount) > 0.02
-            const lit = activeId === geom.id || editingId === geom.id
-            const tone = `${on ? styles.on : ''} ${lit ? styles.lit : ''}`
+            const engaged = activeId === geom.id || editingId === geom.id
+            const tone = `${on ? styles.on : ''} ${engaged ? styles.lit : ''}`
+            const originT = feeling.kind === 'bipolar' ? 0.5 : 0
+            const origin = pointAlong(geom, originT)
+            const fromPose = stringLabelPose(geom, 0, 14)
+            const toPose = stringLabelPose(geom, 1, 14)
+            const valuePose = stringLabelPose(geom, along, 18)
+            const level =
+              feeling.kind === 'bipolar'
+                ? Math.abs(amount) < 0.04
+                  ? t.sensory.restLevel
+                  : `${Math.round(Math.abs(amount) * 100)} ${amount < 0 ? copy.from : copy.to}`
+                : Math.round(amount * 100) === 0
+                  ? t.sensory.restLevel
+                  : `${Math.round(amount * 100)}`
             const now = feeling.kind === 'bipolar' ? Math.round(((amount + 1) / 2) * 100) : Math.round(amount * 100)
             const lfo = AXIS_LFO_BY_ID[geom.id]
             const lfoOn = Boolean(lfo && axisLfoActive(amount))
@@ -182,7 +195,7 @@ export function ParameterStrings({
                 key={geom.id}
                 data-axis={geom.id}
                 data-lfo={lfoOn ? 'on' : undefined}
-                className={`${styles.string} ${activeId && !on ? styles.dim : ''}`}
+                className={`${styles.string} ${engaged ? styles.engaged : ''} ${activeId && !engaged ? styles.dim : ''}`}
                 style={{ ['--lfo-period' as string]: lfoPeriod }}
               >
                 <line
@@ -247,6 +260,39 @@ export function ParameterStrings({
                   y2={geom.y2}
                   pointerEvents="none"
                 />
+                <g className={styles.cues} aria-hidden="true">
+                  <line className={styles.span} x1={origin.x} y1={origin.y} x2={bead.x} y2={bead.y} />
+                  <text
+                    className={styles.cue}
+                    x={fromPose.x}
+                    y={fromPose.y}
+                    transform={`rotate(${fromPose.angle} ${fromPose.x} ${fromPose.y})`}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {copy.from}
+                  </text>
+                  <text
+                    className={styles.cue}
+                    x={toPose.x}
+                    y={toPose.y}
+                    transform={`rotate(${toPose.angle} ${toPose.x} ${toPose.y})`}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {copy.to}
+                  </text>
+                  <text
+                    className={styles.value}
+                    x={valuePose.x}
+                    y={valuePose.y}
+                    transform={`rotate(${valuePose.angle} ${valuePose.x} ${valuePose.y})`}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {level}
+                  </text>
+                </g>
                 {lfoOn ? (
                   <>
                     <line

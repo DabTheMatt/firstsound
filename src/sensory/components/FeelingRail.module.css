@@ -8,7 +8,7 @@
   justify-content: space-between;
   gap: 0;
   pointer-events: auto;
-  overflow: hidden;
+  overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 4px 10px 8px 4px;
@@ -50,12 +50,14 @@
   width: min(28vw, 156px);
   max-height: 32px;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
   transform: none;
   transition:
-    opacity 160ms ease,
-    color 160ms ease,
-    background 160ms ease;
+    opacity 520ms ease,
+    color 520ms ease,
+    background 520ms ease,
+    box-shadow 520ms ease,
+    filter 520ms ease;
 }
 
 .item.on {
@@ -146,8 +148,10 @@
 }
 
 .item:focus-visible {
-  outline: 1px solid color-mix(in srgb, var(--text-primary) 55%, transparent);
-  outline-offset: 4px;
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .copy {
@@ -166,17 +170,114 @@
   white-space: nowrap;
 }
 
+.guide {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 7px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 520ms ease;
+}
+
+.left .guide {
+  left: -1px;
+}
+
+.right .guide {
+  right: -1px;
+}
+
+.guideTrack {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--text-primary) 70%, transparent);
+}
+
+.guideCenter {
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  width: 5px;
+  height: 1px;
+  background: color-mix(in srgb, var(--text-primary) 80%, transparent);
+}
+
+.guideBead {
+  position: absolute;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin-bottom: -3px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 22%, transparent);
+}
+
+.readout {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 520ms ease;
+  white-space: nowrap;
+}
+
+.left .readout {
+  left: calc(100% + 6px);
+  align-items: flex-start;
+}
+
+.right .readout {
+  right: calc(100% + 6px);
+  align-items: flex-end;
+}
+
+.rangeHint,
+.level {
+  color: var(--text-primary);
+  text-shadow:
+    0 0 2px #07080c,
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.75);
+}
+
 .rangeHint {
-  display: none;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .level {
-  display: none;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 520ms ease;
 }
 
+.item.on,
+.item:focus-visible {
+  z-index: 4;
+  transition-duration: 70ms;
+}
+
+.item.on .guide,
+.item:focus-visible .guide,
+.item.on .readout,
+.item:focus-visible .readout,
 .item.on .level,
-.item.lit .level {
-  display: none;
+.item:focus-visible .level {
+  opacity: 1;
+  transition-duration: 70ms;
 }
 
 .iconWell {
@@ -338,8 +439,36 @@
   }
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .item:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    transition-duration: 70ms;
+  }
+
+  .item:hover .guide,
+  .item:hover .readout {
+    opacity: 1;
+    transition-duration: 70ms;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .item {
+  .item,
+  .guide,
+  .readout,
+  .level {
     transition: none;
+  }
+}
+
+.item[data-axis].on,
+.item[data-axis]:focus-visible {
+  color: var(--text-primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item[data-axis]:hover {
+    color: var(--text-primary);
   }
 }

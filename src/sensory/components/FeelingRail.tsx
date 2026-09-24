@@ -143,7 +143,6 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
             aria-valuenow={now}
             aria-valuetext={levelText(feeling, amount, copy, t.sensory.restLevel)}
             aria-describedby={`feeling-desc-${feeling.id}`}
-            title={`${copy.from} → ${copy.to}. ${t.sensory.doubleClickRest}`}
             onPointerDown={(event) => {
               if (event.button !== 0) return
               event.preventDefault()
@@ -190,10 +189,20 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
             </span>
             <FeelingIcon feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
             {lfoOn ? <span className={styles.lfoMark} aria-hidden="true" /> : null}
+            <span className={styles.guide} aria-hidden="true">
+              <span className={styles.guideTrack} />
+              {feeling.kind === 'bipolar' ? <span className={styles.guideCenter} /> : null}
+              <span
+                className={styles.guideBead}
+                style={{ bottom: `${(feeling.kind === 'bipolar' ? (amount + 1) / 2 : Math.min(1, Math.max(0, amount))) * 100}%` }}
+              />
+            </span>
             <span className={styles.copy}>
               <span className={styles.label}>{copy.label}</span>
+            </span>
+            <span className={styles.readout} aria-hidden="true">
               <span className={styles.rangeHint}>
-                {copy.from}–{copy.to}
+                {copy.from} → {copy.to}
               </span>
               <span className={styles.level}>{levelText(feeling, amount, copy, t.sensory.restLevel)}</span>
             </span>
