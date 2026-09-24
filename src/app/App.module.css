@@ -48,20 +48,76 @@
   position: relative;
 }
 
-.chromeRow {
+.chrome {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   flex: none;
   min-width: 0;
-  min-height: 36px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.chromeRow > :last-child {
+.chainBand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.now {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: none;
+  min-width: 76px;
+  max-width: 132px;
+  padding-right: 10px;
+  border-right: 1px solid var(--border-default);
+}
+
+.kicker {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+  line-height: 1.2;
+}
+
+.nowName {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chainBand > :last-child {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.modeCluster {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.modeCluster button[aria-checked='false'] {
+  color: var(--text-disabled);
+}
+
+.modeCluster button[aria-checked='true'] {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .work {
@@ -74,7 +130,7 @@
 }
 
 .dock-right .work {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, var(--inspector-col, 340px)) 64px;
+  grid-template-columns: minmax(0, 1fr) minmax(304px, var(--inspector-col, 368px)) 64px;
 }
 
 .inspectorHidden.dock-right .work {
@@ -139,9 +195,23 @@
   gap: 4px;
 }
 
-.phoneShell .chromeRow {
-  flex-wrap: wrap;
-  gap: 2px;
+.phoneShell .chrome {
+  gap: 3px;
+}
+
+.phoneShell .chainBand {
+  min-height: 34px;
+  padding-left: 8px;
+}
+
+.phoneShell .now {
+  min-width: 64px;
+  max-width: 96px;
+  padding-right: 8px;
+}
+
+.phoneShell .nowName {
+  font-size: 11px;
 }
 
 .phoneShell .transportPinned {

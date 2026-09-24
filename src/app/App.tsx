@@ -19,6 +19,7 @@ import { LfoCenter } from '../components/inspector/LfoCenter'
 import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
+import { moduleLabel } from '../audio/chain/chain'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
@@ -355,6 +356,14 @@ export default function App() {
           type: snap.chain[0]?.type ?? 'gain',
         }
       : focus
+
+  const currentModule =
+    resolvedFocus.kind === 'module'
+      ? snap.chain.find((m) => m.instanceId === resolvedFocus.instanceId)
+      : undefined
+  const currentModuleLabel = currentModule
+    ? moduleLabel(currentModule, snap.chain, t.modules)
+    : t.inspector.edit
 
   const selectTool = (next: WaveTool) => {
     setTool(next)
@@ -746,7 +755,11 @@ export default function App() {
           }}
           compact={sheet}
           minimal={isPhoneLayout}
-          modeSwitch={<ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />}
+          modeSwitch={
+            <div className={styles.modeCluster}>
+              <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />
+            </div>
+          }
         />
         {lfoCenterOpen ? (
           <>
@@ -780,14 +793,20 @@ export default function App() {
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
-        <div id="main-controls" className={styles.chromeRow}>
-        <SignalChain
-          chain={snap.chain}
-          selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
-          onSelect={selectModule}
-          touch={compact}
-          minimal={isPhoneLayout}
-        />
+        <div id="main-controls" className={styles.chrome}>
+        <section className={styles.chainBand} aria-label={t.chain.aria}>
+          <div className={styles.now}>
+            <span className={styles.kicker}>{t.chain.group}</span>
+            <strong className={styles.nowName}>{currentModuleLabel}</strong>
+          </div>
+          <SignalChain
+            chain={snap.chain}
+            selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
+            onSelect={selectModule}
+            touch={compact}
+            minimal={isPhoneLayout}
+          />
+        </section>
 
         <WaveformToolbar
           tool={tool}

@@ -2619,20 +2619,11 @@ export class AudioEngine {
     this.limiter.attack.value = 0.001
     this.limiter.release.value = 0.05
     this.analyser = ctx.createAnalyser()
-    this.analyser.fftSize = ANALYSER_FFT_IDLE
-    this.analyser.minDecibels = -100
-    this.analyser.maxDecibels = 0
-    this.analyser.smoothingTimeConstant = 0.55
+    configureSpectrumAnalyser(this.analyser)
     this.analyserPre = ctx.createAnalyser()
-    this.analyserPre.fftSize = ANALYSER_FFT_IDLE
-    this.analyserPre.minDecibels = -100
-    this.analyserPre.maxDecibels = 0
-    this.analyserPre.smoothingTimeConstant = 0.55
+    configureSpectrumAnalyser(this.analyserPre)
     this.analyserEq = ctx.createAnalyser()
-    this.analyserEq.fftSize = ANALYSER_FFT_IDLE
-    this.analyserEq.minDecibels = -100
-    this.analyserEq.maxDecibels = 0
-    this.analyserEq.smoothingTimeConstant = 0.55
+    configureSpectrumAnalyser(this.analyserEq)
     this.analyserLimiterPre = ctx.createAnalyser()
     this.analyserLimiterPost = ctx.createAnalyser()
     this.analyserLimiterPre.fftSize = 2048
@@ -4122,6 +4113,21 @@ function cloneEqState(
 
 function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+/** Same FFT size, dB range, smoothing, and mono downmix for Before and After. */
+function configureSpectrumAnalyser(node: AnalyserNode): void {
+  node.fftSize = ANALYSER_FFT_IDLE
+  node.minDecibels = -100
+  node.maxDecibels = 0
+  node.smoothingTimeConstant = 0.55
+  try {
+    node.channelCount = 1
+    node.channelCountMode = 'explicit'
+    node.channelInterpretation = 'speakers'
+  } catch {
+    /* analyser may reject channelCount in some engines */
+  }
 }
 
 function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {

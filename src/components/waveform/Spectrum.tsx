@@ -22,6 +22,7 @@ import {
   formatHoverFreq,
   musicalScaleHz,
   freqTickIsMajor,
+  visibleAxisLabelIndices,
 } from '../../audio/engine/pitchScale'
 import {
   FAST_ATTACK,
@@ -56,6 +57,7 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
+import { timeDomainToDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
 import { timeDomainPeakDb, louderPeakDb } from '../../audio/engine/timePeak'
 import { isDocumentHidden } from '../../app/frameBudget'
@@ -147,12 +149,15 @@ function readAnalyserPeaks(
   sampleRate: number,
   bandCount: number,
   minHz: number,
-  scratch: { bins: Float32Array | null },
+  scratch: { bins: Float32Array | null; time: Float32Array | null; fft: SpectrumFftScratch },
 ): Float32Array | null {
   if (!analyser) return null
+  const fftSize = analyser.fftSize
   const n = analyser.frequencyBinCount
+  if (!scratch.time || scratch.time.length !== fftSize) scratch.time = new Float32Array(fftSize)
   if (!scratch.bins || scratch.bins.length !== n) scratch.bins = new Float32Array(n)
-  analyser.getFloatFrequencyData(scratch.bins as Float32Array<ArrayBuffer>)
+  analyser.getFloatTimeDomainData(scratch.time as Float32Array<ArrayBuffer>)
+  timeDomainToDb(scratch.time, scratch.bins, scratch.fft)
   return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz, spectrumMaxHz(sampleRate, SPECTRUM_AXIS_MAX_HZ))
 }
 
@@ -220,8 +225,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     if (!canvas) return
     engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
     let frame = 0
-    const preScratch = { bins: null as Float32Array | null }
-    const postScratch = { bins: null as Float32Array | null }
+    const preScratch = { bins: null as Float32Array | null, time: null as Float32Array | null, fft: { window: null, real: null, imag: null } }
+    const postScratch = { bins: null as Float32Array | null, time: null as Float32Array | null, fft: { window: null, real: null, imag: null } }
     const meterLeft = { data: null as Float32Array | null }
     const meterRight = { data: null as Float32Array | null }
     let alignDb = 0
@@ -285,30 +290,52 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         ctx.font = `${7 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.fillText('dB', 4 * dpr, top - 3 * dpr)
 
-        ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        for (const hz of FREQ_SCALE_HZ) {
-          if (hz > maxHz + 1) continue
-          const x = hzToX(hz, minHz, maxHz, left, right, scale)
+        const hzTicks = FREQ_SCALE_HZ.filter((hz) => hz <= maxHz + 1).map((hz) => {
           const major = freqTickIsMajor(hz)
-          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, major ? 0.85 : 0.4)
-          ctx.lineWidth = dpr * (major ? 0.7 : 0.35)
-          ctx.beginPath()
-          ctx.moveTo(x, top)
-          ctx.lineTo(x, bottom)
-          ctx.stroke()
-          ctx.fillStyle = colors.textMuted
           ctx.font = `${(major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
-          ctx.fillText(formatFreqTick(hz), x, bottom + 4 * dpr)
+          const label = formatFreqTick(hz)
+          return {
+            hz,
+            major,
+            x: hzToX(hz, minHz, maxHz, left, right, scale),
+            width: ctx.measureText(label).width,
+            label,
+          }
+        })
+        const hzLabelOn = visibleAxisLabelIndices(hzTicks, 6 * dpr)
+        for (let i = 0; i < hzTicks.length; i++) {
+          const tick = hzTicks[i]!
+          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, tick.major ? 0.85 : 0.4)
+          ctx.lineWidth = dpr * (tick.major ? 0.7 : 0.35)
+          ctx.beginPath()
+          ctx.moveTo(tick.x, top)
+          ctx.lineTo(tick.x, bottom)
+          ctx.stroke()
+          if (!hzLabelOn.has(i)) continue
+          ctx.fillStyle = colors.textMuted
+          ctx.font = `${(tick.major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
+          ctx.fillText(tick.label, tick.x, bottom + 4 * dpr)
         }
 
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.82)
         ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        for (const tick of musicalScaleHz(minHz, maxHz)) {
-          const x = hzToX(tick.hz, minHz, maxHz, left, right, scale)
-          ctx.fillText(tick.label, x, top - 6 * dpr)
+        const noteTicks = musicalScaleHz(minHz, maxHz).map((tick) => {
+          const label = tick.label
+          return {
+            ...tick,
+            x: hzToX(tick.hz, minHz, maxHz, left, right, scale),
+            width: ctx.measureText(label).width,
+            label,
+          }
+        })
+        const noteLabelOn = visibleAxisLabelIndices(noteTicks, 8 * dpr)
+        for (let i = 0; i < noteTicks.length; i++) {
+          if (!noteLabelOn.has(i)) continue
+          const tick = noteTicks[i]!
+          ctx.fillText(tick.label, tick.x, top - 6 * dpr)
         }
 
         let postEqGains: Float32Array | null = null
@@ -353,19 +380,21 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               const regionColor = eqBandColorForHz(center)
               const barFill = fill ?? regionColor
               const barLine = line ?? regionColor
-              const slowDb = alignedBandDb(slow[i] ?? -100, alignDb)
-              const fastDb = alignedBandDb(fast[i] ?? -100, alignDb)
-              const slowY = dbToY(slowDb, top, bottom, dbFloor)
-              const fastY = dbToY(fastDb, top, bottom, dbFloor)
-              const slowH = bottom - slowY
-              const fastH = bottom - fastY
+              const bodySrc = follow === 'slow' || follow === 'both' ? slow : fast
+              const capSrc = follow === 'slow' ? slow : fast
+              const bodyDb = alignedBandDb(bodySrc[i] ?? -100, alignDb)
+              const capDb = alignedBandDb(capSrc[i] ?? -100, alignDb)
+              const bodyY = dbToY(bodyDb, top, bottom, dbFloor)
+              const capY = dbToY(capDb, top, bottom, dbFloor)
+              const bodyH = bottom - bodyY
+              const capH = bottom - capY
               ctx.fillStyle = colorWithAlpha(barFill, alpha)
-              ctx.fillRect(x0 + gap / 2, bottom - slowH, Math.max(1, bandW - gap), slowH)
+              ctx.fillRect(x0 + gap / 2, bottom - bodyH, Math.max(1, bandW - gap), bodyH)
               if (style === 'post' || layer !== 'both') {
                 ctx.fillStyle = barLine
-                ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.max(2, dpr))
+                ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.max(2, dpr))
                 ctx.fillStyle = colorWithAlpha(barLine, 0.35)
-                ctx.fillRect(x0 + gap / 2, fastY, Math.max(1, bandW - gap), Math.min(fastH, 8 * dpr))
+                ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.min(capH, 8 * dpr))
               }
             }
           } else {

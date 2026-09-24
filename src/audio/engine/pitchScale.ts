@@ -48,6 +48,30 @@ export function freqTickIsMajor(hz: number): boolean {
   return FREQ_TICK_MAJOR.has(hz)
 }
 
+export type AxisLabelBox = { x: number; width: number; major?: boolean }
+
+/**
+ * Keep every tick, but drop labels whose boxes collide.
+ * Major labels are placed first so 20 / 100 / 1k survive a dense linear axis.
+ */
+export function visibleAxisLabelIndices(labels: readonly AxisLabelBox[], gapPx = 4): Set<number> {
+  const placed: { left: number; right: number }[] = []
+  const visible = new Set<number>()
+  const order = labels
+    .map((label, index) => ({ label, index }))
+    .sort((a, b) => Number(Boolean(b.label.major)) - Number(Boolean(a.label.major)) || a.label.x - b.label.x)
+  for (const { label, index } of order) {
+    const half = Math.max(0, label.width) / 2
+    const left = label.x - half
+    const right = label.x + half
+    const collides = placed.some((box) => left < box.right + gapPx && right > box.left - gapPx)
+    if (collides) continue
+    placed.push({ left, right })
+    visible.add(index)
+  }
+  return visible
+}
+
 export function formatFreqTick(hz: number): string {
   if (hz >= 1000) return `${hz / 1000}k`
   return String(Math.round(hz))
