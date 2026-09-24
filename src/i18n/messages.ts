@@ -22,6 +22,7 @@ export type SimpleToneCopy = {
 
 export type SimpleMessages = {
   fileUntitled: string
+  cut: string
   trim: string
   setStart: string
   setEnd: string
@@ -380,6 +381,7 @@ export const EN: Messages = {
   mode: { group: 'Interface mode', simple: 'Simple', sensory: 'Sensory', technical: 'Technical' },
   simple: {
     fileUntitled: 'No sample',
+    cut: 'Cut',
     trim: 'Trim',
     setStart: 'Set start',
     setEnd: 'Set end',
@@ -858,6 +860,7 @@ export const PL: Messages = {
   mode: { group: 'Tryb interfejsu', simple: 'Prosty', sensory: 'Sensoryczny', technical: 'Techniczny' },
   simple: {
     fileUntitled: 'Brak sampla',
+    cut: 'Cięcie',
     trim: 'Przytnij',
     setStart: 'Ustaw początek',
     setEnd: 'Ustaw koniec',
