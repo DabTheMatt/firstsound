@@ -97,8 +97,7 @@ describe('strokeSpectrumEnvelope', () => {
       beginPath: () => ops.push('begin'),
       moveTo: (x: number, y: number) => ops.push(`m${x},${y}`),
       quadraticCurveTo: () => ops.push('q'),
-      bezierCurveTo: (_c1x: number, _c1y: number, _c2x: number, _c2y: number, x: number, y: number) =>
-        ops.push(`b${x},${y}`),
+      bezierCurveTo: () => ops.push('bezier'),
       lineTo: (x: number, y: number) => ops.push(`l${x},${y}`),
       stroke: () => ops.push('stroke'),
     } as unknown as CanvasRenderingContext2D
@@ -109,8 +108,9 @@ describe('strokeSpectrumEnvelope', () => {
     ])
     expect(ops[0]).toBe('begin')
     expect(ops[1]).toBe('m0,10')
-    expect(ops).toContain('b10,20')
-    expect(ops).toContain('b20,8')
+    expect(ops).toContain('l10,20')
+    expect(ops).toContain('l20,8')
+    expect(ops).not.toContain('bezier')
     expect(ops).toContain('stroke')
   })
 })

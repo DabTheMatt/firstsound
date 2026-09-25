@@ -7,7 +7,7 @@ import {
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
-  eqResponsesMatch,
+  eqResponsesDiverge,
   EQ_LIVE_CURVE_ALPHA_SCALE,
   EQ_LIVE_CURVE_WIDTH_SCALE,
   EQ_MINI_BAND_COUNT,
@@ -101,9 +101,12 @@ describe('eq plot mapping', () => {
     expect(EQ_MINI_BAND_COUNT).toBe(48)
   })
 
-  it('treats a single-band live trace as the same curve when it matches', () => {
-    expect(eqResponsesMatch([0, 6, 0], [0, 6.2, 0])).toBe(true)
-    expect(eqResponsesMatch([0, 6, 0], [0, 3, 0])).toBe(false)
+  it('treats one bell as a single response and reports a real second contribution', () => {
+    const bell = peak({ frequency: 1000, gain: 6 })
+    const other = peak({ frequency: 4000, gain: -8 })
+    const freqs = [100, 1000, 4000, 12000]
+    expect(eqResponsesDiverge([bell], [bell], freqs, 48000)).toBe(false)
+    expect(eqResponsesDiverge([bell], [bell, other], freqs, 48000)).toBe(true)
   })
 
   it('draws the live LFO curve at half width and lower alpha', () => {

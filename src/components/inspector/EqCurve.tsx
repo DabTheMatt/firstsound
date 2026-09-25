@@ -1,13 +1,13 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandIsActive, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
-  eqResponsesMatch,
+  eqResponsesDiverge,
   EQ_MINI_BAND_COUNT,
   EQ_PLOT_MAX_DB,
   EQ_PLOT_MIN_DB,
@@ -16,7 +16,7 @@ import {
   xToFreq,
   yToDb,
 } from '../../audio/engine/eqPlot'
-import { eqCurveDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -119,11 +119,8 @@ export function EqCurve({
       ctx.beginPath()
       ctx.rect(0, 0, width, height)
       ctx.clip()
-      const storedStyle = eqResponseCurveStyle('stored', false, dpr)
-      ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
-      ctx.lineWidth = Math.max(1.5, storedStyle.width)
       const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))
-      let liveBands = plotBands
+      let processing = plotBands
       if (showLive) {
         const liveComb = comb
           ? {
@@ -134,19 +131,25 @@ export function EqCurve({
               frequency: live.liveParams.eqcfFreq ?? comb.frequency,
             }
           : undefined
-        liveBands = [
+        const liveBands = [
           ...liveEqBandsFromParams(bands, live.liveParams, true),
           ...(liveComb ? combAsEqBands(liveComb) : []),
         ]
+        processing = liveBands
+        const activeCount = plotBands.filter((band) => bandIsActive(band)).length
+        if (activeCount > 1 && eqResponsesDiverge(plotBands, liveBands, freqs, sr)) {
+          const ghostStyle = eqResponseCurveStyle('live', false, dpr)
+          ctx.setLineDash([4 * dpr, 3 * dpr])
+          ctx.strokeStyle = colorWithAlpha(tone.curve, ghostStyle.alpha)
+          ctx.lineWidth = Math.max(0.75, ghostStyle.width)
+          strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
+          ctx.setLineDash([])
+        }
       }
-      const liveDiverges = showLive && !eqResponsesMatch(eqCurveDb(plotBands, freqs, sr), eqCurveDb(liveBands, freqs, sr))
-      strokeEqMagnitude(ctx, liveDiverges ? plotBands : liveBands, freqs, sr, (i) => i, yAt)
-      if (liveDiverges) {
-        const liveStyle = eqResponseCurveStyle('live', false, dpr)
-        ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
-        ctx.lineWidth = Math.max(0.75, liveStyle.width)
-        strokeEqMagnitude(ctx, liveBands, freqs, sr, (i) => i, yAt)
-      }
+      const storedStyle = eqResponseCurveStyle('stored', false, dpr)
+      ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
+      ctx.lineWidth = Math.max(1.5, storedStyle.width)
+      strokeEqMagnitude(ctx, processing, freqs, sr, (i) => i, yAt)
       ctx.restore()
       ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`

@@ -34,19 +34,6 @@ export function unitToHz(unit: number, kind: FreqScaleKind): number {
   return Math.exp(unit)
 }
 
-/** Frequencies spaced evenly in the active scale, so a polyline has one vertex per pixel column. */
-export function freqAxis(
-  count: number,
-  minHz: number,
-  maxHz: number,
-  kind: FreqScaleKind = 'log',
-): number[] {
-  const n = Math.max(2, count)
-  const out: number[] = []
-  for (let i = 0; i < n; i++) out.push(xToHz(i / (n - 1), minHz, maxHz, 0, 1, kind))
-  return out
-}
-
 export function xToHz(
   x: number,
   minHz: number,
