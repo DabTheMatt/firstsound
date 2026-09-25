@@ -43,6 +43,7 @@ describe('mid/side math', () => {
     expect(msSideHpfHz(19)).toBeNull()
     expect(msSideHpfHz(20)).toBe(20)
     expect(msSideHpfHz(400)).toBe(400)
+    expect(msSideHpfHz(PARAMS.msSideHpf.defaultValue)).toBeNull()
   })
 
   it('tilts dark left and bright right', () => {

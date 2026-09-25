@@ -11,6 +11,7 @@ import {
   optionIndex,
 } from '../../audio/fx/filter'
 import { FILTER_PRESETS, type FilterPresetId } from '../../audio/fx/filterPresets'
+import { modulePresetsFor } from '../../audio/fx/modulePresets'
 import { PresetMenu } from '../controls/PresetMenu'
 import { filterResponseCurve } from '../../audio/fx/filterResponse'
 import { FILTER_KNOBS, PARAMS } from '../../audio/parameters/definitions'
@@ -42,6 +43,30 @@ export function FilterInspector({ snap, variant, pane }: Props) {
       {pane === 'main' ? (
         <>
           <p className={styles.lead}>Creative filter — sweeps, resonance, and motion. EQ stays for correction.</p>
+          <PresetMenu
+            label="Filter presets"
+            categories={['Factory', 'Modules']}
+            presets={[
+              ...FILTER_PRESETS.map((preset) => ({
+                id: preset.id,
+                name: preset.label,
+                category: 'Factory',
+              })),
+              ...modulePresetsFor('filter').map((preset) => ({
+                id: `module:${preset.id}`,
+                name: preset.name,
+                category: 'Modules',
+                hint: preset.hint,
+              })),
+            ]}
+            onApply={(id) => {
+              if (id.startsWith('module:')) {
+                engine.applyModulePreset(id.slice('module:'.length))
+                return
+              }
+              engine.applyFilterPreset(id as FilterPresetId)
+            }}
+          />
           <FilterResponse snap={snap} />
           <FilterXyPad
             cutoff={snap.params.filterCutoff}
@@ -49,29 +74,19 @@ export function FilterInspector({ snap, variant, pane }: Props) {
             liveCutoff={live.filterCutoff}
             liveReso={live.filterReso}
           />
-          <div className={variant === 'knob' ? styles.knobs : undefined}>
+          <div className={variant === 'knob' ? inspectorStyles.knobs : undefined}>
             {FILTER_KNOBS.map((id) => (
               <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
             ))}
           </div>
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.ghost} onClick={() => engine.randomizeFilter()}>
+          <div className={inspectorStyles.row}>
+            <button type="button" className={inspectorStyles.ghost} onClick={() => engine.randomizeFilter()}>
               Randomize
             </button>
-            <button type="button" className={styles.ghost} onClick={() => engine.resetFilter()}>
+            <button type="button" className={inspectorStyles.ghost} onClick={() => engine.resetFilter()}>
               Reset
             </button>
           </div>
-          <PresetMenu
-            label="Filter presets"
-            categories={['Factory']}
-            presets={FILTER_PRESETS.map((preset) => ({
-              id: preset.id,
-              name: preset.label,
-              category: 'Factory',
-            }))}
-            onApply={(id) => engine.applyFilterPreset(id as FilterPresetId)}
-          />
           <label className={inspectorStyles.field}>
             Filter type
             <select
@@ -134,16 +149,16 @@ export function FilterInspector({ snap, variant, pane }: Props) {
         </>
       ) : (
         <>
-          <h3 className={styles.section}>Filter envelope</h3>
-          <p className={styles.help}>Triggered when the sample starts. Amount is bipolar.</p>
-          <div className={variant === 'knob' ? styles.knobs : undefined}>
+          <h3 className={inspectorStyles.sub}>Filter envelope</h3>
+          <p className={inspectorStyles.help}>Triggered when the sample starts. Amount is bipolar.</p>
+          <div className={variant === 'knob' ? inspectorStyles.knobs : undefined}>
             {(['filterAdsAmt', 'filterAdsAttack', 'filterAdsDecay', 'filterAdsSustain', 'filterAdsRelease'] as ParamId[]).map(
               (id) => (
                 <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />
               ),
             )}
           </div>
-          <h3 className={styles.section}>Pitch tracking</h3>
+          <h3 className={inspectorStyles.sub}>Pitch tracking</h3>
           <ParamControl id="filterPitchTrack" value={snap.params.filterPitchTrack} variant={variant} />
         </>
       )}
@@ -163,7 +178,7 @@ function FilterFollowerPanel({ snap, variant }: { snap: EngineSnapshot; variant:
           onToggle={() => engine.setParam('filterEnvDir', positive ? 0 : 1)}
         />
       </div>
-      <div className={variant === 'knob' ? styles.knobs : undefined}>
+      <div className={variant === 'knob' ? inspectorStyles.knobs : undefined}>
         <ParamControl id="filterEnvAmt" value={snap.params.filterEnvAmt} variant={variant} />
         <ParamControl id="filterEnvAttack" value={snap.params.filterEnvAttack} variant={variant} />
         <ParamControl id="filterEnvRelease" value={snap.params.filterEnvRelease} variant={variant} />

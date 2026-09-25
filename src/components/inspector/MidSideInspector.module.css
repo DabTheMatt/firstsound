@@ -194,6 +194,17 @@
   gap: 6px;
 }
 
+.centerOn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .readout {
   display: flex;
   justify-content: space-between;

@@ -604,6 +604,12 @@ function ModuleInspector({
       ) : null}
       {type === 'grain' && pane === 'main' ? (
         <>
+          <PresetMenu
+            label="Grain presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('grain')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <Toggle
             pressed={snap.engineMode === 'grain'}
             label="Grain"
@@ -612,12 +618,6 @@ function ModuleInspector({
             }
           />
           {params(GRAIN_MAIN_IDS)}
-          <PresetMenu
-            label="Grain presets"
-            categories={MODULE_PRESET_CATEGORIES}
-            presets={modulePresetsFor('grain')}
-            onApply={(id) => engine.applyModulePreset(id)}
-          />
           <FxLfoSection snap={snap} kind="grain" variant={variant} />
         </>
       ) : null}
@@ -641,6 +641,12 @@ function ModuleInspector({
             wrap
             onChange={(v) => engine.setDistortionType(v)}
           />
+          <PresetMenu
+            label="Distortion presets"
+            categories={MODULE_PRESET_CATEGORIES}
+            presets={modulePresetsFor('distortion')}
+            onApply={(id) => engine.applyModulePreset(id)}
+          />
           <p className={styles.help}>{distortionHelp(snap.distortionType)}</p>
           <div className={styles.row}>
             <button
@@ -654,12 +660,6 @@ function ModuleInspector({
             </button>
           </div>
           {params(DISTORTION_MAIN_KNOBS)}
-          <PresetMenu
-            label="Distortion presets"
-            categories={MODULE_PRESET_CATEGORIES}
-            presets={modulePresetsFor('distortion')}
-            onApply={(id) => engine.applyModulePreset(id)}
-          />
           <FxLfoSection snap={snap} kind="distortion" variant={variant} />
         </>
       ) : null}
@@ -713,16 +713,16 @@ function CompressorEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
-          <div className={styles.eqViz}>
-            <LimiterPlot kind="compressor" />
-          </div>
-          {params(COMPRESSOR_MAIN_KNOBS)}
           <PresetMenu
             label="Compressor presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('compressor')}
             onApply={(id) => engine.applyModulePreset(id)}
           />
+          <div className={styles.eqViz}>
+            <LimiterPlot kind="compressor" />
+          </div>
+          {params(COMPRESSOR_MAIN_KNOBS)}
           <FxLfoSection snap={snap} kind="compressor" variant={variant} />
         </>
       ) : (
@@ -765,16 +765,16 @@ function LimiterEditor({
     <div className={styles.eq}>
       {pane === 'main' ? (
         <>
-          <div className={styles.eqViz}>
-            <LimiterPlot kind="limiter" />
-          </div>
-          {params(LIMITER_MAIN_KNOBS)}
           <PresetMenu
             label="Limiter presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('limiter')}
             onApply={(id) => engine.applyModulePreset(id)}
           />
+          <div className={styles.eqViz}>
+            <LimiterPlot kind="limiter" />
+          </div>
+          {params(LIMITER_MAIN_KNOBS)}
           <FxLfoSection snap={snap} kind="limiter" variant={variant} />
         </>
       ) : (

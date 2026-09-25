@@ -91,6 +91,33 @@ function eqBand(ctx: AudioContext, type: BiquadFilterType, hz: number, q: number
 function snap(param: AudioParam, value: number, now: number): void {
   param.cancelScheduledValues(now)
   param.setValueAtTime(value, now)
+  param.value = value
+}
+
+/** GainNode starts at 1. Neutral M/S is not "all gains open". */
+function primeNeutral(g: MidSideGraph): void {
+  g.sideHpfDry.gain.value = 1
+  g.sideHpfWet.gain.value = 0
+  g.midSolo.gain.value = 1
+  g.sideSolo.gain.value = 1
+  g.midFlip.gain.value = 1
+  g.sideFlip.gain.value = 1
+  g.rotLL.gain.value = 1
+  g.rotLR.gain.value = 0
+  g.rotRL.gain.value = 0
+  g.rotRR.gain.value = 1
+  g.xfKeepL.gain.value = 1
+  g.xfKeepR.gain.value = 1
+  g.xfCrossL.gain.value = 0
+  g.xfCrossR.gain.value = 0
+  g.haasDryL.gain.value = 1
+  g.haasDryR.gain.value = 1
+  g.haasWetL.gain.value = 0
+  g.haasWetR.gain.value = 0
+  g.monoLL.gain.value = 1
+  g.monoLR.gain.value = 0
+  g.monoRL.gain.value = 0
+  g.monoRR.gain.value = 1
 }
 
 export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: GainNode): MidSideGraph {
@@ -281,7 +308,7 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
   analyserSplit.connect(analyserL, 0)
   analyserSplit.connect(analyserR, 1)
 
-  return {
+  const graph: MidSideGraph = {
     analyserL,
     analyserR,
     midGain,
@@ -325,6 +352,8 @@ export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: Gai
     monoRL,
     monoRR,
   }
+  primeNeutral(graph)
+  return graph
 }
 
 export function applyMidSideGraph(
