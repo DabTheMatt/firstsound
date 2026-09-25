@@ -1,8 +1,10 @@
 import {
   clampSpectrumBandCount,
+  clampSpectrumFallMode,
   clampSpectrumFollowMode,
   SPECTRUM_BAND_COUNT,
   type SpectrumBandCount,
+  type SpectrumFallMode,
   type SpectrumFollowMode,
 } from './spectrumBands'
 
@@ -19,6 +21,8 @@ export type SpectrumPrefs = {
   showBars: boolean
   showLine: boolean
   follow: SpectrumFollowMode
+  /** Visual spectrum decay. Does not change audio. */
+  fall: SpectrumFallMode
 }
 
 const DEFAULT_PREFS: SpectrumPrefs = {
@@ -30,6 +34,7 @@ const DEFAULT_PREFS: SpectrumPrefs = {
   showBars: true,
   showLine: true,
   follow: 'peak',
+  fall: 'normal',
 }
 
 const listeners = new Set<(prefs: SpectrumPrefs) => void>()
@@ -50,6 +55,7 @@ export function loadSpectrumPrefs(): SpectrumPrefs {
       showBars: raw?.showBars !== false,
       showLine: raw?.showLine !== false,
       follow: clampSpectrumFollowMode(raw?.follow),
+      fall: clampSpectrumFallMode(raw?.fall),
     }
   } catch {
     return defaultSpectrumPrefs()

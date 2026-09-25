@@ -8,6 +8,75 @@ export function clampSpectrumFollowMode(value: unknown): SpectrumFollowMode {
   return value === 'slow' || value === 'both' || value === 'peak' ? value : 'peak'
 }
 
+/**
+ * Visual fall speed of the spectrum bars and envelope.
+ * Separate from Follow, which chooses peak / slow / both traces.
+ */
+export const SPECTRUM_FALL_MODES = ['slow', 'normal', 'fast'] as const
+
+export type SpectrumFallMode = (typeof SPECTRUM_FALL_MODES)[number]
+
+export function clampSpectrumFallMode(value: unknown): SpectrumFallMode {
+  return value === 'slow' || value === 'fast' || value === 'normal' ? value : 'normal'
+}
+
+export type SpectrumFallRates = {
+  /** Per-second rise toward a louder bin. */
+  attack: number
+  /** Per-second fall toward silence. */
+  release: number
+}
+
+export type SpectrumFallBallistics = {
+  peak: SpectrumFallRates
+  slow: SpectrumFallRates
+}
+
+/**
+ * Time constants for the two visual followers.
+ * Peak and slow stay in one family so Follow does not invent a second decay clock.
+ * Release times (about 90%): fast ~0.2s, normal ~1s, slow ~5s.
+ */
+export function spectrumFallBallistics(mode: SpectrumFallMode): SpectrumFallBallistics {
+  if (mode === 'fast') {
+    return {
+      peak: { attack: 30, release: 11 },
+      slow: { attack: 8, release: 2.8 },
+    }
+  }
+  if (mode === 'slow') {
+    return {
+      peak: { attack: 4, release: 0.4 },
+      slow: { attack: 1.5, release: 0.16 },
+    }
+  }
+  return {
+    peak: { attack: 12, release: 2.2 },
+    slow: { attack: 3.5, release: 0.7 },
+  }
+}
+
+/** One animation step from a per-second rate. Clamped so a stalled frame cannot snap. */
+export function envelopeStep(ratePerSec: number, dtSec: number): number {
+  const dt = Math.min(0.05, Math.max(0, dtSec))
+  if (!(ratePerSec > 0) || dt === 0) return 0
+  return 1 - Math.exp(-ratePerSec * dt)
+}
+
+/**
+ * Bars and the envelope line read the same follower state for a Follow mode.
+ * `both` shows the pair, but each stroke still matches its bar (body or cap).
+ */
+export function spectrumDisplayUses(follow: SpectrumFollowMode): {
+  barBody: 'peak' | 'slow'
+  barCap: 'peak' | 'slow'
+  lines: Array<'peak' | 'slow'>
+} {
+  if (follow === 'slow') return { barBody: 'slow', barCap: 'slow', lines: ['slow'] }
+  if (follow === 'both') return { barBody: 'slow', barCap: 'peak', lines: ['peak', 'slow'] }
+  return { barBody: 'peak', barCap: 'peak', lines: ['peak'] }
+}
+
 export const SPECTRUM_BAND_CHOICES = [8, 16, 24, 32, 48, 64, 96, 128, 256, 512, 1024] as const
 
 export type SpectrumBandCount = (typeof SPECTRUM_BAND_CHOICES)[number]
@@ -255,4 +324,15 @@ export function followBands(
   for (let i = 0; i < n; i++) {
     prev[i] = followEnvelope(prev[i] ?? -100, target[i] ?? -100, attack, release)
   }
+}
+
+/** Frame-rate independent visual fall. Bars and the line share these buffers. */
+export function followBandsOverTime(
+  prev: Float32Array,
+  target: ArrayLike<number>,
+  attackPerSec: number,
+  releasePerSec: number,
+  dtSec: number,
+): void {
+  followBands(prev, target, envelopeStep(attackPerSec, dtSec), envelopeStep(releasePerSec, dtSec))
 }

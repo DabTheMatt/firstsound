@@ -37,6 +37,7 @@ export type ThemeColors = {
   eqCurve3: string
   eqNode3: string
   accent: string
+  accentSecondary: string
   accentSoft: string
   borderSubtle: string
   textMuted: string
@@ -129,6 +130,7 @@ export function computeThemeColors(root: HTMLElement = document.documentElement)
     eqCurve3: readVar(styles, '--eq-curve-3') || readVar(styles, '--eq-curve-2') || readVar(styles, '--eq-curve'),
     eqNode3: readVar(styles, '--eq-node-3') || readVar(styles, '--eq-node-2') || readVar(styles, '--eq-node'),
     accent: readVar(styles, '--accent-primary'),
+    accentSecondary: readVar(styles, '--accent-secondary') || readVar(styles, '--spectrum-line'),
     accentSoft: readVar(styles, '--accent-soft'),
     borderSubtle: readVar(styles, '--border-subtle'),
     textMuted: readVar(styles, '--text-muted'),
