@@ -31,7 +31,9 @@ export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }
           className={`${styles.opt} ${mode === id ? styles.on : ''}`}
           onClick={() => onChange(id)}
         >
-          {variant === 'editorial' && mode === id ? <span className={styles.dot} aria-hidden="true" /> : null}
+          {variant === 'editorial' ? (
+            <span className={`${styles.dot} ${mode === id ? '' : styles.dotOff}`} aria-hidden="true" />
+          ) : null}
           {labels[id]}
         </button>
       ))}

@@ -4,12 +4,14 @@ import styles from './Toggle.module.css'
 type Props = {
   pressed: boolean
   label: string
+  /** Other state label. Reserves width so toggling does not shift layout. */
+  reserveLabel?: string
   title?: string
   onToggle: () => void
   compact?: boolean
 }
 
-export function Toggle({ pressed, label, onToggle, compact, title }: Props) {
+export function Toggle({ pressed, label, reserveLabel, onToggle, compact, title }: Props) {
   const { settings } = useA11ySettings()
   return (
     <button
@@ -28,7 +30,14 @@ export function Toggle({ pressed, label, onToggle, compact, title }: Props) {
           {pressed ? '●' : '○'}
         </span>
       ) : null}
-      {label}
+      <span className={styles.labelStack}>
+        <span>{label}</span>
+        {reserveLabel && reserveLabel !== label ? (
+          <span className={styles.labelReserve} aria-hidden="true">
+            {reserveLabel}
+          </span>
+        ) : null}
+      </span>
     </button>
   )
 }

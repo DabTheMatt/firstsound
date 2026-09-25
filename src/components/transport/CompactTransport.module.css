@@ -81,10 +81,21 @@
 
 .cta {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   justify-content: flex-end;
   margin-left: auto;
   flex: none;
+}
+
+.cta .export,
+.cta .use {
+  width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
 }
 
 .compact .cta {
@@ -123,6 +134,7 @@
 
 .minimal .use {
   width: auto;
+  height: 32px;
   min-height: 32px;
   padding: 0 10px;
   font-size: 9px;

@@ -59,7 +59,10 @@
 .rec {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  box-sizing: border-box;
+  height: 28px;
   min-height: 28px;
   padding: 0 10px;
   border: 1px solid var(--danger);
@@ -69,6 +72,20 @@
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  line-height: 1;
+}
+
+.recLabel {
+  display: inline-grid;
+  place-items: center;
+}
+
+.recLabel > span {
+  grid-area: 1 / 1;
+}
+
+.recHidden {
+  visibility: hidden;
 }
 
 .recMark {
@@ -87,7 +104,7 @@
 }
 
 .recOn .recMark {
-  border-radius: 1px;
+  border-radius: 50%;
   background: currentColor;
 }
 

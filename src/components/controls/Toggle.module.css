@@ -39,6 +39,19 @@
   display: none;
 }
 
+.labelStack {
+  display: inline-grid;
+  place-items: center;
+}
+
+.labelStack > span {
+  grid-area: 1 / 1;
+}
+
+.labelReserve {
+  visibility: hidden;
+}
+
 html[data-low-vision='on'] .loop {
   display: inline-flex;
   align-items: center;
@@ -59,8 +72,8 @@ html[data-low-vision='on'] .mark {
 html[data-low-vision='on'] .active {
   color: var(--text-on-accent);
   background: var(--accent-primary);
-  border-width: 3px;
-  border-radius: 10px;
+  border-width: 2px;
+  border-radius: 999px;
   box-shadow: inset 0 0 0 1px var(--text-on-accent);
 }
 

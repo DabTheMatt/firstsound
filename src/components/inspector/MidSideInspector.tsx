@@ -152,6 +152,7 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
           <Toggle
             pressed={snap.params.msHaasDir > 0.5}
             label={snap.params.msHaasDir > 0.5 ? 'Delay R' : 'Delay L'}
+            reserveLabel={snap.params.msHaasDir > 0.5 ? 'Delay L' : 'Delay R'}
             onToggle={() => engine.setParam('msHaasDir', snap.params.msHaasDir > 0.5 ? 0 : 1)}
           />
           <h3 className={inspectorStyles.sub}>Tilt</h3>
