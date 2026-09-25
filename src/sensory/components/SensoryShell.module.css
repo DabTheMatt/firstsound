@@ -217,8 +217,9 @@
   right: 0;
   z-index: 12;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   align-items: center;
+  gap: 8px;
   padding: 18px 22px 8px;
   pointer-events: none;
 }
@@ -228,6 +229,10 @@
   align-items: center;
   gap: 14px;
   justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  container-type: inline-size;
+  container-name: brand;
 }
 
 .top > * {
@@ -334,13 +339,8 @@
 
 @media (max-width: 900px) {
   .top {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
     padding: 12px 12px 8px;
-  }
-
-  .brand {
-    letter-spacing: 0.24em;
-    font-size: 10px;
   }
 
   .bar {

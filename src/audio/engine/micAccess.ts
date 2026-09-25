@@ -16,7 +16,7 @@ export function micAccessMessage(err: unknown): string {
     return 'Microphone is busy or unavailable. Close other apps using the mic and try again.'
   }
   if (name === 'SecurityError') {
-    return 'Microphone blocked by the browser. Open FIELD over HTTPS and try Rec again.'
+    return 'Microphone blocked by the browser. Open INTERFER over HTTPS and try Rec again.'
   }
   return 'Microphone access was denied or is unavailable.'
 }
