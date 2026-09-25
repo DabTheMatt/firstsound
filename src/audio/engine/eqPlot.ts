@@ -22,6 +22,24 @@ export function eqResponseCurveStyle(
   return { width: width * EQ_LIVE_CURVE_WIDTH_SCALE, alpha: alpha * EQ_LIVE_CURVE_ALPHA_SCALE }
 }
 
+/** True when two band sets would draw as separate shapes on the plot. */
+export function eqResponsesDiverge(
+  a: EqBand[],
+  b: EqBand[],
+  freqs: number[],
+  sampleRate: number,
+  epsilonDb = 0.35,
+): boolean {
+  const step = Math.max(1, Math.floor(freqs.length / 64))
+  for (let i = 0; i < freqs.length; i += step) {
+    const hz = freqs[i] ?? EQ_MIN_HZ
+    if (Math.abs(eqMagnitudeDb(a, hz, sampleRate) - eqMagnitudeDb(b, hz, sampleRate)) > epsilonDb) {
+      return true
+    }
+  }
+  return false
+}
+
 export function strokeEqMagnitude(
   ctx: CanvasRenderingContext2D,
   bands: EqBand[],

@@ -1,12 +1,13 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MIN_HZ, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandIsActive, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsesDiverge,
   EQ_MINI_BAND_COUNT,
   EQ_PLOT_MAX_DB,
   EQ_PLOT_MIN_DB,
@@ -118,11 +119,9 @@ export function EqCurve({
       ctx.beginPath()
       ctx.rect(0, 0, width, height)
       ctx.clip()
-      const storedStyle = eqResponseCurveStyle('stored', false, dpr)
-      ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
-      ctx.lineWidth = Math.max(1.5, storedStyle.width)
-      strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
-      if (modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
+      const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))
+      let processing = plotBands
+      if (showLive) {
         const liveComb = comb
           ? {
               ...comb,
@@ -136,11 +135,21 @@ export function EqCurve({
           ...liveEqBandsFromParams(bands, live.liveParams, true),
           ...(liveComb ? combAsEqBands(liveComb) : []),
         ]
-        const liveStyle = eqResponseCurveStyle('live', false, dpr)
-        ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
-        ctx.lineWidth = Math.max(0.75, liveStyle.width)
-        strokeEqMagnitude(ctx, liveBands, freqs, sr, (i) => i, yAt)
+        processing = liveBands
+        const activeCount = plotBands.filter((band) => bandIsActive(band)).length
+        if (activeCount > 1 && eqResponsesDiverge(plotBands, liveBands, freqs, sr)) {
+          const ghostStyle = eqResponseCurveStyle('live', false, dpr)
+          ctx.setLineDash([4 * dpr, 3 * dpr])
+          ctx.strokeStyle = colorWithAlpha(tone.curve, ghostStyle.alpha)
+          ctx.lineWidth = Math.max(0.75, ghostStyle.width)
+          strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
+          ctx.setLineDash([])
+        }
       }
+      const storedStyle = eqResponseCurveStyle('stored', false, dpr)
+      ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
+      ctx.lineWidth = Math.max(1.5, storedStyle.width)
+      strokeEqMagnitude(ctx, processing, freqs, sr, (i) => i, yAt)
       ctx.restore()
       ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`

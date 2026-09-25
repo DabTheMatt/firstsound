@@ -1,4 +1,5 @@
 import { hzToX, type FreqScaleKind } from './freqScale'
+import { SPECTRUM_FLOOR_DB } from './spectrumBands'
 import { bandCenterHz } from './spectrumRegions'
 
 export type EnvelopePoint = { x: number; y: number }
@@ -20,8 +21,11 @@ export function spectrumEnvelopePoints(
   const out: EnvelopePoint[] = []
   for (let i = 0; i < n; i++) {
     const hz = bandCenterHz(edges, i)
-    const raw = dbs[i] ?? dbFloor
-    const db = raw <= dbFloor + 1 ? dbFloor : raw + dbOffset
+    const raw = dbs[i] ?? SPECTRUM_FLOOR_DB
+    // Analyser silence stays on the floor. Quieter-but-real bins get the same
+    // meter alignment as the bars, then sit on the graph floor if they are still below it.
+    const lifted = raw <= SPECTRUM_FLOOR_DB + 1 ? SPECTRUM_FLOOR_DB : raw + dbOffset
+    const db = Math.min(dbCeil, Math.max(dbFloor, lifted))
     const u = Math.min(1, Math.max(0, (dbCeil - db) / dbSpan))
     out.push({
       x: hzToX(hz, minHz, maxHz, plot.left, plot.right, scale),
@@ -31,29 +35,15 @@ export function spectrumEnvelopePoints(
   return out
 }
 
-/** Catmull-Rom segment that passes through both band points. */
-function curveThrough(
-  ctx: CanvasRenderingContext2D,
-  points: EnvelopePoint[],
-): void {
-  const n = points.length
-  for (let i = 0; i < n - 1; i++) {
-    const p0 = points[i - 1] ?? points[i]!
-    const p1 = points[i]!
-    const p2 = points[i + 1]!
-    const p3 = points[i + 2] ?? p2
-    ctx.bezierCurveTo(
-      p1.x + (p2.x - p0.x) / 6,
-      p1.y + (p2.y - p0.y) / 6,
-      p2.x - (p3.x - p1.x) / 6,
-      p2.y - (p3.y - p1.y) / 6,
-      p2.x,
-      p2.y,
-    )
+/** Straight segments through every band so quiet bins stay on the graph instead of spline-clipping away. */
+function traceEnvelope(ctx: CanvasRenderingContext2D, points: EnvelopePoint[]): void {
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i]!
+    ctx.lineTo(p.x, p.y)
   }
 }
 
-/** Smooth polyline that passes through every band center. */
+/** Polyline that passes through every band center. */
 export function strokeSpectrumEnvelope(ctx: CanvasRenderingContext2D, points: EnvelopePoint[]): void {
   if (points.length === 0) return
   const first = points[0]!
@@ -63,7 +53,7 @@ export function strokeSpectrumEnvelope(ctx: CanvasRenderingContext2D, points: En
     ctx.stroke()
     return
   }
-  curveThrough(ctx, points)
+  traceEnvelope(ctx, points)
   ctx.stroke()
 }
 
@@ -78,7 +68,7 @@ export function fillSpectrumEnvelope(
   ctx.beginPath()
   ctx.moveTo(first.x, bottom)
   ctx.lineTo(first.x, first.y)
-  curveThrough(ctx, points)
+  traceEnvelope(ctx, points)
   ctx.lineTo(last.x, bottom)
   ctx.closePath()
   ctx.fill()

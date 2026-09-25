@@ -48,6 +48,19 @@ describe('spectrumEnvelopePoints', () => {
     expect(aligned[0]!.y).toBeCloseTo(15)
   })
 
+  it('lifts a quiet bin the same way as the bars, then clamps it to the graph floor', () => {
+    const edges = logBandEdgesHz(20, 20000, 2)
+    const pts = spectrumEnvelopePoints([-70, -40], edges, 20, 20000, {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+    }, 0, -60, 30)
+    expect(pts).toHaveLength(2)
+    expect(pts[0]!.y).toBeCloseTo(100 * (40 / 60))
+    expect(pts[1]!.y).toBeCloseTo(100 * (10 / 60))
+  })
+
   it('does not lift a floor band when aligning', () => {
     const edges = logBandEdgesHz(20, 20000, 2)
     const pts = spectrumEnvelopePoints([-100, -40], edges, 20, 20000, {
@@ -68,8 +81,7 @@ describe('strokeSpectrumEnvelope', () => {
       beginPath: () => ops.push('begin'),
       moveTo: (x: number, y: number) => ops.push(`m${x},${y}`),
       quadraticCurveTo: () => ops.push('q'),
-      bezierCurveTo: (_c1x: number, _c1y: number, _c2x: number, _c2y: number, x: number, y: number) =>
-        ops.push(`b${x},${y}`),
+      bezierCurveTo: () => ops.push('bezier'),
       lineTo: (x: number, y: number) => ops.push(`l${x},${y}`),
       stroke: () => ops.push('stroke'),
     } as unknown as CanvasRenderingContext2D
@@ -80,8 +92,9 @@ describe('strokeSpectrumEnvelope', () => {
     ])
     expect(ops[0]).toBe('begin')
     expect(ops[1]).toBe('m0,10')
-    expect(ops).toContain('b10,20')
-    expect(ops).toContain('b20,8')
+    expect(ops).toContain('l10,20')
+    expect(ops).toContain('l20,8')
+    expect(ops).not.toContain('bezier')
     expect(ops).toContain('stroke')
   })
 })

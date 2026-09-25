@@ -6,6 +6,7 @@ import {
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsesDiverge,
   freqToX,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
@@ -14,7 +15,7 @@ import {
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
-import { EQ_MIN_HZ, eqModuleIsAudible } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandIsActive, eqModuleIsAudible } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
   FREQ_SCALE_HZ,
@@ -64,7 +65,7 @@ import { isDocumentHidden } from '../../app/frameBudget'
 import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
-import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
+import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
@@ -92,6 +93,14 @@ function dbToY(db: number, top: number, bottom: number, minDb: number): number {
   const span = 0 - minDb
   const t = Math.min(1, Math.max(0, span > 0 ? (0 - db) / span : 1))
   return top + t * (bottom - top)
+}
+
+/** Frequencies spaced evenly in the active plot scale, so the EQ curve matches bars and labels. */
+function plotFreqs(count: number, minHz: number, maxHz: number, scale: FreqScaleKind): number[] {
+  const n = Math.max(2, count)
+  const out: number[] = []
+  for (let i = 0; i < n; i++) out.push(xToHz(i / (n - 1), minHz, maxHz, 0, 1, scale))
+  return out
 }
 
 function hzToX(
@@ -457,7 +466,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
 
         const eqs = live.chain.filter((m) => m.type === 'eq')
         const overlayFocus = eqFocusRef.current
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+        const freqs = plotFreqs(Math.floor(plotW), minHz, maxHz, scale)
         for (let ei = 0; ei < eqs.length; ei++) {
           const mod = eqs[ei]
           if (!mod) continue
@@ -489,17 +498,25 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.beginPath()
           ctx.rect(left, top, plotW, plotH)
           ctx.clip()
+          const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)
+          const processing = showLive ? liveBands : storedBands
+          const activeCount = storedBands.filter((band) => bandIsActive(band)).length
+          const ghost =
+            showLive &&
+            activeCount > 1 &&
+            eqResponsesDiverge(storedBands, liveBands, freqs, sr)
+          if (ghost) {
+            const ghostStyle = eqResponseCurveStyle('live', mod.bypassed, dpr)
+            ctx.setLineDash([4 * dpr, 3 * dpr])
+            ctx.strokeStyle = colorWithAlpha(tone.curve, ghostStyle.alpha * (focused ? 1 : 0.28))
+            ctx.lineWidth = ghostStyle.width
+            strokeEqMagnitude(ctx, storedBands, freqs, sr, xAt, yAt)
+          }
           const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha * (focused ? 1 : 0.28))
           ctx.lineWidth = storedStyle.width * (focused ? 1 : 0.85)
-          strokeEqMagnitude(ctx, storedBands, freqs, sr, xAt, yAt)
-          if (modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)) {
-            const liveStyle = eqResponseCurveStyle('live', mod.bypassed, dpr)
-            ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha * (focused ? 1 : 0.28))
-            ctx.lineWidth = liveStyle.width
-            strokeEqMagnitude(ctx, liveBands, freqs, sr, xAt, yAt)
-          }
+          strokeEqMagnitude(ctx, processing, freqs, sr, xAt, yAt)
           ctx.restore()
         }
         const filterMod = live.chain.find((m) => m.type === 'filter')
