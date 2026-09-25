@@ -5,7 +5,6 @@ import {
   FX_LFO_SLOTS,
   fxLfoIsActive,
   fxLfoSlotName,
-  lfoConnectCopy,
   type FxLfo,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
@@ -13,8 +12,8 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoShapeIcon } from '../controls/LfoShapePicker'
-import { PlugGlyph } from '../controls/PlugGlyph'
 import { useFxLfoConnect } from './FxLfoConnect'
+import { LfoConnectButton } from './LfoConnectButton'
 import styles from './LfoCenter.module.css'
 
 type Props = {
@@ -100,7 +99,6 @@ function KindBlock({
             if (!lfo) return null
             const connecting = armed?.kind === kind && armed.slot === slot
             const target = lfo.target ? PARAMS[lfo.target].label : null
-            const connect = lfoConnectCopy(connecting, target)
             const running = fxLfoIsActive(lfo)
             const name = fxLfoSlotName(kind, slot)
             return (
@@ -120,30 +118,13 @@ function KindBlock({
                   <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>
                 </button>
                 <div className={styles.actions}>
-                  <div className={styles.connectTile}>
-                    <button
-                      type="button"
-                      className={connecting || target ? styles.ghostOn : styles.ghost}
-                      aria-pressed={connecting}
-                      onClick={() => setArmed(connecting ? null : { kind, slot })}
-                    >
-                      <span>{connect.label}</span>
-                      {connect.detail ? <small className={styles.connectDetail}>{connect.detail}</small> : null}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.plug} ${target ? styles.plugOn : styles.plugOff}`}
-                      aria-label={target ? 'Disconnect LFO' : 'Connect LFO'}
-                      title={target ? 'Disconnect' : 'Connect'}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        if (lfo.target) engine.setFxLfoTarget(kind, slot, null)
-                        else setArmed(connecting ? null : { kind, slot })
-                      }}
-                    >
-                      <PlugGlyph />
-                    </button>
-                  </div>
+                  <LfoConnectButton
+                    kind={kind}
+                    slot={slot}
+                    targetLabel={target}
+                    armed={connecting}
+                    setArmed={setArmed}
+                  />
                 </div>
               </li>
             )

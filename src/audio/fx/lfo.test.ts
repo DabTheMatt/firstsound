@@ -228,10 +228,15 @@ describe('targets', () => {
 })
 
 describe('lfoConnectCopy', () => {
-  it('shows Connected plus the target label', () => {
-    expect(lfoConnectCopy(false, null)).toEqual({ label: 'Connect', detail: null })
-    expect(lfoConnectCopy(true, 'Gain')).toEqual({ label: 'Click a parameter', detail: null })
-    expect(lfoConnectCopy(false, 'EQ 1 Freq')).toEqual({ label: 'Connected', detail: 'EQ 1 Freq' })
+  it('derives the control from the real target, not the arming gesture', () => {
+    expect(lfoConnectCopy(false, null)).toEqual({ label: 'Connect', detail: null, mode: 'connect' })
+    expect(lfoConnectCopy(true, null)).toEqual({ label: 'Connect', detail: null, mode: 'armed' })
+    expect(lfoConnectCopy(true, 'Gain')).toEqual({ label: 'Disconnect', detail: 'Gain', mode: 'disconnect' })
+    expect(lfoConnectCopy(false, 'EQ 1 Freq')).toEqual({
+      label: 'Disconnect',
+      detail: 'EQ 1 Freq',
+      mode: 'disconnect',
+    })
   })
 })
 

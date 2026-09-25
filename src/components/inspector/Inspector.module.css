@@ -507,6 +507,12 @@
   margin: 12px 0 16px;
 }
 
+.connectRow {
+  justify-content: center;
+  width: 100%;
+  margin: 4px 0 0;
+}
+
 .eq {
   display: flex;
   flex-direction: column;
@@ -855,16 +861,17 @@
   text-transform: none;
 }
 
-.lfoCompact .slotNumHold {
-  visibility: hidden;
-  border-color: transparent;
-  background: transparent;
+.lfoCompact .slotNumPending {
+  opacity: 0.38;
+  border-style: dashed;
+  pointer-events: none;
 }
 
 .lfoCompact .slotNumOn {
-  color: var(--accent-primary);
+  color: var(--bg-panel);
   border-color: var(--accent-primary);
-  background: var(--accent-soft);
+  background: var(--accent-primary);
+  font-weight: 700;
 }
 
 .lfoCompact .addLfo {
@@ -886,47 +893,18 @@
 }
 
 .lfoCompact .connectRow {
-  display: block;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   flex-wrap: nowrap;
-  min-height: 36px;
+  min-height: 28px;
+  margin: 0;
   width: 100%;
   overflow: visible;
-}
-
-.lfoCompact .connectTile {
-  height: 100%;
-  border-radius: 8px;
 }
 
 .lfoCompact .ghost {
   min-height: 0;
   padding: 0 8px;
   font-size: 9px;
-}
-
-.lfoCompact .connectBtn {
-  height: 100%;
-  min-height: 0;
-  max-height: 36px;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  padding: 0 8px;
-  overflow: hidden;
-}
-
-.lfoCompact .connectBtn small {
-  display: none;
-}
-
-.lfoCompact .plug {
-  position: relative;
-  top: auto;
-  right: auto;
-  bottom: auto;
-  left: auto;
-  width: 26px;
-  height: auto;
-  z-index: 2;
 }

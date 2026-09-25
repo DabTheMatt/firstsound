@@ -597,13 +597,24 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
   return 'main'
 }
 
+export type LfoConnectMode = 'connect' | 'armed' | 'disconnect'
+
+/** Label and mode for the shared connect control. A real target always wins over the arming gesture. */
+export function lfoConnectMode(armed: boolean, hasTarget: boolean): LfoConnectMode {
+  if (hasTarget) return 'disconnect'
+  if (armed) return 'armed'
+  return 'connect'
+}
+
 export function lfoConnectCopy(connecting: boolean, targetLabel: string | null): {
   label: string
   detail: string | null
+  mode: LfoConnectMode
 } {
-  if (connecting) return { label: 'Click a parameter', detail: null }
-  if (targetLabel) return { label: 'Connected', detail: targetLabel }
-  return { label: 'Connect', detail: null }
+  const mode = lfoConnectMode(connecting, Boolean(targetLabel))
+  if (mode === 'disconnect') return { label: 'Disconnect', detail: targetLabel, mode }
+  if (mode === 'armed') return { label: 'Connect', detail: null, mode }
+  return { label: 'Connect', detail: null, mode }
 }
 
 export function applyFxLfos(

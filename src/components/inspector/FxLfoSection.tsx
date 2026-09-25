@@ -9,15 +9,14 @@ import {
   LFO_RATE_MIN,
   fxLfoIsActive,
   fxLfoSlotName,
-  lfoConnectCopy,
   type FxLfoKind,
 } from '../../audio/fx/lfo'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine } from '../../hooks/useEngine'
 import { Segmented } from '../controls/Segmented'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
-import { PlugGlyph } from '../controls/PlugGlyph'
 import { useFxLfoConnect } from './FxLfoConnect'
+import { LfoConnectButton } from './LfoConnectButton'
 import { readLfoOpen, writeLfoOpen } from './lfoOpen'
 import { ValueKnob } from '../controls/ValueKnob'
 import styles from './Inspector.module.css'
@@ -39,17 +38,28 @@ type Props = {
   compact?: boolean
 }
 
+const activeSlotByKind = new Map<FxLfoKind, number>()
+
+function rememberedSlot(kind: FxLfoKind, shown: number): number {
+  const saved = activeSlotByKind.get(kind) ?? 0
+  return Math.min(Math.max(0, saved), Math.max(0, shown - 1))
+}
+
 export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
-  const [slot, setSlot] = useState(0)
+  const [slotState, setSlotState] = useState<{ kind: FxLfoKind; slot: number } | null>(null)
   const [open, setOpen] = useState(() => readLfoOpen(kind))
+  const slot = slotState?.kind === kind ? slotState.slot : rememberedSlot(kind, shown)
   const activeSlot = Math.min(slot, shown - 1)
+  const chooseSlot = (next: number) => {
+    activeSlotByKind.set(kind, next)
+    setSlotState({ kind, slot: next })
+  }
   const lfo = snap.fxLfos[kind][activeSlot] ?? snap.fxLfos[kind][0]
   const live = snap.fxLfos[kind].some(fxLfoIsActive)
   const { armed, setArmed } = useFxLfoConnect()
   const connecting = armed?.kind === kind && armed.slot === activeSlot
   const targetLabel = lfo?.target ? PARAMS[lfo.target].label : null
-  const connect = lfoConnectCopy(connecting, targetLabel)
   const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
   const depth = lfo?.depth ?? 0
   const rateText = `${rateHz < 10 ? rateHz.toFixed(2) : rateHz.toFixed(1)} Hz`
@@ -170,12 +180,14 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
                 aria-label={`LFO ${i + 1}`}
                 title={fxLfoSlotName(kind, i)}
                 className={`${styles.slotNum} ${i === activeSlot ? styles.slotNumOn : ''}`}
-                onClick={() => setSlot(i)}
+                onClick={() => chooseSlot(i)}
               >
                 {i + 1}
               </button>
             ) : (
-              <span key={i} className={styles.slotNumHold} aria-hidden="true" />
+              <span key={i} className={`${styles.slotNum} ${styles.slotNumPending}`} aria-hidden="true">
+                {i + 1}
+              </span>
             ),
           )}
           <button
@@ -187,7 +199,7 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
             title="Add LFO"
             onClick={() => {
               const next = engine.addFxLfo(kind)
-              if (next != null) setSlot(next)
+              if (next != null) chooseSlot(next)
             }}
           >
             +
@@ -202,7 +214,7 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
               value: String(i),
               label: fxLfoSlotName(kind, i),
             }))}
-            onChange={(value) => setSlot(Number(value))}
+            onChange={(value) => chooseSlot(Number(value))}
           />
           <button
             type="button"
@@ -211,7 +223,7 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
             aria-hidden={shown >= FX_LFO_SLOTS}
             onClick={() => {
               const next = engine.addFxLfo(kind)
-              if (next != null) setSlot(next)
+              if (next != null) chooseSlot(next)
             }}
           >
             Add LFO
@@ -225,35 +237,21 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
       />
       {knobs}
       <div className={`${styles.row} ${styles.connectRow}`}>
-        <div className={styles.connectTile}>
-          <button
-            type="button"
-            className={`${styles.ghost} ${styles.connectBtn} ${connecting || lfo?.target ? styles.presetOn : ''}`}
-            aria-pressed={connecting}
-            title={connect.detail ?? connect.label}
-            onClick={() => setArmed(connecting ? null : { kind, slot: activeSlot })}
-          >
-            <span>{connect.label}</span>
-            {!compact && connect.detail ? <small>{connect.detail}</small> : null}
-          </button>
-          <button
-            type="button"
-            className={`${styles.plug} ${lfo?.target ? styles.plugOn : styles.plugOff}`}
-            aria-label={lfo?.target ? 'Disconnect LFO' : 'Connect LFO'}
-            title={lfo?.target ? 'Disconnect' : 'Connect'}
-            onClick={(event) => {
-              event.stopPropagation()
-              if (lfo?.target) engine.setFxLfoTarget(kind, activeSlot, null)
-              else setArmed(connecting ? null : { kind, slot: activeSlot })
-            }}
-          >
-            <PlugGlyph />
-          </button>
-        </div>
+        <LfoConnectButton
+          kind={kind}
+          slot={activeSlot}
+          targetLabel={targetLabel}
+          armed={connecting}
+          setArmed={setArmed}
+        />
       </div>
       {compact ? null : (
       <p className={styles.help}>
-        {connecting ? 'Click a knob on this effect, or press Escape to cancel.' : connect.detail ? `Target: ${connect.detail}` : 'No target yet.'}
+        {lfo?.target
+          ? `Target: ${targetLabel}. Disconnect removes this route.`
+          : connecting
+            ? 'Click a knob on this effect, or press Escape to cancel.'
+            : 'No target yet.'}
       </p>
       )}
       </>
