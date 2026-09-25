@@ -1,4 +1,5 @@
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import { EFFECT_DEFAULT_ID, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import {
   findSpacePreset,
   presetHint,
@@ -298,21 +299,30 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
   )
 }
 
+function lfoResting(snap: EngineSnapshot, kind: 'delay' | 'reverb'): boolean {
+  return !snap.fxLfos[kind].some((slot) => slot.target)
+}
+
 function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
   const selected = snap.spacePresetId ? findSpacePreset(snap.spacePresetId) : undefined
   const matchesType = selected?.kind === 'delay' && selected.delayType === snap.delayType
   const current = matchesType ? selected : undefined
   const typePresets = presetsForDelayType(snap.delayType)
+  const atDefault =
+    !current && paramsMatchDefaults(snap.params, 'delay') && snap.delayType === 'digital' && lfoResting(snap, 'delay')
   return (
     <>
       <label className={styles.field}>
         Delay presets
         <select
-          className={`${styles.select} ${current ? styles.selectOn : ''}`}
+          className={`${styles.select} ${current || atDefault ? styles.selectOn : ''}`}
           aria-label="Delay presets"
-          value={current?.id ?? ''}
-          disabled={typePresets.length === 0}
+          value={current?.id ?? (atDefault ? EFFECT_DEFAULT_ID : '')}
           onChange={(event) => {
+            if (event.target.value === EFFECT_DEFAULT_ID) {
+              engine.resetEffect('delay')
+              return
+            }
             const preset = findSpacePreset(event.target.value)
             if (preset) engine.applySpacePreset(preset)
           }}
@@ -320,6 +330,7 @@ function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
           <option value="" disabled>
             {typePresets.length === 0 ? 'No factory delays' : 'Choose a delay'}
           </option>
+          <option value={EFFECT_DEFAULT_ID}>Default</option>
           {typePresets.map((p) => (
             <option key={p.id} value={p.id} title={presetHint(p)}>
               {p.name}
@@ -331,6 +342,8 @@ function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
         <p className={styles.selectCurrent}>
           {current.category} · {current.name}
         </p>
+      ) : atDefault ? (
+        <p className={styles.selectCurrent}>Default</p>
       ) : (
         <p className={styles.help}>No factory delay selected for this type.</p>
       )}
@@ -345,16 +358,21 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
   const current = matchesType ? selected : undefined
   const typePresets = presetsForReverbType(snap.reverbType)
   const custom = snap.reverbType === 'custom'
+  const atDefault =
+    !current && paramsMatchDefaults(snap.params, 'reverb') && snap.reverbType === 'hall' && lfoResting(snap, 'reverb')
   return (
     <>
       <label className={styles.field}>
         Reverb presets
         <select
-          className={`${styles.select} ${current ? styles.selectOn : ''}`}
+          className={`${styles.select} ${current || atDefault ? styles.selectOn : ''}`}
           aria-label="Reverb presets"
-          value={current?.id ?? ''}
-          disabled={custom || typePresets.length === 0}
+          value={current?.id ?? (atDefault ? EFFECT_DEFAULT_ID : '')}
           onChange={(event) => {
+            if (event.target.value === EFFECT_DEFAULT_ID) {
+              engine.resetEffect('reverb')
+              return
+            }
             const preset = findSpacePreset(event.target.value)
             if (preset) engine.applySpacePreset(preset)
           }}
@@ -362,6 +380,7 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
           <option value="" disabled>
             {custom ? 'Custom' : typePresets.length === 0 ? 'No factory spaces' : 'Choose a space'}
           </option>
+          <option value={EFFECT_DEFAULT_ID}>Default</option>
           {typePresets.map((p) => (
             <option key={p.id} value={p.id} title={presetHint(p)}>
               {p.name}
@@ -373,6 +392,8 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
         <p className={styles.selectCurrent}>
           {current.category} · {current.name}
         </p>
+      ) : atDefault ? (
+        <p className={styles.selectCurrent}>Default</p>
       ) : custom ? (
         <p className={styles.help}>Custom space — knobs are not a factory preset.</p>
       ) : (

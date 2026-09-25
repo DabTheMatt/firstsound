@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { parseUiMode } from './uiMode'
+import { parseUiMode, UI_MODES } from './uiMode'
+
+describe('UI_MODES', () => {
+  it('lists Simple, Technical, then Sensory', () => {
+    expect([...UI_MODES]).toEqual(['simple', 'technical', 'sensory'])
+  })
+})
 
 describe('parseUiMode', () => {
   it('accepts the three interface layers', () => {

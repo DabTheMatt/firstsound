@@ -38,6 +38,8 @@ import { eqBandLfoIds, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../
 import { engine } from '../../hooks/useEngine'
 import { PresetMenu } from '../controls/PresetMenu'
 import { LfoParamShell } from '../controls/LfoParamShell'
+import { combMatchesDefault, eqBandsMatchDefault, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
+import { EQ_BAND_LFO_KINDS } from '../../audio/fx/lfo'
 import { EQ_PRESET_CATEGORIES, EQ_PRESETS } from '../../audio/fx/eqPresets'
 import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { ParamControl } from '../controls/ParamControl'
@@ -56,6 +58,10 @@ import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
 import { FxLfoSection } from './FxLfoSection'
 import styles from './Inspector.module.css'
+
+function lfoBankResting(bank: readonly { target: string | null }[] | undefined): boolean {
+  return !bank?.some((slot) => slot.target)
+}
 
 type Props = {
   snap: EngineSnapshot
@@ -608,7 +614,9 @@ function ModuleInspector({
             label="Grain presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('grain')}
+            matchesDefault={paramsMatchDefaults(snap.params, 'grain') && lfoBankResting(snap.fxLfos.grain)}
             onApply={(id) => engine.applyModulePreset(id)}
+            onDefault={() => engine.resetEffect('grain')}
           />
           <Toggle
             pressed={snap.engineMode === 'grain'}
@@ -645,7 +653,14 @@ function ModuleInspector({
             label="Distortion presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('distortion')}
+            matchesDefault={
+              paramsMatchDefaults(snap.params, 'distortion') &&
+              snap.distortionType === 'saturation' &&
+              snap.distortionNoiseKind === 'white' &&
+              lfoBankResting(snap.fxLfos.distortion)
+            }
             onApply={(id) => engine.applyModulePreset(id)}
+            onDefault={() => engine.resetEffect('distortion')}
           />
           <p className={styles.help}>{distortionHelp(snap.distortionType)}</p>
           <div className={styles.row}>
@@ -717,7 +732,9 @@ function CompressorEditor({
             label="Compressor presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('compressor')}
+            matchesDefault={paramsMatchDefaults(snap.params, 'compressor') && lfoBankResting(snap.fxLfos.compressor)}
             onApply={(id) => engine.applyModulePreset(id)}
+            onDefault={() => engine.resetEffect('compressor')}
           />
           <div className={styles.eqViz}>
             <LimiterPlot kind="compressor" />
@@ -769,7 +786,9 @@ function LimiterEditor({
             label="Limiter presets"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('limiter')}
+            matchesDefault={paramsMatchDefaults(snap.params, 'limiter') && lfoBankResting(snap.fxLfos.limiter)}
             onApply={(id) => engine.applyModulePreset(id)}
+            onDefault={() => engine.resetEffect('limiter')}
           />
           <div className={styles.eqViz}>
             <LimiterPlot kind="limiter" />
@@ -833,7 +852,14 @@ function EqEditor({
         label="EQ presets"
         categories={EQ_PRESET_CATEGORIES}
         presets={EQ_PRESETS.map((p) => ({ id: p.id, name: p.name, category: p.category, hint: p.hint }))}
+        matchesDefault={
+          eqBandsMatchDefault(bands) &&
+          combMatchesDefault(comb) &&
+          EQ_BAND_LFO_KINDS.every((kind) => lfoBankResting(snap.fxLfos[kind])) &&
+          lfoBankResting(snap.fxLfos.eqcf)
+        }
         onApply={(id) => engine.applyEqPreset(id, instanceId)}
+        onDefault={() => engine.resetEffect('eq', instanceId)}
       />
       {bands.length < EQ_MAX_BANDS ? (
         <div className={styles.eqAddBar}>

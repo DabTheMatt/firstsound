@@ -1,4 +1,5 @@
 import { PARAMS } from '../parameters/definitions'
+import { defaultParamPatch } from './effectDefaults'
 import { applyParamValue } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 import {
@@ -190,9 +191,7 @@ export function filterPresetPatch(id: FilterPresetId): Partial<Record<ParamId, n
 }
 
 export function resetFilterPatch(): Partial<Record<ParamId, number>> {
-  const patch: Partial<Record<ParamId, number>> = {}
-  for (const id of FILTER_PARAM_IDS) patch[id] = PARAMS[id].defaultValue
-  return patch
+  return defaultParamPatch(FILTER_PARAM_IDS)
 }
 
 /** Musical randomization: start from a recipe, then nudge cutoff / Q / rate. */

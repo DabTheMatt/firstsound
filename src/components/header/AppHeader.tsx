@@ -56,8 +56,10 @@ export function AppHeader({
             type="button"
             className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
             aria-pressed={snap.recording}
+            aria-label={snap.recording ? t.header.stop : t.header.record}
             onClick={onRecord}
           >
+            <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
             {snap.recording ? t.header.stop : t.header.record}
           </button>
         ) : null}
@@ -121,8 +123,10 @@ export function AppHeader({
             type="button"
             className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
             aria-pressed={snap.recording}
+            aria-label={snap.recording ? t.header.stop : t.header.record}
             onClick={onRecord}
           >
+            <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
             {snap.recording ? t.header.stop : t.header.rec}
           </button>
         ) : null}

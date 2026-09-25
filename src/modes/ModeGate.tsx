@@ -19,13 +19,13 @@ export function ModeGate({ onChoose }: Props) {
             <span className={styles.choiceName}>{t.gate.simple}</span>
             <span className={styles.choiceCopy}>{t.gate.simpleCopy}</span>
           </button>
-          <button type="button" className={styles.choice} onClick={() => onChoose('sensory')}>
-            <span className={styles.choiceName}>{t.gate.listen}</span>
-            <span className={styles.choiceCopy}>{t.gate.listenCopy}</span>
-          </button>
           <button type="button" className={styles.choice} onClick={() => onChoose('technical')}>
             <span className={styles.choiceName}>{t.gate.control}</span>
             <span className={styles.choiceCopy}>{t.gate.controlCopy}</span>
+          </button>
+          <button type="button" className={styles.choice} onClick={() => onChoose('sensory')}>
+            <span className={styles.choiceName}>{t.gate.listen}</span>
+            <span className={styles.choiceCopy}>{t.gate.listenCopy}</span>
           </button>
         </div>
         <RuntimeStatus variant="gate" />

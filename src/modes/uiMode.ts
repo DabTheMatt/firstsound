@@ -1,6 +1,6 @@
 export const UI_MODE_STORAGE_KEY = 'firstsound.uiMode'
 
-export const UI_MODES = ['simple', 'sensory', 'technical'] as const
+export const UI_MODES = ['simple', 'technical', 'sensory'] as const
 
 export type UiMode = (typeof UI_MODES)[number]
 

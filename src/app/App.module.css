@@ -64,42 +64,10 @@
   gap: 8px 10px;
   min-width: 0;
   min-height: 40px;
-  padding: 4px 4px 4px 10px;
+  padding: 4px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-panel);
-}
-
-.now {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: none;
-  min-width: 76px;
-  max-width: 132px;
-  padding-right: 10px;
-  border-right: 1px solid var(--border-default);
-}
-
-.kicker {
-  font-size: 8px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-disabled);
-  line-height: 1.2;
-}
-
-.nowName {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent-primary);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .chainBand > :last-child {
@@ -204,17 +172,6 @@
 
 .phoneShell .chainBand {
   min-height: 34px;
-  padding-left: 8px;
-}
-
-.phoneShell .now {
-  min-width: 64px;
-  max-width: 96px;
-  padding-right: 8px;
-}
-
-.phoneShell .nowName {
-  font-size: 11px;
 }
 
 .phoneShell .transportPinned {
