@@ -15,6 +15,8 @@ type Props = {
   /** Stored (pre-LFO) readout shown between the dial and the live value. */
   baseValueText?: string
   compact?: boolean
+  /** Smaller dial that stays visually secondary to a compact knob. */
+  mini?: boolean
   /** Thin outer ring showing LFO ±depth around the stored zero. */
   lfoRange?: { min: number; max: number }
   onChange: (normalized: number) => void
@@ -41,6 +43,7 @@ export function ValueKnob({
   visualValueText,
   baseValueText,
   compact = false,
+  mini = false,
   lfoRange,
   onChange,
   onReset,
@@ -169,7 +172,7 @@ export function ValueKnob({
 
   return (
     <div
-      className={`${styles.knob} ${compact ? styles.compact : ''}`}
+      className={`${styles.knob} ${mini ? styles.mini : compact ? styles.compact : ''}`}
       title={description}
       onMouseEnter={() => setTipOpen(true)}
       onMouseLeave={() => setTipOpen(false)}

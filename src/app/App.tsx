@@ -880,13 +880,11 @@ export default function App() {
               <InspectorEye open={false} onClick={() => setInspectorOpen(true)} />
             </div>
           ) : null}
-          {dockRight ? (
-            <MeterStrip
-              channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
-              range={meterRange}
-              onRange={setMeterRange}
-            />
-          ) : null}
+          <MeterStrip
+            channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
+            range={meterRange}
+            onRange={setMeterRange}
+          />
         </div>
 
         {!dockRight && inspectorOpen ? (

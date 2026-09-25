@@ -30,7 +30,7 @@ export function inspectorWidth(mode: LayoutMode, viewportWidth: number): number 
 }
 
 export function meterColumnWidth(mode: LayoutMode): number {
-  return mode === 'dock-right' ? 64 : 0
+  return mode === 'dock-right' ? 78 : 0
 }
 
 /** Layout pixels for a fullscreen shell. Prefer the largest reliable viewport

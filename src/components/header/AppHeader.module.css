@@ -77,47 +77,6 @@
   background: color-mix(in srgb, #e24b4b 16%, transparent);
 }
 
-.monitor {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin: 0;
-  padding: 0 8px;
-  min-height: 28px;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  color: var(--text-muted);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.monitor input {
-  width: 72px;
-  min-width: 56px;
-  margin: 0;
-  accent-color: var(--accent-primary);
-}
-
-.monitor em {
-  min-width: 2.2em;
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.monitorCompact {
-  padding: 0 6px;
-  min-height: 28px;
-}
-
-.monitorCompact input {
-  width: 56px;
-}
-
 .meta {
   display: flex;
   gap: 12px;

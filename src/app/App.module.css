@@ -121,6 +121,7 @@
 }
 
 .work {
+  --meter-col: 78px;
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
@@ -130,11 +131,11 @@
 }
 
 .dock-right .work {
-  grid-template-columns: minmax(0, 1fr) minmax(304px, var(--inspector-col, 368px)) 64px;
+  grid-template-columns: minmax(0, 1fr) minmax(304px, var(--inspector-col, 368px)) var(--meter-col);
 }
 
 .inspectorHidden.dock-right .work {
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) var(--meter-col);
 }
 
 .waveCol {
@@ -267,7 +268,7 @@
 .inspectorReveal {
   position: absolute;
   top: 8px;
-  right: 80px;
+  right: calc(var(--meter-col, 78px) + 16px);
   z-index: 8;
 }
 
@@ -513,7 +514,11 @@
   }
 }
 
-.sheet .shell,
-.dock-bottom .work {
+.sheet .shell {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.dock-bottom .work,
+.sheet .work {
+  grid-template-columns: minmax(0, 1fr) var(--meter-col);
 }

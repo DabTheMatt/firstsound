@@ -143,6 +143,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       <p className="sr-only" aria-live="off">
         {meterReadout}
       </p>
+      <MonitorKnob value={snap.recMonitor} />
       <div className={styles.outKnob}>
         <ValueKnob
           compact
@@ -168,6 +169,27 @@ export function MeterStrip({ channels, range, onRange }: Props) {
         <option value="field">−100</option>
         <option value="full">−120</option>
       </select>
+    </div>
+  )
+}
+
+function MonitorKnob({ value }: { value: number }) {
+  const { t } = useI18n()
+  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
+  return (
+    <div className={styles.monitorKnob}>
+      <ValueKnob
+        mini
+        label={t.mix.monitor}
+        valueText={`${pct}%`}
+        valueTextAccessible={`${pct}%`}
+        description={t.mix.monitorHint}
+        normalized={Math.min(1, Math.max(0, value))}
+        min={0}
+        max={100}
+        now={pct}
+        onChange={(n) => engine.setRecMonitor(Math.round(n * 100) / 100)}
+      />
     </div>
   )
 }
