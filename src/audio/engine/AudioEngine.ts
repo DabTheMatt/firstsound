@@ -44,6 +44,7 @@ import {
   defaultLfoHold,
   defaultLfoShown,
   EQ_BAND_LFO_IDS,
+  EQ_BAND_LFO_KINDS,
   FX_LFO_SLOTS,
   isFxLfoKind,
   isFxLfoTarget,
@@ -113,14 +114,14 @@ import { applyMidSideGraph, createMidSideGraph, type MidSideGraph } from '../fx/
 import { MS_PARAM_IDS } from '../fx/midSide'
 import {
   randomizeMidSide as randomizeMidSidePatch,
-  resetMidSidePatch,
   type MidSideRecipeId,
   midSideRecipePatch,
   MIDSIDE_RECIPES,
 } from '../fx/midSidePresets'
-import { filterPresetPatch, randomizeFilterPatch, resetFilterPatch, type FilterPresetId } from '../fx/filterPresets'
+import { filterPresetPatch, randomizeFilterPatch, type FilterPresetId } from '../fx/filterPresets'
 import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
+import { effectDefaultPatch, type EffectDefaultKind } from '../fx/effectDefaults'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
 import { syncedDelayMs } from '../fx/sync'
 import {
@@ -1167,7 +1168,7 @@ export class AudioEngine {
   }
 
   resetFilter(): void {
-    this.setParams(resetFilterPatch())
+    this.resetEffect('filter')
   }
 
   applyMidSideRecipe(id: MidSideRecipeId): void {
@@ -1188,8 +1189,55 @@ export class AudioEngine {
   }
 
   resetMidSide(): void {
-    this.setParams(resetMidSidePatch())
-    this.setFxLfo('midside', 0, { target: null })
+    this.resetEffect('midside')
+  }
+
+  /** Restore one effect to its original parameter values. Does not change bypass. */
+  resetEffect(kind: EffectDefaultKind, instanceId?: string): void {
+    if (kind === 'eq') {
+      this.resetEqToDefault(instanceId)
+      return
+    }
+    const keptSpace = this.spacePresetId
+    this.setParams(effectDefaultPatch(kind))
+    if (kind !== 'delay' && kind !== 'reverb' && keptSpace) this.spacePresetId = keptSpace
+    if (kind === 'delay') this.delayType = 'digital'
+    if (kind === 'reverb') {
+      this.reverbType = 'hall'
+      this.reverbIrKey = ''
+    }
+    if (kind === 'distortion') {
+      this.distortionType = 'saturation'
+      this.distortionNoiseKind = distortionTypeProfile('saturation').noiseKind
+    }
+    this.clearLfoKind(kind)
+    this.applyLiveAudio()
+    this.emit()
+  }
+
+  private clearLfoKind(kind: FxLfoKind): void {
+    for (let slot = 0; slot < FX_LFO_SLOTS; slot++) {
+      this.fxLfos[kind][slot] = defaultFxLfo()
+    }
+  }
+
+  private resetEqToDefault(instanceId?: string): void {
+    const eqId = instanceId ?? this.primaryEqId()
+    if (!this.chain.some((mod) => mod.instanceId === eqId && mod.type === 'eq')) return
+    const st = this.eqState(eqId)
+    st.bands = defaultEqBands()
+    st.bandsL = []
+    st.bandsR = []
+    st.comb = defaultCombFilter()
+    this.eqById.set(eqId, st)
+    this.syncPrimaryEq()
+    this.syncEqLfoParams(eqId)
+    if (eqId === this.primaryEqId()) {
+      for (const lfoKind of EQ_BAND_LFO_KINDS) this.clearLfoKind(lfoKind)
+      this.clearLfoKind('eqcf')
+    }
+    this.applyEq(0.03)
+    this.emit()
   }
 
   copyMidSideScope(left: Uint8Array, right: Uint8Array): boolean {

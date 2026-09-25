@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { byteToAudio, stereoCorrelation } from '../../audio/fx/midSide'
 import { midSideFromPad, padFromMidSide } from '../../audio/fx/midSidePad'
+import { paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import { isMidSideRecipeId, MIDSIDE_RECIPES } from '../../audio/fx/midSidePresets'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
@@ -76,6 +77,7 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
                   : 'Full-band side',
               })),
             ]}
+            matchesDefault={paramsMatchDefaults(snap.params, 'midside') && !snap.fxLfos.midside.some((slot) => slot.target)}
             onApply={(id) => {
               if (id.startsWith('recipe:')) {
                 const recipeId = id.slice('recipe:'.length)
@@ -84,6 +86,7 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
               }
               engine.applyModulePreset(id)
             }}
+            onDefault={() => engine.resetEffect('midside')}
           />
           <div className={styles.monitor}>
             <Toggle

@@ -275,17 +275,30 @@ html[data-low-vision='on'] .powerOff {
   background: var(--accent-soft);
 }
 
+.movable,
+.movable .tab {
+  cursor: grab;
+}
+
 .movable:hover {
-  outline: 1px dashed var(--accent-primary);
-  cursor: grab;
+  color: var(--text-secondary);
+  background: var(--bg-control-hover);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 55%, var(--border-default));
 }
 
-.movable:hover .tab {
-  cursor: grab;
+.dropTarget {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
 }
 
-.reordering .movable {
+.reordering .movable,
+.reordering .movable .tab {
   cursor: grabbing;
+}
+
+:global(html[data-chain-drag='1']),
+:global(html[data-chain-drag='1'] *) {
+  cursor: grabbing !important;
 }
 
 .locked {

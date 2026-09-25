@@ -1,4 +1,5 @@
 import { PARAMS } from '../parameters/definitions'
+import { defaultParamPatch } from './effectDefaults'
 import { applyParamValue } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 import type { FxLfo } from './lfo'
@@ -164,9 +165,7 @@ export function midSideRecipePatch(id: MidSideRecipeId): Partial<Record<ParamId,
 }
 
 export function resetMidSidePatch(): Partial<Record<ParamId, number>> {
-  const patch: Partial<Record<ParamId, number>> = {}
-  for (const id of MS_PARAM_IDS) patch[id] = PARAMS[id].defaultValue
-  return patch
+  return defaultParamPatch(MS_PARAM_IDS)
 }
 
 function jitter(seed: number, span: number): number {

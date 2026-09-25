@@ -10,6 +10,7 @@ import {
   filterTypeAt,
   optionIndex,
 } from '../../audio/fx/filter'
+import { paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import { FILTER_PRESETS, type FilterPresetId } from '../../audio/fx/filterPresets'
 import { modulePresetsFor } from '../../audio/fx/modulePresets'
 import { PresetMenu } from '../controls/PresetMenu'
@@ -59,6 +60,7 @@ export function FilterInspector({ snap, variant, pane }: Props) {
                 hint: preset.hint,
               })),
             ]}
+            matchesDefault={paramsMatchDefaults(snap.params, 'filter') && !snap.fxLfos.filter.some((slot) => slot.target)}
             onApply={(id) => {
               if (id.startsWith('module:')) {
                 engine.applyModulePreset(id.slice('module:'.length))
@@ -66,6 +68,7 @@ export function FilterInspector({ snap, variant, pane }: Props) {
               }
               engine.applyFilterPreset(id as FilterPresetId)
             }}
+            onDefault={() => engine.resetEffect('filter')}
           />
           <FilterResponse snap={snap} />
           <FilterXyPad

@@ -19,7 +19,6 @@ import { LfoCenter } from '../components/inspector/LfoCenter'
 import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport } from '../components/transport/CompactTransport'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
-import { moduleLabel } from '../audio/chain/chain'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
@@ -356,14 +355,6 @@ export default function App() {
           type: snap.chain[0]?.type ?? 'gain',
         }
       : focus
-
-  const currentModule =
-    resolvedFocus.kind === 'module'
-      ? snap.chain.find((m) => m.instanceId === resolvedFocus.instanceId)
-      : undefined
-  const currentModuleLabel = currentModule
-    ? moduleLabel(currentModule, snap.chain, t.modules)
-    : t.inspector.edit
 
   const selectTool = (next: WaveTool) => {
     setTool(next)
@@ -795,10 +786,6 @@ export default function App() {
 
         <div id="main-controls" className={styles.chrome}>
         <section className={styles.chainBand} aria-label={t.chain.aria}>
-          <div className={styles.now}>
-            <span className={styles.kicker}>{t.chain.group}</span>
-            <strong className={styles.nowName}>{currentModuleLabel}</strong>
-          </div>
           <SignalChain
             chain={snap.chain}
             selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}

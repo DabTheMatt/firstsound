@@ -26,6 +26,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
   const [reorder, setReorder] = useState(false)
+  const [dropAt, setDropAt] = useState<number | null>(null)
   const [openAdd, setOpenAdd] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const drag = useRef<{ id: string; from: number } | null>(null)
@@ -70,6 +71,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     if (!mod || isFixedType(mod.type)) return
     drag.current = { id: mod.instanceId, from: index }
     hoverIndex.current = index
+    setDropAt(index)
     setReorder(true)
     closeAdd()
   }
@@ -80,6 +82,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     const live = chainRef.current
     drag.current = null
     hoverIndex.current = null
+    setDropAt(null)
     setReorder(false)
     if (!active || dest == null) return
     const from = live.findIndex((m) => m.instanceId === active.id)
@@ -98,10 +101,12 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
 
   useEffect(() => {
     if (!reorder) return
+    document.documentElement.dataset.chainDrag = '1'
     const end = () => finishReorder()
     window.addEventListener('pointerup', end)
     window.addEventListener('pointercancel', end)
     return () => {
+      delete document.documentElement.dataset.chainDrag
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
     }
@@ -122,7 +127,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
         return (
           <div key={mod.instanceId} className={styles.item}>
             <div
-              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed ? styles.locked : styles.movable}`}
+              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed ? styles.locked : styles.movable} ${reorder && dropAt === index && !fixed ? styles.dropTarget : ''}`}
               title={fixed ? moduleName(mod.type) : t.chain.dragHint}
             >
               <button
@@ -162,6 +167,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 onPointerEnter={() => {
                   if (!drag.current || drag.current.id === mod.instanceId || fixed) return
                   hoverIndex.current = index
+                  setDropAt(index)
                 }}
                 onClick={() => {
                   if (press.current) {
