@@ -62,6 +62,7 @@ import {
 } from './comb'
 import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
 import { createPinkNoiseBuffer } from './pinkNoise'
+import { DEMO_FILE_NAME, renderDemoSample } from './demoSample'
 import { micAccessMessage } from './micAccess'
 import {
   applyDelayGraph,
@@ -658,24 +659,13 @@ export class AudioEngine {
   async loadDemoTone(): Promise<void> {
     await this.ensureContext()
     if (!this.ctx) return
-    const duration = 8
-    const rate = this.ctx.sampleRate
-    const buffer = this.ctx.createBuffer(2, Math.floor(duration * rate), rate)
-    for (let ch = 0; ch < 2; ch++) {
-      const data = buffer.getChannelData(ch)
-      let lp = 0
-      for (let i = 0; i < data.length; i++) {
-        const t = i / rate
-        const noise = Math.random() * 2 - 1
-        lp += 0.02 * (noise - lp)
-        const tone = Math.sin(2 * Math.PI * 110 * t) * Math.exp(-t * 0.12)
-        const grain = Math.sin(2 * Math.PI * (220 + ch * 3) * t) * 0.15
-        data[i] = lp * 0.55 + tone * 0.35 + grain
-      }
-    }
+    const rendered = renderDemoSample(this.ctx.sampleRate)
+    const buffer = this.ctx.createBuffer(2, rendered.left.length, rendered.sampleRate)
+    buffer.getChannelData(0).set(rendered.left)
+    buffer.getChannelData(1).set(rendered.right)
     this.stopVoices()
     this.playing = false
-    this.fileName = 'field_demo.wav'
+    this.fileName = DEMO_FILE_NAME
     this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId)
   }
 
