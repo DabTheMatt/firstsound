@@ -26,22 +26,22 @@ import {
   visibleAxisLabelIndices,
 } from '../../audio/engine/pitchScale'
 import {
-  FAST_ATTACK,
-  FAST_RELEASE,
-  SLOW_ATTACK,
-  SLOW_RELEASE,
   SPECTRUM_BAND_CHOICES,
+  SPECTRUM_FALL_MODES,
   SPECTRUM_FOLLOW_MODES,
   alignedBandDb,
   bandPeakDb,
   capBandsByEqGain,
   eqGainForSpectrumBand,
   clampSpectrumBandCount,
+  clampSpectrumFallMode,
   clampSpectrumFollowMode,
-  followBands,
+  followBandsOverTime,
   followEnvelope,
   logBandEdgesHz,
   maxBandDb,
+  spectrumDisplayUses,
+  spectrumFallBallistics,
   spectrumMaxHz,
   SPECTRUM_AXIS_MAX_HZ,
   spectrumMeterAlignDb,
@@ -58,6 +58,7 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
+import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { timeDomainToDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
 import { timeDomainPeakDb, louderPeakDb } from '../../audio/engine/timePeak'
@@ -217,11 +218,14 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   useEffect(() => {
     prefsRef.current = prefs
     persistSpectrumPrefs(prefs)
+  }, [prefs])
+
+  useEffect(() => {
     preFast.current = emptyBands(prefs.bands)
     preSlow.current = emptyBands(prefs.bands)
     postFast.current = emptyBands(prefs.bands)
     postSlow.current = emptyBands(prefs.bands)
-  }, [prefs])
+  }, [prefs.bands])
 
   useEffect(() => {
     if (!active) {
@@ -238,8 +242,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     const meterRight = { data: null as Float32Array | null }
     let alignDb = 0
     let gainsBuf: Float32Array | null = null
-    const tick = () => {
+    let lastTs = 0
+    const tick = (now: number) => {
+      const dt = lastTs === 0 ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastTs) / 1000))
+      lastTs = now
       if (isDocumentHidden()) {
+        lastTs = 0
         frame = requestAnimationFrame(tick)
         return
       }
@@ -257,7 +265,9 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         const colors = readThemeColors()
-        const { layer, bands, regionColors, showBars, showLine, follow } = prefsRef.current
+        const { layer, bands, regionColors, showBars, showLine, follow, fall } = prefsRef.current
+        const ballistics = spectrumFallBallistics(fall)
+        const display = spectrumDisplayUses(follow)
         ctx.clearRect(0, 0, width, height)
         const sr = live.sampleRate || 44100
         const maxHz = spectrumMaxHz(sr, SPECTRUM_AXIS_MAX_HZ)
@@ -346,8 +356,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           style: 'pre' | 'post',
         ) => {
           if (!peaks) return
-          followBands(fast, peaks, FAST_ATTACK, FAST_RELEASE)
-          followBands(slow, peaks, SLOW_ATTACK, SLOW_RELEASE)
+          followBandsOverTime(fast, peaks, ballistics.peak.attack, ballistics.peak.release, dt)
+          followBandsOverTime(slow, peaks, ballistics.slow.attack, ballistics.slow.release, dt)
           if (style === 'post' && postEqGains && preCap) {
             capBandsByEqGain(fast, preCap, postEqGains)
             capBandsByEqGain(slow, preCap, postEqGains)
@@ -357,8 +367,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const plotBox = { left, right, top, bottom }
           const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb, scale)
           const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb, scale)
-          const wantPeak = follow === 'peak' || follow === 'both'
-          const wantSlow = follow === 'slow' || follow === 'both'
+          const wantPeak = display.lines.includes('peak')
+          const wantSlow = display.lines.includes('slow')
+          const bodySrc = display.barBody === 'slow' ? slow : fast
+          const capSrc = display.barCap === 'slow' ? slow : fast
           const alpha = style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42
           const lineAlpha = style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95
           const fill = regionColors ? undefined : colors.spectrum
@@ -382,8 +394,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               const regionColor = eqBandColorForHz(center)
               const barFill = fill ?? regionColor
               const barLine = line ?? regionColor
-              const bodySrc = follow === 'slow' || follow === 'both' ? slow : fast
-              const capSrc = follow === 'slow' ? slow : fast
               const bodyDb = alignedBandDb(bodySrc[i] ?? -100, alignDb)
               const capDb = alignedBandDb(capSrc[i] ?? -100, alignDb)
               const bodyY = dbToY(bodyDb, top, bottom, dbFloor)
@@ -402,7 +412,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           } else {
             const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
             ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
-            fillSpectrumEnvelope(ctx, follow === 'peak' ? fastPts : slowPts, bottom)
+            fillSpectrumEnvelope(ctx, display.barBody === 'peak' ? fastPts : slowPts, bottom)
           }
           const strokeFollow = (pts: typeof fastPts, color: string, width: number, dash = dashed) => {
             if (!showLine) return
@@ -530,9 +540,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.beginPath()
           ctx.rect(left, top, plotW, plotH)
           ctx.clip()
-          ctx.setLineDash(filterMod.bypassed ? [5 * dpr, 4 * dpr] : [])
-          ctx.strokeStyle = colorWithAlpha(colors.accent, 0.9)
-          ctx.lineWidth = Math.max(1.2, dpr * 1.15)
+          const filterStyle = processorCurveStyle('filter', filterMod.bypassed, dpr)
+          const filterInk = filterCurveColor(colors.accentSecondary, colors.textPrimary)
+          ctx.lineCap = 'butt'
+          ctx.lineJoin = 'round'
           ctx.beginPath()
           for (let i = 0; i < freqs.length; i++) {
             const hz = freqs[i] ?? minHz
@@ -545,6 +556,13 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             if (i === 0) ctx.moveTo(x, y)
             else ctx.lineTo(x, y)
           }
+          ctx.setLineDash([])
+          ctx.strokeStyle = colorWithAlpha(filterInk, 0.22)
+          ctx.lineWidth = Math.max(1, dpr)
+          ctx.stroke()
+          ctx.setLineDash(filterStyle.dash)
+          ctx.strokeStyle = colorWithAlpha(filterInk, filterStyle.alpha)
+          ctx.lineWidth = filterStyle.width
           ctx.stroke()
           ctx.setLineDash([])
           ctx.restore()
@@ -626,6 +644,15 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   }
 
   if (!active) return null
+  const eqCurveOn = eqMods.some((mod) => {
+    const st = snap.eqById[mod.instanceId]
+    if (!st) return false
+    return st.bands.some((band) => band.type !== 'off') || st.comb.enabled
+  })
+  const filterCurveOn = snap.chain.some(
+    (mod) => mod.type === 'filter' && filterModuleIsAudible(mod.bypassed, snap.liveParams.filterMix),
+  )
+  const showResponseKey = shouldShowResponseLegend(eqCurveOn, filterCurveOn)
   return (
     <div className={styles.wrap} role="region" aria-label="Spectrum analyzer">
       <div
@@ -767,9 +794,36 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               }
             }}
           >
+            Fall
+            <select
+              aria-label="Spectrum fall speed"
+              title="Visual decay of the spectrum bars and line. Does not change the audio."
+              value={prefs.fall}
+              onChange={(event) =>
+                setPrefs((p) => ({ ...p, fall: clampSpectrumFallMode(event.target.value) }))
+              }
+            >
+              {SPECTRUM_FALL_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label
+            className={styles.bands}
+            onMouseDown={(event) => {
+              const sel = event.currentTarget.querySelector('select')
+              if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
+                event.preventDefault()
+                sel.showPicker()
+              }
+            }}
+          >
             Follow
             <select
               aria-label="Spectrum envelope follow"
+              title="Peak trace, slow trace, or both. Fall sets how quickly they drop."
               value={prefs.follow}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, follow: clampSpectrumFollowMode(event.target.value) }))
@@ -784,6 +838,18 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           </label>
         </div>
         <div className={styles.chromeRight}>
+          {showResponseKey ? (
+            <ul className={styles.curveKey} aria-label="Response curves">
+              <li>
+                <i className={styles.eqSwatch} />
+                EQ
+              </li>
+              <li>
+                <i className={styles.filterSwatch} />
+                Filter
+              </li>
+            </ul>
+          ) : null}
           <button
             type="button"
             className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}

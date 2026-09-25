@@ -101,6 +101,45 @@
   box-shadow: none;
 }
 
+.curveKey {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 8px;
+  list-style: none;
+  min-height: 26px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-app) 62%, transparent);
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.curveKey li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.eqSwatch,
+.filterSwatch {
+  width: 16px;
+  flex: none;
+}
+
+.eqSwatch {
+  border-top: 2px solid var(--eq-curve);
+}
+
+.filterSwatch {
+  border-top: 2.5px dashed color-mix(in srgb, var(--accent-secondary) 28%, var(--text-primary));
+}
+
 .iconTap {
   pointer-events: auto;
   display: inline-flex;

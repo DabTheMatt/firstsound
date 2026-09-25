@@ -6,18 +6,23 @@ import {
   capBandsByEqGain,
   clampSpectrumBandCount,
   eqGainForSpectrumBand,
+  clampSpectrumFallMode,
   clampSpectrumFollowMode,
   fftDbAtHz,
   fftFirstBinHz,
   fftPeakDbInHzRange,
+  followBandsOverTime,
   followEnvelope,
   logBandEdgesHz,
   maxBandDb,
   alignedBandDb,
+  spectrumDisplayUses,
+  spectrumFallBallistics,
   spectrumMeterAlignDb,
   spectrumMaxHz,
   SPECTRUM_AXIS_MAX_HZ,
 } from './spectrumBands'
+import { spectrumEnvelopePoints } from './spectrumEnvelope'
 
 describe('logBandEdgesHz', () => {
   it('spans min to max with one extra edge', () => {
@@ -114,6 +119,76 @@ describe('fftPeakDbInHzRange', () => {
     bins[Math.round((hz * fftSize) / sampleRate)] = -8
     expect(fftPeakDbInHzRange(bins, sampleRate, 800, 1200)).toBeCloseTo(-8)
     expect(fftPeakDbInHzRange(bins, sampleRate, 80, 120)).toBeCloseTo(-90)
+  })
+})
+
+describe('spectrum fall', () => {
+  it('defaults to normal and keeps slow, normal, and fast', () => {
+    expect(clampSpectrumFallMode('slow')).toBe('slow')
+    expect(clampSpectrumFallMode('normal')).toBe('normal')
+    expect(clampSpectrumFallMode('fast')).toBe('fast')
+    expect(clampSpectrumFallMode('peak')).toBe('normal')
+    expect(clampSpectrumFallMode(undefined)).toBe('normal')
+  })
+
+  it('orders release so slow lingers, normal is balanced, and fast drops', () => {
+    const slow = spectrumFallBallistics('slow')
+    const normal = spectrumFallBallistics('normal')
+    const fast = spectrumFallBallistics('fast')
+    expect(slow.peak.release).toBeLessThan(normal.peak.release)
+    expect(normal.peak.release).toBeLessThan(fast.peak.release)
+    expect(slow.slow.release).toBeLessThan(normal.slow.release)
+    expect(normal.slow.release).toBeLessThan(fast.slow.release)
+    for (const mode of ['slow', 'normal', 'fast'] as const) {
+      const rates = spectrumFallBallistics(mode)
+      expect(rates.peak.attack).toBeGreaterThan(rates.peak.release)
+      expect(rates.slow.release).toBeLessThan(rates.peak.release)
+    }
+  })
+
+  it('uses one fall clock for the bars and the envelope line', () => {
+    for (const follow of ['peak', 'slow', 'both'] as const) {
+      const uses = spectrumDisplayUses(follow)
+      const bars = new Set([uses.barBody, uses.barCap])
+      expect(new Set(uses.lines)).toEqual(bars)
+    }
+  })
+
+  it('decays quiet bins toward the floor without dropping them', () => {
+    const prev = new Float32Array([-12, -70])
+    const floor = new Float32Array([-100, -100])
+    const release = spectrumFallBallistics('slow').peak.release
+    for (let i = 0; i < 10; i++) followBandsOverTime(prev, floor, 4, release, 0.05)
+    expect(prev[0]!).toBeLessThan(-12)
+    expect(prev[0]!).toBeGreaterThan(-50)
+    expect(prev[1]!).toBeLessThan(-70)
+    expect(prev[1]!).toBeGreaterThan(-90)
+    const edges = logBandEdgesHz(20, 20000, 2)
+    const pts = spectrumEnvelopePoints([...prev], edges, 20, 20000, {
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 100,
+    })
+    expect(pts).toHaveLength(4)
+    expect(pts[2]!.y).toBeGreaterThan(pts[0]!.y)
+    expect(pts[2]!.y).toBeLessThan(100)
+  })
+
+  it('falls farther on fast than normal than slow over the same interval', () => {
+    const dropped = (mode: 'slow' | 'normal' | 'fast') => {
+      const level = new Float32Array([0])
+      const release = spectrumFallBallistics(mode).peak.release
+      for (let i = 0; i < 10; i++) followBandsOverTime(level, new Float32Array([-80]), 20, release, 0.05)
+      return level[0]!
+    }
+    const slow = dropped('slow')
+    const normal = dropped('normal')
+    const fast = dropped('fast')
+    expect(fast).toBeLessThan(normal)
+    expect(normal).toBeLessThan(slow)
+    expect(slow).toBeGreaterThan(-40)
+    expect(fast).toBeLessThan(-60)
   })
 })
 
