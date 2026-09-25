@@ -6,6 +6,7 @@ import {
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsesMatch,
   freqToX,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
@@ -64,8 +65,8 @@ import { isDocumentHidden } from '../../app/frameBudget'
 import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
-import { eqMagnitudeDb, logFreqAxis } from '../../audio/engine/eqResponse'
-import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { eqCurveDb, eqMagnitudeDb } from '../../audio/engine/eqResponse'
+import { freqAxis, hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
   EQ_BAND_LFO_IDS,
@@ -358,7 +359,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const peakStroke = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
           const slowStroke =
             follow === 'both'
-              ? colorWithAlpha(colors.accent, style === 'pre' ? 0.7 : 0.95)
+              ? colorWithAlpha(colors.spectrumLine, style === 'pre' ? 0.55 : 0.85)
               : peakStroke
           ctx.save()
           ctx.beginPath()
@@ -395,13 +396,13 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
             fillSpectrumEnvelope(ctx, follow === 'peak' ? fastPts : slowPts, bottom)
           }
-          const strokeFollow = (pts: typeof fastPts, color: string, width: number) => {
+          const strokeFollow = (pts: typeof fastPts, color: string, width: number, dash = dashed) => {
             if (!showLine) return
             ctx.lineJoin = 'round'
             ctx.lineCap = 'round'
             ctx.strokeStyle = color
             ctx.lineWidth = width
-            ctx.setLineDash(dashed ? [4 * dpr, 3 * dpr] : [])
+            ctx.setLineDash(dash ? [4 * dpr, 3 * dpr] : [])
             strokeSpectrumEnvelope(ctx, pts)
             ctx.setLineDash([])
           }
@@ -409,7 +410,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             strokeFollow(fastPts, peakStroke, Math.max(1.2, dpr * (style === 'pre' ? 1.15 : 1.75)))
           }
           if (wantSlow) {
-            strokeFollow(slowPts, slowStroke, Math.max(1, dpr * (follow === 'both' ? 1.2 : style === 'pre' ? 1.15 : 1.65)))
+            strokeFollow(
+              slowPts,
+              slowStroke,
+              Math.max(1, dpr * (follow === 'both' ? 1.2 : style === 'pre' ? 1.15 : 1.65)),
+              dashed || follow === 'both',
+            )
           }
           ctx.restore()
         }
@@ -457,7 +463,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
 
         const eqs = live.chain.filter((m) => m.type === 'eq')
         const overlayFocus = eqFocusRef.current
-        const freqs = logFreqAxis(Math.floor(plotW), minHz, maxHz)
+        const freqs = freqAxis(Math.floor(plotW), minHz, maxHz, scale)
         for (let ei = 0; ei < eqs.length; ei++) {
           const mod = eqs[ei]
           if (!mod) continue
@@ -485,6 +491,12 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const focused = eqOverlayIncludes(overlayFocus, mod.instanceId)
           const xAt = (i: number) => hzToX(freqs[i] ?? minHz, minHz, maxHz, left, right, scale)
           const yAt = (db: number) => spectrumEqOverlayY(db, top, bottom)
+          const storedDb = eqCurveDb(storedBands, freqs, sr)
+          const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)
+          const liveDb = showLive ? eqCurveDb(liveBands, freqs, sr) : storedDb
+          // One active filter paints one curve. A live LFO trace is a second
+          // stroke only while it actually leaves the stored response.
+          const liveDiverges = showLive && !eqResponsesMatch(storedDb, liveDb)
           ctx.save()
           ctx.beginPath()
           ctx.rect(left, top, plotW, plotH)
@@ -493,8 +505,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha * (focused ? 1 : 0.28))
           ctx.lineWidth = storedStyle.width * (focused ? 1 : 0.85)
-          strokeEqMagnitude(ctx, storedBands, freqs, sr, xAt, yAt)
-          if (modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)) {
+          strokeEqMagnitude(ctx, liveDiverges ? storedBands : liveBands, freqs, sr, xAt, yAt)
+          if (liveDiverges) {
             const liveStyle = eqResponseCurveStyle('live', mod.bypassed, dpr)
             ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha * (focused ? 1 : 0.28))
             ctx.lineWidth = liveStyle.width
@@ -859,7 +871,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                 <li>{prefs.showBars ? 'Slow bars' : 'Fill'}</li>
                 {prefs.showLine && prefs.follow !== 'slow' ? <li>Peak line</li> : null}
                 {prefs.showLine && prefs.follow !== 'peak' ? (
-                  <li>{prefs.follow === 'both' ? 'Slow line (accent)' : 'Slow line'}</li>
+                  <li>Slow line</li>
                 ) : null}
                 {prefs.layer === 'both' ? <li>Before / after when EQ is on</li> : null}
               </ul>

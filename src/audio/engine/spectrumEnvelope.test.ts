@@ -12,10 +12,13 @@ describe('spectrumEnvelopePoints', () => {
       top: 0,
       bottom: 100,
     })
-    expect(pts).toHaveLength(4)
-    expect(pts[0]!.x).toBeLessThan(pts[3]!.x)
-    expect(pts[0]!.y).toBeLessThan(pts[3]!.y)
+    expect(pts).toHaveLength(8)
+    expect(pts[0]!.x).toBeLessThan(pts[7]!.x)
+    expect(pts[0]!.y).toBeLessThan(pts[7]!.y)
     expect(pts[0]!.y).toBeCloseTo(6, 0)
+    expect(pts[1]!.y).toBeCloseTo(pts[0]!.y)
+    expect(pts[0]!.x).toBeCloseTo(0, 0)
+    expect(pts[7]!.x).toBeCloseTo(100, 0)
   })
 
   it('clamps silence to the floor', () => {
@@ -27,7 +30,9 @@ describe('spectrumEnvelopePoints', () => {
       bottom: 110,
     })
     expect(pts[0]!.y).toBe(110)
-    expect(pts[1]!.y).toBe(10)
+    expect(pts[1]!.y).toBe(110)
+    expect(pts[2]!.y).toBe(10)
+    expect(pts[3]!.y).toBe(10)
   })
 
   it('lifts bands by a meter-align offset', () => {
@@ -48,6 +53,29 @@ describe('spectrumEnvelopePoints', () => {
     expect(aligned[0]!.y).toBeCloseTo(15)
   })
 
+  it('keeps quiet bins that sit under the display floor', () => {
+    const edges = logBandEdgesHz(20, 20000, 3)
+    const pts = spectrumEnvelopePoints([-80, -48, -100], edges, 20, 20000, {
+      left: 0,
+      right: 90,
+      top: 0,
+      bottom: 60,
+    }, 0, -60, 0)
+    expect(pts).toHaveLength(6)
+    expect(pts[0]!.y).toBe(60)
+    expect(pts[2]!.y).toBeCloseTo(48)
+    expect(pts[4]!.y).toBe(60)
+    const lifted = spectrumEnvelopePoints([-80, -48, -100], edges, 20, 20000, {
+      left: 0,
+      right: 90,
+      top: 0,
+      bottom: 60,
+    }, 0, -60, 30)
+    expect(lifted[0]!.y).toBeCloseTo(50)
+    expect(lifted[2]!.y).toBeCloseTo(18)
+    expect(lifted[4]!.y).toBe(60)
+  })
+
   it('does not lift a floor band when aligning', () => {
     const edges = logBandEdgesHz(20, 20000, 2)
     const pts = spectrumEnvelopePoints([-100, -40], edges, 20, 20000, {
@@ -57,7 +85,8 @@ describe('spectrumEnvelopePoints', () => {
       bottom: 100,
     }, 0, -100, 20)
     expect(pts[0]!.y).toBe(100)
-    expect(pts[1]!.y).toBeCloseTo(20)
+    expect(pts[1]!.y).toBe(100)
+    expect(pts[2]!.y).toBeCloseTo(20)
   })
 })
 

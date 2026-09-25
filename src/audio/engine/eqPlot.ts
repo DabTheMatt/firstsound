@@ -22,6 +22,16 @@ export function eqResponseCurveStyle(
   return { width: width * EQ_LIVE_CURVE_WIDTH_SCALE, alpha: alpha * EQ_LIVE_CURVE_ALPHA_SCALE }
 }
 
+/** True when two magnitude traces would paint the same shape. */
+export function eqResponsesMatch(a: ArrayLike<number>, b: ArrayLike<number>, epsilonDb = 0.35): boolean {
+  const n = Math.max(a.length, b.length)
+  if (n < 1) return true
+  for (let i = 0; i < n; i++) {
+    if (Math.abs((a[i] ?? 0) - (b[i] ?? 0)) > epsilonDb) return false
+  }
+  return true
+}
+
 export function strokeEqMagnitude(
   ctx: CanvasRenderingContext2D,
   bands: EqBand[],

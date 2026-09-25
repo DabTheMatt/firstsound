@@ -7,6 +7,7 @@ import {
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsesMatch,
   EQ_LIVE_CURVE_ALPHA_SCALE,
   EQ_LIVE_CURVE_WIDTH_SCALE,
   EQ_MINI_BAND_COUNT,
@@ -98,6 +99,11 @@ describe('eq plot mapping', () => {
 
   it('uses 48 bands on the mini FFT', () => {
     expect(EQ_MINI_BAND_COUNT).toBe(48)
+  })
+
+  it('treats a single-band live trace as the same curve when it matches', () => {
+    expect(eqResponsesMatch([0, 6, 0], [0, 6.2, 0])).toBe(true)
+    expect(eqResponsesMatch([0, 6, 0], [0, 3, 0])).toBe(false)
   })
 
   it('draws the live LFO curve at half width and lower alpha', () => {

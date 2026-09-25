@@ -7,6 +7,7 @@ import {
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsesMatch,
   EQ_MINI_BAND_COUNT,
   EQ_PLOT_MAX_DB,
   EQ_PLOT_MIN_DB,
@@ -15,7 +16,7 @@ import {
   xToFreq,
   yToDb,
 } from '../../audio/engine/eqPlot'
-import { logFreqAxis } from '../../audio/engine/eqResponse'
+import { eqCurveDb, logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -121,8 +122,9 @@ export function EqCurve({
       const storedStyle = eqResponseCurveStyle('stored', false, dpr)
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
       ctx.lineWidth = Math.max(1.5, storedStyle.width)
-      strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
-      if (modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))) {
+      const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))
+      let liveBands = plotBands
+      if (showLive) {
         const liveComb = comb
           ? {
               ...comb,
@@ -132,10 +134,14 @@ export function EqCurve({
               frequency: live.liveParams.eqcfFreq ?? comb.frequency,
             }
           : undefined
-        const liveBands = [
+        liveBands = [
           ...liveEqBandsFromParams(bands, live.liveParams, true),
           ...(liveComb ? combAsEqBands(liveComb) : []),
         ]
+      }
+      const liveDiverges = showLive && !eqResponsesMatch(eqCurveDb(plotBands, freqs, sr), eqCurveDb(liveBands, freqs, sr))
+      strokeEqMagnitude(ctx, liveDiverges ? plotBands : liveBands, freqs, sr, (i) => i, yAt)
+      if (liveDiverges) {
         const liveStyle = eqResponseCurveStyle('live', false, dpr)
         ctx.strokeStyle = colorWithAlpha(tone.curve, liveStyle.alpha)
         ctx.lineWidth = Math.max(0.75, liveStyle.width)
