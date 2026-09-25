@@ -1,4 +1,4 @@
-# FIELD
+# INTERFER
 
 Przeglądarkowy instrument do kreatywnej manipulacji samplami i nagraniami terenowymi. Wszystko dzieje się lokalnie — pliki audio nie są wysyłane na serwer.
 
@@ -11,7 +11,7 @@ Live (po merge na `main` i włączeniu Pages): **https://dabthematt.github.io/fi
 - speed, pitch, gain
 - silnik granularny (size, density, position, scatter, pitch, pitch spread)
 - preset JSON (Save / Load preset)
-- UI „FIELD / organic minimal” (Inter, knoby, touch + mysz)
+- UI „INTERFER / organic minimal” (Inter, knoby, touch + mysz)
 
 ## Dev
 

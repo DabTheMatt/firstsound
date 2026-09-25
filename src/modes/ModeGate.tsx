@@ -1,4 +1,5 @@
 import { RuntimeStatus } from '../components/chrome/RuntimeStatus'
+import { Wordmark } from '../components/header/Wordmark'
 import { useI18n } from '../i18n'
 import styles from './ModeGate.module.css'
 import type { UiMode } from './uiMode'
@@ -12,7 +13,7 @@ export function ModeGate({ onChoose }: Props) {
   return (
     <div className={styles.gate}>
       <div className={styles.inner}>
-        <p className={styles.mark}>Field</p>
+        <Wordmark variant="gate" />
         <h1 className={styles.title}>{t.gate.title}</h1>
         <div className={styles.choices}>
           <button type="button" className={styles.choice} onClick={() => onChoose('simple')}>

@@ -1,7 +1,7 @@
 {
-  "name": "FIELD",
-  "short_name": "FIELD",
-  "description": "A browser instrument for sample manipulation.",
+  "name": "INTERFER",
+  "short_name": "INTERFER",
+  "description": "INTERFER — a browser instrument for sample manipulation.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
