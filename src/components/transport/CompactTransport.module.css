@@ -1,11 +1,17 @@
 .bar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px 8px;
   min-height: 40px;
   flex: none;
   padding: 2px 2px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.bar::-webkit-scrollbar {
+  display: none;
 }
 
 .compact {
@@ -15,7 +21,8 @@
 .transport {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: none;
   gap: 4px;
 }
 
@@ -81,17 +88,16 @@
 
 .cta {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: 4px;
   justify-content: flex-end;
   margin-left: auto;
   flex: none;
 }
 
-.cta .export,
-.cta .use {
-  width: 100%;
+.cta .export {
+  width: auto;
   box-sizing: border-box;
   height: 36px;
   min-height: 36px;
@@ -132,7 +138,7 @@
   justify-content: flex-end;
 }
 
-.minimal .use {
+.minimal .export {
   width: auto;
   height: 32px;
   min-height: 32px;
@@ -141,28 +147,6 @@
   letter-spacing: 0.06em;
 }
 
-.use {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--accent-primary);
-  color: var(--text-on-accent);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.useHint {
-  display: none;
-}
-
-.use:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
-}
-
-.use:disabled,
 .export:disabled,
 .icon:disabled {
   color: var(--text-disabled);

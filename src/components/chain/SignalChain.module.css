@@ -43,11 +43,11 @@
   min-height: 36px;
   max-height: 36px;
   padding: 0 4px 0 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  background: var(--bg-control);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control, 4px);
+  background: color-mix(in srgb, var(--bg-control) 82%, var(--bg-app));
   color: var(--text-secondary);
-  box-shadow: inset 0 0 0 2px transparent;
+  box-shadow: none;
 }
 
 :global(html[data-low-vision='on']) .tile,
@@ -58,21 +58,24 @@
 }
 
 .tile.enabled {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--accent-primary) 72%, var(--border-strong));
+  border-color: transparent;
   background: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-panel));
   color: var(--text-primary);
 }
 
 .tile.bypassed {
-  border-style: dashed;
-  border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--bg-panel) 88%, var(--bg-app));
-  color: var(--text-secondary);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--bg-app) 55%, var(--bg-panel));
+  color: var(--text-muted);
 }
 
-.tile.selected {
-  box-shadow: inset 0 -3px 0 var(--text-primary);
+.tile.selected,
+.tile.selected:hover,
+.tile.selected.enabled,
+.tile.selected.enabled:hover,
+.tile.selected.bypassed,
+.tile.selected.bypassed:hover {
+  border-color: var(--accent-primary);
 }
 
 .tile.selected.enabled {
@@ -80,8 +83,8 @@
 }
 
 .tile.selected.bypassed {
-  color: var(--text-primary);
-  box-shadow: inset 0 -3px 0 var(--text-primary);
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-app) 55%, var(--bg-panel));
 }
 
 .tile:hover {

@@ -18,6 +18,7 @@ export function LanguageSwitch({ variant = 'pill' }: Props) {
           role="radio"
           aria-checked={locale === id}
           className={`${styles.opt} ${locale === id ? styles.on : ''}`}
+          data-geometry={variant === 'pill' ? 'pill' : undefined}
           onClick={() => setLocale(id)}
         >
           {id === 'en' ? t.lang.en : t.lang.pl}

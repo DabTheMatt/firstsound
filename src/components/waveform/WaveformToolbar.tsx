@@ -28,6 +28,9 @@ export type ViewAction =
 
 const TOOLS: { id: WaveTool; key: 'edit' }[] = [{ id: 'select', key: 'edit' }]
 
+/** Unfinished waveform views. Flip to restore MULTI and TRACKS in the toolbar. */
+const SHOW_UNFINISHED_VIEWS = false
+
 export function WaveformToolbar({
   tool: _tool,
   onTool,
@@ -122,7 +125,8 @@ export function WaveformToolbar({
         >
           <WaveIcon />
         </IconButton>
-        {!minimal ? (
+        {/* MULTI and TRACKS stay implemented below, but stay out of navigation until finished. */}
+        {SHOW_UNFINISHED_VIEWS && !minimal ? (
           <IconButton
             label={t.waveform.multiTitle}
             caption={t.waveform.multi}
@@ -160,7 +164,7 @@ export function WaveformToolbar({
             <EqSplitIcon />
           </IconButton>
         ) : null}
-        {!minimal ? (
+        {SHOW_UNFINISHED_VIEWS && !minimal ? (
           <IconButton
             label={t.waveform.tracksTitle}
             caption={t.waveform.tracks}
@@ -299,7 +303,22 @@ function ZoomSelIcon() {
 function NormIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M4 14V4M9 14V7M14 14V9" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M1.5 3.25h11M1.5 14.75h11" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path
+        d="M2 9c1.1-4.4 1.9 4.4 3.1 0s1.9 4.4 3.1 0 1.8 4.4 3 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14.2 6.4 16 4.4l1.8 2M14.2 11.6 16 13.6l1.8-2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

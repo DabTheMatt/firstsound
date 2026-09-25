@@ -19,7 +19,6 @@ type Props = {
   onUndo: () => void
   onRedo: () => void
   onExport: () => void
-  onUseSample: () => void
 }
 
 export function CompactTransport({
@@ -36,7 +35,6 @@ export function CompactTransport({
   onUndo,
   onRedo,
   onExport,
-  onUseSample,
 }: Props) {
   const { t } = useI18n()
   const length = Math.max(0, end - start)
@@ -164,23 +162,10 @@ export function CompactTransport({
         </span>
       </p>
       <div className={styles.cta}>
-        {!minimal ? (
-          <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
-            {t.transport.export}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className={styles.use}
-          disabled={disabled}
-          title={t.transport.useTitle}
-          aria-label={t.transport.useTitle}
-          onClick={onUseSample}
-        >
-          {minimal ? t.transport.use : t.transport.useAsSample}
+        <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
+          {t.transport.export}
         </button>
       </div>
-      {!minimal ? <p className={styles.useHint}>{t.transport.useHint}</p> : null}
     </div>
   )
 }

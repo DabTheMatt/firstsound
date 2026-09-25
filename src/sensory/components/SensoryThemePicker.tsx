@@ -43,6 +43,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
       <button
         type="button"
         className={styles.trigger}
+        data-geometry="pill"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t.sensory.atmosphereNamed(namedLabel)}

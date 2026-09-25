@@ -5,6 +5,7 @@ import { I18nProvider } from './i18n'
 import { bootstrapA11y } from './a11y'
 import { bootstrapTheme } from './theme'
 import './styles/global.css'
+import './styles/radius.css'
 
 bootstrapTheme()
 bootstrapA11y()

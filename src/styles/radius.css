@@ -1,0 +1,19 @@
+/* Shared control radii. Pill and circle controls opt out with data-geometry. */
+:root {
+  --radius-control: 4px;
+  --radius-pill: 999px;
+}
+
+button:not([data-geometry='pill']):not([data-geometry='circle']),
+[role='menuitem']:not([data-geometry='pill']):not([data-geometry='circle']) {
+  border-radius: var(--radius-control) !important;
+}
+
+button[data-geometry='pill'],
+[role='radio'][data-geometry='pill'] {
+  border-radius: var(--radius-pill) !important;
+}
+
+button[data-geometry='circle'] {
+  border-radius: 50% !important;
+}

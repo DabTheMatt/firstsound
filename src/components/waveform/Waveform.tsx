@@ -43,8 +43,10 @@ import {
   fadeLengthFromDiamondTime,
   fadeOriginTime,
   fadeShapeHandleLayout,
+  promotePlayheadDrag,
   resolveSimpleWaveformDrag,
   resolveWaveformDrag,
+  selectionFromAnchor,
 } from './handleLayout'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
@@ -136,6 +138,7 @@ type DragMode =
   | 'fadeOutShape'
   | 'fx'
   | 'playhead'
+  | 'select'
   | 'transient'
   | null
 
@@ -493,6 +496,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     originX: number
     originView: View
     origin: { start: number; end: number }
+    button: number
+    pointerType: string
     fx?: SpaceHit
     transientIndex?: number
   } | null>(null)
@@ -596,6 +601,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           originX: event.clientX,
           originView: { ...viewRef.current },
           origin: { start, end },
+          button: event.button,
+          pointerType: event.pointerType,
           fx: spaceHit,
         }
         return
@@ -614,6 +621,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       originX: event.clientX,
       originView: { ...viewRef.current },
       origin: { start, end },
+      button: event.button,
+      pointerType: event.pointerType,
       transientIndex,
     }
     setPanning(mode === 'pan')
@@ -662,7 +671,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
     if (mode === 'playhead') {
       const dx = Math.abs(event.clientX - originX)
-      if (dx > 8) {
+      const promoted = promotePlayheadDrag({
+        simple,
+        button: drag.current.button,
+        pointerType: drag.current.pointerType,
+        dx,
+      })
+      if (promoted === 'pan') {
         drag.current.mode = 'pan'
         setPanning(true)
         const spanSec = originView.end - originView.start
@@ -670,7 +685,18 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         setView(panView(originView, delta, duration))
         return
       }
-      engine.seekSeconds(next, 'sample')
+      if (promoted === 'playhead') {
+        engine.seekSeconds(next, 'sample')
+        return
+      }
+      drag.current.mode = 'select'
+      const spanSel = selectionFromAnchor(originT, next)
+      engine.setRegion(spanSel.start, spanSel.end)
+      return
+    }
+    if (mode === 'select') {
+      const spanSel = selectionFromAnchor(originT, next)
+      engine.setRegion(spanSel.start, spanSel.end)
       return
     }
     if (mode === 'start') engine.setParam('start', next)
@@ -732,10 +758,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const to = engine.getSnapshot().transients[transientIndex] ?? originT
         engine.commitTransientWarp(transientIndex, originT, to)
       }
-      if (mode === 'start' || mode === 'end' || mode === 'move') {
+      if (mode === 'start' || mode === 'end' || mode === 'move' || mode === 'select') {
         if (autoSnap) {
-          if (mode === 'start' || mode === 'move') engine.snapToZero('start')
-          if (mode === 'end' || mode === 'move') engine.snapToZero('end')
+          if (mode === 'start' || mode === 'move' || mode === 'select') engine.snapToZero('start')
+          if (mode === 'end' || mode === 'move' || mode === 'select') engine.snapToZero('end')
         }
         onRegionCommit()
       }

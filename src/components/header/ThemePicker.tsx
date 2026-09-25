@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   CUSTOM_COLOR_FIELDS,
   THEME_OPTIONS,
@@ -25,14 +26,36 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
   } = useTheme()
   const [open, setOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const editing = preference === 'custom' || isUserThemePreference(preference)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const width = 260
+      const margin = 8
+      const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))
+      setMenuPos({ top: rect.bottom + 6, left })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const onPointer = (event: PointerEvent) => {
       const node = event.target as Node | null
-      if (node && wrapRef.current?.contains(node)) return
+      if (node && (wrapRef.current?.contains(node) || menuRef.current?.contains(node))) return
       setOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
@@ -66,6 +89,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`${styles.wrap} ${compact ? styles.compact : ''}`} ref={wrapRef}>
       <button
+        ref={triggerRef}
         type="button"
         className={styles.trigger}
         aria-haspopup="listbox"
@@ -80,8 +104,15 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         </span>
         <span className={styles.triggerLabel}>{triggerLabel}</span>
       </button>
-      {open ? (
-        <div className={styles.menu} role="listbox" aria-label={t.theme.group}>
+      {open && menuPos
+        ? createPortal(
+        <div
+          ref={menuRef}
+          className={`${styles.menu} ${styles.menuPortal}`}
+          role="listbox"
+          aria-label={t.theme.group}
+          style={{ top: menuPos.top, left: menuPos.left, right: 'auto' }}
+        >
           {THEME_OPTIONS.map((opt) => {
             const swatch =
               opt.id === 'custom'
@@ -180,8 +211,10 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
               </form>
             </div>
           ) : null}
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+        )
+        : null}
     </div>
   )
 }

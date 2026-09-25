@@ -27,6 +27,7 @@ export function Segmented<T extends string>({ label, value, options, onChange, w
             aria-checked={active}
             title={option.title ?? option.label}
             className={`${styles.segment} ${active ? styles.active : ''}`}
+            data-geometry="pill"
             onClick={() => onChange(option.value)}
           >
             {option.label}

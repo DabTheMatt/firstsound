@@ -37,6 +37,7 @@ export function RuntimeStatus({ variant = 'default' }: Props) {
         <button
           type="button"
           className={styles.refresh}
+          data-geometry="pill"
           onClick={onRefresh}
           disabled={busy}
           title={t.runtime.refreshTitle}

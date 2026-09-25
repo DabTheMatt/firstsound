@@ -8,6 +8,7 @@ import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
+import { ThemePicker } from '../components/header/ThemePicker'
 import { Wordmark } from '../components/header/Wordmark'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import type { UiMode } from '../modes/uiMode'
@@ -243,6 +244,7 @@ export function SimpleShell({
           <div className={styles.modeSlot}>
             <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
           </div>
+          <ThemePicker compact={frame === 'phone'} />
           <button
             type="button"
             className={styles.menuBtn}
@@ -292,6 +294,7 @@ export function SimpleShell({
           <button
             type="button"
             className={styles.play}
+            data-geometry="circle"
             disabled={!snap.sampleLoaded}
             aria-label={snap.playing ? t.simple.pause : t.simple.play}
             onClick={() => void engine.unlock().then(() => engine.togglePlay())}
@@ -474,6 +477,7 @@ export function SimpleShell({
                   role="radio"
                   aria-checked={listenOriginal}
                   className={listenOriginal ? styles.abOn : ''}
+                  data-geometry="pill"
                   onClick={() => toggleCompare(true)}
                 >
                   {t.simple.original}
@@ -483,6 +487,7 @@ export function SimpleShell({
                   role="radio"
                   aria-checked={!listenOriginal}
                   className={!listenOriginal ? styles.abOn : ''}
+                  data-geometry="pill"
                   onClick={() => toggleCompare(false)}
                 >
                   {t.simple.after}
@@ -508,7 +513,7 @@ export function SimpleShell({
             aria-modal="true"
             onClick={(event) => event.stopPropagation()}
           >
-            <button type="button" className={styles.sheetGrab} aria-label={t.simple.closeSheet} onClick={() => setSheet('none')} />
+            <button type="button" className={styles.sheetGrab} data-geometry="pill" aria-label={t.simple.closeSheet} onClick={() => setSheet('none')} />
             {sheet === 'save' ? (
               <form
                 className={styles.saveForm}

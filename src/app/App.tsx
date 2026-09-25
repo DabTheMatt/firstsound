@@ -367,18 +367,6 @@ export default function App() {
     restorePresent(next.present)
   }
 
-  const onUseSample = () => {
-    void engine.useAsSample({
-      fadeIn: edit.fadeIn,
-      fadeOut: edit.fadeOut,
-      fadeCurve: edit.fadeCurve,
-      fadeInBend: edit.fadeInBend,
-      fadeOutBend: edit.fadeOutBend,
-      reverse: false,
-      normalize: edit.normalizeOnUse,
-    })
-  }
-
   const dockRight = mode === 'dock-right'
   const sheet = mode === 'sheet'
   const compact = mode !== 'dock-right'
@@ -924,7 +912,6 @@ export default function App() {
             onUndo={() => applyHistory(undoHistory(history))}
             onRedo={() => applyHistory(redoHistory(history))}
             onExport={() => setExportOpen(true)}
-            onUseSample={onUseSample}
           />
         </div>
 

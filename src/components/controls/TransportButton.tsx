@@ -13,6 +13,7 @@ export function TransportButton({ playing, onToggle, disabled }: Props) {
     <button
       type="button"
       className={styles.play}
+      data-geometry="circle"
       onClick={onToggle}
       disabled={disabled}
       aria-label={playing ? t.transport.pause : t.transport.play}

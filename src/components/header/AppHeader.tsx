@@ -55,10 +55,14 @@ export function AppHeader({
         <button type="button" className={styles.file} onClick={onLoadSample}>
           {snap.fileName || t.header.loadSample}
         </button>
+      </div>
+      <div className={styles.tools}>
+        <ThemePicker compact={minimal} />
         {!minimal ? (
           <button
             type="button"
             className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
+            data-geometry="pill"
             aria-pressed={snap.recording}
             aria-label={snap.recording ? t.header.stop : t.header.record}
             onClick={onRecord}
@@ -72,7 +76,6 @@ export function AppHeader({
             </span>
           </button>
         ) : null}
-        {!minimal ? <ThemePicker /> : null}
         {!minimal ? (
           <button
             type="button"
@@ -106,7 +109,6 @@ export function AppHeader({
           </p>
         ) : null}
         {modeSwitch}
-        {minimal ? <ThemePicker compact /> : null}
         {minimal ? (
           <button
             type="button"
@@ -131,6 +133,7 @@ export function AppHeader({
           <button
             type="button"
             className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
+            data-geometry="pill"
             aria-pressed={snap.recording}
             aria-label={snap.recording ? t.header.stop : t.header.record}
             onClick={onRecord}

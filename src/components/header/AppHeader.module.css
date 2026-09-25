@@ -7,6 +7,8 @@
   flex: none;
   min-width: 0;
   max-width: 100%;
+  position: relative;
+  z-index: 16;
   overflow: hidden;
 }
 
@@ -42,8 +44,18 @@
   container-name: brand;
 }
 
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  position: relative;
+  z-index: 2;
+}
+
 .file {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

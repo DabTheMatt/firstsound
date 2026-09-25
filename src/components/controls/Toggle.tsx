@@ -17,6 +17,7 @@ export function Toggle({ pressed, label, reserveLabel, onToggle, compact, title 
     <button
       type="button"
       className={`${styles.loop} ${compact ? styles.compact : ''} ${pressed ? styles.active : ''}`}
+      data-geometry="pill"
       aria-pressed={pressed}
       title={title ?? label}
       onClick={(event) => {

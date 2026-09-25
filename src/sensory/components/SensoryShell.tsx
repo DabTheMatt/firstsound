@@ -129,6 +129,7 @@ export function SensoryShell({
           <button
             type="button"
             className={styles.stringsBtn}
+            data-geometry="pill"
             aria-pressed={stringsOn}
             aria-label={stringsOn ? t.sensory.stringsHideAria : t.sensory.stringsAria}
             onClick={() => {

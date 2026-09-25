@@ -4,6 +4,8 @@
 
 :root {
   --radius-shell: 22px;
+  --radius-control: 4px;
+  --radius-pill: 999px;
   --font: 'Inter', system-ui, sans-serif;
   --theme-shift: 150ms ease;
 }

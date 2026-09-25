@@ -36,6 +36,39 @@ export type WaveformDragKind =
   | 'transient'
   | 'pan'
 
+/** Pixels of left-drag before a body press becomes a sample selection. */
+export const SELECTION_DRAG_THRESHOLD_PX = 4
+
+/** Pixels of movement before a non-select press pans the view. */
+export const PAN_DRAG_THRESHOLD_PX = 8
+
+/**
+ * Left-button drag on the technical waveform draws a selection.
+ * Touch keeps the previous pan gesture. Simple mode keeps trim edges.
+ */
+export function promotePlayheadDrag(opts: {
+  simple: boolean
+  button: number
+  pointerType: string
+  dx: number
+}): 'playhead' | 'select' | 'pan' {
+  if (
+    !opts.simple &&
+    opts.pointerType !== 'touch' &&
+    opts.button === 0 &&
+    opts.dx > SELECTION_DRAG_THRESHOLD_PX
+  ) {
+    return 'select'
+  }
+  if (opts.dx > PAN_DRAG_THRESHOLD_PX) return 'pan'
+  return 'playhead'
+}
+
+/** Selection spans the press anchor and the current pointer, in either direction. */
+export function selectionFromAnchor(anchor: number, pointer: number): { start: number; end: number } {
+  return { start: Math.min(anchor, pointer), end: Math.max(anchor, pointer) }
+}
+
 /** Loop edges win over parked fade diamonds, transients, and the playhead. */
 export function resolveWaveformDrag(opts: {
   altOrMiddle: boolean

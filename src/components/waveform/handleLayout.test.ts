@@ -14,8 +14,10 @@ import {
   fadeShapeHandleLayout,
   fadeParkedOnLoopNode,
   hitsLoopNodeY,
+  promotePlayheadDrag,
   resolveSimpleWaveformDrag,
   resolveWaveformDrag,
+  selectionFromAnchor,
 } from './handleLayout'
 
 describe('fadeHandleAtLoopFrac', () => {
@@ -146,6 +148,26 @@ describe('fadeLengthFromDiamondTime', () => {
     expect(clampFadeLengthToLoop(9, 1, 5)).toBe(4)
     expect(fadeLengthFromDiamondTime('in', 1, 5, 0.2)).toBe(0)
     expect(fadeLengthFromDiamondTime('out', 1, 5, 6)).toBe(0)
+  })
+})
+
+describe('promotePlayheadDrag', () => {
+  it('turns a left-button drag into a sample selection in technical mode', () => {
+    expect(promotePlayheadDrag({ simple: false, button: 0, pointerType: 'mouse', dx: 2 })).toBe('playhead')
+    expect(promotePlayheadDrag({ simple: false, button: 0, pointerType: 'mouse', dx: 6 })).toBe('select')
+  })
+
+  it('keeps touch and simple-mode drags as a pan', () => {
+    expect(promotePlayheadDrag({ simple: false, button: 0, pointerType: 'touch', dx: 20 })).toBe('pan')
+    expect(promotePlayheadDrag({ simple: true, button: 0, pointerType: 'mouse', dx: 20 })).toBe('pan')
+    expect(promotePlayheadDrag({ simple: false, button: 2, pointerType: 'mouse', dx: 20 })).toBe('pan')
+  })
+})
+
+describe('selectionFromAnchor', () => {
+  it('follows the pointer in either direction', () => {
+    expect(selectionFromAnchor(1.2, 2.4)).toEqual({ start: 1.2, end: 2.4 })
+    expect(selectionFromAnchor(2.4, 0.5)).toEqual({ start: 0.5, end: 2.4 })
   })
 })
 
