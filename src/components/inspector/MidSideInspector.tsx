@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { byteToAudio, stereoCorrelation } from '../../audio/fx/midSide'
 import { midSideFromPad, padFromMidSide } from '../../audio/fx/midSidePad'
-import { MIDSIDE_RECIPES } from '../../audio/fx/midSidePresets'
+import { isMidSideRecipeId, MIDSIDE_RECIPES } from '../../audio/fx/midSidePresets'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
@@ -15,6 +15,7 @@ import { Toggle } from '../controls/Toggle'
 import { wheelToNormalized } from '../controls/scrub'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
 import { FxLfoSection } from './FxLfoSection'
+import inspectorStyles from './Inspector.module.css'
 import styles from './MidSideInspector.module.css'
 
 type Props = {
@@ -46,7 +47,7 @@ const ADV_IDS: ParamId[] = ['msHaasTime', 'msHaasAmount', 'msMidTilt', 'msSideTi
 
 export function MidSideInspector({ snap, variant, pane }: Props) {
   const live = snap.liveParams
-  const knobs = variant === 'knob' ? styles.knobs : undefined
+  const knobs = variant === 'knob' ? inspectorStyles.knobs : undefined
   return (
     <div className={styles.root}>
       {pane === 'main' ? (
@@ -58,9 +59,31 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
           <StereoField snap={snap} />
           <PresetMenu
             label="Mid/Side presets"
-            categories={MODULE_PRESET_CATEGORIES}
-            presets={modulePresetsFor('midside')}
-            onApply={(id) => engine.applyModulePreset(id)}
+            categories={['Presets', 'Recipes', ...MODULE_PRESET_CATEGORIES]}
+            presets={[
+              ...modulePresetsFor('midside').map((preset) => ({
+                id: preset.id,
+                name: preset.name,
+                category: 'Presets',
+                hint: preset.hint,
+              })),
+              ...MIDSIDE_RECIPES.map((recipe) => ({
+                id: `recipe:${recipe.id}`,
+                name: recipe.label,
+                category: 'Recipes',
+                hint: recipe.params.msSideHpf
+                  ? `Center Below ${Math.round(recipe.params.msSideHpf)} Hz`
+                  : 'Full-band side',
+              })),
+            ]}
+            onApply={(id) => {
+              if (id.startsWith('recipe:')) {
+                const recipeId = id.slice('recipe:'.length)
+                if (isMidSideRecipeId(recipeId)) engine.applyMidSideRecipe(recipeId)
+                return
+              }
+              engine.applyModulePreset(id)
+            }}
           />
           <div className={styles.monitor}>
             <Toggle
@@ -91,50 +114,35 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
             <ParamControl id="msWidth" value={snap.params.msWidth} variant={variant} />
             <ParamControl id="msBalance" value={snap.params.msBalance} variant={variant} />
           </div>
-          <h3 className={styles.section}>Center Below</h3>
-          <p className={styles.help}>
-            Everything under this frequency stays in the mid. Side content below the cutoff is
-            removed, so bass sits in the center.
-          </p>
+          <h3 className={inspectorStyles.sub}>Center Below</h3>
+          <CenterBelowStatus hz={snap.params.msSideHpf} />
           <div className={knobs}>
             <ParamControl id="msSideHpf" value={snap.params.msSideHpf} variant={variant} />
           </div>
-          <h3 className={styles.section}>Mid EQ</h3>
-          <p className={styles.help}>Boost Mid Low to add bass presence in the center.</p>
+          <h3 className={inspectorStyles.sub}>Mid EQ</h3>
+          <p className={inspectorStyles.help}>Boost Mid Low to add bass presence in the center.</p>
           <div className={knobs}>{MID_EQ_IDS.map((id) => control(id, snap, variant))}</div>
-          <h3 className={styles.section}>Side EQ</h3>
+          <h3 className={inspectorStyles.sub}>Side EQ</h3>
           <div className={knobs}>{SIDE_EQ_IDS.map((id) => control(id, snap, variant))}</div>
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.ghost} onClick={() => engine.randomizeMidSide()}>
+          <div className={inspectorStyles.row}>
+            <button type="button" className={inspectorStyles.ghost} onClick={() => engine.randomizeMidSide()}>
               Randomize
             </button>
-            <button type="button" className={styles.ghost} onClick={() => engine.resetMidSide()}>
+            <button type="button" className={inspectorStyles.ghost} onClick={() => engine.resetMidSide()}>
               Reset
             </button>
           </div>
-          <div className={styles.presets} role="list">
-            {MIDSIDE_RECIPES.map((recipe) => (
-              <button
-                key={recipe.id}
-                type="button"
-                className={styles.preset}
-                onClick={() => engine.applyMidSideRecipe(recipe.id)}
-              >
-                {recipe.label}
-              </button>
-            ))}
-          </div>
           <div className={knobs}>{MIX_IDS.map((id) => control(id, snap, variant))}</div>
           <FxLfoSection snap={snap} kind="midside" variant={variant} />
-          <p className={styles.help}>
+          <p className={inspectorStyles.help}>
             Live Width {formatParamValue(live.msWidth, PARAMS.msWidth)} · Balance{' '}
             {formatParamValue(live.msBalance, PARAMS.msBalance)}
           </p>
         </>
       ) : (
         <>
-          <h3 className={styles.section}>Micro Shift</h3>
-          <p className={styles.help}>Tiny L/R delay for width on short or mono samples. Watch correlation.</p>
+          <h3 className={inspectorStyles.sub}>Micro Shift</h3>
+          <p className={inspectorStyles.help}>Tiny L/R delay for width on short or mono samples. Watch correlation.</p>
           <div className={knobs}>
             {ADV_IDS.slice(0, 2).map((id) => control(id, snap, variant))}
           </div>
@@ -143,13 +151,13 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
             label={snap.params.msHaasDir > 0.5 ? 'Delay R' : 'Delay L'}
             onToggle={() => engine.setParam('msHaasDir', snap.params.msHaasDir > 0.5 ? 0 : 1)}
           />
-          <h3 className={styles.section}>Tilt</h3>
+          <h3 className={inspectorStyles.sub}>Tilt</h3>
           <div className={knobs}>{ADV_IDS.slice(2).map((id) => control(id, snap, variant))}</div>
-          <h3 className={styles.section}>Phase</h3>
+          <h3 className={inspectorStyles.sub}>Phase</h3>
           <div className={styles.phaseRow}>
             <button
               type="button"
-              className={`${styles.phase} ${snap.params.msFlipMid > 0.5 ? styles.phaseOn : ''}`}
+              className={`${inspectorStyles.ghost} ${snap.params.msFlipMid > 0.5 ? inspectorStyles.ghostOn : ''}`}
               aria-pressed={snap.params.msFlipMid > 0.5}
               onClick={() => engine.setParam('msFlipMid', snap.params.msFlipMid > 0.5 ? 0 : 1)}
             >
@@ -157,7 +165,7 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
             </button>
             <button
               type="button"
-              className={`${styles.phase} ${snap.params.msFlipSide > 0.5 ? styles.phaseOn : ''}`}
+              className={`${inspectorStyles.ghost} ${snap.params.msFlipSide > 0.5 ? inspectorStyles.ghostOn : ''}`}
               aria-pressed={snap.params.msFlipSide > 0.5}
               onClick={() => engine.setParam('msFlipSide', snap.params.msFlipSide > 0.5 ? 0 : 1)}
             >
@@ -168,6 +176,17 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
         </>
       )}
     </div>
+  )
+}
+
+function CenterBelowStatus({ hz }: { hz: number }) {
+  const on = hz >= 20
+  return (
+    <p className={on ? styles.centerOn : inspectorStyles.help} role="status">
+      {on
+        ? `On — side content below ${Math.round(hz)} Hz is removed and the lows stay in the center.`
+        : 'Off — the side channel is full band. Bass on the sides is not filtered.'}
+    </p>
   )
 }
 

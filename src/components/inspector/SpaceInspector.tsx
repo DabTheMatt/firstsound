@@ -150,7 +150,6 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         </label>
       )}
 
-      <h3 className={styles.sub}>Presets</h3>
       {kind === 'delay' ? (
         <>
           <p className={styles.help}>
@@ -307,10 +306,10 @@ function DelayPresetSelect({ snap }: { snap: EngineSnapshot }) {
   return (
     <>
       <label className={styles.field}>
-        Delay preset
+        Delay presets
         <select
           className={`${styles.select} ${current ? styles.selectOn : ''}`}
-          aria-label="Delay preset"
+          aria-label="Delay presets"
           value={current?.id ?? ''}
           disabled={typePresets.length === 0}
           onChange={(event) => {
@@ -349,10 +348,10 @@ function ReverbPresetSelect({ snap }: { snap: EngineSnapshot }) {
   return (
     <>
       <label className={styles.field}>
-        Reverb preset
+        Reverb presets
         <select
           className={`${styles.select} ${current ? styles.selectOn : ''}`}
-          aria-label="Reverb preset"
+          aria-label="Reverb presets"
           value={current?.id ?? ''}
           disabled={custom || typePresets.length === 0}
           onChange={(event) => {
