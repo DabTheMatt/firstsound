@@ -427,7 +427,7 @@ export default function App() {
         </button>
         <button
           type="button"
-          onClick={() => downloadJson('field-preset.json', engine.toPreset())}
+          onClick={() => downloadJson('interfer-preset.json', engine.toPreset())}
         >
           {t.settings.savePreset}
         </button>
@@ -477,7 +477,7 @@ export default function App() {
         <button
           type="button"
           onClick={() =>
-            downloadJson('field-preset-library.json', {
+            downloadJson('interfer-preset-library.json', {
               format: 'field-preset-library',
               version: 1,
               presets: loadUserPresets(),
@@ -678,7 +678,7 @@ export default function App() {
           onLoadDemo={() => {
             void engine.unlock().then(() => engine.loadDemoTone())
           }}
-          onSave={() => downloadJson('field-preset.json', engine.toPreset())}
+          onSave={() => downloadJson('interfer-preset.json', engine.toPreset())}
           onRecord={() => {
             if (engine.getSnapshot().recording) engine.stopMicRecord()
             else void engine.startMicRecord()
@@ -746,6 +746,7 @@ export default function App() {
           }}
           compact={sheet}
           minimal={isPhoneLayout}
+          mode={uiMode}
           modeSwitch={
             <div className={styles.modeCluster}>
               <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />

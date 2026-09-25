@@ -3,6 +3,7 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
 import { RuntimeStatus } from '../../components/chrome/RuntimeStatus'
+import { Wordmark } from '../../components/header/Wordmark'
 import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
@@ -116,7 +117,7 @@ export function SensoryShell({
     >
       <header className={styles.top}>
         <div className={styles.brandRow}>
-          <p className={styles.brand}>Field</p>
+          <Wordmark mode={mode} variant="editorial" />
         </div>
         <div className={styles.tools}>
           <RuntimeStatus variant="editorial" />
