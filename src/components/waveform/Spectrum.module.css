@@ -15,8 +15,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 6px 8px;
-  padding: 4px 8px 6px;
+  gap: 4px 8px;
+  padding: 2px 8px 4px;
   pointer-events: none;
 }
 
@@ -128,7 +128,7 @@
 
 .legendDock {
   position: absolute;
-  top: 36px;
+  top: 8px;
   right: 12px;
   z-index: 3;
   display: flex;

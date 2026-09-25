@@ -1,5 +1,5 @@
-/** CSS pixels reserved around the FFT plot. The bottom band is only for Hz labels. */
-export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 52, bottom: 40 }
+/** CSS pixels reserved around the FFT plot. Top fits note labels; bottom is the Hz band. */
+export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 18, bottom: 40 }
 
 /** Distance from the plot bottom to the top of the Hz labels, in CSS pixels. */
 export const SPECTRUM_HZ_LABEL_OFFSET = 14

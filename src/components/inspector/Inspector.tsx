@@ -466,6 +466,7 @@ function ModuleInspector({
             <Toggle
               pressed={!mod?.bypassed}
               label={mod?.bypassed ? t.inspector.bypassed : t.inspector.active}
+              reserveLabel={mod?.bypassed ? t.inspector.active : t.inspector.bypassed}
               onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
@@ -916,6 +917,7 @@ function EqEditor({
               compact
               pressed={!band.bypassed}
               label={band.bypassed ? 'Bypassed' : 'Active'}
+              reserveLabel={band.bypassed ? 'Active' : 'Bypassed'}
               onToggle={() => setBand(index, { bypassed: !band.bypassed })}
             />
           </summary>

@@ -70,7 +70,13 @@
 .dot {
   width: 6px;
   height: 6px;
+  flex: none;
   border-radius: 50%;
   background: var(--text-primary);
   box-shadow: 0 0 10px var(--text-primary);
+}
+
+.dotOff {
+  visibility: hidden;
+  box-shadow: none;
 }

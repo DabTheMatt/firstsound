@@ -60,7 +60,12 @@ export function AppHeader({
             onClick={onRecord}
           >
             <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
-            {snap.recording ? t.header.stop : t.header.record}
+            <span className={styles.recLabel}>
+              <span className={snap.recording ? styles.recHidden : undefined}>{t.header.record}</span>
+              <span className={snap.recording ? undefined : styles.recHidden} aria-hidden={snap.recording ? undefined : true}>
+                {t.header.stop}
+              </span>
+            </span>
           </button>
         ) : null}
         {!minimal ? <ThemePicker /> : null}
@@ -127,7 +132,12 @@ export function AppHeader({
             onClick={onRecord}
           >
             <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
-            {snap.recording ? t.header.stop : t.header.rec}
+            <span className={styles.recLabel}>
+              <span className={snap.recording ? styles.recHidden : undefined}>{t.header.rec}</span>
+              <span className={snap.recording ? undefined : styles.recHidden} aria-hidden={snap.recording ? undefined : true}>
+                {t.header.stop}
+              </span>
+            </span>
           </button>
         ) : null}
         <button

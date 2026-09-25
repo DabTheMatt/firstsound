@@ -178,6 +178,7 @@ function FilterFollowerPanel({ snap, variant }: { snap: EngineSnapshot; variant:
         <Toggle
           pressed={positive}
           label={positive ? 'Positive' : 'Negative'}
+          reserveLabel={positive ? 'Negative' : 'Positive'}
           onToggle={() => engine.setParam('filterEnvDir', positive ? 0 : 1)}
         />
       </div>
