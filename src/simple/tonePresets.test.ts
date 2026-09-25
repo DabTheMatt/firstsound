@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fadeSecondsForStep, fadeStepFromSeconds } from './fadeSteps'
 import { applyToneToChannels } from './applyToneEq'
-import { eqLooksFlat, matchSimpleTone, SIMPLE_TONE_IDS, toneBandsAt } from './tonePresets'
+import { eqLooksFlat, matchSimpleTone, SIMPLE_TONE_IDS, simpleToneMatchesBands, toneBandsAt } from './tonePresets'
 
 describe('fade steps', () => {
   it('hides millisecond values behind named lengths', () => {
@@ -31,6 +31,14 @@ describe('simple tone presets', () => {
     const custom = toneBandsAt('bass', 1)
     custom[2] = { ...custom[2]!, type: 'peaking', frequency: 1800, gain: 6, q: 4, slope: 12 }
     expect(matchSimpleTone(custom, false).id).toBe('custom')
+  })
+
+  it('drops a sticky tone when undo restores a different EQ', () => {
+    expect(simpleToneMatchesBands('bass', 0.7, toneBandsAt('bass', 0.7))).toBe(true)
+    expect(simpleToneMatchesBands('bass', 0, toneBandsAt('bass', 0))).toBe(true)
+    expect(simpleToneMatchesBands('bass', 0.7, toneBandsAt('natural', 0))).toBe(false)
+    expect(matchSimpleTone(toneBandsAt('natural', 0), false).id).toBe('natural')
+    expect(matchSimpleTone(toneBandsAt('bright', 0.6), false).id).toBe('bright')
   })
 
   it('keeps every preset identity across the full slider, including below 10%', () => {

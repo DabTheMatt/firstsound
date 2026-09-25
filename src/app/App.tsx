@@ -151,12 +151,17 @@ export default function App() {
   const appliedRef = useRef<DspSnapshot>(captureDsp(engine))
   const editRef = useRef(edit)
   const uiModeRef = useRef(uiMode)
+  const historyRef = useRef(history)
+  const restorePresentRef = useRef<(present: Hist) => void>(() => {})
   useEffect(() => {
     editRef.current = edit
   }, [edit])
   useEffect(() => {
     uiModeRef.current = uiMode
   }, [uiMode])
+  useEffect(() => {
+    historyRef.current = history
+  }, [history])
   useEffect(() => {
     sensoryRef.current = sensory
   }, [sensory])
@@ -213,19 +218,11 @@ export default function App() {
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
-        setHistory((h) => {
-          const next = event.shiftKey ? redoHistory(h) : undoHistory(h)
-          engine.setRegion(next.present.start, next.present.end)
-          setEdit((e) => ({
-            ...e,
-            fadeIn: next.present.fadeIn,
-            fadeOut: next.present.fadeOut,
-            fadeCurve: next.present.fadeCurve,
-            fadeInBend: next.present.fadeInBend,
-            fadeOutBend: next.present.fadeOutBend,
-          }))
-          return next
-        })
+        const current = historyRef.current
+        const next = event.shiftKey ? redoHistory(current) : undoHistory(current)
+        if (next === current) return
+        setHistory(next)
+        restorePresentRef.current(next.present)
       }
     }
     const onKeyUp = (event: KeyboardEvent) => {
@@ -303,6 +300,9 @@ export default function App() {
     }
     if (present.sensoryBase) sensoryBaseRef.current = cloneDsp(present.sensoryBase)
   }
+  useEffect(() => {
+    restorePresentRef.current = restorePresent
+  })
 
   const applySensoryValues = (next: SensoryValues) => {
     sensoryRef.current = next
