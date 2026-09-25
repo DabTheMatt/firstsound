@@ -1,11 +1,12 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   flex: none;
   min-width: 0;
-  min-height: 32px;
-  padding: 0 2px;
+  min-height: 40px;
+  padding: 4px 2px 10px;
 }
 
 .cluster {
@@ -141,9 +142,9 @@
 }
 
 .minimal {
-  min-height: 32px;
-  gap: 4px;
-  padding: 0;
+  min-height: 36px;
+  gap: 4px 6px;
+  padding: 2px 0 6px;
 }
 
 .minimal .iconBtn {
