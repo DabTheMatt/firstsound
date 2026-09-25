@@ -143,7 +143,6 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       <p className="sr-only" aria-live="off">
         {meterReadout}
       </p>
-      <MonitorKnob value={snap.recMonitor} />
       <div className={styles.outKnob}>
         <ValueKnob
           compact
@@ -159,6 +158,7 @@ export function MeterStrip({ channels, range, onRange }: Props) {
           onReset={() => engine.resetParam('outputGain')}
         />
       </div>
+      <MonitorKnob value={snap.recMonitor} />
       <select
         className={styles.select}
         value={range}
