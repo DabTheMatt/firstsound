@@ -13,7 +13,6 @@ import { ParamControl } from '../controls/ParamControl'
 import { PresetMenu } from '../controls/PresetMenu'
 import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { Toggle } from '../controls/Toggle'
-import { wheelToNormalized } from '../controls/scrub'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
 import { FxLfoSection } from './FxLfoSection'
 import inspectorStyles from './Inspector.module.css'
@@ -374,13 +373,6 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
           target.addEventListener('pointerup', up)
           target.addEventListener('pointercancel', up)
           target.addEventListener('lostpointercapture', up)
-        }}
-        onWheel={(event) => {
-          event.preventDefault()
-          const fine = event.shiftKey
-          const delta = wheelToNormalized(event.deltaY, !fine)
-          const step = fine ? delta * 0.25 : delta
-          apply(Math.min(1, Math.max(0, x + step)), y)
         }}
       >
         <canvas ref={canvasRef} className={styles.scope} />

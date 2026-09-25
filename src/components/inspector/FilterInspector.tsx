@@ -23,7 +23,6 @@ import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../the
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ParamControl } from '../controls/ParamControl'
 import { Toggle } from '../controls/Toggle'
-import { wheelToNormalized } from '../controls/scrub'
 import { useFxLfoConnect } from './FxLfoConnect'
 import { FxLfoSection } from './FxLfoSection'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
@@ -279,13 +278,6 @@ function FilterXyPad({
           target.addEventListener('pointerup', up)
           target.addEventListener('pointercancel', up)
           target.addEventListener('lostpointercapture', up)
-        }}
-        onWheel={(event) => {
-          event.preventDefault()
-          const fine = event.shiftKey
-          const delta = wheelToNormalized(event.deltaY, !fine)
-          const step = fine ? delta * 0.25 : delta
-          apply(Math.min(1, Math.max(0, x + step)), y)
         }}
       >
         <span className={styles.ghostDot} style={{ left: `${lx * 100}%`, top: `${(1 - ly) * 100}%` }} />

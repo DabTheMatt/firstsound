@@ -5,6 +5,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import styles from './ParamSlider.module.css'
 
 type Props = {
@@ -19,23 +20,26 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   const n = toNormalized(value, def)
   const shown = toNormalized(liveValue ?? value, def)
   const shownValue = liveValue ?? value
+  const rowRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const labelId = useId()
   const descId = useId()
   const spoken = formatAccessibleValue(shownValue, def, locale)
   const description = paramDescription(id, locale)
-
+  const nRef = useRef(n)
   useEffect(() => {
-    const el = trackRef.current
-    if (!el) return
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault()
-      const next = Math.min(1, Math.max(0, n + (event.deltaY > 0 ? -0.02 : 0.02)))
+    nRef.current = n
+  }, [n])
+
+  useFocusedWheel(
+    trackRef,
+    (event) => {
+      const next = Math.min(1, Math.max(0, nRef.current + (event.deltaY > 0 ? -0.02 : 0.02)))
+      nRef.current = next
       engine.setParam(id, fromNormalized(next, def))
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [id, def, n])
+    },
+    { blurRootRef: rowRef },
+  )
 
   const apply = (clientX: number, target: HTMLDivElement) => {
     const rect = target.getBoundingClientRect()
@@ -46,6 +50,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const target = event.currentTarget
+    focusParameterControl(target)
     target.setPointerCapture(event.pointerId)
     apply(event.clientX, target)
     const move = (e: PointerEvent) => {
@@ -79,7 +84,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   }
 
   return (
-    <div className={styles.row}>
+    <div ref={rowRef} className={styles.row}>
       <div className={styles.meta}>
         <span className={styles.label} id={labelId}>
           {paramLabel(id)}

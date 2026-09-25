@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { applySliderKey } from '../../a11y/keyboard'
+import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { wheelToNormalized } from './scrub'
 import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
 import styles from './Knob.module.css'
@@ -55,6 +56,7 @@ export function ValueKnob({
   bipolar = false,
   markerNormalized,
 }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null)
   const dialRef = useRef<HTMLDivElement>(null)
   const valueRef = useRef(normalized)
   const [editing, setEditing] = useState(false)
@@ -68,24 +70,23 @@ export function ValueKnob({
     valueRef.current = normalized
   }, [normalized])
 
-  useEffect(() => {
-    const el = dialRef.current
-    if (!el) return
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault()
+  useFocusedWheel(
+    dialRef,
+    (event) => {
       const next = Math.min(
         1,
         Math.max(0, valueRef.current + wheelToNormalized(event.deltaY, event.shiftKey)),
       )
+      valueRef.current = next
       onChange(next)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [onChange])
+    },
+    { blurRootRef: rootRef },
+  )
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const target = event.currentTarget
+    focusParameterControl(target)
     target.setPointerCapture(event.pointerId)
     let lastY = event.clientY
     let current = normalized
@@ -172,6 +173,7 @@ export function ValueKnob({
 
   return (
     <div
+      ref={rootRef}
       className={`${styles.knob} ${mini ? styles.mini : compact ? styles.compact : ''}`}
       title={description}
       onMouseEnter={() => setTipOpen(true)}
