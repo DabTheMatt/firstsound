@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bandwidthHz,
   bandIsActive,
+  eqBypassAfterBandEdit,
   defaultEqBandAt,
   defaultEqBands,
   eqModuleIsAudible,
@@ -129,6 +130,17 @@ describe('eqModuleIsAudible', () => {
     expect(eqModuleIsAudible(false, bands)).toBe(false)
     expect(eqModuleIsAudible(false, bands, true)).toBe(true)
     expect(eqModuleIsAudible(false, [{ ...bands[0]!, type: 'lowpass' }])).toBe(true)
+  })
+})
+
+describe('eqBypassAfterBandEdit', () => {
+  it('enables a bypassed module when a band becomes active and leaves an enabled module on', () => {
+    const off = defaultEqBands()
+    const bell = { ...off[0]!, type: 'peaking' as const, bypassed: false }
+    expect(eqBypassAfterBandEdit(true, off)).toBe(true)
+    expect(eqBypassAfterBandEdit(true, [bell])).toBe(false)
+    expect(eqBypassAfterBandEdit(false, [bell])).toBe(false)
+    expect(eqBypassAfterBandEdit(false, off)).toBe(false)
   })
 })
 

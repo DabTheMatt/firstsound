@@ -177,6 +177,7 @@
   position: absolute;
   z-index: 3;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .node {

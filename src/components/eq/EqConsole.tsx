@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
-import { moduleLabel } from '../../audio/chain/chain'
 import { EQ_MAX_BANDS, type EqFilterType } from '../../audio/engine/eqBands'
 import {
   clampEqOverlayFocus,
@@ -11,6 +10,7 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { eqStripHeading } from './eqBandStyle'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import styles from './EqConsole.module.css'
@@ -57,6 +57,7 @@ export function EqConsole({ onFocusModule }: Props) {
         </div>
       ) : null}
       <div className={styles.strips}>
+        <div className={styles.stripRow}>
         {eqs.length === 0 ? (
           <AddEqStrip
             instanceId={null}
@@ -68,7 +69,7 @@ export function EqConsole({ onFocusModule }: Props) {
         ) : null}
         {visible.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []
-          const name = many ? moduleLabel(mod, snap.chain) : 'EQ'
+          const eqNumber = eqs.findIndex((item) => item.instanceId === mod.instanceId) + 1
           const enabled = bands.flatMap((band, index) =>
             band.type === 'off'
               ? []
@@ -79,7 +80,7 @@ export function EqConsole({ onFocusModule }: Props) {
                     instanceId={mod.instanceId}
                     index={index}
                     band={band}
-                    label={`${name} · ${index + 1}`}
+                    label={eqStripHeading(eqs.length, eqNumber, index + 1)}
                     selected={selected?.instanceId === mod.instanceId && selected.index === index}
                   />,
                 ],
@@ -100,6 +101,7 @@ export function EqConsole({ onFocusModule }: Props) {
             ) : null,
           ]
         })}
+        </div>
       </div>
     </div>
   )

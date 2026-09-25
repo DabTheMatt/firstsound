@@ -26,6 +26,8 @@ export function placeEqBell(
     { type: 'peaking', frequency: patch.frequency, gain: patch.gain, q: patch.q, bypassed: false },
     id,
   )
+  const mod = engine.getSnapshot().chain.find((item) => item.instanceId === id)
+  if (mod?.bypassed) engine.setModuleBypass(id, false)
   selectEqBand({ instanceId: id, index })
   return { instanceId: id, index }
 }

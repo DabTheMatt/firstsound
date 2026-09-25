@@ -14,6 +14,14 @@ export function eqAccentFromColor(color: string): Record<string, string> {
   }
 }
 
+/** Compact strip title: one EQ uses the band number; several EQs name processor and band. */
+export function eqStripHeading(eqCount: number, eqNumber: number, bandNumber: number): string {
+  const band = Math.max(1, Math.round(bandNumber))
+  if (eqCount <= 1) return `EQ ${band}`
+  const eq = Math.max(1, Math.round(eqNumber))
+  return `EQ ${eq} · BAND ${band}`
+}
+
 /** When frequency coloring is on, the mixer strip matches the FFT node color. */
 export function eqStripAccentVars(opts: {
   frequencyHz: number

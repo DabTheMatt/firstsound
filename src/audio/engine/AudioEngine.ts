@@ -180,7 +180,7 @@ import {
   parseEqBands,
   stageQ,
   webAudioBiquadQ,
-  bandIsActive,
+  eqBypassAfterBandEdit,
   bandUsesGain,
   type EqBand,
   type EqFilterType,
@@ -2035,9 +2035,10 @@ export class AudioEngine {
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
     const mod = this.chain.find((m) => m.instanceId === id)
-    const engaged = next.some(bandIsActive)
-    if (engaged && mod?.bypassed) {
-      this.setModuleBypass(id, false)
+    const bypass = eqBypassAfterBandEdit(Boolean(mod?.bypassed), next)
+    if (mod && mod.bypassed !== bypass) {
+      this.setModuleBypass(id, bypass)
+      this.applyEq(0.03)
       return
     }
     this.emit()

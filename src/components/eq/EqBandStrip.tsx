@@ -1,4 +1,5 @@
-import { type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { eqColorIndex } from '../../audio/chain/chain'
 import {
   bandUsesGain,
   bandUsesWidth,
@@ -21,7 +22,8 @@ import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/param
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
-import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
+import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { eqTone, readThemeColors } from '../../theme'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { FxLfoSection } from '../inspector/FxLfoSection'
@@ -50,10 +52,13 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
   const showGain = bandUsesGain(band.type) || band.type === 'off'
   const showWidth = bandUsesWidth(band.type)
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+  const instanceCurve = eqTone(eqColorIndex(snap.chain, instanceId), readThemeColors()).curve
   const accent = eqStripAccentVars({
-    frequencyHz: band.frequency,
-    instanceCurve: eqBandColorForHz(band.frequency),
-    freqColors: true,
+    frequencyHz: liveFreq,
+    instanceCurve,
+    freqColors,
   }) as CSSProperties
   const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
 
@@ -64,7 +69,6 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
       onPointerDown={() => selectEqBand({ instanceId, index })}
     >
       <header className={styles.stripHead}>
-        <span className={styles.stripIndex}>{index + 1}</span>
         <span className={styles.stripMeta}>
           <span className={styles.stripLabel}>{label}</span>
           <span className={styles.stripType}>{typeLabel}</span>
