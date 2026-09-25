@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   INSERTABLE_TYPES,
@@ -26,8 +26,8 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
   const [reorder, setReorder] = useState(false)
-  const [dropAt, setDropAt] = useState<number | null>(null)
-  const [openAdd, setOpenAdd] = useState(false)
+  const [gapAt, setGapAt] = useState<number | null>(null)
+  const [addAt, setAddAt] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const drag = useRef<{ id: string; from: number } | null>(null)
   const hoverIndex = useRef<number | null>(null)
@@ -38,21 +38,20 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   }, [chain])
   const middle = chain.filter((m) => !isFixedType(m.type)).length
   const canAdd = middle < MAX_CHAIN_MIDDLE
-  const insertAfter = Math.max(0, chain.length - 2)
 
   const closeAdd = () => {
-    setOpenAdd(false)
+    setAddAt(null)
     setMenuPos(null)
   }
 
   useEffect(() => {
-    if (!openAdd) return
+    if (addAt == null) return
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') closeAdd()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openAdd])
+  }, [addAt])
 
   const moveModule = (index: number, dir: -1 | 1) => {
     const mod = chain[index]
@@ -66,12 +65,26 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     announce(dir < 0 ? t.chain.movedBefore(vars[0], vars[1]) : t.chain.movedAfter(vars[0], vars[1]))
   }
 
+  const markDrop = (index: number) => {
+    const mod = chain[index]
+    if (!drag.current || !mod) return
+    if (isFixedType(mod.type)) {
+      const dest = index - 1
+      if (dest < 1) return
+      hoverIndex.current = dest
+      setGapAt(index)
+      return
+    }
+    hoverIndex.current = index
+    setGapAt(index)
+  }
+
   const beginReorder = (index: number) => {
     const mod = chain[index]
     if (!mod || isFixedType(mod.type)) return
     drag.current = { id: mod.instanceId, from: index }
     hoverIndex.current = index
-    setDropAt(index)
+    setGapAt(index)
     setReorder(true)
     closeAdd()
   }
@@ -82,7 +95,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     const live = chainRef.current
     drag.current = null
     hoverIndex.current = null
-    setDropAt(null)
+    setGapAt(null)
     setReorder(false)
     if (!active || dest == null) return
     const from = live.findIndex((m) => m.instanceId === active.id)
@@ -112,29 +125,67 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     }
   }, [reorder])
 
+  const openInsert = (afterIndex: number, anchor: HTMLButtonElement) => {
+    if (!canAdd) return
+    if (addAt === afterIndex) {
+      closeAdd()
+      return
+    }
+    const rect = anchor.getBoundingClientRect()
+    setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
+    setAddAt(afterIndex)
+  }
+
   const insert = (type: ModuleType) => {
-    const id = engine.insertModule(type, insertAfter)
+    if (addAt == null) return
+    const id = engine.insertModule(type, addAt)
     closeAdd()
     if (id) onSelect(id)
   }
 
   return (
-    <nav className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`} aria-label={t.chain.aria}>
+    <nav
+      className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`}
+      aria-label={t.chain.aria}
+    >
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
-        const active = mod.instanceId === selectedId
-        const lastBeforeOut = index === chain.length - 2
+        const selected = mod.instanceId === selectedId
+        const enabled = fixed || !mod.bypassed
+        const label = moduleLabel(mod, chain, t.modules)
+        const prev = chain[index - 1]
         return (
-          <div key={mod.instanceId} className={styles.item}>
+          <Fragment key={mod.instanceId}>
+            {prev ? (
+              <span className={`${styles.insertSlot} ${reorder && gapAt === index ? styles.dropSlot : ''}`}>
+                <button
+                  type="button"
+                  className={`${styles.add} ${addAt === index - 1 ? styles.addOpen : ''}`}
+                  aria-label={t.chain.addAfter(moduleLabel(prev, chain, t.modules))}
+                  aria-expanded={addAt === index - 1}
+                  aria-haspopup="menu"
+                  title={t.chain.addAfter(moduleLabel(prev, chain, t.modules))}
+                  disabled={!canAdd}
+                  onPointerEnter={() => markDrop(index)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    openInsert(index - 1, event.currentTarget)
+                  }}
+                >
+                  +
+                </button>
+              </span>
+            ) : null}
             <div
-              className={`${styles.tile} ${active ? styles.active : ''} ${mod.bypassed ? styles.bypassed : ''} ${fixed ? styles.locked : styles.movable} ${reorder && dropAt === index && !fixed ? styles.dropTarget : ''}`}
-              title={fixed ? moduleName(mod.type) : t.chain.dragHint}
+              className={`${styles.tile} ${selected ? styles.selected : ''} ${enabled ? styles.enabled : styles.bypassed} ${fixed ? styles.locked : styles.movable}`}
+              title={fixed ? label : t.chain.dragHint}
+              onPointerEnter={() => markDrop(index)}
             >
               <button
                 type="button"
                 className={styles.tab}
-                aria-pressed={active}
-                title={moduleName(mod.type)}
+                aria-pressed={selected}
+                title={label}
                 onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
                   if (fixed) return
                   if ((event.altKey || event.metaKey) && event.key === 'ArrowLeft') {
@@ -164,11 +215,6 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   if (press.current) window.clearTimeout(press.current)
                   press.current = null
                 }}
-                onPointerEnter={() => {
-                  if (!drag.current || drag.current.id === mod.instanceId || fixed) return
-                  hoverIndex.current = index
-                  setDropAt(index)
-                }}
                 onClick={() => {
                   if (press.current) {
                     window.clearTimeout(press.current)
@@ -183,9 +229,11 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   engine.toggleModuleBypass(mod.instanceId)
                 }}
               >
-                {moduleLabel(mod, chain, t.modules)}
-                {lowVision && mod.bypassed ? <span className={styles.bypassTag}>{t.chain.bypassedTag}</span> : null}
+                {label}
               </button>
+              {lowVision && !fixed ? (
+                <span className={styles.stateTag}>{mod.bypassed ? t.chain.bypassedTag : t.inspector.active}</span>
+              ) : null}
               {lowVision && !fixed ? (
                 <div className={styles.moves}>
                   <button
@@ -246,47 +294,27 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 </button>
               ) : null}
             </div>
-            {lastBeforeOut && canAdd && !minimal ? (
-              <span className={`${styles.addWrap} ${openAdd ? styles.addOpen : ''}`}>
-                <button
-                  type="button"
-                  className={styles.add}
-                  aria-label={t.chain.addEffect}
-                  aria-expanded={openAdd}
-                  title={t.chain.addEffect}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    if (openAdd) {
-                      closeAdd()
-                      return
-                    }
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
-                    setOpenAdd(true)
-                  }}
-                >
-                  +
-                </button>
-              </span>
-            ) : null}
-          </div>
+          </Fragment>
         )
       })}
-      {openAdd && menuPos
+      {addAt != null && menuPos
         ? createPortal(
-            <div className={styles.menu} role="menu" style={{ top: menuPos.top, left: menuPos.left }}>
-              {INSERTABLE_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  role="menuitem"
-                  className={styles.menuItem}
-                  onClick={() => insert(type)}
-                >
-                  {t.modules[type]}
-                </button>
-              ))}
-            </div>,
+            <>
+              <button type="button" className={styles.scrim} aria-label={t.chain.addEffect} onClick={closeAdd} />
+              <div className={styles.menu} role="menu" style={{ top: menuPos.top, left: menuPos.left }}>
+                {INSERTABLE_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    role="menuitem"
+                    className={styles.menuItem}
+                    onClick={() => insert(type)}
+                  >
+                    {t.modules[type]}
+                  </button>
+                ))}
+              </div>
+            </>,
             document.body,
           )
         : null}

@@ -208,6 +208,7 @@ export type Messages = {
     aria: string
     group: string
     addEffect: string
+    addAfter: (name: string) => string
     enable: (name: string) => string
     bypass: (name: string) => string
     enableShort: string
@@ -604,6 +605,7 @@ export const EN: Messages = {
     aria: 'Signal chain',
     group: 'Chain',
     addEffect: 'Add effect',
+    addAfter: (name) => `Add effect after ${name}`,
     enable: (name) => `Enable ${name}`,
     bypass: (name) => `Bypass ${name}`,
     enableShort: 'Enable',
@@ -1085,6 +1087,7 @@ export const PL: Messages = {
     aria: 'Łańcuch sygnału',
     group: 'Tor',
     addEffect: 'Dodaj efekt',
+    addAfter: (name) => `Dodaj efekt po ${name}`,
     enable: (name) => `Włącz ${name}`,
     bypass: (name) => `Omijaj ${name}`,
     enableShort: 'Włącz',
