@@ -5,6 +5,8 @@
   flex: 1;
   min-height: 0;
   height: 100%;
+  container-type: inline-size;
+  container-name: inspector;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -35,14 +37,19 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
-  flex: none;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .title {
   margin: 0;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -79,7 +86,7 @@
 
 .fine {
   display: grid;
-  grid-template-columns: 72px 1fr 72px;
+  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr) minmax(4.5rem, auto);
   align-items: center;
   gap: 6px;
 }
@@ -308,11 +315,23 @@
 
 .mixRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(44px, 0.85fr) minmax(0, 1fr);
-  gap: 0;
+  grid-template-columns: minmax(96px, 1fr) minmax(44px, max-content) minmax(96px, 1fr);
+  gap: 4px;
   align-items: start;
   justify-items: center;
   padding-top: 20px;
+}
+
+@container inspector (max-width: 280px) {
+  .mixRow {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .mixLink {
+    width: 100%;
+    margin: 8px 0 0;
+  }
 }
 
 .mixCol {
@@ -544,17 +563,19 @@
 
 .knobs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 12px 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
+  gap: 12px 10px;
   justify-items: center;
+  align-items: start;
   padding-top: 10px;
 }
 
 .macros {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
+  gap: 12px 10px;
   justify-items: center;
+  align-items: start;
 }
 
 .tempo {
@@ -634,6 +655,7 @@
 
 .paneTabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0;
   margin: 0 -12px 8px;
   padding: 0 12px;
@@ -751,8 +773,8 @@
 
 .compact .knobs,
 .compact .macros {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px 4px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 76px), 1fr));
+  gap: 8px 6px;
   padding-top: 8px;
 }
 

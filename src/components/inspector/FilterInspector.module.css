@@ -177,12 +177,11 @@
 }
 
 .knobs {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: space-evenly;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+  align-items: start;
+  justify-items: center;
+  gap: 10px 8px;
 }
 
 .lfoParams {

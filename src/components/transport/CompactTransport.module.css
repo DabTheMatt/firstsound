@@ -1,7 +1,8 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 8px 12px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   min-height: 40px;
   flex: none;
   padding: 2px 2px 2px;
@@ -14,16 +15,16 @@
 .transport {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .icon,
 .loop,
 .export {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 10px;
+  min-height: 40px;
+  min-width: 36px;
+  padding: 0 7px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-control);
@@ -80,7 +81,7 @@
 
 .cta {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-end;
   margin-left: auto;
   flex: none;
@@ -104,8 +105,8 @@
 
 .minimal .icon,
 .minimal .loop {
-  min-height: 32px;
-  min-width: 32px;
+  min-height: 40px;
+  min-width: 40px;
   padding: 0 8px;
   font-size: 9px;
 }
@@ -130,7 +131,7 @@
 
 .use {
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 14px;
   border: 0;
   border-radius: 8px;
   background: var(--accent-primary);

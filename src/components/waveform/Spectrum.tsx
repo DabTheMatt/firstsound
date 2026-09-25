@@ -594,7 +594,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
   if (!active) return null
   return (
     <div className={styles.wrap} role="region" aria-label="Spectrum analyzer">
-      <div className={styles.stage}>
       <div
         className={styles.chrome}
       >
@@ -831,6 +830,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           </button>
         </div>
       </div>
+      <div className={styles.stage}>
         {prefs.legendOpen ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (

@@ -138,16 +138,18 @@
 
 .hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 108px), 1fr));
   gap: 8px;
   justify-items: center;
+  align-items: start;
 }
 
 .knobs {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
+  gap: 10px 8px;
   justify-items: center;
+  align-items: start;
 }
 
 .toolbar,
