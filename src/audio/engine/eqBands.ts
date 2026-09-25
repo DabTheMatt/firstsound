@@ -24,6 +24,15 @@ export function bandIsActive(band: EqBand): boolean {
   return band.type !== 'off' && !band.bypassed
 }
 
+/**
+ * Bypass flag after a band edit. An active band forces the module on.
+ * An already-enabled module stays enabled.
+ */
+export function eqBypassAfterBandEdit(bypassed: boolean, bands: readonly EqBand[]): boolean {
+  if (bands.some(bandIsActive)) return false
+  return bypassed
+}
+
 /** True when this EQ instance is actually changing the signal. */
 export function eqModuleIsAudible(
   bypassed: boolean,

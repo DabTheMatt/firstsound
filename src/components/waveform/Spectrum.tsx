@@ -76,15 +76,13 @@ import {
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { SPECTRUM_HZ_LABEL_OFFSET, SPECTRUM_PLOT_PAD } from '../../audio/engine/spectrumPlotLayout'
 import styles from './Spectrum.module.css'
 
 type Props = {
   active: boolean
   meterRange?: MeterRange
 }
-
-/** Top: chrome row, then note names (C1–C8). Bottom: Hz ticks. */
-export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 52, bottom: 26 }
 
 function emptyBands(n: number): Float32Array {
   return new Float32Array(n).fill(-100)
@@ -313,10 +311,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.moveTo(tick.x, top)
           ctx.lineTo(tick.x, bottom)
           ctx.stroke()
-          if (!hzLabelOn.has(i)) continue
-          ctx.fillStyle = colors.textMuted
-          ctx.font = `${(tick.major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
-          ctx.fillText(tick.label, tick.x, bottom + 4 * dpr)
         }
 
         ctx.textBaseline = 'bottom'
@@ -332,11 +326,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           }
         })
         const noteLabelOn = visibleAxisLabelIndices(noteTicks, 8 * dpr)
-        for (let i = 0; i < noteTicks.length; i++) {
-          if (!noteLabelOn.has(i)) continue
-          const tick = noteTicks[i]!
-          ctx.fillText(tick.label, tick.x, top - 6 * dpr)
-        }
 
         let postEqGains: Float32Array | null = null
         let preCap: Float32Array | null = null
@@ -371,6 +360,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             follow === 'both'
               ? colorWithAlpha(colors.accent, style === 'pre' ? 0.7 : 0.95)
               : peakStroke
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(left, top, plotW, plotH)
+          ctx.clip()
           if (showBars) {
             for (let i = 0; i < bands; i++) {
               const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right, scale)
@@ -418,6 +411,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           if (wantSlow) {
             strokeFollow(slowPts, slowStroke, Math.max(1, dpr * (follow === 'both' ? 1.2 : style === 'pre' ? 1.15 : 1.65)))
           }
+          ctx.restore()
         }
 
         const toneAudible = live.chain.some((mod) => {
@@ -532,6 +526,24 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.stroke()
           ctx.setLineDash([])
           ctx.restore()
+        }
+
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.82)
+        ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        for (let i = 0; i < noteTicks.length; i++) {
+          if (!noteLabelOn.has(i)) continue
+          const tick = noteTicks[i]!
+          ctx.fillText(tick.label, tick.x, top - 6 * dpr)
+        }
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = colors.textMuted
+        for (let i = 0; i < hzTicks.length; i++) {
+          if (!hzLabelOn.has(i)) continue
+          const tick = hzTicks[i]!
+          ctx.font = `${(tick.major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
+          ctx.fillText(tick.label, tick.x, bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr)
         }
       }
       frame = requestAnimationFrame(tick)
@@ -755,8 +767,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             type="button"
             className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
             aria-pressed={prefs.eqFreqColors}
-            aria-label={prefs.eqFreqColors ? 'EQ nodes use instance color' : 'Color EQ nodes by frequency'}
-            title="Color EQ nodes by frequency band"
+            aria-label={prefs.eqFreqColors ? 'Frequency colors on' : 'Frequency colors off'}
+            title={prefs.eqFreqColors ? 'Frequency colors on' : 'Color EQ nodes by frequency'}
             onClick={() => setPrefs((p) => ({ ...p, eqFreqColors: !p.eqFreqColors }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -947,8 +959,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                   (l) => l.target === ids.freq || l.target === ids.gain || l.target === ids.q,
                 ),
             )
-            const nodeColor = eqBandColorForHz(band.frequency)
-            const curveColor = nodeColor
+            const tone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
+            const freqColor = eqBandColorForHz(band.frequency)
+            const nodeColor = prefs.eqFreqColors ? freqColor : tone.node
+            const curveColor = prefs.eqFreqColors ? freqColor : tone.curve
             return (
               <button
                 key={`${mod.instanceId}-${index}`}

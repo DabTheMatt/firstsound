@@ -53,15 +53,19 @@
 }
 
 .strips {
-  display: flex;
   flex: 1 1 auto;
-  align-items: stretch;
   min-height: 0;
   height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 0;
+  overflow: auto;
   padding: 4px 6px 8px;
+}
+
+.stripRow {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  min-width: 100%;
+  min-height: min-content;
 }
 
 .strip {
@@ -73,12 +77,10 @@
   width: 148px;
   min-width: 148px;
   max-width: 148px;
-  height: 100%;
-  min-height: 0;
+  height: auto;
   padding: 6px 8px 8px;
   border-right: 1px solid var(--border-subtle);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -105,7 +107,7 @@
 
 .stripHead {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
   width: 100%;
