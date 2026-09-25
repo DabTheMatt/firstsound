@@ -19,6 +19,7 @@ import {
   FEATURED_TONE_IDS,
   clampToneAmount,
   matchSimpleTone,
+  simpleToneMatchesBands,
   toneBandsAt,
   type SimpleToneId,
 } from './tonePresets'
@@ -102,7 +103,15 @@ export function SimpleShell({
   const liveDspRef = useRef(captureDsp(engine))
 
   const eqBypassed = Boolean(snap.chain.find((m) => m.type === 'eq')?.bypassed)
-  const tone = matchSimpleTone(snap.eqBands, eqBypassed, activeTone)
+  const toneSticky =
+    !listenOriginal &&
+    activeTone !== 'custom' &&
+    simpleToneMatchesBands(activeTone, amount, snap.eqBands)
+  const tone = matchSimpleTone(
+    snap.eqBands,
+    listenOriginal ? false : eqBypassed,
+    draggingAmount || toneSticky ? activeTone : undefined,
+  )
   const sliderValue = draggingAmount || tone.id === 'custom' ? amount : tone.amount
   const regionLen = Math.max(0, snap.params.end - snap.params.start)
   const fadeInStep = fadeStepFromSeconds(edit.fadeIn)

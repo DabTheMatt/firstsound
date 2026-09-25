@@ -142,6 +142,11 @@ function bestAmountForTone(id: SimpleToneId, bands: EqBand[]): { amount: number;
   return { amount, score }
 }
 
+/** True when the stored bands still belong to this tone at this amount. */
+export function simpleToneMatchesBands(id: SimpleToneId, amount: number, bands: readonly EqBand[]): boolean {
+  return bandsDistance(bands as EqBand[], toneBandsAt(id, amount)) < 3.2
+}
+
 export function matchSimpleTone(
   bands: EqBand[],
   eqBypassed: boolean,
