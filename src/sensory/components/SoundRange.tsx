@@ -97,10 +97,6 @@ export function SoundRange({
 }: Props) {
   const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const live = loaded ? sourceView() : null
-  const partialSelection = Boolean(
-    live && live.sourceDur > 0 && !selectionCoversSample(live.regionStart, live.regionEnd, live.sourceDur),
-  )
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
   const playbackRef = useRef<PlaybackVisual>(NEUTRAL_PLAYBACK)
@@ -350,14 +346,7 @@ export function SoundRange({
             event.preventDefault()
             onTogglePlay()
           }}
-        >
-          {partialSelection ? (
-            <>
-              <span className={styles.edge} data-edge="start" aria-hidden="true" />
-              <span className={`${styles.edge} ${styles.edgeEnd}`} data-edge="end" aria-hidden="true" />
-            </>
-          ) : null}
-        </button>
+        />
       ) : (
         <button type="button" className={styles.empty} onClick={onLoadDemo}>
           {t.sensory.loadDemo}
