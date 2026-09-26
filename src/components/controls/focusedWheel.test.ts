@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { shouldBlurFocusedControl, shouldConsumeParameterWheel } from './focusedWheel'
+import {
+  parameterPointerFocusOptions,
+  shouldBlurFocusedControl,
+  shouldConsumeParameterWheel,
+} from './focusedWheel'
 
 describe('parameter wheel focus', () => {
   const knob = { name: 'knob' }
@@ -14,6 +18,10 @@ describe('parameter wheel focus', () => {
   it('accepts the wheel only for the focused control', () => {
     expect(shouldConsumeParameterWheel(knob, knob)).toBe(true)
     expect(shouldConsumeParameterWheel(other, other)).toBe(true)
+  })
+
+  it('arms pointer focus without the keyboard focus ring', () => {
+    expect(parameterPointerFocusOptions()).toEqual({ preventScroll: true, focusVisible: false })
   })
 
   it('drops wheel ownership when the pointer presses outside', () => {

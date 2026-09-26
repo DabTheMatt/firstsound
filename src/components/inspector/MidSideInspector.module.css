@@ -140,8 +140,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 108px), 1fr));
   gap: 8px;
-  justify-items: center;
+  justify-items: stretch;
   align-items: start;
+}
+
+.hero > * {
+  min-width: 0;
+  width: 100%;
 }
 
 .knobs {

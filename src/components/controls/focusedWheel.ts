@@ -20,10 +20,19 @@ export function shouldBlurFocusedControl(
   return control != null && activeElement === control && !pointerInsideControl
 }
 
+/**
+ * Pointer focus keeps the control armed for the wheel.
+ * `focusVisible: false` so a click does not paint the keyboard focus ring
+ * (programmatic focus after preventDefault otherwise matches :focus-visible).
+ */
+export function parameterPointerFocusOptions(): FocusOptions {
+  return { preventScroll: true, focusVisible: false }
+}
+
 /** pointerdown preventDefault suppresses the browser's own focus. */
 export function focusParameterControl(control: HTMLElement): void {
   if (typeof document !== 'undefined' && document.activeElement === control) return
-  control.focus({ preventScroll: true })
+  control.focus(parameterPointerFocusOptions())
 }
 
 type ArmedControl = {

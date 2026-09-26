@@ -71,6 +71,13 @@ html[data-low-vision='on'] {
   --font-size-value: 1rem;
   --font-weight-label: 600;
   --font-weight-value: 700;
+  --param-label-size: var(--font-size-label);
+  --param-label-size-compact: var(--font-size-label);
+  --param-label-size-snug: var(--font-size-label);
+  --param-label-tracking: 0.03em;
+  --param-label-tracking-tight: 0;
+  --param-label-block: 1.25rem;
+  --param-value-block: 1.35rem;
 }
 
 html[data-low-vision='on'] body {

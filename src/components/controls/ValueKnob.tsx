@@ -3,6 +3,7 @@ import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { wheelToNormalized } from './scrub'
 import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
+import { presentParamLabel } from './paramLabelFit'
 import styles from './Knob.module.css'
 
 type Props = {
@@ -170,6 +171,15 @@ export function ValueKnob({
   const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
   const marker =
     markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
+  const caption = presentParamLabel(label)
+  const captionClass =
+    caption.fit === 'tight'
+      ? styles.labelFitTight
+      : caption.fit === 'compact'
+        ? styles.labelFitCompact
+        : caption.fit === 'snug'
+          ? styles.labelFitSnug
+          : ''
 
   return (
     <div
@@ -179,8 +189,8 @@ export function ValueKnob({
       onMouseEnter={() => setTipOpen(true)}
       onMouseLeave={() => setTipOpen(false)}
     >
-      <p className={styles.label} id={labelId}>
-        {label}
+      <p className={captionClass ? `${styles.label} ${captionClass}` : styles.label} id={labelId} title={label}>
+        {caption.text}
       </p>
       {description ? (
         <p id={descId} className="sr-only">
@@ -211,6 +221,15 @@ export function ValueKnob({
       >
         <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
+          <circle
+            className={styles.focusRing}
+            cx={cx}
+            cy={cy}
+            r={31}
+            fill="none"
+            stroke="var(--accent-primary)"
+            strokeWidth="1.5"
+          />
           <path
             d={track}
             fill="none"
@@ -220,6 +239,7 @@ export function ValueKnob({
           />
           {fill ? (
             <path
+              className={styles.valueArc}
               d={fill}
               fill="none"
               stroke="var(--accent-primary)"

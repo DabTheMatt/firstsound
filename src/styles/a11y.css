@@ -10,6 +10,14 @@
   --font-size-value: 12px;
   --font-weight-label: 500;
   --font-weight-value: 500;
+  /* One-line knob captions. Compact size is the step after tighter tracking. */
+  --param-label-size: var(--font-size-label);
+  --param-label-size-compact: 8px;
+  --param-label-size-snug: 7.5px;
+  --param-label-tracking: 0.045em;
+  --param-label-tracking-tight: 0.01em;
+  --param-label-block: 14px;
+  --param-value-block: 16px;
 }
 
 .sr-only {
@@ -42,6 +50,13 @@ html[data-ui-scale='large'] {
   --control-gap: 10px;
   --font-size-label: 0.8125rem;
   --font-size-value: 0.9375rem;
+  --param-label-size: var(--font-size-label);
+  --param-label-size-compact: var(--font-size-label);
+  --param-label-size-snug: var(--font-size-label);
+  --param-label-tracking: 0.03em;
+  --param-label-tracking-tight: 0;
+  --param-label-block: 1.25rem;
+  --param-value-block: 1.35rem;
 }
 
 html[data-ui-scale='large'] body {
