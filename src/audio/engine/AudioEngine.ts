@@ -183,27 +183,38 @@ import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, app
 import {
   defaultEqBandAt,
   defaultEqBands,
-  COMB_MAX_TEETH,
   EQ_MAX_BANDS,
-  EQ_MAX_STAGES,
   EQ_POOL_BANDS,
   filterStageCount,
   parseEqBands,
   stageQ,
   webAudioBiquadQ,
   eqBypassAfterBandEdit,
+  bandIsActive,
   bandUsesGain,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
 import {
+  applyIdentityBiquad,
   cloneEqBands,
   createEqGraph,
+  ensureBandStages,
   eqBandsForChannel,
   growEqGraph,
+  type EqBandPath,
   type EqChannelMode,
   type EqGraph,
+  type EqLane,
 } from './eqGraph'
+import {
+  antiClickSeconds,
+  loopCrossfadeSeconds,
+  nextLoopSegment,
+  rampGainLinear,
+  scheduleEdgeFades,
+  type LoopSegmentPlan,
+} from './antiClick'
 import {
   copyChannel,
   duplicateMonoToStereo,
@@ -382,6 +393,28 @@ function setPlayAndRecordAudioSession(): void {
   }
 }
 
+type CompanionRun = {
+  buffer: AudioBuffer
+  dest: GainNode
+  regionStart: number
+  regionEnd: number
+  cursorWhen: number
+  cursorOffset: number
+  voices: ActiveVoice[]
+}
+
+type ActiveVoice = {
+  src: AudioBufferSourceNode
+  musical: GainNode
+  edge: GainNode
+  startWhen: number
+  stopWhen: number
+  fromRel: number
+  span: number
+  duration: number
+  pingPong: boolean
+}
+
 type Slot = {
   instanceId: string
   type: ModuleType
@@ -420,7 +453,7 @@ export class AudioEngine {
   private masterMix = 100
   private trackBuffers = new Map<string, AudioBuffer>()
   private trackGains = new Map<string, GainNode>()
-  private companionSources = new Map<string, AudioBufferSourceNode>()
+  private companionRuns: CompanionRun[] = []
   private safetyGain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
@@ -451,9 +484,19 @@ export class AudioEngine {
     fadeInBend: 0.5,
     fadeOutBend: 0.5,
   }
-  private voiceGain: GainNode | null = null
-  private voiceFadeUntil = 0
-  private voiceFadePingPong = false
+  private voices: ActiveVoice[] = []
+  private loopTimer = 0
+  private loopGen = 0
+  private loopCursorWhen = 0
+  private loopCursorOffset = 0
+  private loopRegionStart = 0
+  private loopRegionEnd = 0
+  private loopOverlapSec = 0
+  private loopScheduling = false
+  private loopBuffer: AudioBuffer | null = null
+  private loopFromRelBase = 0
+  private loopSpan = 0
+  private loopPing = false
   private slots = new Map<string, Slot>()
   private buffer: AudioBuffer | null = null
   private sourceBuffer: AudioBuffer | null = null
@@ -679,14 +722,19 @@ export class AudioEngine {
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
     const span = Math.max(end - start, MIN_REGION)
     if (this.direction === 'pingpong') {
-      const cycle = 2 * span
+      const cycle = Math.max(span, 2 * span - (this.loop ? this.loopOverlapSec : 0))
       const phase = this.loop ? elapsed % cycle : Math.min(elapsed, cycle)
-      return phase <= span ? start + phase : end - (phase - span)
+      const leg = Math.min(span, cycle / 2)
+      return phase <= leg ? start + phase : end - (phase - leg)
     }
     if (this.loop) {
-      if (this.direction === 'reverse') return end - (elapsed % span)
-      const rel = (this.playOffset - start + elapsed) % span
-      return start + (rel < 0 ? rel + span : rel)
+      const period = Math.max(MIN_REGION * 0.25, span - this.loopOverlapSec)
+      if (this.direction === 'reverse') {
+        const rel = (end - this.playOffset + elapsed) % period
+        return end - (rel < 0 ? rel + period : rel)
+      }
+      const rel = (this.playOffset - start + elapsed) % period
+      return start + (rel < 0 ? rel + period : rel)
     }
     return this.direction === 'reverse'
       ? Math.max(start, this.playOffset - elapsed)
@@ -762,7 +810,10 @@ export class AudioEngine {
     if (this.playFullSample) {
       this.playOffset = 0
     } else {
-      this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
+      const parked = parkPlayheadOnStop(start, end, this.direction === 'reverse')
+      const held = this.playOffset
+      const atEnd = this.direction === 'reverse' ? held <= start + 0.001 : held >= end - 0.001
+      this.playOffset = held >= start && held <= end && !atEnd ? held : parked
     }
     if (hasLead) {
       if (this.engineMode === 'grain') {
@@ -857,6 +908,7 @@ export class AudioEngine {
       if (this.direction === 'forward' && this.engineMode === 'playback') {
         this.stopVoices()
         this.startRegionPlayback()
+        this.startCompanionVoices()
         this.emit()
       } else {
         void this.play()
@@ -3221,8 +3273,8 @@ export class AudioEngine {
       const leftBands = eqBandsForChannel(this.eqChannelMode, 'left', shared, st.bandsL, st.bandsR)
       const rightBands = eqBandsForChannel(this.eqChannelMode, 'right', shared, st.bandsL, st.bandsR)
       const comb = overlay ? this.liveComb(st.comb, live) : st.comb
-      this.writeEqFilters(slot.eq.left, leftBands, comb, now, smoothing, nyquist)
-      this.writeEqFilters(slot.eq.right, rightBands, comb, now, smoothing, nyquist)
+      this.syncEqLane(slot.eq.left, leftBands, comb, now, smoothing, nyquist)
+      this.syncEqLane(slot.eq.right, rightBands, comb, now, smoothing, nyquist)
     }
   }
 
@@ -3266,52 +3318,239 @@ export class AudioEngine {
     this.params.eqcfFreq = st.comb.frequency
   }
 
-  private writeEqFilters(
-    filters: BiquadFilterNode[],
+  private syncEqLane(
+    lane: EqLane,
     bands: EqBand[],
     comb: CombFilterState,
     now: number,
     smoothing: number,
     nyquist: number,
   ): void {
-    for (let bandIndex = 0; bandIndex < Math.max(bands.length, EQ_POOL_BANDS); bandIndex++) {
-      const band = bands[bandIndex]
-        const stages = band ? filterStageCount(band) : 0
-        const stageGain =
-          band && bandUsesGain(band.type) && stages > 0 ? band.gain / stages : band?.gain ?? 0
-        for (let stage = 0; stage < EQ_MAX_STAGES; stage++) {
-          const node = filters[bandIndex * EQ_MAX_STAGES + stage]
-          if (!node) continue
-          if (!band || band.type === 'off' || stage >= stages) {
-            if (node.type !== 'allpass') node.type = 'allpass'
-            node.frequency.setTargetAtTime(1000, now, smoothing)
-            node.Q.setTargetAtTime(0.0001, now, smoothing)
-            node.gain.setTargetAtTime(0, now, smoothing)
-            continue
-          }
-          if (node.type !== band.type) node.type = band.type
-          node.frequency.setTargetAtTime(Math.min(band.frequency, nyquist * 0.99), now, smoothing)
-          node.Q.setTargetAtTime(webAudioBiquadQ(band.type, stageQ(band, stage)), now, smoothing)
-          node.gain.setTargetAtTime(stageGain, now, smoothing)
-        }
+    const count = Math.max(lane.bands.length, bands.length)
+    for (let i = 0; i < count; i++) {
+      const path = lane.bands[i]
+      if (!path) continue
+      this.syncEqBand(path, bands[i], now, smoothing, nyquist)
     }
-    const combBands = combAsEqBands(comb)
-    const combOffset = Math.max(0, filters.length - COMB_MAX_TEETH)
-    for (let i = 0; i < COMB_MAX_TEETH; i++) {
-      const node = filters[combOffset + i]
+    this.syncEqComb(lane, comb, now, smoothing, nyquist)
+  }
+
+  private syncEqBand(
+    path: EqBandPath,
+    band: EqBand | undefined,
+    now: number,
+    smoothing: number,
+    nyquist: number,
+  ): void {
+    const sig = eqTopologySignature(band)
+    if (path.forceCommit) {
+      path.forceCommit = false
+      path.arm = 'live'
+      this.commitEqBand(path, band, sig, now, nyquist)
+      return
+    }
+    if (path.signature === sig) {
+      if (band && bandIsActive(band)) this.smoothEqBand(path, band, now, smoothing, nyquist)
+      return
+    }
+    if (path.arm === 'muting') return
+    const fade = antiClickSeconds(this.ctx?.sampleRate ?? 48000, 1)
+    const alreadyDry = path.wet.gain.value <= 0.001
+    if (alreadyDry) {
+      // Wet is already silent, so the coefficient write cannot reach the output.
+      // The open ramp is delayed a few milliseconds on the audio clock so the
+      // new filter state settles before it is heard.
+      this.commitEqBand(path, band, sig, now, nyquist)
+      return
+    }
+    path.arm = 'muting'
+    const token = ++path.token
+    rampGainLinear(path.wet.gain, 0, now, fade)
+    rampGainLinear(path.dry.gain, 1, now, fade)
+    window.setTimeout(() => {
+      if (!this.ctx || path.token !== token) return
+      path.forceCommit = true
+      path.arm = 'live'
+      this.applyEq(0.008)
+    }, (fade + 0.003) * 1000)
+  }
+
+  private commitEqBand(
+    path: EqBandPath,
+    band: EqBand | undefined,
+    sig: string,
+    now: number,
+    nyquist: number,
+  ): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    const active = Boolean(band && bandIsActive(band))
+    const stages = active && band ? filterStageCount(band) : 1
+    ensureBandStages(ctx, path, stages)
+    this.writeEqBandCoeffs(path, active ? band : undefined, now, true, nyquist, 0.005)
+    path.signature = sig
+    const fade = antiClickSeconds(ctx.sampleRate, 1)
+    if (active) {
+      const openAt = now + 0.004
+      const wet = path.wet.gain
+      const dry = path.dry.gain
+      wet.cancelScheduledValues(now)
+      wet.setValueAtTime(0, now)
+      wet.setValueAtTime(0, openAt)
+      wet.linearRampToValueAtTime(1, openAt + fade)
+      dry.cancelScheduledValues(now)
+      dry.setValueAtTime(Math.max(0, dry.value), now)
+      dry.setValueAtTime(1, openAt)
+      dry.linearRampToValueAtTime(0, openAt + fade)
+      return
+    }
+    rampGainLinear(path.wet.gain, 0, now, fade)
+    rampGainLinear(path.dry.gain, 1, now, fade)
+    for (const node of path.stages) applyIdentityBiquad(node)
+  }
+
+  private smoothEqBand(
+    path: EqBandPath,
+    band: EqBand,
+    now: number,
+    smoothing: number,
+    nyquist: number,
+  ): void {
+    // Short time constant: continuous, but the drag still feels immediate.
+    const tau = Math.min(0.012, Math.max(0.004, smoothing))
+    this.writeEqBandCoeffs(path, band, now, false, nyquist, tau)
+  }
+
+  private writeEqBandCoeffs(
+    path: EqBandPath,
+    band: EqBand | undefined,
+    now: number,
+    immediate: boolean,
+    nyquist: number,
+    smoothing: number,
+  ): void {
+    const active = Boolean(band && bandIsActive(band))
+    const stages = active && band ? filterStageCount(band) : 0
+    const stageGain =
+      band && bandUsesGain(band.type) && stages > 0 ? band.gain / stages : 0
+    for (let stage = 0; stage < path.stages.length; stage++) {
+      const node = path.stages[stage]
       if (!node) continue
-      const tooth = combBands[i]
-      if (!tooth) {
-        if (node.type !== 'allpass') node.type = 'allpass'
-        node.frequency.setTargetAtTime(1000, now, smoothing)
-        node.Q.setTargetAtTime(0.0001, now, smoothing)
-        node.gain.setTargetAtTime(0, now, smoothing)
+      if (!band || !active || stage >= stages) {
+        if (immediate) applyIdentityBiquad(node)
         continue
       }
+      const hz = Math.min(Math.max(10, band.frequency), nyquist * 0.99)
+      const q = webAudioBiquadQ(band.type, stageQ(band, stage))
+      const gainDb = bandUsesGain(band.type) ? stageGain : 0
+      if (node.type !== band.type) node.type = band.type as BiquadFilterType
+      writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
+      writeBiquadParam(node.Q, q, now, immediate, smoothing)
+      writeBiquadParam(node.gain, gainDb, now, immediate, smoothing)
+    }
+  }
+
+  private syncEqComb(
+    lane: EqLane,
+    comb: CombFilterState,
+    now: number,
+    smoothing: number,
+    nyquist: number,
+  ): void {
+    const bands = combAsEqBands(comb)
+    const sig = comb.enabled ? `on:${bands.length}:${comb.spacingMode}` : 'off'
+    if (lane.combForce) {
+      lane.combForce = false
+      lane.combArm = 'live'
+      this.commitEqComb(lane, bands, sig, now, nyquist)
+      return
+    }
+    if (lane.combSignature === sig) {
+      if (comb.enabled) this.smoothEqComb(lane, bands, now, smoothing, nyquist)
+      return
+    }
+    if (lane.combArm === 'muting') return
+    const fade = antiClickSeconds(this.ctx?.sampleRate ?? 48000, 1)
+    if (lane.combWet.gain.value <= 0.001) {
+      this.commitEqComb(lane, bands, sig, now, nyquist)
+      return
+    }
+    lane.combArm = 'muting'
+    const token = ++lane.combToken
+    rampGainLinear(lane.combWet.gain, 0, now, fade)
+    rampGainLinear(lane.combDry.gain, 1, now, fade)
+    window.setTimeout(() => {
+      if (!this.ctx || lane.combToken !== token) return
+      lane.combForce = true
+      lane.combArm = 'live'
+      this.applyEq(0.008)
+    }, (fade + 0.003) * 1000)
+  }
+
+  private commitEqComb(
+    lane: EqLane,
+    bands: EqBand[],
+    sig: string,
+    now: number,
+    nyquist: number,
+  ): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    this.writeCombCoeffs(lane, bands, now, true, nyquist, 0.005)
+    lane.combSignature = sig
+    const fade = antiClickSeconds(ctx.sampleRate, 1)
+    if (bands.length > 0) {
+      const openAt = now + 0.004
+      const wet = lane.combWet.gain
+      const dry = lane.combDry.gain
+      wet.cancelScheduledValues(now)
+      wet.setValueAtTime(0, now)
+      wet.setValueAtTime(0, openAt)
+      wet.linearRampToValueAtTime(1, openAt + fade)
+      dry.cancelScheduledValues(now)
+      dry.setValueAtTime(Math.max(0, dry.value), now)
+      dry.setValueAtTime(1, openAt)
+      dry.linearRampToValueAtTime(0, openAt + fade)
+      return
+    }
+    rampGainLinear(lane.combWet.gain, 0, now, fade)
+    rampGainLinear(lane.combDry.gain, 1, now, fade)
+    for (const node of lane.comb) applyIdentityBiquad(node)
+  }
+
+  private smoothEqComb(
+    lane: EqLane,
+    bands: EqBand[],
+    now: number,
+    smoothing: number,
+    nyquist: number,
+  ): void {
+    const tau = Math.min(0.012, Math.max(0.004, smoothing))
+    this.writeCombCoeffs(lane, bands, now, false, nyquist, tau)
+  }
+
+  private writeCombCoeffs(
+    lane: EqLane,
+    bands: EqBand[],
+    now: number,
+    immediate: boolean,
+    nyquist: number,
+    smoothing: number,
+  ): void {
+    for (let i = 0; i < lane.comb.length; i++) {
+      const node = lane.comb[i]
+      const tooth = bands[i]
+      if (!node) continue
+      if (!tooth) {
+        if (immediate) applyIdentityBiquad(node)
+        continue
+      }
+      const hz = Math.min(tooth.frequency, nyquist * 0.99)
+      const q = Math.min(20, Math.max(0.1, tooth.q))
       if (node.type !== 'peaking') node.type = 'peaking'
-      node.frequency.setTargetAtTime(Math.min(tooth.frequency, nyquist * 0.99), now, smoothing)
-      node.Q.setTargetAtTime(Math.min(20, Math.max(0.1, tooth.q)), now, smoothing)
-      node.gain.setTargetAtTime(tooth.gain, now, smoothing)
+      writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
+      writeBiquadParam(node.Q, q, now, immediate, smoothing)
+      writeBiquadParam(node.gain, tooth.gain, now, immediate, smoothing)
     }
   }
 
@@ -3511,13 +3750,11 @@ export class AudioEngine {
     if (this.playing && this.engineMode === 'playback') {
       if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
         this.handoffToStretch(now)
-      } else if (this.source && !this.schedulerId) {
-        this.source.playbackRate.setTargetAtTime(1, now, 0.03)
-        if (this.direction !== 'pingpong') {
-          const duration = this.buffer?.duration ?? 0
-          const { start, end } = this.playbackRegion(duration)
-          this.source.loopStart = this.direction === 'reverse' ? reverseTime(end, duration) : start
-          this.source.loopEnd = this.direction === 'reverse' ? reverseTime(start, duration) : end
+      } else if (this.source && !this.schedulerId && this.loopScheduling) {
+        try {
+          this.source.playbackRate.setTargetAtTime(1, now, 0.03)
+        } catch {
+          /* voice already stopped */
         }
       }
     }
@@ -3527,44 +3764,9 @@ export class AudioEngine {
   private handoffToStretch(now: number): void {
     if (!this.ctx) return
     const pos = this.getPlayheadSeconds()
-    const fadeSec = 0.028
-    const oldSrc = this.source
-    const oldGain = this.voiceGain
-    if (oldGain) {
-      try {
-        const g = oldGain.gain
-        const cur = Math.max(0.0001, g.value)
-        g.cancelScheduledValues(now)
-        g.setValueAtTime(cur, now)
-        g.linearRampToValueAtTime(0.0001, now + fadeSec)
-      } catch {
-        /* finishing curve */
-      }
-    }
-    if (oldSrc) oldSrc.onended = null
-    this.source = null
-    this.voiceGain = null
-    const releaseAt = now + fadeSec
-    window.setTimeout(
-      () => {
-        try {
-          oldSrc?.stop()
-        } catch {
-          /* already stopped */
-        }
-        try {
-          oldSrc?.disconnect()
-        } catch {
-          /* already disconnected */
-        }
-        try {
-          oldGain?.disconnect()
-        } catch {
-          /* already disconnected */
-        }
-      },
-      Math.max(8, (releaseAt - (this.ctx?.currentTime ?? now)) * 1000 + 12),
-    )
+    this.releaseVoices(true)
+    this.loopScheduling = false
+    this.loopOverlapSec = 0
     this.playOffset = pos
     this.playCtxTime = now
     // The buffer voice was locked at 1× / 0 st. Seed the glide there so the
@@ -3572,166 +3774,56 @@ export class AudioEngine {
     this.startStretchPlayback({ speed: 1, pitch: 0 })
   }
 
-  private startBufferVoice(offset: number): void {
-    const buffer = this.activeBuffer()
-    if (!this.ctx || !this.voiceBus || !buffer) return
-    const duration = buffer.duration
-    const { start, end } = this.playbackRegion(duration)
-    const reverse = this.direction === 'reverse'
-    const full = this.playFullSample
-    const loopStart = reverse && !full ? reverseTime(end, duration) : start
-    const loopEnd = reverse && !full ? reverseTime(start, duration) : end
-    const span = Math.max(loopEnd - loopStart, MIN_REGION)
-    const mapped = reverse && !full ? reverseTime(offset, duration) : offset
-    const clamped = Math.min(Math.max(mapped, loopStart), Math.max(loopStart, loopEnd - 0.001))
-    const fromRel = Math.max(0, clamped - loopStart)
-    const remaining = Math.max(0.01, loopEnd - clamped)
-    const src = this.ctx.createBufferSource()
-    src.buffer = buffer
-    src.loop = false
-    src.playbackRate.value = 1
-    this.connectFadedVoice(src, fromRel, span, remaining)
-    src.start(this.ctx.currentTime, clamped, remaining)
-    src.onended = () => {
-      if (this.source !== src || !this.playing) return
-      if (this.loop) {
-        this.source = null
-        this.filterEnvOrigin = this.lfoClockSec
-        this.playOffset = full ? 0 : reverse ? end : start
-        this.playCtxTime = this.ctx?.currentTime ?? 0
-        this.startBufferVoice(this.playOffset)
-        return
-      }
-      this.stop()
-    }
-    this.source = src
-  }
-
-  private startPingPongVoice(): void {
-    if (!this.ctx || !this.voiceBus || !this.buffer) return
-    const { start, end } = this.playbackRegion(this.buffer.duration)
-    const buffer = this.buildPingPong(start, end)
-    if (!buffer) return
-    const regionSpan = Math.max(end - start, MIN_REGION)
-    const src = this.ctx.createBufferSource()
-    src.buffer = buffer
-    src.loop = false
-    src.playbackRate.value = 1
-    this.connectFadedVoice(src, 0, regionSpan, buffer.duration, true)
-    src.start(this.ctx.currentTime, 0)
-    src.onended = () => {
-      if (this.source !== src || !this.playing) return
-      if (this.loop) {
-        this.source = null
-        this.filterEnvOrigin = this.lfoClockSec
-        this.playOffset = start
-        this.playCtxTime = this.ctx?.currentTime ?? 0
-        this.startPingPongVoice()
-        return
-      }
-      this.stop()
-    }
-    this.source = src
-  }
-
-  private connectFadedVoice(
-    src: AudioBufferSourceNode,
-    fromRel: number,
-    span: number,
-    durationSec: number,
-    pingPong = false,
-  ): void {
-    if (!this.ctx || !this.voiceBus) return
-    this.disconnectVoiceGain()
-    const gain = this.ctx.createGain()
-    const curve = pingPong
-      ? pingPongFadeCurve(
-          span,
-          this.regionFade.fadeIn,
-          this.regionFade.fadeOut,
-          this.regionFade.curve,
-          128,
-          this.regionFade.fadeInBend,
-          this.regionFade.fadeOutBend,
-        )
-      : regionFadeCurveFrom(
-          fromRel,
-          span,
-          this.regionFade.fadeIn,
-          this.regionFade.fadeOut,
-          this.regionFade.curve,
-          96,
-          this.regionFade.fadeInBend,
-          this.regionFade.fadeOutBend,
-        )
-    const held = Math.max(0.008, durationSec)
-    gain.gain.setValueCurveAtTime(curve, this.ctx.currentTime, held)
-    src.connect(gain)
-    gain.connect(this.voiceBus)
-    this.voiceGain = gain
-    this.voiceFadeUntil = this.ctx.currentTime + held
-    this.voiceFadePingPong = pingPong
-  }
-
   private retargetPlayingFade(): void {
-    if (!this.ctx || !this.voiceGain || !this.playing || !this.buffer || this.schedulerId) return
+    if (!this.ctx || !this.playing || !this.buffer || this.schedulerId || this.voices.length === 0) return
     const now = this.ctx.currentTime
-    const remaining = this.voiceFadeUntil - now
-    if (remaining < 0.02) return
     const duration = this.buffer.duration
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const tempo = Math.max(PARAMS.speed.min, this.liveParams().speed)
     const fade = this.regionFade
-    let curve: Float32Array
-    if (this.voiceFadePingPong) {
-      const elapsed = Math.max(0, (now - this.playCtxTime) * tempo)
-      curve = pingPongFadeCurveFrom(
-        elapsed,
-        span,
-        fade.fadeIn,
-        fade.fadeOut,
-        fade.curve,
-        remaining * tempo,
-        96,
-        fade.fadeInBend,
-        fade.fadeOutBend,
-      )
-    } else {
-      const head = this.getPlayheadSeconds()
-      const fromRel =
-        this.direction === 'reverse'
-          ? Math.min(span, Math.max(0, end - head))
-          : Math.min(span, Math.max(0, head - start))
-      curve = regionFadeCurveFrom(
-        fromRel,
-        span,
-        fade.fadeIn,
-        fade.fadeOut,
-        fade.curve,
-        96,
-        fade.fadeInBend,
-        fade.fadeOutBend,
-      )
+    for (const voice of this.voices) {
+      const remaining = voice.stopWhen - now
+      if (remaining < 0.02) continue
+      let curve: Float32Array
+      if (voice.pingPong) {
+        const elapsed = Math.max(0, (now - voice.startWhen) * tempo)
+        curve = pingPongFadeCurveFrom(
+          elapsed,
+          voice.span,
+          fade.fadeIn,
+          fade.fadeOut,
+          fade.curve,
+          remaining * tempo,
+          96,
+          fade.fadeInBend,
+          fade.fadeOutBend,
+        )
+      } else {
+        const head = this.getPlayheadSeconds()
+        const fromRel =
+          this.direction === 'reverse'
+            ? Math.min(span, Math.max(0, end - head))
+            : Math.min(span, Math.max(0, head - start))
+        curve = regionFadeCurveFrom(
+          fromRel,
+          span,
+          fade.fadeIn,
+          fade.fadeOut,
+          fade.curve,
+          96,
+          fade.fadeInBend,
+          fade.fadeOutBend,
+        )
+      }
+      try {
+        const g = voice.musical.gain
+        g.cancelScheduledValues(now)
+        g.setValueCurveAtTime(curve, now, remaining)
+      } catch {
+        /* overlap with a finishing curve */
+      }
     }
-    try {
-      this.voiceGain.gain.cancelScheduledValues(now)
-      this.voiceGain.gain.setValueCurveAtTime(curve, now, remaining)
-    } catch {
-      /* overlap with a finishing curve */
-    }
-  }
-
-  private disconnectVoiceGain(): void {
-    if (!this.voiceGain) return
-    try {
-      this.voiceGain.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    this.voiceGain = null
-    this.voiceFadeUntil = 0
-    this.voiceFadePingPong = false
   }
 
   private motionOffset(t: number): number {
@@ -3759,11 +3851,278 @@ export class AudioEngine {
   private startRegionPlayback(stretchSeed?: StretchControlSeed | null): void {
     const live = this.liveParams()
     if (playbackNeedsStretch(live.speed, live.pitch)) {
+      this.loopScheduling = false
+      this.loopOverlapSec = 0
       this.startStretchPlayback(stretchSeed)
       return
     }
-    if (this.direction === 'pingpong') this.startPingPongVoice()
-    else this.startBufferVoice(this.playOffset)
+    this.startBufferLoop()
+  }
+
+  /**
+   * Schedule region passes on the audio clock. The next pass is overlapped
+   * with the current one, so a loop restart is a few-millisecond crossfade
+   * instead of an `onended` gap.
+   */
+  private startBufferLoop(): void {
+    const ctx = this.ctx
+    if (!ctx || !this.voiceBus) return
+    const ping = this.direction === 'pingpong'
+    if (ping) {
+      if (!this.buffer) return
+      const { start, end } = this.playbackRegion(this.buffer.duration)
+      const built = this.buildPingPong(start, end)
+      if (!built) return
+      this.loopBuffer = built
+      this.loopPing = true
+      this.loopRegionStart = 0
+      this.loopRegionEnd = built.duration
+      this.loopSpan = Math.max(end - start, MIN_REGION)
+      this.loopFromRelBase = 0
+      this.loopCursorOffset = 0
+    } else {
+      const buffer = this.activeBuffer()
+      if (!buffer) return
+      const duration = buffer.duration
+      const { start, end } = this.playbackRegion(duration)
+      const reverse = this.direction === 'reverse'
+      const full = this.playFullSample
+      const loopStart = reverse && !full ? reverseTime(end, duration) : start
+      const loopEnd = reverse && !full ? reverseTime(start, duration) : end
+      const mapped = reverse && !full ? reverseTime(this.playOffset, duration) : this.playOffset
+      this.loopBuffer = buffer
+      this.loopPing = false
+      this.loopRegionStart = loopStart
+      this.loopRegionEnd = Math.max(loopStart + 0.001, loopEnd)
+      this.loopSpan = Math.max(loopEnd - loopStart, MIN_REGION)
+      this.loopCursorOffset = Math.min(
+        Math.max(mapped, loopStart),
+        Math.max(loopStart, loopEnd - 0.001),
+      )
+      this.loopFromRelBase = loopStart
+    }
+    const span = Math.max(0.001, this.loopRegionEnd - this.loopRegionStart)
+    const xf = loopCrossfadeSeconds(ctx.sampleRate, 1, span)
+    this.loopOverlapSec = this.loop ? xf : 0
+    this.loopCursorWhen = ctx.currentTime
+    this.playCtxTime = ctx.currentTime
+    this.loopScheduling = true
+    if (this.loopTimer) {
+      window.clearInterval(this.loopTimer)
+      this.loopTimer = 0
+    }
+    this.loopGen += 1
+    this.ensureTransportTimer()
+    this.pumpTransport(this.loopGen)
+  }
+
+  private ensureTransportTimer(): void {
+    if (this.loopTimer || !this.ctx) return
+    const gen = this.loopGen
+    this.loopTimer = window.setInterval(() => this.pumpTransport(gen), 30)
+  }
+
+  private pumpTransport(gen: number): void {
+    if (gen !== this.loopGen || !this.playing || !this.ctx) return
+    const now = this.ctx.currentTime
+    this.retireVoices(this.voices, now)
+    if (this.loopScheduling) this.pumpLead(now)
+    for (const run of this.companionRuns) this.pumpCompanion(run, now)
+  }
+
+  private pumpLead(now: number): void {
+    if (!this.loopScheduling || !this.loopBuffer) return
+    const horizon = now + 0.14
+    let guard = 0
+    while (this.loopCursorWhen < horizon && guard++ < 6 && this.voices.length < 8) {
+      const xf = this.loopOverlapSec || loopCrossfadeSeconds(this.ctx?.sampleRate ?? 48000, 1, this.loopSpan)
+      const step = nextLoopSegment(
+        { when: this.loopCursorWhen, offset: this.loopCursorOffset },
+        this.loopRegionStart,
+        this.loopRegionEnd,
+        this.loop,
+        xf,
+      )
+      const fromRel = this.loopPing
+        ? 0
+        : Math.max(0, step.segment.offset - this.loopFromRelBase)
+      const loopRestart =
+        this.loop &&
+        Math.abs(step.segment.offset - this.loopRegionStart) < 0.0001 &&
+        this.voices.length > 0
+      if (loopRestart) this.filterEnvOrigin = this.lfoClockSec
+      const voice = this.spawnSegment(this.loopBuffer, this.voiceBus, step.segment, fromRel, this.loopSpan, this.loopPing)
+      if (!voice) break
+      this.voices.push(voice)
+      this.rememberVoice(voice)
+      if (!step.next) {
+        voice.src.onended = () => {
+          if (!this.playing || !this.voices.some((item) => item.src === voice.src)) return
+          this.stop()
+        }
+        this.loopCursorWhen = Number.POSITIVE_INFINITY
+        break
+      }
+      this.loopCursorWhen = step.next.when
+      this.loopCursorOffset = step.next.offset
+    }
+  }
+
+  private spawnSegment(
+    buffer: AudioBuffer,
+    dest: AudioNode | null,
+    segment: LoopSegmentPlan,
+    fromRel: number,
+    span: number,
+    pingPong: boolean,
+  ): ActiveVoice | null {
+    const ctx = this.ctx
+    if (!ctx || !dest) return null
+    const when = Math.max(segment.when, ctx.currentTime)
+    const offset = Math.min(Math.max(0, segment.offset), Math.max(0, buffer.duration - 0.001))
+    const room = Math.max(0.001, buffer.duration - offset)
+    const duration = Math.max(0.001, Math.min(segment.duration, room))
+    const src = ctx.createBufferSource()
+    src.buffer = buffer
+    src.loop = false
+    src.playbackRate.value = 1
+    const musical = ctx.createGain()
+    const edge = ctx.createGain()
+    const curve = pingPong
+      ? pingPongFadeCurve(
+          span,
+          this.regionFade.fadeIn,
+          this.regionFade.fadeOut,
+          this.regionFade.curve,
+          128,
+          this.regionFade.fadeInBend,
+          this.regionFade.fadeOutBend,
+        )
+      : regionFadeCurveFrom(
+          fromRel,
+          Math.max(span, duration),
+          this.regionFade.fadeIn,
+          this.regionFade.fadeOut,
+          this.regionFade.curve,
+          96,
+          this.regionFade.fadeInBend,
+          this.regionFade.fadeOutBend,
+        )
+    try {
+      musical.gain.setValueCurveAtTime(curve, when, Math.max(0.008, duration))
+    } catch {
+      musical.gain.value = curve[0] ?? 1
+    }
+    if (segment.fadeIn > 0.0005) edge.gain.value = 0
+    scheduleEdgeFades(edge.gain, when, duration, segment.fadeIn, segment.fadeOut)
+    src.connect(musical)
+    musical.connect(edge)
+    edge.connect(dest)
+    try {
+      src.start(when, offset, duration)
+      src.stop(when + duration)
+    } catch {
+      try {
+        src.disconnect()
+      } catch {
+        /* start rejected */
+      }
+      return null
+    }
+    return {
+      src,
+      musical,
+      edge,
+      startWhen: when,
+      stopWhen: when + duration,
+      fromRel,
+      span,
+      duration,
+      pingPong,
+    }
+  }
+
+  private rememberVoice(voice: ActiveVoice): void {
+    this.source = voice.src
+  }
+
+  private retireVoices(list: ActiveVoice[], now: number): void {
+    let droppedLead = false
+    for (let i = list.length - 1; i >= 0; i--) {
+      const voice = list[i]
+      if (!voice || voice.stopWhen + 0.03 >= now) continue
+      if (list === this.voices && voice.src === this.source) droppedLead = true
+      this.disconnectVoice(voice)
+      list.splice(i, 1)
+    }
+    if (!droppedLead) return
+    const live = this.voices[this.voices.length - 1]
+    if (live) this.rememberVoice(live)
+    else this.source = null
+  }
+
+  private releaseVoices(fade: boolean): void {
+    const pending = this.voices.splice(0, this.voices.length)
+    for (const voice of pending) this.releaseVoice(voice, fade)
+    this.source = null
+  }
+
+  private releaseVoice(voice: ActiveVoice, fade: boolean): void {
+    const ctx = this.ctx
+    try {
+      voice.src.onended = null
+    } catch {
+      /* already cleared */
+    }
+    if (!ctx || !fade) {
+      try {
+        voice.src.stop()
+      } catch {
+        /* already stopped */
+      }
+      this.disconnectVoice(voice)
+      return
+    }
+    const now = ctx.currentTime
+    if (voice.startWhen > now + 0.001) {
+      try {
+        voice.src.stop()
+      } catch {
+        /* not started */
+      }
+      this.disconnectVoice(voice)
+      return
+    }
+    const sec = antiClickSeconds(ctx.sampleRate, 1)
+    try {
+      rampGainLinear(voice.edge.gain, 0, now, sec)
+      voice.src.stop(now + sec)
+    } catch {
+      try {
+        voice.src.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+    window.setTimeout(() => this.disconnectVoice(voice), sec * 1000 + 40)
+  }
+
+  private disconnectVoice(voice: ActiveVoice): void {
+    try {
+      voice.src.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      voice.musical.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      voice.edge.disconnect()
+    } catch {
+      /* already disconnected */
+    }
   }
 
   private acquireResampleGrain(length: number, channels: number, sampleRate: number): AudioBuffer | null {
@@ -4029,17 +4388,14 @@ export class AudioEngine {
       window.clearInterval(this.schedulerId)
       this.schedulerId = 0
     }
-    if (this.source) {
-      try {
-        this.source.onended = null
-        this.source.stop()
-      } catch {
-        /* already stopped */
-      }
-      this.source.disconnect()
-      this.source = null
+    if (this.loopTimer) {
+      window.clearInterval(this.loopTimer)
+      this.loopTimer = 0
     }
-    this.disconnectVoiceGain()
+    this.loopGen += 1
+    this.loopScheduling = false
+    this.loopOverlapSec = 0
+    this.releaseVoices(Boolean(this.ctx))
     this.stopCompanionVoices()
   }
 
@@ -4102,42 +4458,61 @@ export class AudioEngine {
     this.stopCompanionVoices()
     if (!this.ctx || !this.playing) return
     this.ensureTrackGains()
+    const now = this.ctx.currentTime
     for (const id of companionTrackIds(this.tracks, this.selectedTrackId)) {
       const buffer = this.trackBuffers.get(id)
       const track = this.tracks.find((item) => item.id === id)
       const gain = this.trackGains.get(id)
       if (!buffer || !track || !gain) continue
       const region = clampRegion(track.start, track.end, buffer.duration, MIN_REGION)
-      const src = this.ctx.createBufferSource()
-      src.buffer = buffer
-      src.loop = this.loop
-      src.loopStart = region.start
-      src.loopEnd = Math.max(region.start + MIN_REGION, region.end)
-      src.connect(gain)
-      try {
-        src.start(this.ctx.currentTime, region.start)
-      } catch {
-        continue
+      this.companionRuns.push({
+        buffer,
+        dest: gain,
+        regionStart: region.start,
+        regionEnd: Math.max(region.start + MIN_REGION, region.end),
+        cursorWhen: now,
+        cursorOffset: region.start,
+        voices: [],
+      })
+    }
+    if (this.companionRuns.length === 0) return
+    this.ensureTransportTimer()
+    this.pumpTransport(this.loopGen)
+  }
+
+  private pumpCompanion(run: CompanionRun, now: number): void {
+    this.retireVoices(run.voices, now)
+    const horizon = now + 0.14
+    const span = Math.max(0.001, run.regionEnd - run.regionStart)
+    const xf = this.loop ? loopCrossfadeSeconds(this.ctx?.sampleRate ?? 48000, 1, span) : antiClickSeconds(this.ctx?.sampleRate ?? 48000, 1)
+    let guard = 0
+    while (run.cursorWhen < horizon && guard++ < 6 && run.voices.length < 8) {
+      const step = nextLoopSegment(
+        { when: run.cursorWhen, offset: run.cursorOffset },
+        run.regionStart,
+        run.regionEnd,
+        this.loop,
+        xf,
+      )
+      const fromRel = Math.max(0, step.segment.offset - run.regionStart)
+      const voice = this.spawnSegment(run.buffer, run.dest, step.segment, fromRel, span, false)
+      if (!voice) break
+      run.voices.push(voice)
+      if (!step.next) {
+        run.cursorWhen = Number.POSITIVE_INFINITY
+        break
       }
-      this.companionSources.set(id, src)
+      run.cursorWhen = step.next.when
+      run.cursorOffset = step.next.offset
     }
   }
 
   private stopCompanionVoices(): void {
-    for (const src of this.companionSources.values()) {
-      try {
-        src.onended = null
-        src.stop()
-      } catch {
-        /* already stopped */
-      }
-      try {
-        src.disconnect()
-      } catch {
-        /* already disconnected */
-      }
+    const runs = this.companionRuns.splice(0, this.companionRuns.length)
+    for (const run of runs) {
+      const pending = run.voices.splice(0, run.voices.length)
+      for (const voice of pending) this.releaseVoice(voice, Boolean(this.ctx))
     }
-    this.companionSources.clear()
   }
 
   private buildSnapshot(): EngineSnapshot {
@@ -4340,16 +4715,40 @@ function configureSpectrumAnalyser(node: AnalyserNode): void {
 }
 
 function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {
+  const target = value <= 1e-5 ? 0 : value
+  const current = Number.isFinite(param.value) ? param.value : target
   param.cancelScheduledValues(now)
-  if (value <= 1e-5) {
-    param.setValueAtTime(0, now)
+  param.setValueAtTime(current, now)
+  if (Math.abs(current - target) <= 1e-4) return
+  const tau = Math.max(0.004, smoothing || 0.008)
+  // Bypass and other full-scale jumps are linear so the signal never steps.
+  // Small moves keep the exponential approach.
+  if (target === 0 || Math.abs(target - current) >= 0.2) {
+    param.linearRampToValueAtTime(target, now + Math.min(0.02, tau * 2))
     return
   }
-  if (Math.abs(value - 1) <= 1e-5) {
-    param.setTargetAtTime(1, now, smoothing)
+  param.setTargetAtTime(target, now, Math.min(0.02, tau))
+}
+
+function eqTopologySignature(band: EqBand | undefined): string {
+  if (!band || !bandIsActive(band)) return 'off'
+  return `${band.type}:${filterStageCount(band)}`
+}
+
+function writeBiquadParam(
+  param: AudioParam,
+  value: number,
+  now: number,
+  immediate: boolean,
+  smoothing: number,
+): void {
+  const next = Number.isFinite(value) ? value : 0
+  if (immediate) {
+    param.cancelScheduledValues(now)
+    param.setValueAtTime(next, now)
     return
   }
-  param.setTargetAtTime(value, now, smoothing)
+  param.setTargetAtTime(next, now, Math.max(0.003, smoothing))
 }
 
 function wetLevel(

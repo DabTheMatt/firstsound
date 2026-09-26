@@ -112,6 +112,19 @@ describe('pitch-down bass', () => {
     expect(long.grainSec).toBeGreaterThan(short.grainSec * 1.5)
   })
 
+  it('ducks a loop join instead of stepping from the tail to the head', () => {
+    const src = new Float32Array(1000)
+    for (let i = 0; i < src.length; i++) src[i] = -0.8 + (1.6 * i) / (src.length - 1)
+    const wrap = { start: 0, end: 1000, mode: 'loop' as const, seam: 48 }
+    const dest = new Float32Array(80)
+    resampleInto(dest, 80, src, 970, 1, 'linear', true, 1, 'realtime', wrap)
+    let maxJump = 0
+    for (let i = 1; i < dest.length; i++) {
+      maxJump = Math.max(maxJump, Math.abs((dest[i] ?? 0) - (dest[i - 1] ?? 0)))
+    }
+    expect(maxJump).toBeLessThan(0.08)
+  })
+
   it('wraps a loop seam so the grain does not fall into silence', () => {
     const src = new Float32Array(200).fill(0.6)
     const dest = new Float32Array(48)
