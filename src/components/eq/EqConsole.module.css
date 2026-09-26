@@ -73,6 +73,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  justify-content: flex-start;
   gap: 4px;
   flex: 0 0 116px;
   width: 116px;
@@ -257,10 +258,36 @@
 }
 
 .params > * {
-  display: block;
   width: 100%;
+  min-width: 0;
+}
+
+.paramSlot {
+  display: grid;
+  align-items: start;
+  justify-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.knobSpacer,
+.paramControl {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.knobSpacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.paramControl {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
   height: auto;
-  min-height: 0;
 }
 
 .strip :global([data-param-id]) {
@@ -277,10 +304,6 @@
   min-height: 0;
 }
 
-.slotPlaceholder {
-  width: 100%;
-  min-height: 78px;
-}
 
 .typeWrap {
   position: relative;

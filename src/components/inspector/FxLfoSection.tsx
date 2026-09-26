@@ -17,7 +17,8 @@ import { Segmented } from '../controls/Segmented'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { useFxLfoConnect } from './FxLfoConnect'
 import { LfoConnectButton } from './LfoConnectButton'
-import { readLfoOpen, writeLfoOpen } from './lfoOpen'
+import { readStoredLfoOpen, resolveLfoSectionOpen, writeLfoOpen } from './lfoOpen'
+import { lfoAddTone, lfoNumberTone } from './lfoSlots'
 import { ValueKnob } from '../controls/ValueKnob'
 import styles from './Inspector.module.css'
 
@@ -48,7 +49,10 @@ function rememberedSlot(kind: FxLfoKind, shown: number): number {
 export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
   const [slotState, setSlotState] = useState<{ kind: FxLfoKind; slot: number } | null>(null)
-  const [open, setOpen] = useState(() => readLfoOpen(kind))
+  const connected = (snap.fxLfos[kind] ?? []).some((entry) => entry.target != null)
+  const [openState, setOpenState] = useState<{ kind: FxLfoKind; open: boolean } | null>(null)
+  const open =
+    openState?.kind === kind ? openState.open : resolveLfoSectionOpen(readStoredLfoOpen(kind), connected)
   const slot = slotState?.kind === kind ? slotState.slot : rememberedSlot(kind, shown)
   const activeSlot = Math.min(slot, shown - 1)
   const chooseSlot = (next: number) => {
@@ -141,22 +145,30 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
     <section
       className={`${styles.lfo} ${compact ? styles.lfoCompact : ''} ${open ? '' : styles.lfoCollapsed}`}
       data-lfo-kind={kind}
+      data-lfo-open={open ? 'true' : 'false'}
+      data-lfo-connected={connected ? 'true' : 'false'}
     >
       <div className={styles.lfoHead}>
-        <h3 className={styles.sub}>{compact ? 'LFO' : 'Modulation / LFO'}</h3>
+        <h3 className={styles.sub}>
+          <span>{compact ? 'LFO' : 'Modulation / LFO'}</span>
+          <span className={live ? styles.lfoWaveLive : styles.lfoWave}>
+            <LfoWaveMark />
+          </span>
+        </h3>
         <button
           type="button"
           className={`${styles.lfoToggle} ${open ? styles.lfoToggleOn : ''} ${live ? styles.lfoToggleLive : ''}`}
+          aria-expanded={open}
           aria-pressed={open}
           aria-label={open ? 'Hide LFO' : 'Show LFO'}
           title={open ? 'Hide LFO' : 'Show LFO'}
           onClick={() => {
             const next = !open
-            setOpen(next)
+            setOpenState({ kind, open: next })
             writeLfoOpen(kind, next)
           }}
         >
-          <LfoToggleIcon />
+          <LfoDisclosureIcon open={open} />
         </button>
       </div>
       {open ? (
@@ -170,40 +182,42 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
       )}
       {compact ? (
         <div className={styles.slotBar} role="radiogroup" aria-label="LFO slot">
-          {Array.from({ length: FX_LFO_SLOTS }, (_, i) =>
-            i < shown ? (
+          {Array.from({ length: FX_LFO_SLOTS }, (_, i) => {
+            const tone = lfoNumberTone(i, shown, activeSlot)
+            const available = tone !== 'empty'
+            return (
               <button
                 key={i}
                 type="button"
-                role="radio"
-                aria-checked={i === activeSlot}
+                role={available ? 'radio' : undefined}
+                aria-checked={available ? i === activeSlot : undefined}
+                disabled={!available}
                 aria-label={`LFO ${i + 1}`}
-                title={fxLfoSlotName(kind, i)}
-                className={`${styles.slotNum} ${i === activeSlot ? styles.slotNumOn : ''}`}
-                onClick={() => chooseSlot(i)}
+                title={available ? fxLfoSlotName(kind, i) : undefined}
+                data-lfo-slot={String(i + 1)}
+                data-lfo-tone={tone}
+                className={[
+                  styles.slotCell,
+                  tone === 'active' ? styles.slotCellOn : '',
+                  tone === 'empty' ? styles.slotCellEmpty : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => {
+                  if (available) chooseSlot(i)
+                }}
               >
                 {i + 1}
               </button>
-            ) : (
-              <span key={i} className={`${styles.slotNum} ${styles.slotNumPending}`} aria-hidden="true">
-                {i + 1}
-              </span>
-            ),
-          )}
-          <button
-            type="button"
-            className={`${styles.ghost} ${styles.addLfo} ${shown >= FX_LFO_SLOTS ? styles.addLfoHold : ''}`}
-            tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
-            aria-hidden={shown >= FX_LFO_SLOTS}
-            aria-label="Add LFO"
-            title="Add LFO"
-            onClick={() => {
+            )
+          })}
+          <CompactAddLfo
+            shown={shown}
+            onAdd={() => {
               const next = engine.addFxLfo(kind)
               if (next != null) chooseSlot(next)
             }}
-          >
-            +
-          </button>
+          />
         </div>
       ) : (
         <div className={`${styles.row} ${styles.slotRow}`}>
@@ -260,7 +274,28 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
   )
 }
 
-function LfoToggleIcon() {
+function CompactAddLfo({ shown, onAdd }: { shown: number; onAdd: () => void }) {
+  const tone = lfoAddTone(shown, FX_LFO_SLOTS)
+  const canAdd = tone !== 'empty'
+  return (
+    <button
+      type="button"
+      data-lfo-slot="+"
+      data-lfo-tone={tone}
+      className={[styles.slotCell, tone === 'empty' ? styles.slotCellEmpty : ''].filter(Boolean).join(' ')}
+      disabled={!canAdd}
+      aria-label="Add LFO"
+      title="Add LFO"
+      onClick={() => {
+        if (canAdd) onAdd()
+      }}
+    >
+      +
+    </button>
+  )
+}
+
+function LfoWaveMark() {
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
       <path
@@ -269,6 +304,21 @@ function LfoToggleIcon() {
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function LfoDisclosureIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <path
+        d={open ? 'M3.5 6 L8 10.5 L12.5 6' : 'M6 3.5 L10.5 8 L6 12.5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )

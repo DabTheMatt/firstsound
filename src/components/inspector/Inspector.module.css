@@ -814,15 +814,36 @@
 }
 
 .lfoHead .sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin: 0;
+  min-width: 0;
+}
+
+.lfoWave,
+.lfoWaveLive {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.lfoWaveLive {
+  color: var(--accent-primary);
 }
 
 .lfoToggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
+  box-sizing: border-box;
   width: 28px;
+  height: 28px;
+  min-width: 28px;
   min-height: 28px;
+  max-height: 28px;
   padding: 0;
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -835,7 +856,8 @@
   color: var(--text-secondary);
 }
 
-.lfoToggleOn {
+.lfoToggleOn,
+.lfoToggleOn:hover {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--accent-soft);
@@ -918,73 +940,115 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
-  padding-top: 6px;
-  margin-top: 4px;
+  gap: 4px;
+  padding-top: 4px;
+  margin-top: 0;
   width: 100%;
   overflow: visible;
 }
 
 .lfoCompact.lfoCollapsed {
   gap: 0;
+  padding-bottom: 0;
 }
 
 .lfoCompact .sub {
   margin: 0;
-  line-height: 14px;
+  line-height: 1;
+  font-size: 10px;
+  letter-spacing: 0.12em;
 }
 
 .lfoCompact .lfoHead {
-  min-height: 28px;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  gap: 4px;
+}
+
+.lfoCompact .lfoWave svg,
+.lfoCompact .lfoWaveLive svg {
+  width: 12px;
+  height: 12px;
+}
+
+.lfoCompact .lfoToggle {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  border-radius: 4px;
 }
 
 .lfoCompact .slotBar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: 20px;
   justify-content: stretch;
   align-items: stretch;
-  gap: 3px;
+  gap: 2px;
   width: 100%;
-  min-height: 28px;
+  height: 20px;
+  min-height: 20px;
+  max-height: 20px;
   overflow: visible;
 }
 
-.lfoCompact .slotNum,
-.lfoCompact .slotNumHold {
+.lfoCompact .slotCell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 20px;
   min-width: 0;
-  min-height: 0;
-  height: 100%;
+  min-height: 20px;
+  max-height: 20px;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--border-default);
   border-radius: 4px;
   background: var(--bg-control);
-  color: var(--text-muted);
-  font-size: 10px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   letter-spacing: 0;
   text-transform: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.lfoCompact .slotNumPending {
-  opacity: 0.38;
-  border-style: dashed;
-  pointer-events: none;
+.lfoCompact .slotCell:hover:not(:disabled):not(.slotCellOn) {
+  background: var(--bg-control-hover);
 }
 
-.lfoCompact .slotNumOn {
+.lfoCompact .slotCell:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.lfoCompact .slotCellEmpty,
+.lfoCompact .slotCellEmpty:disabled {
+  color: var(--text-disabled);
+  background: transparent;
+  border-color: var(--border-subtle);
+}
+
+.lfoCompact .slotCellOn,
+.lfoCompact .slotCellOn:hover {
   color: var(--bg-panel);
   border-color: var(--accent-primary);
   background: var(--accent-primary);
-  font-weight: 700;
-}
-
-.lfoCompact .addLfo {
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  padding: 0;
-  font-size: 16px;
+  font-weight: 600;
+  font-size: 11px;
   line-height: 1;
+  letter-spacing: 0;
+  padding: 0;
+  border-width: 1px;
 }
 
 .lfoCompact .knobs {
@@ -1005,10 +1069,4 @@
   margin: 0;
   width: 100%;
   overflow: visible;
-}
-
-.lfoCompact .ghost {
-  min-height: 0;
-  padding: 0 8px;
-  font-size: 9px;
 }
