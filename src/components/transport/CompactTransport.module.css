@@ -1,44 +1,77 @@
 .bar {
+  --transport-h: 40px;
+  container: transport / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'actions transport meta';
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 0;
+}
+
+.actions,
+.transport,
+.meta {
   display: flex;
   align-items: center;
+  min-width: 0;
+  min-height: var(--transport-h);
+}
+
+.actions {
+  grid-area: actions;
+  justify-self: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+  width: 100%;
+  max-width: 100%;
   flex-wrap: nowrap;
-  gap: 6px 8px;
-  min-height: 40px;
-  flex: none;
-  padding: 2px 2px 2px;
   overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.bar::-webkit-scrollbar {
-  display: none;
-}
-
-.compact {
-  gap: 8px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 
 .transport {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
+  grid-area: transport;
+  justify-self: center;
   flex: none;
   gap: 4px;
+}
+
+.meta {
+  grid-area: meta;
+  justify-self: end;
+  justify-content: flex-end;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
 }
 
 .icon,
 .loop,
 .export {
-  min-height: 40px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: var(--transport-h);
+  min-height: var(--transport-h);
   min-width: 36px;
-  padding: 0 7px;
+  margin: 0;
+  padding: 0 8px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
   font-size: 10px;
+  line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .icon:hover,
@@ -55,24 +88,49 @@
 
 .times {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   min-width: 0;
-  overflow: hidden;
-  flex: 1 1 auto;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  height: var(--transport-h);
+  min-width: 9ch;
+  color: var(--playhead, var(--accent-primary));
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.length,
+.bpm,
+.selRange {
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .times strong {
   color: var(--accent-primary);
-  font-weight: 500;
-}
-
-.head {
-  color: var(--playhead, var(--accent-primary));
   font-weight: 600;
 }
 
@@ -88,63 +146,9 @@
 
 .cta {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  justify-content: flex-end;
-  margin-left: auto;
   flex: none;
-}
-
-.cta .export {
-  width: auto;
-  box-sizing: border-box;
-  height: 36px;
-  min-height: 36px;
-  padding: 0 14px;
-}
-
-.compact .cta {
-  display: flex;
-}
-
-.minimal {
-  gap: 6px;
-  padding: 4px 0 2px;
-  min-height: 0;
-}
-
-.minimal .transport {
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.minimal .icon,
-.minimal .loop {
-  min-height: 40px;
-  min-width: 40px;
-  padding: 0 8px;
-  font-size: 9px;
-}
-
-.minimal .times {
-  font-size: 10px;
-  gap: 4px;
-}
-
-.minimal .cta {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.minimal .export {
-  width: auto;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  margin: 0;
 }
 
 .export:disabled,
@@ -154,8 +158,115 @@
   opacity: 1;
 }
 
+/* Editor column is wide enough for one line, but not for the selection range. */
+@container transport (max-width: 1200px) {
+  .selRange {
+    display: none;
+  }
+}
+
+/* Keep the playhead fully visible by stacking duration and tempo under it.
+   Secondary actions wrap inside the left column instead of covering transport. */
+@container transport (max-width: 1000px) {
+  .actions {
+    flex-wrap: wrap;
+    align-content: center;
+    overflow: visible;
+    row-gap: 4px;
+  }
+
+  .times {
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .head {
+    height: auto;
+    min-height: 0;
+    font-size: 20px;
+  }
+
+  .details {
+    gap: 8px;
+    font-size: 12px;
+  }
+}
+
+/* Narrow editor: stack every readout so the time cannot collide with transport. */
+@container transport (max-width: 700px) {
+  .head {
+    font-size: 18px;
+  }
+
+  .details {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 11px;
+  }
+
+  .meta {
+    gap: 6px;
+  }
+}
+
+/* Phone-width editor: secondary actions and readouts use a second row.
+   Primary transport stays in the centered column. */
+@container transport (max-width: 560px) {
+  .bar {
+    grid-template-areas:
+      'actions transport .'
+      'meta meta meta';
+    row-gap: 4px;
+  }
+
+  .meta {
+    justify-self: end;
+  }
+
+  .times {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .head {
+    font-size: 18px;
+  }
+
+  .details {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+  }
+}
+
+.compact {
+  column-gap: 6px;
+}
+
+.minimal .actions {
+  display: none;
+}
+
+.minimal .icon,
+.minimal .loop,
+.minimal .export {
+  min-width: 40px;
+  padding: 0 8px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
 :global(html[data-low-vision='on']) .bar,
 :global(html[data-ui-scale='large']) .bar {
-  flex-wrap: wrap;
-  align-items: start;
+  --transport-h: 44px;
+  align-items: center;
+}
+
+:global(html[data-low-vision='on']) .head,
+:global(html[data-ui-scale='large']) .head {
+  font-size: 1.35rem;
 }

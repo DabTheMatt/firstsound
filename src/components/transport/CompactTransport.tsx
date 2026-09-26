@@ -50,37 +50,7 @@ export function CompactTransport({
   }, [])
   return (
     <div className={`${styles.bar} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
-      <div className={styles.transport}>
-        <TransportButton
-          playing={playing}
-          disabled={disabled}
-          onToggle={() => {
-            void engine.unlock().then(() => engine.togglePlay())
-          }}
-        />
-        <button
-          type="button"
-          className={styles.icon}
-          disabled={disabled}
-          aria-label={t.transport.playFromStart}
-          title={t.transport.playFromStartTitle}
-          onClick={() => {
-            void engine.unlock().then(() => engine.playFromStart())
-          }}
-        >
-          |◀
-        </button>
-        {!minimal ? (
-          <button
-            type="button"
-            className={styles.icon}
-            disabled={disabled}
-            aria-label={t.transport.stop}
-            onClick={() => engine.stop()}
-          >
-            ■
-          </button>
-        ) : null}
+      <div className={styles.actions}>
         {!minimal ? (
           <button
             type="button"
@@ -103,15 +73,6 @@ export function CompactTransport({
             {t.transport.killNoise}
           </button>
         ) : null}
-        <button
-          type="button"
-          className={`${styles.loop} ${loop ? styles.on : ''}`}
-          aria-pressed={loop}
-          aria-label="Loop selection"
-          onClick={() => engine.setLoop(!loop)}
-        >
-          {t.transport.loop}
-        </button>
         {!minimal ? (
           <button
             type="button"
@@ -147,24 +108,71 @@ export function CompactTransport({
           </button>
         ) : null}
       </div>
-      <p className={styles.times}>
-        <span className={styles.head} ref={playheadRef} title={t.transport.playhead}>
-          {formatTimecode(start)}
-        </span>
-        {!minimal ? (
-          <span className={styles.selRange} title={t.transport.selection}>
-            {formatTimecode(start)} — {formatTimecode(end)}
-          </span>
-        ) : null}
-        <strong>{length.toFixed(3)} s</strong>
-        <span className={styles.bpm} title={t.transport.bpmTitle}>
-          {bpm.toFixed(1)} BPM
-        </span>
-      </p>
-      <div className={styles.cta}>
-        <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
-          {t.transport.export}
+
+      <div className={styles.transport}>
+        <TransportButton
+          playing={playing}
+          disabled={disabled}
+          onToggle={() => {
+            void engine.unlock().then(() => engine.togglePlay())
+          }}
+        />
+        <button
+          type="button"
+          className={styles.icon}
+          disabled={disabled}
+          aria-label={t.transport.playFromStart}
+          title={t.transport.playFromStartTitle}
+          onClick={() => {
+            void engine.unlock().then(() => engine.playFromStart())
+          }}
+        >
+          |◀
         </button>
+        {!minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            disabled={disabled}
+            aria-label={t.transport.stop}
+            onClick={() => engine.stop()}
+          >
+            ■
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={`${styles.loop} ${loop ? styles.on : ''}`}
+          aria-pressed={loop}
+          aria-label="Loop selection"
+          onClick={() => engine.setLoop(!loop)}
+        >
+          {t.transport.loop}
+        </button>
+      </div>
+
+      <div className={styles.meta}>
+        <p className={styles.times}>
+          <span className={styles.head} ref={playheadRef} title={t.transport.playhead}>
+            {formatTimecode(start)}
+          </span>
+          <span className={styles.details}>
+            {!minimal ? (
+              <span className={styles.selRange} title={t.transport.selection}>
+                {formatTimecode(start)} — {formatTimecode(end)}
+              </span>
+            ) : null}
+            <strong className={styles.length}>{length.toFixed(3)} s</strong>
+            <span className={styles.bpm} title={t.transport.bpmTitle}>
+              {bpm.toFixed(1)} BPM
+            </span>
+          </span>
+        </p>
+        <div className={styles.cta}>
+          <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
+            {t.transport.export}
+          </button>
+        </div>
       </div>
     </div>
   )
