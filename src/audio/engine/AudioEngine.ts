@@ -1102,8 +1102,9 @@ export class AudioEngine {
   applyModulePreset(id: string): void {
     const preset = findModulePreset(id)
     if (!preset) return
-    this.setParams(preset.params)
+    // Choose the model first. Its color defaults must not overwrite settings the preset lists.
     if (preset.distortionType) this.setDistortionType(preset.distortionType)
+    this.setParams(preset.params)
     this.ensureModule(preset.kind === 'grain' ? 'grain' : preset.kind)
     if (preset.kind === 'grain') this.setEngineMode('grain')
     if (preset.lfo) {

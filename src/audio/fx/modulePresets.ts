@@ -1,3 +1,5 @@
+import { PARAMS } from '../parameters/definitions'
+import { applyParamValue } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 import type { DistortionType } from './types'
 import type { LfoShape } from './lfo'
@@ -238,4 +240,34 @@ export function modulePresetsFor(kind: ModulePresetKind): ModulePreset[] {
 
 export function findModulePreset(id: string): ModulePreset | undefined {
   return MODULE_PRESETS.find((p) => p.id === id)
+}
+
+/**
+ * Id of the factory preset whose type and listed settings match the current
+ * knobs. Derived from parameters — there is no second preset store.
+ * Returns null when none match, or when more than one would match.
+ */
+export function matchingModulePresetId(
+  kind: ModulePresetKind,
+  params: Partial<Record<ParamId, number>>,
+  distortionType?: DistortionType,
+): string | null {
+  const hits = modulePresetsFor(kind).filter((preset) => presetMatches(preset, params, distortionType))
+  if (hits.length !== 1) return null
+  return hits[0]!.id
+}
+
+function presetMatches(
+  preset: ModulePreset,
+  params: Partial<Record<ParamId, number>>,
+  distortionType?: DistortionType,
+): boolean {
+  if (preset.distortionType && preset.distortionType !== distortionType) return false
+  const keys = Object.keys(preset.params) as ParamId[]
+  if (keys.length === 0) return false
+  return keys.every((id) => {
+    const expected = preset.params[id]
+    if (typeof expected !== 'number') return false
+    return params[id] === applyParamValue(expected, PARAMS[id])
+  })
 }

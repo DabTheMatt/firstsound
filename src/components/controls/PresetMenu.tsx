@@ -16,6 +16,8 @@ type Props = {
   selectedId?: string | null
   /** True when the effect is already sitting on its original parameter values. */
   matchesDefault?: boolean
+  /** Repeat the active preset name under the select. Distortion keeps the select only. */
+  showStatus?: boolean
   onApply: (id: string) => void
   onDefault: () => void
 }
@@ -26,6 +28,7 @@ export function PresetMenu({
   presets,
   selectedId,
   matchesDefault = false,
+  showStatus = true,
   onApply,
   onDefault,
 }: Props) {
@@ -65,7 +68,7 @@ export function PresetMenu({
           </optgroup>
         ))}
       </select>
-      {matchesDefault && !selectedId ? <p className={styles.selectCurrent}>Default</p> : null}
+      {showStatus && matchesDefault && !selectedId ? <p className={styles.selectCurrent}>Default</p> : null}
     </label>
   )
 }

@@ -41,13 +41,13 @@ import { LfoParamShell } from '../controls/LfoParamShell'
 import { combMatchesDefault, eqBandsMatchDefault, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import { EQ_BAND_LFO_KINDS } from '../../audio/fx/lfo'
 import { EQ_PRESET_CATEGORIES, EQ_PRESETS } from '../../audio/fx/eqPresets'
-import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
+import { MODULE_PRESET_CATEGORIES, matchingModulePresetId, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
 import { useI18n } from '../../i18n'
-import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, type DistortionType } from '../../audio/fx/types'
+import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, parseDistortionType, type DistortionType } from '../../audio/fx/types'
 import type { EditState, InspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { FilterInspector } from './FilterInspector'
@@ -643,23 +643,36 @@ function ModuleInspector({
       {type === 'midside' ? <MidSideInspector snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'distortion' && pane === 'main' ? (
         <>
-          <Segmented
-            label="Distortion type"
-            value={snap.distortionType}
-            options={DISTORTION_TYPES}
-            wrap
-            onChange={(v) => engine.setDistortionType(v)}
-          />
+          <label className={styles.field}>
+            Type
+            <select
+              className={`${styles.select} ${styles.selectOn}`}
+              aria-label="Distortion type"
+              value={snap.distortionType}
+              onChange={(event) => {
+                const next = parseDistortionType(event.target.value)
+                if (next) engine.setDistortionType(next)
+              }}
+            >
+              {DISTORTION_TYPES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <PresetMenu
-            label="Distortion presets"
+            label="Preset"
             categories={MODULE_PRESET_CATEGORIES}
             presets={modulePresetsFor('distortion')}
+            selectedId={matchingModulePresetId('distortion', snap.params, snap.distortionType)}
             matchesDefault={
               paramsMatchDefaults(snap.params, 'distortion') &&
               snap.distortionType === 'saturation' &&
               snap.distortionNoiseKind === 'white' &&
               lfoBankResting(snap.fxLfos.distortion)
             }
+            showStatus={false}
             onApply={(id) => engine.applyModulePreset(id)}
             onDefault={() => engine.resetEffect('distortion')}
           />
