@@ -12,6 +12,17 @@ export const SPECTRUM_PREF_KEY = 'field.spectrum'
 
 export type SpectrumLayer = 'pre' | 'post' | 'both'
 
+/**
+ * Which real analyser taps a layer draws.
+ * `post` is the output tap (after the effect chain). It is never the EQ or
+ * filter response curve, and never the `'eq'` mid-chain node.
+ */
+export function spectrumLayerTaps(layer: SpectrumLayer): readonly ('pre' | 'post')[] {
+  if (layer === 'pre') return ['pre']
+  if (layer === 'post') return ['post']
+  return ['pre', 'post']
+}
+
 export type SpectrumPrefs = {
   layer: SpectrumLayer
   bands: SpectrumBandCount

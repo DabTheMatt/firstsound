@@ -130,6 +130,37 @@ export function biquadCoeffs(
   return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 }
 }
 
+/** One biquad, direct form I. Same coefficients as `eqMagnitudeDb`. */
+export function applyBiquad(
+  type: EqFilterType,
+  freq: number,
+  q: number,
+  gainDb: number,
+  sampleRate: number,
+  input: ArrayLike<number>,
+  output: Float32Array,
+): void {
+  const coef = biquadCoeffs(type, freq, q, gainDb, sampleRate)
+  const n = Math.min(input.length, output.length)
+  if (!coef) {
+    for (let i = 0; i < n; i++) output[i] = input[i] ?? 0
+    return
+  }
+  let x1 = 0
+  let x2 = 0
+  let y1 = 0
+  let y2 = 0
+  for (let i = 0; i < n; i++) {
+    const x0 = input[i] ?? 0
+    const y0 = coef.b0 * x0 + coef.b1 * x1 + coef.b2 * x2 - coef.a1 * y1 - coef.a2 * y2
+    output[i] = y0
+    x2 = x1
+    x1 = x0
+    y2 = y1
+    y1 = y0
+  }
+}
+
 function biquadMagDb(c: Biquad, freqHz: number, sampleRate: number): number {
   const w = (2 * Math.PI * freqHz) / sampleRate
   const cos1 = Math.cos(w)

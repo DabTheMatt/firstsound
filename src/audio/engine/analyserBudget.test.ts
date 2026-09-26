@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ANALYSER_FFT_IDLE, ANALYSER_FFT_MAX, clampAnalyserFftSize, spectrumFftSizeForBands } from './analyserBudget'
+import { ANALYSER_FFT_MAX, SPECTRUM_CAPTURE_FFT, clampAnalyserFftSize, spectrumFftSizeForBands } from './analyserBudget'
 
 describe('spectrumFftSizeForBands', () => {
-  it('keeps the idle FFT for typical band counts', () => {
-    expect(spectrumFftSizeForBands(32)).toBe(ANALYSER_FFT_IDLE)
-    expect(spectrumFftSizeForBands(128)).toBe(ANALYSER_FFT_IDLE)
-  })
-
-  it('steps up only when the plot asks for hundreds of bands', () => {
-    expect(spectrumFftSizeForBands(256)).toBe(8192)
-    expect(spectrumFftSizeForBands(1024)).toBe(ANALYSER_FFT_MAX)
+  it('keeps one capture size for every display band count', () => {
+    expect(SPECTRUM_CAPTURE_FFT).toBe(8192)
+    expect(SPECTRUM_CAPTURE_FFT).toBeLessThanOrEqual(ANALYSER_FFT_MAX)
+    for (const bands of [8, 32, 128, 256, 512, 1024]) {
+      expect(spectrumFftSizeForBands(bands)).toBe(SPECTRUM_CAPTURE_FFT)
+    }
   })
 })
 

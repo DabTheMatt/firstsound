@@ -19,6 +19,7 @@ import {
 import { logFreqAxis } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
+import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
@@ -61,6 +62,9 @@ export function EqCurve({
     const canvas = canvasRef.current
     if (!canvas) return
     let frame = 0
+    const time = { buf: null as Float32Array | null }
+    const bins = { buf: null as Float32Array | null }
+    const fft: SpectrumFftScratch = { window: null, real: null, imag: null }
     const draw = () => {
       const canvas = canvasRef.current
       if (!canvas) return
@@ -81,13 +85,17 @@ export function EqCurve({
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
-      const analyser = engine.getAnalyser('pre') ?? engine.getAnalyser('eq')
+      const analyser = engine.getAnalyser('pre') ?? engine.getAnalyser('post')
       if (analyser) {
-        const bins = new Float32Array(analyser.frequencyBinCount)
-        analyser.getFloatFrequencyData(bins)
+        const fftSize = analyser.fftSize
+        const binCount = SPECTRUM_ANALYSIS_FFT >> 1
+        if (!time.buf || time.buf.length !== fftSize) time.buf = new Float32Array(fftSize)
+        if (!bins.buf || bins.buf.length !== binCount) bins.buf = new Float32Array(binCount)
+        analyser.getFloatTimeDomainData(time.buf as Float32Array<ArrayBuffer>)
+        measureSpectrumDb(time.buf, bins.buf, fft)
         const fftSr = engine.getSnapshot().sampleRate || sr
         const plotMax = spectrumMaxHz(fftSr)
-        const peaks = bandPeakDb(bins, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ, plotMax)
+        const peaks = bandPeakDb(bins.buf, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ, plotMax)
         const edges = logBandEdgesHz(EQ_MIN_HZ, plotMax, EQ_MINI_BAND_COUNT)
         const gap = Math.max(1, Math.floor((width / EQ_MINI_BAND_COUNT) * 0.12))
         const zeroY = dbToY(0, height)

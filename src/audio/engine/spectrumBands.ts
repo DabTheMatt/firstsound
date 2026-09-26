@@ -199,7 +199,7 @@ export function fftDbAtHz(
   return a + (b - a) * frac
 }
 
-/** Peak dB in each log band. `binsDb` is AnalyserNode.getFloatFrequencyData. */
+/** Peak dB in each log band. `binsDb` is measured FFT bin dB, DC at index 0. */
 export function bandPeakDb(
   binsDb: ArrayLike<number>,
   sampleRate: number,
@@ -254,7 +254,11 @@ export function alignedBandDb(
   return db + alignDb
 }
 
-/** Keep measured post-EQ FFT from exceeding pre + filter gain (kills LF leakage). */
+/**
+ * Mathematical ceiling: min(measured, expected). Not a spectrum measurement.
+ * Do not run live analyzer bins through this — a pre tap that missed a click
+ * will erase that click from the post tap.
+ */
 export function capBandByExpected(
   measuredDb: number,
   expectedDb: number,
@@ -340,7 +344,7 @@ export function eqGainForSpectrumBand(
   return centerGainDb
 }
 
-/** Peak FFT bin dB between two frequencies (AnalyserNode.getFloatFrequencyData). */
+/** Peak FFT bin dB between two frequencies. `binsDb` is measured FFT bin dB. */
 export function fftPeakDbInHzRange(
   binsDb: ArrayLike<number>,
   sampleRate: number,

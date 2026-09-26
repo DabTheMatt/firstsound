@@ -425,6 +425,8 @@ export class AudioEngine {
   private analyser: AnalyserNode | null = null
   private analyserPre: AnalyserNode | null = null
   private analyserEq: AnalyserNode | null = null
+  /** Zero-gain pull so spectrum taps stay in the graph without reaching the speakers. */
+  private analyserSink: GainNode | null = null
   private analyserLimiterPre: AnalyserNode | null = null
   private analyserLimiterPost: AnalyserNode | null = null
   private analyserCompressorPre: AnalyserNode | null = null
@@ -594,7 +596,9 @@ export class AudioEngine {
     tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' | 'compressorPre' | 'compressorPost' = 'post',
   ): AnalyserNode | null {
     if (tap === 'pre') return this.analyserPre ?? this.analyser
-    if (tap === 'eq') return this.analyserEq ?? this.analyserPre ?? this.analyser
+    // 'eq' used to be the last tone-module output. Spectrum After is the heard
+    // signal, so this tap is the same output analyser as 'post'.
+    if (tap === 'eq') return this.analyser ?? this.analyserEq
     if (tap === 'limiterPre') return this.analyserLimiterPre
     if (tap === 'limiterPost') return this.analyserLimiterPost
     if (tap === 'compressorPre') return this.analyserCompressorPre ?? this.analyserLimiterPre
@@ -2714,6 +2718,9 @@ export class AudioEngine {
     configureSpectrumAnalyser(this.analyserPre)
     this.analyserEq = ctx.createAnalyser()
     configureSpectrumAnalyser(this.analyserEq)
+    this.analyserSink = ctx.createGain()
+    this.analyserSink.gain.value = 0
+    this.analyserSink.connect(ctx.destination)
     this.analyserLimiterPre = ctx.createAnalyser()
     this.analyserLimiterPost = ctx.createAnalyser()
     this.analyserLimiterPre.fftSize = 2048
@@ -2880,23 +2887,15 @@ export class AudioEngine {
     } else {
       this.voiceBus.connect(ordered[0]!.input)
     }
-    const toneSlots = ordered.filter((s) => s.type === 'eq' || s.type === 'filter')
-    const firstTone = toneSlots[0]
-    const lastTone = toneSlots.at(-1)
-    if (firstTone) {
-      if (this.analyserPre) firstTone.input.connect(this.analyserPre)
-      if (this.noiseGain) this.noiseGain.connect(firstTone.input)
-    } else if (this.analyserPre) {
-      this.voiceBus.connect(this.analyserPre)
-    }
+    // BEFORE: audio entering the effect chain. Not the raw buffer and not a filter curve.
+    this.disconnectSpectrumTaps()
+    if (this.analyserPre) ordered[0]!.input.connect(this.analyserPre)
+    const firstTone = ordered.find((s) => s.type === 'eq' || s.type === 'filter')
+    if (firstTone && this.noiseGain) this.noiseGain.connect(firstTone.input)
     for (let i = 0; i < ordered.length - 1; i++) {
       ordered[i]!.output.connect(ordered[i + 1]!.input)
     }
     const last = ordered.at(-1)!
-    if (this.analyserEq) {
-      if (lastTone) lastTone.output.connect(this.analyserEq)
-      else last.output.connect(this.analyserEq)
-    }
     const limSlot = ordered.find((s) => s.type === 'limiter')
     if (limSlot && this.analyserLimiterPre) {
       limSlot.input.connect(this.analyserLimiterPre)
@@ -2918,7 +2917,10 @@ export class AudioEngine {
     forceStereoUpmix(this.safetyGain)
     this.limiter.connect(this.safetyGain)
     this.safetyGain.connect(this.ctx.destination)
+    // AFTER: post-chain audio at the safety limiter, the same node the output meters split.
     this.limiter.connect(this.analyser)
+    this.pullAnalyser(this.analyser)
+    this.pullAnalyser(this.analyserPre)
     if (this.previewGain) this.previewGain.connect(this.limiter)
     const split = this.ctx.createChannelSplitter(2)
     this.limiter.connect(split)
@@ -2926,7 +2928,54 @@ export class AudioEngine {
     if (this.analyserR) split.connect(this.analyserR, 1)
   }
 
+  /** Drop side-chain taps so a graph rebuild cannot sum stale connections into the FFT. */
+  private disconnectSpectrumTaps(): void {
+    const pre = this.analyserPre
+    if (pre) {
+      try {
+        this.voiceBus?.disconnect(pre)
+      } catch {
+        /* not connected */
+      }
+      try {
+        this.mixBus?.disconnect(pre)
+      } catch {
+        /* not connected */
+      }
+      for (const slot of this.slots.values()) {
+        try {
+          slot.input.disconnect(pre)
+        } catch {
+          /* not connected */
+        }
+      }
+    }
+    const eq = this.analyserEq
+    if (eq) {
+      for (const slot of this.slots.values()) {
+        try {
+          slot.output.disconnect(eq)
+        } catch {
+          /* not connected */
+        }
+      }
+    }
+  }
+
+  /** Keep a tap processing. Sink gain is 0, so this does not reach the speakers. */
+  private pullAnalyser(node: AnalyserNode | null): void {
+    const sink = this.analyserSink
+    if (!node || !sink) return
+    try {
+      node.disconnect(sink)
+    } catch {
+      /* not yet pulled */
+    }
+    node.connect(sink)
+  }
+
   private disconnectSlots(): void {
+    this.disconnectSpectrumTaps()
     for (const slot of this.slots.values()) {
       try {
         slot.output.disconnect()
@@ -4270,12 +4319,16 @@ function waitMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-/** Same FFT size, dB range, smoothing, and mono downmix for Before and After. */
+/**
+ * Same FFT size, dB range, and mono downmix for Before and After.
+ * Smoothing stays at 0: the plot runs its own FFT on the time-domain block.
+ * A non-zero constant would smear getFloatFrequencyData and hide clicks.
+ */
 function configureSpectrumAnalyser(node: AnalyserNode): void {
   node.fftSize = ANALYSER_FFT_IDLE
   node.minDecibels = -100
   node.maxDecibels = 0
-  node.smoothingTimeConstant = 0.55
+  node.smoothingTimeConstant = 0
   try {
     node.channelCount = 1
     node.channelCountMode = 'explicit'

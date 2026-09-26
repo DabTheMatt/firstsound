@@ -15,7 +15,7 @@ import {
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
-import { EQ_MIN_HZ, bandIsActive, eqModuleIsAudible } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandIsActive } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
   FREQ_SCALE_HZ,
@@ -31,24 +31,17 @@ import {
   SPECTRUM_FOLLOW_MODES,
   alignedBandDb,
   bandPeakDb,
-  capBandsByEqGain,
-  capSpectrumBins,
-  eqGainForSpectrumBand,
-  logGridDbAt,
   clampSpectrumBandCount,
   clampSpectrumFallMode,
   clampSpectrumFollowMode,
   followBandsOverTime,
-  followEnvelope,
   logBandEdgesHz,
-  maxBandDb,
   spectrumDisplayUses,
   spectrumFallBallistics,
   type SpectrumFallRates,
   type SpectrumReleaseHold,
   spectrumMaxHz,
   SPECTRUM_AXIS_MAX_HZ,
-  spectrumMeterAlignDb,
 } from '../../audio/engine/spectrumBands'
 import { bandCenterHz, eqBandColorForHz, SPECTRUM_REGIONS } from '../../audio/engine/spectrumRegions'
 import { placeEqBell } from '../eq/placeEqBell'
@@ -63,14 +56,12 @@ import {
 } from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectrumCurve } from '../../audio/engine/spectrumEnvelope'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
-import { timeDomainToDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
-import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
-import { timeDomainPeakDb, louderPeakDb } from '../../audio/engine/timePeak'
+import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
+import { ANALYSER_FFT_IDLE, SPECTRUM_CAPTURE_FFT } from '../../audio/engine/analyserBudget'
 import { isDocumentHidden } from '../../app/frameBudget'
 import { meterDbMin, spectrumDbScaleMarks, type MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
-import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
@@ -81,7 +72,7 @@ import {
 } from '../../audio/fx/lfo'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
-import { loadSpectrumPrefs, persistSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { SPECTRUM_HZ_LABEL_OFFSET, SPECTRUM_PLOT_PAD } from '../../audio/engine/spectrumPlotLayout'
 import styles from './Spectrum.module.css'
 
@@ -92,30 +83,6 @@ type Props = {
 
 function emptyBands(n: number): Float32Array {
   return new Float32Array(n).fill(-100)
-}
-
-const TONE_GAIN_STEPS = 128
-
-/** Log-spaced copy of the EQ/filter correction, reused to ceiling the FFT line. */
-function fillToneGainGrid(
-  live: ReturnType<typeof engine.getSnapshot>,
-  sampleRate: number,
-  minHz: number,
-  maxHz: number,
-  hzOut: Float32Array,
-  dbOut: Float32Array,
-): void {
-  const n = Math.min(hzOut.length, dbOut.length)
-  const lo = Math.max(1, minHz)
-  const hi = Math.max(lo * 1.01, maxHz)
-  const log0 = Math.log(lo)
-  const log1 = Math.log(hi)
-  for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 0 : i / (n - 1)
-    const hz = Math.exp(log0 + (log1 - log0) * t)
-    hzOut[i] = hz
-    dbOut[i] = chainToneGainAtHz(live, hz, sampleRate)
-  }
 }
 
 /** Per-bin attack/release. A new FFT size snaps to the current frame. */
@@ -161,43 +128,6 @@ function hzToX(
   return mapHzToX(hz, minHz, maxHz, left, right, scale)
 }
 
-function chainToneGainAtHz(
-  live: ReturnType<typeof engine.getSnapshot>,
-  hz: number,
-  sampleRate: number,
-): number {
-  let db = 0
-  for (const mod of live.chain) {
-    if (mod.bypassed) continue
-    if (mod.type === 'eq') {
-      const st = live.eqById[mod.instanceId]
-      if (!st) continue
-      const bands = [
-        ...liveEqBandsFromParams(
-          st.bands,
-          live.liveParams,
-          eqInstanceUsesSharedLfo(live.chain, mod.instanceId),
-        ),
-        ...combAsEqBands({
-          ...st.comb,
-          teeth: live.liveParams.eqcfTeeth ?? st.comb.teeth,
-          gain: live.liveParams.eqcfGain ?? st.comb.gain,
-          spacing: live.liveParams.eqcfSpacing ?? st.comb.spacing,
-          frequency: live.liveParams.eqcfFreq ?? st.comb.frequency,
-        }),
-      ]
-      db += eqMagnitudeDb(bands, hz, sampleRate)
-    }
-    if (mod.type === 'filter') {
-      db += filterMixMagnitudeDb(
-        filterMagnitudeDb(live.liveParams, hz, sampleRate),
-        live.liveParams.filterMix,
-      )
-    }
-  }
-  return db
-}
-
 function readAnalyserPeaks(
   analyser: AnalyserNode | null,
   sampleRate: number,
@@ -207,11 +137,11 @@ function readAnalyserPeaks(
 ): Float32Array | null {
   if (!analyser) return null
   const fftSize = analyser.fftSize
-  const n = analyser.frequencyBinCount
+  const binCount = SPECTRUM_ANALYSIS_FFT >> 1
   if (!scratch.time || scratch.time.length !== fftSize) scratch.time = new Float32Array(fftSize)
-  if (!scratch.bins || scratch.bins.length !== n) scratch.bins = new Float32Array(n)
+  if (!scratch.bins || scratch.bins.length !== binCount) scratch.bins = new Float32Array(binCount)
   analyser.getFloatTimeDomainData(scratch.time as Float32Array<ArrayBuffer>)
-  timeDomainToDb(scratch.time, scratch.bins, scratch.fft)
+  measureSpectrumDb(scratch.time, scratch.bins, scratch.fft)
   return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz, spectrumMaxHz(sampleRate, SPECTRUM_AXIS_MAX_HZ))
 }
 
@@ -280,14 +210,10 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     }
     const canvas = canvasRef.current
     if (!canvas) return
-    engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
+    engine.setSpectrumFftSize(SPECTRUM_CAPTURE_FFT)
     let frame = 0
     const preScratch = { bins: null as Float32Array | null, time: null as Float32Array | null, fft: { window: null, real: null, imag: null } }
     const postScratch = { bins: null as Float32Array | null, time: null as Float32Array | null, fft: { window: null, real: null, imag: null } }
-    const meterLeft = { data: null as Float32Array | null }
-    const meterRight = { data: null as Float32Array | null }
-    let alignDb = 0
-    let gainsBuf: Float32Array | null = null
     let preLineFast: Float32Array | null = null
     let preLineSlow: Float32Array | null = null
     let postLineFast: Float32Array | null = null
@@ -308,8 +234,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
       return { holdSec: rates.holdSec, settleDb: rates.settleDb, elapsed: holds[key]! }
     }
     let lineXY = new Float32Array(4096)
-    const gainHz = new Float32Array(TONE_GAIN_STEPS)
-    const gainDb = new Float32Array(TONE_GAIN_STEPS)
     let lastTs = 0
     const tick = (now: number) => {
       const dt = lastTs === 0 ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastTs) / 1000))
@@ -319,7 +243,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         frame = requestAnimationFrame(tick)
         return
       }
-      engine.setSpectrumFftSize(spectrumFftSizeForBands(prefsRef.current.bands))
       const live = engine.getSnapshot()
       const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
@@ -414,9 +337,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         })
         const noteLabelOn = visibleAxisLabelIndices(noteTicks, 8 * dpr)
 
-        let postEqGains: Float32Array | null = null
-        let preCap: Float32Array | null = null
-
         const drawLayer = (
           peaks: Float32Array | null,
           fast: Float32Array,
@@ -441,10 +361,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             dt,
             releaseHold(`${barKey}Slow`, slow.length, ballistics.slow),
           )
-          if (style === 'post' && postEqGains && preCap) {
-            capBandsByEqGain(fast, preCap, postEqGains)
-            capBandsByEqGain(slow, preCap, postEqGains)
-          }
           const edges = logBandEdgesHz(minHz, maxHz, bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
@@ -475,8 +391,8 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               const regionColor = eqBandColorForHz(center)
               const barFill = fill ?? regionColor
               const barLine = line ?? regionColor
-              const bodyDb = alignedBandDb(bodySrc[i] ?? -100, alignDb)
-              const capDb = alignedBandDb(capSrc[i] ?? -100, alignDb)
+              const bodyDb = alignedBandDb(bodySrc[i] ?? -100, 0)
+              const capDb = alignedBandDb(capSrc[i] ?? -100, 0)
               const bodyY = dbToY(bodyDb, top, bottom, dbFloor)
               const capY = dbToY(capDb, top, bottom, dbFloor)
               const bodyH = bottom - bodyY
@@ -514,7 +430,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
               lineXY,
               0,
               dbFloor,
-              alignDb,
+              0,
               scale,
               curvePoints,
             )
@@ -550,45 +466,11 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           ctx.restore()
         }
 
-        const toneAudible = live.chain.some((mod) => {
-          if (mod.type === 'filter') {
-            return filterModuleIsAudible(mod.bypassed, live.liveParams.filterMix)
-          }
-          if (mod.type !== 'eq') return false
-          const st = live.eqById[mod.instanceId]
-          return eqModuleIsAudible(mod.bypassed, st?.bands ?? [], Boolean(st?.comb.enabled))
-        })
-        const showPre = layer === 'pre' || layer === 'both'
-        const showPost = layer === 'post' || layer === 'both'
-        const prePeaks = readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch)
-        const postPeaks = readAnalyserPeaks(engine.getAnalyser('eq'), sr, bands, minHz, postScratch)
-        if (postPeaks && prePeaks && toneAudible) {
-          const edges = logBandEdgesHz(minHz, maxHz, bands)
-          if (!gainsBuf || gainsBuf.length !== bands) gainsBuf = new Float32Array(bands)
-          const gains = gainsBuf
-          for (let i = 0; i < bands; i++) {
-            const lo = edges[i] ?? minHz
-            const hi = edges[i + 1] ?? maxHz
-            const center = bandCenterHz(edges, i)
-            gains[i] = eqGainForSpectrumBand(
-              chainToneGainAtHz(live, center, sr),
-              chainToneGainAtHz(live, lo, sr),
-              chainToneGainAtHz(live, hi, sr),
-            )
-          }
-          capBandsByEqGain(postPeaks, prePeaks, gains)
-          postEqGains = gains
-          preCap = prePeaks
-          if (
-            postScratch.bins &&
-            preScratch.bins &&
-            postScratch.bins.length === preScratch.bins.length
-          ) {
-            fillToneGainGrid(live, sr, minHz, maxHz, gainHz, gainDb)
-            const gainAt = (hz: number) => logGridDbAt(hz, gainHz, gainDb)
-            capSpectrumBins(postScratch.bins, preScratch.bins, sr, gainAt)
-          }
-        }
+        const taps = spectrumLayerTaps(layer)
+        const showPre = taps.includes('pre')
+        const showPost = taps.includes('post')
+        const prePeaks = showPre ? readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch) : null
+        const postPeaks = showPost ? readAnalyserPeaks(engine.getAnalyser('post'), sr, bands, minHz, postScratch) : null
         const lineAttack = ballistics.peak.attack
         const lineRelease = ballistics.peak.release
         const slowAttack = ballistics.slow.attack
@@ -630,16 +512,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           )
           postLineFast = followedFast
           postLineSlow = followedSlow
-          if (postEqGains && preScratch.bins && followedFast.length === preScratch.bins.length) {
-            const gainAt = (hz: number) => logGridDbAt(hz, gainHz, gainDb)
-            capSpectrumBins(followedFast, preScratch.bins, sr, gainAt)
-            capSpectrumBins(followedSlow, preScratch.bins, sr, gainAt)
-          }
         }
-        const { left: meterL, right: meterR } = engine.getChannelAnalysers()
-        const meterDb = louderPeakDb(timeDomainPeakDb(meterL, meterLeft), timeDomainPeakDb(meterR ?? meterL, meterRight))
-        const guide = showPost ? postPeaks : prePeaks
-        alignDb = followEnvelope(alignDb, spectrumMeterAlignDb(maxBandDb(guide), meterDb), 0.55, 0.22)
         if (showPre) {
           drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
         }
@@ -1117,7 +990,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                 {prefs.showLine && prefs.follow !== 'peak' ? (
                   <li>Slow line</li>
                 ) : null}
-                {prefs.layer === 'both' ? <li>Before / after when EQ is on</li> : null}
+                {prefs.layer === 'both' ? <li>Before / after</li> : null}
               </ul>
             )}
           </div>
