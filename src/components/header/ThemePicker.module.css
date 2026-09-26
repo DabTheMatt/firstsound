@@ -25,10 +25,7 @@
 }
 
 .triggerLabel {
-  max-width: 9em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .menu {
@@ -201,8 +198,11 @@
 
 .compact .trigger {
   min-height: 28px;
-  min-width: 28px;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
   padding: 0 6px;
+  justify-content: center;
 }
 
 .compact .triggerLabel {

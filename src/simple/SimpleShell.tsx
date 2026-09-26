@@ -8,6 +8,8 @@ import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
+import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
+import { StableLabel } from '../components/header/StableLabel'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { Wordmark } from '../components/header/Wordmark'
 import { ModeSwitch } from '../modes/ModeSwitch'
@@ -238,13 +240,22 @@ export function SimpleShell({
       <div className={styles.shell}>
         <header className={styles.header}>
           <Wordmark mode={mode} compact={frame === 'phone'} />
-          <button type="button" className={styles.file} onClick={onLoadSample}>
+          <button
+            type="button"
+            className={styles.file}
+            title={snap.fileName || t.header.loadSample}
+            aria-label={snap.fileName || t.header.loadSample}
+            onClick={onLoadSample}
+          >
             {snap.fileName || t.simple.fileUntitled}
           </button>
           <div className={styles.modeSlot}>
             <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
           </div>
           <ThemePicker compact={frame === 'phone'} />
+          <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
+            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
+          </button>
           <button
             type="button"
             className={styles.menuBtn}
@@ -256,8 +267,8 @@ export function SimpleShell({
             ···
           </button>
         </header>
-        {menuOpen ? menu : null}
-
+        <div className={styles.belowHeader}>
+          <div className={styles.belowMain}>
         <div className={styles.main}>
         <div className={styles.stageCol}>
         <div className={styles.wave}>
@@ -502,6 +513,9 @@ export function SimpleShell({
             </button>
           </div>
         </div>
+        </div>
+          </div>
+          {menuOpen ? menu : null}
         </div>
       </div>
 

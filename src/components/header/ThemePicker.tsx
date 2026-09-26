@@ -11,6 +11,7 @@ import {
   type ThemeId,
 } from '../../theme'
 import { useI18n } from '../../i18n'
+import { StableLabel } from './StableLabel'
 import styles from './ThemePicker.module.css'
 
 export function ThemePicker({ compact = false }: { compact?: boolean }) {
@@ -85,6 +86,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
     editing || isUserThemePreference(preference)
       ? { bg: customColors.bgApp, surface: customColors.bgElevated, accent: customColors.accent }
       : (THEME_OPTIONS.find((opt) => opt.id === preference) ?? THEME_OPTIONS[1]!).preview
+  const expectedLabels = THEME_OPTIONS.map((opt) => themeOptionLabel(opt.id, opt.label, t))
 
   return (
     <div className={`${styles.wrap} ${compact ? styles.compact : ''}`} ref={wrapRef}>
@@ -95,6 +97,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t.theme.named(triggerLabel)}
+        title={triggerLabel}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -102,7 +105,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
           <span className={styles.dot} style={{ background: preview.surface }} />
           <span className={styles.dot} style={{ background: preview.accent }} />
         </span>
-        <span className={styles.triggerLabel}>{triggerLabel}</span>
+        <StableLabel className={styles.triggerLabel} text={triggerLabel} samples={expectedLabels} />
       </button>
       {open && menuPos
         ? createPortal(
@@ -217,6 +220,17 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         : null}
     </div>
   )
+}
+
+function themeOptionLabel(
+  id: ThemePreference,
+  fallback: string,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  if (id === 'system') return t.theme.system
+  if (id === 'custom') return t.theme.custom
+  if (isUserThemePreference(id)) return fallback
+  return t.theme.names[id as ThemeId] ?? fallback
 }
 
 function normalizeHex(value: string): string {

@@ -577,7 +577,7 @@ export default function App() {
   )
 
   const settingsMenu = moreOpen ? (
-    <>
+    <div className={styles.overlay}>
       <button
         type="button"
         className={styles.settingsScrim}
@@ -587,7 +587,7 @@ export default function App() {
       <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
         {actions}
       </div>
-    </>
+    </div>
   ) : null
 
   if (uiMode === null) {
@@ -760,33 +760,8 @@ export default function App() {
             </div>
           }
         />
-        {lfoCenterOpen ? (
-          <>
-            <button
-              type="button"
-              className={styles.settingsScrim}
-              aria-label={t.settings.closeLfo}
-              onClick={() => setLfoCenterOpen(false)}
-            />
-            <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
-              <LfoCenter snap={snap} onReveal={revealLfo} />
-            </div>
-          </>
-        ) : null}
-        {moreOpen ? (
-          <>
-            <button
-              type="button"
-              className={styles.settingsScrim}
-              aria-label={t.settings.close}
-              onClick={() => setMenuOpen(false)}
-            />
-            <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
-              {actions}
-            </div>
-          </>
-        ) : null}
-
+        <div className={styles.stage}>
+          <div className={styles.stageMain}>
         {snap.audioStatus === 'blocked' ? (
           <p className={styles.banner}>{t.banner.audioBlocked}</p>
         ) : null}
@@ -936,6 +911,22 @@ export default function App() {
         </div>
 
         <p className={styles.sr}>{t.transport.selectionSr(formatTimecode(snap.params.start), formatTimecode(snap.params.end))}</p>
+          </div>
+          {lfoCenterOpen ? (
+            <div className={styles.overlay}>
+              <button
+                type="button"
+                className={styles.settingsScrim}
+                aria-label={t.settings.closeLfo}
+                onClick={() => setLfoCenterOpen(false)}
+              />
+              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
+                <LfoCenter snap={snap} onReveal={revealLfo} />
+              </div>
+            </div>
+          ) : null}
+          {settingsMenu}
+        </div>
 
         {fileInputs}
       </main>

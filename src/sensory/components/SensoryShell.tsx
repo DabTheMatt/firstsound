@@ -1,8 +1,10 @@
-import { useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
 import { RuntimeStatus } from '../../components/chrome/RuntimeStatus'
+import { LOAD_SAMPLE_LABELS } from '../../components/header/loadSampleLabels'
+import { StableLabel } from '../../components/header/StableLabel'
 import { Wordmark } from '../../components/header/Wordmark'
 import { ModeSwitch } from '../../modes/ModeSwitch'
 import type { UiMode } from '../../modes/uiMode'
@@ -65,7 +67,7 @@ export function SensoryShell({
   onDragOver,
   onDragLeave,
   onDrop,
-  onLoadSample: _onLoadSample,
+  onLoadSample,
   onLoadDemo,
   onSave: _onSave,
   onRecord: _onRecord,
@@ -83,6 +85,8 @@ export function SensoryShell({
   sampleInput = null,
 }: Props) {
   const { t } = useI18n()
+  const headerRef = useRef<HTMLElement>(null)
+  const [overlayTop, setOverlayTop] = useState(0)
   const [placesOpen, setPlacesOpen] = useState(false)
   const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
@@ -97,6 +101,24 @@ export function SensoryShell({
   const activeId = feelingId
   const sceneClass =
     scene === 'mirror' ? styles.mirror : scene === 'canyon' ? styles.canyon : scene === 'gleam' ? styles.gleam : ''
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const measure = () => {
+      const parent = header.offsetParent instanceof HTMLElement ? header.offsetParent : header.parentElement
+      const parentTop = parent?.getBoundingClientRect().top ?? 0
+      setOverlayTop(Math.max(0, Math.round(header.getBoundingClientRect().bottom - parentTop)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(header)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [])
 
   const chooseScene = (next: SensorySceneId) => {
     setScene(next)
@@ -118,7 +140,7 @@ export function SensoryShell({
         if (file) onDrop(file)
       }}
     >
-      <header className={styles.top}>
+      <header ref={headerRef} className={styles.top}>
         <div className={styles.brandRow}>
           <Wordmark mode={mode} variant="editorial" />
         </div>
@@ -146,6 +168,9 @@ export function SensoryShell({
             {t.sensory.strings}
           </button>
           <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
+          <button type="button" className={styles.loadBtn} data-load-sample="" onClick={onLoadSample}>
+            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
+          </button>
           <button
             type="button"
             className={styles.menuBtn}
@@ -158,7 +183,11 @@ export function SensoryShell({
           </button>
         </div>
       </header>
-      {menuOpen ? menu : null}
+      {menuOpen ? (
+        <div className={styles.menuLayer} style={{ top: overlayTop }}>
+          {menu}
+        </div>
+      ) : null}
 
       <div id="main-controls">
       <SoundRange

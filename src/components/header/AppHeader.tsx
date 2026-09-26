@@ -5,6 +5,8 @@ import type { ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import type { UiMode } from '../../modes/uiMode'
+import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
+import { StableLabel } from './StableLabel'
 import { ThemePicker } from './ThemePicker'
 import { Wordmark } from './Wordmark'
 import styles from './AppHeader.module.css'
@@ -52,12 +54,21 @@ export function AppHeader({
     <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
       <div className={styles.brand}>
         <Wordmark mode={mode} compact={minimal} />
-        <button type="button" className={styles.file} onClick={onLoadSample}>
-          {snap.fileName || t.header.loadSample}
+        <button
+          type="button"
+          className={styles.file}
+          title={snap.fileName || t.header.loadSample}
+          aria-label={snap.fileName || t.header.loadSample}
+          onClick={onLoadSample}
+        >
+          {snap.fileName || t.header.untitled}
         </button>
       </div>
       <div className={styles.tools}>
         <ThemePicker compact={minimal} />
+        <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
+          <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
+        </button>
         {!minimal ? (
           <button
             type="button"

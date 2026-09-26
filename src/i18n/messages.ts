@@ -104,6 +104,7 @@ export type Messages = {
   simple: SimpleMessages
   header: {
     loadSample: string
+    untitled: string
     record: string
     stop: string
     rec: string
@@ -507,6 +508,7 @@ export const EN: Messages = {
   },
   header: {
     loadSample: 'Load sample',
+    untitled: 'No sample',
     record: 'Record',
     stop: 'Stop',
     rec: 'Rec',
@@ -1003,6 +1005,7 @@ export const PL: Messages = {
   },
   header: {
     loadSample: 'Wczytaj sample',
+    untitled: 'Brak sampla',
     record: 'Nagraj',
     stop: 'Stop',
     rec: 'Rec',

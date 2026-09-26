@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { THEME_OPTIONS, useTheme, type ThemePreference, type ThemeId } from '../../theme'
 import { resolveSensoryAtmosphere, SENSORY_ATMOSPHERES } from '../sensoryAtmospheres'
+import { StableLabel } from '../../components/header/StableLabel'
 import { useI18n } from '../../i18n'
 import type { SensorySceneId } from '../sensoryScene'
 import styles from './SensoryThemePicker.module.css'
@@ -19,6 +20,12 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
   const active = resolveSensoryAtmosphere(scene, preference)
   const named = SENSORY_ATMOSPHERES.some((a) => a.id === active.id)
   const namedLabel = t.sensory.atmospheres[active.id] ?? t.theme.names[active.theme as ThemeId] ?? active.label
+  const expectedLabels = [
+    ...SENSORY_ATMOSPHERES.map((opt) => t.sensory.atmospheres[opt.id] ?? opt.label),
+    ...THEME_OPTIONS.filter((opt) => opt.id !== 'system').map((opt) =>
+      opt.id === 'custom' ? t.theme.custom : (t.theme.names[opt.id as ThemeId] ?? opt.label),
+    ),
+  ]
 
   useEffect(() => {
     if (!open) return
@@ -47,6 +54,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t.sensory.atmosphereNamed(namedLabel)}
+        title={namedLabel}
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">
@@ -54,7 +62,7 @@ export function SensoryThemePicker({ scene, onScene, onPlaces }: Props) {
           <span className={styles.dot} style={{ background: active.preview.surface }} />
           <span className={styles.dot} style={{ background: active.preview.accent }} />
         </span>
-        <span className={styles.name}>{namedLabel}</span>
+        <StableLabel className={styles.name} text={namedLabel} samples={expectedLabels} />
       </button>
       {open ? (
         <div className={styles.menu} role="listbox" aria-label={t.sensory.themes}>

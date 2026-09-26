@@ -1,17 +1,22 @@
 .wrap {
   position: relative;
+  flex: none;
 }
 
 .trigger {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: none;
   min-height: 32px;
   padding: 4px 12px 4px 8px;
   border: 1px solid color-mix(in srgb, var(--text-primary) 32%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, #1a1c22 78%, var(--text-primary) 8%);
   color: var(--text-primary);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .trigger:hover,
@@ -21,9 +26,7 @@
 }
 
 .name {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  min-width: 0;
 }
 
 .swatches {

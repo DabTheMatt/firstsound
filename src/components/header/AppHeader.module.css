@@ -1,7 +1,7 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px 12px;
   min-height: 36px;
   flex: none;
@@ -10,6 +10,9 @@
   position: relative;
   z-index: 16;
   overflow: hidden;
+  background: var(--bg-app);
+  container-type: inline-size;
+  container-name: app-header;
 }
 
 .compact {
@@ -26,10 +29,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 1 auto;
+  flex: none;
   flex-wrap: nowrap;
   justify-content: flex-end;
   min-width: 0;
+  margin-left: auto;
 }
 
 .brand {
@@ -37,7 +41,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   flex-wrap: nowrap;
   overflow: hidden;
   container-type: inline-size;
@@ -55,7 +59,8 @@
 
 .file {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -68,12 +73,37 @@
   text-align: left;
 }
 
+.load {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: none;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.load:hover {
+  background: var(--bg-control-hover);
+}
+
 .rec {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   box-sizing: border-box;
+  flex: none;
   height: 28px;
   min-height: 28px;
   padding: 0 10px;
@@ -135,9 +165,11 @@
 }
 
 .settings {
+  flex: none;
   min-height: 36px;
   min-width: 36px;
   padding: 0 14px;
+  white-space: nowrap;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: transparent;
@@ -155,6 +187,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   min-height: 28px;
   min-width: 28px;
   padding: 0 8px;
@@ -195,6 +228,12 @@
   padding: 0 8px;
 }
 
+.minimal .load {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
 .minimal .rec {
   min-height: 28px;
   padding: 0 8px;
@@ -210,4 +249,17 @@
 :global(html[data-low-vision='on']) .trailing,
 :global(html[data-ui-scale='large']) .trailing {
   justify-content: flex-start;
+}
+
+/* Sample rate and runtime yield space before Load Sample, Theme, or Record can clip. */
+@container app-header (max-width: 1180px) {
+  .meta {
+    display: none;
+  }
+}
+
+@container app-header (max-width: 980px) {
+  .runtime {
+    display: none;
+  }
 }

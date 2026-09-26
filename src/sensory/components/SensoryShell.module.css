@@ -247,6 +247,39 @@
   flex-wrap: wrap;
 }
 
+.menuLayer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  /* Scene layers stop at 6. Header is 12. This band sits between them and starts below the header. */
+  z-index: 7;
+}
+
+.loadBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #1a1c22 78%, var(--text-primary) 8%);
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.loadBtn:hover,
+.loadBtn:focus-visible {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  outline: none;
+}
+
 .menuBtn {
   border: 0;
   background: transparent;

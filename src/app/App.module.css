@@ -244,10 +244,42 @@
   z-index: 8;
 }
 
+/* Content column under the header. Overlays are positioned against this box,
+   so Settings cannot cover the header regardless of z-index. */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stageMain {
+  position: relative;
+  z-index: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phoneShell .stageMain {
+  gap: 4px;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 .settingsScrim {
   position: absolute;
   inset: 0;
-  z-index: 11;
+  z-index: 0;
   border: 0;
   padding: 0;
   background: var(--scrim);
@@ -256,12 +288,12 @@
 
 .settingsFly {
   position: absolute;
-  right: 12px;
-  top: 48px;
-  z-index: 12;
-  min-width: 220px;
-  max-width: min(320px, calc(100vw - 24px));
-  max-height: min(85dvh, calc(100% - 56px));
+  top: 0;
+  right: 0;
+  z-index: 1;
+  min-width: min(220px, 100%);
+  max-width: min(320px, 100%);
+  max-height: 100%;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 6px;
@@ -272,10 +304,10 @@
 }
 
 .lfoFly {
-  left: 12px;
+  left: 0;
   right: auto;
-  min-width: min(420px, calc(100vw - 24px));
-  max-width: min(480px, calc(100vw - 24px));
+  min-width: min(420px, 100%);
+  max-width: min(480px, 100%);
 }
 
 .moreMenu {
@@ -464,12 +496,18 @@
 
 :global(html[data-low-vision='on']) .settingsFly,
 :global(html[data-ui-scale='large']) .settingsFly {
-  top: 8px;
-  right: 8px;
-  bottom: 8px;
+  top: 0;
+  right: 0;
+  bottom: 0;
   max-height: none;
-  max-width: min(28rem, calc(100vw - 16px));
-  min-width: min(22rem, calc(100vw - 16px));
+  max-width: min(28rem, 100%);
+  min-width: min(22rem, 100%);
+}
+
+:global(html[data-low-vision='on']) .lfoFly,
+:global(html[data-ui-scale='large']) .lfoFly {
+  left: 0;
+  right: auto;
 }
 
 @media (max-width: 1100px) {

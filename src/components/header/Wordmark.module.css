@@ -113,6 +113,12 @@
   }
 }
 
+@container app-header (max-width: 860px) {
+  .mode {
+    display: none;
+  }
+}
+
 @container brand (max-width: 240px) {
   .mark {
     gap: 4px;
