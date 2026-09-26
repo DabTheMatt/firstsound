@@ -1,0 +1,69 @@
+.rhythm {
+  width: 84px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.positions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 26px;
+}
+
+.pos {
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.pos:hover:not(:disabled) {
+  color: var(--text-secondary);
+  background: var(--bg-control-hover);
+}
+
+.posOn {
+  color: var(--accent-primary);
+}
+
+.pos:disabled {
+  cursor: default;
+}
+
+.track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-control);
+  border: 1px solid var(--border-default);
+  touch-action: none;
+  cursor: pointer;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 33.333%;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  transform: translateX(calc(var(--rhythm-index) * 100%));
+}
+
+.disabled {
+  opacity: 0.42;
+}
+
+.disabled .track {
+  pointer-events: none;
+}

@@ -13,6 +13,7 @@ import {
   parseDelayType,
   parseReverbType,
   REVERB_TYPES,
+  type NoteKind,
 } from '../../audio/fx/types'
 import { isDelayStereo, isReverbStereo } from '../../audio/fx/spaceModel'
 import { PARAMS } from '../../audio/parameters/definitions'
@@ -21,6 +22,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
 import { ParamControl } from '../controls/ParamControl'
 import { PlugGlyph } from '../controls/PlugGlyph'
+import { RhythmSwitch } from '../controls/RhythmSwitch'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { FxLfoSection } from './FxLfoSection'
@@ -96,9 +98,9 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
         {kind === 'delay' ? (
           <>
             <p className={styles.help}>{delayStereo ? 'Left and right can sync to different notes.' : 'One time for both channels.'}</p>
-            <SyncRow snap={snap} label={delayStereo ? 'Left' : 'Delay'} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+            <SyncRow snap={snap} label={delayStereo ? 'Left' : 'Delay'} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" rhythm="rotary" />
             {delayStereo ? (
-              <SyncRow snap={snap} label="Right" syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+              <SyncRow snap={snap} label="Right" syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" rhythm="rotary" />
             ) : null}
           </>
         ) : (
@@ -214,11 +216,14 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                   layout="vertical"
                   showHelp={false}
                 />
-                {params(['delayTime', 'delayFeedback'])}
+                {params(['delayTime'])}
                 <div className={styles.syncCluster}>
-                  <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+                  <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" rhythm="rotary" />
                 </div>
               </section>
+              <div className={styles.lrLinkCol}>
+                <LrLinkButton linked={snap.params.delayLinkLR > 0.5} />
+              </div>
               <section className={styles.lrCol} aria-label="Delay right">
                 <div className={styles.lrHead}>
                   <h3 className={styles.sub}>Right</h3>
@@ -233,9 +238,9 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                   layout="vertical"
                   showHelp={false}
                 />
-                {params(['delayTimeR', 'delayFeedbackR'])}
+                {params(['delayTimeR'])}
                 <div className={styles.syncCluster}>
-                  <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" />
+                  <SyncRow snap={snap} syncId="delaySyncR" noteId="delayNoteR" kindId="delayNoteKindR" rhythm="rotary" />
                 </div>
               </section>
             </div>
@@ -250,12 +255,13 @@ export function SpaceInspector({ snap, kind, variant, pane }: Props) {
                 layout="vertical"
                 showHelp={false}
               />
-              {params(['delayFeedback', 'delayTime'])}
+              {params(['delayTime'])}
               <div className={styles.syncCluster}>
-                <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" />
+                <SyncRow snap={snap} syncId="delaySync" noteId="delayNote" kindId="delayNoteKind" rhythm="rotary" />
               </div>
             </>
           )}
+          <div className={styles.feedbackRow}>{params(['delayFeedback'])}</div>
           <p className={styles.help}>
             The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
           </p>
@@ -458,20 +464,63 @@ function DryWetPair({
   )
 }
 
+function LrLinkButton({ linked }: { linked: boolean }) {
+  return (
+    <button
+      type="button"
+      className={`${styles.lrLink} ${linked ? styles.lrLinkOn : ''}`}
+      aria-pressed={linked}
+      aria-label={linked ? 'Left and right linked' : 'Left and right unlinked'}
+      title={linked ? 'Linked — left and right move together' : 'Unlinked — left and right are independent'}
+      onClick={() => engine.setParam('delayLinkLR', linked ? 0 : 1)}
+    >
+      <ChainGlyph linked={linked} />
+      <span className={styles.lrLinkWord}>
+        <span className={linked ? undefined : styles.lrLinkHidden}>LINKED</span>
+        <span className={linked ? styles.lrLinkHidden : undefined}>UNLINKED</span>
+      </span>
+    </button>
+  )
+}
+
+function ChainGlyph({ linked }: { linked: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d={linked ? 'M5.2 6.2 h5.6 a2.2 2.2 0 0 1 0 4.4 H5.2 a2.2 2.2 0 0 1 0 -4.4 z' : 'M2.2 6.2 h4.2 a2.2 2.2 0 0 1 0 4.4 H2.2'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      {linked ? null : (
+        <path d="M9.6 6.2 h4.2 a2.2 2.2 0 0 1 0 4.4 H9.6" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      )}
+    </svg>
+  )
+}
+
 function SyncRow({
   snap,
   label,
   syncId,
   noteId,
   kindId,
+  rhythm = 'segmented',
 }: {
   snap: EngineSnapshot
   label?: string
   syncId: 'delaySync' | 'delaySyncR' | 'reverbSync'
   noteId: 'delayNote' | 'delayNoteR' | 'reverbNote'
   kindId: 'delayNoteKind' | 'delayNoteKindR' | 'reverbNoteKind'
+  rhythm?: 'rotary' | 'segmented'
 }) {
   const on = snap.params[syncId] > 0.5
+  const kind = (NOTE_KINDS[Math.round(snap.params[kindId])]?.value ?? 'straight') as NoteKind
+  const noteLabel = label ? `${label} note` : 'Note'
+  const division = NOTE_DIVISIONS[Math.round(snap.params[noteId])]?.value ?? '1/4'
+  const setNote = (value: string) =>
+    engine.setParam(noteId, NOTE_DIVISIONS.findIndex((d) => d.value === value))
   return (
     <>
       <Toggle
@@ -479,17 +528,37 @@ function SyncRow({
         label={label ? `${label} BPM Sync` : 'BPM Sync'}
         onToggle={() => engine.setParam(syncId, on ? 0 : 1)}
       />
-      {on ? (
+      {rhythm === 'rotary' ? (
+        <div className={`${styles.noteBlock} ${on ? '' : styles.noteBlockOff}`}>
+          <span className={styles.noteKicker}>Note</span>
+          <select
+            className={styles.noteValue}
+            aria-label={noteLabel}
+            disabled={!on}
+            value={division}
+            onChange={(event) => setNote(event.target.value)}
+          >
+            {NOTE_DIVISIONS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <RhythmSwitch
+            value={kind}
+            disabled={!on}
+            onChange={(next) => engine.setParam(kindId, NOTE_KINDS.findIndex((k) => k.value === next))}
+          />
+        </div>
+      ) : on ? (
         <>
           <label className={styles.field}>
             Note
             <select
               className={styles.select}
-              aria-label={label ? `${label} note` : 'Note'}
-              value={NOTE_DIVISIONS[Math.round(snap.params[noteId])]?.value ?? '1/4'}
-              onChange={(event) =>
-                engine.setParam(noteId, NOTE_DIVISIONS.findIndex((d) => d.value === event.target.value))
-              }
+              aria-label={noteLabel}
+              value={division}
+              onChange={(event) => setNote(event.target.value)}
             >
               {NOTE_DIVISIONS.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -500,7 +569,7 @@ function SyncRow({
           </label>
           <Segmented
             label="Feel"
-            value={NOTE_KINDS[Math.round(snap.params[kindId])]?.value ?? 'straight'}
+            value={kind}
             options={NOTE_KINDS.map((k) => ({ value: k.value, label: k.label }))}
             wrap
             onChange={(v) => engine.setParam(kindId, NOTE_KINDS.findIndex((k) => k.value === v))}

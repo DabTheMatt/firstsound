@@ -115,6 +115,7 @@ export function applySensoryStacking(dsp: DspSnapshot, values: SensoryValues): v
     const timeL = echoTimeMs(echo)
     setParam(dsp, 'delayTime', timeL)
     setParam(dsp, 'delayTimeR', timeL + driftHaasMs(drift))
+    setParam(dsp, 'delayLinkLR', 0)
     setParam(dsp, 'delayStereo', 1)
     setParam(dsp, 'delayWet', echoWet(echo))
     setParam(dsp, 'delayFeedback', echoFeedback(echo) * (1 - 0.32 * drift))

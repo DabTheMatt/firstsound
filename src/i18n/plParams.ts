@@ -54,6 +54,7 @@ const PL_OVERRIDES: Partial<Record<ParamId, string>> = {
   delayTime: 'Czas',
   delayTimeR: 'Czas P',
   delayStereo: 'Stereo',
+  delayLinkLR: 'Link L/P',
   delayFeedback: 'Feedback',
   delayFeedbackR: 'Feedback P',
   reverbDry: 'Dry',

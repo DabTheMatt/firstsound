@@ -81,6 +81,10 @@ export const PARAM_DESCRIPTIONS: Record<ParamId, LocalizedText> = {
   delayFeedback: d('Controls the amount of delayed signal fed back into the delay.', 'Określa ilość sygnału delay zawracanego ponownie na wejście efektu.'),
   delayFeedbackR: d('Controls feedback of the right delay line.', 'Określa ilość sygnału zawracanego w prawej linii delay.'),
   delayStereo: d('Sets the stereo spread of the delay.', 'Ustawia szerokość stereo efektu delay.'),
+  delayLinkLR: d(
+    'Links matching left and right delay controls so they move together.',
+    'Łączy odpowiadające sobie lewe i prawe regulatory delay, żeby poruszały się razem.',
+  ),
   reverbDry: d('Sets the unprocessed signal level through the reverb.', 'Ustawia poziom suchego sygnału przez reverb.'),
   reverbWet: d('Sets the reverberated signal level.', 'Ustawia poziom sygnału pogłosu.'),
   reverbCorrelate: d('Adjusts stereo correlation of the reverb.', 'Reguluje korelację stereo pogłosu.'),

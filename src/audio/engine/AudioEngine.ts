@@ -92,7 +92,7 @@ import {
   type CompressorGraph,
 } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
-import { applyDelayCorrelation, applyReverbCorrelation } from '../fx/dryWet'
+import { commitParamEdit, commitParamPatch } from '../parameters/links'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet, NOISE_CUT_TAU_SEC, NOISE_PAUSE_FADE_TAU_SEC } from '../fx/distortion'
 import {
@@ -124,10 +124,7 @@ import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { effectDefaultPatch, type EffectDefaultKind } from '../fx/effectDefaults'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
-import { syncedDelayMs } from '../fx/sync'
 import {
-  noteDivisionAt,
-  noteKindAt,
   parseDelayType,
   parseDistortionNoiseKind,
   parseDistortionType,
@@ -902,19 +899,12 @@ export class AudioEngine {
     } else {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
       const turningReverbStereoOn = id === 'reverbStereo' && value > 0.5 && this.params.reverbStereo <= 0.5
+      const previous = this.params[id]
       this.params[id] = applyParamValue(value, PARAMS[id])
       if (id === 'distortionNoise' && this.noiseMuted) this.noiseMuted = false
       if (turningStereoOn) this.copyDelayLeftToRight()
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
-      if (id === 'reverbCorrelate' && this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('enable')
-      else if (id === 'reverbDry') this.syncReverbCorrelation('dry')
-      else if (id === 'reverbWet') this.syncReverbCorrelation('wet')
-      if (id === 'delayCorrelate' && this.params.delayCorrelate >= 0.5) this.syncDelayCorrelation('enable')
-      else if (id === 'delayDry') this.syncDelayCorrelation('dry')
-      else if (id === 'delayWet') this.syncDelayCorrelation('wet')
-      else if (id === 'delayDryR') this.syncDelayCorrelation('dryR')
-      else if (id === 'delayWetR') this.syncDelayCorrelation('wetR')
-      this.syncTimeFromClock(id)
+      commitParamEdit(this.params, id, previous)
       const clicky =
         id === 'speed' ||
         id === 'pitch' ||
@@ -948,27 +938,20 @@ export class AudioEngine {
 
   setParams(patch: Partial<Record<ParamId, number>>): void {
     this.spacePresetId = null
+    const previous = {
+      delayLinkLR: this.params.delayLinkLR,
+      delayCorrelate: this.params.delayCorrelate,
+      reverbCorrelate: this.params.reverbCorrelate,
+    }
+    const keys: ParamId[] = []
     for (const key of Object.keys(patch) as ParamId[]) {
       const value = patch[key]
       if (typeof value !== 'number') continue
       this.params[key] = applyParamValue(value, PARAMS[key])
+      keys.push(key)
     }
-    this.syncTimeFromClock('bpm')
+    commitParamPatch(this.params, keys, previous)
     if ('distortionNoise' in patch && this.noiseMuted) this.noiseMuted = false
-    if (this.params.reverbCorrelate >= 0.5) {
-      this.syncReverbCorrelation(
-        'reverbDry' in patch && !('reverbWet' in patch) ? 'dry' : 'wet',
-      )
-    }
-    if (this.params.delayCorrelate >= 0.5) {
-      const left = 'delayDry' in patch || 'delayWet' in patch || 'delayCorrelate' in patch
-      const right = 'delayDryR' in patch || 'delayWetR' in patch || 'delayCorrelate' in patch
-      if ('delayCorrelate' in patch) this.syncDelayCorrelation('enable')
-      else {
-        if (left) this.syncDelayCorrelation('delayDry' in patch && !('delayWet' in patch) ? 'dry' : 'wet')
-        if (right) this.syncDelayCorrelation('delayDryR' in patch && !('delayWetR' in patch) ? 'dryR' : 'wetR')
-      }
-    }
     this.applyLiveAudio()
     this.syncLfoClock()
     this.engageReverbFromMix()
@@ -977,14 +960,6 @@ export class AudioEngine {
     if (FILTER_PARAM_IDS.some((id) => id in patch)) this.engageFilter()
     if (MS_PARAM_IDS.some((id) => id in patch)) this.engageMidSide()
     this.emit()
-  }
-
-  private syncReverbCorrelation(changed: 'dry' | 'wet' | 'enable'): void {
-    applyReverbCorrelation(this.params, changed)
-  }
-
-  private syncDelayCorrelation(changed: 'dry' | 'wet' | 'dryR' | 'wetR' | 'enable'): void {
-    applyDelayCorrelation(this.params, changed)
   }
 
   private engageReverbFromMix(): void {
@@ -1311,14 +1286,19 @@ export class AudioEngine {
     if (next.delayType) this.delayType = next.delayType
     if (next.reverbType) this.reverbType = next.reverbType
     this.spacePresetId = next.id
+    const previous = {
+      delayLinkLR: this.params.delayLinkLR,
+      delayCorrelate: this.params.delayCorrelate,
+      reverbCorrelate: this.params.reverbCorrelate,
+    }
+    const keys: ParamId[] = []
     for (const key of Object.keys(next.params) as ParamId[]) {
       const value = next.params[key]
       if (typeof value !== 'number') continue
       this.params[key] = applyParamValue(value, PARAMS[key])
+      keys.push(key)
     }
-    this.syncTimeFromClock('bpm')
-    if (this.params.reverbCorrelate >= 0.5) this.syncReverbCorrelation('wet')
-    if (this.params.delayCorrelate >= 0.5) this.syncDelayCorrelation('enable')
+    commitParamPatch(this.params, keys, previous)
     this.applyLiveAudio()
     const type = next.kind
     const mod = this.chain.find((m) => m.type === type)
@@ -1351,39 +1331,6 @@ export class AudioEngine {
       }
     }
     this.emit()
-  }
-
-  private syncTimeFromClock(id: ParamId): void {
-    if (id === 'delayTime' && this.params.delaySync > 0.5) this.params.delaySync = 0
-    if (id === 'delayTimeR' && this.params.delaySyncR > 0.5) this.params.delaySyncR = 0
-    if (id === 'reverbPredelay' && this.params.reverbSync > 0.5) this.params.reverbSync = 0
-    if (
-      this.params.delaySync > 0.5 &&
-      (id === 'bpm' || id === 'delayNote' || id === 'delayNoteKind' || id === 'delaySync')
-    ) {
-      this.params.delayTime = applyParamValue(
-        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNote), noteKindAt(this.params.delayNoteKind)),
-        PARAMS.delayTime,
-      )
-    }
-    if (
-      this.params.delaySyncR > 0.5 &&
-      (id === 'bpm' || id === 'delayNoteR' || id === 'delayNoteKindR' || id === 'delaySyncR')
-    ) {
-      this.params.delayTimeR = applyParamValue(
-        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.delayNoteR), noteKindAt(this.params.delayNoteKindR)),
-        PARAMS.delayTimeR,
-      )
-    }
-    if (
-      this.params.reverbSync > 0.5 &&
-      (id === 'bpm' || id === 'reverbNote' || id === 'reverbNoteKind' || id === 'reverbSync')
-    ) {
-      this.params.reverbPredelay = applyParamValue(
-        syncedDelayMs(this.params.bpm, noteDivisionAt(this.params.reverbNote), noteKindAt(this.params.reverbNoteKind)),
-        PARAMS.reverbPredelay,
-      )
-    }
   }
 
   setRegion(start: number, end: number): void {
@@ -2079,8 +2026,9 @@ export class AudioEngine {
     const mod = this.chain.find((m) => m.instanceId === instanceId)
     if (!mod) return
     if (mod.bypassed && mod.type === 'reverb') {
+      const previous = this.params.reverbWet
       this.params.reverbWet = mixWhenEnablingReverb(this.params.reverbWet)
-      this.syncReverbCorrelation('wet')
+      commitParamEdit(this.params, 'reverbWet', previous)
     }
     this.setModuleBypass(instanceId, !mod.bypassed)
   }
