@@ -1,6 +1,7 @@
 import type { StretchInterpAlgo } from '../parameters/types'
 import { clamp } from '../parameters/mapping'
 import { STRETCH_INTERP_ALGOS } from '../parameters/definitions'
+import { antiClickSeconds } from './antiClick'
 import { advanceStretchControl, type StretchControl } from './stretch'
 
 /**
@@ -66,6 +67,8 @@ export type ReadWrap = {
   start: number
   end: number
   mode: 'loop' | 'pingpong'
+  /** Source samples of the anti-click dip at the loop join. 0 disables it. */
+  seam?: number
 }
 
 function wrapIndex(i: number, wrap: ReadWrap): number {
@@ -84,9 +87,28 @@ function wrapIndex(i: number, wrap: ReadWrap): number {
   return end - 1 - (rel - span)
 }
 
+/** Gain that meets 0 on both sides of a loop join so the wrap cannot step. */
+export function loopSeamGain(index: number, wrap: ReadWrap): number {
+  const seam = wrap.seam ?? 0
+  if (seam < 2) return 1
+  const start = Math.floor(wrap.start)
+  const end = Math.max(start + 1, Math.floor(wrap.end))
+  const span = end - start
+  const cycle = wrap.mode === 'pingpong' ? span * 2 : span
+  const width = Math.min(Math.floor(seam), Math.floor(cycle * 0.25))
+  if (width < 2) return 1
+  let rel = (index - start) % cycle
+  if (rel < 0) rel += cycle
+  if (rel < width) return rel / width
+  if (rel > cycle - width) return Math.max(0, (cycle - rel) / width)
+  return 1
+}
+
 function readAt(src: ArrayLike<number>, i: number, wrap?: ReadWrap): number {
   if (!wrap) return at(src, i)
-  return at(src, wrapIndex(i, wrap))
+  const raw = at(src, wrapIndex(i, wrap))
+  if (!(wrap.seam && wrap.seam > 1)) return raw
+  return raw * loopSeamGain(i, wrap)
 }
 
 /**
@@ -105,16 +127,19 @@ export function playbackReadWrap(
   if (!(sampleRate > 0) || (!loop && !pingpong)) return undefined
   const span = regionEndSec - regionStartSec
   if (!(span > 0)) return undefined
+  const seam = Math.max(8, Math.round(antiClickSeconds(sampleRate, 1) * sampleRate))
   if (reverse) {
     const revStart = Math.max(0, durationSec - regionEndSec) * sampleRate
     const revEnd = Math.max(0, durationSec - regionStartSec) * sampleRate
-    return { start: revStart, end: Math.max(revStart + 1, revEnd), mode: 'loop' }
+    return { start: revStart, end: Math.max(revStart + 1, revEnd), mode: 'loop', seam }
   }
   const start = regionStartSec * sampleRate
+  const end = Math.max(start + 1, regionEndSec * sampleRate)
   return {
     start,
-    end: Math.max(start + 1, regionEndSec * sampleRate),
+    end,
     mode: pingpong ? 'pingpong' : 'loop',
+    seam,
   }
 }
 
