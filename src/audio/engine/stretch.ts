@@ -1,4 +1,4 @@
-import { clamp } from '../parameters/mapping'
+import { clamp, pitchRatio } from '../parameters/mapping'
 
 export type StretchWindow = {
   grainSec: number
@@ -27,11 +27,177 @@ export function stretchWindow(interp: number, speed = 1, pitchRatio = 1): Stretc
   return { grainSec, hopSec, peak }
 }
 
+/**
+ * Log time-constant for Speed (and the matching linear constant for Pitch).
+ * Sparse overlap stays quicker; dense overlap eases a little longer.
+ * Kept well under 200 ms so automation and LFO still read as the gesture.
+ */
+export function speedSmoothTau(interp: number): number {
+  const n = clamp(interp / 100, 0, 1)
+  return 0.022 + n * 0.16
+}
+
+/**
+ * Grain geometry follows Speed/Pitch more slowly than the read head.
+ * A fast LFO then changes tempo without pumping the window every hop.
+ */
+export const WINDOW_FOLLOW_TAU = 0.26
+
 /** One-pole mix so hop-sized updates share a stable time constant. */
 export function stretchSlew(hopSec: number, interp: number): number {
-  const n = clamp(interp / 100, 0, 1)
-  const tau = 0.022 + n * 0.16
-  return 1 - Math.exp(-Math.max(hopSec, 0.001) / tau)
+  return 1 - Math.exp(-Math.max(hopSec, 0.001) / speedSmoothTau(interp))
+}
+
+export type StretchSchedule = {
+  grainSec: number
+  hopSec: number
+  peak: number
+}
+
+/**
+ * Steady playback uses the full stretch window, including the longer grains
+ * that keep bass when Speed or Pitch drop. While Speed is still chasing its
+ * target, hop and grain shrink together so the overlap ratio (and level) stay
+ * put and the glide can update faster than a slowed-down hop.
+ */
+export function stretchSchedule(
+  interp: number,
+  windowSpeed: number,
+  windowPitchSemitones: number,
+  playbackSpeed = windowSpeed,
+  targetSpeed = windowSpeed,
+): StretchSchedule {
+  const speed = Math.max(1e-4, windowSpeed)
+  const ratio = Math.max(1e-4, pitchRatio(windowPitchSemitones))
+  const shaped = stretchWindow(interp, speed, ratio)
+  const mismatch = Math.abs(
+    Math.log(Math.max(1e-4, targetSpeed)) - Math.log(Math.max(1e-4, playbackSpeed)),
+  )
+  const tightness = clamp(mismatch / 0.35, 0, 1)
+  const minHop = Math.min(shaped.hopSec, 0.022)
+  const hopSec = shaped.hopSec + (minHop - shaped.hopSec) * tightness
+  const scale = hopSec / shaped.hopSec
+  return { grainSec: shaped.grainSec * scale, hopSec, peak: shaped.peak }
+}
+
+export type StretchControl = {
+  speed: number
+  pitch: number
+  windowSpeed: number
+  windowPitch: number
+}
+
+export type StretchControlStep = StretchControl & {
+  grainSec: number
+  hopSec: number
+  peak: number
+  /** Source seconds advanced during this output hop (integral of Speed). */
+  sourceAdvance: number
+  /** Pitch ratio for the grain read. Independent of Speed. */
+  readPitch: number
+}
+
+function glideSubsteps(dtSec: number): number {
+  if (dtSec <= 0.012) return 1
+  if (dtSec <= 0.03) return 2
+  return 4
+}
+
+/** Log-domain one-pole. `mean` is the trapezoidal average over `dtSec` (no overshoot). */
+export function glideTowardLog(
+  current: number,
+  target: number,
+  dtSec: number,
+  tauSec: number,
+): { next: number; mean: number } {
+  const dt = Math.max(0, dtSec)
+  const c0 = Math.max(1e-6, current)
+  if (!(dt > 0)) return { next: c0, mean: c0 }
+  const goal = Math.max(1e-6, target)
+  const tau = Math.max(tauSec, 1e-4)
+  const steps = glideSubsteps(dt)
+  const h = dt / steps
+  const a = 1 - Math.exp(-h / tau)
+  let s = c0
+  let area = 0
+  for (let i = 0; i < steps; i++) {
+    const prev = s
+    s = Math.exp(Math.log(prev) + (Math.log(goal) - Math.log(prev)) * a)
+    area += (prev + s) * 0.5 * h
+  }
+  return { next: s, mean: area / dt }
+}
+
+/** Linear one-pole used for pitch in semitones. */
+export function glideTowardLinear(
+  current: number,
+  target: number,
+  dtSec: number,
+  tauSec: number,
+): { next: number; mean: number } {
+  const dt = Math.max(0, dtSec)
+  if (!(dt > 0) || !Number.isFinite(current)) return { next: current, mean: current }
+  const goal = Number.isFinite(target) ? target : current
+  const tau = Math.max(tauSec, 1e-4)
+  const steps = glideSubsteps(dt)
+  const h = dt / steps
+  const a = 1 - Math.exp(-h / tau)
+  let s = current
+  let area = 0
+  for (let i = 0; i < steps; i++) {
+    const prev = s
+    s = prev + (goal - prev) * a
+    area += (prev + s) * 0.5 * h
+  }
+  return { next: s, mean: area / dt }
+}
+
+export function smoothTowardLogDt(current: number, target: number, dtSec: number, tauSec: number): number {
+  return glideTowardLog(current, target, dtSec, tauSec).next
+}
+
+export function smoothTowardLinearDt(
+  current: number,
+  target: number,
+  dtSec: number,
+  tauSec: number,
+): number {
+  return glideTowardLinear(current, target, dtSec, tauSec).next
+}
+
+/**
+ * One scheduled grain of the stretch voice.
+ * Speed and pitch ease toward the live target; the window eases more slowly
+ * so the overlap grid does not jump when the knob, an LFO, or automation moves.
+ */
+export function advanceStretchControl(
+  state: StretchControl,
+  targetSpeed: number,
+  targetPitch: number,
+  interp: number,
+): StretchControlStep {
+  const plan = stretchSchedule(interp, state.windowSpeed, state.windowPitch, state.speed, targetSpeed)
+  const tau = speedSmoothTau(interp)
+  const speed = glideTowardLog(state.speed, Math.max(1e-4, targetSpeed), plan.hopSec, tau)
+  const pitch = glideTowardLinear(state.pitch, targetPitch, plan.hopSec, tau)
+  const windowSpeed = smoothTowardLogDt(
+    Math.max(1e-4, state.windowSpeed),
+    Math.max(1e-4, targetSpeed),
+    plan.hopSec,
+    WINDOW_FOLLOW_TAU,
+  )
+  const windowPitch = smoothTowardLinearDt(state.windowPitch, targetPitch, plan.hopSec, WINDOW_FOLLOW_TAU)
+  return {
+    speed: speed.next,
+    pitch: pitch.next,
+    windowSpeed,
+    windowPitch,
+    grainSec: plan.grainSec,
+    hopSec: plan.hopSec,
+    peak: plan.peak,
+    sourceAdvance: plan.hopSec * speed.mean,
+    readPitch: Math.max(1e-4, pitchRatio(pitch.mean)),
+  }
 }
 
 export function smoothTowardLog(current: number, target: number, amount: number): number {

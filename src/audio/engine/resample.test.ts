@@ -3,9 +3,13 @@ import { stretchWindow } from './stretch'
 import {
   effectiveInterpAlgo,
   goertzelMagnitude,
+  interpQuality,
   overlapAddResample,
+  playbackReadWrap,
+  renderGlidedStretch,
   resampleInto,
   sampleAt,
+  sincLobes,
   stretchInterpAlgoAt,
 } from './resample'
 
@@ -13,6 +17,24 @@ function sine(length: number, sr: number, hz: number): Float32Array {
   const out = new Float32Array(length)
   for (let i = 0; i < length; i++) out[i] = Math.sin((2 * Math.PI * hz * i) / sr)
   return out
+}
+
+function rms(samples: ArrayLike<number>): number {
+  if (samples.length < 1) return 0
+  let acc = 0
+  for (let i = 0; i < samples.length; i++) acc += (samples[i] ?? 0) ** 2
+  return Math.sqrt(acc / samples.length)
+}
+
+function medianTime(run: () => void): number {
+  const samples: number[] = []
+  for (let i = 0; i < 5; i++) {
+    const start = performance.now()
+    run()
+    samples.push(performance.now() - start)
+  }
+  samples.sort((a, b) => a - b)
+  return samples[2] ?? samples[0] ?? 0
 }
 
 describe('stretchInterpAlgoAt', () => {
@@ -88,6 +110,87 @@ describe('pitch-down bass', () => {
     const b = overlapAddResample(src, sr, longN, longHop, 1, 0.5, 'cubic', 0)
     expect(goertzelMagnitude(b, sr, 40)).toBeGreaterThan(goertzelMagnitude(a, sr, 40))
     expect(long.grainSec).toBeGreaterThan(short.grainSec * 1.5)
+  })
+
+  it('wraps a loop seam so the grain does not fall into silence', () => {
+    const src = new Float32Array(200).fill(0.6)
+    const dest = new Float32Array(48)
+    const wrap = { start: 0, end: 200, mode: 'loop' as const }
+    resampleInto(dest, 48, src, 180, 1, 'linear', false, 1, 'realtime', wrap)
+    expect(dest[24]).toBeCloseTo(0.6, 2)
+    const open = new Float32Array(48)
+    resampleInto(open, 48, src, 180, 1, 'linear', false, 1, 'realtime')
+    expect(Math.abs(open[24] ?? 0)).toBeLessThan(0.05)
+  })
+
+  it('maps a reversed loop into the reversed buffer', () => {
+    const wrap = playbackReadWrap(1000, 0.2, 0.8, 1, true, true, false)
+    expect(wrap?.mode).toBe('loop')
+    expect(wrap?.start).toBeCloseTo(200)
+    expect(wrap?.end).toBeCloseTo(800)
+    expect(playbackReadWrap(1000, 0, 1, 1, false, false, false)).toBeUndefined()
+  })
+
+  it('names realtime and offline interpolation quality', () => {
+    expect(interpQuality('nearest', 'realtime')).toBe('fast')
+    expect(interpQuality('linear', 'offline')).toBe('fast')
+    expect(interpQuality('cubic', 'realtime')).toBe('balanced')
+    expect(interpQuality('sinc', 'realtime')).toBe('balanced')
+    expect(interpQuality('sinc', 'offline')).toBe('high')
+    expect(sincLobes('realtime')).toBeLessThan(sincLobes('offline'))
+  })
+
+  it('keeps a glided speed jump free of clicks on a steady tone', () => {
+    const sr = 16000
+    const src = new Float32Array(sr * 8).fill(0.75)
+    const out = renderGlidedStretch(src, sr, sr, 62, 1, 4, 0, 'cubic', 'realtime')
+    let maxJump = 0
+    for (let i = 800; i < out.length - 800; i++) {
+      maxJump = Math.max(maxJump, Math.abs((out[i + 1] ?? 0) - (out[i] ?? 0)))
+    }
+    expect(maxJump).toBeLessThan(0.08)
+    const head = rms(out.subarray(400, 2000))
+    const tail = rms(out.subarray(out.length - 2000, out.length - 400))
+    expect(head).toBeGreaterThan(0.05)
+    expect(tail).toBeGreaterThan(head * 0.7)
+    expect(tail).toBeLessThan(head * 1.35)
+  })
+
+  it('plays slow, unity, and fast speeds at a steady level', () => {
+    const sr = 16000
+    const src = new Float32Array(sr * 8).fill(0.8)
+    const levels: number[] = []
+    for (const speed of [0.5, 1, 2]) {
+      const out = renderGlidedStretch(src, Math.floor(sr * 0.7), sr, 62, speed, speed, 0, 'linear', 'realtime')
+      const level = rms(out.subarray(Math.floor(sr * 0.12), out.length - 400))
+      levels.push(level)
+      expect(level).toBeGreaterThan(0.15)
+    }
+    expect(levels[0]).toBeGreaterThan((levels[1] ?? 0) * 0.7)
+    expect(levels[2]).toBeGreaterThan((levels[1] ?? 0) * 0.7)
+  })
+
+  it('loops a selection without a silence hole at the seam', () => {
+    const sr = 8000
+    const src = sine(sr, sr, 220)
+    const wrap = playbackReadWrap(sr, 0, 1, 1, false, true, false)
+    const out = renderGlidedStretch(src, Math.floor(sr * 1.5), sr, 62, 1.4, 1.4, 0, 'linear', 'realtime', wrap)
+    const seam = rms(out.subarray(sr - 200, sr + 200))
+    const body = rms(out.subarray(400, 1200))
+    expect(seam).toBeGreaterThan(body * 0.35)
+  })
+
+  it('spends fewer sinc taps in realtime than offline', () => {
+    const sr = 48000
+    const src = sine(8000, sr, 440)
+    const count = 4000
+    const dest = new Float32Array(count)
+    resampleInto(dest, 64, src, 10, 1.5, 'sinc', false, 1, 'realtime')
+    resampleInto(dest, 64, src, 10, 1.5, 'sinc', false, 1, 'offline')
+    const realtime = medianTime(() => resampleInto(dest, count, src, 100, 1.5, 'sinc', false, 1, 'realtime'))
+    const offline = medianTime(() => resampleInto(dest, count, src, 100, 1.5, 'sinc', false, 1, 'offline'))
+    expect(sincLobes('realtime')).toBeLessThan(sincLobes('offline'))
+    expect(realtime).toBeLessThan(offline * 0.85)
   })
 
   it('cubic and sinc reconstruct more 100 Hz than nearest when pitching down', () => {

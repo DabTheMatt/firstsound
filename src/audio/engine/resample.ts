@@ -1,8 +1,32 @@
 import type { StretchInterpAlgo } from '../parameters/types'
 import { clamp } from '../parameters/mapping'
 import { STRETCH_INTERP_ALGOS } from '../parameters/definitions'
+import { advanceStretchControl, type StretchControl } from './stretch'
 
-const SINC_LOBES = 8
+/**
+ * fast — nearest / linear, cheap enough for every grain
+ * balanced — cubic, or 4-lobe sinc while a voice is playing
+ * high — 8-lobe windowed sinc for offline renders
+ */
+export type InterpQuality = 'fast' | 'balanced' | 'high'
+
+/** Live grains use the lighter kernel. Offline renders keep the long sinc. */
+export type InterpBudget = 'realtime' | 'offline'
+
+const REALTIME_SINC_LOBES = 4
+const OFFLINE_SINC_LOBES = 8
+const REALTIME_SINC_RADIUS_CAP = 16
+const OFFLINE_SINC_RADIUS_CAP = 48
+
+export function sincLobes(budget: InterpBudget): number {
+  return budget === 'realtime' ? REALTIME_SINC_LOBES : OFFLINE_SINC_LOBES
+}
+
+export function interpQuality(algo: StretchInterpAlgo, budget: InterpBudget): InterpQuality {
+  if (algo === 'nearest' || algo === 'linear') return 'fast'
+  if (algo === 'sinc' && budget === 'offline') return 'high'
+  return 'balanced'
+}
 
 export function stretchInterpAlgoAt(value: number): StretchInterpAlgo {
   const i = Math.round(clamp(value, 0, STRETCH_INTERP_ALGOS.length - 1))
@@ -36,34 +60,96 @@ function hannLobe(x: number, lobes: number): number {
   return 0.5 * (1 + Math.cos((Math.PI * x) / lobes))
 }
 
+/** Circular read inside a playback region so grains can cross a loop seam. */
+export type ReadWrap = {
+  /** Inclusive start, exclusive end, in source samples. */
+  start: number
+  end: number
+  mode: 'loop' | 'pingpong'
+}
+
+function wrapIndex(i: number, wrap: ReadWrap): number {
+  const start = Math.floor(wrap.start)
+  const end = Math.max(start + 1, Math.floor(wrap.end))
+  const span = end - start
+  if (wrap.mode === 'loop') {
+    let rel = (i - start) % span
+    if (rel < 0) rel += span
+    return start + rel
+  }
+  const period = span * 2
+  let rel = (i - start) % period
+  if (rel < 0) rel += period
+  if (rel < span) return start + rel
+  return end - 1 - (rel - span)
+}
+
+function readAt(src: ArrayLike<number>, i: number, wrap?: ReadWrap): number {
+  if (!wrap) return at(src, i)
+  return at(src, wrapIndex(i, wrap))
+}
+
+/**
+ * Map a playback region into the buffer actually being read.
+ * Reverse playback uses a time-reversed copy, so the region is mirrored.
+ */
+export function playbackReadWrap(
+  sampleRate: number,
+  regionStartSec: number,
+  regionEndSec: number,
+  durationSec: number,
+  reverse: boolean,
+  loop: boolean,
+  pingpong: boolean,
+): ReadWrap | undefined {
+  if (!(sampleRate > 0) || (!loop && !pingpong)) return undefined
+  const span = regionEndSec - regionStartSec
+  if (!(span > 0)) return undefined
+  if (reverse) {
+    const revStart = Math.max(0, durationSec - regionEndSec) * sampleRate
+    const revEnd = Math.max(0, durationSec - regionStartSec) * sampleRate
+    return { start: revStart, end: Math.max(revStart + 1, revEnd), mode: 'loop' }
+  }
+  const start = regionStartSec * sampleRate
+  return {
+    start,
+    end: Math.max(start + 1, regionEndSec * sampleRate),
+    mode: pingpong ? 'pingpong' : 'loop',
+  }
+}
+
 /**
  * Read `src` at fractional sample `pos`.
  * `step` is source samples per output sample (pitch ratio). When > 1 the sinc
  * cutoff drops so downsampling stays band-limited.
+ * Realtime sinc is 4 lobes; offline sinc is 8. Nearest and linear stay cheap.
  */
 export function sampleAt(
   src: ArrayLike<number>,
   pos: number,
   algo: StretchInterpAlgo,
   step = 1,
+  budget: InterpBudget = 'offline',
+  wrap?: ReadWrap,
 ): number {
   if (!(src.length > 0) || !Number.isFinite(pos)) return 0
+  const sample = (i: number) => readAt(src, i, wrap)
   switch (algo) {
     case 'nearest': {
-      return at(src, Math.round(pos))
+      return sample(Math.round(pos))
     }
     case 'linear': {
       const i0 = Math.floor(pos)
       const t = pos - i0
-      return at(src, i0) * (1 - t) + at(src, i0 + 1) * t
+      return sample(i0) * (1 - t) + sample(i0 + 1) * t
     }
     case 'cubic': {
       const i1 = Math.floor(pos)
       const t = pos - i1
-      const y0 = at(src, i1 - 1)
-      const y1 = at(src, i1)
-      const y2 = at(src, i1 + 1)
-      const y3 = at(src, i1 + 2)
+      const y0 = sample(i1 - 1)
+      const y1 = sample(i1)
+      const y2 = sample(i1 + 1)
+      const y3 = sample(i1 + 2)
       const c1 = 0.5 * (y2 - y0)
       const c2 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3
       const c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2)
@@ -72,15 +158,17 @@ export function sampleAt(
     case 'sinc': {
       const cutoff = Math.min(1, 1 / Math.max(step, 1e-6))
       const center = Math.floor(pos)
-      const lobes = SINC_LOBES
+      const lobes = sincLobes(budget)
+      const cap = budget === 'realtime' ? REALTIME_SINC_RADIUS_CAP : OFFLINE_SINC_RADIUS_CAP
+      const radius = Math.min(cap, Math.max(lobes, Math.ceil(lobes / cutoff)))
       let sum = 0
       let wsum = 0
-      const i0 = center - lobes
-      const i1 = center + lobes
+      const i0 = center - radius
+      const i1 = center + radius
       for (let i = i0; i <= i1; i++) {
         const x = (pos - i) * cutoff
         const w = sinc(x) * hannLobe(x, lobes)
-        sum += at(src, i) * w
+        sum += sample(i) * w
         wsum += w
       }
       return wsum > 1e-8 ? sum / wsum : 0
@@ -112,12 +200,15 @@ export function resampleInto(
   algo: StretchInterpAlgo,
   windowed: boolean,
   gain = 1,
+  budget: InterpBudget = 'offline',
+  wrap?: ReadWrap,
 ): void {
   const n = Math.max(0, Math.min(count, dest.length))
   const g = Number.isFinite(gain) ? gain : 1
   const edge = Math.max(8, Math.floor(n * 0.04))
+  const stride = Number.isFinite(step) ? step : 1
   for (let i = 0; i < n; i++) {
-    const s = sampleAt(src, pos + i * step, algo, step)
+    const s = sampleAt(src, pos + i * stride, algo, Math.abs(stride), budget, wrap)
     const env = windowed ? hannAt(i, n) : edgeFadeAt(i, n, edge)
     dest[i] = s * g * env
   }
@@ -154,6 +245,8 @@ export function overlapAddResample(
   pitchRatio: number,
   algo: StretchInterpAlgo,
   start = 0,
+  budget: InterpBudget = 'offline',
+  wrap?: ReadWrap,
 ): Float32Array {
   const out = new Float32Array(Math.max(1, outputLength))
   const grain = Math.max(8, Math.floor(grainSamples))
@@ -165,10 +258,58 @@ export function overlapAddResample(
   let outPos = 0
   const peak = clamp((hop / grain) * 1.08, 0.14, 0.62)
   while (outPos < out.length) {
-    resampleInto(scratch, grain, src, srcPos, step, algo, true, peak)
+    resampleInto(scratch, grain, src, srcPos, step, algo, true, peak, budget, wrap)
     const n = Math.min(grain, out.length - outPos)
     for (let i = 0; i < n; i++) out[outPos + i]! += scratch[i] ?? 0
     srcPos += srcHop
+    outPos += hop
+  }
+  return out
+}
+
+/**
+ * Offline overlap-add that uses the same Speed glide as live playback.
+ * `budget` defaults to offline so a bounce can keep the long sinc.
+ * Speed still only moves the read head; pitch stays on `readPitch`.
+ */
+export function renderGlidedStretch(
+  src: ArrayLike<number>,
+  outputLength: number,
+  sampleRate: number,
+  interp: number,
+  speedFrom: number,
+  speedTo: number,
+  pitchSemitones: number,
+  algo: StretchInterpAlgo,
+  budget: InterpBudget = 'offline',
+  wrap?: ReadWrap,
+): Float32Array {
+  const out = new Float32Array(Math.max(1, outputLength))
+  const sr = Math.max(1, sampleRate)
+  let control: StretchControl = {
+    speed: Math.max(1e-4, speedFrom),
+    pitch: pitchSemitones,
+    windowSpeed: Math.max(1e-4, speedFrom),
+    windowPitch: pitchSemitones,
+  }
+  let srcPos = 0
+  let outPos = 0
+  let guard = 0
+  while (outPos < out.length && guard < out.length) {
+    guard += 1
+    const step = advanceStretchControl(control, speedTo, pitchSemitones, interp)
+    control = step
+    const grain = Math.max(8, Math.round(step.grainSec * sr))
+    const hop = Math.max(1, Math.round(step.hopSec * sr))
+    const scratch = new Float32Array(grain)
+    resampleInto(scratch, grain, src, srcPos, step.readPitch, algo, true, step.peak, budget, wrap)
+    const n = Math.min(grain, out.length - outPos)
+    for (let i = 0; i < n; i++) out[outPos + i]! += scratch[i] ?? 0
+    srcPos += step.sourceAdvance * sr
+    if (wrap && srcPos >= wrap.end) {
+      const span = Math.max(1, wrap.end - wrap.start)
+      srcPos = wrap.start + ((srcPos - wrap.start) % span)
+    }
     outPos += hop
   }
   return out

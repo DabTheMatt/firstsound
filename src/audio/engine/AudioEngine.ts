@@ -235,13 +235,18 @@ import { estimateTempo, detectTransients } from './transients'
 import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
 import { applyStereoStage, createStereoStage, forceStereoUpmix, type StereoStage } from './stereoStage'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
-import { effectiveInterpAlgo, resampleInto } from './resample'
 import {
-  smoothTowardLinear,
-  smoothTowardLog,
+  effectiveInterpAlgo,
+  playbackReadWrap,
+  resampleInto,
+  type InterpBudget,
+  type ReadWrap,
+} from './resample'
+import {
+  advanceStretchControl,
+  smoothTowardLogDt,
   stretchLookahead,
-  stretchSlew,
-  stretchWindow,
+  stretchSchedule,
 } from './stretch'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
@@ -321,6 +326,15 @@ type Listener = () => void
 
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
+/** Long slow grains overlap many hops; the pool must outlive the longest window. */
+const STRETCH_GRAIN_POOL = 32
+
+type StretchControlSeed = {
+  speed: number
+  pitch: number
+  windowSpeed?: number
+  windowPitch?: number
+}
 const MIN_REGION = 0.05
 const RAMP = 0.008
 
@@ -489,6 +503,9 @@ export class AudioEngine {
   private stretchDir = 1
   private stretchSpeed = 1
   private stretchPitch = 0
+  /** Slow follower for grain length. The read head uses stretchSpeed directly. */
+  private windowSpeed = 1
+  private windowPitch = 0
   private stretchGrainPool: AudioBuffer[] = []
   private stretchGrainPoolIndex = 0
   private visibilityBound = false
@@ -1864,12 +1881,21 @@ export class AudioEngine {
     const head = this.loop
       ? wrapPlayheadIntoRegion(shown, start, end, MIN_REGION)
       : snapPlayheadToRegion(shown, start, end, reverse)
+    const stretchSeed =
+      this.schedulerId !== 0
+        ? {
+            speed: this.stretchSpeed,
+            pitch: this.stretchPitch,
+            windowSpeed: this.windowSpeed,
+            windowPitch: this.windowPitch,
+          }
+        : null
     this.playOffset = head
     this.playCtxTime = this.ctx.currentTime
     this.stretchHead = head
     this.filterEnvOrigin = this.lfoClockSec
     this.stopVoices()
-    this.startRegionPlayback()
+    this.startRegionPlayback(stretchSeed)
     this.startCompanionVoices()
     this.applyLiveAudio()
   }
@@ -3454,7 +3480,9 @@ export class AudioEngine {
     )
     this.playOffset = pos
     this.playCtxTime = now
-    this.startStretchPlayback()
+    // The buffer voice was locked at 1× / 0 st. Seed the glide there so the
+    // first grains do not snap to the new Speed or Pitch.
+    this.startStretchPlayback({ speed: 1, pitch: 0 })
   }
 
   private startBufferVoice(offset: number): void {
@@ -3641,10 +3669,10 @@ export class AudioEngine {
     this.motionRandCur += (this.motionRandTarget - this.motionRandCur) * Math.min(1, dt * 4)
   }
 
-  private startRegionPlayback(): void {
+  private startRegionPlayback(stretchSeed?: StretchControlSeed | null): void {
     const live = this.liveParams()
     if (playbackNeedsStretch(live.speed, live.pitch)) {
-      this.startStretchPlayback()
+      this.startStretchPlayback(stretchSeed)
       return
     }
     if (this.direction === 'pingpong') this.startPingPongVoice()
@@ -3656,7 +3684,7 @@ export class AudioEngine {
     if (!ctx) return null
     const n = Math.max(64, length)
     const i = this.stretchGrainPoolIndex
-    this.stretchGrainPoolIndex = (i + 1) % 24
+    this.stretchGrainPoolIndex = (i + 1) % STRETCH_GRAIN_POOL
     let buf = this.stretchGrainPool[i]
     if (!buf || buf.numberOfChannels !== channels || buf.sampleRate !== sampleRate || buf.length < n) {
       buf = ctx.createBuffer(channels, n, sampleRate)
@@ -3674,23 +3702,40 @@ export class AudioEngine {
     algo: StretchInterpAlgo,
     gain: number,
     windowed: boolean,
+    budget: InterpBudget,
+    wrap?: ReadWrap,
   ): void {
     const pos = offsetSec * source.sampleRate
     const n = Math.min(count, dest.length)
     const ch = Math.min(dest.numberOfChannels, source.numberOfChannels)
     for (let c = 0; c < ch; c++) {
-      resampleInto(dest.getChannelData(c), n, source.getChannelData(c), pos, step, algo, windowed, gain)
+      resampleInto(
+        dest.getChannelData(c),
+        n,
+        source.getChannelData(c),
+        pos,
+        step,
+        algo,
+        windowed,
+        gain,
+        budget,
+        wrap,
+      )
     }
   }
 
-  private startStretchPlayback(): void {
+  private startStretchPlayback(seed?: StretchControlSeed | null): void {
     if (!this.ctx) return
     const live = this.liveParams()
     this.nextGrainTime = this.ctx.currentTime
     this.stretchHead = this.playOffset
     this.stretchDir = this.direction === 'reverse' ? -1 : 1
-    this.stretchSpeed = Math.max(PARAMS.speed.min, live.speed)
-    this.stretchPitch = live.pitch
+    const speed = Math.max(PARAMS.speed.min, seed?.speed ?? live.speed)
+    const pitch = seed?.pitch ?? live.pitch
+    this.stretchSpeed = speed
+    this.stretchPitch = pitch
+    this.windowSpeed = Math.max(PARAMS.speed.min, seed?.windowSpeed ?? speed)
+    this.windowPitch = seed?.windowPitch ?? pitch
     this.schedulerId = window.setInterval(() => this.scheduleStretch(), SCHEDULER_MS)
     this.scheduleStretch()
   }
@@ -3731,25 +3776,42 @@ export class AudioEngine {
     const duration = buffer.duration
     const live = this.liveParams()
     const algo = effectiveInterpAlgo(live.stretchInterpOn, live.stretchInterpAlgo)
-    const slew = stretchSlew(stretchWindow(live.stretchInterp, 1, 1).hopSec, live.stretchInterp)
-    const horizonBase = stretchWindow(live.stretchInterp, live.speed, pitchRatio(live.pitch))
+    const targetSpeed = Math.max(PARAMS.speed.min, live.speed)
+    const horizonBase = stretchSchedule(
+      live.stretchInterp,
+      this.windowSpeed,
+      this.windowPitch,
+      this.stretchSpeed,
+      targetSpeed,
+    )
     const horizon = ctx.currentTime + stretchLookahead(horizonBase.hopSec)
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const reverse = this.direction === 'reverse'
     const playBuffer = reverse && this.reversed ? this.reversed : buffer
+    const wrap =
+      this.loop && this.direction !== 'pingpong'
+        ? playbackReadWrap(playBuffer.sampleRate, start, end, duration, reverse, true, false)
+        : undefined
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
-      this.stretchSpeed = smoothTowardLog(
-        this.stretchSpeed,
-        Math.max(PARAMS.speed.min, live.speed),
-        slew,
+      const step = advanceStretchControl(
+        {
+          speed: this.stretchSpeed,
+          pitch: this.stretchPitch,
+          windowSpeed: this.windowSpeed,
+          windowPitch: this.windowPitch,
+        },
+        targetSpeed,
+        live.pitch,
+        live.stretchInterp,
       )
-      this.stretchPitch = smoothTowardLinear(this.stretchPitch, live.pitch, slew)
-      const speed = this.stretchSpeed
-      const rate = Math.max(PARAMS.speed.min, pitchRatio(this.stretchPitch))
-      const grainWin = stretchWindow(live.stretchInterp, speed, rate)
+      this.stretchSpeed = step.speed
+      this.stretchPitch = step.pitch
+      this.windowSpeed = step.windowSpeed
+      this.windowPitch = step.windowPitch
+      const rate = step.readPitch
       const wrapped = this.wrapStretchHead(this.stretchHead, start, end)
       if (wrapped == null) {
         this.stop()
@@ -3758,7 +3820,6 @@ export class AudioEngine {
       this.stretchHead = wrapped
       const mapped = reverse ? reverseTime(this.stretchHead, duration) : this.stretchHead
       const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
-      const grainDur = grainWin.grainSec
       const playbackRel =
         this.direction === 'reverse'
           ? Math.max(0, end - this.stretchHead)
@@ -3772,17 +3833,29 @@ export class AudioEngine {
         this.regionFade.fadeInBend,
         this.regionFade.fadeOutBend,
       )
+      const grainDur = step.grainSec
       const count = Math.max(32, Math.ceil(grainDur * playBuffer.sampleRate))
       const grainBuf = this.acquireResampleGrain(count, playBuffer.numberOfChannels, playBuffer.sampleRate)
       if (!grainBuf) return
-      this.fillResampledGrain(grainBuf, playBuffer, offset, count, rate, algo, grainWin.peak * fadeAmp, true)
+      this.fillResampledGrain(
+        grainBuf,
+        playBuffer,
+        offset,
+        count,
+        rate,
+        algo,
+        step.peak * fadeAmp,
+        true,
+        'realtime',
+        wrap,
+      )
       const src = ctx.createBufferSource()
       src.buffer = grainBuf
       src.connect(this.voiceBus)
       src.start(t, 0, grainDur)
       src.stop(t + grainDur + 0.02)
-      this.stretchHead += grainWin.hopSec * speed * this.stretchDir
-      this.nextGrainTime += grainWin.hopSec
+      this.stretchHead += step.sourceAdvance * this.stretchDir
+      this.nextGrainTime += step.hopSec
     }
   }
 
@@ -3796,7 +3869,12 @@ export class AudioEngine {
     const horizon = ctx.currentTime + LOOKAHEAD
     const live = this.liveParams()
     const density = Math.max(live.density * Math.max(live.speed, 0.25), 0.5)
-    this.grainDensitySlew = smoothTowardLog(Math.max(this.grainDensitySlew, 0.5), density, 0.22)
+    this.grainDensitySlew = smoothTowardLogDt(
+      Math.max(this.grainDensitySlew, 0.5),
+      density,
+      SCHEDULER_MS / 1000,
+      0.08,
+    )
     const interval = 1 / this.grainDensitySlew
     const grainDur = live.grainSize / 1000
     const { start, end } = this.playbackRegion(duration)
@@ -3843,7 +3921,7 @@ export class AudioEngine {
         const count = Math.max(32, Math.ceil(dur * buffer.sampleRate))
         const grainBuf = this.acquireResampleGrain(count, buffer.numberOfChannels, buffer.sampleRate)
         if (!grainBuf) return
-        this.fillResampledGrain(grainBuf, buffer, grainOffset, count, rate, algo, 1, false)
+        this.fillResampledGrain(grainBuf, buffer, grainOffset, count, rate, algo, 1, false, 'realtime')
         src.buffer = grainBuf
         src.connect(gain)
         gain.connect(this.voiceBus)
