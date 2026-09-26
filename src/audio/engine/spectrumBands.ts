@@ -37,33 +37,47 @@ export type SpectrumFallBallistics = {
 }
 
 /**
+ * Longest step treated as one visual update.
+ * A hitch should not empty the trace, but 10 Hz and uneven refresh still decay
+ * from elapsed time rather than from a per-frame subtraction.
+ */
+export const SPECTRUM_FALL_DT_CAP_SEC = 0.25
+
+/**
  * Time constants for the two visual followers.
  * Peak and slow stay in one family so Follow does not invent a second decay clock.
- * Release times (about 90%, after any hold): fast ~0.2s, normal ~1s, slow ~15s.
- * Slow also pauses on a real drop so the contour can be read before it glides down.
+ * Release is exponential in time (about 90%): fast ~0.3s, normal ~1.0s, slow ~3.5s.
+ * A 90 dB drop then reaches the floor in roughly 0.6s / 2s / 7s.
+ * None of these rates freeze. Peak hold is not part of Fall.
  */
 export function spectrumFallBallistics(mode: SpectrumFallMode): SpectrumFallBallistics {
   if (mode === 'fast') {
     return {
-      peak: { attack: 30, release: 11, holdSec: 0, settleDb: 0 },
-      slow: { attack: 8, release: 2.8, holdSec: 0, settleDb: 0 },
+      peak: { attack: 24, release: 8, holdSec: 0, settleDb: 0 },
+      slow: { attack: 10, release: 2.8, holdSec: 0, settleDb: 0 },
     }
   }
   if (mode === 'slow') {
     return {
-      peak: { attack: 4, release: 0.15, holdSec: 0.45, settleDb: 1.5 },
-      slow: { attack: 1.5, release: 0.06, holdSec: 0.7, settleDb: 2 },
+      peak: { attack: 8, release: 0.65, holdSec: 0, settleDb: 0 },
+      slow: { attack: 3.5, release: 0.28, holdSec: 0, settleDb: 0 },
     }
   }
   return {
-    peak: { attack: 12, release: 2.2, holdSec: 0, settleDb: 0 },
-    slow: { attack: 3.5, release: 0.7, holdSec: 0, settleDb: 0 },
+    peak: { attack: 14, release: 2.2, holdSec: 0, settleDb: 0 },
+    slow: { attack: 6, release: 0.9, holdSec: 0, settleDb: 0 },
   }
 }
 
-/** One animation step from a per-second rate. Clamped so a stalled frame cannot snap. */
+/** Seconds for an exponential release to close `fraction` of the gap (0.9 → about 90%). */
+export function spectrumReleaseTimeSec(ratePerSec: number, fraction = 0.9): number {
+  if (!(ratePerSec > 0) || !(fraction > 0) || fraction >= 1) return Infinity
+  return -Math.log(1 - fraction) / ratePerSec
+}
+
+/** One animation step from a per-second rate. Uses elapsed time, capped so a stall cannot snap. */
 export function envelopeStep(ratePerSec: number, dtSec: number): number {
-  const dt = Math.min(0.05, Math.max(0, dtSec))
+  const dt = Math.min(SPECTRUM_FALL_DT_CAP_SEC, Math.max(0, dtSec))
   if (!(ratePerSec > 0) || dt === 0) return 0
   return 1 - Math.exp(-ratePerSec * dt)
 }
@@ -108,7 +122,32 @@ export const FAST_RELEASE = 0.28
 export const SLOW_ATTACK = 0.07
 export const SLOW_RELEASE = 0.045
 
-export const SPECTRUM_FLOOR_DB = -100
+/**
+ * Deepest stored FFT bin. The 120 dB analyzer range needs real data down here;
+ * a shallower display range only changes the plot scale.
+ */
+export const SPECTRUM_FLOOR_DB = -120
+
+/** Analyzer vertical ranges, matching the usual 60 / 90 / 120 dB analyzer windows. */
+export const SPECTRUM_RANGE_CHOICES = [60, 90, 120] as const
+
+export type SpectrumRangeDb = (typeof SPECTRUM_RANGE_CHOICES)[number]
+
+export const SPECTRUM_RANGE_DEFAULT: SpectrumRangeDb = 90
+
+export function clampSpectrumRange(value: unknown): SpectrumRangeDb {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (n === 60 || n === 120) return n
+  return SPECTRUM_RANGE_DEFAULT
+}
+
+/** Display floor for a range: 0 dB at the top, `-range` at the bottom. */
+export function spectrumDisplayFloorDb(range: SpectrumRangeDb): number {
+  return -range
+}
+
+/** Left edge of the spectrum and response plots. Log frequency is undefined at 0 Hz. */
+export const SPECTRUM_AXIS_MIN_HZ = 20
 
 /** Lift FFT bins so the displayed peak sits with the loudness meter (bin dB is much lower). */
 export const SPECTRUM_METER_ALIGN_MAX_DB = 48
@@ -352,16 +391,16 @@ export function fftPeakDbInHzRange(
   hiHz: number,
 ): number {
   const n = binsDb.length
-  if (n < 2 || !(sampleRate > 0)) return -100
+  if (n < 2 || !(sampleRate > 0)) return SPECTRUM_FLOOR_DB
   const fftSize = n * 2
   const nyquist = sampleRate / 2
   const lo = Math.min(nyquist, Math.max(1, Math.min(loHz, hiHz)))
   const hi = Math.min(nyquist, Math.max(lo * 1.001, Math.max(loHz, hiHz)))
   const i0 = Math.max(1, Math.floor((lo * fftSize) / sampleRate))
   const i1 = Math.min(fftLastUsableBin(n), Math.ceil((hi * fftSize) / sampleRate))
-  let peak = -100
+  let peak = SPECTRUM_FLOOR_DB
   for (let i = i0; i <= i1; i++) {
-    const db = binsDb[i] ?? -100
+    const db = binsDb[i] ?? SPECTRUM_FLOOR_DB
     if (db > peak) peak = db
   }
   return peak
@@ -380,7 +419,7 @@ export function followBands(
 ): void {
   const n = Math.min(prev.length, target.length)
   for (let i = 0; i < n; i++) {
-    prev[i] = followEnvelope(prev[i] ?? -100, target[i] ?? -100, attack, release)
+    prev[i] = followEnvelope(prev[i] ?? SPECTRUM_FLOOR_DB, target[i] ?? SPECTRUM_FLOOR_DB, attack, release)
   }
 }
 
@@ -401,18 +440,22 @@ export function followBandsOverTime(
   hold?: SpectrumReleaseHold | null,
 ): void {
   const n = Math.min(prev.length, target.length)
-  const dt = Math.min(0.05, Math.max(0, dtSec))
+  const dt = Math.min(SPECTRUM_FALL_DT_CAP_SEC, Math.max(0, dtSec))
   const attack = envelopeStep(attackPerSec, dt)
   const release = envelopeStep(releasePerSec, dt)
   const holdSec = hold?.holdSec ?? 0
   const settleDb = hold?.settleDb ?? 0
   const elapsed = hold?.elapsed
+  const approach = (current: number, next: number, coef: number) => {
+    const value = current + (next - current) * coef
+    return Math.abs(next - value) <= 0.25 ? next : value
+  }
   for (let i = 0; i < n; i++) {
-    const current = prev[i] ?? -100
-    const next = target[i] ?? -100
+    const current = prev[i] ?? SPECTRUM_FLOOR_DB
+    const next = target[i] ?? SPECTRUM_FLOOR_DB
     if (next >= current) {
       if (elapsed && i < elapsed.length) elapsed[i] = 0
-      prev[i] = current + (next - current) * attack
+      prev[i] = approach(current, next, attack)
       continue
     }
     const drop = current - next
@@ -422,12 +465,12 @@ export function followBandsOverTime(
     }
     if (!(holdSec > 0)) {
       if (elapsed && i < elapsed.length) elapsed[i] = 0
-      prev[i] = current + (next - current) * release
+      prev[i] = approach(current, next, release)
       continue
     }
     const waited = (elapsed && i < elapsed.length ? elapsed[i]! : 0) + dt
     if (elapsed && i < elapsed.length) elapsed[i] = waited
     if (waited < holdSec) continue
-    prev[i] = current + (next - current) * release
+    prev[i] = approach(current, next, release)
   }
 }

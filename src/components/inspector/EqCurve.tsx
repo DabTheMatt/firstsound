@@ -11,12 +11,15 @@ import {
   EQ_MINI_BAND_COUNT,
   EQ_PLOT_MAX_DB,
   EQ_PLOT_MIN_DB,
+  displayFrequencies,
   freqToX,
-  strokeEqMagnitude,
+  layoutMagnitudeCurve,
+  responseSampleCount,
+  strokeMagnitudeVertices,
   xToFreq,
   yToDb,
 } from '../../audio/engine/eqPlot'
-import { logFreqAxis } from '../../audio/engine/eqResponse'
+import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
@@ -120,13 +123,15 @@ export function EqCurve({
       const live = engine.getSnapshot()
       const plotMax = spectrumMaxHz(live.sampleRate || sr)
       const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
-      const freqs = logFreqAxis(width, EQ_MIN_HZ, plotMax)
+      const freqs = displayFrequencies(responseSampleCount(width), EQ_MIN_HZ, plotMax, 'log')
       const tone = eqTone(toneIndex, colors)
-      const yAt = (db: number) => Math.min(height, Math.max(0, dbToY(db, height)))
+      const plot = { left: 0, right: width, top: 0, bottom: height }
       ctx.save()
       ctx.beginPath()
       ctx.rect(0, 0, width, height)
       ctx.clip()
+      ctx.lineJoin = 'round'
+      ctx.lineCap = 'round'
       const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))
       let processing = plotBands
       if (showLive) {
@@ -147,17 +152,37 @@ export function EqCurve({
         const activeCount = plotBands.filter((band) => bandIsActive(band)).length
         if (activeCount > 1 && eqResponsesDiverge(plotBands, liveBands, freqs, sr)) {
           const ghostStyle = eqResponseCurveStyle('live', false, dpr)
+          const ghostVerts = layoutMagnitudeCurve(
+            freqs,
+            (hz) => eqMagnitudeDb(plotBands, hz, sr),
+            plot,
+            EQ_MIN_HZ,
+            plotMax,
+            EQ_PLOT_MIN_DB,
+            EQ_PLOT_MAX_DB,
+            'log',
+          )
           ctx.setLineDash([4 * dpr, 3 * dpr])
           ctx.strokeStyle = colorWithAlpha(tone.curve, ghostStyle.alpha)
           ctx.lineWidth = Math.max(0.75, ghostStyle.width)
-          strokeEqMagnitude(ctx, plotBands, freqs, sr, (i) => i, yAt)
+          strokeMagnitudeVertices(ctx, ghostVerts)
           ctx.setLineDash([])
         }
       }
       const storedStyle = eqResponseCurveStyle('stored', false, dpr)
+      const eqVerts = layoutMagnitudeCurve(
+        freqs,
+        (hz) => eqMagnitudeDb(processing, hz, sr),
+        plot,
+        EQ_MIN_HZ,
+        plotMax,
+        EQ_PLOT_MIN_DB,
+        EQ_PLOT_MAX_DB,
+        'log',
+      )
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
       ctx.lineWidth = Math.max(1.5, storedStyle.width)
-      strokeEqMagnitude(ctx, processing, freqs, sr, (i) => i, yAt)
+      strokeMagnitudeVertices(ctx, eqVerts)
       ctx.restore()
       ctx.fillStyle = colors.textMuted
       ctx.font = `${10 * dpr}px sans-serif`

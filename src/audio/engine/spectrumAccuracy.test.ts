@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { capSpectrumBins, bandPeakDb, followBandsOverTime, logBandEdgesHz, spectrumFallBallistics } from './spectrumBands'
+import {
+  capSpectrumBins,
+  bandPeakDb,
+  followBandsOverTime,
+  logBandEdgesHz,
+  spectrumFallBallistics,
+  SPECTRUM_FLOOR_DB,
+} from './spectrumBands'
 import { applyBiquad, eqMagnitudeDb } from './eqResponse'
 import { defaultEqBandAt, type EqBand, type EqFilterType } from './eqBands'
 import { hzToX, xToHz, type FreqScaleKind } from './freqScale'
@@ -292,9 +299,18 @@ describe('bars, line, and frequency axis', () => {
 })
 
 describe('silence', () => {
+  it('keeps a very quiet sine instead of clamping it at -100 dB', () => {
+    const amp = 10 ** (-110 / 20)
+    const bins = analyze(sine(1000, SPECTRUM_CAPTURE_FFT, amp))
+    const db = bins[dominantBin(bins)]!
+    expect(db).toBeGreaterThan(SPECTRUM_FLOOR_DB)
+    expect(db).toBeLessThan(-100)
+    expect(db).toBeGreaterThan(-116)
+  })
+
   it('stays on the floor and then falls there after a tone', () => {
     const bins = analyze(new Float32Array(SPECTRUM_CAPTURE_FFT))
-    expect(Math.max(...bins)).toBeLessThanOrEqual(-100)
+    expect(Math.max(...bins)).toBe(SPECTRUM_FLOOR_DB)
     const held = new Float32Array([-6])
     const floor = new Float32Array([-100])
     const release = spectrumFallBallistics('fast').peak.release

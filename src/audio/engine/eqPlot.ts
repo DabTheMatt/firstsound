@@ -49,13 +49,21 @@ export function strokeEqMagnitude(
   yAt: (db: number) => number,
 ): void {
   ctx.beginPath()
+  let started = false
   for (let i = 0; i < freqs.length; i++) {
-    const y = yAt(eqMagnitudeDb(bands, freqs[i] ?? EQ_MIN_HZ, sampleRate))
+    const hz = freqs[i]
+    if (!(hz !== undefined && hz > 0) || !Number.isFinite(hz)) continue
+    const db = eqMagnitudeDb(bands, hz, sampleRate)
+    if (!Number.isFinite(db)) continue
     const x = xAt(i)
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
+    const y = yAt(db)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+    if (!started) {
+      ctx.moveTo(x, y)
+      started = true
+    } else ctx.lineTo(x, y)
   }
-  ctx.stroke()
+  if (started) ctx.stroke()
 }
 
 /** Mini inspector FFT always shows this many log bands. */
@@ -96,11 +104,93 @@ export function spectrumEqOverlayY(
   maxDb = SPECTRUM_EQ_MAX_DB,
 ): number {
   const span = maxDb - minDb
+  if (!(span > 0) || !Number.isFinite(db)) return bottom
   const y = top + ((maxDb - db) / span) * (bottom - top)
   return Math.min(bottom, Math.max(top, y))
 }
 
-import { hzToX as mapHzToX, xToHz, type FreqScaleKind } from './freqScale'
+export type MagnitudeVertex = { x: number; y: number; hz: number; db: number }
+
+/** How many response samples a plot needs. Log axes use the same density at 20 Hz and 10 kHz. */
+export function responseSampleCount(plotWidth: number): number {
+  if (!(plotWidth > 1)) return 2
+  return Math.max(256, Math.min(2048, Math.round(plotWidth)))
+}
+
+/** Frequencies spaced evenly in the active plot scale, starting at `minHz` (never 0). */
+export function displayFrequencies(
+  count: number,
+  minHz: number,
+  maxHz: number,
+  scale: FreqScaleKind,
+): number[] {
+  const n = Math.max(2, Math.round(count))
+  const lo = Math.max(1e-3, minHz)
+  const hi = Math.max(lo * 1.001, maxHz)
+  const out: number[] = []
+  for (let i = 0; i < n; i++) {
+    const hz = xToHz(i / (n - 1), lo, hi, 0, 1, scale)
+    if (hz > 0 && Number.isFinite(hz)) out.push(hz)
+  }
+  return out
+}
+
+function frequencyOnAxis(hz: number, minHz: number, maxHz: number, scale: FreqScaleKind): boolean {
+  if (!(hz > 0) || !Number.isFinite(hz) || !(minHz > 0) || !(maxHz > minHz)) return false
+  const lo = hzToUnit(minHz, scale)
+  const hi = hzToUnit(maxHz, scale)
+  const span = hi - lo
+  if (!(span > 0)) return false
+  const t = (hzToUnit(hz, scale) - lo) / span
+  return t >= -1e-4 && t <= 1 + 1e-4
+}
+
+/**
+ * Magnitude samples → plot vertices.
+ * Frequencies outside the axis are omitted. They are not pinned to the left or
+ * right edge, which would draw a vertical wall into the first valid point.
+ * dB outside [minDb, maxDb] clips to the horizontal boundary at that frequency.
+ */
+export function layoutMagnitudeCurve(
+  freqs: readonly number[],
+  dbAt: (hz: number) => number,
+  plot: { left: number; right: number; top: number; bottom: number },
+  minHz: number,
+  maxHz: number,
+  minDb: number,
+  maxDb: number,
+  scale: FreqScaleKind = 'log',
+): MagnitudeVertex[] {
+  const out: MagnitudeVertex[] = []
+  for (const hz of freqs) {
+    if (!frequencyOnAxis(hz, minHz, maxHz, scale)) continue
+    const db = dbAt(hz)
+    if (!Number.isFinite(db)) continue
+    const x = mapHzToX(hz, minHz, maxHz, plot.left, plot.right, scale)
+    const y = spectrumEqOverlayY(db, plot.top, plot.bottom, minDb, maxDb)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+    out.push({ x, y, hz, db })
+  }
+  return out
+}
+
+/** Open polyline. Does not close to the floor or run down the graph edge. */
+export function strokeMagnitudeVertices(
+  ctx: CanvasRenderingContext2D,
+  vertices: readonly { x: number; y: number }[],
+): void {
+  if (vertices.length < 1) return
+  ctx.beginPath()
+  const first = vertices[0]!
+  ctx.moveTo(first.x, first.y)
+  for (let i = 1; i < vertices.length; i++) {
+    const point = vertices[i]!
+    ctx.lineTo(point.x, point.y)
+  }
+  ctx.stroke()
+}
+
+import { hzToUnit, hzToX as mapHzToX, xToHz, type FreqScaleKind } from './freqScale'
 
 export function freqToX(
   hz: number,

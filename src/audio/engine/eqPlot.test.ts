@@ -11,7 +11,9 @@ import {
   EQ_LIVE_CURVE_ALPHA_SCALE,
   EQ_LIVE_CURVE_WIDTH_SCALE,
   EQ_MINI_BAND_COUNT,
+  displayFrequencies,
   freqToX,
+  layoutMagnitudeCurve,
   nodeDisplayDb,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
@@ -19,6 +21,8 @@ import {
   xToFreq,
   yToDb,
 } from './eqPlot'
+import { eqMagnitudeDb } from './eqResponse'
+import type { EqFilterType } from './eqBands'
 
 const peak = (over: Partial<EqBand> = {}): EqBand => ({
   type: 'peaking',
@@ -107,6 +111,73 @@ describe('eq plot mapping', () => {
     const freqs = [100, 1000, 4000, 12000]
     expect(eqResponsesDiverge([bell], [bell], freqs, 48000)).toBe(false)
     expect(eqResponsesDiverge([bell], [bell, other], freqs, 48000)).toBe(true)
+  })
+
+  it('samples the response from 20 Hz and does not pin 0 Hz to the left edge', () => {
+    const freqs = displayFrequencies(512, 20, 20000, 'log')
+    expect(freqs[0]).toBeCloseTo(20, 4)
+    expect(Math.min(...freqs)).toBeGreaterThan(19.99)
+    expect(freqs.every((hz) => hz > 0 && Number.isFinite(hz))).toBe(true)
+    const plot = { left: 0, right: 800, top: 0, bottom: 120 }
+    const verts = layoutMagnitudeCurve(
+      [0, 5, 20, 1000, 20000],
+      (hz) => (hz < 20 ? -90 : 0),
+      plot,
+      20,
+      20000,
+      SPECTRUM_EQ_MIN_DB,
+      SPECTRUM_EQ_MAX_DB,
+      'log',
+    )
+    expect(verts[0]!.hz).toBeCloseTo(20, 4)
+    expect(verts.some((point) => point.hz < 20)).toBe(false)
+    expect(verts[0]!.y).toBeCloseTo(spectrumEqOverlayY(0, 0, 120), 4)
+    expect(verts[0]!.y).toBeLessThan(120)
+  })
+
+  it('clips a steep high-pass on the bottom without a vertical wall at 20 Hz', () => {
+    const shapes: { type: EqFilterType; gain: number; q: number; slope: 12 | 48 }[] = [
+      { type: 'highpass', gain: 0, q: 0.707, slope: 48 },
+      { type: 'lowpass', gain: 0, q: 0.707, slope: 48 },
+      { type: 'peaking', gain: 8, q: 1.2, slope: 12 },
+      { type: 'notch', gain: 0, q: 4, slope: 12 },
+      { type: 'lowshelf', gain: -6, q: 0.7, slope: 12 },
+      { type: 'highshelf', gain: 6, q: 0.7, slope: 12 },
+    ]
+    const plot = { left: 0, right: 900, top: 0, bottom: 140 }
+    for (const shape of shapes) {
+      for (const cutoff of [20, 30, 50, 100, 500, 1000, 5000, 10000, 20000]) {
+        const band: EqBand = { type: shape.type, frequency: cutoff, gain: shape.gain, q: shape.q, slope: shape.slope }
+        const freqs = displayFrequencies(700, 20, 20000, 'log')
+        const verts = layoutMagnitudeCurve(
+          freqs,
+          (hz) => eqMagnitudeDb([band], hz, 48000),
+          plot,
+          20,
+          20000,
+          SPECTRUM_EQ_MIN_DB,
+          SPECTRUM_EQ_MAX_DB,
+          'log',
+        )
+        expect(verts.length).toBeGreaterThan(100)
+        expect(verts[0]!.hz).toBeCloseTo(20, 3)
+        expect(verts[0]!.x).toBeCloseTo(0, 3)
+        for (let i = 0; i < verts.length; i++) {
+          const point = verts[i]!
+          expect(Number.isFinite(point.db)).toBe(true)
+          expect(Number.isFinite(point.x)).toBe(true)
+          expect(Number.isFinite(point.y)).toBe(true)
+          expect(point.y).toBeGreaterThanOrEqual(plot.top - 0.01)
+          expect(point.y).toBeLessThanOrEqual(plot.bottom + 0.01)
+          if (i === 0) continue
+          const prev = verts[i - 1]!
+          const dx = point.x - prev.x
+          expect(dx).toBeGreaterThan(0.2)
+          const dy = Math.abs(point.y - prev.y)
+          expect(dy / dx).toBeLessThan(40)
+        }
+      }
+    }
   })
 
   it('draws the live LFO curve at half width and lower alpha', () => {

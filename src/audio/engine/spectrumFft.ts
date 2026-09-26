@@ -1,6 +1,6 @@
 /** Identical window, FFT, and dB conversion for every spectrum tap. */
 
-const SPECTRUM_DB_FLOOR = -100
+import { SPECTRUM_FLOOR_DB as SPECTRUM_DB_FLOOR } from './spectrumBands'
 
 /**
  * Analysis window: 2048 samples is ~46 ms at 44.1 kHz (~21.5 Hz bins).

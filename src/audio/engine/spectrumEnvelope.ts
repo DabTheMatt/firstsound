@@ -1,5 +1,12 @@
 import { hzToX, xToHz, type FreqScaleKind } from './freqScale'
-import { alignedBandDb, fftDbAtHz, fftLastUsableBin, SPECTRUM_FLOOR_DB } from './spectrumBands'
+import {
+  alignedBandDb,
+  fftDbAtHz,
+  fftFirstBinHz,
+  fftLastUsableBin,
+  fftLastUsableHz,
+  SPECTRUM_FLOOR_DB,
+} from './spectrumBands'
 
 export type EnvelopePoint = { x: number; y: number }
 
@@ -189,21 +196,29 @@ export function writeSpectrumCurve(
   const width = plot.right - plot.left
   const requested = pointCount > 0 ? Math.round(pointCount) : spectrumCurvePointCount(width)
   if (n < 2 || !(sampleRate > 0) || !(maxHz > minHz) || !(width > 0) || requested < 2) return 0
-  const count = Math.min(requested, Math.floor(out.length / 2))
-  if (count < 2) return 0
-  const denom = count - 1
-  for (let i = 0; i < count; i++) {
+  const slots = Math.min(requested, Math.floor(out.length / 2))
+  if (slots < 2) return 0
+  const firstHz = fftFirstBinHz(sampleRate, n)
+  const lastHz = fftLastUsableHz(sampleRate, n)
+  const denom = slots - 1
+  let count = 0
+  for (let i = 0; i < slots; i++) {
     const u = i / denom
     const uLo = i === 0 ? 0 : (i - 0.5) / denom
-    const uHi = i === count - 1 ? 1 : (i + 0.5) / denom
+    const uHi = i === slots - 1 ? 1 : (i + 0.5) / denom
     const x = plot.left + u * width
     const hz = xToHz(x, minHz, maxHz, plot.left, plot.right, scale)
     const hzLo = xToHz(plot.left + uLo * width, minHz, maxHz, plot.left, plot.right, scale)
     const hzHi = xToHz(plot.left + uHi * width, minHz, maxHz, plot.left, plot.right, scale)
-    const db = magnitudeDbInColumn(dbs, sampleRate, hz, hzLo, hzHi, i === count - 1)
-    const o = i * 2
+    // Columns the FFT cannot see are omitted. Painting them at the floor and
+    // joining them to the first real bin draws a vertical wall near 20 Hz.
+    if (!(hzHi > firstHz) || !(hzLo < lastHz) || !(hz > 0)) continue
+    const db = magnitudeDbInColumn(dbs, sampleRate, hz, hzLo, hzHi, i === slots - 1)
+    if (!Number.isFinite(db)) continue
+    const o = count * 2
     out[o] = x
     out[o + 1] = spectrumDbToY(db, plot, dbCeil, dbFloor, dbOffset)
+    count++
   }
   return count
 }

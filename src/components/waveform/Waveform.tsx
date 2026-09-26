@@ -14,7 +14,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
 import { envelopeToParam, lanePolyline, normalizedFromLaneY } from '../../audio/automation/automation'
 import { isTypingTarget } from '../../a11y/keyboard'
-import type { WaveTool, VizMode, MeterRange } from '../../app/editorState'
+import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { Overview } from './Overview'
@@ -64,7 +64,6 @@ type Props = {
   loaded: boolean
   tool: WaveTool
   viz: VizMode
-  meterRange?: MeterRange
   fadeIn: number
   fadeOut: number
   fadeCurve: FadeCurve
@@ -157,7 +156,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     loaded,
     tool,
     viz,
-    meterRange = 'normal',
     fadeIn,
     fadeOut,
     fadeCurve,
@@ -1205,7 +1203,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 : undefined
             }
           >
-            <Spectrum active={showSpec} meterRange={meterRange} />
+            <Spectrum active={showSpec} />
           </div>
         ) : null}
         {showEqConsole ? (

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
-import { logFreqAxis } from '../../audio/engine/eqResponse'
+import { displayFrequencies, layoutMagnitudeCurve, strokeMagnitudeVertices } from '../../audio/engine/eqPlot'
 import {
   FILTER_CHARACTER_OPTIONS,
   FILTER_SLOPE_OPTIONS,
@@ -14,7 +14,7 @@ import { paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import { FILTER_PRESETS, type FilterPresetId } from '../../audio/fx/filterPresets'
 import { modulePresetsFor } from '../../audio/fx/modulePresets'
 import { PresetMenu } from '../controls/PresetMenu'
-import { filterResponseCurve } from '../../audio/fx/filterResponse'
+import { filterMagnitudeDb } from '../../audio/fx/filterResponse'
 import { FILTER_KNOBS, PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
@@ -334,21 +334,27 @@ function FilterResponse({ snap }: { snap: EngineSnapshot }) {
       const colors = readThemeColors()
       const live = engine.getSnapshot()
       const sr = live.sampleRate || 48000
-      const freqs = logFreqAxis(96, 20, 22000)
-      const curve = filterResponseCurve(live.liveParams, freqs, sr)
+      const minHz = 20
+      const maxHz = 22000
+      const freqs = displayFrequencies(Math.max(256, width), minHz, maxHz, 'log')
+      const curve = layoutMagnitudeCurve(
+        freqs,
+        (hz) => filterMagnitudeDb(live.liveParams, hz, sr),
+        { left: 0, right: width, top: 0, bottom: height },
+        minHz,
+        maxHz,
+        -24,
+        24,
+        'log',
+      )
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
-      ctx.beginPath()
-      curve.forEach((db, i) => {
-        const x = (i / (curve.length - 1)) * width
-        const y = height * (1 - (db + 24) / 48)
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      })
       ctx.strokeStyle = colorWithAlpha(colors.accent, 0.95)
       ctx.lineWidth = 1.6 * dpr
-      ctx.stroke()
+      ctx.lineJoin = 'round'
+      ctx.lineCap = 'round'
+      strokeMagnitudeVertices(ctx, curve)
       const nx = toNormalized(live.liveParams.filterCutoff, PARAMS.filterCutoff)
       ctx.strokeStyle = colorWithAlpha(colors.accent, 0.35)
       ctx.beginPath()

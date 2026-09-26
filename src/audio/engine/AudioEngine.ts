@@ -72,6 +72,7 @@ import {
   type CombFilterState,
 } from './comb'
 import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
+import { SPECTRUM_FLOOR_DB } from './spectrumBands'
 import { createPinkNoiseBuffer } from './pinkNoise'
 import { DEMO_FILE_NAME, renderDemoSample } from './demoSample'
 import { micAccessMessage } from './micAccess'
@@ -4326,7 +4327,7 @@ function waitMs(ms: number): Promise<void> {
  */
 function configureSpectrumAnalyser(node: AnalyserNode): void {
   node.fftSize = ANALYSER_FFT_IDLE
-  node.minDecibels = -100
+  node.minDecibels = SPECTRUM_FLOOR_DB
   node.maxDecibels = 0
   node.smoothingTimeConstant = 0
   try {

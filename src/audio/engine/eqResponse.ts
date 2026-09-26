@@ -3,12 +3,16 @@ import { bandIsActive, bandUsesGain, filterStageCount, stageQ, type EqBand, type
 type Biquad = { b0: number; b1: number; b2: number; a1: number; a2: number }
 
 /**
- * Magnitude response of the EQ chain in dB (RBJ cookbook / Web Audio shapes).
+ * Magnitude response of the EQ chain in dB.
+ * Coefficients match BiquadFilterNode.getFrequencyResponse for the same
+ * cookbook biquad (Web Audio applies this magnitude at the requested frequencies).
+ * Cascaded bands sum in dB, which is the linear-magnitude product of the chain.
  * `off` bands are skipped. Sample rate only sets Nyquist for coefficient calc.
  */
 export function eqMagnitudeDb(bands: EqBand[], freqHz: number, sampleRate: number): number {
   const nyquist = sampleRate / 2
-  if (!(freqHz > 0) || !(nyquist > 0)) return 0
+  // 0 Hz is not a log-frequency sample. Callers must skip NaN instead of drawing 0 dB.
+  if (!(freqHz > 0) || !(nyquist > 0) || !Number.isFinite(freqHz)) return Number.NaN
   const f = Math.min(freqHz, nyquist * 0.999)
   let db = 0
   for (const band of bands) {

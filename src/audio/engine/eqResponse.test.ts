@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultEqBands } from './eqBands'
+import { defaultEqBandAt, defaultEqBands, type EqFilterType } from './eqBands'
 import { eqMagnitudeDb, logFreqAxis } from './eqResponse'
 
 describe('eqMagnitudeDb', () => {
@@ -81,6 +81,56 @@ describe('eqMagnitudeDb', () => {
     bands[0] = { type: 'highpass', frequency: 117, gain: 0, q: Math.SQRT1_2, slope: 96 }
     expect(eqMagnitudeDb(bands, 117, 48000)).toBeGreaterThan(-6)
     expect(eqMagnitudeDb(bands, 117, 48000)).toBeLessThan(0)
+  })
+
+  it('returns NaN at 0 Hz instead of a fake 0 dB', () => {
+    const bands = defaultEqBands()
+    bands[0] = { type: 'highpass', frequency: 80, gain: 0, q: 0.7, slope: 48 }
+    expect(Number.isNaN(eqMagnitudeDb(bands, 0, 48000))).toBe(true)
+    expect(Number.isNaN(eqMagnitudeDb(bands, -10, 48000))).toBe(true)
+  })
+
+  it('sums cascaded band magnitudes in dB', () => {
+    const bell = { ...defaultEqBandAt(0), type: 'peaking' as const, frequency: 1000, gain: 6, q: 1 }
+    const shelf = { ...defaultEqBandAt(1), type: 'highshelf' as const, frequency: 4000, gain: -3, q: 0.7 }
+    const sr = 48000
+    for (const hz of [100, 1000, 4000, 12000]) {
+      const sum = eqMagnitudeDb([bell], hz, sr) + eqMagnitudeDb([shelf], hz, sr)
+      expect(eqMagnitudeDb([bell, shelf], hz, sr)).toBeCloseTo(sum, 4)
+    }
+  })
+
+  it('stays finite across the audible grid for the main filter shapes', () => {
+    const shapes: { type: EqFilterType; gain: number; q: number; slope: 12 | 48 }[] = [
+      { type: 'highpass', gain: 0, q: 0.707, slope: 48 },
+      { type: 'lowpass', gain: 0, q: 0.707, slope: 48 },
+      { type: 'peaking', gain: 6, q: 1, slope: 12 },
+      { type: 'notch', gain: 0, q: 2, slope: 12 },
+      { type: 'lowshelf', gain: -4, q: 0.7, slope: 12 },
+      { type: 'highshelf', gain: 5, q: 0.7, slope: 12 },
+    ]
+    const probes = [20, 30, 50, 100, 500, 1000, 5000, 10000, 20000]
+    const grid = logFreqAxis(512, 20, 20000)
+    for (const shape of shapes) {
+      for (const cutoff of probes) {
+        const band = { ...defaultEqBandAt(0), ...shape, frequency: cutoff }
+        for (const hz of probes) {
+          const db = eqMagnitudeDb([band], hz, 48000)
+          expect(Number.isFinite(db)).toBe(true)
+        }
+        let prev = eqMagnitudeDb([band], grid[0]!, 48000)
+        expect(grid[0]).toBeCloseTo(20, 4)
+        for (let i = 1; i < grid.length; i++) {
+          const db = eqMagnitudeDb([band], grid[i]!, 48000)
+          const oct = Math.log2(grid[i]! / grid[i - 1]!)
+          expect(Number.isFinite(db)).toBe(true)
+          if (shape.type !== 'notch') {
+            expect(Math.abs(db - prev) / oct).toBeLessThan(250)
+          }
+          prev = db
+        }
+      }
+    }
   })
 
   it('steeper high-shelf keeps the same high-end gain', () => {

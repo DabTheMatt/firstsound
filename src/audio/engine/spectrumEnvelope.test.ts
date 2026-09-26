@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hzToX, xToHz, type FreqScaleKind } from './freqScale'
-import { bandPeakDb, logBandEdgesHz } from './spectrumBands'
+import { SPECTRUM_FLOOR_DB, bandPeakDb, logBandEdgesHz } from './spectrumBands'
 import {
   fillSpectrumEnvelope,
   fillSpectrumXY,
@@ -88,7 +88,7 @@ describe('spectrumEnvelopePoints', () => {
 
   it('does not lift a floor band when aligning', () => {
     const edges = logBandEdgesHz(20, 20000, 2)
-    const pts = spectrumEnvelopePoints([-100, -40], edges, 20, 20000, {
+    const pts = spectrumEnvelopePoints([SPECTRUM_FLOOR_DB, -40], edges, 20, 20000, {
       left: 0,
       right: 100,
       top: 0,
@@ -286,18 +286,37 @@ describe('writeSpectrumCurve', () => {
     expect(yToDb(yAt(hzOf(valley)))).toBeLessThan(-40)
   })
 
-  it('covers silence and quiet bins down to the floor without dropping them', () => {
-    const silent = readCurve(new Float32Array(128).fill(-100), 48000, 20, 20000)
-    expect(silent).toHaveLength(spectrumCurvePointCount(1000))
+  it('covers measured silence down to the floor without dropping quiet bins', () => {
+    const silent = readCurve(new Float32Array(2048).fill(-100), 48000, 20, 20000)
+    expect(silent.length).toBe(spectrumCurvePointCount(1000))
     expect(silent.every((p) => p.y === 100)).toBe(true)
-    const dbs = new Float32Array(256).fill(-100)
-    dbs[6] = -18
-    dbs[40] = -30
+    const dbs = new Float32Array(2048).fill(-100)
+    dbs[40] = -18
+    dbs[400] = -30
     const pts = readCurve(dbs, 48000, 20, 20000)
     expect(pts).toHaveLength(silent.length)
     const floorPts = pts.filter((p) => p.y > 99)
     expect(floorPts.length).toBeGreaterThan(pts.length * 0.5)
     expect(pts.some((p) => p.y < 25)).toBe(true)
+  })
+
+  it('does not connect an unresolved floor at the left edge to the first FFT bin', () => {
+    const bins = 128
+    const sr = 48000
+    const firstHz = sr / (bins * 2)
+    const dbs = new Float32Array(bins).fill(-28)
+    const pts = readCurve(dbs, sr, 20, 20000)
+    expect(pts.length).toBeGreaterThan(8)
+    expect(pts.length).toBeLessThan(spectrumCurvePointCount(1000))
+    const startHz = xToHz(pts[0]!.x, 20, 20000, 0, 1000, 'log')
+    expect(startHz).toBeGreaterThan(20)
+    expect(startHz).toBeLessThan(firstHz * 1.5)
+    expect(pts[0]!.x).toBeGreaterThan(40)
+    expect(pts[0]!.y).toBeCloseTo(28, 0)
+    const dx = pts[1]!.x - pts[0]!.x
+    const dy = Math.abs(pts[1]!.y - pts[0]!.y)
+    expect(dx).toBeGreaterThan(0.4)
+    expect(dy / dx).toBeLessThan(2)
   })
 
   it('places the same partial on log, linear, and mel axes', () => {

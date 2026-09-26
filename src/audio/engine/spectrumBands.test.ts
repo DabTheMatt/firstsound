@@ -18,11 +18,16 @@ import {
   logGridDbAt,
   maxBandDb,
   alignedBandDb,
+  clampSpectrumRange,
+  spectrumDisplayFloorDb,
   spectrumDisplayUses,
   spectrumFallBallistics,
   spectrumMeterAlignDb,
   spectrumMaxHz,
+  spectrumReleaseTimeSec,
   SPECTRUM_AXIS_MAX_HZ,
+  SPECTRUM_FLOOR_DB,
+  SPECTRUM_RANGE_DEFAULT,
 } from './spectrumBands'
 import { spectrumEnvelopePoints } from './spectrumEnvelope'
 
@@ -77,14 +82,14 @@ describe('fftDbAtHz', () => {
     const bins = new Float32Array(512)
     bins.fill(-30)
     expect(fftFirstBinHz(44100, 512)).toBeCloseTo(44100 / 1024)
-    expect(fftDbAtHz(bins, 44100, 5)).toBe(-100)
+    expect(fftDbAtHz(bins, 44100, 5)).toBe(SPECTRUM_FLOOR_DB)
   })
 
   it('returns the floor at Nyquist instead of the last bin', () => {
     const bins = new Float32Array(512)
     bins.fill(-80)
     bins[511] = -12
-    expect(fftDbAtHz(bins, 48000, 24000)).toBe(-100)
+    expect(fftDbAtHz(bins, 48000, 24000)).toBe(SPECTRUM_FLOOR_DB)
   })
 })
 
@@ -193,48 +198,65 @@ describe('spectrum fall', () => {
     expect(fast).toBeLessThan(-60)
   })
 
-  it('holds a slow drop, ignores a tiny dip, then glides slower than normal', () => {
-    const slow = spectrumFallBallistics('slow')
-    const normal = spectrumFallBallistics('normal')
-    expect(slow.peak.holdSec).toBeGreaterThan(0.3)
-    expect(slow.peak.settleDb).toBeGreaterThan(0.5)
-    expect(normal.peak.holdSec).toBe(0)
-    expect(spectrumFallBallistics('fast').peak.holdSec).toBe(0)
-
-    const held = new Float32Array([-12])
-    const elapsed = new Float32Array(1)
-    const floor = new Float32Array([-80])
-    const hold = { holdSec: slow.peak.holdSec, settleDb: slow.peak.settleDb, elapsed }
-    const frames = Math.floor((slow.peak.holdSec - 0.001) / 0.05)
-    for (let i = 0; i < frames; i++) {
-      followBandsOverTime(held, floor, slow.peak.attack, slow.peak.release, 0.05, hold)
+  it('does not freeze on slow — release keeps moving and is not a peak hold', () => {
+    for (const mode of ['slow', 'normal', 'fast'] as const) {
+      const rates = spectrumFallBallistics(mode)
+      expect(rates.peak.holdSec).toBe(0)
+      expect(rates.peak.settleDb).toBe(0)
+      expect(rates.slow.holdSec).toBe(0)
     }
-    expect(held[0]!).toBe(-12)
+    const level = new Float32Array([-12])
+    const slow = spectrumFallBallistics('slow').peak
+    followBandsOverTime(level, new Float32Array([-80]), slow.attack, slow.release, 0.05)
+    expect(level[0]!).toBeLessThan(-12)
+    expect(level[0]!).toBeGreaterThan(-20)
+  })
 
-    followBandsOverTime(held, floor, slow.peak.attack, slow.peak.release, 0.05, hold)
-    expect(held[0]!).toBeLessThan(-12)
-    expect(held[0]!).toBeGreaterThan(-16)
+  it('reaches the floor on fast, normal, and slow, in that order', () => {
+    const floor = -90
+    const elapsed = (mode: 'slow' | 'normal' | 'fast', seconds: number) => {
+      const level = new Float32Array([0])
+      const target = new Float32Array([floor])
+      const rates = spectrumFallBallistics(mode).peak
+      const frames = Math.round(seconds * 60)
+      for (let i = 0; i < frames; i++) {
+        followBandsOverTime(level, target, rates.attack, rates.release, 1 / 60)
+      }
+      return level[0]!
+    }
+    expect(spectrumReleaseTimeSec(spectrumFallBallistics('fast').peak.release)).toBeLessThan(0.4)
+    expect(spectrumReleaseTimeSec(spectrumFallBallistics('normal').peak.release)).toBeGreaterThan(0.7)
+    expect(spectrumReleaseTimeSec(spectrumFallBallistics('normal').peak.release)).toBeLessThan(1.4)
+    expect(spectrumReleaseTimeSec(spectrumFallBallistics('slow').peak.release)).toBeGreaterThan(2.5)
+    expect(spectrumReleaseTimeSec(spectrumFallBallistics('slow').peak.release)).toBeLessThan(5)
 
-    const flicker = new Float32Array([-12])
-    const flickerHold = {
-      holdSec: slow.peak.holdSec,
-      settleDb: slow.peak.settleDb,
-      elapsed: new Float32Array(1),
+    const atHalf = {
+      fast: elapsed('fast', 0.5),
+      normal: elapsed('normal', 0.5),
+      slow: elapsed('slow', 0.5),
     }
-    for (let i = 0; i < 40; i++) {
-      followBandsOverTime(flicker, new Float32Array([-13]), slow.peak.attack, slow.peak.release, 0.05, flickerHold)
-    }
-    expect(flicker[0]!).toBe(-12)
+    expect(atHalf.fast).toBeLessThan(atHalf.normal)
+    expect(atHalf.normal).toBeLessThan(atHalf.slow)
+    expect(atHalf.slow).toBeLessThan(-8)
+    expect(atHalf.slow).toBeGreaterThan(-40)
 
-    const rising = new Float32Array([-12])
-    const riseHold = {
-      holdSec: slow.peak.holdSec,
-      settleDb: slow.peak.settleDb,
-      elapsed: new Float32Array([slow.peak.holdSec]),
+    expect(elapsed('fast', 1.2)).toBeLessThan(floor + 1)
+    expect(elapsed('normal', 4)).toBeLessThan(floor + 1)
+    expect(elapsed('slow', 12)).toBeLessThan(floor + 1)
+    expect(elapsed('slow', 12)).toBeGreaterThanOrEqual(floor)
+  })
+
+  it('decays from elapsed time, so 60 Hz and 120 Hz agree', () => {
+    const drop = (dt: number, frames: number) => {
+      const level = new Float32Array([0])
+      const rates = spectrumFallBallistics('slow').peak
+      for (let i = 0; i < frames; i++) {
+        followBandsOverTime(level, new Float32Array([-90]), rates.attack, rates.release, dt)
+      }
+      return level[0]!
     }
-    followBandsOverTime(rising, new Float32Array([-6]), slow.peak.attack, slow.peak.release, 0.05, riseHold)
-    expect(rising[0]!).toBeGreaterThan(-12)
-    expect(riseHold.elapsed[0]!).toBe(0)
+    expect(drop(1 / 60, 60)).toBeCloseTo(drop(1 / 120, 120), 3)
+    expect(drop(0.1, 5)).toBeCloseTo(drop(1 / 60, 30), 3)
   })
 })
 
@@ -280,14 +302,28 @@ describe('spectrumMeterAlignDb', () => {
   })
 
   it('stays put when the meter or spectrum is silent', () => {
-    expect(spectrumMeterAlignDb(-100, -9)).toBe(0)
+    expect(spectrumMeterAlignDb(SPECTRUM_FLOOR_DB, -9)).toBe(0)
     expect(spectrumMeterAlignDb(-48, Number.NEGATIVE_INFINITY)).toBe(0)
+  })
+})
+
+describe('analyzer range', () => {
+  it('defaults to 90 dB and keeps 60 and 120 as real floors', () => {
+    expect(SPECTRUM_RANGE_DEFAULT).toBe(90)
+    expect(clampSpectrumRange(undefined)).toBe(90)
+    expect(clampSpectrumRange(60)).toBe(60)
+    expect(clampSpectrumRange(120)).toBe(120)
+    expect(clampSpectrumRange(75)).toBe(90)
+    expect(spectrumDisplayFloorDb(60)).toBe(-60)
+    expect(spectrumDisplayFloorDb(90)).toBe(-90)
+    expect(spectrumDisplayFloorDb(120)).toBe(-120)
+    expect(SPECTRUM_FLOOR_DB).toBeLessThanOrEqual(-120)
   })
 })
 
 describe('alignedBandDb', () => {
   it('does not lift analyser-floor bins with the meter offset', () => {
-    expect(alignedBandDb(-100, 39)).toBe(-100)
+    expect(alignedBandDb(SPECTRUM_FLOOR_DB, 39)).toBe(SPECTRUM_FLOOR_DB)
     expect(alignedBandDb(-48, 39)).toBeCloseTo(-9)
   })
 })

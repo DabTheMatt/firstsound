@@ -1,11 +1,19 @@
 import {
+  clampSpectrumResolution,
+  SPECTRUM_RESOLUTION_DEFAULT,
+  type SpectrumResolution,
+} from './analyserBudget'
+import {
   clampSpectrumBandCount,
   clampSpectrumFallMode,
   clampSpectrumFollowMode,
+  clampSpectrumRange,
   SPECTRUM_BAND_COUNT,
+  SPECTRUM_RANGE_DEFAULT,
   type SpectrumBandCount,
   type SpectrumFallMode,
   type SpectrumFollowMode,
+  type SpectrumRangeDb,
 } from './spectrumBands'
 
 export const SPECTRUM_PREF_KEY = 'field.spectrum'
@@ -25,20 +33,27 @@ export function spectrumLayerTaps(layer: SpectrumLayer): readonly ('pre' | 'post
 
 export type SpectrumPrefs = {
   layer: SpectrumLayer
+  /** Display columns for the bars. Not the FFT length. */
   bands: SpectrumBandCount
+  /** FFT length. Higher resolves lower frequencies and reacts more slowly. */
+  resolution: SpectrumResolution
+  /** Analyzer window from 0 dB down to `-range`. Independent of the EQ curve. */
+  range: SpectrumRangeDb
   regionColors: boolean
   eqFreqColors: boolean
   legendOpen: boolean
   showBars: boolean
   showLine: boolean
   follow: SpectrumFollowMode
-  /** Visual spectrum decay. Does not change audio. */
+  /** Visual spectrum release. Does not freeze, and does not change audio. */
   fall: SpectrumFallMode
 }
 
 const DEFAULT_PREFS: SpectrumPrefs = {
   layer: 'both',
   bands: SPECTRUM_BAND_COUNT,
+  resolution: SPECTRUM_RESOLUTION_DEFAULT,
+  range: SPECTRUM_RANGE_DEFAULT,
   regionColors: true,
   eqFreqColors: false,
   legendOpen: true,
@@ -60,6 +75,8 @@ export function loadSpectrumPrefs(): SpectrumPrefs {
     return {
       layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : DEFAULT_PREFS.layer,
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
+      resolution: clampSpectrumResolution(raw?.resolution ?? SPECTRUM_RESOLUTION_DEFAULT),
+      range: clampSpectrumRange(raw?.range ?? SPECTRUM_RANGE_DEFAULT),
       regionColors: raw?.regionColors !== false,
       eqFreqColors: raw?.eqFreqColors === true,
       legendOpen: raw?.legendOpen !== false,

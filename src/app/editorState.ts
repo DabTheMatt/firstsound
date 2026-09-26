@@ -56,7 +56,10 @@ export function meterScaleTicks(minDb: number): number[] {
   return meterScaleMarks(minDb).filter((m) => m.label).map((m) => m.db)
 }
 
-/** Analyser / FFT floor — same 0 dBFS top as the field loudness meter. */
+/**
+ * Field loudness-meter floor used by older scale helpers.
+ * The spectrum plot uses its own 60 / 90 / 120 dB range instead of this value.
+ */
 export const SPECTRUM_DB_FLOOR = -100
 
 /**
