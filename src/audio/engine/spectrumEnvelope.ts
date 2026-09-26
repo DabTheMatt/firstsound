@@ -1,5 +1,5 @@
-import { hzToX, type FreqScaleKind } from './freqScale'
-import { alignedBandDb, fftLastUsableBin, SPECTRUM_FLOOR_DB } from './spectrumBands'
+import { hzToX, xToHz, type FreqScaleKind } from './freqScale'
+import { alignedBandDb, fftDbAtHz, fftLastUsableBin, SPECTRUM_FLOOR_DB } from './spectrumBands'
 
 export type EnvelopePoint = { x: number; y: number }
 
@@ -40,7 +40,7 @@ function traceEnvelope(ctx: CanvasRenderingContext2D, points: EnvelopePoint[]): 
   }
 }
 
-/** Bar silhouette: one flat run per log band. The spectrum line uses writeSpectrumBinLine. */
+/** Bar silhouette: one flat run per log band. The spectrum line uses writeSpectrumCurve. */
 export function strokeSpectrumEnvelope(ctx: CanvasRenderingContext2D, points: EnvelopePoint[]): void {
   if (points.length === 0) return
   const first = points[0]!
@@ -117,6 +117,93 @@ export function writeSpectrumBinLine(
     out[o] = hzToX(hz, minHz, maxHz, plot.left, plot.right, scale)
     out[o + 1] = spectrumDbToY(dbs[i] ?? SPECTRUM_FLOOR_DB, plot, dbCeil, dbFloor, dbOffset)
     count++
+  }
+  return count
+}
+
+/** Display vertices for the spectrum line. One per pixel, capped so a wide plot stays a single path. */
+export const SPECTRUM_CURVE_MIN_POINTS = 64
+export const SPECTRUM_CURVE_MAX_POINTS = 1024
+
+export function spectrumCurvePointCount(plotWidth: number): number {
+  if (!(plotWidth > 1)) return 0
+  return Math.max(SPECTRUM_CURVE_MIN_POINTS, Math.min(SPECTRUM_CURVE_MAX_POINTS, Math.round(plotWidth)))
+}
+
+/**
+ * Peak dB of FFT bins whose centers fall in [hzLo, hzHi).
+ * A column narrower than the bin grid interpolates in frequency instead of inventing a shelf.
+ */
+function magnitudeDbInColumn(
+  bins: ArrayLike<number>,
+  sampleRate: number,
+  hz: number,
+  hzLo: number,
+  hzHi: number,
+  inclusiveEnd: boolean,
+): number {
+  const n = bins.length
+  if (n < 2 || !(sampleRate > 0) || !(hz > 0)) return SPECTRUM_FLOOR_DB
+  const fftSize = n * 2
+  const last = Math.min(fftLastUsableBin(n), n - 1)
+  const lo = Math.max(0, Math.min(hzLo, hzHi))
+  const hi = Math.max(hzLo, hzHi)
+  let i0 = Math.ceil((lo * fftSize) / sampleRate - 1e-9)
+  let i1 = inclusiveEnd
+    ? Math.floor((hi * fftSize) / sampleRate + 1e-6)
+    : Math.floor((hi * fftSize) / sampleRate - 1e-9)
+  if (i0 < 1) i0 = 1
+  if (i1 > last) i1 = last
+  if (i1 >= i0) {
+    let peak = SPECTRUM_FLOOR_DB
+    for (let i = i0; i <= i1; i++) {
+      const db = bins[i] ?? SPECTRUM_FLOOR_DB
+      if (db > peak) peak = db
+    }
+    return peak
+  }
+  return fftDbAtHz(bins, sampleRate, hz, SPECTRUM_FLOOR_DB)
+}
+
+/**
+ * Continuous spectrum line from FFT magnitudes.
+ * Points are ordered across the plot's own frequency scale (log, linear, or mel):
+ * one vertex per display column, magnitude from the bins that column covers.
+ * This is not the rectangular outline of the histogram bars.
+ * Writes x,y pairs into `out` and returns the point count.
+ */
+export function writeSpectrumCurve(
+  dbs: ArrayLike<number>,
+  sampleRate: number,
+  minHz: number,
+  maxHz: number,
+  plot: SpectrumPlotRect,
+  out: Float32Array,
+  dbCeil = 0,
+  dbFloor = -100,
+  dbOffset = 0,
+  scale: FreqScaleKind = 'log',
+  pointCount = 0,
+): number {
+  const n = dbs.length
+  const width = plot.right - plot.left
+  const requested = pointCount > 0 ? Math.round(pointCount) : spectrumCurvePointCount(width)
+  if (n < 2 || !(sampleRate > 0) || !(maxHz > minHz) || !(width > 0) || requested < 2) return 0
+  const count = Math.min(requested, Math.floor(out.length / 2))
+  if (count < 2) return 0
+  const denom = count - 1
+  for (let i = 0; i < count; i++) {
+    const u = i / denom
+    const uLo = i === 0 ? 0 : (i - 0.5) / denom
+    const uHi = i === count - 1 ? 1 : (i + 0.5) / denom
+    const x = plot.left + u * width
+    const hz = xToHz(x, minHz, maxHz, plot.left, plot.right, scale)
+    const hzLo = xToHz(plot.left + uLo * width, minHz, maxHz, plot.left, plot.right, scale)
+    const hzHi = xToHz(plot.left + uHi * width, minHz, maxHz, plot.left, plot.right, scale)
+    const db = magnitudeDbInColumn(dbs, sampleRate, hz, hzLo, hzHi, i === count - 1)
+    const o = i * 2
+    out[o] = x
+    out[o + 1] = spectrumDbToY(db, plot, dbCeil, dbFloor, dbOffset)
   }
   return count
 }

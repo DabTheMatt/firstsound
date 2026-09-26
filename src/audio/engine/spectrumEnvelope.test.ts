@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { hzToX } from './freqScale'
-import { logBandEdgesHz } from './spectrumBands'
+import { hzToX, xToHz, type FreqScaleKind } from './freqScale'
+import { bandPeakDb, logBandEdgesHz } from './spectrumBands'
 import {
   fillSpectrumEnvelope,
   fillSpectrumXY,
+  spectrumCurvePointCount,
   spectrumEnvelopePoints,
   strokeSpectrumEnvelope,
   strokeSpectrumXY,
   writeSpectrumBinLine,
+  writeSpectrumCurve,
 } from './spectrumEnvelope'
 
 describe('spectrumEnvelopePoints', () => {
@@ -194,6 +196,187 @@ describe('writeSpectrumBinLine', () => {
     }
     expect(yOf(lifted)).toBeLessThan(yOf(raw))
     expect(yOf(lifted)).toBeCloseTo(30)
+  })
+})
+
+describe('writeSpectrumCurve', () => {
+  const plot = { left: 0, right: 1000, top: 0, bottom: 100 }
+
+  function readCurve(
+    dbs: Float32Array,
+    sampleRate: number,
+    minHz: number,
+    maxHz: number,
+    scale: FreqScaleKind = 'log',
+    width = 1000,
+  ) {
+    const box = { ...plot, right: width }
+    const countWanted = spectrumCurvePointCount(width)
+    const out = new Float32Array(countWanted * 2)
+    const count = writeSpectrumCurve(dbs, sampleRate, minHz, maxHz, box, out, 0, -100, 0, scale, countWanted)
+    const pts: { x: number; y: number }[] = []
+    for (let i = 0; i < count; i++) pts.push({ x: out[i * 2]!, y: out[i * 2 + 1]! })
+    return pts
+  }
+
+  function yToDb(y: number): number {
+    return -y
+  }
+
+  it('draws one continuous curve across the plot, not a vertex per FFT bin', () => {
+    const dbs = new Float32Array(2048).fill(-90)
+    dbs[40] = -8
+    const pts = readCurve(dbs, 48000, 20, 20000)
+    expect(pts).toHaveLength(spectrumCurvePointCount(1000))
+    expect(pts.length).toBeLessThan(dbs.length)
+    expect(pts[0]!.x).toBeCloseTo(0, 4)
+    expect(pts[pts.length - 1]!.x).toBeCloseTo(1000, 4)
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i]!.x).toBeGreaterThan(pts[i - 1]!.x)
+      expect(Math.abs(pts[i]!.x - pts[i - 1]!.x)).toBeGreaterThan(0.2)
+    }
+  })
+
+  it('keeps a tonal peak near its bin and does not hold a flat bar top', () => {
+    const bins = 256
+    const sr = 48000
+    const dbs = new Float32Array(bins).fill(-96)
+    const peakBin = 8
+    dbs[peakBin] = -12
+    const peakHz = (peakBin * sr) / (bins * 2)
+    const pts = readCurve(dbs, sr, 20, 20000)
+    const peak = pts.reduce((best, p) => (p.y < best.y ? p : best))
+    expect(peak.y).toBeCloseTo(12, 0)
+    expect(peak.x).toBeCloseTo(hzToX(peakHz, 20, 20000, 0, 1000, 'log'), 0)
+    const hot = pts.filter((p) => p.y <= peak.y + 1.5)
+    expect(hot.length).toBeLessThan(8)
+    const edges = logBandEdgesHz(20, 20000, 24)
+    let band = 0
+    for (let i = 0; i < 24; i++) {
+      if (peakHz >= (edges[i] ?? 0) && peakHz < (edges[i + 1] ?? Infinity)) band = i
+    }
+    const outline = spectrumEnvelopePoints([...bandPeakDb(dbs, sr, 24, 20, 20000)], edges, 20, 20000, plot)
+    const barLeft = outline[band * 2]!.x
+    const barRight = outline[band * 2 + 1]!.x
+    const barTop = outline[band * 2]!.y
+    expect(barRight - barLeft).toBeGreaterThan(20)
+    const atLeft = pts.reduce((best, p) => (Math.abs(p.x - barLeft) < Math.abs(best.x - barLeft) ? p : best))
+    expect(atLeft.y).toBeGreaterThan(barTop + 20)
+    expect(hot[hot.length - 1]!.x - hot[0]!.x).toBeLessThan((barRight - barLeft) * 0.5)
+  })
+
+  it('keeps the valley between two partials', () => {
+    const bins = 512
+    const sr = 44100
+    const dbs = new Float32Array(bins).fill(-95)
+    const low = 12
+    const valley = 18
+    const high = 28
+    dbs[low] = -10
+    dbs[valley] = -72
+    dbs[high] = -16
+    const hzOf = (i: number) => (i * sr) / (bins * 2)
+    const pts = readCurve(dbs, sr, 20, 20000)
+    const yAt = (hz: number) => {
+      const x = hzToX(hz, 20, 20000, 0, 1000, 'log')
+      return pts.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best)).y
+    }
+    expect(yAt(hzOf(valley))).toBeGreaterThan(yAt(hzOf(low)) + 25)
+    expect(yAt(hzOf(valley))).toBeGreaterThan(yAt(hzOf(high)) + 25)
+    expect(yToDb(yAt(hzOf(valley)))).toBeLessThan(-40)
+  })
+
+  it('covers silence and quiet bins down to the floor without dropping them', () => {
+    const silent = readCurve(new Float32Array(128).fill(-100), 48000, 20, 20000)
+    expect(silent).toHaveLength(spectrumCurvePointCount(1000))
+    expect(silent.every((p) => p.y === 100)).toBe(true)
+    const dbs = new Float32Array(256).fill(-100)
+    dbs[6] = -18
+    dbs[40] = -30
+    const pts = readCurve(dbs, 48000, 20, 20000)
+    expect(pts).toHaveLength(silent.length)
+    const floorPts = pts.filter((p) => p.y > 99)
+    expect(floorPts.length).toBeGreaterThan(pts.length * 0.5)
+    expect(pts.some((p) => p.y < 25)).toBe(true)
+  })
+
+  it('places the same partial on log, linear, and mel axes', () => {
+    const bins = 512
+    const sr = 48000
+    const dbs = new Float32Array(bins).fill(-90)
+    const bin = 30
+    dbs[bin] = -9
+    const hz = (bin * sr) / (bins * 2)
+    const xs = (['log', 'linear', 'mel'] as const).map((scale) => {
+      const pts = readCurve(dbs, sr, 20, 20000, scale)
+      const peak = pts.reduce((best, p) => (p.y < best.y ? p : best))
+      expect(peak.y).toBeCloseTo(9, 0)
+      expect(peak.x).toBeCloseTo(hzToX(hz, 20, 20000, 0, 1000, scale), 0)
+      return peak.x
+    })
+    expect(xs[0]).not.toBeCloseTo(xs[1]!, 0)
+    expect(xs[0]).not.toBeCloseTo(xs[2]!, 0)
+    expect(xs[1]).not.toBeCloseTo(xs[2]!, 0)
+  })
+
+  it('matches bar peaks from the same bins without following bar edges', () => {
+    const bins = 1024
+    const sr = 48000
+    const dbs = new Float32Array(bins).fill(-100)
+    dbs[4] = -14
+    dbs[48] = -22
+    dbs[400] = -9
+    const minHz = 20
+    const maxHz = 20000
+    const bands = bandPeakDb(dbs, sr, 32, minHz, maxHz)
+    const pts = readCurve(dbs, sr, minHz, maxHz)
+    const curveDb = (hz: number) => {
+      const x = hzToX(hz, minHz, maxHz, 0, 1000, 'log')
+      const y = pts.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best)).y
+      return yToDb(y)
+    }
+    for (const bin of [4, 48, 400]) {
+      const hz = (bin * sr) / (bins * 2)
+      expect(curveDb(hz)).toBeCloseTo(dbs[bin]!, 0)
+    }
+    const edges = logBandEdgesHz(minHz, maxHz, bands.length)
+    for (let b = 0; b < bands.length; b++) {
+      const bar = bands[b] ?? -100
+      if (bar <= -90) continue
+      const lo = edges[b] ?? minHz
+      const hi = edges[b + 1] ?? maxHz
+      let curvePeak = -100
+      for (const p of pts) {
+        const hz = xToHz(p.x, minHz, maxHz, 0, 1000, 'log')
+        if (hz < lo || hz > hi) continue
+        curvePeak = Math.max(curvePeak, yToDb(p.y))
+      }
+      expect(curvePeak).toBeCloseTo(bar, 0)
+    }
+  })
+
+  it('aggregates several bins in one display column to the peak', () => {
+    const dbs = new Float32Array(4096).fill(-88)
+    dbs[2000] = -40
+    dbs[2001] = -7
+    dbs[2002] = -33
+    const pts = readCurve(dbs, 48000, 20, 20000, 'linear', 128)
+    const peak = pts.reduce((best, p) => (p.y < best.y ? p : best))
+    expect(peak.y).toBeCloseTo(7, 0)
+    const hz = (2001 * 48000) / (4096 * 2)
+    expect(peak.x).toBeCloseTo(hzToX(hz, 20, 20000, 0, 128, 'linear'), 0)
+  })
+
+  it('does not invent a peak between two quieter bins', () => {
+    const bins = 256
+    const sr = 32000
+    const dbs = new Float32Array(bins).fill(-80)
+    dbs[10] = -20
+    dbs[14] = -28
+    const pts = readCurve(dbs, sr, 20, 16000)
+    const loudest = Math.min(...pts.map((p) => p.y))
+    expect(loudest).toBeCloseTo(20, 0)
+    expect(loudest).toBeGreaterThan(19)
   })
 })
 

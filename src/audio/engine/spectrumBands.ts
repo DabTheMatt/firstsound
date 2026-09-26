@@ -65,7 +65,8 @@ export function envelopeStep(ratePerSec: number, dtSec: number): number {
 
 /**
  * Bars and the spectrum line share one Follow mode and one fall clock.
- * `both` shows the pair. The line is sampled per FFT bin; bars stay log bands.
+ * `both` shows the pair. The line follows each FFT bin; bars stay log bands.
+ * Drawing resamples those bins onto the plot; it does not trace bar geometry.
  */
 export function spectrumDisplayUses(follow: SpectrumFollowMode): {
   barBody: 'peak' | 'slow'

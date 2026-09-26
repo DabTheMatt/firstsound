@@ -59,7 +59,7 @@ import {
   persistEqOverlayFocus,
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
-import { fillSpectrumXY, strokeSpectrumXY, writeSpectrumBinLine } from '../../audio/engine/spectrumEnvelope'
+import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectrumCurve } from '../../audio/engine/spectrumEnvelope'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { timeDomainToDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
@@ -469,8 +469,22 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             stroke: boolean,
           ) => {
             if (!src || (!fill && !stroke)) return
-            if (lineXY.length < src.length * 2) lineXY = new Float32Array(src.length * 2)
-            const count = writeSpectrumBinLine(src, sr, minHz, maxHz, plotBox, lineXY, 0, dbFloor, alignDb, scale)
+            const curvePoints = spectrumCurvePointCount(plotW)
+            if (curvePoints < 2) return
+            if (lineXY.length < curvePoints * 2) lineXY = new Float32Array(curvePoints * 2)
+            const count = writeSpectrumCurve(
+              src,
+              sr,
+              minHz,
+              maxHz,
+              plotBox,
+              lineXY,
+              0,
+              dbFloor,
+              alignDb,
+              scale,
+              curvePoints,
+            )
             if (fill) {
               const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
               ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
