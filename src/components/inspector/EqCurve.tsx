@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MIN_HZ, bandIsActive, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandIsActive, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
@@ -255,7 +255,7 @@ export function EqCurve({
         const tone = eqTone(toneIndex, colors)
         return (
           <button
-            key={index}
+            key={eqStripKey('curve', band)}
             type="button"
             className={`${styles.node} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
             style={{

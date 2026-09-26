@@ -45,6 +45,7 @@ import {
   EQ_BAND_LFO_IDS,
   EQ_BAND_LFO_KINDS,
   FX_LFO_SLOTS,
+  eqBandHasLfo,
   isFxLfoKind,
   isFxLfoTarget,
   lfoShownFromMap,
@@ -181,8 +182,10 @@ import {
 import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import {
+  copyEqBand,
   defaultEqBandAt,
   defaultEqBands,
+  initializeCreatedEqBand,
   COMB_MAX_TEETH,
   EQ_MAX_BANDS,
   EQ_MAX_STAGES,
@@ -2119,10 +2122,16 @@ export class AudioEngine {
     const current = this.eqEditBands(st)
     const band = current[index]
     if (!band) return
-    const next = current.map((item, i) => (i === index ? { ...item, ...patch } : item))
+    const nextBand = initializeCreatedEqBand(band, patch, eqBandHasLfo(this.fxLfos, index))
+    if (eqBandUiEqual(band, nextBand)) return
+    const next = current.map((item, i) => (i === index ? nextBand : item))
     this.writeEqEditBands(st, next)
     this.eqById.set(id, st)
     this.syncPrimaryEq()
+    if (eqBandAudioEqual(band, nextBand)) {
+      this.emit()
+      return
+    }
     this.syncEqLfoParams(id)
     this.filterType = this.eqBands[0]?.type ?? 'off'
     this.applyEq(0.03)
@@ -4309,11 +4318,26 @@ function cloneEqState(
   comb: CombFilterState = defaultCombFilter(),
 ): EqModuleState {
   return {
-    bands: bands.map((b) => ({ ...b })),
+    bands: bands.map((b) => copyEqBand(b)),
     bandsL: [],
     bandsR: [],
     comb: { ...comb },
   }
+}
+
+function eqBandAudioEqual(a: EqBand, b: EqBand): boolean {
+  return (
+    a.type === b.type &&
+    a.frequency === b.frequency &&
+    a.gain === b.gain &&
+    a.q === b.q &&
+    a.slope === b.slope &&
+    Boolean(a.bypassed) === Boolean(b.bypassed)
+  )
+}
+
+function eqBandUiEqual(a: EqBand, b: EqBand): boolean {
+  return eqBandAudioEqual(a, b) && a.id === b.id && a.lfoExpanded === b.lfoExpanded
 }
 
 function waitMs(ms: number): Promise<void> {

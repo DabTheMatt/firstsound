@@ -216,7 +216,15 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
       </div>
       {modulate && ids ? (
         <div className={styles.lfoSlot}>
-          <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant="knob" compact />
+          <FxLfoSection
+            snap={snap}
+            kind={eqBandLfoKind(index)}
+            variant="knob"
+            compact
+            bandId={band.id}
+            lfoExpanded={band.lfoExpanded}
+            onLfoExpandedChange={(open) => setBand({ lfoExpanded: open })}
+          />
         </div>
       ) : null}
     </article>

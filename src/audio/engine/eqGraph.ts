@@ -1,4 +1,4 @@
-import { COMB_MAX_TEETH, EQ_MAX_STAGES, EQ_POOL_BANDS, type EqBand } from './eqBands'
+import { COMB_MAX_TEETH, EQ_MAX_STAGES, EQ_POOL_BANDS, copyEqBand, type EqBand } from './eqBands'
 
 export type EqChannelMode = 'shared' | 'left' | 'right'
 
@@ -83,5 +83,5 @@ export function eqBandsForChannel(
 }
 
 export function cloneEqBands(bands: EqBand[]): EqBand[] {
-  return bands.map((b) => ({ ...b }))
+  return bands.map((b) => copyEqBand(b))
 }

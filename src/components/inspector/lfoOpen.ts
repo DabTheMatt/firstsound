@@ -35,6 +35,43 @@ export function resolveLfoSectionOpen(stored: boolean | undefined, connected: bo
   return connected
 }
 
+export type LfoUiState = {
+  /** An LFO slot bank exists for this section. */
+  hasLfoInstance: boolean
+  /** At least one slot has a modulation target. */
+  isLfoConnected: boolean
+  /** Whether the section body is shown. Independent of connection. */
+  isLfoExpanded: boolean
+}
+
+/**
+ * Expansion for one section.
+ * A band id means the band's own flag is the only stored choice — a previous
+ * strip's kind entry in localStorage must not leak in.
+ */
+export function storedExpansionForSection(input: {
+  bandId?: string
+  bandExpanded?: boolean
+  kindStored?: boolean
+}): boolean | undefined {
+  if (input.bandId) return input.bandExpanded
+  return input.kindStored
+}
+
+export function lfoUiState(
+  slots: readonly { target?: unknown }[] | undefined,
+  storedExpanded: boolean | undefined,
+): LfoUiState {
+  const list = slots ?? []
+  const hasLfoInstance = list.length > 0
+  const isLfoConnected = list.some((slot) => slot.target != null)
+  return {
+    hasLfoInstance,
+    isLfoConnected,
+    isLfoExpanded: resolveLfoSectionOpen(storedExpanded, isLfoConnected),
+  }
+}
+
 export function writeLfoOpen(kind: string, open: boolean): void {
   try {
     const next = readMap()

@@ -76,6 +76,7 @@ import { spectrumDbScaleMarks } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { eqStripKey } from '../../audio/engine/eqBands'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
   EQ_BAND_LFO_IDS,
@@ -1169,7 +1170,7 @@ export function Spectrum({ active }: Props) {
             const curveColor = prefs.eqFreqColors ? freqColor : tone.curve
             return (
               <button
-                key={`${mod.instanceId}-${index}`}
+                key={eqStripKey(mod.instanceId, band)}
                 type="button"
                 className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
                 style={

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
-import { EQ_MAX_BANDS, type EqFilterType } from '../../audio/engine/eqBands'
+import { EQ_MAX_BANDS, eqStripKey, type EqFilterType } from '../../audio/engine/eqBands'
 import {
   clampEqOverlayFocus,
   eqOverlayIncludes,
@@ -75,7 +75,7 @@ export function EqConsole({ onFocusModule }: Props) {
               ? []
               : [
                   <EqBandStrip
-                    key={`${mod.instanceId}-${index}`}
+                    key={eqStripKey(mod.instanceId, band)}
                     snap={snap}
                     instanceId={mod.instanceId}
                     index={index}

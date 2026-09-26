@@ -12,12 +12,74 @@ export type EqFilterType =
 export type FilterSlope = 12 | 24 | 36 | 48 | 72 | 96
 
 export type EqBand = {
+  /** Stable identity for React keys and LFO section UI. Not an array index. */
+  id?: string
   type: EqFilterType
   frequency: number
   gain: number
   q: number
   slope: FilterSlope
   bypassed?: boolean
+  /**
+   * LFO section presentation for this band only.
+   * Independent of whether an LFO instance exists and whether it is connected.
+   * `undefined` means the user has not chosen (legacy bands).
+   */
+  lfoExpanded?: boolean
+}
+
+let eqBandSeq = 0
+
+/** Unique id for a band. Safe to call from tests and from band creation. */
+export function createEqBandId(): string {
+  eqBandSeq += 1
+  return `eqb_${eqBandSeq.toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+export function copyEqBand(band: EqBand): EqBand {
+  return { ...band, id: band.id || createEqBandId() }
+}
+
+/**
+ * React key for one EQ strip. Index is not part of the identity, so inserting,
+ * removing, or reordering bands cannot reuse another strip's local state.
+ */
+export function eqStripKey(instanceId: string, band: Pick<EqBand, 'id'>): string {
+  return `${instanceId}:${band.id || 'missing'}`
+}
+
+/** Filter types the ADD strip can create. Each one starts with a collapsed LFO section. */
+export const CREATED_EQ_STRIP_TYPES = [
+  'peaking',
+  'notch',
+  'highpass',
+  'lowpass',
+  'lowshelf',
+  'highshelf',
+  'bandpass',
+] as const satisfies readonly EqFilterType[]
+
+const CREATED_EQ_STRIP_TYPE_SET = new Set<string>(CREATED_EQ_STRIP_TYPES)
+
+/**
+ * Turning an empty slot into a Bell / Notch / HP / LP / shelf / band-pass is a new strip.
+ * With no LFO connected, give it a fresh id and a collapsed section so a previous
+ * occupant cannot leak expansion into it. A connected LFO keeps its id and UI flag.
+ * This does not change modulation routing.
+ */
+export function initializeCreatedEqBand(
+  band: EqBand,
+  patch: Partial<EqBand>,
+  lfoConnected: boolean,
+  createId: () => string = createEqBandId,
+): EqBand {
+  const nextType = patch.type ?? band.type
+  const creating = band.type === 'off' && nextType !== 'off' && CREATED_EQ_STRIP_TYPE_SET.has(nextType)
+  const merged: EqBand = { ...band, ...patch, id: band.id || createId() }
+  if (creating && !lfoConnected) {
+    return { ...merged, id: createId(), lfoExpanded: false }
+  }
+  return merged
 }
 
 export function bandIsActive(band: EqBand): boolean {
@@ -99,12 +161,14 @@ export function defaultEqBandAt(index: number): EqBand {
   const listed = EQ_BAND_DEFAULT_HZ[i]
   const frequency = listed ?? Math.min(EQ_MAX_HZ, 80 * 1.45 ** (i % 16))
   return {
+    id: createEqBandId(),
     type: 'off',
     frequency,
     gain: 0,
     q,
     slope: 12,
     bypassed: false,
+    lfoExpanded: false,
   }
 }
 
@@ -203,13 +267,16 @@ export function parseEqBands(raw: unknown): EqBand[] | null {
     const rec = item as Partial<EqBand>
     if (!EQ_FILTER_TYPES.some((t) => t.value === rec.type)) return null
     if (typeof rec.frequency !== 'number' || typeof rec.q !== 'number') return null
+    const storedId = typeof rec.id === 'string' ? rec.id.trim() : ''
     bands.push({
+      id: storedId || createEqBandId(),
       type: rec.type as EqFilterType,
       frequency: rec.frequency,
       gain: typeof rec.gain === 'number' ? rec.gain : 0,
       q: rec.q,
       slope: parseFilterSlope(rec.slope),
       bypassed: Boolean(rec.bypassed),
+      lfoExpanded: rec.lfoExpanded === true ? true : rec.lfoExpanded === false ? false : undefined,
     })
   }
   return bands

@@ -11,6 +11,7 @@ import {
   EQ_MAX_BANDS,
   EQ_MAX_HZ,
   EQ_MIN_HZ,
+  eqStripKey,
   formatEqHz,
   nearestFilterSlope,
   qFromBandwidth,
@@ -913,7 +914,7 @@ function EqEditor({
       </div>
       {bands.map((band, index) => (
         <details
-          key={index}
+          key={eqStripKey(instanceId, band)}
           className={styles.band}
           open={openBand === index}
           style={eqBandAccentVars(band.frequency) as CSSProperties}
@@ -1157,7 +1158,14 @@ function EqEditor({
             </>
           )}
           {openBand === index && modulate ? (
-            <FxLfoSection snap={snap} kind={eqBandLfoKind(index)} variant={knobs ? 'knob' : 'slider'} />
+            <FxLfoSection
+              snap={snap}
+              kind={eqBandLfoKind(index)}
+              variant={knobs ? 'knob' : 'slider'}
+              bandId={band.id}
+              lfoExpanded={band.lfoExpanded}
+              onLfoExpandedChange={(open) => setBand(index, { lfoExpanded: open })}
+            />
           ) : null}
         </details>
       ))}

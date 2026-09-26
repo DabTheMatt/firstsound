@@ -17,7 +17,7 @@ import { Segmented } from '../controls/Segmented'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { useFxLfoConnect } from './FxLfoConnect'
 import { LfoConnectButton } from './LfoConnectButton'
-import { readStoredLfoOpen, resolveLfoSectionOpen, writeLfoOpen } from './lfoOpen'
+import { lfoUiState, readStoredLfoOpen, storedExpansionForSection, writeLfoOpen } from './lfoOpen'
 import { lfoAddTone, lfoNumberTone } from './lfoSlots'
 import { ValueKnob } from '../controls/ValueKnob'
 import styles from './Inspector.module.css'
@@ -37,27 +37,50 @@ type Props = {
   kind: FxLfoKind
   variant: 'knob' | 'slider'
   compact?: boolean
+  /** Stable band id. When set, expansion comes only from this band. */
+  bandId?: string
+  /** Band-owned expansion. Ignored unless `bandId` is set. */
+  lfoExpanded?: boolean
+  onLfoExpandedChange?: (open: boolean) => void
 }
 
-const activeSlotByKind = new Map<FxLfoKind, number>()
+const activeSlotBySection = new Map<string, number>()
 
-function rememberedSlot(kind: FxLfoKind, shown: number): number {
-  const saved = activeSlotByKind.get(kind) ?? 0
+function rememberedSlot(sectionKey: string, shown: number): number {
+  const saved = activeSlotBySection.get(sectionKey) ?? 0
   return Math.min(Math.max(0, saved), Math.max(0, shown - 1))
 }
 
-export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
+export function FxLfoSection({
+  snap,
+  kind,
+  variant,
+  compact = false,
+  bandId,
+  lfoExpanded,
+  onLfoExpandedChange,
+}: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
-  const [slotState, setSlotState] = useState<{ kind: FxLfoKind; slot: number } | null>(null)
-  const connected = (snap.fxLfos[kind] ?? []).some((entry) => entry.target != null)
-  const [openState, setOpenState] = useState<{ kind: FxLfoKind; open: boolean } | null>(null)
-  const open =
-    openState?.kind === kind ? openState.open : resolveLfoSectionOpen(readStoredLfoOpen(kind), connected)
-  const slot = slotState?.kind === kind ? slotState.slot : rememberedSlot(kind, shown)
+  const sectionKey = bandId ?? kind
+  const [slotState, setSlotState] = useState<{ key: string; slot: number } | null>(null)
+  const [openState, setOpenState] = useState<{ key: string; open: boolean } | null>(null)
+  const slots = snap.fxLfos[kind] ?? []
+  const kindStored = bandId
+    ? undefined
+    : openState?.key === sectionKey
+      ? openState.open
+      : readStoredLfoOpen(kind)
+  const { hasLfoInstance, isLfoConnected, isLfoExpanded } = lfoUiState(
+    slots,
+    storedExpansionForSection({ bandId, bandExpanded: lfoExpanded, kindStored }),
+  )
+  const open = isLfoExpanded
+  const connected = isLfoConnected
+  const slot = slotState?.key === sectionKey ? slotState.slot : rememberedSlot(sectionKey, shown)
   const activeSlot = Math.min(slot, shown - 1)
   const chooseSlot = (next: number) => {
-    activeSlotByKind.set(kind, next)
-    setSlotState({ kind, slot: next })
+    activeSlotBySection.set(sectionKey, next)
+    setSlotState({ key: sectionKey, slot: next })
   }
   const lfo = snap.fxLfos[kind][activeSlot] ?? snap.fxLfos[kind][0]
   const live = snap.fxLfos[kind].some(fxLfoIsActive)
@@ -145,6 +168,8 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
     <section
       className={`${styles.lfo} ${compact ? styles.lfoCompact : ''} ${open ? '' : styles.lfoCollapsed}`}
       data-lfo-kind={kind}
+      data-lfo-band={bandId ?? ''}
+      data-lfo-instance={hasLfoInstance ? 'true' : 'false'}
       data-lfo-open={open ? 'true' : 'false'}
       data-lfo-connected={connected ? 'true' : 'false'}
     >
@@ -164,7 +189,11 @@ export function FxLfoSection({ snap, kind, variant, compact = false }: Props) {
           title={open ? 'Hide LFO' : 'Show LFO'}
           onClick={() => {
             const next = !open
-            setOpenState({ kind, open: next })
+            if (bandId) {
+              onLfoExpandedChange?.(next)
+              return
+            }
+            setOpenState({ key: sectionKey, open: next })
             writeLfoOpen(kind, next)
           }}
         >
