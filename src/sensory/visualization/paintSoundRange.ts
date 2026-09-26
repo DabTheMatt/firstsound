@@ -8,6 +8,7 @@ import {
   grainDustCount,
   type MountainLayerSpec,
 } from './mountainLayers'
+import { soundBodyAt, type PlaybackVisual } from './playbackWarp'
 import {
   landscapeStops,
   mixRgb,
@@ -34,6 +35,19 @@ export type RangePaintArgs = {
   windowEndFrac: number
   scene: SensorySceneId
   ridge: RidgePalette
+  /** Live time/pitch warp. Neutral values leave the sound body unchanged. */
+  playback: PlaybackVisual
+  pitchPhase: number
+}
+
+type SoundWarp = {
+  width: number
+  playback: PlaybackVisual
+  pitchPhase: number
+}
+
+function soundWarp(args: RangePaintArgs): SoundWarp {
+  return { width: args.width, playback: args.playback, pitchPhase: args.pitchPhase }
 }
 
 function hash01(i: number): number {
@@ -53,10 +67,12 @@ function ridgeY(
   li: number,
   dir: 1 | -1,
   breath: number,
+  warp: SoundWarp,
 ): number {
   const jag = grit > 0.04 ? Math.sin(x * 0.09 + li * 1.7) * grit * amp * 0.03 : 0
   const wave = visual.mod > 0.02 && breath !== 0 ? Math.sin(x * 0.012 + t / 1800) * breath : 0
-  const h = (env[x] ?? 0) * amp * spec.scale + jag + wave
+  const body = soundBodyAt(env, x, warp.width, warp.playback, warp.pitchPhase)
+  const h = body * amp * spec.scale + jag + wave
   return base + dir * h
 }
 
@@ -116,11 +132,12 @@ function strokeContour(
   dir: 1 | -1,
   breath: number,
   frac: number,
+  warp: SoundWarp,
 ) {
   const step = ridgeSampleStep(width)
   ctx.beginPath()
   forPaintX(width, step, (x) => {
-    const y = ridgeY(env, x, base, amp * frac, spec, visual, grit, t, li, dir, breath)
+    const y = ridgeY(env, x, base, amp * frac, spec, visual, grit, t, li, dir, breath, warp)
     if (x === 0) ctx.moveTo(x, y)
     else ctx.lineTo(x, y)
   })
@@ -138,6 +155,7 @@ function paintRidgeStack(
   extraDrop = 0,
 ) {
   const { width, height, visual, layers, specs, nowMs, dpr, ridge } = args
+  const warp = soundWarp(args)
   const grit = visual.dirt
   const breath = args.reduced ? 0 : visual.mod * amp * 0.04
   const contours = contourCount(visual.space, visual.grain)
@@ -153,7 +171,7 @@ function paintRidgeStack(
     ctx.beginPath()
     ctx.moveTo(0, layerBase)
     forPaintX(width, step, (x) => {
-      ctx.lineTo(x, ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath))
+      ctx.lineTo(x, ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath, warp))
     })
     ctx.lineTo(width - 1, layerBase)
     ctx.closePath()
@@ -165,7 +183,7 @@ function paintRidgeStack(
     ctx.lineJoin = 'round'
     ctx.beginPath()
     forPaintX(width, step, (x) => {
-      const y = ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath)
+      const y = ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath, warp)
       if (x === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     })
@@ -176,7 +194,7 @@ function paintRidgeStack(
     for (let k = 1; k < lines; k++) {
       const frac = k / lines
       ctx.strokeStyle = rgbCss(crest, (0.05 + visual.space * 0.06) * (1 - frac * 0.4) * alphaMul)
-      strokeContour(ctx, env!, width, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath, frac)
+      strokeContour(ctx, env!, width, layerBase, layerAmp, spec, visual, grit, nowMs, li, dir, breath, frac, warp)
     }
     ctx.restore()
   }
@@ -235,7 +253,7 @@ function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArg
   ctx.globalAlpha = 0.12 + chroma * 0.28
   ctx.strokeStyle = rgbCss(visual.inkRed, 1)
   ctx.translate(-split, 0)
-  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
+  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1, soundWarp(args))
   ctx.restore()
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
@@ -244,7 +262,7 @@ function paintChromaticFringe(ctx: CanvasRenderingContext2D, args: RangePaintArg
   ctx.globalAlpha = 0.12 + chroma * 0.28
   ctx.strokeStyle = rgbCss(visual.inkBlue, 1)
   ctx.translate(split, reduced ? 0 : split * 0.15)
-  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1)
+  strokeContour(ctx, env, width, layout.base, amp, spec, visual, visual.dirt, nowMs, 0, layout.dir, 0, 1, soundWarp(args))
   ctx.restore()
 
   ctx.save()
@@ -299,9 +317,11 @@ function paintPlayhead(
   amp: number,
   dirs: Array<1 | -1>,
 ) {
-  const { width, visual, play, dpr, playFrac, layers, specs } = args
+  const { width, visual, play, dpr, playFrac, layers, specs, playback, pitchPhase } = args
   const px = playFrac * (width - 1)
-  const peak = layers[0]?.[Math.round(px)] ?? 0
+  const env = layers[0]
+  const sampleX = playback.timeStretch === 1 && playback.pitchFeel === 0 ? Math.round(px) : px
+  const peak = env ? soundBodyAt(env, sampleX, width, playback, pitchPhase) : 0
   ctx.strokeStyle = args.play
   ctx.lineWidth = Math.max(1.1, dpr * (1 + visual.glow * 0.35))
   ctx.globalAlpha = 0.55
@@ -332,7 +352,7 @@ function paintGleam(ctx: CanvasRenderingContext2D, args: RangePaintArgs, base: n
   ctx.globalCompositeOperation = 'lighter'
   for (let i = 0; i < n; i++) {
     const x = Math.round(((i + 0.5) / n) * (width - 1))
-    const y = ridgeY(env, x, base, amp, spec, visual, visual.dirt, nowMs, 0, -1, 0)
+    const y = ridgeY(env, x, base, amp, spec, visual, visual.dirt, nowMs, 0, -1, 0, soundWarp(args))
     const sway = Math.sin(nowMs / 2800 + i) * 8 * dpr
     const reach = (70 + visual.space * 90) * dpr
     const grad = ctx.createLinearGradient(x, y, x + sway, y - reach)

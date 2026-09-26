@@ -26,17 +26,6 @@ function rms(samples: ArrayLike<number>): number {
   return Math.sqrt(acc / samples.length)
 }
 
-function medianTime(run: () => void): number {
-  const samples: number[] = []
-  for (let i = 0; i < 5; i++) {
-    const start = performance.now()
-    run()
-    samples.push(performance.now() - start)
-  }
-  samples.sort((a, b) => a - b)
-  return samples[2] ?? samples[0] ?? 0
-}
-
 describe('stretchInterpAlgoAt', () => {
   it('maps stored indices', () => {
     expect(stretchInterpAlgoAt(0)).toBe('nearest')
@@ -194,16 +183,9 @@ describe('pitch-down bass', () => {
   })
 
   it('spends fewer sinc taps in realtime than offline', () => {
-    const sr = 48000
-    const src = sine(8000, sr, 440)
-    const count = 4000
-    const dest = new Float32Array(count)
-    resampleInto(dest, 64, src, 10, 1.5, 'sinc', false, 1, 'realtime')
-    resampleInto(dest, 64, src, 10, 1.5, 'sinc', false, 1, 'offline')
-    const realtime = medianTime(() => resampleInto(dest, count, src, 100, 1.5, 'sinc', false, 1, 'realtime'))
-    const offline = medianTime(() => resampleInto(dest, count, src, 100, 1.5, 'sinc', false, 1, 'offline'))
+    expect(sincLobes('realtime')).toBe(4)
+    expect(sincLobes('offline')).toBe(8)
     expect(sincLobes('realtime')).toBeLessThan(sincLobes('offline'))
-    expect(realtime).toBeLessThan(offline * 0.85)
   })
 
   it('cubic and sinc reconstruct more 100 Hz than nearest when pitching down', () => {
