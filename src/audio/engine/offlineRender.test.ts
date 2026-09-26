@@ -1,0 +1,491 @@
+import { OfflineAudioContext } from 'node-web-audio-api'
+import { describe, expect, it } from 'vitest'
+import { defaultAutomation, type AutomationDocument } from '../automation/automation'
+import { defaultChain, factoryChain, type ChainModule, type ModuleType } from '../chain/chain'
+import { defaultFxLfos, type FxLfoMap } from '../fx/lfo'
+import { PARAMS, defaultParamValues } from '../parameters/definitions'
+import { dbToGain, toNormalized } from '../parameters/mapping'
+import type { ParamId } from '../parameters/types'
+import { defaultPrep } from '../samplePrep/state'
+import type { ExportSettings, Pcm } from '../samplePrep/types'
+import { defaultCombFilter } from './comb'
+import { selectionExportAvailable } from './exportTail'
+import { defaultEqBands, type EqBand } from './eqBands'
+import type { OfflineContextFactory, ProcessingSnapshot } from './offlineRender'
+import { renderExportPcm, renderProcessedPcm } from './offlineRender'
+
+const SR = 22050
+
+const factory: OfflineContextFactory = (channels, length, sampleRate) =>
+  new OfflineAudioContext(channels, length, sampleRate) as unknown as ReturnType<OfflineContextFactory>
+
+function sine(freq: number, seconds: number, amp = 0.65): Pcm {
+  const n = Math.max(1, Math.floor(seconds * SR))
+  const ch = new Float32Array(n)
+  for (let i = 0; i < n; i++) ch[i] = amp * Math.sin((2 * Math.PI * freq * i) / SR)
+  return { sampleRate: SR, channels: [ch] }
+}
+
+function burst(seconds: number, burstSec = 0.03, amp = 0.8, freq = 440): Pcm {
+  const n = Math.max(1, Math.floor(seconds * SR))
+  const m = Math.min(n, Math.floor(burstSec * SR))
+  const ch = new Float32Array(n)
+  for (let i = 0; i < m; i++) ch[i] = amp * Math.sin((2 * Math.PI * freq * i) / SR)
+  return { sampleRate: SR, channels: [ch] }
+}
+
+function chain(enabled: ModuleType[]): ChainModule[] {
+  const on = new Set(enabled)
+  return factoryChain().map((mod) => ({
+    ...mod,
+    bypassed: mod.type !== 'gain' && mod.type !== 'output' && !on.has(mod.type),
+  }))
+}
+
+function lowpassBands(hz: number): EqBand[] {
+  const bands = defaultEqBands()
+  bands[0] = { ...bands[0]!, type: 'lowpass', frequency: hz, slope: 48, q: 0.707, bypassed: false }
+  return bands
+}
+
+function state(
+  patch: Partial<Omit<ProcessingSnapshot, 'params'>> & { params?: Partial<Record<ParamId, number>> } = {},
+): ProcessingSnapshot {
+  const params = { ...defaultParamValues(), gain: 0, outputGain: 0, ...patch.params }
+  return {
+    chain: patch.chain ?? defaultChain(),
+    params,
+    automation: patch.automation ?? defaultAutomation(),
+    fxLfos: patch.fxLfos ?? defaultFxLfos(),
+    eqById: patch.eqById ?? {},
+    eqChannelMode: patch.eqChannelMode ?? 'shared',
+    primaryEqId: patch.primaryEqId ?? 'eq-1',
+    distortionType: patch.distortionType ?? 'clip',
+    distortionNoiseKind: patch.distortionNoiseKind ?? 'white',
+    delayType: patch.delayType ?? 'digital',
+    reverbType: patch.reverbType ?? 'room',
+    voiceGain: patch.voiceGain ?? 1,
+    masterGain: patch.masterGain ?? 1,
+    noiseMuted: patch.noiseMuted ?? false,
+    noiseFadeTau: patch.noiseFadeTau ?? 0.012,
+  }
+}
+
+function eqState(hz: number): ProcessingSnapshot {
+  return state({
+    chain: chain(['eq']),
+    params: { eq1Freq: hz, eq1Q: 0.707 },
+    eqById: {
+      'eq-1': { bands: lowpassBands(hz), bandsL: [], bandsR: [], comb: defaultCombFilter() },
+    },
+  })
+}
+
+const settings = (scope: 'project' | 'selection' = 'project', normalize = false): ExportSettings => ({
+  name: 'test',
+  sampleRate: 'original',
+  bitDepth: 32,
+  applyFades: false,
+  applyGain: false,
+  applyReverse: false,
+  applyNormalize: normalize,
+  scope,
+})
+
+async function render(source: Pcm, snap: ProcessingSnapshot): Promise<Pcm> {
+  return renderProcessedPcm(source, snap, { factory })
+}
+
+function mono(pcm: Pcm): Float32Array {
+  return pcm.channels[0] ?? new Float32Array()
+}
+
+function rms(ch: Float32Array, start = 0, end = ch.length): number {
+  const a = Math.max(0, start)
+  const b = Math.min(ch.length, end)
+  let sum = 0
+  let n = 0
+  for (let i = a; i < b; i++) {
+    const x = ch[i] ?? 0
+    sum += x * x
+    n++
+  }
+  return n > 0 ? Math.sqrt(sum / n) : 0
+}
+
+function meanAbs(a: Float32Array, b: Float32Array): number {
+  const n = Math.min(a.length, b.length)
+  let sum = 0
+  for (let i = 0; i < n; i++) sum += Math.abs((a[i] ?? 0) - (b[i] ?? 0))
+  return n > 0 ? sum / n : 0
+}
+
+function peak(ch: Float32Array, start = 0, end = ch.length): number {
+  let m = 0
+  for (let i = start; i < Math.min(ch.length, end); i++) m = Math.max(m, Math.abs(ch[i] ?? 0))
+  return m
+}
+
+/** Share of energy above ~900 Hz. Distortion after a lowpass raises this. */
+function highShare(ch: Float32Array): number {
+  const a = Math.exp((-2 * Math.PI * 900) / SR)
+  let prev = 0
+  let y = 0
+  let hp = 0
+  let tot = 0
+  for (let i = 0; i < ch.length; i++) {
+    const x = ch[i] ?? 0
+    y = a * (y + x - prev)
+    prev = x
+    hp += y * y
+    tot += x * x
+  }
+  return hp / Math.max(1e-12, tot)
+}
+
+function lane(paramId: ParamId, from: number, to: number, t0: number, t1: number): AutomationDocument {
+  const def = PARAMS[paramId]
+  return {
+    selectedParamId: paramId,
+    lanes: [
+      {
+        paramId,
+        nodes: [
+          { id: 'a', time: t0, value: toNormalized(from, def) },
+          { id: 'b', time: t1, value: toNormalized(to, def) },
+        ],
+      },
+    ],
+  }
+}
+
+function ordered(types: ModuleType[]): ChainModule[] {
+  const base = factoryChain()
+  return types.map((type) => {
+    const found = base.find((mod) => mod.type === type)
+    if (!found) throw new Error(`missing ${type}`)
+    return { ...found, bypassed: false }
+  })
+}
+
+describe('offline export renders the audible chain', () => {
+  it('matches the source when processing is bypassed and gains are unity', async () => {
+    const source = sine(440, 0.25, 0.5)
+    const dry = await render(source, state({ chain: chain([]) }))
+    const out = mono(dry)
+    const src = mono(source)
+    expect(out.length).toBe(src.length)
+    expect(meanAbs(out, src)).toBeLessThan(0.002)
+    expect(Math.abs(rms(out) - rms(src))).toBeLessThan(0.002)
+  })
+
+  it('applies a strong EQ lowpass so the export differs from the source', async () => {
+    const source = sine(3500, 0.2, 0.7)
+    const processed = mono(await render(source, eqState(220)))
+    expect(rms(processed)).toBeLessThan(rms(mono(source)) * 0.08)
+    expect(meanAbs(processed, mono(source))).toBeGreaterThan(0.2)
+  })
+
+  it('applies the filter module', async () => {
+    const source = sine(4000, 0.2, 0.7)
+    const processed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['filter']),
+          params: { filterCutoff: 280, filterKind: 0, filterMix: 100, filterSlope: 5, filterDrive: 0 },
+        }),
+      ),
+    )
+    expect(rms(processed)).toBeGreaterThan(0.0001)
+    expect(rms(processed)).toBeLessThan(rms(mono(source)) * 0.12)
+  })
+
+  it('applies distortion as energy, not silence', async () => {
+    const source = sine(220, 0.2, 0.85)
+    const processed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['distortion']),
+          distortionType: 'fold',
+          params: { saturation: 85, saturationMix: 100 },
+        }),
+      ),
+    )
+    expect(rms(processed)).toBeGreaterThan(0.05)
+    expect(meanAbs(processed, mono(source))).toBeGreaterThan(0.05)
+  })
+
+  it('applies the compressor curve to a hot signal', async () => {
+    const source = sine(180, 0.2, 0.9)
+    const processed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['compressor']),
+          params: {
+            compressorThreshold: -24,
+            compressorRatio: 20,
+            compressorKnee: 0,
+            compressorMakeup: 0,
+            compressorAutoMakeup: 0,
+          },
+        }),
+      ),
+    )
+    expect(peak(processed, 200)).toBeLessThan(peak(mono(source)) * 0.7)
+    expect(rms(processed)).toBeGreaterThan(0.02)
+  })
+
+  it('keeps a delay tail after the source ends', async () => {
+    const source = burst(0.18, 0.025)
+    const processed = await render(
+      source,
+      state({
+        chain: chain(['delay']),
+        params: {
+          delayWet: 100,
+          delayDry: 40,
+          delayTime: 90,
+          delayFeedback: 45,
+          delayStereo: 0,
+        },
+      }),
+    )
+    const out = mono(processed)
+    const sourceFrames = mono(source).length
+    expect(out.length).toBeGreaterThan(sourceFrames + Math.floor(0.05 * SR))
+    expect(out.length).toBeLessThan(sourceFrames + Math.floor(4 * SR))
+    expect(rms(out, sourceFrames, sourceFrames + Math.floor(0.2 * SR))).toBeGreaterThan(0.01)
+  })
+
+  it('keeps a reverb tail and stops after it decays', async () => {
+    const source = burst(0.12, 0.02)
+    const processed = await render(
+      source,
+      state({
+        chain: chain(['reverb']),
+        reverbType: 'room',
+        params: {
+          reverbWet: 100,
+          reverbDry: 0,
+          reverbDecay: 0.35,
+          reverbSize: 15,
+          reverbPredelay: 0,
+          reverbDiffusion: 40,
+        },
+      }),
+    )
+    const out = mono(processed)
+    const sourceFrames = mono(source).length
+    expect(rms(out)).toBeGreaterThan(0.005)
+    expect(out.length).toBeGreaterThan(sourceFrames + Math.floor(0.05 * SR))
+    expect(out.length).toBeLessThan(sourceFrames + Math.floor(3 * SR))
+    const tailEnd = Math.max(0, out.length - Math.floor(0.03 * SR))
+    expect(peak(out, tailEnd)).toBeLessThan(0.02)
+  })
+
+  it('renders several effects together, including a tail', async () => {
+    const source = burst(0.2, 0.08, 0.7, 180)
+    const processed = await render(
+      source,
+      state({
+        chain: chain(['distortion', 'eq', 'compressor', 'delay']),
+        distortionType: 'clip',
+        params: {
+          saturation: 60,
+          saturationMix: 100,
+          eq1Freq: 900,
+          compressorThreshold: -18,
+          compressorRatio: 8,
+          compressorKnee: 0,
+          delayWet: 70,
+          delayDry: 80,
+          delayTime: 70,
+          delayFeedback: 30,
+          delayStereo: 0,
+        },
+        eqById: {
+          'eq-1': { bands: lowpassBands(900), bandsL: [], bandsR: [], comb: defaultCombFilter() },
+        },
+      }),
+    )
+    const out = mono(processed)
+    expect(meanAbs(out.subarray(0, mono(source).length), mono(source))).toBeGreaterThan(0.04)
+    expect(out.length).toBeGreaterThan(mono(source).length)
+    expect(rms(out)).toBeGreaterThan(0.02)
+  })
+
+  it('follows Audio Chain order', async () => {
+    const source = sine(180, 0.22, 0.8)
+    const params = {
+      saturation: 90,
+      saturationMix: 100,
+      filterCutoff: 700,
+      filterKind: 0,
+      filterMix: 100,
+      filterSlope: 5,
+      filterDrive: 0,
+    }
+    const first = mono(
+      await render(
+        source,
+        state({
+          chain: ordered(['gain', 'distortion', 'filter', 'output']),
+          distortionType: 'fold',
+          params,
+        }),
+      ),
+    )
+    const second = mono(
+      await render(
+        source,
+        state({
+          chain: ordered(['gain', 'filter', 'distortion', 'output']),
+          distortionType: 'fold',
+          params,
+        }),
+      ),
+    )
+    expect(Math.abs(highShare(first) - highShare(second))).toBeGreaterThan(0.02)
+  })
+
+  it('renders automation on the sample timeline instead of the initial value', async () => {
+    const source = sine(330, 0.4, 0.5)
+    const fading = lane('gain', 0, -18, 0, 0.4)
+    const moved = lane('gain', 0, -18, 1, 1.4)
+    const auto = mono(await render(source, state({ automation: fading })))
+    const shifted = mono(await renderProcessedPcm(source, state({ automation: moved }), { factory, timelineStart: 1 }))
+    const flat = mono(await render(source, state()))
+    const early = Math.floor(0.05 * SR)
+    const late = Math.floor(0.32 * SR)
+    const span = Math.floor(0.06 * SR)
+    expect(rms(auto, early, early + span)).toBeGreaterThan(rms(auto, late, late + span) * 2)
+    expect(rms(shifted, early, early + span)).toBeGreaterThan(rms(shifted, late, late + span) * 2)
+    expect(Math.abs(rms(flat, early, early + span) - rms(flat, late, late + span))).toBeLessThan(0.02)
+  })
+
+  it('renders filter-cutoff modulation and stays deterministic', async () => {
+    const n = Math.floor(0.35 * SR)
+    const ch = new Float32Array(n)
+    for (let i = 0; i < n; i++) {
+      const t = i / SR
+      ch[i] =
+        0.35 * Math.sin(2 * Math.PI * 420 * t) +
+        0.35 * Math.sin(2 * Math.PI * 1400 * t) +
+        0.25 * Math.sin(2 * Math.PI * 3600 * t)
+    }
+    const source: Pcm = { sampleRate: SR, channels: [ch] }
+    const lfos: FxLfoMap = defaultFxLfos()
+    lfos.filter[0] = { rateHz: 6, shape: 'sine', depth: 100, target: 'filterCutoff' }
+    const modulated = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['filter']),
+          fxLfos: lfos,
+          params: { filterCutoff: 900, filterKind: 0, filterMix: 100, filterSlope: 4, filterDrive: 0 },
+        }),
+      ),
+    )
+    const again = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['filter']),
+          fxLfos: lfos,
+          params: { filterCutoff: 900, filterKind: 0, filterMix: 100, filterSlope: 4, filterDrive: 0 },
+        }),
+      ),
+    )
+    const frozen = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['filter']),
+          params: { filterCutoff: 900, filterKind: 0, filterMix: 100, filterSlope: 4, filterDrive: 0 },
+        }),
+      ),
+    )
+    expect(meanAbs(modulated, frozen)).toBeGreaterThan(0.02)
+    expect(meanAbs(modulated, again)).toBeLessThan(1e-4)
+    expect(rms(modulated)).toBeGreaterThan(0.02)
+  })
+
+  it('ignores a bypassed module', async () => {
+    const source = sine(1000, 0.15, 0.6)
+    const bypassed = mono(await render(source, state({ chain: chain([]), params: { eq1Freq: 180 } })))
+    const removed = mono(await render(source, state()))
+    const enabled = mono(await render(source, eqState(180)))
+    expect(meanAbs(bypassed, removed)).toBeLessThan(0.002)
+    expect(meanAbs(enabled, removed)).toBeGreaterThan(0.15)
+  })
+
+  it('applies output gain once and normalizes only when asked', async () => {
+    const source = sine(440, 0.2, 0.4)
+    const unity = mono(await render(source, state()))
+    const quieter = mono(await render(source, state({ params: { outputGain: -6 } })))
+    const ratio = rms(quieter) / rms(unity)
+    expect(ratio).toBeGreaterThan(0.45)
+    expect(ratio).toBeLessThan(0.58)
+    const prep = defaultPrep(0.2)
+    const plain = mono(await renderExportPcm(source, prep, settings('project', false), state(), { factory }))
+    const normalized = mono(await renderExportPcm(source, prep, settings('project', true), state(), { factory }))
+    expect(peak(plain)).toBeLessThan(0.55)
+    expect(peak(normalized)).toBeGreaterThan(dbToGain(-1) - 0.03)
+    expect(peak(normalized)).toBeLessThan(dbToGain(-1) + 0.03)
+  })
+
+  it('exports only the selection, processed, with a tail and no audio before it', async () => {
+    const seconds = 0.8
+    const n = Math.floor(seconds * SR)
+    const ch = new Float32Array(n)
+    ch[8] = 1
+    const sel0 = Math.floor(0.3 * SR)
+    const sel1 = Math.floor(0.48 * SR)
+    for (let i = sel0; i < sel1; i++) ch[i] = 0.45 * Math.sin((2 * Math.PI * 520 * (i - sel0)) / SR)
+    const source: Pcm = { sampleRate: SR, channels: [ch] }
+    const prep = {
+      ...defaultPrep(seconds),
+      selectionStart: 0.3,
+      selectionEnd: 0.48,
+    }
+    const snap = state({
+      chain: chain(['delay', 'filter']),
+      params: {
+        delayWet: 100,
+        delayDry: 30,
+        delayTime: 60,
+        delayFeedback: 40,
+        delayStereo: 0,
+        filterCutoff: 1200,
+        filterMix: 100,
+        filterSlope: 3,
+      },
+    })
+    const selected = await renderExportPcm(source, prep, settings('selection'), snap, { factory })
+    const project = await renderExportPcm(source, prep, settings('project'), snap, { factory })
+    const out = mono(selected)
+    const whole = mono(project)
+    const selFrames = sel1 - sel0
+    let firstLoud = -1
+    for (let i = 0; i < out.length; i++) {
+      if (Math.abs(out[i] ?? 0) > 0.05) {
+        firstLoud = i
+        break
+      }
+    }
+    // Wet delay places the selection at the file start. A pre-roll click would
+    // not sustain; the region tone does, about one delay time after sample 0.
+    expect(firstLoud).toBeGreaterThan(Math.floor(0.04 * SR))
+    expect(firstLoud).toBeLessThan(Math.floor(0.09 * SR))
+    expect(rms(out, firstLoud, firstLoud + Math.floor(0.05 * SR))).toBeGreaterThan(0.1)
+    expect(peak(whole, 0, Math.floor(0.2 * SR))).toBeGreaterThan(0.08)
+    expect(whole.length).toBeGreaterThan(out.length + Math.floor(0.2 * SR))
+    expect(out.length).toBeGreaterThan(selFrames)
+    expect(out.length).toBeLessThan(selFrames + Math.floor(2.5 * SR))
+    expect(rms(out, selFrames, Math.min(out.length, selFrames + Math.floor(0.12 * SR)))).toBeGreaterThan(0.008)
+    expect(selectionExportAvailable(defaultPrep(seconds))).toBe(false)
+  })
+})

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
+import { selectionExportAvailable } from '../../audio/engine/exportTail'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
 import { engine } from '../../hooks/useEngine'
@@ -37,8 +38,11 @@ export function ExportDialog({ snap, onClose }: Props) {
   const [applyGain, setApplyGain] = useState(prep.gainDb !== 0)
   const [applyReverse, setApplyReverse] = useState(prep.reverse)
   const [applyNormalize, setApplyNormalize] = useState(false)
+  const [rendering, setRendering] = useState(false)
+  const selectionReady = selectionExportAvailable(prep)
 
-  const estimated = useMemo(() => Math.max(0, prep.selectionEnd - prep.selectionStart), [prep])
+  const projectLength = useMemo(() => Math.max(0, prep.windowEnd - prep.windowStart), [prep])
+  const selectionLength = useMemo(() => Math.max(0, prep.selectionEnd - prep.selectionStart), [prep])
   const originalHz = snap.sourceSampleRate
 
   useEffect(() => {
@@ -49,19 +53,27 @@ export function ExportDialog({ snap, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const exportNow = () => {
-    const result = engine.exportWav({
-      name,
-      sampleRate: rate === 'original' ? 'original' : Number(rate),
-      bitDepth,
-      applyFades,
-      applyGain,
-      applyReverse,
-      applyNormalize,
-    })
-    if (!result) return
-    downloadBlob(result.filename, result.blob)
-    onClose()
+  const exportNow = (scope: 'project' | 'selection') => {
+    if (rendering) return
+    if (scope === 'selection' && !selectionReady) return
+    setRendering(true)
+    void engine
+      .exportWav({
+        name,
+        sampleRate: rate === 'original' ? 'original' : Number(rate),
+        bitDepth,
+        applyFades,
+        applyGain,
+        applyReverse,
+        applyNormalize,
+        scope,
+      })
+      .then((result) => {
+        if (!result) return
+        downloadBlob(result.filename, result.blob)
+        onClose()
+      })
+      .finally(() => setRendering(false))
   }
 
   return (
@@ -71,7 +83,7 @@ export function ExportDialog({ snap, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
-          exportNow()
+          exportNow('project')
         }}
       >
         <h2 id="export-title">{t.export.title}</h2>
@@ -123,15 +135,27 @@ export function ExportDialog({ snap, onClose }: Props) {
           <input type="checkbox" checked={applyNormalize} onChange={(e) => setApplyNormalize(e.target.checked)} />
           Normalize to {DEFAULT_NORMALIZE_DBFS} dBFS
         </label>
-        <p className={styles.hint}>{t.export.estimated(formatTimecode(estimated))}</p>
+        <p className={styles.hint}>{t.export.estimated(formatTimecode(projectLength))}</p>
+        <p className={styles.hint}>{t.export.tailHint}</p>
         <div className={styles.actions}>
-          <button type="button" onClick={onClose}>
+          <button type="button" onClick={onClose} disabled={rendering}>
             Cancel
           </button>
-          <button type="submit" className={styles.export}>
-            Export
+          <button
+            type="button"
+            disabled={!selectionReady || rendering}
+            title={selectionReady ? undefined : t.export.selectionUnavailable}
+            onClick={() => exportNow('selection')}
+          >
+            {rendering ? t.export.rendering : t.export.exportSelection}
+          </button>
+          <button type="submit" className={styles.export} disabled={rendering}>
+            {rendering ? t.export.rendering : t.export.exportProject}
           </button>
         </div>
+        {!selectionReady ? <p className={styles.hint}>{t.export.selectionUnavailable}</p> : (
+          <p className={styles.hint}>{t.export.estimated(formatTimecode(selectionLength))}</p>
+        )}
       </form>
     </div>
   )

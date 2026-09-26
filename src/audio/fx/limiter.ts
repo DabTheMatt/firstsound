@@ -1,5 +1,6 @@
 import { dbToGain } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
+import { setShaperCurve } from './shaperCurve'
 
 export type LimiterSettings = {
   inputGain: number
@@ -81,7 +82,7 @@ export function limiterSettingsKey(s: LimiterSettings): string {
   ].join('|')
 }
 
-export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
+export function createLimiterGraph(ctx: BaseAudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
   const inputGain = ctx.createGain()
   const shaper = ctx.createWaveShaper()
   shaper.oversample = '2x'
@@ -99,7 +100,6 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
     makeupGain: 1,
     ceiling: -0.3,
   }
-  shaper.curve = makeLimiterTransferCurve(lastSettings)
 
   input.connect(inputGain)
   // Drive stays inside the curve so peaks above 0 dBFS still follow limitSample.
@@ -116,7 +116,7 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
     inputGain,
     shaper,
     analyserPost,
-    curveKey: limiterSettingsKey(lastSettings),
+    curveKey: '',
     lastSettings,
   }
 }
@@ -124,7 +124,7 @@ export function createLimiterGraph(ctx: AudioContext, input: AudioNode, wet: Gai
 export function applyLimiterSettingsGraph(g: LimiterGraph, s: LimiterSettings): void {
   const key = limiterSettingsKey(s)
   if (key === g.curveKey) return
-  g.shaper.curve = makeLimiterTransferCurve(s)
+  setShaperCurve(g.shaper, key, makeLimiterTransferCurve(s))
   g.curveKey = key
   g.lastSettings = s
 }

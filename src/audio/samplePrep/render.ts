@@ -76,8 +76,10 @@ export function renderPrep(
   options: RenderOptions,
 ): Pcm {
   const sr = source.sampleRate
-  const start = Math.floor(state.selectionStart * sr)
-  const end = Math.floor(state.selectionEnd * sr)
+  const startSec = options.range?.start ?? state.selectionStart
+  const endSec = options.range?.end ?? state.selectionEnd
+  const start = Math.floor(startSec * sr)
+  const end = Math.floor(endSec * sr)
   let channels = source.channels.map((ch) => sliceChannel(ch, start, end))
 
   if (options.applyChannels) {

@@ -14,6 +14,7 @@ import {
   peakGainFromReso,
 } from './filter'
 import { webAudioBiquadQ } from '../engine/eqBands'
+import { setShaperCurve } from './shaperCurve'
 
 export type FilterGraph = {
   analyser: AnalyserNode
@@ -54,13 +55,12 @@ function writeBiquad(
   node.gain.setTargetAtTime(gainDb, now, smoothing)
 }
 
-export function createFilterGraph(ctx: AudioContext, wet: GainNode, output: GainNode): FilterGraph {
+export function createFilterGraph(ctx: BaseAudioContext, wet: GainNode, output: GainNode): FilterGraph {
   const analyser = ctx.createAnalyser()
   analyser.fftSize = 1024
   analyser.smoothingTimeConstant = 0
   const drive = ctx.createWaveShaper()
   drive.oversample = '2x'
-  drive.curve = makeFilterDriveCurve(0, 'clean')
   const series: BiquadFilterNode[] = []
   for (let i = 0; i < FILTER_STAGE_COUNT; i++) series.push(ctx.createBiquadFilter())
   const hpMorph: BiquadFilterNode[] = []
@@ -138,7 +138,7 @@ export function applyFilterGraph(
   const key = `${character}:${drive.toFixed(3)}`
   if (key !== g.curveKey) {
     g.curveKey = key
-    g.drive.curve = makeFilterDriveCurve(drive, character)
+    setShaperCurve(g.drive, key, makeFilterDriveCurve(drive, character))
     g.drive.oversample = character === 'dirty' || character === 'aggressive' ? '4x' : '2x'
   }
 

@@ -9,6 +9,7 @@ export { canRedo, canUndo, commit, createHistory, live, redo, resetHistory, undo
 export type { History } from './history'
 export type {
   ChannelMode,
+  ExportScope,
   ExportSettings,
   FadeCurveId,
   Pcm,

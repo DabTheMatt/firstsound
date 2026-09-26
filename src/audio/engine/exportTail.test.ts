@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest'
+import { factoryChain, type ChainModule, type ModuleType } from '../chain/chain'
+import { defaultParamValues } from '../parameters/definitions'
+import { defaultPrep } from '../samplePrep/state'
+import { effectTailBudgetSec, exportSourceRange, selectionExportAvailable, trimRenderedTail } from './exportTail'
+
+function chain(enabled: ModuleType[], bypassed: ModuleType[] = []): ChainModule[] {
+  return factoryChain().map((mod) => ({
+    ...mod,
+    bypassed:
+      mod.type === 'gain' || mod.type === 'output'
+        ? false
+        : bypassed.includes(mod.type) || !enabled.includes(mod.type),
+  }))
+}
+
+describe('export tail and selection range', () => {
+  it('treats a full-window region as no selection', () => {
+    const prep = defaultPrep(2)
+    expect(selectionExportAvailable(prep)).toBe(false)
+    expect(exportSourceRange(prep, 'project')).toEqual({ start: 0, end: 2 })
+    expect(exportSourceRange(prep, 'selection')).toEqual({
+      start: prep.selectionStart,
+      end: prep.selectionEnd,
+    })
+  })
+
+  it('enables Export Selection only for a real subset', () => {
+    const prep = { ...defaultPrep(2), selectionStart: 0.4, selectionEnd: 0.9 }
+    expect(selectionExportAvailable(prep)).toBe(true)
+    expect(exportSourceRange(prep, 'selection')).toEqual({ start: 0.4, end: 0.9 })
+    expect(exportSourceRange(prep, 'project')).toEqual({ start: 0, end: 2 })
+  })
+
+  it('derives a delay/reverb budget instead of a fixed pad', () => {
+    const dry = defaultParamValues()
+    expect(effectTailBudgetSec(chain([]), dry, 'room')).toBe(0)
+    const wet = { ...dry, delayWet: 80, delayFeedback: 40, delayTime: 180 }
+    expect(effectTailBudgetSec(chain(['delay'], ['delay']), wet, 'room')).toBe(0)
+    const delay = effectTailBudgetSec(chain(['delay']), wet, 'room')
+    expect(delay).toBeGreaterThan(0.15)
+    expect(delay).toBeLessThan(12)
+    expect(delay).not.toBe(10)
+    expect(delay).not.toBe(30)
+    const verb = {
+      ...dry,
+      reverbWet: 70,
+      reverbDecay: 0.4,
+      reverbSize: 20,
+      reverbPredelay: 0,
+    }
+    const reverb = effectTailBudgetSec(chain(['reverb']), verb, 'room')
+    expect(reverb).toBeGreaterThan(0.08)
+    expect(reverb).toBeLessThan(3)
+  })
+
+  it('drops a silent tail and keeps a decaying one only while it is hot', () => {
+    const sr = 1000
+    const silent = [new Float32Array(200)]
+    expect(trimRenderedTail(silent, 50, sr)).toBe(50)
+    const ringing = new Float32Array(200)
+    ringing[55] = 0.2
+    ringing[70] = 0.01
+    expect(trimRenderedTail([ringing], 50, sr, 0.00045, 0.02)).toBe(71)
+    const stillHot = new Float32Array(80)
+    stillHot[70] = 0.2
+    expect(trimRenderedTail([stillHot], 50, sr, 0.00045, 0.05)).toBe(80)
+  })
+})

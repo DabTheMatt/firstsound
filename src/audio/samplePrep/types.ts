@@ -63,7 +63,11 @@ export type RenderOptions = {
   applyDc: boolean
   applyChannels: boolean
   sampleRate: number | 'original'
+  /** Source span in seconds. Defaults to the prep selection. */
+  range?: { start: number; end: number }
 }
+
+export type ExportScope = 'project' | 'selection'
 
 export type ExportSettings = {
   name: string
@@ -73,6 +77,8 @@ export type ExportSettings = {
   applyGain: boolean
   applyReverse: boolean
   applyNormalize: boolean
+  /** `project` is the working sample. `selection` is the current region only. */
+  scope?: ExportScope
 }
 
 export const DEFAULT_NORMALIZE_DBFS = -1

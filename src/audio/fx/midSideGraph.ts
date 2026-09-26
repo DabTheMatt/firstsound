@@ -70,7 +70,7 @@ export type MidSideGraph = {
   monoRR: GainNode
 }
 
-function shelf(ctx: AudioContext, type: BiquadFilterType): BiquadFilterNode {
+function shelf(ctx: BaseAudioContext, type: BiquadFilterType): BiquadFilterNode {
   const node = ctx.createBiquadFilter()
   node.type = type
   node.frequency.value = MS_TILT_HZ
@@ -79,7 +79,7 @@ function shelf(ctx: AudioContext, type: BiquadFilterType): BiquadFilterNode {
   return node
 }
 
-function eqBand(ctx: AudioContext, type: BiquadFilterType, hz: number, q: number): BiquadFilterNode {
+function eqBand(ctx: BaseAudioContext, type: BiquadFilterType, hz: number, q: number): BiquadFilterNode {
   const node = ctx.createBiquadFilter()
   node.type = type
   node.frequency.value = hz
@@ -120,7 +120,7 @@ function primeNeutral(g: MidSideGraph): void {
   g.monoRR.gain.value = 1
 }
 
-export function createMidSideGraph(ctx: AudioContext, wet: GainNode, output: GainNode): MidSideGraph {
+export function createMidSideGraph(ctx: BaseAudioContext, wet: GainNode, output: GainNode): MidSideGraph {
   const split = ctx.createChannelSplitter(2)
   forceStereoDiscrete(wet)
   wet.connect(split)

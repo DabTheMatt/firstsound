@@ -1,4 +1,16 @@
-import { COMB_MAX_TEETH, EQ_MAX_BANDS, EQ_MAX_STAGES, EQ_POOL_BANDS, copyEqBand, type EqBand } from './eqBands'
+import {
+  COMB_MAX_TEETH,
+  EQ_MAX_BANDS,
+  EQ_MAX_STAGES,
+  EQ_POOL_BANDS,
+  bandIsActive,
+  bandUsesGain,
+  copyEqBand,
+  filterStageCount,
+  stageQ,
+  webAudioBiquadQ,
+  type EqBand,
+} from './eqBands'
 
 export type EqChannelMode = 'shared' | 'left' | 'right'
 
@@ -56,7 +68,7 @@ export function eqPoolSize(bandCount: number): number {
   return Math.max(EQ_POOL_BANDS, bandCount) * EQ_MAX_STAGES + COMB_MAX_TEETH
 }
 
-function createBand(ctx: AudioContext): EqBandPath {
+function createBand(ctx: BaseAudioContext): EqBandPath {
   const input = ctx.createGain()
   const output = ctx.createGain()
   const dry = ctx.createGain()
@@ -84,7 +96,7 @@ function createBand(ctx: AudioContext): EqBandPath {
 }
 
 /** Add cascade stages on the wet tap only. Caller must keep that tap silent. */
-export function ensureBandStages(ctx: AudioContext, path: EqBandPath, count: number): void {
+export function ensureBandStages(ctx: BaseAudioContext, path: EqBandPath, count: number): void {
   const need = Math.max(1, Math.min(EQ_MAX_STAGES, count))
   while (path.stages.length < need) {
     const node = ctx.createBiquadFilter()
@@ -105,7 +117,7 @@ export function ensureBandStages(ctx: AudioContext, path: EqBandPath, count: num
   }
 }
 
-function createLane(ctx: AudioContext, bandCount: number): EqLane {
+function createLane(ctx: BaseAudioContext, bandCount: number): EqLane {
   const input = ctx.createGain()
   const output = ctx.createGain()
   const bands = Array.from({ length: bandCount }, () => createBand(ctx))
@@ -149,7 +161,7 @@ function createLane(ctx: AudioContext, bandCount: number): EqLane {
   }
 }
 
-export function createEqGraph(ctx: AudioContext, _bandCount = EQ_POOL_BANDS): EqGraph {
+export function createEqGraph(ctx: BaseAudioContext, _bandCount = EQ_POOL_BANDS): EqGraph {
   // Every band the UI can add is already a dry wire. Growing the list later
   // would disconnect the live chain and click.
   const input = ctx.createGain()
@@ -168,7 +180,7 @@ export function createEqGraph(ctx: AudioContext, _bandCount = EQ_POOL_BANDS): Eq
 }
 
 /** Bands are preallocated. Kept so older call sites can ask for a larger pool. */
-export function growEqGraph(_ctx: AudioContext, _graph: EqGraph, _bandCount: number): void {
+export function growEqGraph(_ctx: BaseAudioContext, _graph: EqGraph, _bandCount: number): void {
   /* lanes already hold EQ_MAX_BANDS identity stages */
 }
 
@@ -186,4 +198,75 @@ export function eqBandsForChannel(
 
 export function cloneEqBands(bands: EqBand[]): EqBand[] {
   return bands.map((b) => copyEqBand(b))
+}
+
+function writeBiquadParam(
+  param: AudioParam,
+  value: number,
+  now: number,
+  immediate: boolean,
+  smoothing: number,
+): void {
+  const next = Number.isFinite(value) ? value : 0
+  if (immediate) {
+    param.cancelScheduledValues(now)
+    param.setValueAtTime(next, now)
+    return
+  }
+  param.setTargetAtTime(next, now, Math.max(0.003, smoothing))
+}
+
+/** Coefficient write shared by live anti-click commits and offline export. */
+export function writeEqBandCoefficients(
+  path: EqBandPath,
+  band: EqBand | undefined,
+  now: number,
+  immediate: boolean,
+  nyquist: number,
+  smoothing: number,
+): void {
+  const active = Boolean(band && bandIsActive(band))
+  const stages = active && band ? filterStageCount(band) : 0
+  const stageGain = band && bandUsesGain(band.type) && stages > 0 ? band.gain / stages : 0
+  for (let stage = 0; stage < path.stages.length; stage++) {
+    const node = path.stages[stage]
+    if (!node) continue
+    if (!band || !active || stage >= stages) {
+      if (immediate) applyIdentityBiquad(node)
+      continue
+    }
+    const hz = Math.min(Math.max(10, band.frequency), nyquist * 0.99)
+    const q = webAudioBiquadQ(band.type, stageQ(band, stage))
+    const gainDb = bandUsesGain(band.type) ? stageGain : 0
+    if (node.type !== band.type) node.type = band.type as BiquadFilterType
+    writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
+    writeBiquadParam(node.Q, q, now, immediate, smoothing)
+    writeBiquadParam(node.gain, gainDb, now, immediate, smoothing)
+  }
+}
+
+/** Comb teeth written the same way as the live EQ lane. */
+export function writeCombCoefficients(
+  lane: EqLane,
+  bands: EqBand[],
+  now: number,
+  immediate: boolean,
+  nyquist: number,
+  smoothing: number,
+): void {
+  for (let i = 0; i < lane.comb.length; i++) {
+    const node = lane.comb[i]
+    const tooth = bands[i]
+    if (!node) continue
+    if (!tooth) {
+      if (immediate) applyIdentityBiquad(node)
+      continue
+    }
+    const hz = Math.min(tooth.frequency, nyquist * 0.99)
+    const q = Math.min(20, Math.max(0.1, tooth.q))
+    if (node.type !== 'peaking') node.type = 'peaking'
+    writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
+    writeBiquadParam(node.Q, q, now, immediate, smoothing)
+    writeBiquadParam(node.gain, tooth.gain, now, immediate, smoothing)
+  }
 }

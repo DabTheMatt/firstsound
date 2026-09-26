@@ -10,6 +10,7 @@ import {
   type DistortionProcState,
 } from './distortion'
 import { distortionTypeProfile } from './distortionProfiles'
+import { setShaperCurve } from './shaperCurve'
 import type { DistortionNoiseKind, DistortionType } from './types'
 
 export type DistortionGraph = {
@@ -24,7 +25,7 @@ export type DistortionGraph = {
 }
 
 export function createDistortionGraph(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   wet: GainNode,
   output: GainNode,
 ): DistortionGraph {
@@ -40,7 +41,6 @@ export function createDistortionGraph(
   pre.gain.value = 1
   const shaper = ctx.createWaveShaper()
   shaper.oversample = '2x'
-  shaper.curve = makeDistortionCurve('saturation', 0, 0.5)
   const proc = ctx.createScriptProcessor(256, 2, 2)
   const post = ctx.createGain()
   post.gain.value = 1
@@ -48,13 +48,18 @@ export function createDistortionGraph(
   proc.onaudioprocess = (event) => {
     const input = event.inputBuffer
     const outputBuf = event.outputBuffer
+    const outL = outputBuf.getChannelData(0)
+    const outR = outputBuf.numberOfChannels > 1 ? outputBuf.getChannelData(1) : outL
     processDistortionBuffer(
       input.getChannelData(0),
       input.numberOfChannels > 1 ? input.getChannelData(1) : input.getChannelData(0),
-      outputBuf.getChannelData(0),
-      outputBuf.numberOfChannels > 1 ? outputBuf.getChannelData(1) : outputBuf.getChannelData(0),
+      outL,
+      outR,
       state,
     )
+    // Some offline engines hand out channel copies. copyToChannel commits the block.
+    outputBuf.copyToChannel(outL, 0)
+    if (outputBuf.numberOfChannels > 1 && outR !== outL) outputBuf.copyToChannel(outR, 1)
   }
   wet.connect(hp)
   hp.connect(lp)
@@ -97,7 +102,7 @@ export function applyDistortionGraph(
   const key = `${type}:${drive.toFixed(3)}:${bias.toFixed(3)}`
   if (key !== g.curveKey) {
     g.curveKey = key
-    g.shaper.curve = makeDistortionCurve(type, drive, bias)
+    setShaperCurve(g.shaper, key, makeDistortionCurve(type, drive, bias))
     g.shaper.oversample = type === 'digital' || type === 'clip' || type === 'fold' ? '4x' : '2x'
   }
   g.state.bits = params.distortionBits

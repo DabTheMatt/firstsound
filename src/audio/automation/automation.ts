@@ -453,9 +453,10 @@ export function resolvePerformanceParams(
   lfos: FxLfoMap,
   lfoTimeSec: number,
   hold: LfoHoldState,
+  rand?: () => number,
 ): Record<ParamId, number> {
   const base = playing ? applyAutomation(manual, automation, timeSec) : manual
-  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold) : base
+  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold, rand) : base
   // Linked pairs (delay correlate, L/R link) follow the automated or modulated
   // value. Skip when the result is still the stored object so a stopped
   // transport cannot rewrite the manual knobs.

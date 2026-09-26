@@ -67,7 +67,7 @@ export type StereoStage = {
   panner: StereoPannerNode
 }
 
-export function createStereoStage(ctx: AudioContext): StereoStage {
+export function createStereoStage(ctx: BaseAudioContext): StereoStage {
   const input = ctx.createGain()
   const makeup = ctx.createGain()
   const split = ctx.createChannelSplitter(2)

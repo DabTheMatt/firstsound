@@ -1,25 +1,12 @@
 import type { FadeCurve } from '../audio/engine/fades'
+import { renderProcessedPcm } from '../audio/engine/offlineRender'
 import { encodeWav, resampleChannels, type Pcm, type WavBitDepth } from '../audio/samplePrep'
-import { captureDsp } from '../sensory/applySensory'
 import type { AudioEngine } from '../audio/engine/AudioEngine'
-import { applyToneToChannels } from './applyToneEq'
 
 export function formatSimpleSeconds(seconds: number, locale: 'en' | 'pl'): string {
   const n = Math.max(0, seconds)
   const text = n.toFixed(1)
   return locale === 'pl' ? text.replace('.', ',') : text
-}
-
-function protectPeak(channels: Float32Array[]): void {
-  let peak = 0
-  for (const ch of channels) {
-    for (const sample of ch) peak = Math.max(peak, Math.abs(sample))
-  }
-  if (!(peak > 0.99)) return
-  const gain = 0.99 / peak
-  for (const ch of channels) {
-    for (let i = 0; i < ch.length; i++) ch[i] = (ch[i] ?? 0) * gain
-  }
 }
 
 export function mixPcmToMono(pcm: Pcm): Pcm {
@@ -31,10 +18,10 @@ export function mixPcmToMono(pcm: Pcm): Pcm {
   return { sampleRate: pcm.sampleRate, channels: [out] }
 }
 
-export function bounceSimplePcm(
+export async function bounceSimplePcm(
   engine: AudioEngine,
   edit: { fadeIn: number; fadeOut: number; fadeCurve: FadeCurve; fadeInBend: number; fadeOutBend: number },
-): Pcm | null {
+): Promise<Pcm | null> {
   const rendered = engine.renderEdit({
     fadeIn: edit.fadeIn,
     fadeOut: edit.fadeOut,
@@ -45,15 +32,15 @@ export function bounceSimplePcm(
     normalize: false,
   })
   if (!rendered) return null
-  const dsp = captureDsp(engine)
   const channels: Float32Array[] = []
   for (let c = 0; c < rendered.numberOfChannels; c++) {
-    channels.push(rendered.getChannelData(c).slice())
+    channels.push(new Float32Array(rendered.getChannelData(c)))
   }
-  const bands = dsp.bypass.eq ? [] : dsp.eqBands
-  const processed = applyToneToChannels(channels, rendered.sampleRate, bands, 0)
-  protectPeak(processed)
-  return { sampleRate: rendered.sampleRate, channels: processed }
+  return renderProcessedPcm(
+    { sampleRate: rendered.sampleRate, channels },
+    engine.processingSnapshot(),
+    { timelineStart: engine.getSnapshot().params.start },
+  )
 }
 
 export type SimpleExportRequest = {

@@ -196,7 +196,7 @@ export function SimpleShell({
 
   const saveFile = () => {
     exitOriginal()
-    const pcm = bounceSimplePcm(engine, edit)
+    void bounceSimplePcm(engine, edit).then((pcm) => {
     if (!pcm) return
     const prepared = prepareSimpleExportPcm(pcm, {
       name: saveName,
@@ -208,6 +208,7 @@ export function SimpleShell({
     const blob = encodeSimpleWav(prepared, saveFormat === 'mp3' ? 16 : saveBits)
     downloadBlob(simpleExportFilename(saveName, saveFormat === 'mp3' ? 'wav' : 'wav'), blob)
     setSheet('none')
+    })
   }
 
   const fadeInCopy = {

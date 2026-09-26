@@ -94,32 +94,14 @@ import {
   silenceReverbGraph,
   stopDelayGraph,
   stopReverbGraph,
-  wetDryFor,
-  type DelayGraph,
-  type ReverbGraph,
 } from '../fx/graphs'
-import {
-  applyLimiterGraph,
-  createLimiterGraph,
-  limiterReductionDb,
-  type LimiterGraph,
-} from '../fx/limiter'
-import {
-  applyCompressorGraph,
-  createCompressorGraph,
-  compressorReductionDb,
-  type CompressorGraph,
-} from '../fx/compressor'
+import { applyLimiterGraph, limiterReductionDb } from '../fx/limiter'
+import { applyCompressorGraph, compressorReductionDb } from '../fx/compressor'
 import { migrateSpaceParams } from '../fx/migrate'
 import { commitParamEdit, commitParamPatch } from '../parameters/links'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet, NOISE_CUT_TAU_SEC, NOISE_PAUSE_FADE_TAU_SEC } from '../fx/distortion'
-import {
-  applyDistortionGraph,
-  createDistortionGraph,
-  stopDistortionGraph,
-  type DistortionGraph,
-} from '../fx/distortionGraph'
+import { applyDistortionGraph, stopDistortionGraph } from '../fx/distortionGraph'
 import { distortionTypeColorPatch, distortionTypeProfile } from '../fx/distortionProfiles'
 import {
   applyFilterModulation,
@@ -129,8 +111,8 @@ import {
   followerEnvelope,
   rmsFromTimeDomain,
 } from '../fx/filter'
-import { applyFilterGraph, createFilterGraph, filterDryWetGains, type FilterGraph } from '../fx/filterGraph'
-import { applyMidSideGraph, createMidSideGraph, type MidSideGraph } from '../fx/midSideGraph'
+import { applyFilterGraph } from '../fx/filterGraph'
+import { applyMidSideGraph } from '../fx/midSideGraph'
 import { MS_PARAM_IDS } from '../fx/midSide'
 import {
   randomizeMidSide as randomizeMidSidePatch,
@@ -139,7 +121,6 @@ import {
   MIDSIDE_RECIPES,
 } from '../fx/midSidePresets'
 import { filterPresetPatch, randomizeFilterPatch, type FilterPresetId } from '../fx/filterPresets'
-import { isDelayStereo } from '../fx/spaceModel'
 import { delayTypeColorPatch } from '../fx/delayProfiles'
 import { effectDefaultPatch, type EffectDefaultKind } from '../fx/effectDefaults'
 import { findSpacePreset, type SpacePreset } from '../fx/presets'
@@ -196,24 +177,19 @@ import {
   EQ_POOL_BANDS,
   filterStageCount,
   parseEqBands,
-  stageQ,
-  webAudioBiquadQ,
   eqBypassAfterBandEdit,
   bandIsActive,
-  bandUsesGain,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
 import {
   applyIdentityBiquad,
   cloneEqBands,
-  createEqGraph,
   ensureBandStages,
   eqBandsForChannel,
   growEqGraph,
   type EqBandPath,
   type EqChannelMode,
-  type EqGraph,
   type EqLane,
 } from './eqGraph'
 import {
@@ -262,7 +238,11 @@ import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
 import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
-import { applyStereoStage, createStereoStage, forceStereoUpmix, type StereoStage } from './stereoStage'
+import { applyStereoStage, forceStereoUpmix } from './stereoStage'
+import { createChainSlot, moduleMixGains, type ChainSlot } from './chainGraph'
+import { writeCombCoefficients, writeEqBandCoefficients } from './eqGraph'
+import { renderExportPcm, type ExportEqState, type ProcessingSnapshot } from './offlineRender'
+import { selectionExportAvailable } from './exportTail'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
   effectiveInterpAlgo,
@@ -424,29 +404,7 @@ type ActiveVoice = {
   pingPong: boolean
 }
 
-type Slot = {
-  instanceId: string
-  type: ModuleType
-  input: GainNode
-  output: GainNode
-  dry: GainNode
-  wet: GainNode
-  eq?: EqGraph
-  shaper?: WaveShaperNode
-  distortionFx?: DistortionGraph
-  filterFx?: FilterGraph
-  midSideFx?: MidSideGraph
-  delay?: DelayNode
-  delayFb?: GainNode
-  convolver?: ConvolverNode
-  predelay?: DelayNode
-  damp?: BiquadFilterNode
-  delayFx?: DelayGraph
-  reverbFx?: ReverbGraph
-  limiterFx?: LimiterGraph
-  compressorFx?: CompressorGraph
-  stereo?: StereoStage
-}
+type Slot = ChainSlot
 
 
 /**
@@ -1849,27 +1807,64 @@ export class AudioEngine {
     this.emit()
   }
 
-  exportWav(settings: ExportSettings): { filename: string; blob: Blob; duration: number } | null {
+  async exportWav(
+    settings: ExportSettings,
+  ): Promise<{ filename: string; blob: Blob; duration: number } | null> {
     if (!this.sourceBuffer) return null
-    const pcm = this.renderCurrent({
-      applyFades: settings.applyFades,
-      applyGain: settings.applyGain,
-      applyReverse: settings.applyReverse,
-      applyNormalize: settings.applyNormalize,
-      applyDc: this.prep.removeDc,
-      applyChannels: true,
-      sampleRate: settings.sampleRate,
-    })
+    const scope = settings.scope ?? 'project'
+    if (scope === 'selection' && !selectionExportAvailable(this.prep)) return null
+    const pcm = await renderExportPcm(
+      clonePcmFromBuffer(this.sourceBuffer),
+      this.prep,
+      { ...settings, scope },
+      this.processingSnapshot(),
+    )
     const bytes = encodeWav(pcm, settings.bitDepth)
-    const partial =
-      isTrimmed(this.prep, this.sourceDuration()) ||
-      this.prep.selectionStart > this.prep.windowStart + 0.001 ||
-      this.prep.selectionEnd < this.prep.windowEnd - 0.001
+    const partial = scope === 'selection' || isTrimmed(this.prep, this.sourceDuration())
     const filename = settings.name || exportFileName(this.fileName, partial, this.prep.clipName)
     return {
       filename: filename.endsWith('.wav') ? filename : `${filename}.wav`,
       blob: new Blob([bytes], { type: 'audio/wav' }),
       duration: pcmDuration(pcm),
+    }
+  }
+
+  /** Chain, parameters, automation, and modulation the offline render must match. */
+  processingSnapshot(): ProcessingSnapshot {
+    const eqById: Record<string, ExportEqState> = {}
+    for (const [id, st] of this.eqById) {
+      eqById[id] = {
+        bands: st.bands.map((band) => ({ ...band })),
+        bandsL: st.bandsL.map((band) => ({ ...band })),
+        bandsR: st.bandsR.map((band) => ({ ...band })),
+        comb: { ...st.comb },
+      }
+    }
+    const primary = this.primaryEqId()
+    if (!eqById[primary]) {
+      eqById[primary] = {
+        bands: this.eqBands.map((band) => ({ ...band })),
+        bandsL: [],
+        bandsR: [],
+        comb: { ...this.comb },
+      }
+    }
+    return {
+      chain: this.chain.map((mod) => ({ ...mod })),
+      params: { ...this.params },
+      automation: cloneAutomation(this.automation),
+      fxLfos: cloneFxLfos(this.fxLfos),
+      eqById,
+      eqChannelMode: this.eqChannelMode,
+      primaryEqId: primary,
+      distortionType: this.distortionType,
+      distortionNoiseKind: this.distortionNoiseKind,
+      delayType: this.delayType,
+      reverbType: this.reverbType,
+      voiceGain: leadVoiceMixGain(this.tracks, this.selectedTrackId),
+      masterGain: outputMixGain(this.masterMix),
+      noiseMuted: this.noiseMuted,
+      noiseFadeTau: this.noiseFadeTau,
     }
   }
 
@@ -2861,75 +2856,11 @@ export class AudioEngine {
 
   private createSlot(mod: ChainModule): Slot {
     const ctx = this.ctx!
-    const input = ctx.createGain()
-    const output = ctx.createGain()
-    const dry = ctx.createGain()
-    const wet = ctx.createGain()
-    input.connect(dry)
-    dry.connect(output)
-    const slot: Slot = {
-      instanceId: mod.instanceId,
-      type: mod.type,
-      input,
-      output,
-      dry,
-      wet,
-    }
-    if (mod.type === 'gain' || mod.type === 'output' || mod.type === 'grain') {
-      wet.gain.value = 0
-      dry.gain.value = 1
-      if (mod.type === 'gain') {
-        try {
-          dry.disconnect(output)
-        } catch {
-          /* first connect */
-        }
-        const stereo = createStereoStage(ctx)
-        dry.connect(stereo.input)
-        stereo.output.connect(output)
-        slot.stereo = stereo
-      }
-      return slot
-    }
-    if (mod.type === 'eq') {
-      const st = this.eqState(mod.instanceId)
-      const graph = createEqGraph(ctx, Math.max(EQ_POOL_BANDS, this.eqEditBands(st).length))
-      input.connect(wet)
-      wet.connect(graph.input)
-      graph.output.connect(output)
-      slot.eq = graph
-    }
-    if (mod.type === 'filter') {
-      input.connect(wet)
-      slot.filterFx = createFilterGraph(ctx, wet, output)
-    }
-    if (mod.type === 'midside') {
-      input.connect(wet)
-      slot.midSideFx = createMidSideGraph(ctx, wet, output)
-    }
-    if (mod.type === 'distortion') {
-      input.connect(wet)
-      slot.distortionFx = createDistortionGraph(ctx, wet, output)
-      slot.shaper = slot.distortionFx.shaper
-    }
-    if (mod.type === 'delay') {
-      input.connect(wet)
-      slot.delayFx = createDelayGraph(ctx, wet, output, input)
-    }
-    if (mod.type === 'reverb') {
-      input.connect(wet)
-      slot.reverbFx = createReverbGraph(ctx, wet, output, input)
-    }
-    if (mod.type === 'compressor') {
-      slot.compressorFx = createCompressorGraph(ctx, input, wet)
-      this.analyserCompressorPost = slot.compressorFx.analyserPost
-      wet.connect(output)
-    }
-    if (mod.type === 'limiter') {
-      slot.limiterFx = createLimiterGraph(ctx, input, wet)
-      this.analyserLimiterPost = slot.limiterFx.analyserPost
-      wet.connect(output)
-    }
+    const bands =
+      mod.type === 'eq' ? Math.max(EQ_POOL_BANDS, this.eqEditBands(this.eqState(mod.instanceId)).length) : EQ_POOL_BANDS
+    const slot = createChainSlot(ctx, mod, bands)
+    if (slot.compressorFx) this.analyserCompressorPost = slot.compressorFx.analyserPost
+    if (slot.limiterFx) this.analyserLimiterPost = slot.limiterFx.analyserPost
     return slot
   }
 
@@ -3222,49 +3153,21 @@ export class AudioEngine {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const params = this.liveParams()
+    const flags = { eqListenFilters: this.eqListen === 'filters', spaceLatched: this.spaceLatched }
     for (const mod of this.chain) {
       const slot = this.slots.get(mod.instanceId)
       if (!slot) continue
-      if (mod.type === 'gain' || mod.type === 'output' || mod.type === 'grain') {
-        slot.dry.gain.setTargetAtTime(1, now, smoothing)
-        slot.wet.gain.setTargetAtTime(0, now, smoothing)
-        continue
-      }
-      const bypassed =
-        this.eqListen === 'filters' &&
-        (mod.type === 'delay' ||
-          mod.type === 'reverb' ||
-          mod.type === 'distortion' ||
-          mod.type === 'filter' ||
-          mod.type === 'midside' ||
-          mod.type === 'compressor' ||
-          mod.type === 'limiter')
-        ? true
-        : this.eqListen === 'filters' && mod.type === 'eq'
-          ? false
-          : mod.bypassed
-      const stereoDelay = mod.type === 'delay' && isDelayStereo(params)
-      const dry =
-        bypassed ? 1 : stereoDelay ? 0 : dryLevel(mod.type, params, this.distortionType)
-      const wet =
-        this.spaceLatched && (mod.type === 'delay' || mod.type === 'reverb')
-          ? 0
-          : bypassed
-            ? 0
-            : stereoDelay
-              ? 1
-              : wetLevel(mod.type, params, this.distortionType)
-      rampGainExact(slot.dry.gain, dry, now, smoothing)
-      rampGainExact(slot.wet.gain, wet, now, smoothing)
-      if (mod.type === 'delay' && slot.delayFx && (bypassed || this.spaceLatched)) {
+      const mix = moduleMixGains(mod, params, this.distortionType, flags)
+      rampGainExact(slot.dry.gain, mix.dry, now, smoothing)
+      rampGainExact(slot.wet.gain, mix.wet, now, smoothing)
+      if (mix.muteDelayChannels && slot.delayFx) {
         rampGainExact(slot.delayFx.chanDryL.gain, 0, now, smoothing)
         rampGainExact(slot.delayFx.chanDryR.gain, 0, now, smoothing)
         rampGainExact(slot.delayFx.chanWetL.gain, 1, now, smoothing)
         rampGainExact(slot.delayFx.chanWetR.gain, 1, now, smoothing)
       }
       if (mod.type === 'delay' || mod.type === 'reverb') {
-        const out = bypassed ? 1 : wetDryFor(mod.type, params).out
-        rampGainExact(slot.output.gain, out, now, smoothing)
+        rampGainExact(slot.output.gain, mix.output, now, smoothing)
       }
     }
   }
@@ -3481,25 +3384,7 @@ export class AudioEngine {
     nyquist: number,
     smoothing: number,
   ): void {
-    const active = Boolean(band && bandIsActive(band))
-    const stages = active && band ? filterStageCount(band) : 0
-    const stageGain =
-      band && bandUsesGain(band.type) && stages > 0 ? band.gain / stages : 0
-    for (let stage = 0; stage < path.stages.length; stage++) {
-      const node = path.stages[stage]
-      if (!node) continue
-      if (!band || !active || stage >= stages) {
-        if (immediate) applyIdentityBiquad(node)
-        continue
-      }
-      const hz = Math.min(Math.max(10, band.frequency), nyquist * 0.99)
-      const q = webAudioBiquadQ(band.type, stageQ(band, stage))
-      const gainDb = bandUsesGain(band.type) ? stageGain : 0
-      if (node.type !== band.type) node.type = band.type as BiquadFilterType
-      writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
-      writeBiquadParam(node.Q, q, now, immediate, smoothing)
-      writeBiquadParam(node.gain, gainDb, now, immediate, smoothing)
-    }
+    writeEqBandCoefficients(path, band, now, immediate, nyquist, smoothing)
   }
 
   private syncEqComb(
@@ -3589,21 +3474,7 @@ export class AudioEngine {
     nyquist: number,
     smoothing: number,
   ): void {
-    for (let i = 0; i < lane.comb.length; i++) {
-      const node = lane.comb[i]
-      const tooth = bands[i]
-      if (!node) continue
-      if (!tooth) {
-        if (immediate) applyIdentityBiquad(node)
-        continue
-      }
-      const hz = Math.min(tooth.frequency, nyquist * 0.99)
-      const q = Math.min(20, Math.max(0.1, tooth.q))
-      if (node.type !== 'peaking') node.type = 'peaking'
-      writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
-      writeBiquadParam(node.Q, q, now, immediate, smoothing)
-      writeBiquadParam(node.gain, tooth.gain, now, immediate, smoothing)
-    }
+    writeCombCoefficients(lane, bands, now, immediate, nyquist, smoothing)
   }
 
   private syncEqListen(): void {
@@ -4800,66 +4671,6 @@ function rampGainExact(param: AudioParam, value: number, now: number, smoothing:
 function eqTopologySignature(band: EqBand | undefined): string {
   if (!band || !bandIsActive(band)) return 'off'
   return `${band.type}:${filterStageCount(band)}`
-}
-
-function writeBiquadParam(
-  param: AudioParam,
-  value: number,
-  now: number,
-  immediate: boolean,
-  smoothing: number,
-): void {
-  const next = Number.isFinite(value) ? value : 0
-  if (immediate) {
-    param.cancelScheduledValues(now)
-    param.setValueAtTime(next, now)
-    return
-  }
-  param.setTargetAtTime(next, now, Math.max(0.003, smoothing))
-}
-
-function wetLevel(
-  type: ModuleType,
-  params: Record<ParamId, number>,
-  distortionType: DistortionType,
-): number {
-  if (type === 'delay') return wetDryFor('delay', params).wet
-  if (type === 'reverb') return wetDryFor('reverb', params).wet
-  if (type === 'filter') return filterDryWetGains(params.filterMix).wet
-  if (type === 'distortion') {
-    return distortionDryWet(
-      distortionType,
-      params.saturation,
-      params.saturationMix,
-      params.distortionBits,
-      params.distortionDownsample,
-      params.distortionNoise,
-    ).wet
-  }
-  if (type === 'eq' || type === 'compressor' || type === 'limiter' || type === 'midside') return 1
-  return 0
-}
-
-function dryLevel(
-  type: ModuleType,
-  params: Record<ParamId, number>,
-  distortionType: DistortionType,
-): number {
-  if (type === 'delay') return wetDryFor('delay', params).dry
-  if (type === 'reverb') return wetDryFor('reverb', params).dry
-  if (type === 'filter') return filterDryWetGains(params.filterMix).dry
-  if (type === 'distortion') {
-    return distortionDryWet(
-      distortionType,
-      params.saturation,
-      params.saturationMix,
-      params.distortionBits,
-      params.distortionDownsample,
-      params.distortionNoise,
-    ).dry
-  }
-  if (type === 'eq' || type === 'compressor' || type === 'limiter' || type === 'midside') return 0
-  return 1
 }
 
 function modulesEqual(a: ChainModule[], b: ChainModule[]): boolean {

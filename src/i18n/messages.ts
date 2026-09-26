@@ -350,6 +350,11 @@ export type Messages = {
     original: string
     hintCodec: string
     estimated: (time: string) => string
+    exportProject: string
+    exportSelection: string
+    selectionUnavailable: string
+    rendering: string
+    tailHint: string
   }
   mix: {
     mixer: string
@@ -866,6 +871,11 @@ export const EN: Messages = {
     original: 'Original',
     hintCodec: 'FLAC and AIFF are listed only when this build can encode them.',
     estimated: (time) => `Estimated duration ${time}`,
+    exportProject: 'Export',
+    exportSelection: 'Export selection',
+    selectionUnavailable: 'Select a region shorter than the sample.',
+    rendering: 'Rendering…',
+    tailHint: 'Effect tails are included until the signal decays.',
   },
   mix: {
     mixer: 'Mixer',
@@ -1382,6 +1392,11 @@ export const PL: Messages = {
     original: 'Oryginał',
     hintCodec: 'FLAC i AIFF pojawiają się tylko, gdy ta kompilacja umie je kodować.',
     estimated: (time) => `Szacowany czas ${time}`,
+    exportProject: 'Eksport',
+    exportSelection: 'Eksport zaznaczenia',
+    selectionUnavailable: 'Zaznacz fragment krótszy niż cały sampel.',
+    rendering: 'Renderowanie…',
+    tailHint: 'Wybrzmienia efektów są dopisywane, aż sygnał wybrzmi.',
   },
   mix: {
     mixer: 'Mikser',

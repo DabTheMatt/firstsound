@@ -1,0 +1,446 @@
+import { automationHasNodes, resolvePerformanceParams, type AutomationDocument } from '../automation/automation'
+import type { ChainModule } from '../chain/chain'
+import { applyGain, peakAmplitude } from '../samplePrep/prepare'
+import { renderPrep } from '../samplePrep/render'
+import {
+  DEFAULT_NORMALIZE_DBFS,
+  type ExportSettings,
+  type Pcm,
+  type SamplePrepState,
+} from '../samplePrep/types'
+import { dbToGain } from '../parameters/mapping'
+import type { ParamId } from '../parameters/types'
+import { anyFxLfoActive, defaultLfoHold, liveEqBandsFromParams, type FxLfoMap } from '../fx/lfo'
+import { applyFilterModulation, filterModNeedsClock, followerEnvelope } from '../fx/filter'
+import { applyDelayGraph, applyReverbGraph, buildReverbBuffer, reverbImpulseKey } from '../fx/graphs'
+import type { DelayType, DistortionNoiseKind, DistortionType, ReverbType } from '../fx/types'
+import { combAsEqBands, defaultCombFilter, type CombFilterState } from './comb'
+import {
+  bypassBrokenScriptProcessor,
+  connectChainInOrder,
+  createChainSlot,
+  moduleMixGains,
+  setGainAt,
+  type ChainSlot,
+} from './chainGraph'
+import { bandIsActive, defaultEqBands, filterStageCount, type EqBand } from './eqBands'
+import {
+  effectTailBudgetSec,
+  exportSourceRange,
+  trimRenderedTail,
+  type ExportScope,
+} from './exportTail'
+import {
+  eqBandsForChannel,
+  ensureBandStages,
+  writeCombCoefficients,
+  writeEqBandCoefficients,
+  type EqChannelMode,
+  type EqLane,
+} from './eqGraph'
+import { applyStereoStage, forceStereoUpmix } from './stereoStage'
+import { applyDistortionGraph } from '../fx/distortionGraph'
+import { applyFilterGraph } from '../fx/filterGraph'
+import { applyMidSideGraph } from '../fx/midSideGraph'
+import { applyCompressorGraph } from '../fx/compressor'
+import { applyLimiterGraph } from '../fx/limiter'
+
+export type ExportEqState = {
+  bands: EqBand[]
+  bandsL: EqBand[]
+  bandsR: EqBand[]
+  comb: CombFilterState
+}
+
+/** Audible processing state. Realtime playback and offline export both read this. */
+export type ProcessingSnapshot = {
+  chain: ChainModule[]
+  params: Record<ParamId, number>
+  automation: AutomationDocument
+  fxLfos: FxLfoMap
+  eqById: Record<string, ExportEqState>
+  eqChannelMode: EqChannelMode
+  primaryEqId: string
+  distortionType: DistortionType
+  distortionNoiseKind: DistortionNoiseKind
+  delayType: DelayType
+  reverbType: ReverbType
+  voiceGain: number
+  masterGain: number
+  noiseMuted: boolean
+  noiseFadeTau: number
+}
+
+export type OfflineContextFactory = (
+  channels: number,
+  length: number,
+  sampleRate: number,
+) => BaseAudioContext & { startRendering(): Promise<AudioBuffer> }
+
+function defaultOfflineFactory(
+  channels: number,
+  length: number,
+  sampleRate: number,
+): BaseAudioContext & { startRendering(): Promise<AudioBuffer> } {
+  const Ctor = globalThis.OfflineAudioContext
+  if (!Ctor) throw new Error('OfflineAudioContext is not available')
+  return new Ctor(channels, Math.max(1, length), sampleRate)
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function blockRms(channels: readonly Float32Array[], start: number, end: number): number {
+  let sum = 0
+  let n = 0
+  for (const ch of channels) {
+    const last = Math.min(ch.length, end)
+    for (let i = Math.max(0, start); i < last; i++) {
+      const x = ch[i] ?? 0
+      sum += x * x
+      n++
+    }
+  }
+  return n > 0 ? Math.sqrt(sum / n) : 0
+}
+
+function needsTimeline(state: ProcessingSnapshot): boolean {
+  return (
+    automationHasNodes(state.automation) ||
+    anyFxLfoActive(state.fxLfos) ||
+    filterModNeedsClock(state.params)
+  )
+}
+
+function controlTimes(
+  duration: number,
+  timelineStart: number,
+  automation: AutomationDocument,
+  dynamic: boolean,
+): number[] {
+  if (!dynamic || !(duration > 0)) return [0]
+  const times = new Set<number>([0])
+  const step = 0.008
+  for (let t = step; t < duration; t += step) times.add(Math.round(t * 1e6) / 1e6)
+  if (duration > 0) times.add(duration)
+  for (const lane of automation.lanes) {
+    for (const node of lane.nodes) {
+      const elapsed = node.time - timelineStart
+      if (elapsed > 0 && elapsed < duration) times.add(elapsed)
+    }
+  }
+  return [...times].sort((a, b) => a - b)
+}
+
+function eqStateFor(state: ProcessingSnapshot, instanceId: string): ExportEqState {
+  return (
+    state.eqById[instanceId] ?? {
+      bands: defaultEqBands(),
+      bandsL: [],
+      bandsR: [],
+      comb: defaultCombFilter(),
+    }
+  )
+}
+
+function scheduleEqLane(
+  ctx: BaseAudioContext,
+  lane: EqLane,
+  bands: readonly EqBand[],
+  comb: CombFilterState,
+  now: number,
+  nyquist: number,
+): void {
+  const count = Math.max(lane.bands.length, bands.length)
+  for (let i = 0; i < count; i++) {
+    const path = lane.bands[i]
+    if (!path) continue
+    const band = bands[i]
+    const active = Boolean(band && bandIsActive(band))
+    ensureBandStages(ctx, path, active && band ? Math.max(1, filterStageCount(band)) : 1)
+    writeEqBandCoefficients(path, band, now, true, nyquist, 0)
+    setGainAt(path.wet.gain, active ? 1 : 0, now)
+    setGainAt(path.dry.gain, active ? 0 : 1, now)
+  }
+  const teeth = comb.enabled ? combAsEqBands(comb) : []
+  writeCombCoefficients(lane, teeth, now, true, nyquist, 0)
+  setGainAt(lane.combWet.gain, teeth.length > 0 ? 1 : 0, now)
+  setGainAt(lane.combDry.gain, teeth.length > 0 ? 0 : 1, now)
+}
+
+function scheduleEq(
+  ctx: BaseAudioContext,
+  slots: readonly ChainSlot[],
+  state: ProcessingSnapshot,
+  params: Record<ParamId, number>,
+  now: number,
+): void {
+  const nyquist = ctx.sampleRate / 2
+  for (const slot of slots) {
+    if (slot.type !== 'eq' || !slot.eq) continue
+    const st = eqStateFor(state, slot.instanceId)
+    const overlay = slot.instanceId === state.primaryEqId
+    const shared = overlay ? liveEqBandsFromParams(st.bands, params) : st.bands
+    const comb = overlay
+      ? {
+          ...st.comb,
+          teeth: params.eqcfTeeth ?? st.comb.teeth,
+          gain: params.eqcfGain ?? st.comb.gain,
+          spacing: params.eqcfSpacing ?? st.comb.spacing,
+          frequency: params.eqcfFreq ?? st.comb.frequency,
+        }
+      : st.comb
+    const left = eqBandsForChannel(state.eqChannelMode, 'left', shared, st.bandsL, st.bandsR)
+    const right = eqBandsForChannel(state.eqChannelMode, 'right', shared, st.bandsL, st.bandsR)
+    scheduleEqLane(ctx, slot.eq.left, left, comb, now, nyquist)
+    scheduleEqLane(ctx, slot.eq.right, right, comb, now, nyquist)
+  }
+}
+
+function scheduleChain(
+  ctx: BaseAudioContext,
+  slots: readonly ChainSlot[],
+  chain: readonly ChainModule[],
+  state: ProcessingSnapshot,
+  params: Record<ParamId, number>,
+  sourceChannels: number,
+  now: number,
+  smoothing: number,
+  irKey: { current: string },
+): void {
+  const gainSlot = slots.find((slot) => slot.type === 'gain')
+  const outSlot = slots.find((slot) => slot.type === 'output')
+  if (gainSlot?.stereo) {
+    applyStereoStage(
+      gainSlot.stereo,
+      {
+        gainDb: params.gain,
+        pan: params.pan,
+        leftDb: params.channelGainL,
+        rightDb: params.channelGainR,
+        mono: params.makeMono > 0.5,
+        invert: params.invertPhase > 0.5,
+        sourceChannels,
+      },
+      now,
+      smoothing,
+    )
+  } else if (gainSlot) {
+    setGainAt(gainSlot.output.gain, dbToGain(params.gain), now)
+  }
+  if (outSlot) setGainAt(outSlot.output.gain, dbToGain(params.outputGain), now)
+  scheduleEq(ctx, slots, state, params, now)
+  for (const slot of slots) {
+    if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate)
+    if (slot.midSideFx) applyMidSideGraph(slot.midSideFx, params, now, smoothing)
+    if (slot.distortionFx) {
+      applyDistortionGraph(
+        slot.distortionFx,
+        params,
+        state.distortionType,
+        state.distortionNoiseKind,
+        now,
+        smoothing,
+        ctx.sampleRate,
+        state.noiseMuted,
+        state.noiseFadeTau,
+      )
+    }
+    if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
+    if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
+    if (slot.delayFx) applyDelayGraph(slot.delayFx, params, state.delayType, params.bpm, now, smoothing, ctx)
+    if (slot.reverbFx) {
+      applyReverbGraph(slot.reverbFx, params, state.reverbType, params.bpm, now, smoothing)
+      const key = reverbImpulseKey(params, state.reverbType)
+      if (key !== irKey.current || !slot.reverbFx.conv.buffer) {
+        irKey.current = key
+        slot.reverbFx.conv.buffer = buildReverbBuffer(ctx, params, state.reverbType)
+      }
+    }
+  }
+  for (const mod of chain) {
+    const slot = slots.find((item) => item.instanceId === mod.instanceId)
+    if (!slot) continue
+    const mix = moduleMixGains(mod, params, state.distortionType, {
+      eqListenFilters: false,
+      spaceLatched: false,
+    })
+    setGainAt(slot.dry.gain, mix.dry, now)
+    setGainAt(slot.wet.gain, mix.wet, now)
+    if (mod.type === 'delay' || mod.type === 'reverb') setGainAt(slot.output.gain, mix.output, now)
+    if (mix.muteDelayChannels && slot.delayFx) {
+      setGainAt(slot.delayFx.chanDryL.gain, 0, now)
+      setGainAt(slot.delayFx.chanDryR.gain, 0, now)
+      setGainAt(slot.delayFx.chanWetL.gain, 1, now)
+      setGainAt(slot.delayFx.chanWetR.gain, 1, now)
+    }
+  }
+}
+
+function copyRendered(buffer: AudioBuffer, length: number): Float32Array[] {
+  const frames = Math.max(0, Math.min(buffer.length, length))
+  const channels: Float32Array[] = []
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    channels.push(buffer.getChannelData(c).slice(0, frames))
+  }
+  return channels
+}
+
+function collapseMonoSource(channels: Float32Array[], sourceChannels: number): Float32Array[] {
+  if (sourceChannels >= 2 || channels.length < 2) return channels
+  const left = channels[0]!
+  const right = channels[1]!
+  const n = Math.min(left.length, right.length)
+  const step = Math.max(1, Math.floor(n / 4000))
+  let diff = 0
+  for (let i = 0; i < n; i += step) diff = Math.max(diff, Math.abs((left[i] ?? 0) - (right[i] ?? 0)))
+  if (diff < 1e-4) return [left]
+  return channels
+}
+
+export type ProcessedRenderOptions = {
+  timelineStart?: number
+  factory?: OfflineContextFactory
+}
+
+/**
+ * Run `source` through the same ordered chain, bypass state, parameters,
+ * automation, and LFO map the live engine plays. The render continues past
+ * the source so delay and reverb can decay, then trims that tail by level.
+ */
+export async function renderProcessedPcm(
+  source: Pcm,
+  state: ProcessingSnapshot,
+  options: ProcessedRenderOptions = {},
+): Promise<Pcm> {
+  const sampleRate = source.sampleRate
+  const sourceFrames = source.channels[0]?.length ?? 0
+  if (!(sampleRate > 0) || sourceFrames < 1) {
+    return { sampleRate: sampleRate > 0 ? sampleRate : 44100, channels: [new Float32Array()] }
+  }
+  const sourceSeconds = sourceFrames / sampleRate
+  const tail = effectTailBudgetSec(state.chain, state.params, state.reverbType)
+  const totalSeconds = sourceSeconds + tail
+  const length = Math.max(sourceFrames, Math.ceil(totalSeconds * sampleRate))
+  const factory = options.factory ?? defaultOfflineFactory
+  const ctx = factory(2, length, sampleRate)
+  const timelineStart = options.timelineStart ?? 0
+  const chain = state.chain
+  const slots = chain.map((mod) => {
+    const slot = createChainSlot(ctx, mod)
+    bypassBrokenScriptProcessor(slot)
+    return slot
+  })
+  connectChainInOrder(slots)
+  const bus = ctx.createGain()
+  forceStereoUpmix(bus)
+  setGainAt(bus.gain, state.voiceGain * state.masterGain, 0)
+  if (slots.length > 0) {
+    bus.connect(slots[0]!.input)
+    slots[slots.length - 1]!.output.connect(ctx.destination)
+  } else {
+    bus.connect(ctx.destination)
+  }
+
+  const buffer = ctx.createBuffer(Math.max(1, source.channels.length), sourceFrames, sampleRate)
+  for (let c = 0; c < source.channels.length; c++) {
+    buffer.getChannelData(c).set(source.channels[c] ?? new Float32Array(sourceFrames))
+  }
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+  src.connect(bus)
+  src.start(0)
+
+  const dynamic = needsTimeline(state)
+  const smoothing = dynamic ? 0.004 : 0.0005
+  const times = controlTimes(totalSeconds, timelineStart, state.automation, dynamic)
+  const hold = defaultLfoHold()
+  const rand = mulberry32(0x1fee2e01)
+  const snh = { index: -1, value: 0 }
+  let follower = 0
+  const irKey = { current: '' }
+  let previous = 0
+  for (const elapsed of times) {
+    const dt = Math.max(0.001, elapsed - previous)
+    previous = elapsed
+    if (state.params.filterEnvAmt > 0.4) {
+      const a = Math.floor(elapsed * sampleRate)
+      const b = a + Math.max(1, Math.floor(dt * sampleRate))
+      const level = blockRms(source.channels, a, Math.min(sourceFrames, b))
+      follower = followerEnvelope(
+        follower,
+        Math.min(1, level * 3.4),
+        dt,
+        state.params.filterEnvAttack,
+        state.params.filterEnvRelease,
+      )
+    }
+    const performed = resolvePerformanceParams(
+      state.params,
+      state.automation,
+      timelineStart + elapsed,
+      true,
+      state.fxLfos,
+      elapsed,
+      hold,
+      rand,
+    )
+    const live = applyFilterModulation(performed, {
+      timeSec: elapsed,
+      playing: true,
+      envOriginSec: 0,
+      follower01: follower,
+      snh,
+      rand,
+    })
+    scheduleChain(ctx, slots, chain, state, live, source.channels.length, elapsed, smoothing, irKey)
+  }
+
+  const rendered = await ctx.startRendering()
+  const keep = trimRenderedTail(channelsOf(rendered), sourceFrames, sampleRate)
+  const channels = collapseMonoSource(copyRendered(rendered, keep), source.channels.length)
+  return { sampleRate, channels }
+}
+
+function channelsOf(buffer: AudioBuffer): Float32Array[] {
+  const channels: Float32Array[] = []
+  for (let c = 0; c < buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c))
+  return channels
+}
+
+export async function renderExportPcm(
+  source: Pcm,
+  prep: SamplePrepState,
+  settings: ExportSettings,
+  processing: ProcessingSnapshot,
+  options: ProcessedRenderOptions = {},
+): Promise<Pcm> {
+  const scope: ExportScope = settings.scope ?? 'project'
+  const range = exportSourceRange(prep, scope)
+  const prepared = renderPrep(source, prep, {
+    applyFades: settings.applyFades,
+    applyGain: settings.applyGain,
+    applyReverse: settings.applyReverse,
+    applyNormalize: false,
+    applyDc: prep.removeDc,
+    applyChannels: true,
+    sampleRate: settings.sampleRate,
+    range,
+  })
+  const processed = await renderProcessedPcm(prepared, processing, {
+    ...options,
+    timelineStart: range.start,
+  })
+  if (!settings.applyNormalize) return processed
+  const peak = peakAmplitude(processed.channels)
+  const target = dbToGain(prep.normalizeTargetDbfs || DEFAULT_NORMALIZE_DBFS)
+  if (!(peak > 1e-8)) return processed
+  return { sampleRate: processed.sampleRate, channels: applyGain(processed.channels, target / peak) }
+}

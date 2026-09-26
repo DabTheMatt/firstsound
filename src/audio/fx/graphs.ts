@@ -22,6 +22,7 @@ import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStere
 import { reverbWetOutputGain } from './reverbLevel'
 import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
+import { setShaperCurve } from './shaperCurve'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
 const DELAY_MAX = 12
@@ -129,7 +130,7 @@ export function makeDriveCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve
 }
 
-function connectMidSide(ctx: AudioContext, source: AudioNode, destination: AudioNode): GainNode {
+function connectMidSide(ctx: BaseAudioContext, source: AudioNode, destination: AudioNode): GainNode {
   const split = ctx.createChannelSplitter(2)
   const merge = ctx.createChannelMerger(2)
   const midL = ctx.createGain()
@@ -163,7 +164,7 @@ function connectMidSide(ctx: AudioContext, source: AudioNode, destination: Audio
   return side
 }
 
-function makeLoopFilter(ctx: AudioContext, type: BiquadFilterType, frequency: number): BiquadFilterNode {
+function makeLoopFilter(ctx: BaseAudioContext, type: BiquadFilterType, frequency: number): BiquadFilterNode {
   const f = ctx.createBiquadFilter()
   f.type = type
   f.frequency.value = frequency
@@ -172,7 +173,7 @@ function makeLoopFilter(ctx: AudioContext, type: BiquadFilterType, frequency: nu
 }
 
 export function createDelayGraph(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   wet: GainNode,
   output: GainNode,
   dryTap: AudioNode,
@@ -203,8 +204,6 @@ export function createDelayGraph(
   const lpR = makeLoopFilter(ctx, 'lowpass', 12000)
   const driveL = ctx.createWaveShaper()
   const driveR = ctx.createWaveShaper()
-  driveL.curve = makeDriveCurve(0)
-  driveR.curve = makeDriveCurve(0)
   driveL.oversample = '2x'
   driveR.oversample = '2x'
   const duckAmt = ctx.createGain()
@@ -435,7 +434,7 @@ export function applyDelayGraph(
   bpm: number,
   now: number,
   smoothing: number,
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
 ): void {
   const stereo = isDelayStereo(params)
   const timeL = delayChannelTimeSeconds(params, bpm, 'L')
@@ -486,9 +485,9 @@ export function applyDelayGraph(
   g.hpR.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
   g.lpL.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
   g.lpR.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
-  const curve = makeDriveCurve(params.delayDrive / 100)
-  g.driveL.curve = curve
-  g.driveR.curve = curve
+  const driveKey = (params.delayDrive / 100).toFixed(4)
+  setShaperCurve(g.driveL, driveKey, makeDriveCurve(params.delayDrive / 100))
+  setShaperCurve(g.driveR, driveKey, makeDriveCurve(params.delayDrive / 100))
 
   g.lfo.frequency.setTargetAtTime(params.delayModRate, now, smoothing)
   g.lfoGain.gain.setTargetAtTime(delayModSeconds(time, params.delayModDepth / 100), now, smoothing)
@@ -524,7 +523,7 @@ export function applyDelayGraph(
   }
 }
 
-function buildDelayReverseIr(ctx: AudioContext, time: number, feedbackPct: number): AudioBuffer | null {
+function buildDelayReverseIr(ctx: BaseAudioContext, time: number, feedbackPct: number): AudioBuffer | null {
   const taps = 6
   const sr = ctx.sampleRate
   const seconds = Math.min(4, Math.max(0.2, time * taps * 0.7))
@@ -549,7 +548,7 @@ function buildDelayReverseIr(ctx: AudioContext, time: number, feedbackPct: numbe
 }
 
 export function createReverbGraph(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   wet: GainNode,
   output: GainNode,
   dryTap: AudioNode,
@@ -592,7 +591,7 @@ export function createReverbGraph(
   tiltHigh.type = 'highshelf'
   tiltHigh.frequency.value = 4200
   const drive = ctx.createWaveShaper()
-  drive.curve = makeDriveCurve(0)
+  drive.oversample = '2x'
   const duckAmt = ctx.createGain()
   duckAmt.gain.value = 0
   const gate = ctx.createDynamicsCompressor()
@@ -744,7 +743,7 @@ export function reverbImpulseKey(
 }
 
 export function buildReverbBuffer(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   params: Record<ParamId, number>,
   type: ReverbType,
 ): AudioBuffer {
@@ -818,7 +817,8 @@ export function applyReverbGraph(
   const color = params.reverbColor / 100
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
-  g.drive.curve = makeDriveCurve(params.reverbDrive / 100)
+  const driveKey = (params.reverbDrive / 100).toFixed(4)
+  setShaperCurve(g.drive, driveKey, makeDriveCurve(params.reverbDrive / 100))
   g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
