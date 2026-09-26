@@ -5,11 +5,13 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   grid-template-areas: 'actions transport meta';
   align-items: center;
-  column-gap: 8px;
+  column-gap: 12px;
   width: 100%;
   min-width: 0;
   min-height: 44px;
-  padding: 2px 0;
+  /* Horizontal inset only. Vertical air lives on the transport row so Export
+     stays level with the primary controls and just under the meter select. */
+  padding: 0 8px 2px;
 }
 
 .actions,
@@ -25,7 +27,7 @@
   grid-area: actions;
   justify-self: stretch;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
   max-width: 100%;
   flex-wrap: nowrap;
@@ -38,7 +40,7 @@
   grid-area: transport;
   justify-self: center;
   flex: none;
-  gap: 4px;
+  gap: 8px;
 }
 
 .meta {
@@ -144,11 +146,19 @@
   letter-spacing: 0.04em;
 }
 
-.cta {
-  display: flex;
-  align-items: center;
-  flex: none;
-  margin: 0;
+button.export {
+  --transport-h: 40px;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--transport-h);
+  min-height: var(--transport-h);
+  padding-inline: 4px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .export:disabled,
@@ -168,6 +178,12 @@
 /* Keep the playhead fully visible by stacking duration and tempo under it.
    Secondary actions wrap inside the left column instead of covering transport. */
 @container transport (max-width: 1000px) {
+  .actions,
+  .transport,
+  .meta {
+    align-self: start;
+  }
+
   .actions {
     flex-wrap: wrap;
     align-content: center;
@@ -244,7 +260,12 @@
 }
 
 .compact {
-  column-gap: 6px;
+  column-gap: 8px;
+  padding: 0 6px 2px;
+}
+
+.compact .transport {
+  gap: 6px;
 }
 
 .minimal .actions {
@@ -261,7 +282,9 @@
 }
 
 :global(html[data-low-vision='on']) .bar,
-:global(html[data-ui-scale='large']) .bar {
+:global(html[data-ui-scale='large']) .bar,
+:global(html[data-low-vision='on']) button.export,
+:global(html[data-ui-scale='large']) button.export {
   --transport-h: 44px;
   align-items: center;
 }

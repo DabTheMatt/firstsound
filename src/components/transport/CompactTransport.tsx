@@ -18,7 +18,6 @@ type Props = {
   canRedo: boolean
   onUndo: () => void
   onRedo: () => void
-  onExport: () => void
 }
 
 export function CompactTransport({
@@ -34,7 +33,6 @@ export function CompactTransport({
   canRedo,
   onUndo,
   onRedo,
-  onExport,
 }: Props) {
   const { t } = useI18n()
   const length = Math.max(0, end - start)
@@ -168,12 +166,22 @@ export function CompactTransport({
             </span>
           </span>
         </p>
-        <div className={styles.cta}>
-          <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
-            {t.transport.export}
-          </button>
-        </div>
       </div>
     </div>
+  )
+}
+
+type ExportProps = {
+  disabled: boolean
+  onExport: () => void
+}
+
+/** Sits in the meter column of the transport grid so it stays on the far right. */
+export function TransportExportButton({ disabled, onExport }: ExportProps) {
+  const { t } = useI18n()
+  return (
+    <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
+      {t.transport.export}
+    </button>
   )
 }
