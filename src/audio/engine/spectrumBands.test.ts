@@ -4,6 +4,7 @@ import {
   bandPeakDb,
   capBandByExpected,
   capBandsByEqGain,
+  capSpectrumBins,
   clampSpectrumBandCount,
   eqGainForSpectrumBand,
   clampSpectrumFallMode,
@@ -14,6 +15,7 @@ import {
   followBandsOverTime,
   followEnvelope,
   logBandEdgesHz,
+  logGridDbAt,
   maxBandDb,
   alignedBandDb,
   spectrumDisplayUses,
@@ -252,5 +254,29 @@ describe('spectrumMaxHz', () => {
     expect(spectrumMaxHz(48000)).toBe(22000)
     expect(spectrumMaxHz(44100)).toBe(22000)
     expect(spectrumMaxHz(32000)).toBe(16000)
+  })
+})
+
+describe('logGridDbAt', () => {
+  it('interpolates the correction curve in log frequency', () => {
+    const hz = [100, 1000, 10000]
+    const db = [0, -12, 6]
+    expect(logGridDbAt(100, hz, db)).toBeCloseTo(0)
+    expect(logGridDbAt(10000, hz, db)).toBeCloseTo(6)
+    expect(logGridDbAt(Math.sqrt(100 * 1000), hz, db)).toBeCloseTo(-6)
+    expect(logGridDbAt(20, hz, db)).toBeCloseTo(0)
+  })
+})
+
+describe('capSpectrumBins', () => {
+  it('holds each bin to pre plus the correction at that frequency', () => {
+    const measured = new Float32Array(8).fill(-10)
+    const pre = new Float32Array(8).fill(-30)
+    measured[2] = -80
+    capSpectrumBins(measured, pre, 1600, (hz) => (hz < 250 ? -6 : 3))
+    expect(measured[1]).toBeCloseTo(-36)
+    expect(measured[2]).toBeCloseTo(-80)
+    expect(measured[4]).toBeCloseTo(-27)
+    expect(measured[0]).toBeCloseTo(-10)
   })
 })
