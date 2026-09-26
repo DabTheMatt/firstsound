@@ -64,8 +64,8 @@ export function envelopeStep(ratePerSec: number, dtSec: number): number {
 }
 
 /**
- * Bars and the envelope line read the same follower state for a Follow mode.
- * `both` shows the pair, but each stroke still matches its bar (body or cap).
+ * Bars and the spectrum line share one Follow mode and one fall clock.
+ * `both` shows the pair. The line is sampled per FFT bin; bars stay log bands.
  */
 export function spectrumDisplayUses(follow: SpectrumFollowMode): {
   barBody: 'peak' | 'slow'
@@ -257,6 +257,54 @@ export function capBandByExpected(
   const measured = Number.isFinite(measuredDb) ? measuredDb : floorDb
   const expected = Number.isFinite(expectedDb) ? expectedDb : measured
   return Math.max(floorDb, Math.min(measured, expected))
+}
+
+/** dB of a log-spaced curve at `hz`. Used to lay the EQ correction onto FFT bins. */
+export function logGridDbAt(hz: number, gridHz: ArrayLike<number>, gridDb: ArrayLike<number>): number {
+  const n = Math.min(gridHz.length, gridDb.length)
+  if (n < 1 || !Number.isFinite(hz)) return 0
+  const firstHz = gridHz[0] ?? hz
+  const firstDb = gridDb[0] ?? 0
+  if (n === 1 || hz <= firstHz) return firstDb
+  const last = n - 1
+  const lastHz = gridHz[last] ?? hz
+  const lastDb = gridDb[last] ?? firstDb
+  if (hz >= lastHz) return lastDb
+  let lo = 0
+  let hi = last
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if ((gridHz[mid] ?? 0) <= hz) lo = mid
+    else hi = mid
+  }
+  const h0 = gridHz[lo] ?? hz
+  const h1 = gridHz[hi] ?? hz
+  const span = Math.log(h1 / Math.max(1e-6, h0))
+  const t = span > 0 ? Math.log(hz / Math.max(1e-6, h0)) / span : 0
+  const a = gridDb[lo] ?? 0
+  const b = gridDb[hi] ?? a
+  return a + (b - a) * t
+}
+
+/**
+ * Keep each post-EQ bin from drawing above pre + the correction at that Hz.
+ * Same ceiling as the band cap, sampled on the bin's own frequency.
+ */
+export function capSpectrumBins(
+  measured: Float32Array,
+  pre: ArrayLike<number>,
+  sampleRate: number,
+  gainAtHz: (hz: number) => number,
+  floorDb = SPECTRUM_FLOOR_DB,
+): void {
+  const n = measured.length
+  if (n < 2 || !(sampleRate > 0) || pre.length < n) return
+  const fftSize = n * 2
+  const last = Math.min(fftLastUsableBin(n), n - 1)
+  for (let i = 1; i <= last; i++) {
+    const hz = (i * sampleRate) / fftSize
+    measured[i] = capBandByExpected(measured[i] ?? floorDb, (pre[i] ?? floorDb) + gainAtHz(hz), floorDb)
+  }
 }
 
 export function capBandsByEqGain(

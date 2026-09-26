@@ -32,7 +32,9 @@ import {
   alignedBandDb,
   bandPeakDb,
   capBandsByEqGain,
+  capSpectrumBins,
   eqGainForSpectrumBand,
+  logGridDbAt,
   clampSpectrumBandCount,
   clampSpectrumFallMode,
   clampSpectrumFollowMode,
@@ -57,7 +59,7 @@ import {
   persistEqOverlayFocus,
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
-import { fillSpectrumEnvelope, spectrumEnvelopePoints, strokeSpectrumEnvelope } from '../../audio/engine/spectrumEnvelope'
+import { fillSpectrumXY, strokeSpectrumXY, writeSpectrumBinLine } from '../../audio/engine/spectrumEnvelope'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { timeDomainToDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { ANALYSER_FFT_IDLE, spectrumFftSizeForBands } from '../../audio/engine/analyserBudget'
@@ -88,6 +90,47 @@ type Props = {
 
 function emptyBands(n: number): Float32Array {
   return new Float32Array(n).fill(-100)
+}
+
+const TONE_GAIN_STEPS = 128
+
+/** Log-spaced copy of the EQ/filter correction, reused to ceiling the FFT line. */
+function fillToneGainGrid(
+  live: ReturnType<typeof engine.getSnapshot>,
+  sampleRate: number,
+  minHz: number,
+  maxHz: number,
+  hzOut: Float32Array,
+  dbOut: Float32Array,
+): void {
+  const n = Math.min(hzOut.length, dbOut.length)
+  const lo = Math.max(1, minHz)
+  const hi = Math.max(lo * 1.01, maxHz)
+  const log0 = Math.log(lo)
+  const log1 = Math.log(hi)
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0 : i / (n - 1)
+    const hz = Math.exp(log0 + (log1 - log0) * t)
+    hzOut[i] = hz
+    dbOut[i] = chainToneGainAtHz(live, hz, sampleRate)
+  }
+}
+
+/** Per-bin attack/release. A new FFT size snaps to the current frame. */
+function followSpectrumLine(
+  prev: Float32Array | null,
+  target: Float32Array,
+  attackPerSec: number,
+  releasePerSec: number,
+  dtSec: number,
+): Float32Array {
+  if (!prev || prev.length !== target.length) {
+    const next = new Float32Array(target.length)
+    next.set(target)
+    return next
+  }
+  followBandsOverTime(prev, target, attackPerSec, releasePerSec, dtSec)
+  return prev
 }
 
 function dbToY(db: number, top: number, bottom: number, minDb: number): number {
@@ -242,6 +285,13 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     const meterRight = { data: null as Float32Array | null }
     let alignDb = 0
     let gainsBuf: Float32Array | null = null
+    let preLineFast: Float32Array | null = null
+    let preLineSlow: Float32Array | null = null
+    let postLineFast: Float32Array | null = null
+    let postLineSlow: Float32Array | null = null
+    let lineXY = new Float32Array(4096)
+    const gainHz = new Float32Array(TONE_GAIN_STEPS)
+    const gainDb = new Float32Array(TONE_GAIN_STEPS)
     let lastTs = 0
     const tick = (now: number) => {
       const dt = lastTs === 0 ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastTs) / 1000))
@@ -365,8 +415,6 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           const edges = logBandEdgesHz(minHz, maxHz, bands)
           const gap = Math.max(1, Math.floor((plotW / bands) * 0.12))
           const plotBox = { left, right, top, bottom }
-          const slowPts = spectrumEnvelopePoints(slow, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb, scale)
-          const fastPts = spectrumEnvelopePoints(fast, edges, minHz, maxHz, plotBox, 0, dbFloor, alignDb, scale)
           const wantPeak = display.lines.includes('peak')
           const wantSlow = display.lines.includes('slow')
           const bodySrc = display.barBody === 'slow' ? slow : fast
@@ -409,30 +457,47 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
                 ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.min(capH, 8 * dpr))
               }
             }
-          } else {
-            const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
-            ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
-            fillSpectrumEnvelope(ctx, display.barBody === 'peak' ? fastPts : slowPts, bottom)
           }
-          const strokeFollow = (pts: typeof fastPts, color: string, width: number, dash = dashed) => {
-            if (!showLine) return
+          const lineFast = style === 'pre' ? preLineFast : postLineFast
+          const lineSlow = style === 'pre' ? preLineSlow : postLineSlow
+          const paintLine = (
+            src: Float32Array | null,
+            color: string,
+            width: number,
+            dash: boolean,
+            fill: boolean,
+            stroke: boolean,
+          ) => {
+            if (!src || (!fill && !stroke)) return
+            if (lineXY.length < src.length * 2) lineXY = new Float32Array(src.length * 2)
+            const count = writeSpectrumBinLine(src, sr, minHz, maxHz, plotBox, lineXY, 0, dbFloor, alignDb, scale)
+            if (fill) {
+              const area = style === 'pre' ? colors.spectrum : colors.spectrumLine
+              ctx.fillStyle = colorWithAlpha(area, style === 'pre' ? (layer === 'both' ? 0.08 : 0.16) : 0.18)
+              fillSpectrumXY(ctx, lineXY, count, bottom)
+            }
+            if (!stroke) return
             ctx.lineJoin = 'round'
             ctx.lineCap = 'round'
             ctx.strokeStyle = color
             ctx.lineWidth = width
             ctx.setLineDash(dash ? [4 * dpr, 3 * dpr] : [])
-            strokeSpectrumEnvelope(ctx, pts)
+            strokeSpectrumXY(ctx, lineXY, count)
             ctx.setLineDash([])
           }
-          if (wantPeak) {
-            strokeFollow(fastPts, peakStroke, Math.max(1.2, dpr * (style === 'pre' ? 1.15 : 1.75)))
+          const bodyLine = display.barBody === 'peak' ? lineFast : lineSlow
+          if (!showBars) paintLine(bodyLine, peakStroke, 1, false, true, false)
+          if (showLine && wantPeak) {
+            paintLine(lineFast, peakStroke, Math.max(1, dpr * 1.15), dashed, false, true)
           }
-          if (wantSlow) {
-            strokeFollow(
-              slowPts,
+          if (showLine && wantSlow) {
+            paintLine(
+              lineSlow,
               slowStroke,
-              Math.max(1, dpr * (follow === 'both' ? 1.2 : style === 'pre' ? 1.15 : 1.65)),
+              Math.max(1, dpr * (follow === 'both' ? 1 : 1.15)),
               dashed || follow === 'both',
+              false,
+              true,
             )
           }
           ctx.restore()
@@ -467,6 +532,34 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           capBandsByEqGain(postPeaks, prePeaks, gains)
           postEqGains = gains
           preCap = prePeaks
+          if (
+            postScratch.bins &&
+            preScratch.bins &&
+            postScratch.bins.length === preScratch.bins.length
+          ) {
+            fillToneGainGrid(live, sr, minHz, maxHz, gainHz, gainDb)
+            const gainAt = (hz: number) => logGridDbAt(hz, gainHz, gainDb)
+            capSpectrumBins(postScratch.bins, preScratch.bins, sr, gainAt)
+          }
+        }
+        const lineAttack = ballistics.peak.attack
+        const lineRelease = ballistics.peak.release
+        const slowAttack = ballistics.slow.attack
+        const slowRelease = ballistics.slow.release
+        if (showPre && preScratch.bins) {
+          preLineFast = followSpectrumLine(preLineFast, preScratch.bins, lineAttack, lineRelease, dt)
+          preLineSlow = followSpectrumLine(preLineSlow, preScratch.bins, slowAttack, slowRelease, dt)
+        }
+        if (showPost && postScratch.bins) {
+          const followedFast = followSpectrumLine(postLineFast, postScratch.bins, lineAttack, lineRelease, dt)
+          const followedSlow = followSpectrumLine(postLineSlow, postScratch.bins, slowAttack, slowRelease, dt)
+          postLineFast = followedFast
+          postLineSlow = followedSlow
+          if (postEqGains && preScratch.bins && followedFast.length === preScratch.bins.length) {
+            const gainAt = (hz: number) => logGridDbAt(hz, gainHz, gainDb)
+            capSpectrumBins(followedFast, preScratch.bins, sr, gainAt)
+            capSpectrumBins(followedSlow, preScratch.bins, sr, gainAt)
+          }
         }
         const { left: meterL, right: meterR } = engine.getChannelAnalysers()
         const meterDb = louderPeakDb(timeDomainPeakDb(meterL, meterLeft), timeDomainPeakDb(meterR ?? meterL, meterRight))
