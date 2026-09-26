@@ -151,10 +151,31 @@
   gap: 8px;
   align-items: center;
   min-width: 0;
+  /* Shared air under the waveform and under the meter, so Export stays with the range select. */
+  margin-top: 8px;
 }
 
 .transportWrap > :first-child {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
+}
+
+/* -2 / -1 is the last explicit track. A lone -1 starts an implicit column
+   after the meter instead of occupying it. */
+.exportCol {
+  grid-column: -2 / -1;
+  grid-row: 1;
+  justify-self: stretch;
+  align-self: start;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .transportPinned {
@@ -523,6 +544,15 @@
   :global(html[data-ui-scale='large']) .inspector {
     max-height: 42vh;
     height: auto;
+  }
+
+  :global(html[data-low-vision='on']) .dock-right .exportCol,
+  :global(html[data-ui-scale='large']) .dock-right .exportCol {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+    width: min(100%, 8.5rem);
+    overflow: visible;
   }
 }
 
