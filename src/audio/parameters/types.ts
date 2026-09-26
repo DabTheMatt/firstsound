@@ -55,6 +55,7 @@ export type ParamId =
   | 'delayFeedback'
   | 'delayFeedbackR'
   | 'delayStereo'
+  | 'delayLinkLR'
   | 'reverbDry'
   | 'reverbWet'
   | 'reverbCorrelate'

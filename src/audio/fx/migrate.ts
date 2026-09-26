@@ -32,6 +32,7 @@ export function migrateSpaceParams(incoming: Record<string, number>): Partial<Re
   if (typeof incoming.delayFeedbackR !== 'number' && typeof incoming.delayFeedback === 'number') {
     params.delayFeedbackR = applyParamValue(incoming.delayFeedback, PARAMS.delayFeedbackR)
   }
+  if (typeof incoming.delayLinkLR !== 'number') params.delayLinkLR = 0
   const delayWet = params.delayWet
   if (typeof incoming.delayCorrelate !== 'number') {
     params.delayCorrelate = PARAMS.delayCorrelate.defaultValue

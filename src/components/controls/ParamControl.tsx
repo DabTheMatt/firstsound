@@ -15,16 +15,17 @@ export function ParamControl({ id, value, variant }: Props) {
   const snap = useEngine()
   const binding = lfoBinding(snap.fxLfos, id)
   const mapped = Boolean(binding)
-  const live = mapped ? snap.liveParams[id] : value
+  const live = snap.liveParams[id]
+  const showLive = mapped || live !== value
   return (
     <LfoParamShell id={id}>
       {variant === 'slider' ? (
-        <ParamSlider id={id} value={value} liveValue={mapped ? live : undefined} />
+        <ParamSlider id={id} value={value} liveValue={showLive ? live : undefined} />
       ) : (
         <Knob
           id={id}
           value={value}
-          liveValue={mapped ? live : undefined}
+          liveValue={showLive ? live : undefined}
           lfoDepth={mapped ? binding?.lfo.depth : undefined}
         />
       )}

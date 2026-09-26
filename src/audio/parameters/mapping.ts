@@ -258,6 +258,7 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'delayFreeze':
     case 'reverbFreeze':
     case 'delayCorrelate':
+    case 'delayLinkLR':
     case 'reverbCorrelate':
     case 'makeMono':
     case 'invertPhase':

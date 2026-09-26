@@ -93,6 +93,7 @@ function delayP(patch: Partial<Record<ParamId, number>>): Partial<Record<ParamId
     delayNoteR: 4,
     delayNoteKindR: 0,
     delayStereo: 1,
+    delayLinkLR: 0,
     delayFreeze: 0,
     delayReverse: 0,
     delayPitch: 0,

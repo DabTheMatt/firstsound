@@ -166,6 +166,12 @@ describe('parseFxLfos', () => {
     expect(parseFxLfos({ input: { target: 'gain' } }).input[0]!.target).toBe('gain')
   })
 
+  it('routes a legacy Feedback R target onto the single Feedback control', () => {
+    const parsed = parseFxLfos({ delay: { target: 'delayFeedbackR', depth: 40, rateHz: 0.5 } })
+    expect(parsed.delay[0]!.target).toBe('delayFeedback')
+    expect(parsed.delay[0]!.depth).toBe(40)
+  })
+
   it('migrates a legacy saturation LFO bank onto distortion', () => {
     const parsed = parseFxLfos({
       saturation: { rateHz: 1.2, shape: 'triangle', depth: 22, target: 'saturation' },

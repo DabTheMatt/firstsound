@@ -492,6 +492,16 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 1,
   },
+  delayLinkLR: {
+    id: 'delayLinkLR',
+    label: 'Link L/R',
+    min: 0,
+    max: 1,
+    defaultValue: 0,
+    unit: '',
+    mapping: 'linear',
+    step: 1,
+  },
   delayFeedback: {
     id: 'delayFeedback',
     label: 'Feedback',

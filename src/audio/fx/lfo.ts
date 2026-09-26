@@ -2,7 +2,7 @@ import { EQ_MAX_BANDS } from '../engine/eqBands'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue, clamp, fromNormalized, toNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
-import { complementaryPct, isCorrelated } from './dryWet'
+import { applyParamLinks } from '../parameters/links'
 
 export type LfoShape = 'sine' | 'triangle' | 'square' | 'saw' | 'snh'
 
@@ -140,7 +140,6 @@ const DELAY_TARGETS: ParamId[] = [
   'delayTime',
   'delayTimeR',
   'delayFeedback',
-  'delayFeedbackR',
   'delayHp',
   'delayLp',
   'delayDrive',
@@ -374,9 +373,10 @@ export function parseFxLfo(raw: unknown, kind: FxLfoKind): FxLfo {
   if (typeof rec.rateHz === 'number' && Number.isFinite(rec.rateHz)) next.rateHz = clampLfoRate(rec.rateHz)
   if (isLfoShape(rec.shape)) next.shape = rec.shape
   if (typeof rec.depth === 'number' && Number.isFinite(rec.depth)) next.depth = clampLfoDepth(rec.depth)
-  if (rec.target == null) next.target = null
-  else if (typeof rec.target === 'string' && isFxLfoTarget(kind, rec.target as ParamId)) {
-    next.target = rec.target as ParamId
+  const target = rec.target === 'delayFeedbackR' ? 'delayFeedback' : rec.target
+  if (target == null) next.target = null
+  else if (typeof target === 'string' && isFxLfoTarget(kind, target as ParamId)) {
+    next.target = target as ParamId
   }
   return next
 }
@@ -646,25 +646,7 @@ export function applyFxLfos(
       next[target] = modulateParam(params[target], target, wave, lfo.depth)
     }
   }
-  if (isCorrelated(next.reverbCorrelate)) {
-    if (claimed.has('reverbDry') && !claimed.has('reverbWet')) {
-      next.reverbWet = complementaryPct(next.reverbDry)
-    } else if (claimed.has('reverbWet')) {
-      next.reverbDry = complementaryPct(next.reverbWet)
-    }
-  }
-  if (isCorrelated(next.delayCorrelate)) {
-    if (claimed.has('delayDry') && !claimed.has('delayWet')) {
-      next.delayWet = complementaryPct(next.delayDry)
-    } else if (claimed.has('delayWet')) {
-      next.delayDry = complementaryPct(next.delayWet)
-    }
-    if (claimed.has('delayDryR') && !claimed.has('delayWetR')) {
-      next.delayWetR = complementaryPct(next.delayDryR)
-    } else if (claimed.has('delayWetR')) {
-      next.delayDryR = complementaryPct(next.delayWetR)
-    }
-  }
+  applyParamLinks(next, claimed)
   return next
 }
 
