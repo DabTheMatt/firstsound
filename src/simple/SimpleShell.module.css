@@ -105,6 +105,43 @@
   background: var(--bg-control-hover);
 }
 
+@media (max-width: 720px) {
+  .header {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 6px;
+    height: auto;
+  }
+
+  .header > :nth-child(1) {
+    order: 1;
+    flex: none;
+  }
+
+  .modeSlot {
+    order: 2;
+  }
+
+  .menuBtn {
+    order: 3;
+  }
+
+  .header > :nth-child(4) {
+    order: 4;
+  }
+
+  .load {
+    order: 5;
+  }
+
+  .file {
+    order: 6;
+    flex: 1 1 100%;
+    width: auto;
+    min-height: 32px;
+  }
+}
+
 .menuBtn {
   width: 44px;
   height: 44px;

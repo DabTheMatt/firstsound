@@ -69,44 +69,40 @@ export function AppHeader({
         <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
           <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
         </button>
-        {!minimal ? (
-          <button
-            type="button"
-            className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
-            data-geometry="pill"
-            aria-pressed={snap.recording}
-            aria-label={snap.recording ? t.header.stop : t.header.record}
-            onClick={onRecord}
-          >
-            <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
-            <span className={styles.recLabel}>
-              <span className={snap.recording ? styles.recHidden : undefined}>{t.header.record}</span>
-              <span className={snap.recording ? undefined : styles.recHidden} aria-hidden={snap.recording ? undefined : true}>
-                {t.header.stop}
-              </span>
+        <button
+          type="button"
+          className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
+          data-geometry="pill"
+          aria-pressed={snap.recording}
+          aria-label={snap.recording ? t.header.stop : t.header.record}
+          onClick={onRecord}
+        >
+          <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
+          <span className={styles.recLabel}>
+            <span className={snap.recording ? styles.recHidden : undefined}>{minimal ? t.header.rec : t.header.record}</span>
+            <span className={snap.recording ? undefined : styles.recHidden} aria-hidden={snap.recording ? undefined : true}>
+              {t.header.stop}
             </span>
-          </button>
-        ) : null}
-        {!minimal ? (
-          <button
-            type="button"
-            className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
-            aria-label={t.header.lfoCenter}
-            aria-expanded={lfoCenterOpen}
-            title={t.header.lfoCenter}
-            onClick={onToggleLfoCenter}
-          >
-            <svg viewBox="0 0 20 12" width="18" height="12" aria-hidden="true">
-              <path
-                d="M1 6c1.6 0 1.6-4 3.2-4S6.4 10 8 10s1.6-8 3.2-8S12.8 10 14.4 10 16.4 6 19 6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        ) : null}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
+          aria-label={t.header.lfoCenter}
+          aria-expanded={lfoCenterOpen}
+          title={t.header.lfoCenter}
+          onClick={onToggleLfoCenter}
+        >
+          <svg viewBox="0 0 20 12" width={minimal ? 16 : 18} height={minimal ? 10 : 12} aria-hidden="true">
+            <path
+              d="M1 6c1.6 0 1.6-4 3.2-4S6.4 10 8 10s1.6-8 3.2-8S12.8 10 14.4 10 16.4 6 19 6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </div>
       <div className={styles.trailing}>
         <div className={styles.runtime}>
@@ -120,44 +116,6 @@ export function AppHeader({
           </p>
         ) : null}
         {modeSwitch}
-        {minimal ? (
-          <button
-            type="button"
-            className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
-            aria-label={t.header.lfoCenter}
-            aria-expanded={lfoCenterOpen}
-            title={t.header.lfoCenter}
-            onClick={onToggleLfoCenter}
-          >
-            <svg viewBox="0 0 20 12" width="16" height="10" aria-hidden="true">
-              <path
-                d="M1 6c1.6 0 1.6-4 3.2-4S6.4 10 8 10s1.6-8 3.2-8S12.8 10 14.4 10 16.4 6 19 6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        ) : null}
-        {minimal ? (
-          <button
-            type="button"
-            className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
-            data-geometry="pill"
-            aria-pressed={snap.recording}
-            aria-label={snap.recording ? t.header.stop : t.header.record}
-            onClick={onRecord}
-          >
-            <span className={styles.recMark} data-recording={snap.recording ? 'true' : 'false'} aria-hidden="true" />
-            <span className={styles.recLabel}>
-              <span className={snap.recording ? styles.recHidden : undefined}>{t.header.rec}</span>
-              <span className={snap.recording ? undefined : styles.recHidden} aria-hidden={snap.recording ? undefined : true}>
-                {t.header.stop}
-              </span>
-            </span>
-          </button>
-        ) : null}
         <button
           type="button"
           className={styles.settings}

@@ -263,3 +263,35 @@
     display: none;
   }
 }
+
+/* A container cannot query itself, so this breakpoint is a viewport media query.
+   Row one keeps the mode and Settings; row two keeps theme, Load Sample, and Record. */
+@media (max-width: 1100px) {
+  .header,
+  :global(html[data-low-vision='on']) .header,
+  :global(html[data-ui-scale='large']) .header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand trailing'
+      'tools tools';
+    align-items: center;
+    row-gap: 6px;
+    column-gap: 8px;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .brand {
+    grid-area: brand;
+  }
+
+  .tools {
+    grid-area: tools;
+  }
+
+  .trailing {
+    grid-area: trailing;
+    margin-left: 0;
+  }
+}
