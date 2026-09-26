@@ -1,0 +1,53 @@
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  flex: none;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-control) 70%, transparent);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-disabled);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.field select {
+  min-width: 0;
+  max-width: 180px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.hint {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+
+@media (pointer: coarse) {
+  .field select {
+    min-height: 44px;
+  }
+}

@@ -36,7 +36,6 @@ import type {
 } from '../parameters/types'
 import {
   anyFxLfoActive,
-  applyFxLfos,
   clampLfoSlot,
   cloneFxLfos,
   defaultFxLfo,
@@ -54,6 +53,18 @@ import {
   type FxLfoKind,
   type FxLfoMap,
 } from '../fx/lfo'
+import {
+  automationHasNodes,
+  cloneAutomation,
+  defaultAutomation,
+  insertAutomationNode,
+  parseAutomation,
+  relocateAutomationNode,
+  removeAutomationNode,
+  resolvePerformanceParams,
+  selectAutomationParam,
+  type AutomationDocument,
+} from '../automation/automation'
 import {
   combAsEqBands,
   defaultCombFilter,
@@ -273,8 +284,12 @@ export type EngineSnapshot = {
   audioStatus: AudioStatus
   scrubMode: ScrubMode
   params: Record<ParamId, number>
-  /** Parameter values after LFO; same as `params` when no LFO is running. */
+  /**
+   * Parameter values after automation (while playing), LFO, and filter modulation.
+   * Same as `params` when transport is stopped and no modulator is running.
+   */
   liveParams: Record<ParamId, number>
+  automation: AutomationDocument
   chain: ChainModule[]
   eqBands: EqBand[]
   eqById: Record<string, EqModuleState>
@@ -463,6 +478,7 @@ export class AudioEngine {
   private filterFollowBuf = new Uint8Array(1024)
   private filterFollowStamp = 0
   private fxLfos = defaultFxLfos()
+  private automation: AutomationDocument = defaultAutomation()
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
   private lfoClockSec = 0
@@ -636,7 +652,13 @@ export class AudioEngine {
     return { left: this.analyserL, right: this.analyserR }
   }
 
-  getPlayheadSeconds(): number {
+  /**
+   * Sample time of the sounding playhead.
+   * `speed` is the transport rate. Callers that are already inside liveParams
+   * must pass the stored manual speed so automation does not recurse through
+   * the modulated value.
+   */
+  private transportSeconds(speed: number): number {
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playing ? this.playbackRegion(duration) : this.region(duration)
     if (!this.playing || !this.ctx || duration <= 0) {
@@ -651,7 +673,7 @@ export class AudioEngine {
     if (this.schedulerId && this.engineMode === 'playback') {
       return clamp(this.stretchHead, start, end)
     }
-    const tempo = Math.max(0.01, this.liveParams().speed)
+    const tempo = Math.max(0.01, speed)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
     const span = Math.max(end - start, MIN_REGION)
     if (this.direction === 'pingpong') {
@@ -667,6 +689,13 @@ export class AudioEngine {
     return this.direction === 'reverse'
       ? Math.max(start, this.playOffset - elapsed)
       : Math.min(end, this.playOffset + elapsed)
+  }
+
+  getPlayheadSeconds(): number {
+    if (!this.playing || !this.ctx || (this.buffer?.duration ?? 0) <= 0) {
+      return this.transportSeconds(this.params.speed)
+    }
+    return this.transportSeconds(Math.max(0.01, this.liveParams().speed))
   }
 
   async unlock(): Promise<void> {
@@ -1900,6 +1929,50 @@ export class AudioEngine {
     this.applyLiveAudio()
   }
 
+  setAutomationParam(id: ParamId): void {
+    const next = selectAutomationParam(this.automation, id)
+    if (next === this.automation) return
+    this.automation = next
+    this.emit()
+  }
+
+  addAutomationNode(time: number, value: number): string | null {
+    const duration = this.buffer?.duration ?? 0
+    const inserted = insertAutomationNode(this.automation, time, value, duration)
+    if (!inserted) return null
+    this.automation = inserted.doc
+    this.afterAutomationEdit()
+    return inserted.id
+  }
+
+  /** Live drag. History is committed once by the caller when the pointer lifts. */
+  moveAutomationNode(id: string, time: number, value: number): void {
+    const duration = this.buffer?.duration ?? 0
+    const next = relocateAutomationNode(this.automation, id, time, value, duration)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  deleteAutomationNode(id: string): void {
+    const next = removeAutomationNode(this.automation, id)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  replaceAutomation(doc: AutomationDocument): void {
+    const next = parseAutomation(doc)
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  private afterAutomationEdit(): void {
+    this.syncLfoClock()
+    if (this.ctx) this.applyLiveAudio(0.02)
+    this.emit()
+  }
+
   resetParam(id: ParamId): void {
     if (id === 'start') {
       this.setParam('start', 0)
@@ -1926,6 +1999,7 @@ export class AudioEngine {
     this.distortionType = 'saturation'
     this.distortionNoiseKind = 'white'
     this.fxLfos = defaultFxLfos()
+    this.automation = defaultAutomation()
     this.lfoHold = defaultLfoHold()
     this.lfoShown = defaultLfoShown()
     this.lfoClockSec = 0
@@ -2294,6 +2368,7 @@ export class AudioEngine {
       distortionType: this.distortionType,
       distortionNoiseKind: this.distortionNoiseKind,
       fxLfos: cloneFxLfos(this.fxLfos),
+      automation: cloneAutomation(this.automation),
       tracks: cloneTracks(this.tracks),
       masterMix: this.masterMix,
     }
@@ -2312,6 +2387,7 @@ export class AudioEngine {
     this.noiseMuted = false
     this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.fxLfos = parseFxLfos(preset.fxLfos)
+    this.automation = parseAutomation(preset.automation)
     this.lfoHold = defaultLfoHold()
     this.lfoShown = lfoShownFromMap(this.fxLfos)
     this.reverbIrKey = ''
@@ -3296,10 +3372,18 @@ export class AudioEngine {
     const dt = this.filterFollowStamp > 0 ? Math.min(0.05, (now - this.filterFollowStamp) / 1000) : 0.016
     this.filterFollowStamp = now
     this.updateFilterFollower(dt)
-    const base = anyFxLfoActive(this.fxLfos)
-      ? applyFxLfos(this.params, this.fxLfos, this.lfoTime(), this.lfoHold)
-      : this.params
-    return applyFilterModulation(base, {
+    // Stored speed keeps this clock independent of the value automation writes.
+    const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
+    const performed = resolvePerformanceParams(
+      this.params,
+      this.automation,
+      transport,
+      this.playing,
+      this.fxLfos,
+      this.lfoTime(),
+      this.lfoHold,
+    )
+    return applyFilterModulation(performed, {
       timeSec: this.lfoTime(),
       playing: this.playing,
       envOriginSec: this.filterEnvOrigin,
@@ -3325,11 +3409,15 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const active = anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)
+    const modulators = anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)
+    const automation = this.playing && automationHasNodes(this.automation)
+    const active = modulators || automation
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.028)
-        this.emit()
+        // Automation-only ticks stay off the React snapshot. The playhead is drawn
+        // from getPlayheadSeconds on its own frame, not from an audio-rate emit.
+        if (anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)) this.emit()
       }, 16)
     }
     if (!active && this.lfoTimer) {
@@ -4090,6 +4178,7 @@ export class AudioEngine {
       distortionNoiseKind: this.distortionNoiseKind,
       noiseMuted: this.noiseMuted,
       fxLfos: cloneFxLfos(this.fxLfos),
+      automation: cloneAutomation(this.automation),
       lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,

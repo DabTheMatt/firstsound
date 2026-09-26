@@ -176,6 +176,14 @@ export type Messages = {
     zoomViewStart: string
     zoomViewEnd: string
     viewGroup: string
+    automationTitle: string
+    automationCaption: string
+    automationEffect: string
+    automationParameter: string
+    automationHint: string
+    automationLane: string
+    automationNode: (label: string) => string
+    automationComb: string
   }
   transport: {
     play: string
@@ -579,6 +587,14 @@ export const EN: Messages = {
     zoomViewStart: 'Zoom view start',
     zoomViewEnd: 'Zoom view end',
     viewGroup: 'View',
+    automationTitle: 'Automation',
+    automationCaption: 'Auto',
+    automationEffect: 'Effect',
+    automationParameter: 'Parameter',
+    automationHint: 'Double-click the waveform to add a node. Drag moves it. Delete removes the selected node. Playback follows the envelope; knobs keep the manual value.',
+    automationLane: 'Automation lane',
+    automationNode: (label) => `Automation node, ${label}`,
+    automationComb: 'EQ comb',
   },
   transport: {
     play: 'Play',
@@ -1067,6 +1083,14 @@ export const PL: Messages = {
     zoomViewStart: 'Powiększ od początku widoku',
     zoomViewEnd: 'Powiększ od końca widoku',
     viewGroup: 'Widok',
+    automationTitle: 'Automatyzacja',
+    automationCaption: 'Auto',
+    automationEffect: 'Efekt',
+    automationParameter: 'Parametr',
+    automationHint: 'Dwuklik na fali dodaje węzeł. Przeciągnij, aby go przesunąć. Delete usuwa zaznaczony węzeł. Podczas odtwarzania obwiednia steruje parametrem; gałki zostawiają wartość ręczną.',
+    automationLane: 'Ścieżka automatyzacji',
+    automationNode: (label) => `Węzeł automatyzacji, ${label}`,
+    automationComb: 'EQ grzebień',
   },
   transport: {
     play: 'Odtwórz',

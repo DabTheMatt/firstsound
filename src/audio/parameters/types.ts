@@ -267,4 +267,6 @@ export type PresetV1 = {
   /** Legacy parallel mix-layer snapshots; parsed as tracks. */
   mixLayers?: unknown
   masterMix?: number
+  /** Optional so presets saved before automation existed still load. */
+  automation?: unknown
 }

@@ -174,6 +174,14 @@ export function WaveformToolbar({
             <MixSplitIcon />
           </IconButton>
         ) : null}
+        <IconButton
+          label="Automation"
+          caption={t.waveform.automationCaption}
+          pressed={viz === 'automation'}
+          onClick={() => onViz('automation')}
+        >
+          <AutomationIcon />
+        </IconButton>
         </div>
       </div>
       {!minimal ? (
@@ -381,6 +389,25 @@ function MixSplitIcon() {
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
       <path d="M6 13V8M9 13V6M12 13V9" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+function AutomationIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M2.5 13.5 6.2 6.2 11 10.2 15.5 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx="2.5" cy="13.5" r="1.15" fill="currentColor" />
+      <circle cx="6.2" cy="6.2" r="1.15" fill="currentColor" />
+      <circle cx="11" cy="10.2" r="1.15" fill="currentColor" />
+      <circle cx="15.5" cy="4" r="1.15" fill="currentColor" />
     </svg>
   )
 }

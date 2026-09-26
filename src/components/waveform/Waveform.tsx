@@ -10,11 +10,16 @@ import {
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
 import { waveformLaneLayout } from '../../audio/engine/stereoStage'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { formatParamValue } from '../../audio/parameters/mapping'
+import { envelopeToParam, lanePolyline, normalizedFromLaneY } from '../../audio/automation/automation'
+import { isTypingTarget } from '../../a11y/keyboard'
 import type { WaveTool, VizMode, MeterRange } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
+import { AutomationInspector } from './AutomationInspector'
 import { EqConsole } from '../eq/EqConsole'
 import { MixConsole } from '../mix/MixConsole'
 import { TrackLanes } from '../mix/TrackLanes'
@@ -72,6 +77,7 @@ type Props = {
   onZoomLabel: (label: string) => void
   onLoadDemo: () => void
   onRegionCommit: () => void
+  onAutomationCommit?: () => void
   onFades: (patch: {
     fadeIn?: number
     fadeOut?: number
@@ -140,6 +146,7 @@ type DragMode =
   | 'playhead'
   | 'select'
   | 'transient'
+  | 'autoNode'
   | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
@@ -163,6 +170,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onZoomLabel,
     onLoadDemo,
     onRegionCommit,
+    onAutomationCommit,
     onFades,
     onFadesCommit,
     contentRev = 0,
@@ -191,6 +199,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
   const [eqStripHeight, setEqStripHeight] = useState(loadEqStripHeight)
+  const [autoNodeId, setAutoNodeId] = useState<string | null>(null)
   const eqStripHeightRef = useRef(eqStripHeight)
   const splitDrag = useRef<{ y: number; share?: number; height?: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
@@ -214,6 +223,25 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     stateRef.current = { start, end, duration, normalizeView, tool, autoSnap }
   }, [start, end, duration, normalizeView, tool, autoSnap])
+
+  useEffect(() => {
+    if (viz !== 'automation') return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return
+      if (event.repeat) return
+      if (isTypingTarget(event.target) || event.target instanceof HTMLSelectElement) return
+      const selected = autoNodeId
+      const doc = engine.getSnapshot().automation
+      const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
+      if (!selected || !lane?.nodes.some((node) => node.id === selected)) return
+      event.preventDefault()
+      engine.deleteAutomationNode(selected)
+      setAutoNodeId(null)
+      onAutomationCommit?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [viz, autoNodeId, onAutomationCommit])
 
   useEffect(() => {
     handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22
@@ -500,6 +528,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     pointerType: string
     fx?: SpaceHit
     transientIndex?: number
+    autoNodeId?: string
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
@@ -532,6 +561,29 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const t = fracToTime(x / width, viewRef.current)
     const hit = handlePx.current
     const y = event.clientY - rect.top
+
+    if (viz === 'automation') {
+      const nodeEl = (event.target as HTMLElement | null)?.closest?.('[data-auto-node]') as HTMLElement | null
+      const nodeId = nodeEl?.dataset.autoNode
+      if (nodeEl && nodeId) {
+        setAutoNodeId(nodeId)
+        nodeEl.focus({ preventScroll: true })
+        drag.current = {
+          mode: 'autoNode',
+          span: end - start,
+          originT: t,
+          originY: y,
+          originX: event.clientX,
+          originView: { ...viewRef.current },
+          origin: { start, end },
+          button: event.button,
+          pointerType: event.pointerType,
+          autoNodeId: nodeId,
+        }
+        return
+      }
+      setAutoNodeId(null)
+    }
 
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
@@ -649,6 +701,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
     const { mode, span, originT, origin, fx, originX, originView } = drag.current
+    if (mode === 'autoNode' && drag.current.autoNodeId) {
+      const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
+      engine.moveAutomationNode(drag.current.autoNodeId, next, value)
+      return
+    }
     if (mode === 'fx' && fx) {
       engine.setParams(
         dragSpaceOverlay(
@@ -685,7 +742,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         setView(panView(originView, delta, duration))
         return
       }
-      if (promoted === 'playhead') {
+      if (promoted === 'playhead' || viz === 'automation') {
         engine.seekSeconds(next, 'sample')
         return
       }
@@ -758,6 +815,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const to = engine.getSnapshot().transients[transientIndex] ?? originT
         engine.commitTransientWarp(transientIndex, originT, to)
       }
+      if (mode === 'autoNode') onAutomationCommit?.()
       if (mode === 'start' || mode === 'end' || mode === 'move' || mode === 'select') {
         if (autoSnap) {
           if (mode === 'start' || mode === 'move' || mode === 'select') engine.snapToZero('start')
@@ -776,7 +834,22 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
   }
 
-  const onDoubleClick = () => {
+  const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (viz === 'automation') {
+      event.preventDefault()
+      const target = event.target instanceof HTMLElement ? event.target : null
+      if (target?.closest('[data-auto-node]')) return
+      const overlay = overlayRef.current
+      if (!overlay || duration <= 0) return
+      const rect = overlay.getBoundingClientRect()
+      const time = fracToTime((event.clientX - rect.left) / Math.max(1, rect.width), viewRef.current)
+      const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
+      const id = engine.addAutomationNode(time, value)
+      if (!id) return
+      setAutoNodeId(id)
+      onAutomationCommit?.()
+      return
+    }
     if (duration <= 0) return
     const full = start <= 0.001 && end >= duration - 0.001
     setView(full ? fitView(duration) : zoomToSelection(start, end, duration))
@@ -812,7 +885,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
-  const showWave = viz === 'waveform' || viz === 'split'
+  const showWave = viz === 'waveform' || viz === 'split' || viz === 'automation'
+  const automationView = viz === 'automation' && !sensory && !simple
+  const automationLane = automationView
+    ? snap.automation.lanes.find((lane) => lane.paramId === snap.automation.selectedParamId)
+    : null
+  const automationLine = automationLane
+    ? lanePolyline(automationLane.nodes, view.start, view.end)
+    : ''
   const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
@@ -821,6 +901,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     return (
     <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
+      {automationView ? <AutomationInspector /> : null}
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
           className={styles.wrap}
@@ -858,7 +939,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || simple} aria-hidden="true" />
             <div
               ref={overlayRef}
-              className={`${styles.overlay} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
+              className={`${styles.overlay} ${automationView ? styles.autoOverlay : ''} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
               onPointerDown={loaded ? onPointerDown : undefined}
               onPointerMove={loaded ? onPointerMove : undefined}
               onPointerUp={loaded ? endPointer : undefined}
@@ -982,6 +1063,54 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     </>
                   )}
                   <div ref={playheadRef} className={styles.playhead} />
+                  {automationView ? (
+                    <>
+                      <svg
+                        className={styles.autoSvg}
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        {[0, 25, 50, 75, 100].map((y) => (
+                          <line
+                            key={y}
+                            x1="0"
+                            x2="100"
+                            y1={y}
+                            y2={y}
+                            className={styles.autoGrid}
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                        {automationLine ? (
+                          <polyline
+                            points={automationLine}
+                            className={styles.autoLine}
+                            vectorEffect="non-scaling-stroke"
+                            fill="none"
+                          />
+                        ) : null}
+                      </svg>
+                      {automationLane?.nodes.map((node) => {
+                        const frac = timeToFrac(node.time, view)
+                        if (frac < -0.02 || frac > 1.02) return null
+                        const selected = node.id === autoNodeId && automationLane?.nodes.some((item) => item.id === node.id)
+                        const def = PARAMS[snap.automation.selectedParamId]
+                        const valueLabel = formatParamValue(envelopeToParam(def.id, node.value), def)
+                        return (
+                          <button
+                            key={node.id}
+                            type="button"
+                            data-auto-node={node.id}
+                            className={`${styles.autoNode} ${selected ? styles.autoNodeOn : ''}`}
+                            style={{ left: `${frac * 100}%`, top: `${(1 - node.value) * 100}%` }}
+                            aria-label={t.waveform.automationNode(valueLabel)}
+                            aria-pressed={selected}
+                          />
+                        )
+                      })}
+                    </>
+                  ) : null}
                   {showTransients && !sensory && !simple
                     ? transients.map((t, i) => {
                         const left = pct(t)

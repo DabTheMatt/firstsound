@@ -32,6 +32,7 @@ import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySenso
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
+import { automationEqual, cloneAutomation, type AutomationDocument } from '../audio/automation/automation'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
@@ -50,6 +51,7 @@ type Hist = {
   sensory?: SensoryValues
   dsp?: DspSnapshot
   sensoryBase?: DspSnapshot
+  automation: AutomationDocument
 }
 
 function cloneDsp(dsp: DspSnapshot): DspSnapshot {
@@ -66,6 +68,7 @@ function histKey(
   end: number,
   chain: { instanceId: string }[],
   edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve' | 'fadeInBend' | 'fadeOutBend'>,
+  automation: AutomationDocument,
   extra?: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'>,
 ): Hist {
   return {
@@ -81,10 +84,12 @@ function histKey(
     sensory: extra?.sensory,
     dsp: extra?.dsp ? cloneDsp(extra.dsp) : undefined,
     sensoryBase: extra?.sensoryBase ? cloneDsp(extra.sensoryBase) : undefined,
+    automation: cloneAutomation(automation),
   }
 }
 
 function histEqual(a: Hist, b: Hist): boolean {
+  if (!automationEqual(a.automation, b.automation)) return false
   if (
     a.start !== b.start ||
     a.end !== b.end ||
@@ -135,7 +140,7 @@ export default function App() {
   })
   const [history, setHistory] = useState(() =>
     createHistory(
-      histKey(0, 1, [], DEFAULT_EDIT, {
+      histKey(0, 1, [], DEFAULT_EDIT, engine.getSnapshot().automation, {
         layer: 'region',
         sensory: defaultSensoryValues(),
         dsp: captureDsp(engine),
@@ -276,12 +281,13 @@ export default function App() {
           ? { layer: resolved, dsp: captureDsp(engine), sensoryBase: cloneDsp(sensoryBaseRef.current) }
           : { layer: 'region' }
     setHistory((h) =>
-      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, extra), histEqual),
+      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, current.automation, extra), histEqual),
     )
   }, [])
 
   const restorePresent = (present: Hist) => {
     engine.setRegion(present.start, present.end)
+    engine.replaceAutomation(present.automation)
     setEdit((e) => ({
       ...e,
       fadeIn: present.fadeIn,
@@ -856,6 +862,7 @@ export default function App() {
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
               onFadesCommit={commit}
               onRegionCommit={commit}
+              onAutomationCommit={commit}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
