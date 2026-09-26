@@ -23,8 +23,12 @@ export function clampSpectrumFallMode(value: unknown): SpectrumFallMode {
 export type SpectrumFallRates = {
   /** Per-second rise toward a louder bin. */
   attack: number
-  /** Per-second fall toward silence. */
+  /** Per-second fall toward silence, after the hold. */
   release: number
+  /** Seconds a real drop waits before the trace starts falling. */
+  holdSec: number
+  /** Downward moves smaller than this stay put, so frame flicker does not redraw the contour. */
+  settleDb: number
 }
 
 export type SpectrumFallBallistics = {
@@ -35,24 +39,25 @@ export type SpectrumFallBallistics = {
 /**
  * Time constants for the two visual followers.
  * Peak and slow stay in one family so Follow does not invent a second decay clock.
- * Release times (about 90%): fast ~0.2s, normal ~1s, slow ~5s.
+ * Release times (about 90%, after any hold): fast ~0.2s, normal ~1s, slow ~15s.
+ * Slow also pauses on a real drop so the contour can be read before it glides down.
  */
 export function spectrumFallBallistics(mode: SpectrumFallMode): SpectrumFallBallistics {
   if (mode === 'fast') {
     return {
-      peak: { attack: 30, release: 11 },
-      slow: { attack: 8, release: 2.8 },
+      peak: { attack: 30, release: 11, holdSec: 0, settleDb: 0 },
+      slow: { attack: 8, release: 2.8, holdSec: 0, settleDb: 0 },
     }
   }
   if (mode === 'slow') {
     return {
-      peak: { attack: 4, release: 0.4 },
-      slow: { attack: 1.5, release: 0.16 },
+      peak: { attack: 4, release: 0.15, holdSec: 0.45, settleDb: 1.5 },
+      slow: { attack: 1.5, release: 0.06, holdSec: 0.7, settleDb: 2 },
     }
   }
   return {
-    peak: { attack: 12, release: 2.2 },
-    slow: { attack: 3.5, release: 0.7 },
+    peak: { attack: 12, release: 2.2, holdSec: 0, settleDb: 0 },
+    slow: { attack: 3.5, release: 0.7, holdSec: 0, settleDb: 0 },
   }
 }
 
@@ -375,6 +380,13 @@ export function followBands(
   }
 }
 
+/** Per-bin time already spent waiting out a drop. Owned by the caller across frames. */
+export type SpectrumReleaseHold = {
+  holdSec: number
+  settleDb: number
+  elapsed: Float32Array
+}
+
 /** Frame-rate independent visual fall. Bars and the line share these buffers. */
 export function followBandsOverTime(
   prev: Float32Array,
@@ -382,6 +394,36 @@ export function followBandsOverTime(
   attackPerSec: number,
   releasePerSec: number,
   dtSec: number,
+  hold?: SpectrumReleaseHold | null,
 ): void {
-  followBands(prev, target, envelopeStep(attackPerSec, dtSec), envelopeStep(releasePerSec, dtSec))
+  const n = Math.min(prev.length, target.length)
+  const dt = Math.min(0.05, Math.max(0, dtSec))
+  const attack = envelopeStep(attackPerSec, dt)
+  const release = envelopeStep(releasePerSec, dt)
+  const holdSec = hold?.holdSec ?? 0
+  const settleDb = hold?.settleDb ?? 0
+  const elapsed = hold?.elapsed
+  for (let i = 0; i < n; i++) {
+    const current = prev[i] ?? -100
+    const next = target[i] ?? -100
+    if (next >= current) {
+      if (elapsed && i < elapsed.length) elapsed[i] = 0
+      prev[i] = current + (next - current) * attack
+      continue
+    }
+    const drop = current - next
+    if (drop <= settleDb) {
+      if (elapsed && i < elapsed.length) elapsed[i] = 0
+      continue
+    }
+    if (!(holdSec > 0)) {
+      if (elapsed && i < elapsed.length) elapsed[i] = 0
+      prev[i] = current + (next - current) * release
+      continue
+    }
+    const waited = (elapsed && i < elapsed.length ? elapsed[i]! : 0) + dt
+    if (elapsed && i < elapsed.length) elapsed[i] = waited
+    if (waited < holdSec) continue
+    prev[i] = current + (next - current) * release
+  }
 }

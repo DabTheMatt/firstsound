@@ -192,6 +192,50 @@ describe('spectrum fall', () => {
     expect(slow).toBeGreaterThan(-40)
     expect(fast).toBeLessThan(-60)
   })
+
+  it('holds a slow drop, ignores a tiny dip, then glides slower than normal', () => {
+    const slow = spectrumFallBallistics('slow')
+    const normal = spectrumFallBallistics('normal')
+    expect(slow.peak.holdSec).toBeGreaterThan(0.3)
+    expect(slow.peak.settleDb).toBeGreaterThan(0.5)
+    expect(normal.peak.holdSec).toBe(0)
+    expect(spectrumFallBallistics('fast').peak.holdSec).toBe(0)
+
+    const held = new Float32Array([-12])
+    const elapsed = new Float32Array(1)
+    const floor = new Float32Array([-80])
+    const hold = { holdSec: slow.peak.holdSec, settleDb: slow.peak.settleDb, elapsed }
+    const frames = Math.floor((slow.peak.holdSec - 0.001) / 0.05)
+    for (let i = 0; i < frames; i++) {
+      followBandsOverTime(held, floor, slow.peak.attack, slow.peak.release, 0.05, hold)
+    }
+    expect(held[0]!).toBe(-12)
+
+    followBandsOverTime(held, floor, slow.peak.attack, slow.peak.release, 0.05, hold)
+    expect(held[0]!).toBeLessThan(-12)
+    expect(held[0]!).toBeGreaterThan(-16)
+
+    const flicker = new Float32Array([-12])
+    const flickerHold = {
+      holdSec: slow.peak.holdSec,
+      settleDb: slow.peak.settleDb,
+      elapsed: new Float32Array(1),
+    }
+    for (let i = 0; i < 40; i++) {
+      followBandsOverTime(flicker, new Float32Array([-13]), slow.peak.attack, slow.peak.release, 0.05, flickerHold)
+    }
+    expect(flicker[0]!).toBe(-12)
+
+    const rising = new Float32Array([-12])
+    const riseHold = {
+      holdSec: slow.peak.holdSec,
+      settleDb: slow.peak.settleDb,
+      elapsed: new Float32Array([slow.peak.holdSec]),
+    }
+    followBandsOverTime(rising, new Float32Array([-6]), slow.peak.attack, slow.peak.release, 0.05, riseHold)
+    expect(rising[0]!).toBeGreaterThan(-12)
+    expect(riseHold.elapsed[0]!).toBe(0)
+  })
 })
 
 describe('clampSpectrumFollowMode', () => {

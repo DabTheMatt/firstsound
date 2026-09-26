@@ -44,6 +44,8 @@ import {
   maxBandDb,
   spectrumDisplayUses,
   spectrumFallBallistics,
+  type SpectrumFallRates,
+  type SpectrumReleaseHold,
   spectrumMaxHz,
   SPECTRUM_AXIS_MAX_HZ,
   spectrumMeterAlignDb,
@@ -123,13 +125,14 @@ function followSpectrumLine(
   attackPerSec: number,
   releasePerSec: number,
   dtSec: number,
+  hold?: SpectrumReleaseHold | null,
 ): Float32Array {
   if (!prev || prev.length !== target.length) {
     const next = new Float32Array(target.length)
     next.set(target)
     return next
   }
-  followBandsOverTime(prev, target, attackPerSec, releasePerSec, dtSec)
+  followBandsOverTime(prev, target, attackPerSec, releasePerSec, dtSec, hold)
   return prev
 }
 
@@ -289,6 +292,21 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
     let preLineSlow: Float32Array | null = null
     let postLineFast: Float32Array | null = null
     let postLineSlow: Float32Array | null = null
+    const holds: Record<string, Float32Array | null> = {
+      preFast: null,
+      preSlow: null,
+      postFast: null,
+      postSlow: null,
+      preLineFast: null,
+      preLineSlow: null,
+      postLineFast: null,
+      postLineSlow: null,
+    }
+    const releaseHold = (key: string, length: number, rates: SpectrumFallRates): SpectrumReleaseHold => {
+      const current = holds[key]
+      if (!current || current.length !== length) holds[key] = new Float32Array(length)
+      return { holdSec: rates.holdSec, settleDb: rates.settleDb, elapsed: holds[key]! }
+    }
     let lineXY = new Float32Array(4096)
     const gainHz = new Float32Array(TONE_GAIN_STEPS)
     const gainDb = new Float32Array(TONE_GAIN_STEPS)
@@ -406,8 +424,23 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
           style: 'pre' | 'post',
         ) => {
           if (!peaks) return
-          followBandsOverTime(fast, peaks, ballistics.peak.attack, ballistics.peak.release, dt)
-          followBandsOverTime(slow, peaks, ballistics.slow.attack, ballistics.slow.release, dt)
+          const barKey = style === 'pre' ? 'pre' : 'post'
+          followBandsOverTime(
+            fast,
+            peaks,
+            ballistics.peak.attack,
+            ballistics.peak.release,
+            dt,
+            releaseHold(`${barKey}Fast`, fast.length, ballistics.peak),
+          )
+          followBandsOverTime(
+            slow,
+            peaks,
+            ballistics.slow.attack,
+            ballistics.slow.release,
+            dt,
+            releaseHold(`${barKey}Slow`, slow.length, ballistics.slow),
+          )
           if (style === 'post' && postEqGains && preCap) {
             capBandsByEqGain(fast, preCap, postEqGains)
             capBandsByEqGain(slow, preCap, postEqGains)
@@ -561,12 +594,40 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
         const slowAttack = ballistics.slow.attack
         const slowRelease = ballistics.slow.release
         if (showPre && preScratch.bins) {
-          preLineFast = followSpectrumLine(preLineFast, preScratch.bins, lineAttack, lineRelease, dt)
-          preLineSlow = followSpectrumLine(preLineSlow, preScratch.bins, slowAttack, slowRelease, dt)
+          preLineFast = followSpectrumLine(
+            preLineFast,
+            preScratch.bins,
+            lineAttack,
+            lineRelease,
+            dt,
+            releaseHold('preLineFast', preScratch.bins.length, ballistics.peak),
+          )
+          preLineSlow = followSpectrumLine(
+            preLineSlow,
+            preScratch.bins,
+            slowAttack,
+            slowRelease,
+            dt,
+            releaseHold('preLineSlow', preScratch.bins.length, ballistics.slow),
+          )
         }
         if (showPost && postScratch.bins) {
-          const followedFast = followSpectrumLine(postLineFast, postScratch.bins, lineAttack, lineRelease, dt)
-          const followedSlow = followSpectrumLine(postLineSlow, postScratch.bins, slowAttack, slowRelease, dt)
+          const followedFast = followSpectrumLine(
+            postLineFast,
+            postScratch.bins,
+            lineAttack,
+            lineRelease,
+            dt,
+            releaseHold('postLineFast', postScratch.bins.length, ballistics.peak),
+          )
+          const followedSlow = followSpectrumLine(
+            postLineSlow,
+            postScratch.bins,
+            slowAttack,
+            slowRelease,
+            dt,
+            releaseHold('postLineSlow', postScratch.bins.length, ballistics.slow),
+          )
           postLineFast = followedFast
           postLineSlow = followedSlow
           if (postEqGains && preScratch.bins && followedFast.length === preScratch.bins.length) {
@@ -904,7 +965,7 @@ export function Spectrum({ active, meterRange = 'normal' }: Props) {
             Fall
             <select
               aria-label="Spectrum fall speed"
-              title="Visual decay of the spectrum bars and line. Does not change the audio."
+              title="Visual decay of the spectrum bars and line. Slow holds a drop, then glides down. Does not change the audio."
               value={prefs.fall}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, fall: clampSpectrumFallMode(event.target.value) }))
