@@ -306,6 +306,12 @@ export type Messages = {
     places: string
     selectRegion: string
     overviewDrag: string
+    timeShorter: string
+    timeLonger: string
+    timeAria: string
+    pitchLower: string
+    pitchHigher: string
+    pitchAria: string
     balanced: string
     atmospheres: Record<string, string>
     emotions: Record<EmotionalStateId, string>
@@ -734,8 +740,14 @@ export const EN: Messages = {
     themes: 'Themes',
     color: 'Color',
     places: 'Places',
-    selectRegion: 'Click to set the playhead, drag to select a region, or double-click to play',
-    overviewDrag: 'Sample overview. Click to set the playhead. Drag to select a fragment.',
+    selectRegion: 'Drag the sound to slide it. Edges trim. Empty overview chooses a new fragment. Double-click to play.',
+    overviewDrag: 'Drag the highlighted fragment to slide it. Drag empty space to choose a new one. Edges trim.',
+    timeShorter: 'shorter',
+    timeLonger: 'stretched',
+    timeAria: 'Time, shorter and faster to longer and stretched. Double-click to rest.',
+    pitchLower: 'lower',
+    pitchHigher: 'higher',
+    pitchAria: 'Pitch, lower to higher. Double-click to rest.',
     balanced: 'balanced',
     atmospheres: {
       bloom: 'Bloom',
@@ -1216,8 +1228,14 @@ export const PL: Messages = {
     themes: 'Motywy',
     color: 'Kolor',
     places: 'Miejsca',
-    selectRegion: 'Kliknij, aby ustawić głowicę, przeciągnij, aby zaznaczyć region, albo kliknij dwukrotnie, aby odtworzyć',
-    overviewDrag: 'Przegląd sampla. Kliknij, aby ustawić głowicę. Przeciągnij, aby zaznaczyć fragment.',
+    selectRegion: 'Przeciągnij dźwięk, aby go przesunąć. Krawędzie przycinają. Puste miejsce w przeglądzie wybiera nowy fragment. Podwójne kliknięcie odtwarza.',
+    overviewDrag: 'Przeciągnij podświetlony fragment, aby go przesunąć. Przeciągnij puste miejsce, aby wybrać nowy. Krawędzie przycinają.',
+    timeShorter: 'krócej',
+    timeLonger: 'dłużej',
+    timeAria: 'Czas, krócej i szybciej albo dłużej i rozciągnięcie. Podwójne kliknięcie zeruje.',
+    pitchLower: 'niżej',
+    pitchHigher: 'wyżej',
+    pitchAria: 'Wysokość, niżej albo wyżej. Podwójne kliknięcie zeruje.',
     balanced: 'równowaga',
     atmospheres: {
       bloom: 'Rozkwit',

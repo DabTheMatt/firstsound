@@ -1,9 +1,11 @@
 .wrap {
   position: relative;
   width: min(52vw, 560px);
-  height: 36px;
-  cursor: ew-resize;
-  opacity: 0.82;
+  height: 44px;
+  min-height: 44px;
+  cursor: grab;
+  opacity: 0.92;
+  touch-action: none;
 }
 
 .strip {
@@ -22,6 +24,6 @@
   pointer-events: none;
 }
 
-.wrap:hover {
-  opacity: 1;
+.wrap:active {
+  cursor: grabbing;
 }

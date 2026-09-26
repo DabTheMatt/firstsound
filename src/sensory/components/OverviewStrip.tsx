@@ -5,7 +5,15 @@ import { fullPlayRegion } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
-import { regionFromDrag, workingTimeFromSource } from '../visualization/sampleRegion'
+import {
+  regionFromDrag,
+  resizeRegionEdge,
+  selectionCoversSample,
+  sensorySelectionGesture,
+  slideRegion,
+  workingTimeFromSource,
+  type SensorySelectionGesture,
+} from '../visualization/sampleRegion'
 import styles from './OverviewStrip.module.css'
 
 type Props = {
@@ -41,9 +49,14 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
   const playheadRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const lastTap = useRef(0)
-  const drag = useRef<{ pointerId: number; originFrac: number; moved: boolean; mode: 'select' | 'start' | 'end' } | null>(
-    null,
-  )
+  const drag = useRef<{
+    pointerId: number
+    originFrac: number
+    originStart: number
+    originEnd: number
+    moved: boolean
+    mode: SensorySelectionGesture
+  } | null>(null)
 
 
   useEffect(() => {
@@ -90,8 +103,8 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
       ctx.fillStyle = colorWithAlpha(colors.selection || colors.playhead, 0.22)
       ctx.fillRect(sel0, 0, Math.max(dpr, sel1 - sel0), height)
       ctx.fillStyle = colors.playhead || colors.selectionBorder
-      ctx.fillRect(sel0, 0, Math.max(1, dpr), height)
-      ctx.fillRect(sel1, 0, Math.max(1, dpr), height)
+      ctx.fillRect(sel0, 0, Math.max(2, dpr * 1.5), height)
+      ctx.fillRect(Math.max(0, sel1 - dpr), 0, Math.max(2, dpr * 1.5), height)
     }
     draw()
     const ro = new ResizeObserver(draw)
@@ -125,10 +138,10 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     return Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)))
   }
 
-  const applySelect = (aFrac: number, bFrac: number) => {
+  const applySourceSpan = (sourceStart: number, sourceEnd: number) => {
     const view = sourceTimes(duration)
-    const a = workingTimeFromSource(aFrac * view.sourceDur, view.windowStart, view.workDur)
-    const b = workingTimeFromSource(bFrac * view.sourceDur, view.windowStart, view.workDur)
+    const a = workingTimeFromSource(sourceStart, view.windowStart, view.workDur)
+    const b = workingTimeFromSource(sourceEnd, view.windowStart, view.workDur)
     const region = regionFromDrag(a, b, view.workDur)
     engine.setRegion(region.start, region.end)
   }
@@ -151,6 +164,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
       onRegionCommit()
       return
     }
+    if (state.mode !== 'create') seekAt(state.originFrac)
     const now = performance.now()
     if (now - lastTap.current < 380) {
       lastTap.current = 0
@@ -165,23 +179,40 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!loaded || duration <= 0 || event.button !== 0) return
-    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      /* capture is optional; the gesture still tracks this pointer */
+    }
     const frac = fracAt(event)
     const view = sourceTimes(duration)
-    const startF = view.start / view.sourceDur
-    const endF = view.end / view.sourceDur
-    const edge = 0.018
-    let mode: 'select' | 'start' | 'end' = 'select'
-    if (Math.abs(frac - startF) < edge) mode = 'start'
-    else if (Math.abs(frac - endF) < edge) mode = 'end'
-    drag.current = { pointerId: event.pointerId, originFrac: frac, moved: false, mode }
-    if (mode === 'select') seekAt(frac)
+    const width = event.currentTarget.getBoundingClientRect().width
+    const startF = view.sourceDur > 0 ? view.start / view.sourceDur : 0
+    const endF = view.sourceDur > 0 ? view.end / view.sourceDur : 1
+    const mode = sensorySelectionGesture({
+      frac,
+      startFrac: startF,
+      endFrac: endF,
+      widthPx: width,
+      coversSample: selectionCoversSample(view.start, view.end, view.sourceDur),
+      minEdgePx: 28,
+    })
+    drag.current = {
+      pointerId: event.pointerId,
+      originFrac: frac,
+      originStart: view.start,
+      originEnd: view.end,
+      moved: false,
+      mode,
+    }
+    if (mode === 'create') seekAt(frac)
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const state = drag.current
     if (!state || state.pointerId !== event.pointerId) return
-    if (event.buttons === 0) {
+    if (event.buttons === 0 && event.pointerType === 'mouse') {
       endDrag(event)
       return
     }
@@ -189,11 +220,26 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     if (Math.abs(next - state.originFrac) > 0.006) state.moved = true
     if (!state.moved) return
     const view = sourceTimes(duration)
-    const startF = view.start / view.sourceDur
-    const endF = view.end / view.sourceDur
-    if (state.mode === 'start') applySelect(next, endF)
-    else if (state.mode === 'end') applySelect(startF, next)
-    else applySelect(state.originFrac, next)
+    const sourceDur = view.sourceDur
+    if (!(sourceDur > 0)) return
+    if (state.mode === 'move') {
+      const delta = (next - state.originFrac) * sourceDur
+      const slid = slideRegion(state.originStart, state.originEnd, delta, sourceDur)
+      applySourceSpan(slid.start, slid.end)
+      return
+    }
+    const pointer = next * sourceDur
+    if (state.mode === 'resize-start') {
+      const nextRegion = resizeRegionEdge('start', state.originStart, state.originEnd, pointer, sourceDur)
+      applySourceSpan(nextRegion.start, nextRegion.end)
+      return
+    }
+    if (state.mode === 'resize-end') {
+      const nextRegion = resizeRegionEdge('end', state.originStart, state.originEnd, pointer, sourceDur)
+      applySourceSpan(nextRegion.start, nextRegion.end)
+      return
+    }
+    applySourceSpan(state.originFrac * sourceDur, pointer)
   }
 
   return (
@@ -201,6 +247,9 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
       ref={wrapRef}
       className={styles.wrap}
       aria-label={t.sensory.overviewDrag}
+      data-overview=""
+      data-region-start={snap.params.start}
+      data-region-end={snap.params.end}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}

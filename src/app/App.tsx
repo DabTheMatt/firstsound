@@ -310,6 +310,18 @@ export default function App() {
     appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, next)
   }
 
+  const applyPlayback = (patch: { speed?: number; pitch?: number }) => {
+    if (patch.speed != null) engine.setParam('speed', patch.speed)
+    if (patch.pitch != null) engine.setParam('pitch', patch.pitch)
+    const live = engine.getSnapshot().params
+    const stamp = (dsp: DspSnapshot): DspSnapshot => ({
+      ...dsp,
+      params: { ...dsp.params, speed: live.speed, pitch: live.pitch },
+    })
+    sensoryBaseRef.current = stamp(sensoryBaseRef.current)
+    appliedRef.current = stamp(appliedRef.current ?? captureDsp(engine))
+  }
+
   const prepareSensoryLayer = () => {
     const current = captureDsp(engine)
     const last = appliedRef.current
@@ -679,6 +691,7 @@ export default function App() {
           values={sensory}
           onValues={applySensoryValues}
           onCommitSensory={() => commit('sensory')}
+          onPlayback={applyPlayback}
           moodLabel={moodLabel}
           onMoodLabel={setMoodLabel}
           sampleInput={null}

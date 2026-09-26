@@ -10,8 +10,13 @@ import {
   lerpTime,
   playheadInView,
   regionFromDrag,
+  resizeRegionEdge,
   sampleIndexSpan,
+  selectionCoversSample,
+  sensorySelectionGesture,
+  slideRegion,
   workingTimeFromSource,
+  type SensorySelectionGesture,
 } from '../visualization/sampleRegion'
 import {
   lerpVisualState,
@@ -83,9 +88,20 @@ export function SoundRange({
 }: Props) {
   const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const live = loaded ? sourceView() : null
+  const partialSelection = Boolean(
+    live && live.sourceDur > 0 && !selectionCoversSample(live.regionStart, live.regionEnd, live.sourceDur),
+  )
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
-  const drag = useRef<{ pointerId: number; originFrac: number; moved: boolean } | null>(null)
+  const drag = useRef<{
+    pointerId: number
+    originFrac: number
+    originStart: number
+    originEnd: number
+    moved: boolean
+    mode: SensorySelectionGesture
+  } | null>(null)
 
   useEffect(() => {
     visualRef.current = visual
@@ -195,13 +211,11 @@ export function SoundRange({
     engine.seekSeconds(workingTimeFromSource(t, view.windowStart, view.workDur || duration))
   }
 
-  const selectFromDrag = (origin: number, next: number) => {
+  const applySourceSpan = (sourceStart: number, sourceEnd: number) => {
     const view = sourceView()
-    const a = lerpTime(view.regionStart, view.regionEnd, origin)
-    const b = lerpTime(view.regionStart, view.regionEnd, next)
     const region = regionFromDrag(
-      workingTimeFromSource(a, view.windowStart, view.workDur),
-      workingTimeFromSource(b, view.windowStart, view.workDur),
+      workingTimeFromSource(sourceStart, view.windowStart, view.workDur),
+      workingTimeFromSource(sourceEnd, view.windowStart, view.workDur),
       view.workDur || duration,
     )
     engine.setRegion(region.start, region.end)
@@ -217,6 +231,11 @@ export function SoundRange({
       /* already released */
     }
     if (state.moved) onRegionCommit()
+    else if (state.mode !== 'create') {
+      const view = sourceView()
+      const t = lerpTime(state.originStart, state.originEnd, state.originFrac)
+      engine.seekSeconds(workingTimeFromSource(t, view.windowStart, view.workDur || duration))
+    }
   }
 
   return (
@@ -234,21 +253,61 @@ export function SoundRange({
           onPointerDown={(event) => {
             if (event.button !== 0) return
             event.preventDefault()
-            event.currentTarget.setPointerCapture(event.pointerId)
+            try {
+              event.currentTarget.setPointerCapture(event.pointerId)
+            } catch {
+              /* capture is optional; the gesture still tracks this pointer */
+            }
             const frac = fracAt(event)
-            drag.current = { pointerId: event.pointerId, originFrac: frac, moved: false }
-            seekToFrac(frac)
+            const view = sourceView()
+            const covers = selectionCoversSample(view.regionStart, view.regionEnd, view.sourceDur || duration)
+            const mode = sensorySelectionGesture({
+              frac,
+              startFrac: 0,
+              endFrac: 1,
+              widthPx: event.currentTarget.getBoundingClientRect().width,
+              coversSample: covers,
+              minEdgePx: covers ? 22 : 44,
+            })
+            drag.current = {
+              pointerId: event.pointerId,
+              originFrac: frac,
+              originStart: view.regionStart,
+              originEnd: view.regionEnd,
+              moved: false,
+              mode,
+            }
+            if (mode === 'create') seekToFrac(frac)
           }}
           onPointerMove={(event) => {
             const state = drag.current
             if (!state || state.pointerId !== event.pointerId) return
-            if (event.buttons === 0) {
+            if (event.buttons === 0 && event.pointerType === 'mouse') {
               endDrag(event)
               return
             }
             const next = fracAt(event)
             if (Math.abs(next - state.originFrac) > 0.008) state.moved = true
-            if (state.moved) selectFromDrag(state.originFrac, next)
+            if (!state.moved) return
+            const view = sourceView()
+            const sourceDur = view.sourceDur || duration
+            if (!(sourceDur > 0)) return
+            if (state.mode === 'move') {
+              const span = Math.abs(state.originEnd - state.originStart)
+              const delta = (next - state.originFrac) * span
+              const slid = slideRegion(state.originStart, state.originEnd, delta, sourceDur)
+              applySourceSpan(slid.start, slid.end)
+              return
+            }
+            const pointer = lerpTime(state.originStart, state.originEnd, next)
+            if (state.mode === 'resize-start' || state.mode === 'resize-end') {
+              const edge = state.mode === 'resize-start' ? 'start' : 'end'
+              const resized = resizeRegionEdge(edge, state.originStart, state.originEnd, pointer, sourceDur)
+              applySourceSpan(resized.start, resized.end)
+              return
+            }
+            const a = lerpTime(state.originStart, state.originEnd, state.originFrac)
+            applySourceSpan(a, pointer)
           }}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
@@ -256,7 +315,14 @@ export function SoundRange({
             event.preventDefault()
             onTogglePlay()
           }}
-        />
+        >
+          {partialSelection ? (
+            <>
+              <span className={styles.edge} data-edge="start" aria-hidden="true" />
+              <span className={`${styles.edge} ${styles.edgeEnd}`} data-edge="end" aria-hidden="true" />
+            </>
+          ) : null}
+        </button>
       ) : (
         <button type="button" className={styles.empty} onClick={onLoadDemo}>
           {t.sensory.loadDemo}

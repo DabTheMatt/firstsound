@@ -19,6 +19,7 @@ import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
 import { OverviewStrip } from './OverviewStrip'
 import { ParameterStrings } from './ParameterStrings'
+import { PlaybackFeel } from './PlaybackFeel'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
 import { SoundRange } from './SoundRange'
@@ -47,6 +48,7 @@ type Props = {
   values: SensoryValues
   onValues: (values: SensoryValues) => void
   onCommitSensory: () => void
+  onPlayback: (patch: { speed?: number; pitch?: number }) => void
   moodLabel: string | null
   onMoodLabel: (label: string | null) => void
   sampleInput?: ReactNode
@@ -75,6 +77,7 @@ export function SensoryShell({
   values,
   onValues,
   onCommitSensory,
+  onPlayback,
   moodLabel: _moodLabel,
   onMoodLabel,
   sampleInput = null,
@@ -211,6 +214,12 @@ export function SensoryShell({
         onCommit={onCommitSensory}
       />
       </div>
+
+      <PlaybackFeel
+        disabled={!snap.sampleLoaded}
+        onChange={onPlayback}
+        onCommit={onCommitSensory}
+      />
 
       <div className={styles.bar}>
         <button

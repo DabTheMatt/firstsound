@@ -7,6 +7,7 @@ import { MORPH_GATE } from './mapping/morph'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
 import { sensoryReverbJourney } from './mapping/reverbJourney'
+import { withLivePlayback } from './playbackFeel'
 import type { SensoryAxisId } from './sensoryParameters'
 import { defaultSensoryValues, type SensoryValues } from './sensoryState'
 
@@ -88,7 +89,8 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
 }
 
 export function applySensorySession(engine: AudioEngine, base: DspSnapshot, values: SensoryValues): DspSnapshot {
-  const mapped = mapSensoryToDsp(base, values)
+  const live = engine.getSnapshot().params
+  const mapped = withLivePlayback(mapSensoryToDsp(base, values), live)
   writeDsp(engine, mapped)
   return mapped
 }
