@@ -185,6 +185,25 @@ export type Messages = {
     automationLane: string
     automationNode: (label: string) => string
     automationComb: string
+    automationAdd: string
+    automationRemove: string
+    automationRemoveTitle: string
+    automationRemoveConfirm: string
+    automationConfirm: string
+    automationCancel: string
+    automationEmpty: string
+    automationColor: string
+    automationCurve: string
+    automationLinear: string
+    automationSmooth: string
+    automationStep: string
+    automationTension: string
+    automationTensionHandle: string
+    automationNodes: string
+    automationEditing: string
+    automationLegend: string
+    automationAllUsed: string
+    automationSegmentHint: string
   }
   transport: {
     play: string
@@ -593,10 +612,29 @@ export const EN: Messages = {
     automationCaption: 'Auto',
     automationEffect: 'Effect',
     automationParameter: 'Parameter',
-    automationHint: 'Double-click the waveform to add a node. Drag moves it. Delete removes the selected node. Playback follows the envelope; knobs keep the manual value.',
+    automationHint: 'Double-click the waveform to add a node. Drag moves it. Delete removes the selected node. Click a segment to set Linear, Smooth, or Step. Playback follows every automated parameter; this list only chooses the envelope you edit.',
     automationLane: 'Automation lane',
     automationNode: (label) => `Automation node, ${label}`,
     automationComb: 'EQ comb',
+    automationAdd: 'Add parameter',
+    automationRemove: 'Remove',
+    automationRemoveTitle: 'Remove automation',
+    automationRemoveConfirm: 'Remove this envelope? The effect stays.',
+    automationConfirm: 'Remove',
+    automationCancel: 'Cancel',
+    automationEmpty: 'No automated parameters yet.',
+    automationColor: 'Color',
+    automationCurve: 'Curve',
+    automationLinear: 'Linear',
+    automationSmooth: 'Smooth',
+    automationStep: 'Step',
+    automationTension: 'Tension',
+    automationTensionHandle: 'Curve tension',
+    automationNodes: 'Nodes',
+    automationEditing: 'Editing',
+    automationLegend: 'Automated parameters',
+    automationAllUsed: 'Every parameter of this effect already has automation.',
+    automationSegmentHint: 'Click a segment on the waveform.',
   },
   transport: {
     play: 'Play',
@@ -1090,10 +1128,29 @@ export const PL: Messages = {
     automationCaption: 'Auto',
     automationEffect: 'Efekt',
     automationParameter: 'Parametr',
-    automationHint: 'Dwuklik na fali dodaje węzeł. Przeciągnij, aby go przesunąć. Delete usuwa zaznaczony węzeł. Podczas odtwarzania obwiednia steruje parametrem; gałki zostawiają wartość ręczną.',
+    automationHint: 'Dwuklik na fali dodaje węzeł. Przeciągnij, aby go przesunąć. Delete usuwa zaznaczony węzeł. Kliknij odcinek, aby wybrać linię, wygładzenie albo schodek. Odtwarzanie obejmuje każdy zautomatyzowany parametr; lista wybiera tylko edytowaną obwiednię.',
     automationLane: 'Ścieżka automatyzacji',
     automationNode: (label) => `Węzeł automatyzacji, ${label}`,
     automationComb: 'EQ grzebień',
+    automationAdd: 'Dodaj parametr',
+    automationRemove: 'Usuń',
+    automationRemoveTitle: 'Usuń automatyzację',
+    automationRemoveConfirm: 'Usunąć tę obwiednię? Efekt zostaje.',
+    automationConfirm: 'Usuń',
+    automationCancel: 'Anuluj',
+    automationEmpty: 'Brak zautomatyzowanych parametrów.',
+    automationColor: 'Kolor',
+    automationCurve: 'Krzywa',
+    automationLinear: 'Linia',
+    automationSmooth: 'Gładka',
+    automationStep: 'Schodek',
+    automationTension: 'Napięcie',
+    automationTensionHandle: 'Napięcie krzywej',
+    automationNodes: 'Węzły',
+    automationEditing: 'Edycja',
+    automationLegend: 'Zautomatyzowane parametry',
+    automationAllUsed: 'Każdy parametr tego efektu ma już automatyzację.',
+    automationSegmentHint: 'Kliknij odcinek na fali.',
   },
   transport: {
     play: 'Odtwórz',

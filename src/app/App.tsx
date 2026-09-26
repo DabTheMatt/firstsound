@@ -32,7 +32,8 @@ import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySenso
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
-import { automationEqual, cloneAutomation, type AutomationDocument } from '../audio/automation/automation'
+import { automationEqual, cloneAutomation, EMPTY_AUTOMATION_FOCUS, type AutomationDocument, type AutomationEditFocus } from '../audio/automation/automation'
+import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
@@ -125,6 +126,7 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
   const [viz, setViz] = useState<VizMode>('waveform')
+  const [autoFocus, setAutoFocus] = useState<AutomationEditFocus>(EMPTY_AUTOMATION_FOCUS)
   const [meterRange, setMeterRange] = useState<MeterRange>('normal')
   const [edit, setEdit] = useState<EditState>(DEFAULT_EDIT)
   const [normalizeView, setNormalizeView] = useState(false)
@@ -392,7 +394,18 @@ export default function App() {
 
   const moreOpen = menuOpen
 
+  const showAutomation = viz === 'automation' && uiMode !== 'sensory' && uiMode !== 'simple'
   const inspector = inspectorOpen ? (
+    showAutomation ? (
+      <AutomationInspector
+        sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
+        compact={isPhoneLayout}
+        onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
+        onCommit={commit}
+        focus={autoFocus}
+        onFocus={setAutoFocus}
+      />
+    ) : (
     <Inspector
       snap={snap}
       focus={resolvedFocus}
@@ -413,6 +426,7 @@ export default function App() {
       onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
+    )
   ) : null
 
   const actions = useMemo(
@@ -782,7 +796,10 @@ export default function App() {
           tool={tool}
           onTool={selectTool}
           viz={viz}
-          onViz={setViz}
+          onViz={(next) => {
+            setViz(next)
+            if (next === 'automation') setInspectorOpen(true)
+          }}
           zoomLabel={zoomLabel}
           normalizeView={normalizeView}
           onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
@@ -837,6 +854,8 @@ export default function App() {
               onFadesCommit={commit}
               onRegionCommit={commit}
               onAutomationCommit={commit}
+              autoFocus={autoFocus}
+              onAutoFocus={setAutoFocus}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())

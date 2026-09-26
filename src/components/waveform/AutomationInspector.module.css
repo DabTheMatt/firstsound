@@ -1,53 +1,113 @@
-.bar {
+.list {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  flex: none;
-  min-width: 0;
-  padding: 4px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-control) 70%, transparent);
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
 }
 
-.field {
+.lane {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
   min-width: 0;
-  color: var(--text-disabled);
-  font-size: 8px;
-  letter-spacing: 0.14em;
+}
+
+.laneOn .laneButton {
+  border-color: var(--border-strong);
+  background: var(--bg-control-active);
+}
+
+.laneButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-align: left;
+}
+
+.laneButton span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laneButton:hover,
+.remove:hover {
+  background: var(--bg-control-hover);
+}
+
+.swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 25%, transparent);
+}
+
+.remove {
+  flex: none;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.field select {
-  min-width: 0;
-  max-width: 180px;
-  min-height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-app);
-  color: var(--text-primary);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: none;
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
 }
 
-.hint {
-  flex: 1 1 180px;
-  min-width: 0;
+.confirm p {
+  flex: 1 1 100%;
   margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.empty {
+  margin: 0 0 12px;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.add {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+}
+
+.colorValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 @media (pointer: coarse) {
-  .field select {
+  .laneButton,
+  .remove {
     min-height: 44px;
   }
 }

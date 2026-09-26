@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -12,14 +13,29 @@ import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
 import { waveformLaneLayout } from '../../audio/engine/stereoStage'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
-import { envelopeToParam, lanePolyline, normalizedFromLaneY } from '../../audio/automation/automation'
+import {
+  EMPTY_AUTOMATION_FOCUS,
+  automatedLanes,
+  automationColor,
+  colorIndexForParam,
+  effectKindForParam,
+  envelopeToParam,
+  lanePolyline,
+  nodeCurve,
+  nodeTension,
+  normalizedFromLaneY,
+  sampleEnvelope,
+  segmentIdForNode,
+  segmentPolyline,
+  type AutomationEditFocus,
+} from '../../audio/automation/automation'
 import { isTypingTarget } from '../../a11y/keyboard'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
-import { AutomationInspector } from './AutomationInspector'
 import { EqConsole } from '../eq/EqConsole'
 import { MixConsole } from '../mix/MixConsole'
 import { TrackLanes } from '../mix/TrackLanes'
@@ -92,6 +108,8 @@ type Props = {
   emptyLabel?: string
   trimHandles?: boolean
   onSelectModule?: (instanceId: string) => void
+  autoFocus?: AutomationEditFocus
+  onAutoFocus?: (focus: AutomationEditFocus) => void
 }
 
 export type WaveformHandle = {
@@ -146,6 +164,7 @@ type DragMode =
   | 'select'
   | 'transient'
   | 'autoNode'
+  | 'autoTension'
   | null
 
 export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
@@ -178,10 +197,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     emptyLabel,
     trimHandles = false,
     onSelectModule,
+    autoFocus: autoFocusProp,
+    onAutoFocus,
   },
   ref,
 ) {
-  const { t } = useI18n()
+  const { t, paramLabel } = useI18n()
   const sensory = appearance === 'sensory'
   const simple = appearance === 'simple'
   const snap = useEngine()
@@ -197,7 +218,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
   const [eqStripHeight, setEqStripHeight] = useState(loadEqStripHeight)
-  const [autoNodeId, setAutoNodeId] = useState<string | null>(null)
+  const [localAutoFocus, setLocalAutoFocus] = useState<AutomationEditFocus>(EMPTY_AUTOMATION_FOCUS)
+  const autoFocusControlled = autoFocusProp != null
+  const autoFocus = autoFocusProp ?? localAutoFocus
+  const setAutoFocus = useCallback(
+    (next: AutomationEditFocus) => {
+      if (!autoFocusControlled) setLocalAutoFocus(next)
+      onAutoFocus?.(next)
+    },
+    [autoFocusControlled, onAutoFocus],
+  )
   const eqStripHeightRef = useRef(eqStripHeight)
   const splitDrag = useRef<{ y: number; share?: number; height?: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
@@ -228,18 +258,18 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       if (event.key !== 'Delete' && event.key !== 'Backspace') return
       if (event.repeat) return
       if (isTypingTarget(event.target) || event.target instanceof HTMLSelectElement) return
-      const selected = autoNodeId
+      const selected = autoFocus.nodeId
       const doc = engine.getSnapshot().automation
       const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
       if (!selected || !lane?.nodes.some((node) => node.id === selected)) return
       event.preventDefault()
       engine.deleteAutomationNode(selected)
-      setAutoNodeId(null)
+      setAutoFocus(EMPTY_AUTOMATION_FOCUS)
       onAutomationCommit?.()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [viz, autoNodeId, onAutomationCommit])
+  }, [viz, autoFocus.nodeId, onAutomationCommit, setAutoFocus])
 
   useEffect(() => {
     handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22
@@ -527,6 +557,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     fx?: SpaceHit
     transientIndex?: number
     autoNodeId?: string
+    autoSegmentId?: string
+    originTension?: number
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
@@ -561,10 +593,33 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const y = event.clientY - rect.top
 
     if (viz === 'automation') {
-      const nodeEl = (event.target as HTMLElement | null)?.closest?.('[data-auto-node]') as HTMLElement | null
+      const target = event.target as HTMLElement | null
+      const doc = engine.getSnapshot().automation
+      const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
+      const tensionEl = target?.closest?.('[data-auto-tension]') as HTMLElement | null
+      const tensionId = tensionEl?.dataset.autoTension
+      if (tensionEl && tensionId) {
+        const anchor = lane?.nodes.find((node) => node.id === tensionId)
+        setAutoFocus({ nodeId: null, segmentId: tensionId })
+        drag.current = {
+          mode: 'autoTension',
+          span: end - start,
+          originT: t,
+          originY: y,
+          originX: event.clientX,
+          originView: { ...viewRef.current },
+          origin: { start, end },
+          button: event.button,
+          pointerType: event.pointerType,
+          autoSegmentId: tensionId,
+          originTension: nodeTension(anchor),
+        }
+        return
+      }
+      const nodeEl = target?.closest?.('[data-auto-node]') as HTMLElement | null
       const nodeId = nodeEl?.dataset.autoNode
       if (nodeEl && nodeId) {
-        setAutoNodeId(nodeId)
+        setAutoFocus({ nodeId, segmentId: segmentIdForNode(lane?.nodes ?? [], nodeId) })
         nodeEl.focus({ preventScroll: true })
         drag.current = {
           mode: 'autoNode',
@@ -580,7 +635,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         }
         return
       }
-      setAutoNodeId(null)
+      const segmentEl = target?.closest?.('[data-auto-segment]') as HTMLElement | null
+      const segmentId = segmentEl?.dataset.autoSegment
+      if (segmentEl && segmentId) {
+        setAutoFocus({ nodeId: null, segmentId })
+        return
+      }
+      setAutoFocus(EMPTY_AUTOMATION_FOCUS)
     }
 
     const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
@@ -699,6 +760,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     if (!drag.current) return
     const next = fracToTime((event.clientX - rect.left) / rect.width, viewRef.current)
     const { mode, span, originT, origin, fx, originX, originView } = drag.current
+    if (mode === 'autoTension' && drag.current.autoSegmentId) {
+      const dy = (drag.current.originY - (event.clientY - rect.top)) / Math.max(1, rect.height)
+      engine.setAutomationTension(drag.current.autoSegmentId, (drag.current.originTension ?? 0) + dy * 2)
+      return
+    }
     if (mode === 'autoNode' && drag.current.autoNodeId) {
       const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
       engine.moveAutomationNode(drag.current.autoNodeId, next, value)
@@ -813,7 +879,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const to = engine.getSnapshot().transients[transientIndex] ?? originT
         engine.commitTransientWarp(transientIndex, originT, to)
       }
-      if (mode === 'autoNode') onAutomationCommit?.()
+      if (mode === 'autoNode' || mode === 'autoTension') onAutomationCommit?.()
       if (mode === 'start' || mode === 'end' || mode === 'move' || mode === 'select') {
         if (autoSnap) {
           if (mode === 'start' || mode === 'move' || mode === 'select') engine.snapToZero('start')
@@ -844,7 +910,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
       const id = engine.addAutomationNode(time, value)
       if (!id) return
-      setAutoNodeId(id)
+      const lane = engine.getSnapshot().automation.lanes.find((item) => item.paramId === engine.getSnapshot().automation.selectedParamId)
+      setAutoFocus({ nodeId: id, segmentId: segmentIdForNode(lane?.nodes ?? [], id) })
       onAutomationCommit?.()
       return
     }
@@ -885,12 +952,27 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
   const showWave = viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
-  const automationLane = automationView
-    ? snap.automation.lanes.find((lane) => lane.paramId === snap.automation.selectedParamId)
-    : null
-  const automationLine = automationLane
-    ? lanePolyline(automationLane.nodes, view.start, view.end)
-    : ''
+  const automationLanes = automationView ? automatedLanes(snap.automation) : []
+  const automationLane = automationLanes.find((lane) => lane.paramId === snap.automation.selectedParamId) ?? null
+  const activeNodes = automationLane
+    ? [...automationLane.nodes].sort((a, b) => a.time - b.time || a.id.localeCompare(b.id))
+    : []
+  const activeColor = automationColor(colorIndexForParam(snap.automation, snap.automation.selectedParamId))
+  const activeKind = effectKindForParam(snap.automation.selectedParamId)
+  const activeTitle = activeKind
+    ? automationLaneTitle(
+        automationEffectLabel(activeKind, t.modules, t.waveform.automationComb),
+        paramLabel(snap.automation.selectedParamId),
+      )
+    : paramLabel(snap.automation.selectedParamId)
+  const tensionSegment = activeNodes.find((node) => node.id === autoFocus.segmentId)
+  const tensionIndex = tensionSegment ? activeNodes.findIndex((node) => node.id === tensionSegment.id) : -1
+  const tensionNext = tensionIndex >= 0 ? activeNodes[tensionIndex + 1] : undefined
+  const tensionTime = tensionSegment && tensionNext ? (tensionSegment.time + tensionNext.time) / 2 : null
+  const tensionValue =
+    tensionSegment && tensionNext && nodeCurve(tensionSegment) === 'smooth'
+      ? sampleEnvelope(activeNodes, tensionTime ?? tensionSegment.time)
+      : null
   const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
@@ -899,7 +981,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     return (
     <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
-      {automationView ? <AutomationInspector /> : null}
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
           className={styles.wrap}
@@ -933,6 +1014,29 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
             {loaded && (snap.channelLayout === 'mono' || snap.params.makeMono > 0.5) ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
+            ) : null}
+            {automationView ? (
+              <div className={styles.autoLegend} aria-hidden="true">
+                {automationLanes.map((lane) => {
+                  const active = lane.paramId === snap.automation.selectedParamId
+                  return (
+                    <span
+                      key={lane.paramId}
+                      className={`${styles.autoLegendItem} ${active ? styles.autoLegendOn : ''}`}
+                      style={{ color: automationColor(lane.colorIndex) }}
+                    >
+                      <i />
+                      {active ? activeTitle : null}
+                    </span>
+                  )
+                })}
+                {automationLane ? null : (
+                  <span className={`${styles.autoLegendItem} ${styles.autoLegendOn}`} style={{ color: activeColor }}>
+                    <i />
+                    {activeTitle}
+                  </span>
+                )}
+              </div>
             ) : null}
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || simple} aria-hidden="true" />
             <div
@@ -1080,19 +1184,45 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                             vectorEffect="non-scaling-stroke"
                           />
                         ))}
-                        {automationLine ? (
-                          <polyline
-                            points={automationLine}
-                            className={styles.autoLine}
-                            vectorEffect="non-scaling-stroke"
-                            fill="none"
-                          />
-                        ) : null}
+                        {automationLanes.map((lane) => {
+                          const active = lane.paramId === snap.automation.selectedParamId
+                          const points = lanePolyline(lane.nodes, view.start, view.end)
+                          if (!points) return null
+                          const color = automationColor(lane.colorIndex)
+                          return (
+                            <polyline
+                              key={lane.paramId}
+                              points={points}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth={active ? 2.4 : 1}
+                              strokeOpacity={active ? 1 : 0.28}
+                              vectorEffect="non-scaling-stroke"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                            />
+                          )
+                        })}
+                        {activeNodes.slice(0, -1).map((node, index) => {
+                          const next = activeNodes[index + 1]
+                          if (!next) return null
+                          const points = segmentPolyline(node, next, view.start, view.end)
+                          if (!points) return null
+                          return (
+                            <polyline
+                              key={node.id}
+                              points={points}
+                              data-auto-segment={node.id}
+                              className={styles.autoHit}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          )
+                        })}
                       </svg>
-                      {automationLane?.nodes.map((node) => {
+                      {activeNodes.map((node) => {
                         const frac = timeToFrac(node.time, view)
                         if (frac < -0.02 || frac > 1.02) return null
-                        const selected = node.id === autoNodeId && automationLane?.nodes.some((item) => item.id === node.id)
+                        const selected = node.id === autoFocus.nodeId
                         const def = PARAMS[snap.automation.selectedParamId]
                         const valueLabel = formatParamValue(envelopeToParam(def.id, node.value), def)
                         return (
@@ -1101,12 +1231,25 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                             type="button"
                             data-auto-node={node.id}
                             className={`${styles.autoNode} ${selected ? styles.autoNodeOn : ''}`}
-                            style={{ left: `${frac * 100}%`, top: `${(1 - node.value) * 100}%` }}
+                            style={{ left: `${frac * 100}%`, top: `${(1 - node.value) * 100}%`, color: activeColor }}
                             aria-label={t.waveform.automationNode(valueLabel)}
                             aria-pressed={selected}
                           />
                         )
                       })}
+                      {tensionSegment && tensionNext && tensionValue != null && tensionTime != null && timeToFrac(tensionTime, view) >= -0.02 && timeToFrac(tensionTime, view) <= 1.02 ? (
+                        <button
+                          type="button"
+                          data-auto-tension={tensionSegment.id}
+                          className={styles.autoTension}
+                          style={{
+                            left: `${timeToFrac(tensionTime, view) * 100}%`,
+                            top: `${(1 - tensionValue) * 100}%`,
+                            background: activeColor,
+                          }}
+                          aria-label={t.waveform.automationTensionHandle}
+                        />
+                      ) : null}
                     </>
                   ) : null}
                   {showTransients && !sensory && !simple

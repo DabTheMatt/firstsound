@@ -21,6 +21,7 @@ import {
   parkPlayheadOnStop,
   pitchRatio,
   snapPlayheadToRegion,
+  toNormalized,
   wrapPlayheadIntoRegion,
   playbackNeedsStretch,
 } from '../parameters/mapping'
@@ -58,12 +59,17 @@ import {
   automationHasNodes,
   cloneAutomation,
   defaultAutomation,
+  ensureAutomationLane,
   insertAutomationNode,
   parseAutomation,
   relocateAutomationNode,
+  removeAutomationLane,
   removeAutomationNode,
   resolvePerformanceParams,
   selectAutomationParam,
+  updateAutomationCurve,
+  updateAutomationTension,
+  type AutomationCurve,
   type AutomationDocument,
 } from '../automation/automation'
 import {
@@ -1944,6 +1950,20 @@ export class AudioEngine {
     this.emit()
   }
 
+  /**
+   * Arms a parameter for editing. A new lane gets a flat envelope at the
+   * current knob value so playback stays put until the curve is edited.
+   * An existing lane is only selected.
+   */
+  armAutomation(id: ParamId): void {
+    const duration = this.buffer?.duration ?? 0
+    const normalized = toNormalized(this.params[id], PARAMS[id])
+    const next = ensureAutomationLane(this.automation, id, normalized, duration)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
   addAutomationNode(time: number, value: number): string | null {
     const duration = this.buffer?.duration ?? 0
     const inserted = insertAutomationNode(this.automation, time, value, duration)
@@ -1964,6 +1984,29 @@ export class AudioEngine {
 
   deleteAutomationNode(id: string): void {
     const next = removeAutomationNode(this.automation, id)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  /** Removes one parameter's envelope. The effect and its manual value stay. */
+  removeAutomation(paramId: ParamId): void {
+    const next = removeAutomationLane(this.automation, paramId)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  setAutomationCurve(id: string, curve: AutomationCurve): void {
+    const next = updateAutomationCurve(this.automation, id, curve)
+    if (next === this.automation) return
+    this.automation = next
+    this.afterAutomationEdit()
+  }
+
+  /** Live tension drag. History is committed once by the caller when the pointer lifts. */
+  setAutomationTension(id: string, tension: number): void {
+    const next = updateAutomationTension(this.automation, id, tension)
     if (next === this.automation) return
     this.automation = next
     this.afterAutomationEdit()

@@ -1,62 +1,268 @@
-import { automationEffectGroups, effectKindForParam } from '../../audio/automation/automation'
+import { useState } from 'react'
+import {
+  automatedLanes,
+  automationColor,
+  automationEffectGroups,
+  colorIndexForParam,
+  effectKindForParam,
+  nodeCurve,
+  nodeTension,
+  segmentIdForNode,
+  type AutomationCurve,
+  type AutomationEditFocus,
+} from '../../audio/automation/automation'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import type { Messages } from '../../i18n/messages'
+import { Segmented } from '../controls/Segmented'
+import { InspectorEye } from '../inspector/InspectorEye'
+import inspectorStyles from '../inspector/Inspector.module.css'
+import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import styles from './AutomationInspector.module.css'
 
-function effectLabel(kind: FxLfoKind, modules: Messages['modules'], comb: string): string {
-  if (kind === 'input') return modules.gain
-  if (kind === 'eqcf') return comb
-  if (kind.startsWith('eq')) return `${modules.eq} ${kind.slice(2)}`
-  return modules[kind as keyof Messages['modules']] ?? kind
+type Props = {
+  sheet?: boolean
+  compact?: boolean
+  onHideInspector?: () => void
+  onCommit?: () => void
+  focus: AutomationEditFocus
+  onFocus: (focus: AutomationEditFocus) => void
 }
 
-export function AutomationInspector() {
+export function AutomationInspector({ sheet, compact, onHideInspector, onCommit, focus, onFocus }: Props) {
   const { t, paramLabel } = useI18n()
   const snap = useEngine()
   const groups = automationEffectGroups()
+  const lanes = automatedLanes(snap.automation)
   const selected = snap.automation.selectedParamId
-  const effect = effectKindForParam(selected) ?? groups[0]?.kind ?? 'input'
-  const params = groups.find((group) => group.kind === effect)?.paramIds ?? []
-  const lane = snap.automation.lanes.find((item) => item.paramId === selected)
+  const selectedKind = effectKindForParam(selected) ?? groups[0]?.kind ?? 'input'
+  const [addOpen, setAddOpen] = useState(false)
+  const [effect, setEffect] = useState<FxLfoKind>(selectedKind)
+  const [pendingRemove, setPendingRemove] = useState<ParamId | null>(null)
+  const taken = new Set(lanes.map((lane) => lane.paramId))
+  const effectParams = groups.find((group) => group.kind === effect)?.paramIds ?? []
+  const available = effectParams.filter((id) => !taken.has(id))
+  const [draftParam, setDraftParam] = useState<ParamId | null>(available[0] ?? null)
+  const draft = available.includes(draftParam as ParamId) ? draftParam : (available[0] ?? null)
+  const selectedLane = lanes.find((lane) => lane.paramId === selected) ?? null
+  const selectedNodes = selectedLane?.nodes ?? []
+  const segmentId = selectedNodes.some((node) => node.id === focus.segmentId) ? focus.segmentId : null
+  const segment = selectedNodes.find((node) => node.id === segmentId) ?? null
+  const segmentIndex = segment ? [...selectedNodes].sort((a, b) => a.time - b.time).findIndex((node) => node.id === segment.id) : -1
+  const hasSegment = segmentIndex >= 0 && segmentIndex < selectedNodes.length - 1
+  const curve = hasSegment && segment ? nodeCurve(segment) : 'linear'
+  const tension = hasSegment && segment ? nodeTension(segment) : 0
+  const color = automationColor(colorIndexForParam(snap.automation, selected))
+  const titleFor = (paramId: ParamId) => {
+    const kind = effectKindForParam(paramId)
+    const effectName = kind ? automationEffectLabel(kind, t.modules, t.waveform.automationComb) : paramId
+    return automationLaneTitle(effectName, paramLabel(paramId))
+  }
+
+  const choose = (paramId: ParamId) => {
+    engine.setAutomationParam(paramId)
+    const lane = snap.automation.lanes.find((item) => item.paramId === paramId)
+    const nodes = [...(lane?.nodes ?? [])].sort((a, b) => a.time - b.time || a.id.localeCompare(b.id))
+    onFocus({ nodeId: null, segmentId: segmentIdForNode(nodes, nodes[0]?.id ?? null) })
+    setPendingRemove(null)
+  }
 
   const chooseEffect = (kind: FxLfoKind) => {
-    const group = groups.find((item) => item.kind === kind)
-    const next = group?.paramIds.includes(selected) ? selected : group?.paramIds[0]
-    if (next) engine.setAutomationParam(next)
+    setEffect(kind)
+    const next = groups.find((group) => group.kind === kind)?.paramIds.find((id) => !taken.has(id)) ?? null
+    setDraftParam(next)
+  }
+
+  const addParameter = () => {
+    if (!draft || taken.has(draft)) return
+    engine.armAutomation(draft)
+    const lane = engine.getSnapshot().automation.lanes.find((item) => item.paramId === draft)
+    const nodes = [...(lane?.nodes ?? [])].sort((a, b) => a.time - b.time || a.id.localeCompare(b.id))
+    onFocus({ nodeId: null, segmentId: segmentIdForNode(nodes, nodes[0]?.id ?? null) })
+    onCommit?.()
+    setAddOpen(false)
+    setPendingRemove(null)
+  }
+
+  const removeLane = (paramId: ParamId) => {
+    engine.removeAutomation(paramId)
+    onCommit?.()
+    setPendingRemove(null)
+    if (focus.segmentId || focus.nodeId) onFocus({ nodeId: null, segmentId: null })
+  }
+
+  const setCurve = (next: AutomationCurve) => {
+    if (!segmentId) return
+    engine.setAutomationCurve(segmentId, next)
+    onCommit?.()
   }
 
   return (
-    <div className={styles.bar} role="group" aria-label={t.waveform.automationTitle}>
-      <label className={styles.field}>
+    <div
+      className={`${inspectorStyles.panel} ${sheet ? inspectorStyles.sheet : ''} ${compact ? inspectorStyles.compact : ''}`}
+      data-automation-inspector="true"
+    >
+      <div className={inspectorStyles.head}>
+        <h2 className={inspectorStyles.title}>{t.waveform.automationTitle}</h2>
+        {onHideInspector ? (
+          <div className={inspectorStyles.headActions}>
+            <InspectorEye open onClick={onHideInspector} />
+          </div>
+        ) : null}
+      </div>
+
+      <p className={inspectorStyles.help}>{t.waveform.automationHint}</p>
+
+      <h3 className={inspectorStyles.sub}>{t.waveform.automationLegend}</h3>
+      {lanes.length === 0 ? <p className={styles.empty}>{t.waveform.automationEmpty}</p> : null}
+      <ul className={styles.list}>
+        {lanes.map((lane) => {
+          const active = lane.paramId === selected
+          const laneColor = automationColor(lane.colorIndex)
+          return (
+            <li key={lane.paramId}>
+              <div className={`${styles.lane} ${active ? styles.laneOn : ''}`}>
+                <button
+                  type="button"
+                  className={styles.laneButton}
+                  aria-current={active ? 'true' : undefined}
+                  onClick={() => choose(lane.paramId)}
+                >
+                  <i className={styles.swatch} style={{ background: laneColor }} aria-hidden="true" />
+                  <span>{titleFor(lane.paramId)}</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.remove}
+                  aria-label={`${t.waveform.automationRemoveTitle} ${titleFor(lane.paramId)}`}
+                  onClick={() => setPendingRemove((current) => (current === lane.paramId ? null : lane.paramId))}
+                >
+                  {t.waveform.automationRemove}
+                </button>
+              </div>
+              {pendingRemove === lane.paramId ? (
+                <div className={styles.confirm}>
+                  <p>{t.waveform.automationRemoveConfirm}</p>
+                  <button type="button" className={inspectorStyles.ghost} onClick={() => removeLane(lane.paramId)}>
+                    {t.waveform.automationConfirm}
+                  </button>
+                  <button type="button" className={inspectorStyles.ghost} onClick={() => setPendingRemove(null)}>
+                    {t.waveform.automationCancel}
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+
+      <button
+        type="button"
+        className={inspectorStyles.ghost}
+        onClick={() => {
+          if (!addOpen) {
+            setEffect(selectedKind)
+            const next = groups.find((group) => group.kind === selectedKind)?.paramIds.find((id) => !taken.has(id)) ?? null
+            setDraftParam(next)
+          }
+          setAddOpen((open) => !open)
+        }}
+      >
+        + {t.waveform.automationAdd}
+      </button>
+      {addOpen ? (
+        <div className={styles.add}>
+          <label className={inspectorStyles.field}>
+            <span>{t.waveform.automationEffect}</span>
+            <select className={inspectorStyles.select} value={effect} onChange={(event) => chooseEffect(event.target.value as FxLfoKind)}>
+              {groups.map((group) => (
+                <option key={group.kind} value={group.kind}>
+                  {automationEffectLabel(group.kind, t.modules, t.waveform.automationComb)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={inspectorStyles.field}>
+            <span>{t.waveform.automationParameter}</span>
+            <select
+              className={inspectorStyles.select}
+              value={draft ?? ''}
+              disabled={available.length === 0}
+              onChange={(event) => setDraftParam(event.target.value as ParamId)}
+            >
+              {available.map((id) => (
+                <option key={id} value={id}>
+                  {paramLabel(id)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {available.length === 0 ? <p className={styles.empty}>{t.waveform.automationAllUsed}</p> : null}
+          <button type="button" className={inspectorStyles.ghost} disabled={!draft} onClick={addParameter}>
+            {t.waveform.automationAdd}
+          </button>
+        </div>
+      ) : null}
+
+      <h3 className={inspectorStyles.sub}>{t.waveform.automationEditing}</h3>
+      <div className={inspectorStyles.readout}>
         <span>{t.waveform.automationEffect}</span>
-        <select value={effect} onChange={(event) => chooseEffect(event.target.value as FxLfoKind)}>
-          {groups.map((group) => (
-            <option key={group.kind} value={group.kind}>
-              {effectLabel(group.kind, t.modules, t.waveform.automationComb)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
+        <strong>{automationEffectLabel(selectedKind, t.modules, t.waveform.automationComb)}</strong>
+      </div>
+      <div className={inspectorStyles.readout}>
         <span>{t.waveform.automationParameter}</span>
-        <select
-          value={selected}
-          onChange={(event) => engine.setAutomationParam(event.target.value as ParamId)}
-        >
-          {params.map((id) => (
-            <option key={id} value={id}>
-              {paramLabel(id)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className={styles.hint}>
-        {t.waveform.automationHint}
-        {lane && lane.nodes.length > 0 ? ` · ${lane.nodes.length}` : ''}
-      </p>
+        <strong>{paramLabel(selected)}</strong>
+      </div>
+      <div className={inspectorStyles.readout}>
+        <span>{t.waveform.automationColor}</span>
+        <strong className={styles.colorValue}>
+          <i className={styles.swatch} style={{ background: color }} aria-hidden="true" />
+          {titleFor(selected)}
+        </strong>
+      </div>
+      <div className={inspectorStyles.readout}>
+        <span>{t.waveform.automationNodes}</span>
+        <strong>{selectedLane?.nodes.length ?? 0}</strong>
+      </div>
+
+      <h3 className={inspectorStyles.sub}>{t.waveform.automationCurve}</h3>
+      {hasSegment && segmentId ? (
+        <>
+          <Segmented
+            label={t.waveform.automationCurve}
+            value={curve}
+            wrap
+            options={[
+              { value: 'linear', label: t.waveform.automationLinear },
+              { value: 'smooth', label: t.waveform.automationSmooth },
+              { value: 'step', label: t.waveform.automationStep },
+            ]}
+            onChange={setCurve}
+          />
+          {curve === 'smooth' ? (
+            <label className={inspectorStyles.field}>
+              <span>
+                {t.waveform.automationTension} {tension.toFixed(2)}
+              </span>
+              <input
+                className={inspectorStyles.range}
+                type="range"
+                min={-1}
+                max={1}
+                step={0.01}
+                value={tension}
+                aria-label={t.waveform.automationTension}
+                onChange={(event) => engine.setAutomationTension(segmentId, Number(event.target.value))}
+                onPointerUp={() => onCommit?.()}
+                onKeyUp={() => onCommit?.()}
+              />
+            </label>
+          ) : null}
+        </>
+      ) : (
+        <p className={styles.empty}>{t.waveform.automationSegmentHint}</p>
+      )}
     </div>
   )
 }
