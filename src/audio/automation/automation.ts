@@ -9,6 +9,7 @@ import {
   type LfoHoldState,
 } from '../fx/lfo'
 import { PARAMS } from '../parameters/definitions'
+import { applyParamLinks } from '../parameters/links'
 import { applyParamValue, clamp, fromNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 
@@ -214,8 +215,17 @@ export function resolvePerformanceParams(
   hold: LfoHoldState,
 ): Record<ParamId, number> {
   const base = playing ? applyAutomation(manual, automation, timeSec) : manual
-  if (!anyFxLfoActive(lfos)) return base
-  return applyFxLfos(base, lfos, lfoTimeSec, hold)
+  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold) : base
+  // Linked pairs (delay correlate, L/R link) follow the automated or modulated
+  // value. Skip when the result is still the stored object so a stopped
+  // transport cannot rewrite the manual knobs.
+  if (modulated === manual) return modulated
+  const changed: ParamId[] = []
+  for (const id of Object.keys(modulated) as ParamId[]) {
+    if (modulated[id] !== manual[id]) changed.push(id)
+  }
+  if (changed.length > 0) applyParamLinks(modulated, changed)
+  return modulated
 }
 
 function withLane(doc: AutomationDocument, paramId: ParamId, nodes: AutomationNode[]): AutomationDocument {

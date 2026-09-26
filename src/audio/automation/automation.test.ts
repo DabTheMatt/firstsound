@@ -104,6 +104,7 @@ describe('automation versus manual and LFO', () => {
     expect(playing.delayWet).toBeCloseTo(80)
     expect(stopped.delayWet).toBe(15)
     expect(manual.delayWet).toBe(15)
+    expect(playing.delayDry).toBeCloseTo(20)
   })
 
   it('lets LFO move around the automated value instead of the stored knob', () => {
