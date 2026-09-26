@@ -7,6 +7,15 @@ import { readThemeColors, subscribeThemeChange } from '../../theme'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
 import {
+  NEUTRAL_PLAYBACK,
+  advancePitchPhase,
+  approachPlaybackVisual,
+  playbackSmoothAmount,
+  playbackVisualFromEngine,
+  playbackVisualSettled,
+  type PlaybackVisual,
+} from '../visualization/playbackWarp'
+import {
   lerpTime,
   playheadInView,
   regionFromDrag,
@@ -94,6 +103,8 @@ export function SoundRange({
   )
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
+  const playbackRef = useRef<PlaybackVisual>(NEUTRAL_PLAYBACK)
+  const pitchPhaseRef = useRef(0)
   const drag = useRef<{
     pointerId: number
     originFrac: number
@@ -113,6 +124,7 @@ export function SoundRange({
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
     let lastPaint = 0
+    let lastStamp = 0
     let cache: { key: string; layers: Float32Array[] } | null = null
     const unsub = subscribeThemeChange(() => {
       cache = null
@@ -122,12 +134,32 @@ export function SoundRange({
         frame = requestAnimationFrame(tick)
         return
       }
-      const playing = engine.getSnapshot().playing
-      if (now - lastPaint < paintIntervalMs(playing)) {
+      const dt = lastStamp === 0 ? 16 : Math.min(100, now - lastStamp)
+      lastStamp = now
+      const snap = engine.getSnapshot()
+      const playbackTarget = playbackVisualFromEngine(snap.params.speed, snap.params.pitch)
+      playbackRef.current = approachPlaybackVisual(
+        playbackRef.current,
+        playbackTarget,
+        reduced ? 1 : playbackSmoothAmount(dt),
+      )
+      pitchPhaseRef.current = advancePitchPhase(
+        pitchPhaseRef.current,
+        dt / 1000,
+        playbackRef.current.pitchFeel,
+        reduced,
+      )
+      const playback = playbackRef.current
+      const pitchLive = !reduced && Math.abs(playback.pitchFeel) > 0.004
+      const settling = !playbackVisualSettled(playback, playbackTarget)
+      const interval = settling || pitchLive ? 33 : paintIntervalMs(snap.playing)
+      if (now - lastPaint < interval) {
         frame = requestAnimationFrame(tick)
         return
       }
       lastPaint = now
+      canvas.dataset.timeStretch = String(playback.timeStretch)
+      canvas.dataset.pitchFeel = String(playback.pitchFeel)
       const target = visualRef.current
       shownRef.current = reduced ? target : lerpVisualState(shownRef.current, target, 0.085)
       const visual = shownRef.current
@@ -154,6 +186,7 @@ export function SoundRange({
       if (buffer && sourceDur > 0) {
         const data = buffer.getChannelData(0)
         const span = sampleIndexSpan(data.length, sourceDur, view.regionStart, view.regionEnd)
+        // Time and pitch warp the cached silhouette while painting. They are not part of this key.
         const key = `${contentRev}:${width}:${span.i0}:${span.i1}:${visual.mass.toFixed(2)}:${visual.space.toFixed(2)}:${visual.dirt.toFixed(2)}:${visual.motion.toFixed(2)}:${visual.haze.toFixed(2)}`
         if (!cache || cache.key !== key) {
           const mips = engine.getSourceMips()[0] ?? []
@@ -189,6 +222,8 @@ export function SoundRange({
           windowEndFrac: 1,
           scene,
           ridge: themeRidge(ink),
+          playback,
+          pitchPhase: pitchPhaseRef.current,
         })
       }
       frame = requestAnimationFrame(tick)
