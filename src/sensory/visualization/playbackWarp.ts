@@ -6,11 +6,11 @@ import { feelFromPitch, feelFromSpeed } from '../playbackFeel'
  * Neutral speed is exactly 1. Longer playback is above 1, shorter is below 1.
  * Milder than the 4× audio poles so the silhouette stays readable.
  */
-const TIME_STRETCH_POLE = 2.75
+const TIME_STRETCH_POLE = 4
 
 /** Spatial cycles across the view at the lower and higher pitch poles. */
-const PITCH_CYCLES_LOWER = 2.2
-const PITCH_CYCLES_HIGHER = 18
+const PITCH_CYCLES_LOWER = 1.35
+const PITCH_CYCLES_HIGHER = 28
 
 const STRETCH_SNAP = 0.0015
 const FEEL_SNAP = 0.002
@@ -110,6 +110,13 @@ export function pitchCycles(pitchFeel: number): number {
   return PITCH_CYCLES_LOWER * Math.pow(PITCH_CYCLES_HIGHER / PITCH_CYCLES_LOWER, towardHigh)
 }
 
+/** Mean of sin(2π·cycles·u + phase) over one trip across the view. */
+function sineMean(cycles: number, phase: number): number {
+  const turn = cycles * Math.PI * 2
+  if (Math.abs(turn) < 1e-6) return Math.sin(phase)
+  return (Math.cos(phase) - Math.cos(phase + turn)) / turn
+}
+
 /**
  * Amplitude modulation of the sound body.
  * Zero at natural pitch, so the resting picture is unchanged.
@@ -122,11 +129,15 @@ export function pitchRipple(x: number, width: number, pitchFeel: number, phase: 
   const cycles = pitchCycles(feel)
   const theta = (x / width) * cycles * Math.PI * 2 + phase
   const fundamental = Math.sin(theta)
-  const partial = feel < 0 ? Math.sin(theta * 0.5) : Math.sin(theta * 3)
-  const partialMix = feel < 0 ? 0.48 : 0.4
+  const lower = feel < 0
+  const partial = lower ? Math.sin(theta * 0.5) : Math.sin(theta * 3)
+  const partialMix = lower ? 0.55 : 0.45
   const shaped = fundamental * (1 - partialMix) + partial * partialMix
-  const gain = feel < 0 ? 0.3 : 0.17
-  return shaped * gain * depth
+  const partCycles = lower ? cycles * 0.5 : cycles * 3
+  const partPhase = lower ? phase * 0.5 : phase * 3
+  const bias = (1 - partialMix) * sineMean(cycles, phase) + partialMix * sineMean(partCycles, partPhase)
+  const gain = lower ? 0.62 : 0.4
+  return (shaped - bias) * gain * depth
 }
 
 /** Envelope sample after time stretch, with pitch living inside the body. */
