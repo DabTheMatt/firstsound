@@ -41,10 +41,19 @@ export type ChainSlot = {
   stereo?: StereoStage
 }
 
+export type ChainSlotOptions = {
+  /**
+   * Offline export of a bypassed module keeps the dry wire and skips the wet
+   * graph. Live slots stay fully built so bypass can be lifted without a rebuild.
+   */
+  offlineBypass?: boolean
+}
+
 export function createChainSlot(
   ctx: BaseAudioContext,
   mod: ChainModule,
   eqBandCount = EQ_POOL_BANDS,
+  options?: ChainSlotOptions,
 ): ChainSlot {
   const input = ctx.createGain()
   const output = ctx.createGain()
@@ -74,6 +83,11 @@ export function createChainSlot(
       stereo.output.connect(output)
       slot.stereo = stereo
     }
+    return slot
+  }
+  if (options?.offlineBypass && mod.bypassed) {
+    wet.gain.value = 0
+    dry.gain.value = 1
     return slot
   }
   if (mod.type === 'eq') {

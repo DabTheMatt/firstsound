@@ -266,7 +266,14 @@ import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './war
 import { applyStereoStage, forceStereoUpmix } from './stereoStage'
 import { createChainSlot, moduleMixGains, type ChainSlot } from './chainGraph'
 import { writeCombCoefficients, writeEqBandCoefficients } from './eqGraph'
-import { renderExportPcm, type ExportEqState, type ProcessingSnapshot } from './offlineRender'
+import {
+  renderExportPcm,
+  renderProcessedPcm,
+  traceExport,
+  type ExportEqState,
+  type ExportProgressPhase,
+  type ProcessingSnapshot,
+} from './offlineRender'
 import { prepForWorkingExport, selectionExportAvailable, type WorkingExportClock } from './exportTail'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
@@ -528,6 +535,7 @@ export class AudioEngine {
   private automation: AutomationDocument = defaultAutomation()
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
+  private exportBusy = false
   private lfoClockSec = 0
   private lfoWallMs = 0
   private lfoShown: Record<FxLfoKind, number> = defaultLfoShown()
@@ -1858,24 +1866,71 @@ export class AudioEngine {
 
   async exportWav(
     settings: ExportSettings,
+    hooks?: { onProgress?: (phase: ExportProgressPhase) => void },
+  ): Promise<{ filename: string; blob: Blob; duration: number } | null> {
+    return this.occupyExport(() => this.runExportWav(settings, hooks?.onProgress))
+  }
+
+  /** Offline bounce used by the simple editor. Shares the export lock. */
+  renderAudiblePcm(
+    source: Pcm,
+    timelineStart = 0,
+  ): Promise<Pcm> {
+    return this.occupyExport(() =>
+      renderProcessedPcm(source, this.processingSnapshot(), { timelineStart }),
+    )
+  }
+
+  private async occupyExport<T>(work: () => Promise<T>): Promise<T> {
+    if (this.exportBusy) throw new Error('Export is already running')
+    this.exportBusy = true
+    try {
+      return await work()
+    } finally {
+      this.exportBusy = false
+    }
+  }
+
+  private async runExportWav(
+    settings: ExportSettings,
+    onProgress?: (phase: ExportProgressPhase) => void,
   ): Promise<{ filename: string; blob: Blob; duration: number } | null> {
     const buffer = this.buffer ?? this.sourceBuffer
     if (!buffer) return null
     const scope = settings.scope ?? 'project'
     const clock = this.workingExportClock(buffer.duration)
     if (scope === 'selection' && !selectionExportAvailable(this.prep, clock)) return null
+    onProgress?.('preparing')
     const pcm = await renderExportPcm(
       clonePcmFromBuffer(buffer),
       prepForWorkingExport(this.prep, scope, clock),
       { ...settings, scope },
       this.processingSnapshot(),
+      { onProgress },
     )
+    onProgress?.('encoding')
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0)
+    })
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0)
+        return
+      }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve())
+      })
+    })
     const bytes = encodeWav(pcm, settings.bitDepth)
+    traceExport('ENCODE COMPLETE', { bytes: bytes.byteLength })
     const partial = scope === 'selection' || isTrimmed(this.prep, this.sourceDuration())
     const filename = settings.name || exportFileName(this.fileName, partial, this.prep.clipName)
+    const blob = new Blob([bytes], { type: 'audio/wav' })
+    traceExport('FILE READY', { filename, bytes: blob.size })
+    traceExport('EXPORT COMPLETE', { duration: pcmDuration(pcm) })
     return {
       filename: filename.endsWith('.wav') ? filename : `${filename}.wav`,
-      blob: new Blob([bytes], { type: 'audio/wav' }),
+      blob,
       duration: pcmDuration(pcm),
     }
   }

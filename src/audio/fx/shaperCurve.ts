@@ -10,6 +10,10 @@ const shaperCurveKey = new WeakMap<WaveShaperNode, string>()
  * Prefer `createClickSafeShaper` on a live graph. Assigning `curve` on a
  * shaper that is already in the signal path is a hard transfer step.
  */
+export function shaperCurveMatches(shaper: WaveShaperNode, key: string): boolean {
+  return shaperCurveKey.get(shaper) === key
+}
+
 export function setShaperCurve(shaper: WaveShaperNode, key: string, curve: Float32Array): void {
   if (shaperCurveKey.get(shaper) === key) return
   const copy = new Float32Array(curve.length)

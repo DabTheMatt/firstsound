@@ -114,7 +114,41 @@ export function selectionExportAvailable(prep: SamplePrepState, clock?: WorkingE
 
 const TAIL_THRESHOLD = 0.00045
 const TAIL_HOLD_SEC = 0.06
-const TAIL_SAFETY_SEC = 12
+
+/**
+ * Hard cap on delay/reverb tails. Feedback and reverb never reach exact zero,
+ * so export must not extend the offline render while waiting for silence.
+ */
+export const MAX_EXPORT_TAIL_SEC = 12
+
+/** Reject renders that would allocate an unbounded or multi-hour buffer. */
+export const MAX_EXPORT_RENDER_SEC = 60 * 20
+
+export function clampExportTail(seconds: number): number {
+  if (!Number.isFinite(seconds) || seconds <= 0) return 0
+  return Math.min(MAX_EXPORT_TAIL_SEC, seconds)
+}
+
+/**
+ * Finite frame count for OfflineAudioContext. Throws on NaN, Infinity,
+ * non-positive rates, and durations past the safety cap.
+ */
+export function exportFrameCount(sourceFrames: number, sampleRate: number, tailSec: number): number {
+  if (!Number.isFinite(sourceFrames) || sourceFrames < 1) {
+    throw new Error('Invalid export duration')
+  }
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0 || sampleRate > 384000) {
+    throw new Error('Invalid export sample rate')
+  }
+  const tail = clampExportTail(tailSec)
+  const totalSeconds = sourceFrames / sampleRate + tail
+  const frames = Math.max(sourceFrames, Math.ceil(totalSeconds * sampleRate))
+  const maxFrames = Math.floor(MAX_EXPORT_RENDER_SEC * sampleRate)
+  if (!Number.isFinite(frames) || frames < 1 || frames > maxFrames) {
+    throw new Error('Export is too long to render')
+  }
+  return frames
+}
 
 function moduleByType(chain: readonly ChainModule[], type: ChainModule['type']): ChainModule | undefined {
   return chain.find((mod) => mod.type === type && !mod.bypassed)
@@ -174,7 +208,7 @@ export function effectTailBudgetSec(
     moduleByType(chain, 'limiter') ||
     moduleByType(chain, 'midside')
   if (rings) budget = Math.max(budget, 0.05)
-  return Math.min(TAIL_SAFETY_SEC, budget)
+  return clampExportTail(budget)
 }
 
 /**

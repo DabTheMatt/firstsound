@@ -194,6 +194,7 @@ export function applyFilterGraph(
   now: number,
   _smoothing: number,
   sampleRate: number,
+  commitStatic = true,
 ): void {
   const kind = filterTypeAt(params.filterKind)
   const slope = filterSlopeAt(params.filterSlope)
@@ -204,7 +205,7 @@ export function applyFilterGraph(
   const qs = filterStageQs(slope)
   const drive = params.filterDrive / 100
   const key = `${character}:${drive.toFixed(3)}`
-  if (key !== g.curveKey) {
+  if (commitStatic && key !== g.curveKey) {
     g.curveKey = key
     g.drive.oversample = character === 'dirty' || character === 'aggressive' ? '4x' : '2x'
     g.drive.setCurve(key, makeFilterDriveCurve(drive, character), now)

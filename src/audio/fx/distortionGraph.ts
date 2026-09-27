@@ -91,6 +91,7 @@ export function applyDistortionGraph(
   sampleRate = 48000,
   noiseMuted = false,
   noiseFadeTauSec = 0.02,
+  commitStatic = true,
 ): void {
   const profile = distortionTypeProfile(type)
   const tone = toneToFilters(params.distortionTone)
@@ -101,7 +102,7 @@ export function applyDistortionGraph(
   const drive = params.saturation / 100
   const bias = params.distortionBias / 100
   const key = `${type}:${drive.toFixed(3)}:${bias.toFixed(3)}`
-  if (key !== g.curveKey) {
+  if (commitStatic && key !== g.curveKey) {
     g.curveKey = key
     g.shaper.oversample = type === 'digital' || type === 'clip' || type === 'fold' ? '4x' : '2x'
     g.shaper.setCurve(key, makeDistortionCurve(type, drive, bias), now)

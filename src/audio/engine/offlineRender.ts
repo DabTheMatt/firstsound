@@ -28,6 +28,7 @@ import {
 import { bandIsActive, defaultEqBands, filterStageCount, type EqBand } from './eqBands'
 import {
   effectTailBudgetSec,
+  exportFrameCount,
   exportSourceRange,
   trimRenderedTail,
   type ExportScope,
@@ -227,6 +228,7 @@ function scheduleChain(
   now: number,
   smoothing: number,
   irKey: { current: string },
+  commitStatic: boolean,
 ): void {
   const gainSlot = slots.find((slot) => slot.type === 'gain')
   const outSlot = slots.find((slot) => slot.type === 'output')
@@ -251,7 +253,7 @@ function scheduleChain(
   if (outSlot) setAudibleGain(outSlot.output.gain, dbToGain(params.outputGain), now)
   scheduleEq(ctx, slots, state, params, now)
   for (const slot of slots) {
-    if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate)
+    if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate, commitStatic)
     if (slot.midSideFx) applyMidSideGraph(slot.midSideFx, params, now, smoothing)
     if (slot.distortionFx) {
       applyDistortionGraph(
@@ -264,17 +266,22 @@ function scheduleChain(
         ctx.sampleRate,
         state.noiseMuted,
         state.noiseFadeTau,
+        commitStatic,
       )
     }
     if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
     if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
-    if (slot.delayFx) applyDelayGraph(slot.delayFx, params, state.delayType, params.bpm, now, smoothing, ctx)
+    if (slot.delayFx) {
+      applyDelayGraph(slot.delayFx, params, state.delayType, params.bpm, now, smoothing, ctx, commitStatic)
+    }
     if (slot.reverbFx) {
-      applyReverbGraph(slot.reverbFx, params, state.reverbType, params.bpm, now, smoothing)
-      const key = reverbImpulseKey(params, state.reverbType)
-      if (key !== irKey.current || !convolverHasBuffer(slot.reverbFx.conv)) {
-        irKey.current = key
-        setConvolverPairBuffer(slot.reverbFx.conv, buildReverbBuffer(ctx, params, state.reverbType), now)
+      applyReverbGraph(slot.reverbFx, params, state.reverbType, params.bpm, now, smoothing, commitStatic)
+      if (commitStatic) {
+        const key = reverbImpulseKey(params, state.reverbType)
+        if (key !== irKey.current || !convolverHasBuffer(slot.reverbFx.conv)) {
+          irKey.current = key
+          setConvolverPairBuffer(slot.reverbFx.conv, buildReverbBuffer(ctx, params, state.reverbType), now)
+        }
       }
     }
   }
@@ -320,9 +327,26 @@ function collapseMonoSource(channels: Float32Array[], sourceChannels: number): F
   return channels
 }
 
+export type ExportProgressPhase = 'preparing' | 'rendering' | 'encoding'
+
 export type ProcessedRenderOptions = {
   timelineStart?: number
   factory?: OfflineContextFactory
+  onProgress?: (phase: ExportProgressPhase) => void
+}
+
+const EXPORT_TRACE = () =>
+  (globalThis as { __FIELD_EXPORT_DEBUG__?: boolean }).__FIELD_EXPORT_DEBUG__ === true
+
+export function traceExport(stage: string, detail?: Record<string, unknown>): void {
+  if (!EXPORT_TRACE()) return
+  console.info(`[export] ${stage}`, detail ?? '')
+}
+
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
 }
 
 /**
@@ -340,16 +364,26 @@ export async function renderProcessedPcm(
   if (!(sampleRate > 0) || sourceFrames < 1) {
     return { sampleRate: sampleRate > 0 ? sampleRate : 44100, channels: [new Float32Array()] }
   }
-  const sourceSeconds = sourceFrames / sampleRate
   const tail = effectTailBudgetSec(state.chain, state.params, state.reverbType)
-  const totalSeconds = sourceSeconds + tail
-  const length = Math.max(sourceFrames, Math.ceil(totalSeconds * sampleRate))
+  const length = exportFrameCount(sourceFrames, sampleRate, tail)
+  const totalSeconds = length / sampleRate
+  traceExport('SOURCE PREPARED', {
+    sourceDuration: sourceFrames / sampleRate,
+    sampleRate,
+    channels: source.channels.length,
+    tail,
+    renderDuration: totalSeconds,
+    frames: length,
+    estimatedBytes: length * 2 * 4,
+  })
+  options.onProgress?.('rendering')
   const factory = options.factory ?? defaultOfflineFactory
+  traceExport('OFFLINE CONTEXT CREATED', { channels: 2, frames: length, sampleRate })
   const ctx = factory(2, length, sampleRate)
   const timelineStart = options.timelineStart ?? 0
   const chain = state.chain
   const slots = chain.map((mod) => {
-    const slot = createChainSlot(ctx, mod)
+    const slot = createChainSlot(ctx, mod, undefined, { offlineBypass: mod.bypassed })
     bypassBrokenScriptProcessor(slot)
     return slot
   })
@@ -380,9 +414,13 @@ export async function renderProcessedPcm(
   const rand = mulberry32(0x1fee2e01)
   const snh = { index: -1, value: 0 }
   let follower = 0
+  traceExport('DSP GRAPH BUILT', { modules: chain.length, dynamic })
   const irKey = { current: '' }
   let previous = 0
-  for (const elapsed of times) {
+  let scheduled = 0
+  for (let index = 0; index < times.length; index++) {
+    const elapsed = times[index] ?? 0
+    const commitStatic = index === times.length - 1
     const dt = Math.max(0.001, elapsed - previous)
     previous = elapsed
     if (state.params.filterEnvAmt > 0.4) {
@@ -415,10 +453,26 @@ export async function renderProcessedPcm(
       snh,
       rand,
     })
-    scheduleChain(ctx, slots, chain, state, live, source.channels.length, elapsed, smoothing, irKey)
+    scheduleChain(
+      ctx,
+      slots,
+      chain,
+      state,
+      live,
+      source.channels.length,
+      elapsed,
+      smoothing,
+      irKey,
+      commitStatic,
+    )
+    scheduled += 1
+    if (scheduled % 40 === 0) await yieldToMain()
   }
+  traceExport('AUTOMATION SCHEDULED', { points: times.length })
+  traceExport('RENDER START', { frames: length })
 
   const rendered = await ctx.startRendering()
+  traceExport('RENDER COMPLETE', { frames: rendered.length })
   const keep = trimRenderedTail(channelsOf(rendered), sourceFrames, sampleRate)
   const channels = collapseMonoSource(copyRendered(rendered, keep), source.channels.length)
   return { sampleRate, channels }
@@ -439,6 +493,12 @@ export async function renderExportPcm(
 ): Promise<Pcm> {
   const scope: ExportScope = settings.scope ?? 'project'
   const range = exportSourceRange(prep, scope)
+  traceExport('EXPORT START', {
+    scope: settings.scope ?? 'project',
+    sampleRate: source.sampleRate,
+    channels: source.channels.length,
+    sourceFrames: source.channels[0]?.length ?? 0,
+  })
   const prepared = renderPrep(source, prep, {
     applyFades: settings.applyFades,
     applyGain: settings.applyGain,
@@ -452,6 +512,11 @@ export async function renderExportPcm(
   const processed = await renderProcessedPcm(prepared, processing, {
     ...options,
     timelineStart: range.start,
+  })
+  traceExport('ENCODE START', {
+    frames: processed.channels[0]?.length ?? 0,
+    sampleRate: processed.sampleRate,
+    channels: processed.channels.length,
   })
   if (!settings.applyNormalize) return processed
   const peak = peakAmplitude(processed.channels)

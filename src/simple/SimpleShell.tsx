@@ -104,6 +104,8 @@ export function SimpleShell({
   const [saveRate, setSaveRate] = useState<'original' | '44100' | '48000'>('original')
   const [saveBits, setSaveBits] = useState<16 | 24>(24)
   const [saveMono, setSaveMono] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const saveBusyRef = useRef(false)
   const liveDspRef = useRef(captureDsp(engine))
 
   const eqBypassed = Boolean(snap.chain.find((m) => m.type === 'eq')?.bypassed)
@@ -195,20 +197,32 @@ export function SimpleShell({
   }
 
   const saveFile = () => {
+    if (saveBusyRef.current) return
+    saveBusyRef.current = true
+    setSaving(true)
     exitOriginal()
-    void bounceSimplePcm(engine, edit).then((pcm) => {
-    if (!pcm) return
-    const prepared = prepareSimpleExportPcm(pcm, {
-      name: saveName,
-      format: saveFormat,
-      sampleRate: saveRate === 'original' ? 'original' : Number(saveRate),
-      bitDepth: saveBits,
-      mono: saveMono,
-    })
-    const blob = encodeSimpleWav(prepared, saveFormat === 'mp3' ? 16 : saveBits)
-    downloadBlob(simpleExportFilename(saveName, saveFormat === 'mp3' ? 'wav' : 'wav'), blob)
-    setSheet('none')
-    })
+    void (async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        const pcm = await bounceSimplePcm(engine, edit)
+        if (!pcm) return
+        const prepared = prepareSimpleExportPcm(pcm, {
+          name: saveName,
+          format: saveFormat,
+          sampleRate: saveRate === 'original' ? 'original' : Number(saveRate),
+          bitDepth: saveBits,
+          mono: saveMono,
+        })
+        const blob = encodeSimpleWav(prepared, saveFormat === 'mp3' ? 16 : saveBits)
+        downloadBlob(simpleExportFilename(saveName, saveFormat === 'mp3' ? 'wav' : 'wav'), blob)
+        setSheet('none')
+      } catch (err) {
+        setStatus(err instanceof Error && err.message ? err.message : t.export.exportFailed)
+      } finally {
+        saveBusyRef.current = false
+        setSaving(false)
+      }
+    })()
   }
 
   const fadeInCopy = {
@@ -580,8 +594,8 @@ export function SimpleShell({
                     </label>
                   </>
                 ) : null}
-                <button type="submit" className={styles.saveFile}>
-                  {t.simple.saveFile}
+                <button type="submit" className={styles.saveFile} disabled={saving}>
+                  {saving ? t.export.rendering : t.simple.saveFile}
                 </button>
               </form>
             ) : null}

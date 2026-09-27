@@ -3,9 +3,12 @@ import { factoryChain, type ChainModule, type ModuleType } from '../chain/chain'
 import { defaultParamValues } from '../parameters/definitions'
 import { defaultPrep } from '../samplePrep/state'
 import {
+  clampExportTail,
   effectTailBudgetSec,
+  exportFrameCount,
   exportSourceRange,
   exportWorkingRange,
+  MAX_EXPORT_TAIL_SEC,
   prepForWorkingExport,
   prepMatchesWorkingBuffer,
   selectionExportAvailable,
@@ -82,6 +85,17 @@ describe('export tail and selection range', () => {
     const reverb = effectTailBudgetSec(chain(['reverb']), verb, 'room')
     expect(reverb).toBeGreaterThan(0.08)
     expect(reverb).toBeLessThan(3)
+  })
+
+  it('clamps the tail and rejects a non-finite render length', () => {
+    expect(clampExportTail(Number.POSITIVE_INFINITY)).toBe(0)
+    expect(clampExportTail(-4)).toBe(0)
+    expect(clampExportTail(80)).toBe(MAX_EXPORT_TAIL_SEC)
+    expect(exportFrameCount(44100, 44100, 2)).toBe(132300)
+    expect(() => exportFrameCount(Number.NaN, 44100, 0)).toThrow(/duration/i)
+    expect(() => exportFrameCount(100, Number.POSITIVE_INFINITY, 0)).toThrow(/sample rate/i)
+    expect(() => exportFrameCount(100, -1, 0)).toThrow(/sample rate/i)
+    expect(() => exportFrameCount(44100 * 60 * 30, 44100, 1)).toThrow(/too long/i)
   })
 
   it('drops a silent tail and keeps a decaying one only while it is hot', () => {

@@ -437,6 +437,12 @@ export function applyDelayGraph(
   now: number,
   _smoothing: number,
   ctx: BaseAudioContext,
+  /**
+   * WaveShaper curves and the reverse convolver are not AudioParams.
+   * Assigning them on every automation step only keeps the last value and,
+   * offline, rebuilds those buffers on the main thread. Live updates pass true.
+   */
+  commitStatic = true,
 ): void {
   const stereo = isDelayStereo(params)
   const timeL = delayChannelTimeSeconds(params, bpm, 'L')
@@ -487,9 +493,12 @@ export function applyDelayGraph(
   setSmoothedAudioParam(g.hpR.Q, webAudioBiquadQ('highpass', loop.q), now, 'q')
   setSmoothedAudioParam(g.lpL.Q, webAudioBiquadQ('lowpass', loop.q), now, 'q')
   setSmoothedAudioParam(g.lpR.Q, webAudioBiquadQ('lowpass', loop.q), now, 'q')
-  const driveKey = (params.delayDrive / 100).toFixed(4)
-  g.driveL.setCurve(driveKey, makeDriveCurve(params.delayDrive / 100), now)
-  g.driveR.setCurve(driveKey, makeDriveCurve(params.delayDrive / 100), now)
+  if (commitStatic) {
+    const driveKey = (params.delayDrive / 100).toFixed(4)
+    const curve = makeDriveCurve(params.delayDrive / 100)
+    g.driveL.setCurve(driveKey, curve, now)
+    g.driveR.setCurve(driveKey, curve, now)
+  }
 
   setSmoothedAudioParam(g.lfo.frequency, params.delayModRate, now, 'frequency')
   setSmoothedAudioParam(g.lfoGain.gain, delayModSeconds(time, params.delayModDepth / 100), now, 'gain')
@@ -507,7 +516,7 @@ export function applyDelayGraph(
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.7) : params.delayReverse / 100
   setSmoothedAudioParam(g.reverseMix.gain, reverseAmt * 0.55, now, 'gain')
   setSmoothedAudioParam(g.reverseDirect.gain, 1 - reverseAmt * 0.45, now, 'gain')
-  if (reverseAmt > 0.05) {
+  if (commitStatic && reverseAmt > 0.05) {
     const key = `${time.toFixed(3)}:${params.delayFeedback.toFixed(0)}`
     if (g.reverseKey !== key) {
       g.reverseKey = key
@@ -776,6 +785,8 @@ export function applyReverbGraph(
   bpm: number,
   now: number,
   _smoothing: number,
+  /** See applyDelayGraph. The drive curve is not automated in time. */
+  commitStatic = true,
 ): void {
   const pre =
     params.reverbSync > 0.5
@@ -817,8 +828,10 @@ export function applyReverbGraph(
   const color = params.reverbColor / 100
   setSmoothedAudioParam(g.tiltLow.gain, -color * 4, now, 'gain')
   setSmoothedAudioParam(g.tiltHigh.gain, color * 5, now, 'gain')
-  const driveKey = (params.reverbDrive / 100).toFixed(4)
-  g.drive.setCurve(driveKey, makeDriveCurve(params.reverbDrive / 100), now)
+  if (commitStatic) {
+    const driveKey = (params.reverbDrive / 100).toFixed(4)
+    g.drive.setCurve(driveKey, makeDriveCurve(params.reverbDrive / 100), now)
+  }
   setSmoothedAudioParam(g.out.gain, reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, 'gain')
 
   setSmoothedAudioParam(g.lfo.frequency, params.reverbModRate, now, 'frequency')
