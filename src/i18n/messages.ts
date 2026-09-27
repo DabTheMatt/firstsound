@@ -348,6 +348,9 @@ export type Messages = {
     colorSoundRestAria: string
     colorSoundLight: string
     colorSoundDark: string
+    colorSoundLabel: string
+    colorSoundShow: string
+    colorSoundHide: string
     places: string
     selectRegion: string
     overviewDrag: string
@@ -834,6 +837,9 @@ export const EN: Messages = {
     colorSoundRestAria: 'Return the sound color to rest',
     colorSoundLight: 'light',
     colorSoundDark: 'dark',
+    colorSoundLabel: 'Color Sound',
+    colorSoundShow: 'Show Color Sound',
+    colorSoundHide: 'Hide Color Sound',
     places: 'Places',
     selectRegion: 'Drag the sound to slide it. Edges trim. Empty overview chooses a new fragment. Double-click to play.',
     overviewDrag: 'Drag the highlighted fragment to slide it. Drag empty space to choose a new one. Edges trim.',
@@ -1372,6 +1378,9 @@ export const PL: Messages = {
     colorSoundRestAria: 'Wróć kolorem dźwięku do spoczynku',
     colorSoundLight: 'jasno',
     colorSoundDark: 'ciemno',
+    colorSoundLabel: 'Kolor dźwięku',
+    colorSoundShow: 'Pokaż kolor dźwięku',
+    colorSoundHide: 'Ukryj kolor dźwięku',
     places: 'Miejsca',
     selectRegion: 'Przeciągnij dźwięk, aby go przesunąć. Krawędzie przycinają. Puste miejsce w przeglądzie wybiera nowy fragment. Podwójne kliknięcie odtwarza.',
     overviewDrag: 'Przeciągnij podświetlony fragment, aby go przesunąć. Przeciągnij puste miejsce, aby wybrać nowy. Krawędzie przycinają.',

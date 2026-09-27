@@ -5,7 +5,7 @@ import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import type { ColorSound } from '../colorSound'
-import { colorSoundAmount, colorSoundRgb } from '../colorSound'
+import { colorDepthBias, colorVisual } from '../colorSound'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
 import {
@@ -16,7 +16,6 @@ import {
   energyFromFrequency,
   motionTarget,
   STILL_DEPTH_ENERGY,
-  stillDepthTravelers,
   transientAmount,
   type AudioDepthEnergy,
 } from '../visualization/depthField'
@@ -174,6 +173,7 @@ export function SoundRange({
             bass: partial.bass,
             high: partial.high,
             transient: transientAmount(levelRef.current, partial.level),
+            level: partial.level,
           }
           levelRef.current = partial.level
         }
@@ -181,15 +181,15 @@ export function SoundRange({
         levelRef.current = approachUnit(levelRef.current, 0, dt, 140)
       }
       const energy = energyRef.current
+      const bias = colorDepthBias(colorRef.current)
       energyRef.current = {
         bass: approachUnit(energy.bass, measured.bass, dt, 170),
         high: approachUnit(energy.high, measured.high, dt, 90),
         transient: approachUnit(energy.transient, measured.transient, dt, 80),
+        level: approachUnit(energy.level ?? 0, measured.level ?? 0, dt, 140),
       }
-      if (!reduced) {
-        clockRef.current = advanceDepthClock(clockRef.current, dt / 1000, motionRef.current, energyRef.current)
-        motionMsRef.current += dt * motionRef.current
-      }
+      clockRef.current = advanceDepthClock(clockRef.current, dt / 1000, motionRef.current, energyRef.current, bias)
+      motionMsRef.current += dt * (reduced ? motionRef.current * 0.35 : motionRef.current)
       const playbackTarget = playbackVisualFromEngine(snap.params.speed, snap.params.pitch)
       playbackRef.current = approachPlaybackVisual(
         playbackRef.current,
@@ -263,7 +263,13 @@ export function SoundRange({
         }
         const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)
         const pad = colorRef.current
-        const accentAmount = colorSoundAmount(pad)
+        const accent = colorVisual(pad)
+        const bias = colorDepthBias(pad)
+        const travelers = depthTravelers(clockRef.current, motionRef.current, energyRef.current, bias, reduced)
+        const spans = travelers.map((row) => row.span)
+        canvas.dataset.depthFar = spans.length ? Math.min(...spans).toFixed(3) : '0'
+        canvas.dataset.depthNear = spans.length ? Math.max(...spans).toFixed(3) : '0'
+        canvas.dataset.depthLayers = String(travelers.length)
         paintSoundRange({
           ctx,
           width,
@@ -284,10 +290,8 @@ export function SoundRange({
           playback,
           pitchPhase: pitchPhaseRef.current,
           motionMs: reduced ? 0 : motionMsRef.current,
-          depthTravelers: reduced
-            ? stillDepthTravelers()
-            : depthTravelers(clockRef.current, motionRef.current, energyRef.current),
-          accent: accentAmount > 0.02 ? { rgb: colorSoundRgb(pad), amount: accentAmount } : null,
+          depthTravelers: travelers,
+          accent,
         })
       }
       frame = requestAnimationFrame(tick)

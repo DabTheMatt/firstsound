@@ -26,6 +26,28 @@ function rgbText(color: ColorSound): string {
   return `rgb(${r} ${g} ${b})`
 }
 
+function padStartsOpen(): boolean {
+  if (typeof window === 'undefined') return true
+  return window.innerHeight >= 740
+}
+
+function ColorSoundIcon({ color }: { color: ColorSound }) {
+  const { r, g, b } = colorSoundRgb(color)
+  return (
+    <svg className={styles.icon} viewBox="0 0 28 28" aria-hidden="true">
+      <circle cx="14" cy="14" r="9.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M7.2 15.2c1.15-3.1 2.15-3.1 3.2 0s2.05 3.1 3.2 0 2.05-3.1 3.2 0 2.05 3.1 3.2 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+      <circle cx="18.4" cy="9.1" r="1.7" fill={`rgb(${r} ${g} ${b})`} stroke="currentColor" strokeWidth="0.6" />
+    </svg>
+  )
+}
+
 export function ColorSoundPad({ color, onChange, onCommit }: Props) {
   const { t } = useI18n()
   const fieldRef = useRef<HTMLCanvasElement>(null)
@@ -37,6 +59,7 @@ export function ColorSoundPad({ color, onChange, onCommit }: Props) {
   const dirty = useRef(false)
   const followThumb = useRef(true)
   const [thumb, setThumb] = useState<ColorSound>(color)
+  const [open, setOpen] = useState(padStartsOpen)
   const valueText =
     color.y > 0.66 ? t.sensory.colorSoundLight : color.y < 0.34 ? t.sensory.colorSoundDark : t.sensory.colorSoundRest
 
@@ -171,9 +194,11 @@ export function ColorSoundPad({ color, onChange, onCommit }: Props) {
   return (
     <div
       className={styles.dock}
+      data-open={open ? 'true' : 'false'}
       data-color-x={color.x.toFixed(3)}
       data-color-y={color.y.toFixed(3)}
     >
+      <div className={styles.panel} inert={!open}>
       <div
         className={styles.field}
         tabIndex={0}
@@ -246,6 +271,18 @@ export function ColorSoundPad({ color, onChange, onCommit }: Props) {
         onClick={rest}
       >
         {t.sensory.colorSoundRest}
+      </button>
+      </div>
+      <button
+        type="button"
+        className={styles.toggle}
+        aria-pressed={open}
+        aria-expanded={open}
+        aria-label={t.sensory.colorSoundLabel}
+        title={t.sensory.colorSoundLabel}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ColorSoundIcon color={thumb} />
       </button>
     </div>
   )

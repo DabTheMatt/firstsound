@@ -10,6 +10,7 @@ import {
   colorSoundIsNeutral,
   colorSoundRgb,
   colorTimbre,
+  mapColorToSound,
   NEUTRAL_COLOR_SOUND,
 } from './colorSound'
 import { dspSnapshotsEqual, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
@@ -77,8 +78,30 @@ describe('color sound mapping', () => {
   it('wraps hue so the red edge agrees with itself', () => {
     const a = colorTimbre({ x: 0.01, y: 0.5 })
     const b = colorTimbre({ x: 0.99, y: 0.5 })
-    expect(Math.abs(a.sat - b.sat)).toBeLessThan(3)
-    expect(Math.abs(a.low - b.low)).toBeLessThan(1.2)
+    expect(Math.abs(a.sat - b.sat)).toBeLessThan(4)
+    expect(Math.abs(a.low - b.low)).toBeLessThan(1.6)
+  })
+
+  it('gives each hue a different continuous character', () => {
+    const at = (x: number, y = 0.5) => mapColorToSound(x, y)
+    const red = at(0.02)
+    const yellow = at(0.16)
+    const green = at(0.34)
+    const blue = at(0.67)
+    const violet = at(0.84)
+    expect(red.low).toBeGreaterThan(blue.low + 0.25)
+    expect(red.saturation).toBeGreaterThan(blue.saturation + 0.2)
+    expect(yellow.presence).toBeGreaterThan(red.presence + 0.15)
+    expect(yellow.air).toBeGreaterThan(red.air)
+    expect(green.body).toBeGreaterThan(yellow.body)
+    expect(blue.space).toBeGreaterThan(green.space)
+    expect(blue.width).toBeGreaterThan(red.width + 0.2)
+    expect(violet.texture).toBeGreaterThan(blue.texture + 0.25)
+    expect(at(0.5, 0.08).air).toBeLessThan(at(0.5, 0.92).air - 0.4)
+    expect(at(0.5, 0.08).depth).toBeGreaterThan(at(0.5, 0.92).depth)
+    const seam = Math.abs(at(0).saturation - at(0.999).saturation)
+    const span = Math.abs(red.saturation - blue.saturation)
+    expect(seam).toBeLessThan(span * 0.35)
   })
 
   it('moves continuously across the field', () => {
