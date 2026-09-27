@@ -40,24 +40,10 @@
   white-space: nowrap;
 }
 
-.mode {
-  flex: none;
-  align-self: center;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
 .studio .name {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.18em;
-}
-
-.studio .mode {
-  font-size: 9px;
 }
 
 .compact.studio .name {
@@ -65,12 +51,8 @@
   letter-spacing: 0.16em;
 }
 
-.compact .mode {
-  font-size: 8px;
-  letter-spacing: 0.08em;
-}
-
-.compact .tagline {
+.compact .tagline,
+.hideTagline .tagline {
   display: none;
 }
 
@@ -100,12 +82,6 @@
   background: color-mix(in srgb, var(--text-primary) 55%, transparent);
 }
 
-.editorial .mode {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
-}
-
 .editorial .tagline {
   letter-spacing: 0.06em;
 }
@@ -130,21 +106,9 @@
   letter-spacing: 0.12em;
 }
 
-@media (max-width: 1100px) {
-  .editorial .mode {
-    display: none;
-  }
-}
-
 @media (max-width: 900px) {
   .mark {
     gap: 10px;
-  }
-
-  .studio .mode,
-  .editorial .mode {
-    font-size: 8px;
-    letter-spacing: 0.08em;
   }
 
   .editorial .name {
@@ -153,9 +117,8 @@
   }
 }
 
-/* Narrow viewports drop the descriptor before header controls compress. */
-@media (max-width: 700px) {
-  .studio .tagline,
+/* Sensory tools need the full header row below this width. */
+@media (max-width: 1100px) {
   .editorial .tagline {
     display: none;
   }
@@ -165,31 +128,15 @@
   }
 }
 
-@media (max-width: 640px) {
-  .mark {
-    gap: 6px;
-  }
-
-  .studio .mode,
-  .editorial .mode {
-    font-size: 7px;
-    letter-spacing: 0.04em;
-  }
-}
-
-@container app-header (max-width: 860px) {
-  .mode {
+/* Narrow viewports drop the descriptor before header controls compress. */
+@media (max-width: 700px) {
+  .studio .tagline {
     display: none;
   }
 }
 
-@container brand (max-width: 240px) {
+@media (max-width: 640px) {
   .mark {
-    gap: 4px;
-  }
-
-  .mode {
-    font-size: 7px;
-    letter-spacing: 0.02em;
+    gap: 6px;
   }
 }

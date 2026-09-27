@@ -4,7 +4,6 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
-import type { UiMode } from '../../modes/uiMode'
 import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
 import { StableLabel } from './StableLabel'
 import { ThemePicker } from './ThemePicker'
@@ -22,7 +21,6 @@ type Props = {
   compact: boolean
   minimal?: boolean
   modeSwitch?: ReactNode
-  mode?: UiMode
 }
 
 export function AppHeader({
@@ -36,7 +34,6 @@ export function AppHeader({
   compact,
   minimal = false,
   modeSwitch,
-  mode = 'technical',
 }: Props) {
   const { t } = useI18n()
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
@@ -53,7 +50,7 @@ export function AppHeader({
   return (
     <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
       <div className={styles.brand}>
-        <Wordmark mode={mode} compact={minimal} />
+        <Wordmark compact={minimal} />
         <button
           type="button"
           className={styles.file}

@@ -874,7 +874,6 @@ export default function App() {
           }}
           compact={sheet}
           minimal={isPhoneLayout}
-          mode={uiMode}
           modeSwitch={
             <div className={styles.modeCluster}>
               <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />
