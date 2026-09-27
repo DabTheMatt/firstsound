@@ -5,6 +5,10 @@ const shaperCurveKey = new WeakMap<WaveShaperNode, string>()
  * changes so offline engines that reject a second write (and live graphs)
  * keep the curve that matches the current parameters.
  */
+export function shaperCurveMatches(shaper: WaveShaperNode, key: string): boolean {
+  return shaperCurveKey.get(shaper) === key
+}
+
 export function setShaperCurve(shaper: WaveShaperNode, key: string, curve: Float32Array): void {
   if (shaperCurveKey.get(shaper) === key) return
   const copy = new Float32Array(curve.length)

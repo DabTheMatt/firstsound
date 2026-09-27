@@ -370,7 +370,10 @@ export type Messages = {
     exportProject: string
     exportSelection: string
     selectionUnavailable: string
+    preparing: string
     rendering: string
+    encoding: string
+    exportFailed: string
     tailHint: string
   }
   mix: {
@@ -908,7 +911,10 @@ export const EN: Messages = {
     exportProject: 'Export',
     exportSelection: 'Export selection',
     selectionUnavailable: 'Select a region shorter than the sample.',
+    preparing: 'Preparing…',
     rendering: 'Rendering…',
+    encoding: 'Encoding…',
+    exportFailed: 'Export failed.',
     tailHint: 'Effect tails are included until the signal decays.',
   },
   mix: {
@@ -1446,7 +1452,10 @@ export const PL: Messages = {
     exportProject: 'Eksport',
     exportSelection: 'Eksport zaznaczenia',
     selectionUnavailable: 'Zaznacz fragment krótszy niż cały sampel.',
+    preparing: 'Przygotowanie…',
     rendering: 'Renderowanie…',
+    encoding: 'Kodowanie…',
+    exportFailed: 'Eksport nie powiódł się.',
     tailHint: 'Wybrzmienia efektów są dopisywane, aż sygnał wybrzmi.',
   },
   mix: {

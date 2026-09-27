@@ -1,5 +1,4 @@
 import type { FadeCurve } from '../audio/engine/fades'
-import { renderProcessedPcm } from '../audio/engine/offlineRender'
 import { encodeWav, resampleChannels, type Pcm, type WavBitDepth } from '../audio/samplePrep'
 import type { AudioEngine } from '../audio/engine/AudioEngine'
 
@@ -36,10 +35,9 @@ export async function bounceSimplePcm(
   for (let c = 0; c < rendered.numberOfChannels; c++) {
     channels.push(new Float32Array(rendered.getChannelData(c)))
   }
-  return renderProcessedPcm(
+  return engine.renderAudiblePcm(
     { sampleRate: rendered.sampleRate, channels },
-    engine.processingSnapshot(),
-    { timelineStart: engine.getSnapshot().params.start },
+    engine.getSnapshot().params.start,
   )
 }
 

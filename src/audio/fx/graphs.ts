@@ -22,7 +22,7 @@ import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStere
 import { reverbWetOutputGain } from './reverbLevel'
 import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
-import { setShaperCurve } from './shaperCurve'
+import { setShaperCurve, shaperCurveMatches } from './shaperCurve'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
 const DELAY_MAX = 12
@@ -435,6 +435,12 @@ export function applyDelayGraph(
   now: number,
   smoothing: number,
   ctx: BaseAudioContext,
+  /**
+   * WaveShaper curves and the reverse convolver are not AudioParams.
+   * Assigning them on every automation step only keeps the last value and,
+   * offline, rebuilds those buffers on the main thread. Live updates pass true.
+   */
+  commitStatic = true,
 ): void {
   const stereo = isDelayStereo(params)
   const timeL = delayChannelTimeSeconds(params, bpm, 'L')
@@ -485,9 +491,14 @@ export function applyDelayGraph(
   g.hpR.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
   g.lpL.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
   g.lpR.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
-  const driveKey = (params.delayDrive / 100).toFixed(4)
-  setShaperCurve(g.driveL, driveKey, makeDriveCurve(params.delayDrive / 100))
-  setShaperCurve(g.driveR, driveKey, makeDriveCurve(params.delayDrive / 100))
+  if (commitStatic) {
+    const driveKey = (params.delayDrive / 100).toFixed(4)
+    if (!shaperCurveMatches(g.driveL, driveKey)) {
+      const curve = makeDriveCurve(params.delayDrive / 100)
+      setShaperCurve(g.driveL, driveKey, curve)
+      setShaperCurve(g.driveR, driveKey, curve)
+    }
+  }
 
   g.lfo.frequency.setTargetAtTime(params.delayModRate, now, smoothing)
   g.lfoGain.gain.setTargetAtTime(delayModSeconds(time, params.delayModDepth / 100), now, smoothing)
@@ -505,7 +516,7 @@ export function applyDelayGraph(
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.7) : params.delayReverse / 100
   g.reverseMix.gain.setTargetAtTime(reverseAmt * 0.55, now, smoothing)
   g.reverseDirect.gain.setTargetAtTime(1 - reverseAmt * 0.45, now, smoothing)
-  if (reverseAmt > 0.05) {
+  if (commitStatic && reverseAmt > 0.05) {
     const key = `${time.toFixed(3)}:${params.delayFeedback.toFixed(0)}`
     if (g.reverseKey !== key) {
       g.reverseKey = key
@@ -776,6 +787,8 @@ export function applyReverbGraph(
   bpm: number,
   now: number,
   smoothing: number,
+  /** See applyDelayGraph. The drive curve is not automated in time. */
+  commitStatic = true,
 ): void {
   const pre =
     params.reverbSync > 0.5
@@ -817,8 +830,12 @@ export function applyReverbGraph(
   const color = params.reverbColor / 100
   g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
   g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
-  const driveKey = (params.reverbDrive / 100).toFixed(4)
-  setShaperCurve(g.drive, driveKey, makeDriveCurve(params.reverbDrive / 100))
+  if (commitStatic) {
+    const driveKey = (params.reverbDrive / 100).toFixed(4)
+    if (!shaperCurveMatches(g.drive, driveKey)) {
+      setShaperCurve(g.drive, driveKey, makeDriveCurve(params.reverbDrive / 100))
+    }
+  }
   g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, smoothing)
 
   g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)

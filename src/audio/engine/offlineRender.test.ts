@@ -510,6 +510,42 @@ describe('offline export renders the audible chain', () => {
     expect(rms(out)).toBeLessThan(0.35)
   })
 
+  it('keeps bypassed delay and reverb from extending the file', async () => {
+    const source = burst(0.2)
+    const bypassed = mono(
+      await render(
+        source,
+        state({
+          chain: chain([]),
+          params: { delayWet: 100, delayFeedback: 95, delayTime: 500, reverbWet: 90, reverbDecay: 8, reverbSize: 100 },
+        }),
+      ),
+    )
+    expect(bypassed.length).toBe(mono(source).length)
+  })
+
+  it('stays finite when an LFO moves the reverb impulse', async () => {
+    const lfos: FxLfoMap = defaultFxLfos()
+    lfos.reverb[0] = { rateHz: 0.4, shape: 'sine', depth: 100, target: 'reverbDecay' }
+    lfos.reverb[1] = { rateHz: 0.2, shape: 'sine', depth: 80, target: 'reverbSize' }
+    const source = burst(0.35)
+    const processed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['reverb']),
+          fxLfos: lfos,
+          params: { reverbWet: 80, reverbDry: 20, reverbDecay: 1.6, reverbSize: 50 },
+        }),
+      ),
+    )
+    const dry = mono(await render(source, state({ chain: chain([]) })))
+    expect(processed.length).toBeLessThanOrEqual(mono(source).length + Math.ceil(12 * SR))
+    expect(Number.isFinite(processed.length)).toBe(true)
+    expect(rms(processed)).toBeGreaterThan(0.002)
+    expect(meanAbs(processed.subarray(0, dry.length), dry)).toBeGreaterThan(0.01)
+  })
+
   it('writes a baked later fragment, not the same-length head of the source', async () => {
     const seconds = 2
     const n = Math.floor(seconds * SR)
