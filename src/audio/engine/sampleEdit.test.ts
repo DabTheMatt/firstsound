@@ -4,8 +4,11 @@ import { defaultAutomation } from '../automation/automation'
 import {
   canClearSampleSelection,
   canDeleteSampleSelection,
+  canMuteSampleSelection,
   deleteFrameRange,
   deleteFrameSpan,
+  muteFrameRange,
+  muteFrameSpan,
   insertFrameForTime,
   insertSilence,
   mapAutomation,
@@ -142,6 +145,59 @@ describe('delete and clear selection', () => {
     expect(canClearSampleSelection(0, 2, 2)).toBe(false)
     expect(canClearSampleSelection(0.2, 0.8, 2)).toBe(true)
     expect(canClearSampleSelection(0, 0, 2)).toBe(false)
+  })
+})
+
+describe('mute selection', () => {
+  it('zeros only the selected frames in every channel and keeps the length', () => {
+    const rate = 1000
+    const left = ramp(100, 1)
+    const right = ramp(100, -1)
+    const span = muteFrameSpan(0.02, 0.05, rate, 100)
+    expect(span).toEqual({ start: 20, end: 50 })
+    const muted = muteFrameRange([left, right], span!.start, span!.end)!
+    expect(muted).toHaveLength(2)
+    expect(muted[0]!.length).toBe(100)
+    expect(muted[1]!.length).toBe(100)
+    expect(Array.from(muted[0]!.subarray(0, 20))).toEqual(Array.from(left.subarray(0, 20)))
+    expect(Array.from(muted[0]!.subarray(50))).toEqual(Array.from(left.subarray(50)))
+    expect(Array.from(muted[1]!.subarray(0, 20))).toEqual(Array.from(right.subarray(0, 20)))
+    expect(Array.from(muted[1]!.subarray(50))).toEqual(Array.from(right.subarray(50)))
+    for (let i = 20; i < 50; i++) {
+      expect(muted[0]![i]).toBe(0)
+      expect(muted[1]![i]).toBe(0)
+    }
+  })
+
+  it('covers the start and the end without spilling past the selection', () => {
+    const rate = 48000
+    const length = 48000
+    const head = muteFrameSpan(0, 0.01, rate, length)
+    expect(head).toEqual({ start: 0, end: 480 })
+    const tail = muteFrameSpan((length - 480) / rate, length / rate, rate, length)
+    expect(tail).toEqual({ start: length - 480, end: length })
+    const whole = muteFrameSpan(0, length / rate, rate, length)
+    expect(whole).toEqual({ start: 0, end: length })
+  })
+
+  it('does not mute a sample that only partly overlaps the selection', () => {
+    const rate = 1000
+    const span = muteFrameSpan(10.4 / rate, 20.6 / rate, rate, 100)
+    expect(span).toEqual({ start: 11, end: 20 })
+    const source = ramp(100)
+    const muted = muteFrameRange([source], span!.start, span!.end)!
+    expect(muted[0]![10]).toBe(source[10])
+    expect(muted[0]![11]).toBe(0)
+    expect(muted[0]![19]).toBe(0)
+    expect(muted[0]![20]).toBe(source[20])
+    expect(muted[0]!.length).toBe(source.length)
+  })
+
+  it('refuses an empty range and allows a full-buffer mute', () => {
+    expect(muteFrameSpan(0.2, 0.2, 48000, 48000)).toBeNull()
+    expect(canMuteSampleSelection(0.2, 0.2, 48000, 48000)).toBe(false)
+    expect(canMuteSampleSelection(0, 1, 48000, 48000)).toBe(true)
+    expect(canDeleteSampleSelection(0, 1, 48000, 48000)).toBe(false)
   })
 })
 

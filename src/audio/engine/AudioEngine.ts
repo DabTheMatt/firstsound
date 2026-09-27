@@ -188,10 +188,13 @@ import {
   canClearSampleSelection,
   canDeleteSampleSelection,
   canInsertSilence,
+  canMuteSampleSelection,
   cloneCapture,
   deleteFrameRange,
   deleteFrameSpan,
   insertFrameForTime,
+  muteFrameRange,
+  muteFrameSpan,
   insertSilence,
   mapAutomation,
   mapMarkerTimes,
@@ -296,6 +299,7 @@ export type EngineSnapshot = {
   sampleLoaded: boolean
   canInsertSilence: boolean
   canDeleteSelection: boolean
+  canMuteSelection: boolean
   canClearSelection: boolean
   playing: boolean
   loop: boolean
@@ -2742,6 +2746,26 @@ export class AudioEngine {
     return true
   }
 
+  /**
+   * Replace the highlighted samples with digital silence.
+   * Duration, channel count, selection, automation, and markers stay put.
+   * One call is one edit. Does not start playback.
+   */
+  muteSampleSelection(): boolean {
+    const buffer = this.buffer
+    if (!buffer || !this.bufferFactory()) return false
+    const span = muteFrameSpan(this.params.start, this.params.end, buffer.sampleRate, buffer.length)
+    if (!span) return false
+    const nextChannels = muteFrameRange(readBufferChannels(buffer), span.start, span.end)
+    if (!nextChannels) return false
+    const next = this.bufferFromChannels(nextChannels, buffer.sampleRate)
+    if (!next) return false
+    this.freezePlayhead()
+    this.installEditedBuffer(next, buffer)
+    this.emit()
+    return true
+  }
+
   /** Deselect the highlight. The sample itself is unchanged. */
   clearSampleSelection(): boolean {
     const duration = this.buffer?.duration ?? 0
@@ -4706,6 +4730,12 @@ export class AudioEngine {
       sampleLoaded: Boolean(this.buffer),
       canInsertSilence: canInsertSilence(this.buffer?.sampleRate ?? 0, this.buffer?.length ?? 0),
       canDeleteSelection: canDeleteSampleSelection(
+        this.params.start,
+        this.params.end,
+        this.buffer?.sampleRate ?? 0,
+        this.buffer?.length ?? 0,
+      ),
+      canMuteSelection: canMuteSampleSelection(
         this.params.start,
         this.params.end,
         this.buffer?.sampleRate ?? 0,

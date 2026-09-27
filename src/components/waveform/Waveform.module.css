@@ -136,6 +136,15 @@
   touch-action: none;
 }
 
+.wrap:focus {
+  outline: none;
+}
+
+.wrap:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
 .wrap[hidden] {
   display: none;
 }

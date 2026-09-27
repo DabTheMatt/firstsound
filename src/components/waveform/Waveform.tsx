@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
@@ -30,6 +31,8 @@ import {
   type AutomationEditFocus,
 } from '../../audio/automation/automation'
 import { isTypingTarget } from '../../a11y/keyboard'
+import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
+import { blocksPlayheadArrowKey } from './playheadKeys'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -223,6 +226,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const overlayRef = useRef<HTMLDivElement>(null)
   const peaksRef = useRef<{ min: Float32Array; max: Float32Array } | null>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
   const [waveShare, setWaveShare] = useState(loadSplitShare)
@@ -578,10 +582,32 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
 
+  const onEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (sensory) return
+    if (event.altKey || event.metaKey || event.ctrlKey) return
+    if (blocksPlayheadArrowKey(event.target)) return
+    const delta = playheadNudgeSeconds(event.key, event.shiftKey)
+    if (delta == null || !loaded || !(duration > 0)) return
+    event.preventDefault()
+    engine.nudgePlayhead(delta, 'sample')
+    const el = playheadRef.current
+    if (!el) return
+    const frac = timeToFrac(engine.getPlayheadSeconds(), viewRef.current)
+    if (frac >= 0 && frac <= 1) {
+      el.style.display = ''
+      el.style.left = `${frac * 100}%`
+    } else {
+      el.style.display = 'none'
+    }
+  }
+
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!loaded || duration <= 0) return
     const overlay = overlayRef.current
     if (!overlay) return
+    if (!sensory && !blocksPlayheadArrowKey(event.target)) {
+      editorRef.current?.focus({ preventScroll: true })
+    }
     event.preventDefault()
     overlay.setPointerCapture(event.pointerId)
     pointers.current.set(event.pointerId, event.clientX)
@@ -999,10 +1025,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
+          ref={editorRef}
           className={styles.wrap}
           hidden={!showWave}
           role="region"
           aria-label="Waveform editor"
+          tabIndex={sensory ? undefined : 0}
+          onKeyDown={onEditorKeyDown}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
           <div className={styles.wavePane}>

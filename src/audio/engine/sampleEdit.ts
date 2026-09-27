@@ -91,6 +91,57 @@ export function deleteFrameSpan(
   return { start, end }
 }
 
+/** Snap a sample index when float error lands on a frame boundary. */
+const FRAME_SNAP = 1e-4
+
+function snappedFrames(timeSec: number, sampleRate: number): number {
+  const exact = Math.max(0, timeSec) * sampleRate
+  const nearest = Math.round(exact)
+  if (Math.abs(exact - nearest) <= FRAME_SNAP) return nearest
+  return exact
+}
+
+/**
+ * Inclusive-exclusive frames fully inside the selection.
+ * A sample that would extend outside the range is left alone.
+ * The whole buffer is allowed — mute keeps the duration.
+ */
+export function muteFrameSpan(
+  startSec: number,
+  endSec: number,
+  sampleRate: number,
+  length: number,
+): FrameSpan | null {
+  if (!(sampleRate > 0) || length < 1) return null
+  if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) return null
+  const lo = Math.min(startSec, endSec)
+  const hi = Math.max(startSec, endSec)
+  if (!(hi > lo)) return null
+  const start = Math.max(0, Math.min(length, Math.ceil(snappedFrames(lo, sampleRate) - 1e-9)))
+  const end = Math.max(0, Math.min(length, Math.floor(snappedFrames(hi, sampleRate) + 1e-9)))
+  if (end - start < 1) return null
+  return { start, end }
+}
+
+/** Replace the selected frames with digital silence. Length and channel count stay. */
+export function muteFrameRange(
+  channels: readonly Float32Array[],
+  startFrame: number,
+  endFrame: number,
+): Float32Array[] | null {
+  const length = channels[0]?.length ?? 0
+  const start = Math.max(0, Math.min(length, startFrame))
+  const end = Math.max(start, Math.min(length, endFrame))
+  if (end - start < 1 || channels.length < 1) return null
+  return channels.map((channel) => {
+    const src = channel.length === length ? channel : fitLength(channel, length)
+    const out = new Float32Array(length)
+    out.set(src)
+    out.fill(0, start, end)
+    return out
+  })
+}
+
 export function deleteFrameRange(
   channels: readonly Float32Array[],
   startFrame: number,
@@ -193,6 +244,15 @@ export function canDeleteSampleSelection(
   frameCount: number,
 ): boolean {
   return deleteFrameSpan(start, end, sampleRate, frameCount) != null
+}
+
+export function canMuteSampleSelection(
+  start: number,
+  end: number,
+  sampleRate: number,
+  frameCount: number,
+): boolean {
+  return muteFrameSpan(start, end, sampleRate, frameCount) != null
 }
 
 /** A partial highlight can be deselected. The whole file is not a selection. */

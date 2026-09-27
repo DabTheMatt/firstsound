@@ -15,9 +15,11 @@ type Props = {
   onTrim?: () => void
   onInsertSilence?: () => void
   onDeleteSelection?: () => void
+  onMuteSelection?: () => void
   onClearSelection?: () => void
   canInsertSilence?: boolean
   canDeleteSelection?: boolean
+  canMuteSelection?: boolean
   canClearSelection?: boolean
   onAutoFade?: () => void
   autoFade?: boolean
@@ -49,9 +51,11 @@ export function WaveformToolbar({
   onTrim,
   onInsertSilence,
   onDeleteSelection,
+  onMuteSelection,
   onClearSelection,
   canInsertSilence = false,
   canDeleteSelection = false,
+  canMuteSelection = false,
   canClearSelection = false,
   onAutoFade,
   autoFade: _autoFade = false,
@@ -87,13 +91,17 @@ export function WaveformToolbar({
             insertCaption={t.waveform.insertSilenceCaption}
             deleteLabel={t.waveform.deleteSelection}
             deleteCaption={t.waveform.deleteSelectionCaption}
+            muteLabel={t.waveform.muteSelection}
+            muteCaption={t.waveform.muteSelectionCaption}
             clearLabel={t.waveform.clearSelection}
             clearCaption={t.waveform.clearSelectionCaption}
             canInsertSilence={canInsertSilence}
             canDeleteSelection={canDeleteSelection}
+            canMuteSelection={canMuteSelection}
             canClearSelection={canClearSelection}
             onInsertSilence={onInsertSilence}
             onDeleteSelection={onDeleteSelection}
+            onMuteSelection={onMuteSelection}
             onClearSelection={onClearSelection}
           />
           {onAutoFade ? (
@@ -136,13 +144,17 @@ export function WaveformToolbar({
             insertCaption={t.waveform.insertSilenceCaption}
             deleteLabel={t.waveform.deleteSelection}
             deleteCaption={t.waveform.deleteSelectionCaption}
+            muteLabel={t.waveform.muteSelection}
+            muteCaption={t.waveform.muteSelectionCaption}
             clearLabel={t.waveform.clearSelection}
             clearCaption={t.waveform.clearSelectionCaption}
             canInsertSilence={canInsertSilence}
             canDeleteSelection={canDeleteSelection}
+            canMuteSelection={canMuteSelection}
             canClearSelection={canClearSelection}
             onInsertSilence={onInsertSilence}
             onDeleteSelection={onDeleteSelection}
+            onMuteSelection={onMuteSelection}
             onClearSelection={onClearSelection}
           />
           <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
@@ -285,29 +297,37 @@ function SampleEditButtons({
   insertCaption,
   deleteLabel,
   deleteCaption,
+  muteLabel,
+  muteCaption,
   clearLabel,
   clearCaption,
   canInsertSilence,
   canDeleteSelection,
+  canMuteSelection,
   canClearSelection,
   onInsertSilence,
   onDeleteSelection,
+  onMuteSelection,
   onClearSelection,
 }: {
   insertLabel: string
   insertCaption: string
   deleteLabel: string
   deleteCaption: string
+  muteLabel: string
+  muteCaption: string
   clearLabel: string
   clearCaption: string
   canInsertSilence: boolean
   canDeleteSelection: boolean
+  canMuteSelection: boolean
   canClearSelection: boolean
   onInsertSilence?: () => void
   onDeleteSelection?: () => void
+  onMuteSelection?: () => void
   onClearSelection?: () => void
 }) {
-  if (!onInsertSilence && !onDeleteSelection && !onClearSelection) return null
+  if (!onInsertSilence && !onDeleteSelection && !onMuteSelection && !onClearSelection) return null
   return (
     <>
       {onInsertSilence ? (
@@ -328,6 +348,16 @@ function SampleEditButtons({
           onClick={onDeleteSelection}
         >
           <DeleteSelectionIcon />
+        </IconButton>
+      ) : null}
+      {onMuteSelection ? (
+        <IconButton
+          label={muteLabel}
+          caption={muteCaption}
+          disabled={!canMuteSelection}
+          onClick={onMuteSelection}
+        >
+          <MuteSelectionIcon />
         </IconButton>
       ) : null}
       {onClearSelection ? (
@@ -402,6 +432,30 @@ function DeleteSelectionIcon() {
       <rect x="4" y="4.5" width="10" height="9" rx="1" fill="currentColor" opacity="0.28" />
       <rect x="4" y="4.5" width="10" height="9" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
       <path d="M6.2 9h5.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function MuteSelectionIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M1.1 9c.5-2.1.9 2.1 1.4 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+      <rect x="4.1" y="4.2" width="9.8" height="9.6" rx="1" fill="currentColor" opacity="0.18" />
+      <rect x="4.1" y="4.2" width="9.8" height="9.6" rx="1" fill="none" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M6.1 9h5.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M15.5 9c.5-2.1.9 2.1 1.4 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
     </svg>
   )
 }

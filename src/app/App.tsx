@@ -352,6 +352,14 @@ export default function App() {
     waveRef.current?.fitSample()
   }
 
+  const muteSelection = () => {
+    const before = engine.captureSampleEdit()
+    if (!before || !engine.muteSampleSelection()) return
+    const after = engine.captureSampleEdit()
+    if (!after) return
+    pushSampleEdit(before, after)
+  }
+
   const clearSelection = () => {
     if (!engine.clearSampleSelection()) return
     commit()
@@ -922,9 +930,11 @@ export default function App() {
           }}
           onInsertSilence={insertSilence}
           onDeleteSelection={deleteSelection}
+          onMuteSelection={muteSelection}
           onClearSelection={clearSelection}
           canInsertSilence={snap.canInsertSilence}
           canDeleteSelection={snap.canDeleteSelection}
+          canMuteSelection={snap.canMuteSelection}
           canClearSelection={snap.canClearSelection}
           onAutoFade={() => {
             setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))

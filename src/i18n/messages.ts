@@ -143,6 +143,8 @@ export type Messages = {
     insertSilenceCaption: string
     deleteSelection: string
     deleteSelectionCaption: string
+    muteSelection: string
+    muteSelectionCaption: string
     clearSelection: string
     clearSelectionCaption: string
     fitSample: string
@@ -594,6 +596,8 @@ export const EN: Messages = {
     insertSilenceCaption: 'Gap',
     deleteSelection: 'Delete selection',
     deleteSelectionCaption: 'Del',
+    muteSelection: 'Mute Selection',
+    muteSelectionCaption: 'Mute',
     clearSelection: 'Clear selection',
     clearSelectionCaption: 'Clear',
     fitSample: 'Fit sample',
@@ -1130,6 +1134,8 @@ export const PL: Messages = {
     insertSilenceCaption: 'Cisza',
     deleteSelection: 'Usuń zaznaczenie',
     deleteSelectionCaption: 'Usuń',
+    muteSelection: 'Wycisz zaznaczenie',
+    muteSelectionCaption: 'Wycisz',
     clearSelection: 'Wyczyść zaznaczenie',
     clearSelectionCaption: 'Czyść',
     fitSample: 'Dopasuj sample',
