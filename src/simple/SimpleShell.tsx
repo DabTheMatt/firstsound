@@ -89,7 +89,7 @@ export function SimpleShell({
   onMode,
 }: Props) {
   const { t, locale } = useI18n()
-  const { mode: layoutMode } = useLayoutMode()
+  const { mode: layoutMode, width } = useLayoutMode()
   const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const [sheet, setSheet] = useState<Sheet>('none')
   const [amount, setAmount] = useState(DEFAULT_TONE_AMOUNT)
@@ -254,7 +254,7 @@ export function SimpleShell({
     >
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Wordmark mode={mode} compact={frame === 'phone'} />
+          <Wordmark compact={frame === 'phone'} hideTagline={width < 960} />
           <button
             type="button"
             className={styles.file}

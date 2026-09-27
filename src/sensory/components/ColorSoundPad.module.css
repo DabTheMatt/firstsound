@@ -1,22 +1,78 @@
 .dock {
   position: absolute;
   z-index: 9;
-  left: 50%;
-  top: 108px;
-  transform: translateX(-50%);
-  width: clamp(132px, 28vw, 156px);
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  width: clamp(188px, 22vw, 228px);
+  height: 44px;
+  pointer-events: none;
+}
+
+.panel {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
   pointer-events: auto;
+  transform-origin: right bottom;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.dock[data-open='false'] .panel {
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.toggle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 32%, transparent);
+  background: color-mix(in srgb, #12141a 82%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 78%, transparent);
+  pointer-events: auto;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--text-primary) 58%, transparent);
+  outline: none;
+}
+
+.toggle[aria-pressed='true'] {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--text-primary) 62%, transparent);
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .field {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  min-height: 128px;
+  min-height: 168px;
   border-radius: 18px;
   overflow: hidden;
   touch-action: none;
@@ -40,9 +96,9 @@
 
 .thumb {
   position: absolute;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
   border-radius: 50%;
   pointer-events: none;
   box-shadow:
@@ -51,7 +107,7 @@
 }
 
 .rest {
-  min-height: 44px;
+  min-height: 36px;
   border: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 46%, transparent);
@@ -71,19 +127,30 @@
   opacity: 0.35;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 860px) {
   .dock {
-    top: 168px;
-    width: clamp(120px, 46vw, 148px);
+    bottom: calc(178px + env(safe-area-inset-bottom, 0px));
+    width: clamp(168px, 46vw, 200px);
   }
 
   .field {
-    min-height: 120px;
+    min-height: 156px;
+  }
+}
+
+@media (max-width: 720px) {
+  .dock {
+    width: clamp(164px, 48vw, 196px);
+  }
+
+  .field {
+    min-height: 152px;
     border-radius: 16px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .panel,
   .thumb {
     transition: none;
   }

@@ -89,7 +89,7 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   }
 }
 
-const COLOR_MODULES = ['eq', 'filter', 'distortion', 'reverb'] as const
+const COLOR_MODULES = ['eq', 'filter', 'distortion', 'reverb', 'delay', 'midside'] as const
 
 /** Modules the color pad can open must close again when the mapping no longer asks for them. */
 function withRestBypass(dsp: DspSnapshot): DspSnapshot {

@@ -6,6 +6,7 @@ import {
   energyFromFrequency,
   MOTION_IDLE,
   motionTarget,
+  perspectiveFrame,
   stillDepthTravelers,
   transientAmount,
 } from './depthField'
@@ -30,11 +31,13 @@ describe('approachMotionGain', () => {
     expect(gain).toBeGreaterThan(0.85)
   })
 
-  it('settles to still when motion is reduced', () => {
-    expect(motionTarget(true, true)).toBe(0)
+  it('slows without freezing when motion is reduced', () => {
+    expect(motionTarget(true, true)).toBeGreaterThan(0.04)
+    expect(motionTarget(true, true)).toBeLessThan(0.3)
     let gain = 0.8
     for (let i = 0; i < 40; i++) gain = approachMotionGain(gain, true, 80, true)
-    expect(gain).toBeLessThan(0.02)
+    expect(gain).toBeLessThan(0.28)
+    expect(gain).toBeGreaterThan(0.04)
   })
 })
 
@@ -74,6 +77,45 @@ describe('depthTravelers', () => {
     const b = stillDepthTravelers()
     expect(a.map((row) => row.phase)).toEqual(b.map((row) => row.phase))
     expect(a.length).toBeGreaterThan(1)
+    const far = a.find((row) => row.z < 0.2)
+    const near = a.find((row) => row.z > 0.65)
+    expect(far).toBeTruthy()
+    expect(near).toBeTruthy()
+    expect(near!.span).toBeGreaterThan(far!.span * 2)
+  })
+
+  it('keeps far, mid, and near structures in view together', () => {
+    const rows = depthTravelers(0.12, 1)
+    const far = rows.find((row) => row.z < 0.22)
+    const mid = rows.find((row) => row.z > 0.4 && row.z < 0.62)
+    const near = rows.find((row) => row.z > 0.7)
+    expect(far).toBeTruthy()
+    expect(mid).toBeTruthy()
+    expect(near).toBeTruthy()
+    expect(near!.span).toBeGreaterThan(far!.span * 2.4)
+    expect(near!.scale).toBeGreaterThan(far!.scale * 3)
+    expect(mid!.span).toBeGreaterThan(far!.span)
+    expect(mid!.span).toBeLessThan(near!.span)
+    expect(Math.max(...rows.map((row) => Math.abs(row.parallax)))).toBeGreaterThan(0.01)
+  })
+
+  it('shrinks parallax when motion is reduced', () => {
+    const full = depthTravelers(0.2, 1, undefined, undefined, false)
+    const calm = depthTravelers(0.2, 1, undefined, undefined, true)
+    const peak = (list: { parallax: number }[]) => Math.max(...list.map((row) => Math.abs(row.parallax)))
+    expect(peak(calm)).toBeLessThan(peak(full))
+  })
+})
+
+describe('perspectiveFrame', () => {
+  it('puts the foreground at full size and the horizon much smaller', () => {
+    const near = perspectiveFrame(0)
+    const far = perspectiveFrame(0.92)
+    expect(near.span).toBeGreaterThan(0.95)
+    expect(near.horizon).toBeLessThan(0.05)
+    expect(far.span).toBeLessThan(0.4)
+    expect(far.amplitude).toBeLessThan(near.amplitude * 0.4)
+    expect(far.horizon).toBeGreaterThan(0.6)
   })
 })
 
@@ -86,6 +128,12 @@ describe('advanceDepthClock', () => {
     const open = advanceDepthClock(0, 0.5, 1, { bass: 0, high: 0, transient: 0 })
     expect(hit).toBeGreaterThan(calm)
     expect(bass).toBeLessThan(open)
+    const quiet = advanceDepthClock(0, 0.4, 1, { bass: 0, high: 0, transient: 0, level: 0 })
+    const loud = advanceDepthClock(0, 0.4, 1, { bass: 0, high: 0, transient: 0, level: 1 })
+    const dark = advanceDepthClock(0, 0.5, 1, { bass: 0, high: 0, transient: 0 }, { light: -1, space: 0.85 })
+    const lit = advanceDepthClock(0, 0.5, 1, { bass: 0, high: 0, transient: 0 }, { light: 1, space: 0.15 })
+    expect(loud).toBeGreaterThan(quiet)
+    expect(lit).toBeGreaterThan(dark)
   })
 })
 

@@ -148,7 +148,7 @@ export function SensoryShell({
     >
       <header ref={headerRef} className={styles.top}>
         <div className={styles.brandRow}>
-          <Wordmark mode={mode} variant="editorial" />
+          <Wordmark variant="editorial" />
         </div>
         <div className={styles.tools}>
           <RuntimeStatus variant="editorial" />

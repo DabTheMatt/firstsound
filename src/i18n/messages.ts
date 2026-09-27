@@ -348,6 +348,9 @@ export type Messages = {
     colorSoundRestAria: string
     colorSoundLight: string
     colorSoundDark: string
+    colorSoundLabel: string
+    colorSoundShow: string
+    colorSoundHide: string
     places: string
     selectRegion: string
     overviewDrag: string
@@ -572,7 +575,7 @@ export const EN: Messages = {
     stopRecording: 'Stop recording',
     savePreset: 'Save preset',
     loadPreset: 'Load instrument preset',
-    loadPresetHint: 'Opens an INTERFER JSON file saved with Save preset. Restores the full engine, chain, and EQ.',
+    loadPresetHint: 'Opens a FIELD JSON file saved with Save preset. Restores the full engine, chain, and EQ.',
     loadDemo: 'Load demo sample',
     editSample: 'Edit sample',
     resetAll: 'Reset all',
@@ -837,6 +840,9 @@ export const EN: Messages = {
     colorSoundRestAria: 'Return the sound color to rest',
     colorSoundLight: 'light',
     colorSoundDark: 'dark',
+    colorSoundLabel: 'Color Sound',
+    colorSoundShow: 'Show Color Sound',
+    colorSoundHide: 'Hide Color Sound',
     places: 'Places',
     selectRegion: 'Drag the sound to slide it. Edges trim. Empty overview chooses a new fragment. Double-click to play.',
     overviewDrag: 'Drag the highlighted fragment to slide it. Drag empty space to choose a new one. Edges trim.',
@@ -1113,7 +1119,7 @@ export const PL: Messages = {
     stopRecording: 'Zatrzymaj nagranie',
     savePreset: 'Zapisz preset',
     loadPreset: 'Wczytaj preset',
-    loadPresetHint: 'Otwiera plik JSON INTERFER zapisany przez Zapisz preset.',
+    loadPresetHint: 'Otwiera plik JSON FIELD zapisany przez Zapisz preset.',
     loadDemo: 'Wczytaj sample demo',
     editSample: 'Edytuj sample',
     resetAll: 'Reset wszystkiego',
@@ -1378,6 +1384,9 @@ export const PL: Messages = {
     colorSoundRestAria: 'Wróć kolorem dźwięku do spoczynku',
     colorSoundLight: 'jasno',
     colorSoundDark: 'ciemno',
+    colorSoundLabel: 'Kolor dźwięku',
+    colorSoundShow: 'Pokaż kolor dźwięku',
+    colorSoundHide: 'Ukryj kolor dźwięku',
     places: 'Miejsca',
     selectRegion: 'Przeciągnij dźwięk, aby go przesunąć. Krawędzie przycinają. Puste miejsce w przeglądzie wybiera nowy fragment. Podwójne kliknięcie odtwarza.',
     overviewDrag: 'Przeciągnij podświetlony fragment, aby go przesunąć. Przeciągnij puste miejsce, aby wybrać nowy. Krawędzie przycinają.',

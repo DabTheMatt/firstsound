@@ -8,7 +8,7 @@ import {
   grainDustCount,
   type MountainLayerSpec,
 } from './mountainLayers'
-import type { DepthTraveler } from './depthField'
+import { perspectiveFrame, type ColorDepthBias, type DepthTraveler } from './depthField'
 import { soundBodyAt, type PlaybackVisual } from './playbackWarp'
 import {
   landscapeStops,
@@ -44,7 +44,7 @@ export type RangePaintArgs = {
   /** Strings traveling from the horizon toward the viewer. */
   depthTravelers?: readonly DepthTraveler[]
   /** Sound-color accent. Does not replace the theme. */
-  accent?: { rgb: Rgb; amount: number } | null
+  accent?: { rgb: Rgb; amount: number; light?: number; depth?: number; detail?: number } | null
 }
 
 type SoundWarp = {
@@ -63,8 +63,27 @@ function motionTime(args: RangePaintArgs): number {
 
 function accentCrest(crest: Rgb, args: RangePaintArgs): Rgb {
   const accent = args.accent
-  if (!accent || accent.amount < 0.02) return crest
-  return mixRgb(crest, accent.rgb, Math.min(0.72, accent.amount * 0.62))
+  if (!accent || accent.amount < 0.08) return crest
+  return mixRgb(crest, accent.rgb, Math.min(0.12, accent.amount * 0.1))
+}
+
+function colorLight(args: RangePaintArgs): number {
+  const light = args.accent?.light
+  return light == null || !Number.isFinite(light) ? 0.5 : Math.min(1, Math.max(0, light))
+}
+
+function depthBiasOf(args: RangePaintArgs): ColorDepthBias {
+  const accent = args.accent
+  const light = (colorLight(args) - 0.5) * 2
+  const depth = accent?.depth ?? 0
+  return { light, space: Math.min(1, Math.max(0, depth * 0.5 + 0.5)) }
+}
+
+function shadeForLight(color: Rgb, light: number): Rgb {
+  const delta = light - 0.5
+  if (delta < -0.04) return mixRgb(color, { r: 8, g: 10, b: 16 }, -delta * 0.12)
+  if (delta > 0.04) return mixRgb(color, { r: 255, g: 250, b: 242 }, delta * 0.08)
+  return color
 }
 
 function hash01(i: number): number {
@@ -110,19 +129,45 @@ function moodFill(
 
 function paintSky(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, ridge } = args
+  const light = colorLight(args)
+  const grade = (light - 0.5) * 0.028
   const stops = landscapeStops(visual, ridge)
+  const left = shadeForLight(mixRgb(stops.left, { r: 18, g: 12, b: 10 }, 0.55), light)
+  const crest = shadeForLight(mixRgb(stops.crest, { r: 22, g: 18, b: 16 }, 0.4), light)
+  const right = shadeForLight(mixRgb(stops.right, { r: 8, g: 12, b: 20 }, 0.65), light)
   const sky = ctx.createLinearGradient(0, 0, width, height)
-  sky.addColorStop(0, rgbCss(mixRgb(stops.left, { r: 18, g: 12, b: 10 }, 0.55), 0.55 + visual.glow * 0.2))
-  sky.addColorStop(0.45, rgbCss(mixRgb(stops.crest, { r: 22, g: 18, b: 16 }, 0.4), 0.28 + visual.haze * 0.2))
-  sky.addColorStop(1, rgbCss(mixRgb(stops.right, { r: 8, g: 12, b: 20 }, 0.65), 0.42 + visual.space * 0.18))
+  sky.addColorStop(0, rgbCss(left, 0.55 + visual.glow * 0.2 + grade))
+  sky.addColorStop(0.45, rgbCss(crest, 0.28 + visual.haze * 0.2 + grade * 0.6))
+  sky.addColorStop(1, rgbCss(right, 0.42 + visual.space * 0.18 + grade * 0.5))
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, width, height)
 
   const wash = ctx.createRadialGradient(width * 0.5, height * 0.42, 12, width * 0.5, height * 0.5, width * 0.46)
-  wash.addColorStop(0, rgbCss(stops.crest, 0.08 + visual.glow * 0.16))
+  wash.addColorStop(0, rgbCss(shadeForLight(stops.crest, light), 0.08 + visual.glow * 0.16))
   wash.addColorStop(1, rgbCss(stops.crest, 0))
   ctx.fillStyle = wash
   ctx.fillRect(0, 0, width, height)
+}
+
+/** A faint grade. Light and dark should be felt, not read as a new picture. */
+function paintLightVeil(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
+  const light = colorLight(args)
+  const delta = light - 0.5
+  if (Math.abs(delta) < 0.18) return
+  const { width, height } = args
+  ctx.save()
+  if (delta < 0) {
+    ctx.fillStyle = `rgba(2, 4, 10, ${(-delta - 0.12) * 0.028})`
+    ctx.fillRect(0, 0, width, height)
+  } else {
+    ctx.globalCompositeOperation = 'screen'
+    const glow = ctx.createRadialGradient(width * 0.5, height * 0.42, width * 0.08, width * 0.5, height * 0.48, width * 0.62)
+    glow.addColorStop(0, `rgba(255, 250, 242, ${(delta - 0.12) * 0.022})`)
+    glow.addColorStop(1, 'rgba(255, 248, 236, 0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, width, height)
+  }
+  ctx.restore()
 }
 
 function paintHazeBand(ctx: CanvasRenderingContext2D, args: RangePaintArgs, y0: number, y1: number) {
@@ -161,6 +206,56 @@ function strokeContour(
   ctx.stroke()
 }
 
+type ProjectedSpan = {
+  origin: number
+  spanPx: number
+  full: boolean
+}
+
+function projectedSpan(width: number, span: number, parallax = 0): ProjectedSpan {
+  const clamped = Math.max(0.05, span)
+  const spanPx = width * clamped
+  const origin = (width - spanPx) / 2 + parallax * width
+  return { origin, spanPx, full: clamped >= 0.995 && Math.abs(parallax) < 0.001 }
+}
+
+function traceProjected(
+  ctx: CanvasRenderingContext2D,
+  env: Float32Array,
+  width: number,
+  frame: ProjectedSpan,
+  base: number,
+  amp: number,
+  spec: MountainLayerSpec,
+  visual: SensoryVisualState,
+  grit: number,
+  t: number,
+  li: number,
+  dir: 1 | -1,
+  breath: number,
+  warp: SoundWarp,
+  close: boolean,
+) {
+  const step = Math.max(2, ridgeSampleStep(width))
+  const start = frame.origin
+  const end = frame.origin + frame.spanPx
+  ctx.beginPath()
+  if (close) ctx.moveTo(start, base)
+  let moved = false
+  for (let sx = start; sx <= end + 0.01; sx += step) {
+    const u = frame.spanPx <= 1 ? 0 : Math.min(1, (sx - start) / frame.spanPx)
+    const envX = frame.full ? Math.min(width - 1, Math.max(0, sx)) : u * (width - 1)
+    const y = ridgeY(env, envX, base, amp, spec, visual, grit, t, li, dir, breath, warp)
+    if (!moved && !close) ctx.moveTo(sx, y)
+    else ctx.lineTo(sx, y)
+    moved = true
+  }
+  if (close) {
+    ctx.lineTo(end, base)
+    ctx.closePath()
+  }
+}
+
 function paintRidgeStack(
   ctx: CanvasRenderingContext2D,
   args: RangePaintArgs,
@@ -177,52 +272,87 @@ function paintRidgeStack(
   const breath = args.reduced ? 0 : visual.mod * amp * 0.04
   const contours = contourCount(visual.space, visual.grain)
   const order = specs.map((spec, li) => ({ spec, li, env: layers[li] })).filter((row) => row.env)
-  const crest = accentCrest(landscapeStops(visual, ridge).crest, args)
+  const crest = shadeForLight(accentCrest(landscapeStops(visual, ridge).crest, args), colorLight(args))
+  const light = colorLight(args)
+  const bias = depthBiasOf(args)
+  const lum = 0.985 + (light - 0.5) * 0.03
   const t = motionTime(args)
+  const horizonY = height * (dir < 0 ? 0.3 : 0.7)
   for (let i = order.length - 1; i >= 0; i--) {
     const { spec, li, env } = order[i]!
-    const layerBase = base + dir * (spec.drop + extraDrop) * height * 0.42
-    const layerAmp = amp * (1 - spec.z * 0.18)
+    const frame = whisperPerspective(perspectiveFrame(spec.z, bias))
+    const drop = dir * (spec.drop + extraDrop) * height * 0.42
+    const layerBase = base + (horizonY - base) * frame.horizon + drop
+    const layerAmp = amp * frame.amplitude
+    const placed = projectedSpan(width, frame.span)
     ctx.save()
-    if (xOff) ctx.translate(xOff, 0)
-    const step = ridgeSampleStep(width)
-    ctx.beginPath()
-    ctx.moveTo(0, layerBase)
-    forPaintX(width, step, (x) => {
-      ctx.lineTo(x, ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, warp))
-    })
-    ctx.lineTo(width - 1, layerBase)
-    ctx.closePath()
-    ctx.fillStyle = moodFill(ctx, width, visual, ridge, spec.alpha * (0.85 + visual.glow * 0.2) * alphaMul)
+    if (xOff) ctx.translate(xOff * (0.25 + frame.span * 0.75), 0)
+    traceProjected(ctx, env!, width, placed, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, warp, true)
+    ctx.fillStyle = moodFill(ctx, width, visual, ridge, spec.alpha * (0.85 + visual.glow * 0.2) * alphaMul * lum)
     ctx.fill()
 
-    ctx.strokeStyle = rgbCss(crest, (0.22 + visual.sharpness * 0.28) * alphaMul)
-    ctx.lineWidth = Math.max(1, dpr * (1.1 - spec.z * 0.4))
+    ctx.strokeStyle = rgbCss(crest, (0.22 + visual.sharpness * 0.28) * alphaMul * lum)
+    ctx.lineWidth = Math.max(1, dpr * (1.1 - spec.z * 0.35))
     ctx.lineJoin = 'round'
-    ctx.beginPath()
-    forPaintX(width, step, (x) => {
-      const y = ridgeY(env!, x, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, warp)
-      if (x === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
+    traceProjected(ctx, env!, width, placed, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, warp, false)
     ctx.stroke()
 
-    const lines = Math.max(4, Math.round(contours * (1 - spec.z * 0.55)))
+    const detail = 0.94 + (light - 0.5) * 0.08 + (args.accent?.detail ?? 0) * 0.05
+    const lines = Math.max(4, Math.round(contours * frame.spread * detail))
     ctx.lineWidth = Math.max(0.6, dpr * 0.55)
     for (let k = 1; k < lines; k++) {
       const frac = k / lines
-      ctx.strokeStyle = rgbCss(crest, (0.05 + visual.space * 0.06) * (1 - frac * 0.4) * alphaMul)
-      strokeContour(ctx, env!, width, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, frac, warp)
+      ctx.strokeStyle = rgbCss(crest, (0.045 + visual.space * 0.07) * (1 - frac * 0.45) * alphaMul * lum)
+      traceProjected(
+        ctx,
+        env!,
+        width,
+        placed,
+        layerBase,
+        layerAmp * frac,
+        spec,
+        visual,
+        grit,
+        t,
+        li,
+        dir,
+        breath,
+        warp,
+        false,
+      )
+      ctx.stroke()
     }
     ctx.restore()
   }
 }
 
 function depthBase(base: number, dir: 1 | -1, height: number, lift: number): number {
-  return base + dir * lift * height * 0.3
+  return base + dir * lift * height * 0.07
 }
 
-/** Wave strings that approach from the horizon. Far ones are smaller, softer, and thinner. */
+/** Fraction of the depth model that reaches the canvas. Geometry stays in the field; the picture only hints at it. */
+const DEPTH_PRESENCE = 0.08
+
+function whisperPerspective(frame: {
+  span: number
+  amplitude: number
+  horizon: number
+  weight: number
+  spread: number
+}) {
+  return {
+    span: 1 + (frame.span - 1) * DEPTH_PRESENCE,
+    amplitude: 1 + (frame.amplitude - 1) * DEPTH_PRESENCE,
+    horizon: frame.horizon * DEPTH_PRESENCE,
+    weight: 1 + (frame.weight - 1) * DEPTH_PRESENCE,
+    spread: 1 + (frame.spread - 1) * DEPTH_PRESENCE,
+  }
+}
+
+/**
+ * Faint strings at different Z. Far ones sit a little smaller and higher.
+ * They should read as air around the ridge, not as a second landscape.
+ */
 function paintDepthStrings(
   ctx: CanvasRenderingContext2D,
   args: RangePaintArgs,
@@ -239,44 +369,48 @@ function paintDepthStrings(
   const { width, height, visual, dpr } = args
   const warp = soundWarp(args)
   const t = motionTime(args)
-  const crest = accentCrest(landscapeStops(visual, args.ridge).crest, args)
-  const step = Math.max(2, ridgeSampleStep(width) + 1)
+  const light = colorLight(args)
+  const crest = shadeForLight(accentCrest(landscapeStops(visual, args.ridge).crest, args), light)
+  const lum = 0.96 + (light - 0.5) * 0.04
   for (const traveler of travelers) {
     if (traveler.alpha < 0.02) continue
     const layerBase = depthBase(base, dir, height, traveler.lift)
-    const layerAmp = amp * traveler.scale
+    const layerAmp = amp * (1 + (traveler.scale - 1) * DEPTH_PRESENCE)
+    const placed = projectedSpan(width, 1 + (traveler.span - 1) * DEPTH_PRESENCE, traveler.parallax * DEPTH_PRESENCE)
+    const ghost = traveler.alpha * 0.055 * lum
     const draw = (lineWidth: number, alpha: number, ampScale = 1) => {
+      if (alpha < 0.012) return
       ctx.save()
       ctx.globalAlpha = alpha
       ctx.strokeStyle = rgbCss(crest, 1)
       ctx.lineWidth = lineWidth
       ctx.lineJoin = 'round'
       ctx.lineCap = 'round'
-      ctx.beginPath()
-      forPaintX(width, step, (x) => {
-        const y = ridgeY(
-          env,
-          x,
-          layerBase,
-          layerAmp * ampScale,
-          spec,
-          visual,
-          visual.dirt * 0.35,
-          t,
-          traveler.lane,
-          dir,
-          0,
-          warp,
-        )
-        if (x === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      })
+      traceProjected(
+        ctx,
+        env,
+        width,
+        placed,
+        layerBase,
+        layerAmp * ampScale,
+        spec,
+        visual,
+        visual.dirt * 0.2,
+        t,
+        traveler.lane,
+        dir,
+        0,
+        warp,
+        false,
+      )
       ctx.stroke()
       ctx.restore()
     }
-    if (traveler.blur > 0.35) draw(Math.max(1, dpr * (1.6 + traveler.blur * 2.4)), traveler.alpha * 0.22)
-    draw(Math.max(0.7, dpr * traveler.weight), traveler.alpha)
-    if (traveler.detail > 0.28) draw(Math.max(0.5, dpr * 0.45), traveler.alpha * traveler.detail * 0.55, 0.62)
+    if (traveler.blur > 0.55) draw(Math.max(0.6, dpr * (0.7 + traveler.blur * 0.35)), ghost * 0.35)
+    draw(Math.max(0.45, dpr * (0.35 + traveler.weight * 0.22)), ghost)
+    if (traveler.detail > 0.45 && traveler.z > 0.4) {
+      draw(Math.max(0.4, dpr * 0.28), ghost * traveler.detail * 0.35, 0.72)
+    }
   }
 }
 
@@ -285,7 +419,7 @@ function paintAccentGlow(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   if (!accent || accent.amount < 0.04) return
   const { width, height } = args
   const glow = ctx.createRadialGradient(width * 0.5, height * 0.62, 8, width * 0.5, height * 0.58, width * 0.42)
-  glow.addColorStop(0, rgbCss(accent.rgb, 0.03 + accent.amount * 0.1))
+  glow.addColorStop(0, rgbCss(accent.rgb, 0.012 + accent.amount * 0.028))
   glow.addColorStop(1, rgbCss(accent.rgb, 0))
   ctx.save()
   ctx.globalCompositeOperation = 'screen'
@@ -439,7 +573,7 @@ function paintPlayhead(
 function paintGleam(ctx: CanvasRenderingContext2D, args: RangePaintArgs, base: number, amp: number) {
   const { width, visual, layers, specs, dpr } = args
   const gleamTime = motionTime(args)
-  const ink = args.accent && args.accent.amount > 0.04 ? mixRgb(visual.ink, args.accent.rgb, args.accent.amount * 0.5) : visual.ink
+  const ink = args.accent && args.accent.amount > 0.12 ? mixRgb(visual.ink, args.accent.rgb, args.accent.amount * 0.1) : visual.ink
   const env = layers[0]
   if (!env) return
   const energy = Math.min(1, visual.space * 0.45 + visual.echo * 0.25 + visual.glow * 0.2)
@@ -472,12 +606,13 @@ function paintCanyon(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   paintSky(ctx, args)
   paintAccentGlow(ctx, args)
   paintHazeBand(ctx, args, args.height * 0.12, args.height)
-  paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'approach')
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
+  paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'approach')
   paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'pass')
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
   paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
+  paintLightVeil(ctx, args)
 }
 
 export function paintSoundRange(args: RangePaintArgs) {
@@ -498,14 +633,15 @@ export function paintSoundRange(args: RangePaintArgs) {
     const amp = layout.amp * (1 - visual.tight * 0.22)
     paintSky(ctx, args)
     paintAccentGlow(ctx, args)
-    paintDepthStrings(ctx, args, layout.upperBase, amp, layout.upperDir, 'approach')
-    paintDepthStrings(ctx, args, layout.lowerBase, amp, layout.lowerDir, 'approach')
     paintRidgeStack(ctx, args, layout.upperBase, amp, layout.upperDir)
     paintRidgeStack(ctx, args, layout.lowerBase, amp, layout.lowerDir)
+    paintDepthStrings(ctx, args, layout.upperBase, amp, layout.upperDir, 'approach')
+    paintDepthStrings(ctx, args, layout.lowerBase, amp, layout.lowerDir, 'approach')
     paintDepthStrings(ctx, args, layout.lowerBase, amp, layout.lowerDir, 'pass')
     paintEchoGhosts(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintChangeLayers(ctx, args, layout.lowerBase, amp, layout.lowerDir)
     paintDust(ctx, args)
+    paintLightVeil(ctx, args)
     const haze = ctx.createLinearGradient(0, layout.upperBase, 0, layout.lowerBase)
     haze.addColorStop(0, 'rgba(8,12,20,0)')
     haze.addColorStop(0.5, `rgba(10,16,28,${0.12 + visual.space * 0.16})`)
@@ -524,13 +660,14 @@ export function paintSoundRange(args: RangePaintArgs) {
   paintSky(ctx, args)
   paintAccentGlow(ctx, args)
   paintHazeBand(ctx, args, args.height * 0.08, args.height * 0.55)
-  paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'approach')
   paintRidgeStack(ctx, args, layout.base, amp, layout.dir)
+  paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'approach')
   paintDepthStrings(ctx, args, layout.base, amp, layout.dir, 'pass')
   paintEchoGhosts(ctx, args, layout.base, amp, layout.dir)
   paintChangeLayers(ctx, args, layout.base, amp, layout.dir)
   paintDust(ctx, args)
   if (scene === 'gleam' && !reduced) paintGleam(ctx, args, layout.base, amp)
+  paintLightVeil(ctx, args)
   paintSelection(ctx, args)
   paintPlayhead(ctx, args, [layout.base], amp, [layout.dir])
   paintChromaticFringe(ctx, args)

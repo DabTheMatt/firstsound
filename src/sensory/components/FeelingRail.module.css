@@ -30,6 +30,8 @@
   right: clamp(8px, 1.4vw, 20px);
   left: auto;
   align-items: flex-end;
+  /* Clears the open Color Sound pocket in the lower-right corner. */
+  bottom: calc(430px + env(safe-area-inset-bottom, 0px));
 }
 
 .item {
@@ -470,5 +472,17 @@
 @media (hover: hover) and (pointer: fine) {
   .item[data-axis]:hover {
     color: var(--text-primary);
+  }
+}
+
+@media (max-width: 860px) and (min-height: 740px) {
+  .right {
+    bottom: calc(470px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-height: 739px) {
+  .right {
+    bottom: 96px;
   }
 }

@@ -1,47 +1,59 @@
 .mark {
   display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
   margin: 0;
   min-width: 0;
   flex: none;
   max-width: 100%;
+  line-height: 1;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1;
 }
 
 .name {
   flex: none;
   text-transform: uppercase;
   white-space: nowrap;
+  line-height: 1;
+  color: var(--text-primary);
 }
 
-.mode {
+.tagline {
   flex: none;
+  margin: 0;
   font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-style: normal;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: none;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .studio .name {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--accent-secondary);
-}
-
-.studio .mode {
-  font-size: 9px;
+  letter-spacing: 0.18em;
 }
 
 .compact.studio .name {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.16em;
 }
 
-.compact .mode {
-  font-size: 8px;
-  letter-spacing: 0.08em;
+.compact .tagline,
+.hideTagline .tagline {
+  display: none;
 }
 
 .editorial {
@@ -49,83 +61,82 @@
   align-items: center;
 }
 
+.editorial .identity {
+  gap: 7px;
+}
+
 .editorial .name {
   position: relative;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.42em;
-  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.36em;
 }
 
 .editorial .name::after {
   content: '';
   position: absolute;
   left: 0;
-  bottom: -5px;
+  bottom: -4px;
   width: 18px;
   height: 1px;
   background: color-mix(in srgb, var(--text-primary) 55%, transparent);
 }
 
-.editorial .mode {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: color-mix(in srgb, var(--text-primary) 42%, transparent);
+.editorial .tagline {
+  letter-spacing: 0.06em;
 }
 
 .gate {
   justify-content: center;
 }
 
+.gate .identity {
+  align-items: center;
+  gap: 8px;
+}
+
 .gate .name {
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.42em;
-  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.38em;
+}
+
+.gate .tagline {
+  font-size: 9px;
+  letter-spacing: 0.12em;
 }
 
 @media (max-width: 900px) {
   .mark {
-    gap: 7px;
-  }
-
-  .studio .mode,
-  .editorial .mode {
-    font-size: 8px;
-    letter-spacing: 0.08em;
+    gap: 10px;
   }
 
   .editorial .name {
     letter-spacing: 0.24em;
-    font-size: 10px;
+    font-size: 12px;
+  }
+}
+
+/* Sensory tools need the full header row below this width. */
+@media (max-width: 1100px) {
+  .editorial .tagline {
+    display: none;
+  }
+
+  .editorial .identity {
+    gap: 0;
+  }
+}
+
+/* Narrow viewports drop the descriptor before header controls compress. */
+@media (max-width: 700px) {
+  .studio .tagline {
+    display: none;
   }
 }
 
 @media (max-width: 640px) {
   .mark {
-    gap: 5px;
-  }
-
-  .studio .mode,
-  .editorial .mode {
-    font-size: 7px;
-    letter-spacing: 0.04em;
-  }
-}
-
-@container app-header (max-width: 860px) {
-  .mode {
-    display: none;
-  }
-}
-
-@container brand (max-width: 240px) {
-  .mark {
-    gap: 4px;
-  }
-
-  .mode {
-    font-size: 7px;
-    letter-spacing: 0.02em;
+    gap: 6px;
   }
 }

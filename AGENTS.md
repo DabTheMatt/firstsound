@@ -1,6 +1,6 @@
-# INTERFER — agent guidelines
+# FIELD — agent guidelines
 
-INTERFER is a browser-based granular sample instrument (Vite + React + TypeScript + Web Audio), deployed to GitHub Pages from `main` via `.github/workflows/pages.yml`.
+FIELD is the user-facing name of this browser-based granular sample instrument (Vite + React + TypeScript + Web Audio), deployed to GitHub Pages from `main` via `.github/workflows/pages.yml`.
 
 ## Communication
 

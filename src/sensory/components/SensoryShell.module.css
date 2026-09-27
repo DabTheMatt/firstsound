@@ -217,7 +217,7 @@
   right: 0;
   z-index: 12;
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   padding: 18px 22px 8px;
@@ -229,10 +229,8 @@
   align-items: center;
   gap: 14px;
   justify-self: start;
-  min-width: 0;
+  width: max-content;
   max-width: 100%;
-  container-type: inline-size;
-  container-name: brand;
 }
 
 .top > * {
@@ -372,13 +370,31 @@
 
 @media (max-width: 900px) {
   .top {
-    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    grid-template-columns: max-content minmax(0, 1fr);
     padding: 12px 12px 8px;
+  }
+
+  .tools {
+    min-width: 0;
   }
 
   .bar {
     gap: 10px;
     padding: 10px 12px 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .brandRow,
+  .tools {
+    flex: 1 1 100%;
+    width: auto;
   }
 }
 
