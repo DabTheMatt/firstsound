@@ -81,8 +81,8 @@ function depthBiasOf(args: RangePaintArgs): ColorDepthBias {
 
 function shadeForLight(color: Rgb, light: number): Rgb {
   const delta = light - 0.5
-  if (delta < -0.04) return mixRgb(color, { r: 8, g: 10, b: 16 }, -delta * 0.28)
-  if (delta > 0.04) return mixRgb(color, { r: 255, g: 250, b: 242 }, delta * 0.18)
+  if (delta < -0.04) return mixRgb(color, { r: 8, g: 10, b: 16 }, -delta * 0.12)
+  if (delta > 0.04) return mixRgb(color, { r: 255, g: 250, b: 242 }, delta * 0.08)
   return color
 }
 
@@ -130,7 +130,7 @@ function moodFill(
 function paintSky(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const { width, height, visual, ridge } = args
   const light = colorLight(args)
-  const grade = (light - 0.5) * 0.06
+  const grade = (light - 0.5) * 0.028
   const stops = landscapeStops(visual, ridge)
   const left = shadeForLight(mixRgb(stops.left, { r: 18, g: 12, b: 10 }, 0.55), light)
   const crest = shadeForLight(mixRgb(stops.crest, { r: 22, g: 18, b: 16 }, 0.4), light)
@@ -153,16 +153,16 @@ function paintSky(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
 function paintLightVeil(ctx: CanvasRenderingContext2D, args: RangePaintArgs) {
   const light = colorLight(args)
   const delta = light - 0.5
-  if (Math.abs(delta) < 0.12) return
+  if (Math.abs(delta) < 0.18) return
   const { width, height } = args
   ctx.save()
   if (delta < 0) {
-    ctx.fillStyle = `rgba(2, 4, 10, ${(-delta - 0.08) * 0.05})`
+    ctx.fillStyle = `rgba(2, 4, 10, ${(-delta - 0.12) * 0.028})`
     ctx.fillRect(0, 0, width, height)
   } else {
     ctx.globalCompositeOperation = 'screen'
     const glow = ctx.createRadialGradient(width * 0.5, height * 0.42, width * 0.08, width * 0.5, height * 0.48, width * 0.62)
-    glow.addColorStop(0, `rgba(255, 250, 242, ${(delta - 0.08) * 0.045})`)
+    glow.addColorStop(0, `rgba(255, 250, 242, ${(delta - 0.12) * 0.022})`)
     glow.addColorStop(1, 'rgba(255, 248, 236, 0)')
     ctx.fillStyle = glow
     ctx.fillRect(0, 0, width, height)
@@ -275,7 +275,7 @@ function paintRidgeStack(
   const crest = shadeForLight(accentCrest(landscapeStops(visual, ridge).crest, args), colorLight(args))
   const light = colorLight(args)
   const bias = depthBiasOf(args)
-  const lum = 0.96 + (light - 0.5) * 0.08
+  const lum = 0.985 + (light - 0.5) * 0.03
   const t = motionTime(args)
   const horizonY = height * (dir < 0 ? 0.3 : 0.7)
   for (let i = order.length - 1; i >= 0; i--) {
@@ -288,7 +288,7 @@ function paintRidgeStack(
     ctx.save()
     if (xOff) ctx.translate(xOff * (0.25 + frame.span * 0.75), 0)
     traceProjected(ctx, env!, width, placed, layerBase, layerAmp, spec, visual, grit, t, li, dir, breath, warp, true)
-    ctx.fillStyle = moodFill(ctx, width, visual, ridge, spec.alpha * (0.85 + visual.glow * light * 0.35) * alphaMul * lum)
+    ctx.fillStyle = moodFill(ctx, width, visual, ridge, spec.alpha * (0.85 + visual.glow * 0.2) * alphaMul * lum)
     ctx.fill()
 
     ctx.strokeStyle = rgbCss(crest, (0.22 + visual.sharpness * 0.28) * alphaMul * lum)
@@ -327,11 +327,11 @@ function paintRidgeStack(
 }
 
 function depthBase(base: number, dir: 1 | -1, height: number, lift: number): number {
-  return base + dir * lift * height * 0.16
+  return base + dir * lift * height * 0.07
 }
 
 /** Fraction of the depth model that reaches the canvas. Geometry stays in the field; the picture only hints at it. */
-const DEPTH_PRESENCE = 0.16
+const DEPTH_PRESENCE = 0.08
 
 function whisperPerspective(frame: {
   span: number
@@ -371,13 +371,13 @@ function paintDepthStrings(
   const t = motionTime(args)
   const light = colorLight(args)
   const crest = shadeForLight(accentCrest(landscapeStops(visual, args.ridge).crest, args), light)
-  const lum = 0.92 + (light - 0.5) * 0.08
+  const lum = 0.96 + (light - 0.5) * 0.04
   for (const traveler of travelers) {
     if (traveler.alpha < 0.02) continue
     const layerBase = depthBase(base, dir, height, traveler.lift)
     const layerAmp = amp * (1 + (traveler.scale - 1) * DEPTH_PRESENCE)
     const placed = projectedSpan(width, 1 + (traveler.span - 1) * DEPTH_PRESENCE, traveler.parallax * DEPTH_PRESENCE)
-    const ghost = traveler.alpha * 0.14 * lum
+    const ghost = traveler.alpha * 0.055 * lum
     const draw = (lineWidth: number, alpha: number, ampScale = 1) => {
       if (alpha < 0.012) return
       ctx.save()
