@@ -61,19 +61,17 @@ import { hitSpaceOverlay, dragSpaceOverlay, type SpaceHit } from '../../audio/fx
 import { delayTaps, reverbTail } from '../../audio/fx/spaceModel'
 import { drawDelayOverlay, drawReverbOverlay } from './spaceDraw'
 import {
-  FADE_DIAMOND_TOP_PX,
-  LOOP_HANDLE_TOP_PX,
   SPACE_HANDLE_TOP_PX,
   clampFadeLengthToLoop,
-  fadeDiamondLayout,
   fadeLengthFromDiamondTime,
   fadeOriginTime,
-  fadeShapeHandleLayout,
   promotePlayheadDrag,
   resolveSimpleWaveformDrag,
   resolveWaveformDrag,
+  selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
 import { rulerMarks } from './rulerTicks'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
@@ -110,6 +108,7 @@ type Props = {
     fadeFocus?: 'in' | 'out'
   }) => void
   onFadesCommit?: () => void
+  onSpectralCommit?: () => void
   contentRev?: number
   fxMode?: 'delay' | 'reverb' | null
   appearance?: 'studio' | 'sensory' | 'simple'
@@ -197,7 +196,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     fadeCurve,
     fadeInBend = 0.5,
     fadeOutBend = 0.5,
-    fadeFocus = 'in',
     autoSnap,
     normalizeView,
     onNormalizeView,
@@ -211,6 +209,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onPasteAtPlayhead,
     onFades,
     onFadesCommit,
+    onSpectralCommit,
     contentRev = 0,
     fxMode = null,
     appearance = 'studio',
@@ -414,6 +413,69 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const colors = readThemeColors()
       const selA = Math.min(start, end)
       const selB = Math.max(start, end)
+      const bandLanes =
+        appearance === 'studio' && (viz === 'waveform' || viz === 'split') ? engine.spectralLaneSamples() : null
+      if (bandLanes && bandLanes.length > 0) {
+        const laneCount = bandLanes.length
+        for (let lane = 0; lane < laneCount; lane++) {
+          const band = bandLanes[lane]!
+          const data = band.samples
+          const laneH = height / laneCount
+          const top0 = lane * laneH
+          const samplesPerSec = data.length / duration
+          const s = Math.floor(view.start * samplesPerSec)
+          const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
+          const { min, max, peak } = computeMinMax(data, s, e, width)
+          const gain = normalizeView ? verticalGain(peak) : 1
+          const mid = top0 + laneH / 2
+          const half = laneH * 0.38
+          const span = Math.max(0.0001, view.end - view.start)
+          ctx.globalAlpha = band.dim ? 0.28 : 1
+          let lastSelected: boolean | null = null
+          for (let x = 0; x < width; x++) {
+            const t = view.start + (x / width) * span
+            const selected = t >= selA && t <= selB
+            if (selected !== lastSelected) {
+              ctx.fillStyle = selected ? colors.waveformSelected : colors.waveform
+              lastSelected = selected
+            }
+            const hi = Math.max(-1, Math.min(1, (max[x] ?? 0) * gain))
+            const lo = Math.max(-1, Math.min(1, (min[x] ?? 0) * gain))
+            const top = mid - hi * half
+            const bottom = mid - lo * half
+            ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+          }
+          ctx.globalAlpha = 0.35
+          ctx.fillStyle = colors.waveform
+          ctx.fillRect(0, top0 + laneH - 1, width, 1)
+          ctx.globalAlpha = 1
+        }
+        const span = Math.max(0.0001, view.end - view.start)
+        const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
+          if (!(to > from + 1e-6)) return
+          ctx.beginPath()
+          ctx.strokeStyle = colors.envelope
+          ctx.lineWidth = Math.max(1, dpr)
+          ctx.setLineDash([3 * dpr, 3 * dpr])
+          const n = Math.max(20, Math.floor(((to - from) / span) * width))
+          for (let i = 0; i <= n; i++) {
+            const u = i / n
+            const t = from + u * (to - from)
+            const x = ((t - view.start) / span) * width
+            const g = side === 'in' ? fadeGain(u, fadeCurve, bend) : fadeGain(1 - u, fadeCurve, bend)
+            const y = (1 - g) * height
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+        const inDur = clampFadeLengthToLoop(fadeIn, start, end)
+        const outDur = clampFadeLengthToLoop(fadeOut, start, end)
+        strokeFade(fadeOriginTime('in', start, end), start + inDur, 'in', fadeInBend)
+        strokeFade(end - outDur, fadeOriginTime('out', start, end), 'out', fadeOutBend)
+        return
+      }
       const snapNow = engine.getSnapshot()
       const foldMono = snapNow.channelLayout === 'mono' || snapNow.params.makeMono > 0.5
       const mixed = foldMono ? engine.getMono() ?? mixToMono(buffer) : null
@@ -510,7 +572,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR, snap.channelLayout, snap.recording, snap.liveParams.pan, snap.liveParams.channelGainL, snap.liveParams.channelGainR])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR, snap.channelLayout, snap.recording, snap.liveParams.pan, snap.liveParams.channelGainL, snap.liveParams.channelGainR, snap.spectral.enabled, snap.spectral.ready, snap.spectral.computing, snap.spectral.crossoversHz, snap.spectral.bands])
 
   useEffect(() => {
     let frame = 0
@@ -668,7 +730,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const startX = timeToFrac(start, viewRef.current) * width
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
-    const hit = handlePx.current
+    const hit = simple ? handlePx.current : selectionBoundaryHitPx(event.pointerType)
     const y = event.clientY - rect.top
 
     if (viz === 'automation') {
@@ -723,11 +785,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       setAutoFocus(EMPTY_AUTOMATION_FOCUS)
     }
 
-    const fadeAttr = (event.target as HTMLElement | null)?.closest?.('[data-fade]') as HTMLElement | null
+    const zoneAttr = (event.target as HTMLElement | null)?.closest?.('[data-boundary-zone]') as HTMLElement | null
     const handleAttr = (event.target as HTMLElement | null)?.closest?.('[data-edge]') as HTMLElement | null
     const transientAttr = (event.target as HTMLElement | null)?.closest?.('[data-transient]') as HTMLElement | null
-    const fadeInX = timeToFrac(fadeDiamondLayout({ side: 'in', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
-    const fadeOutX = timeToFrac(fadeDiamondLayout({ side: 'out', start, end, fadeIn, fadeOut }).time, viewRef.current) * width
+    const boundaryZone = zoneAttr?.dataset.boundaryZone === 'fade' || zoneAttr?.dataset.boundaryZone === 'edge'
+      ? zoneAttr.dataset.boundaryZone
+      : undefined
     const mode: DragMode = simple
       ? resolveSimpleWaveformDrag({
       altOrMiddle: event.altKey || event.button === 1 || event.buttons === 4,
@@ -742,13 +805,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       shift: event.shiftKey,
       x,
       y,
+      height: rect.height,
       startX,
       endX,
-      fadeInX,
-      fadeOutX,
+      fadeInX: startX,
+      fadeOutX: endX,
       hitPx: hit,
-      fadeSide: fadeAttr?.dataset.fade === 'in' || fadeAttr?.dataset.fade === 'out' ? fadeAttr.dataset.fade : undefined,
-      fadeRole: fadeAttr?.dataset.fadeRole,
+      coarse: event.pointerType === 'touch' || event.pointerType === 'pen',
+      boundaryZone,
       edge: handleAttr?.dataset.edge === 'start' || handleAttr?.dataset.edge === 'end' ? handleAttr.dataset.edge : undefined,
       transient: transientAttr?.dataset.transient != null,
     })
@@ -819,13 +883,38 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const overlay = overlayRef.current
+    if (overlay && !sensory && !simple && !drag.current) {
+      const rect = overlay.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+      const width = rect.width
+      const startX = timeToFrac(start, viewRef.current) * width
+      const endX = timeToFrac(end, viewRef.current) * width
+      const coarse = event.pointerType === 'touch' || event.pointerType === 'pen'
+      const kind = resolveWaveformDrag({
+        altOrMiddle: false,
+        shift: event.shiftKey,
+        x,
+        y,
+        height: rect.height,
+        startX,
+        endX,
+        fadeInX: startX,
+        fadeOutX: endX,
+        hitPx: selectionBoundaryHitPx(event.pointerType),
+        coarse,
+        transient: false,
+      })
+      const cursor = kind === 'fadeIn' || kind === 'fadeOut' ? 'fade' : kind === 'start' || kind === 'end' ? 'edge' : kind === 'move' ? 'move' : ''
+      if (overlay.dataset.cursor !== cursor) overlay.dataset.cursor = cursor
+    }
     if (!pointers.current.has(event.pointerId)) return
     if (event.buttons === 0 && event.pointerType === 'mouse') {
       endPointer(event)
       return
     }
     pointers.current.set(event.pointerId, event.clientX)
-    const overlay = overlayRef.current
     if (!overlay) return
     const rect = overlay.getBoundingClientRect()
 
@@ -954,6 +1043,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const originT = dragState?.originT ?? 0
       drag.current = null
       setPanning(false)
+      if (overlayRef.current) overlayRef.current.dataset.cursor = ''
       if (mode === 'transient' && transientIndex != null) {
         const to = engine.getSnapshot().transients[transientIndex] ?? originT
         engine.commitTransientWarp(transientIndex, originT, to)
@@ -1004,29 +1094,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const endPct = pct(end)
   const regionLeft = Math.max(0, Math.min(100, startPct))
   const regionRight = Math.max(0, Math.min(100, endPct))
-  const fadeHandleStyle = (side: 'in' | 'out') => {
-    const layout = fadeDiamondLayout({
-      side,
-      start,
-      end,
-      fadeIn,
-      fadeOut,
-    })
-    const left = Math.min(100, Math.max(0, pct(layout.time)))
-    return { left: `${left}%`, top: FADE_DIAMOND_TOP_PX }
-  }
-
-  const fadeShapeStyle = (side: 'in' | 'out') => {
-    const layout = fadeShapeHandleLayout({ side, start, end, fadeIn, fadeOut })
-    if (!layout) return null
-    const bend = side === 'in' ? fadeInBend : fadeOutBend
-    const gain = fadeGain(layout.progress, fadeCurve, bend)
-    return {
-      left: `${Math.min(100, Math.max(0, pct(layout.time)))}%`,
-      top: `${(1 - gain) * 100}%`,
-    }
-  }
-
   const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
 
   const showWave = viz === 'waveform' || viz === 'split' || viz === 'automation'
@@ -1098,6 +1165,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+            {snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
+              <div className={styles.bandLaneLabels} aria-hidden="true">
+                {snap.spectral.bands.map((band) => (
+                  <span key={band.id}>{spectralBandCopy(band.id, t.waveform.spectral)}</span>
+                ))}
+              </div>
+            ) : null}
             {loaded && (snap.channelLayout === 'mono' || snap.params.makeMono > 0.5) ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
@@ -1142,56 +1216,30 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   />
                   {!sensory && !simple ? (
                     <>
-                  <div
-                    className={`${styles.fadeHandle} ${fadeFocus === 'in' ? styles.fadeHandleOn : ''}`}
-                    data-fade="in"
-                    data-fade-role="length"
-                    style={fadeHandleStyle('in')}
-                            aria-label={t.waveform.fadeIn}
-                  >
-                    <FadeArcIcon side="in" />
-                  </div>
-                  <div
-                    className={`${styles.fadeHandle} ${fadeFocus === 'out' ? styles.fadeHandleOn : ''}`}
-                    data-fade="out"
-                    data-fade-role="length"
-                    style={fadeHandleStyle('out')}
-                    aria-label={t.waveform.fadeOut}
-                  >
-                    <FadeArcIcon side="out" />
-                  </div>
-                  {(['in', 'out'] as const).map((side) => {
-                    const style = fadeShapeStyle(side)
-                    if (!style) return null
-                    return (
-                      <div
-                        key={side}
-                        className={`${styles.fadeShape} ${fadeFocus === side ? styles.fadeShapeOn : ''}`}
-                        data-fade={side}
-                        data-fade-role="shape"
-                        style={style}
-                        aria-label={side === 'in' ? 'Fade in shape' : 'Fade out shape'}
-                      />
-                    )
-                  })}
-                  {!panning && startPct >= 0 && startPct <= 100 ? (
-                    <button
-                      type="button"
-                      className={styles.handle}
-                      data-edge="start"
-                      style={{ left: `${startPct}%`, top: LOOP_HANDLE_TOP_PX }}
-                      aria-label={t.waveform.regionStart}
-                    />
-                  ) : null}
-                  {!panning && endPct >= 0 && endPct <= 100 ? (
-                    <button
-                      type="button"
-                      className={styles.handle}
-                      data-edge="end"
-                      style={{ left: `${endPct}%`, top: LOOP_HANDLE_TOP_PX }}
-                      aria-label={t.waveform.regionEnd}
-                    />
-                  ) : null}
+                      {(['start', 'end'] as const).map((edge) => {
+                        const left = edge === 'start' ? startPct : endPct
+                        if (left < -2 || left > 102) return null
+                        const fadeLabel = edge === 'start' ? t.waveform.fadeIn : t.waveform.fadeOut
+                        const edgeLabel = edge === 'start' ? t.waveform.regionStart : t.waveform.regionEnd
+                        return (
+                          <div key={edge} className={styles.boundaryHit} data-edge={edge} style={{ left: `${left}%` }}>
+                            <div
+                              className={styles.boundaryFade}
+                              data-edge={edge}
+                              data-boundary-zone="fade"
+                              title={fadeLabel}
+                              aria-label={fadeLabel}
+                            />
+                            <div
+                              className={styles.boundaryEdge}
+                              data-edge={edge}
+                              data-boundary-zone="edge"
+                              title={edgeLabel}
+                              aria-label={edgeLabel}
+                            />
+                          </div>
+                        )
+                      })}
                     </>
                   ) : simple ? (
                     <>
@@ -1495,15 +1543,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onScrub={setView}
         />
       ) : null}
+      {!sensory && !simple ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
     </div>
   )
 })
 
-function FadeArcIcon({ side }: { side: 'in' | 'out' }) {
-  const d = side === 'in' ? 'M2 11 Q5 11 10 3' : 'M2 3 Q7 3 10 11'
-  return (
-    <svg className={styles.fadeIcon} viewBox="0 0 12 12" aria-hidden="true">
-      <path d={d} fill="none" stroke="var(--bg-app)" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  )
-}

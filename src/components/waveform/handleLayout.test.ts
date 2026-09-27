@@ -17,6 +17,8 @@ import {
   promotePlayheadDrag,
   resolveSimpleWaveformDrag,
   resolveWaveformDrag,
+  selectionBoundaryHitPx,
+  selectionFadeZonePx,
   selectionFromAnchor,
 } from './handleLayout'
 
@@ -101,29 +103,46 @@ describe('resolveWaveformDrag', () => {
   const base = {
     altOrMiddle: false,
     shift: false,
-    x: 400,
-    y: FADE_DIAMOND_TOP_PX + 8,
+    x: 200,
+    y: 200,
+    height: 400,
     startX: 40,
-    endX: 400,
+    endX: 360,
     fadeInX: 40,
-    fadeOutX: 400,
-    hitPx: 22,
+    fadeOutX: 360,
+    hitPx: 10,
   }
 
-  it('keeps a fade-out diamond as a fade drag even when parked on the loop end', () => {
-    expect(resolveWaveformDrag({ ...base, fadeSide: 'out', fadeRole: 'length' })).toBe('fadeOut')
+  it('edits fade from the top eighth of each boundary', () => {
+    expect(selectionFadeZonePx(400, false)).toBeCloseTo(50)
+    expect(resolveWaveformDrag({ ...base, x: 40, y: 12 })).toBe('fadeIn')
+    expect(resolveWaveformDrag({ ...base, x: 360, y: 40 })).toBe('fadeOut')
   })
 
-  it('keeps a pulled-away fade-out diamond as a fade drag', () => {
-    expect(resolveWaveformDrag({ ...base, fadeOutX: 280, fadeSide: 'out', fadeRole: 'length' })).toBe('fadeOut')
+  it('moves the boundary from the lower seven eighths', () => {
+    expect(resolveWaveformDrag({ ...base, x: 40, y: 80 })).toBe('start')
+    expect(resolveWaveformDrag({ ...base, x: 360, y: 300 })).toBe('end')
   })
 
-  it('does not let a nearby transient steal the loop end', () => {
-    expect(resolveWaveformDrag({ ...base, transient: true })).toBe('end')
+  it('does not let a transient or shift steal a boundary resize', () => {
+    expect(resolveWaveformDrag({ ...base, x: 360, y: 300, transient: true })).toBe('end')
+    expect(resolveWaveformDrag({ ...base, x: 40, y: 200, shift: true })).toBe('start')
   })
 
-  it('scrubs the playhead below the node stack', () => {
-    expect(resolveWaveformDrag({ ...base, y: 180, fadeOutX: 400 })).toBe('playhead')
+  it('slides the whole selection with shift only inside the region', () => {
+    expect(resolveWaveformDrag({ ...base, shift: true })).toBe('move')
+    expect(resolveWaveformDrag(base)).toBe('playhead')
+  })
+
+  it('trusts an explicit touch zone on the boundary', () => {
+    expect(resolveWaveformDrag({ ...base, x: 8, edge: 'end', boundaryZone: 'fade' })).toBe('fadeOut')
+    expect(resolveWaveformDrag({ ...base, x: 8, edge: 'start', boundaryZone: 'edge' })).toBe('start')
+  })
+
+  it('gives touch a wider target than the selection line', () => {
+    expect(selectionBoundaryHitPx('mouse') * 2).toBeGreaterThan(2)
+    expect(selectionBoundaryHitPx('touch') * 2).toBeGreaterThanOrEqual(44)
+    expect(selectionFadeZonePx(400, true)).toBeGreaterThanOrEqual(36)
   })
 })
 

@@ -257,6 +257,90 @@
   inset: 0 0 22px 0;
   touch-action: none;
   cursor: col-resize;
+  --fade-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M5 24c7 0 8-14 22-16' fill='none' stroke='%23000' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M5 24c7 0 8-14 22-16' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 6 26, ew-resize;
+}
+
+.overlay[data-cursor='fade'],
+.overlay[data-cursor='fade'] * {
+  cursor: var(--fade-cursor);
+}
+
+.overlay[data-cursor='edge'],
+.overlay[data-cursor='edge'] * {
+  cursor: ew-resize;
+}
+
+.overlay[data-cursor='move'],
+.overlay[data-cursor='move'] * {
+  cursor: grab;
+}
+
+.boundaryHit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  transform: translateX(-50%);
+  z-index: 9;
+  touch-action: none;
+}
+
+.boundaryFade,
+.boundaryEdge {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.boundaryFade {
+  top: 0;
+  height: 12.5%;
+}
+
+.boundaryEdge {
+  top: 12.5%;
+  bottom: 0;
+}
+
+.boundaryFade:hover,
+.boundaryEdge:hover {
+  background: color-mix(in srgb, var(--selection-border) 28%, transparent);
+}
+
+@media (pointer: coarse) {
+  .boundaryHit {
+    width: 44px;
+  }
+
+  .boundaryFade {
+    height: max(12.5%, 36px);
+    max-height: 34%;
+  }
+
+  .boundaryEdge {
+    top: max(12.5%, 36px);
+  }
+}
+
+.bandLaneLabels {
+  position: absolute;
+  inset: 0 0 22px 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.bandLaneLabels span {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  padding: 4px 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 650;
+  color: var(--text-primary);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bg-app) 70%, transparent);
 }
 
 .overlayPan {

@@ -66,6 +66,7 @@ import {
 import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectrumCurve } from '../../audio/engine/spectrumEnvelope'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { measureSpectrumDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
+import { frameAround, spectrumListenId } from '../../audio/spectral/bands'
 import {
   ANALYSER_FFT_IDLE,
   clampSpectrumResolution,
@@ -74,6 +75,7 @@ import {
 import { isDocumentHidden } from '../../app/frameBudget'
 import { spectrumDbScaleMarks } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import { colorWithAlpha, eqTone, readThemeColors } from '../../theme'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { eqStripKey } from '../../audio/engine/eqBands'
@@ -152,9 +154,26 @@ function readAnalyserPeaks(
   return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz, spectrumMaxHz(sampleRate, SPECTRUM_AXIS_MAX_HZ))
 }
 
+function readTimePeaks(
+  time: Float32Array,
+  sampleRate: number,
+  bandCount: number,
+  minHz: number,
+  scratch: { bins: Float32Array | null; fft: SpectrumFftScratch },
+): Float32Array | null {
+  const fftSize = time.length
+  const binCount = fftSize >> 1
+  if (binCount < 2 || (fftSize & (fftSize - 1)) !== 0) return null
+  if (!scratch.bins || scratch.bins.length !== binCount) scratch.bins = new Float32Array(binCount)
+  measureSpectrumDb(time, scratch.bins, scratch.fft)
+  return bandPeakDb(scratch.bins, sampleRate, bandCount, minHz, spectrumMaxHz(sampleRate, SPECTRUM_AXIS_MAX_HZ))
+}
+
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active }: Props) {
+  const { t } = useI18n()
   const snap = useEngine()
+  const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const plotRef = useRef<HTMLDivElement>(null)
@@ -473,13 +492,24 @@ export function Spectrum({ active }: Props) {
         const taps = spectrumLayerTaps(layer)
         const showPre = taps.includes('pre')
         const showPost = taps.includes('post')
-        const prePeaks = showPre ? readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch) : null
-        const postPeaks = showPost ? readAnalyserPeaks(engine.getAnalyser('post'), sr, bands, minHz, postScratch) : null
+        const listenId = spectrumListenId(engine.getSnapshot().spectral.enabled, engine.getSnapshot().spectral.analyser)
+        let bandPeaks: Float32Array | null = null
+        if (listenId) {
+          const mono = engine.spectralBandMono(listenId)
+          const fftSize = engine.getAnalyser('post')?.fftSize ?? 2048
+          if (mono) {
+            const rate = engine.getSnapshot().sampleRate || sr
+            const frame = frameAround(mono, engine.getPlayheadSeconds() * rate, fftSize)
+            bandPeaks = readTimePeaks(frame, sr, bands, minHz, postScratch)
+          }
+        }
+        const prePeaks = listenId ? null : showPre ? readAnalyserPeaks(engine.getAnalyser('pre'), sr, bands, minHz, preScratch) : null
+        const postPeaks = listenId ? bandPeaks : showPost ? readAnalyserPeaks(engine.getAnalyser('post'), sr, bands, minHz, postScratch) : null
         const lineAttack = ballistics.peak.attack
         const lineRelease = ballistics.peak.release
         const slowAttack = ballistics.slow.attack
         const slowRelease = ballistics.slow.release
-        if (showPre && preScratch.bins) {
+        if (!listenId && showPre && preScratch.bins) {
           preLineFast = followSpectrumLine(
             preLineFast,
             preScratch.bins,
@@ -497,7 +527,7 @@ export function Spectrum({ active }: Props) {
             releaseHold('preLineSlow', preScratch.bins.length, ballistics.slow),
           )
         }
-        if (showPost && postScratch.bins) {
+        if (!listenId && showPost && postScratch.bins) {
           const followedFast = followSpectrumLine(
             postLineFast,
             postScratch.bins,
@@ -517,10 +547,10 @@ export function Spectrum({ active }: Props) {
           postLineFast = followedFast
           postLineSlow = followedSlow
         }
-        if (showPre) {
+        if (!listenId && showPre) {
           drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
         }
-        if (showPost) {
+        if (listenId || showPost) {
           drawLayer(postPeaks, postFast.current, postSlow.current, 'post')
         }
 
@@ -724,6 +754,11 @@ export function Spectrum({ active }: Props) {
         className={styles.chrome}
       >
         <div className={styles.chromeLeft}>
+          {listenBand ? (
+            <span className={styles.bands}>
+              {t.waveform.spectral.analyseBand}: {t.waveform.spectral[listenBand === 'sub-bass' ? 'subBass' : listenBand === 'low-mid' ? 'lowMid' : listenBand === 'high-mid' ? 'highMid' : listenBand === 'high' ? 'high' : 'analyseSum']}
+            </span>
+          ) : null}
           <label
             className={styles.bands}
             onMouseDown={(event) => {

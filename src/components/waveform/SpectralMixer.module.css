@@ -1,0 +1,138 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border-subtle, color-mix(in srgb, var(--text-primary) 12%, transparent));
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.titleBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.titleBlock strong {
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.experimental {
+  letter-spacing: 0.14em;
+  font-size: 9px;
+  font-weight: 650;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+.toggle,
+.toggleOn,
+.fft,
+.fftOn,
+.ms,
+.msOn {
+  border: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 999px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.toggleOn,
+.fftOn,
+.msOn {
+  background: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  border-color: var(--accent-primary);
+}
+
+.ms,
+.msOn,
+.fft,
+.fftOn {
+  min-width: 32px;
+  padding: 0 8px;
+}
+
+.computing {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(88px, 120px) minmax(120px, 1fr) 32px 32px 44px;
+  gap: 6px;
+  align-items: center;
+}
+
+.name {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 650;
+}
+
+.gain {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.db {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.gain input {
+  width: 100%;
+  min-height: 28px;
+}
+
+.crossovers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.cross {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cross input {
+  width: 72px;
+  min-height: 28px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+  background: transparent;
+  color: inherit;
+  padding: 0 6px;
+}

@@ -235,6 +235,26 @@ export type Messages = {
     backgroundRemove: string
     backgroundSession: string
     backgroundReject: string
+    spectral: {
+      title: string
+      experimental: string
+      enable: string
+      on: string
+      off: string
+      subBass: string
+      lowMid: string
+      highMid: string
+      high: string
+      gain: string
+      mute: string
+      solo: string
+      crossoverLow: string
+      crossoverMid: string
+      crossoverHigh: string
+      analyseSum: string
+      analyseBand: string
+      computing: string
+    }
   }
   transport: {
     play: string
@@ -713,6 +733,26 @@ export const EN: Messages = {
     backgroundRemove: 'Remove',
     backgroundSession: 'Image stays for this session only.',
     backgroundReject: 'Use a JPG or PNG.',
+    spectral: {
+      title: 'Spectral Bands',
+      experimental: 'Experimental',
+      enable: 'Spectral Bands',
+      on: 'On',
+      off: 'Off',
+      subBass: 'SUB / BASS',
+      lowMid: 'LOW-MID',
+      highMid: 'HIGH-MID',
+      high: 'HIGH',
+      gain: 'Gain',
+      mute: 'Mute',
+      solo: 'Solo',
+      crossoverLow: 'Low split',
+      crossoverMid: 'Mid split',
+      crossoverHigh: 'High split',
+      analyseSum: 'FFT sum',
+      analyseBand: 'Analyze band',
+      computing: 'Splitting…',
+    },
   },
   transport: {
     play: 'Play',
@@ -1276,6 +1316,26 @@ export const PL: Messages = {
     backgroundRemove: 'Usuń',
     backgroundSession: 'Obraz zostaje tylko na tę sesję.',
     backgroundReject: 'Użyj pliku JPG lub PNG.',
+    spectral: {
+      title: 'Pasma widmowe',
+      experimental: 'Eksperymentalne',
+      enable: 'Pasma widmowe',
+      on: 'Włącz',
+      off: 'Wyłącz',
+      subBass: 'SUB / BAS',
+      lowMid: 'NISKI ŚRODEK',
+      highMid: 'WYSOKI ŚRODEK',
+      high: 'WYSOKIE',
+      gain: 'Wzmocnienie',
+      mute: 'Wycisz',
+      solo: 'Solo',
+      crossoverLow: 'Podział niski',
+      crossoverMid: 'Podział środkowy',
+      crossoverHigh: 'Podział wysoki',
+      analyseSum: 'FFT suma',
+      analyseBand: 'Analizuj pasmo',
+      computing: 'Dzielenie…',
+    },
   },
   transport: {
     play: 'Odtwórz',

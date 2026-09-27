@@ -69,12 +69,46 @@ export function selectionFromAnchor(anchor: number, pointer: number): { start: n
   return { start: Math.min(anchor, pointer), end: Math.max(anchor, pointer) }
 }
 
-/** Loop edges win over parked fade diamonds, transients, and the playhead. */
+/** Top fraction of each selection boundary edits the fade. The rest moves that edge. */
+export const SELECTION_FADE_FRACTION = 1 / 8
+
+/**
+ * Height of the fade hit zone. Touch grows it a little so a finger can land
+ * on it, without taking the resize zone below.
+ */
+export function selectionFadeZonePx(height: number, coarse = false): number {
+  const h = Math.max(0, height)
+  const fraction = h * SELECTION_FADE_FRACTION
+  if (!coarse) return fraction
+  return Math.min(h * 0.34, Math.max(fraction, Math.min(36, h)))
+}
+
+export function selectionBoundaryZone(y: number, height: number, coarse = false): 'fade' | 'edge' {
+  if (!(height > 0)) return 'edge'
+  return y <= selectionFadeZonePx(height, coarse) ? 'fade' : 'edge'
+}
+
+/**
+ * Radius around the selection line. Touch is a 44px-wide target; the line
+ * itself stays about 1.5px.
+ */
+export function selectionBoundaryHitPx(pointerType: string): number {
+  if (pointerType === 'touch' || pointerType === 'pen') return 22
+  return 10
+}
+
+/**
+ * The selection line is the control.
+ * Top of the line edits fade in or fade out. The rest of the line moves that
+ * edge. Shift away from the line still slides the whole region. A boundary
+ * hit wins over shift, so resize and move stay distinct.
+ */
 export function resolveWaveformDrag(opts: {
   altOrMiddle: boolean
   shift: boolean
   x: number
   y: number
+  height?: number
   startX: number
   endX: number
   fadeInX: number
@@ -83,20 +117,31 @@ export function resolveWaveformDrag(opts: {
   fadeSide?: 'in' | 'out'
   fadeRole?: string
   edge?: 'start' | 'end'
+  boundaryZone?: 'fade' | 'edge'
+  coarse?: boolean
   transient?: boolean
 }): WaveformDragKind {
   if (opts.altOrMiddle) return 'pan'
-  const nearStart = Math.abs(opts.x - opts.startX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
-  const nearEnd = Math.abs(opts.x - opts.endX) < opts.hitPx && hitsLoopNodeY(opts.y, opts.hitPx)
-  if (opts.edge === 'start') return 'start'
-  if (opts.edge === 'end') return 'end'
+  const height = opts.height ?? 0
+  const zone =
+    opts.boundaryZone ?? (height > 0 ? selectionBoundaryZone(opts.y, height, opts.coarse) : 'edge')
+  const nearStart = height > 0 && Math.abs(opts.x - opts.startX) <= opts.hitPx
+  const nearEnd = height > 0 && Math.abs(opts.x - opts.endX) <= opts.hitPx
+  let edge = opts.edge
+  if (!edge) {
+    if (nearStart && nearEnd) edge = Math.abs(opts.x - opts.startX) <= Math.abs(opts.x - opts.endX) ? 'start' : 'end'
+    else if (nearStart) edge = 'start'
+    else if (nearEnd) edge = 'end'
+  }
+  if (edge === 'start' || edge === 'end') {
+    if (zone === 'fade') return edge === 'start' ? 'fadeIn' : 'fadeOut'
+    return edge
+  }
   if (opts.fadeSide === 'in' && opts.fadeRole === 'shape') return 'fadeInShape'
   if (opts.fadeSide === 'out' && opts.fadeRole === 'shape') return 'fadeOutShape'
   if (opts.fadeSide === 'in') return 'fadeIn'
   if (opts.fadeSide === 'out') return 'fadeOut'
-  if (opts.transient && !nearStart && !nearEnd) return 'transient'
-  if (nearStart) return 'start'
-  if (nearEnd) return 'end'
+  if (opts.transient) return 'transient'
   if (opts.shift) return 'move'
   return 'playhead'
 }

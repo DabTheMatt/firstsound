@@ -43,6 +43,7 @@ import {
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
+import { cloneSpectralState, spectralStatesEqual, type SpectralState } from '../audio/spectral/bands'
 import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../sensory/colorSound'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import styles from './App.module.css'
@@ -63,6 +64,7 @@ type Hist = {
   sensoryBase?: DspSnapshot
   automation: AutomationDocument
   pcm?: SamplePcmSnapshot
+  spectral?: SpectralState
 }
 
 function cloneDsp(dsp: DspSnapshot): DspSnapshot {
@@ -81,6 +83,7 @@ function histKey(
   edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve' | 'fadeInBend' | 'fadeOutBend'>,
   automation: AutomationDocument,
   extra?: Pick<Hist, 'layer' | 'sensory' | 'colorSound' | 'dsp' | 'sensoryBase'>,
+  spectral?: SpectralState,
 ): Hist {
   return {
     start,
@@ -97,6 +100,7 @@ function histKey(
     dsp: extra?.dsp ? cloneDsp(extra.dsp) : undefined,
     sensoryBase: extra?.sensoryBase ? cloneDsp(extra.sensoryBase) : undefined,
     automation: cloneAutomation(automation),
+    spectral: spectral ? cloneSpectralState(spectral) : undefined,
   }
 }
 
@@ -123,6 +127,8 @@ function histEqual(a: Hist, b: Hist): boolean {
   if ((a.layer === 'dsp' || b.layer === 'dsp') && a.dsp && b.dsp) {
     return dspSnapshotsEqual(a.dsp, b.dsp)
   }
+  if (Boolean(a.spectral) !== Boolean(b.spectral)) return false
+  if (a.spectral && b.spectral && !spectralStatesEqual(a.spectral, b.spectral)) return false
   return true
 }
 
@@ -160,7 +166,7 @@ export default function App() {
         colorSound: NEUTRAL_COLOR_SOUND,
         dsp: captureDsp(engine),
         sensoryBase: captureDsp(engine),
-      }),
+      }, engine.getSnapshot().spectral),
     ),
   )
   const [uiMode, setUiMode] = useState<UiMode | null>(() => readStoredUiMode())
@@ -310,7 +316,7 @@ export default function App() {
           ? { layer: resolved, dsp: captureDsp(engine), sensoryBase: cloneDsp(sensoryBaseRef.current) }
           : { layer: 'region' }
     setHistory((h) =>
-      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, current.automation, extra), histEqual),
+      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, current.automation, extra, current.spectral), histEqual),
     )
   }, [])
 
@@ -421,6 +427,7 @@ export default function App() {
       setColorSound(color)
     }
     if (present.sensoryBase) sensoryBaseRef.current = cloneDsp(present.sensoryBase)
+    if (present.spectral) engine.replaceSpectral(present.spectral)
   }
   useEffect(() => {
     restorePresentRef.current = restorePresent
@@ -1004,6 +1011,7 @@ export default function App() {
               contentRev={snap.bufferRev}
               onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
               onFadesCommit={commit}
+              onSpectralCommit={commit}
               onRegionCommit={commit}
               onAutomationCommit={commit}
               onDeleteSelection={deleteSelection}

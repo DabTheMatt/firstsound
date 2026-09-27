@@ -267,6 +267,23 @@ import {
 } from './fades'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
+import {
+  bandAudibleGains,
+  cloneSpectralState,
+  clampCrossovers,
+  defaultSpectralBands,
+  defaultSpectralState,
+  decomposeComplementary,
+  mixBandChannels,
+  mixToMonoChannel,
+  reconstructionError,
+  spectralStatesEqual,
+  type Decomposition,
+  type ReconstructionReport,
+  type SpectralBand,
+  type SpectralSnapshot,
+  type SpectralState,
+} from '../spectral/bands'
 import { addTap, emptyTapTempo, type TapTempoState } from './tapTempo'
 import { estimateTempo, detectTransients } from './transients'
 import { clampWarpTime, neighborTimes, remapWarpTimes, warpChannel } from './warp'
@@ -379,6 +396,7 @@ export type EngineSnapshot = {
   tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
   tapCount: number
   tempoNotice: string | null
+  spectral: SpectralSnapshot
 }
 
 type Listener = () => void
@@ -618,6 +636,18 @@ export class AudioEngine {
   private tempoSource: EngineSnapshot['tempoSource'] = 'default'
   private tapTempoState: TapTempoState = emptyTapTempo()
   private tempoNotice: string | null = null
+  private spectral: SpectralState = defaultSpectralState()
+  private spectralReady = false
+  private spectralComputing = false
+  private spectralKey = ''
+  private spectralPendingKey = ''
+  private spectralJob = 0
+  private spectralBandsPcm: Float32Array[][] | null = null
+  private spectralMono = new Map<string, Float32Array>()
+  private spectralMix: AudioBuffer | null = null
+  private spectralMixKey = ''
+  private spectralReversed: AudioBuffer | null = null
+  private spectralReversedOf: AudioBuffer | null = null
   private tempoWrite: 'engine' | 'ui' = 'ui'
 
   constructor() {
@@ -665,6 +695,129 @@ export class AudioEngine {
 
   getPrep(): SamplePrepState {
     return this.prep
+  }
+
+  setSpectralEnabled(enabled: boolean): void {
+    if (this.spectral.enabled === enabled) return
+    this.spectral = {
+      ...this.spectral,
+      enabled,
+      analyser: enabled ? this.spectral.analyser : 'sum',
+    }
+    if (!enabled) {
+      this.spectralJob += 1
+      this.spectralPendingKey = ''
+      this.spectralReady = false
+      this.spectralComputing = false
+      this.spectralMix = null
+      this.spectralMixKey = ''
+      this.emit()
+      if (this.playing) void this.play()
+      return
+    }
+    this.ensureSpectral(false)
+    this.emit()
+  }
+
+  setSpectralBand(id: string, patch: Partial<Pick<SpectralBand, 'gainDb' | 'mute' | 'solo'>>): void {
+    const bands = this.spectral.bands.map((band) => (band.id === id ? { ...band, ...patch, id: band.id } : band))
+    const next = { ...this.spectral, bands }
+    if (spectralStatesEqual(this.spectral, next)) return
+    this.spectral = next
+    this.spectralMix = null
+    this.spectralMixKey = ''
+    this.spectralReversed = null
+    this.emit()
+    if (this.playing && this.spectral.enabled) void this.play()
+  }
+
+  setSpectralCrossovers(hz: readonly number[]): void {
+    const sampleRate = this.buffer?.sampleRate ?? 44100
+    const crossoversHz = clampCrossovers(hz, sampleRate)
+    if (
+      crossoversHz.length === this.spectral.crossoversHz.length &&
+      crossoversHz.every((value, index) => value === this.spectral.crossoversHz[index])
+    ) {
+      return
+    }
+    const count = crossoversHz.length + 1
+    const bands =
+      this.spectral.bands.length === count
+        ? this.spectral.bands
+        : defaultSpectralBands(Array.from({ length: count }, (_, index) => this.spectral.bands[index]?.id ?? `band-${index + 1}`))
+    this.spectral = { ...this.spectral, crossoversHz, bands }
+    this.spectralKey = ''
+    this.spectralBandsPcm = null
+    this.spectralReady = false
+    if (this.spectral.enabled) this.ensureSpectral(false)
+    this.emit()
+  }
+
+  setSpectralAnalyser(analyser: 'sum' | string): void {
+    const known = analyser === 'sum' || this.spectral.bands.some((band) => band.id === analyser)
+    const next = known ? analyser : 'sum'
+    if (this.spectral.analyser === next) return
+    this.spectral = { ...this.spectral, analyser: next }
+    this.emit()
+  }
+
+  replaceSpectral(state: SpectralState): void {
+    const next = cloneSpectralState(state)
+    if (spectralStatesEqual(this.spectral, next) && this.spectralReady === next.enabled) return
+    this.spectral = next
+    this.spectralMix = null
+    this.spectralMixKey = ''
+    this.spectralKey = ''
+    this.spectralBandsPcm = null
+    this.spectralReady = false
+    if (next.enabled) this.ensureSpectral(true)
+    else {
+      this.spectralJob += 1
+      this.spectralComputing = false
+    }
+    this.emit()
+    if (this.playing) void this.play()
+  }
+
+  /** Mono mix of one decomposed band. Null until the split is ready. */
+  spectralBandMono(id: string): Float32Array | null {
+    if (!this.spectral.enabled) return null
+    this.ensureSpectral(false)
+    const cached = this.spectralMono.get(id)
+    if (cached) return cached
+    const index = this.spectral.bands.findIndex((band) => band.id === id)
+    const channels = index >= 0 ? this.spectralBandsPcm?.[index] : null
+    if (!channels || channels.length === 0) return null
+    const mono = mixToMonoChannel(channels)
+    this.spectralMono.set(id, mono)
+    return mono
+  }
+
+  spectralLaneSamples(): { id: string; samples: Float32Array; dim: boolean }[] | null {
+    if (!this.spectral.enabled || !this.spectralReady || !this.spectralBandsPcm) return null
+    const soloing = this.spectral.bands.some((band) => band.solo)
+    return this.spectral.bands.map((band) => ({
+      id: band.id,
+      samples: this.spectralBandMono(band.id) ?? new Float32Array(),
+      dim: band.mute || (soloing && !band.solo),
+    }))
+  }
+
+  /** Working audio the transport and export actually play. */
+  audibleChannel(index: number): Float32Array | null {
+    const buffer = this.audibleForwardBuffer()
+    if (!buffer || index < 0 || index >= buffer.numberOfChannels) return null
+    return buffer.getChannelData(index)
+  }
+
+  spectralReconstruction(): ReconstructionReport | null {
+    if (!this.buffer || !this.spectral.enabled) return null
+    this.ensureSpectral(true)
+    if (!this.spectralBandsPcm) return null
+    const original = this.buffer.getChannelData(0)
+    const sum = mixBandChannels(this.spectralBandsPcm, this.spectralBandsPcm.map(() => 1))[0]
+    if (!sum) return null
+    return reconstructionError(original, sum)
   }
 
   getAnalyser(
@@ -1940,7 +2093,8 @@ export class AudioEngine {
     settings: ExportSettings,
     onProgress?: (phase: ExportProgressPhase) => void,
   ): Promise<{ filename: string; blob: Blob; duration: number } | null> {
-    const buffer = this.buffer ?? this.sourceBuffer
+    if (this.spectral.enabled) this.ensureSpectral(true)
+    const buffer = this.audibleForwardBuffer() ?? this.sourceBuffer
     if (!buffer) return null
     const scope = settings.scope ?? 'project'
     const clock = this.workingExportClock(buffer.duration)
@@ -3199,19 +3353,99 @@ export class AudioEngine {
     return rev
   }
 
+  private spectralCacheKey(): string {
+    const buffer = this.buffer
+    if (!buffer) return ''
+    return `${this.bufferRev}|${buffer.sampleRate}|${buffer.length}|${buffer.numberOfChannels}|${this.spectral.crossoversHz.join(',')}`
+  }
+
+  private ensureSpectral(sync: boolean): void {
+    if (!this.spectral.enabled || !this.buffer) {
+      this.spectralReady = false
+      this.spectralComputing = false
+      return
+    }
+    const key = this.spectralCacheKey()
+    if (this.spectralKey === key && this.spectralBandsPcm) {
+      this.spectralReady = true
+      this.spectralComputing = false
+      return
+    }
+    if (!sync && this.spectralPendingKey === key) return
+    const sampleRate = this.buffer.sampleRate
+    const crossovers = this.spectral.crossoversHz.slice()
+    const channels = Array.from({ length: this.buffer.numberOfChannels }, (_, index) =>
+      Float32Array.from(this.buffer!.getChannelData(index)),
+    )
+    const heavy = (channels[0]?.length ?? 0) > 200_000
+    const apply = (split: Decomposition) => {
+      if (this.spectralCacheKey() !== key || !this.spectral.enabled) return
+      this.spectralKey = key
+      this.spectralPendingKey = ''
+      this.spectralBandsPcm = split.bands
+      this.spectralMono.clear()
+      this.spectralMix = null
+      this.spectralMixKey = ''
+      this.spectralReversed = null
+      this.spectralReady = true
+      this.spectralComputing = false
+      this.emit()
+      if (this.playing) void this.play()
+    }
+    if (heavy && !sync) {
+      this.spectralReady = false
+      this.spectralComputing = true
+      this.spectralPendingKey = key
+      const job = ++this.spectralJob
+      setTimeout(() => {
+        if (job !== this.spectralJob) return
+        apply(decomposeComplementary(channels, sampleRate, crossovers))
+      }, 0)
+      return
+    }
+    this.spectralJob += 1
+    this.spectralPendingKey = ''
+    apply(decomposeComplementary(channels, sampleRate, crossovers))
+  }
+
+  /** Original buffer, or the summed band mix when Spectral Bands is on. */
+  private audibleForwardBuffer(): AudioBuffer | null {
+    if (!this.spectral.enabled || !this.buffer) return this.buffer
+    this.ensureSpectral(false)
+    if (!this.spectralReady || !this.spectralBandsPcm || this.spectralKey !== this.spectralCacheKey()) return this.buffer
+    const gains = bandAudibleGains(this.spectral.bands)
+    const mixKey = `${this.spectralKey}|${gains.join(',')}`
+    if (this.spectralMix && this.spectralMixKey === mixKey) return this.spectralMix
+    const mixed = mixBandChannels(this.spectralBandsPcm, gains)
+    const buffer = this.bufferFromChannels(mixed, this.buffer.sampleRate)
+    if (!buffer) return this.buffer
+    this.spectralMix = buffer
+    this.spectralMixKey = mixKey
+    this.spectralReversed = null
+    return buffer
+  }
+
   private activeBuffer(): AudioBuffer | null {
-    return this.direction === 'reverse' && this.reversed ? this.reversed : this.buffer
+    const forward = this.audibleForwardBuffer()
+    if (!forward) return null
+    if (this.direction !== 'reverse') return forward
+    if (forward === this.buffer) return this.reversed
+    if (this.spectralReversed && this.spectralReversedOf === forward) return this.spectralReversed
+    this.spectralReversed = this.buildReversed(forward)
+    this.spectralReversedOf = forward
+    return this.spectralReversed
   }
 
   private buildPingPong(startSec: number, endSec: number): AudioBuffer | null {
-    if (!this.ctx || !this.buffer) return null
-    const sr = this.buffer.sampleRate
+    const source = this.audibleForwardBuffer()
+    if (!this.ctx || !source) return null
+    const sr = source.sampleRate
     const s = Math.floor(startSec * sr)
     const e = Math.floor(endSec * sr)
     const len = Math.max(2, (e - s) * 2)
-    const pp = this.ctx.createBuffer(this.buffer.numberOfChannels, len, sr)
-    for (let ch = 0; ch < this.buffer.numberOfChannels; ch++) {
-      pp.getChannelData(ch).set(pingPongChannel(this.buffer.getChannelData(ch), s, e))
+    const pp = this.ctx.createBuffer(source.numberOfChannels, len, sr)
+    for (let ch = 0; ch < source.numberOfChannels; ch++) {
+      pp.getChannelData(ch).set(pingPongChannel(source.getChannelData(ch), s, e))
     }
     return pp
   }
@@ -5043,6 +5277,11 @@ export class AudioEngine {
       tempoSource: this.tempoSource,
       tapCount: this.tapTempoState.times.length,
       tempoNotice: this.tempoNotice,
+      spectral: {
+        ...cloneSpectralState(this.spectral),
+        ready: this.spectralReady,
+        computing: this.spectralComputing,
+      },
     }
   }
 
