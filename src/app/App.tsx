@@ -37,6 +37,7 @@ import { automationEqual, cloneAutomation, EMPTY_AUTOMATION_FOCUS, type Automati
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
+import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../sensory/colorSound'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import styles from './App.module.css'
 
@@ -51,6 +52,7 @@ type Hist = {
   fadeOutBend: number
   layer: 'region' | 'sensory' | 'dsp'
   sensory?: SensoryValues
+  colorSound?: ColorSound
   dsp?: DspSnapshot
   sensoryBase?: DspSnapshot
   automation: AutomationDocument
@@ -71,7 +73,7 @@ function histKey(
   chain: { instanceId: string }[],
   edit: Pick<EditState, 'fadeIn' | 'fadeOut' | 'fadeCurve' | 'fadeInBend' | 'fadeOutBend'>,
   automation: AutomationDocument,
-  extra?: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'>,
+  extra?: Pick<Hist, 'layer' | 'sensory' | 'colorSound' | 'dsp' | 'sensoryBase'>,
 ): Hist {
   return {
     start,
@@ -84,6 +86,7 @@ function histKey(
     fadeOutBend: edit.fadeOutBend,
     layer: extra?.layer ?? 'region',
     sensory: extra?.sensory,
+    colorSound: extra?.colorSound ? { ...extra.colorSound } : undefined,
     dsp: extra?.dsp ? cloneDsp(extra.dsp) : undefined,
     sensoryBase: extra?.sensoryBase ? cloneDsp(extra.sensoryBase) : undefined,
     automation: cloneAutomation(automation),
@@ -107,7 +110,7 @@ function histEqual(a: Hist, b: Hist): boolean {
   }
   if (a.layer === 'sensory' || b.layer === 'sensory') {
     if (!a.sensory || !b.sensory) return false
-    return sensoryValuesEqual(a.sensory, b.sensory)
+    return sensoryValuesEqual(a.sensory, b.sensory) && colorSoundsEqual(a.colorSound ?? NEUTRAL_COLOR_SOUND, b.colorSound ?? NEUTRAL_COLOR_SOUND)
   }
   if ((a.layer === 'dsp' || b.layer === 'dsp') && a.dsp && b.dsp) {
     return dspSnapshotsEqual(a.dsp, b.dsp)
@@ -146,6 +149,7 @@ export default function App() {
       histKey(0, 1, [], DEFAULT_EDIT, engine.getSnapshot().automation, {
         layer: 'region',
         sensory: defaultSensoryValues(),
+        colorSound: NEUTRAL_COLOR_SOUND,
         dsp: captureDsp(engine),
         sensoryBase: captureDsp(engine),
       }),
@@ -153,8 +157,10 @@ export default function App() {
   )
   const [uiMode, setUiMode] = useState<UiMode | null>(() => readStoredUiMode())
   const [sensory, setSensory] = useState(defaultSensoryValues)
+  const [colorSound, setColorSound] = useState<ColorSound>(NEUTRAL_COLOR_SOUND)
   const [moodLabel, setMoodLabel] = useState<string | null>(null)
   const sensoryRef = useRef(sensory)
+  const colorRef = useRef(colorSound)
   const sensoryBaseRef = useRef<DspSnapshot>(captureDsp(engine))
   const appliedRef = useRef<DspSnapshot>(captureDsp(engine))
   const editRef = useRef(edit)
@@ -173,6 +179,9 @@ export default function App() {
   useEffect(() => {
     sensoryRef.current = sensory
   }, [sensory])
+  useEffect(() => {
+    colorRef.current = colorSound
+  }, [colorSound])
 
   useEffect(() => {
     const onFocusIn = (event: FocusEvent) => {
@@ -272,11 +281,12 @@ export default function App() {
     const e = editRef.current
     const current = engine.getSnapshot()
     const resolved: Hist['layer'] = uiModeRef.current === 'simple' && layer === 'region' ? 'dsp' : layer
-    const extra: Pick<Hist, 'layer' | 'sensory' | 'dsp' | 'sensoryBase'> =
+    const extra: Pick<Hist, 'layer' | 'sensory' | 'colorSound' | 'dsp' | 'sensoryBase'> =
       resolved === 'sensory'
         ? {
             layer: resolved,
             sensory: { ...sensoryRef.current },
+            colorSound: { ...colorRef.current },
             dsp: captureDsp(engine),
             sensoryBase: cloneDsp(sensoryBaseRef.current),
           }
@@ -307,6 +317,11 @@ export default function App() {
       sensoryRef.current = present.sensory
       setSensory(present.sensory)
     }
+    if (present.layer === 'sensory' || present.colorSound) {
+      const color = present.colorSound ?? NEUTRAL_COLOR_SOUND
+      colorRef.current = color
+      setColorSound(color)
+    }
     if (present.sensoryBase) sensoryBaseRef.current = cloneDsp(present.sensoryBase)
   }
   useEffect(() => {
@@ -316,7 +331,13 @@ export default function App() {
   const applySensoryValues = (next: SensoryValues) => {
     sensoryRef.current = next
     setSensory(next)
-    appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, next)
+    appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, next, colorRef.current)
+  }
+
+  const applyColorSoundValue = (next: ColorSound) => {
+    colorRef.current = next
+    setColorSound(next)
+    appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, sensoryRef.current, next)
   }
 
   const applyPlayback = (patch: { speed?: number; pitch?: number }) => {
@@ -340,6 +361,8 @@ export default function App() {
       const rest = defaultSensoryValues()
       sensoryRef.current = rest
       setSensory(rest)
+      colorRef.current = NEUTRAL_COLOR_SOUND
+      setColorSound(NEUTRAL_COLOR_SOUND)
       setMoodLabel(null)
     }
   }
@@ -724,6 +747,8 @@ export default function App() {
           onMode={chooseMode}
           values={sensory}
           onValues={applySensoryValues}
+          color={colorSound}
+          onColor={applyColorSoundValue}
           onCommitSensory={() => commit('sensory')}
           onPlayback={applyPlayback}
           moodLabel={moodLabel}

@@ -4,8 +4,22 @@ import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
+import type { ColorSound } from '../colorSound'
+import { colorSoundAmount, colorSoundRgb } from '../colorSound'
 import type { SensorySceneId } from '../sensoryScene'
 import { paintSoundRange } from '../visualization/paintSoundRange'
+import {
+  advanceDepthClock,
+  approachMotionGain,
+  approachUnit,
+  depthTravelers,
+  energyFromFrequency,
+  motionTarget,
+  STILL_DEPTH_ENERGY,
+  stillDepthTravelers,
+  transientAmount,
+  type AudioDepthEnergy,
+} from '../visualization/depthField'
 import {
   NEUTRAL_PLAYBACK,
   advancePitchPhase,
@@ -44,6 +58,7 @@ type Props = {
   visual: SensoryVisualState
   contentRev: number
   scene: SensorySceneId
+  color: ColorSound
   onTogglePlay: () => void
   onLoadDemo: () => void
   onRegionCommit: () => void
@@ -91,6 +106,7 @@ export function SoundRange({
   visual,
   contentRev,
   scene,
+  color,
   onTogglePlay,
   onLoadDemo,
   onRegionCommit,
@@ -99,8 +115,15 @@ export function SoundRange({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const visualRef = useRef(visual)
   const shownRef = useRef(visual)
+  const colorRef = useRef(color)
   const playbackRef = useRef<PlaybackVisual>(NEUTRAL_PLAYBACK)
   const pitchPhaseRef = useRef(0)
+  const motionRef = useRef(0)
+  const clockRef = useRef(0)
+  const motionMsRef = useRef(0)
+  const energyRef = useRef<AudioDepthEnergy>(STILL_DEPTH_ENERGY)
+  const levelRef = useRef(0)
+  const freqRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
   const drag = useRef<{
     pointerId: number
     originFrac: number
@@ -113,6 +136,10 @@ export function SoundRange({
   useEffect(() => {
     visualRef.current = visual
   }, [visual])
+
+  useEffect(() => {
+    colorRef.current = color
+  }, [color])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -133,6 +160,36 @@ export function SoundRange({
       const dt = lastStamp === 0 ? 16 : Math.min(100, now - lastStamp)
       lastStamp = now
       const snap = engine.getSnapshot()
+      motionRef.current = approachMotionGain(motionRef.current, snap.playing, dt, reduced)
+      let measured = STILL_DEPTH_ENERGY
+      if (snap.playing) {
+        const analyser = engine.getAnalyser('post')
+        if (analyser) {
+          const bins = analyser.frequencyBinCount
+          if (!freqRef.current || freqRef.current.length !== bins) freqRef.current = new Uint8Array(new ArrayBuffer(bins))
+          analyser.getByteFrequencyData(freqRef.current)
+          const rate = analyser.context.sampleRate
+          const partial = energyFromFrequency(freqRef.current, rate, analyser.fftSize)
+          measured = {
+            bass: partial.bass,
+            high: partial.high,
+            transient: transientAmount(levelRef.current, partial.level),
+          }
+          levelRef.current = partial.level
+        }
+      } else {
+        levelRef.current = approachUnit(levelRef.current, 0, dt, 140)
+      }
+      const energy = energyRef.current
+      energyRef.current = {
+        bass: approachUnit(energy.bass, measured.bass, dt, 170),
+        high: approachUnit(energy.high, measured.high, dt, 90),
+        transient: approachUnit(energy.transient, measured.transient, dt, 80),
+      }
+      if (!reduced) {
+        clockRef.current = advanceDepthClock(clockRef.current, dt / 1000, motionRef.current, energyRef.current)
+        motionMsRef.current += dt * motionRef.current
+      }
       const playbackTarget = playbackVisualFromEngine(snap.params.speed, snap.params.pitch)
       playbackRef.current = approachPlaybackVisual(
         playbackRef.current,
@@ -148,7 +205,8 @@ export function SoundRange({
       const playback = playbackRef.current
       const pitchLive = !reduced && Math.abs(playback.pitchFeel) > 0.004
       const settling = !playbackVisualSettled(playback, playbackTarget)
-      const interval = settling || pitchLive ? 33 : paintIntervalMs(snap.playing)
+      const motionLive = Math.abs(motionRef.current - motionTarget(snap.playing, reduced)) > 0.035
+      const interval = settling || pitchLive || motionLive ? 33 : paintIntervalMs(snap.playing)
       if (now - lastPaint < interval) {
         frame = requestAnimationFrame(tick)
         return
@@ -156,6 +214,9 @@ export function SoundRange({
       lastPaint = now
       canvas.dataset.timeStretch = String(playback.timeStretch)
       canvas.dataset.pitchFeel = String(playback.pitchFeel)
+      canvas.dataset.motion = motionRef.current.toFixed(3)
+      canvas.dataset.bass = energyRef.current.bass.toFixed(3)
+      canvas.dataset.high = energyRef.current.high.toFixed(3)
       const target = visualRef.current
       shownRef.current = reduced ? target : lerpVisualState(shownRef.current, target, 0.085)
       const visual = shownRef.current
@@ -201,6 +262,8 @@ export function SoundRange({
           }
         }
         const specs = mountainLayerSpecs(visual.mass, visual.motion, visual.space, visual.haze)
+        const pad = colorRef.current
+        const accentAmount = colorSoundAmount(pad)
         paintSoundRange({
           ctx,
           width,
@@ -220,6 +283,11 @@ export function SoundRange({
           ridge: themeRidge(ink),
           playback,
           pitchPhase: pitchPhaseRef.current,
+          motionMs: reduced ? 0 : motionMsRef.current,
+          depthTravelers: reduced
+            ? stillDepthTravelers()
+            : depthTravelers(clockRef.current, motionRef.current, energyRef.current),
+          accent: accentAmount > 0.02 ? { rgb: colorSoundRgb(pad), amount: accentAmount } : null,
         })
       }
       frame = requestAnimationFrame(tick)

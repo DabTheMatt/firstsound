@@ -7,6 +7,7 @@ import { MORPH_GATE } from './mapping/morph'
 import type { DspSnapshot } from './mapping/mappingEngine'
 import { fxLfoSlotChanged, mapSensoryToDsp, snapshotFromEngine } from './mapping/mappingEngine'
 import { sensoryReverbJourney } from './mapping/reverbJourney'
+import { applyColorSound, NEUTRAL_COLOR_SOUND, type ColorSound } from './colorSound'
 import { withLivePlayback } from './playbackFeel'
 import type { SensoryAxisId } from './sensoryParameters'
 import { defaultSensoryValues, type SensoryValues } from './sensoryState'
@@ -88,9 +89,26 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
   }
 }
 
-export function applySensorySession(engine: AudioEngine, base: DspSnapshot, values: SensoryValues): DspSnapshot {
+const COLOR_MODULES = ['eq', 'filter', 'distortion', 'reverb'] as const
+
+/** Modules the color pad can open must close again when the mapping no longer asks for them. */
+function withRestBypass(dsp: DspSnapshot): DspSnapshot {
+  const bypass = { ...dsp.bypass }
+  for (const type of COLOR_MODULES) {
+    if (bypass[type] !== false) bypass[type] = true
+  }
+  return { ...dsp, bypass }
+}
+
+export function applySensorySession(
+  engine: AudioEngine,
+  base: DspSnapshot,
+  values: SensoryValues,
+  color: ColorSound = NEUTRAL_COLOR_SOUND,
+): DspSnapshot {
   const live = engine.getSnapshot().params
   const mapped = withLivePlayback(mapSensoryToDsp(base, values), live)
-  writeDsp(engine, mapped)
-  return mapped
+  const colored = withRestBypass(applyColorSound(mapped, color, values))
+  writeDsp(engine, colored)
+  return colored
 }

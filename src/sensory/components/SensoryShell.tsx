@@ -15,8 +15,10 @@ import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from
 import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import { useI18n } from '../../i18n'
+import type { ColorSound } from '../colorSound'
 import type { SensoryValues } from '../sensoryState'
 import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
+import { ColorSoundPad } from './ColorSoundPad'
 import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
 import { OverviewStrip } from './OverviewStrip'
@@ -49,6 +51,8 @@ type Props = {
   onMode: (mode: UiMode) => void
   values: SensoryValues
   onValues: (values: SensoryValues) => void
+  color: ColorSound
+  onColor: (color: ColorSound) => void
   onCommitSensory: () => void
   onPlayback: (patch: { speed?: number; pitch?: number }) => void
   moodLabel: string | null
@@ -78,6 +82,8 @@ export function SensoryShell({
   onMode,
   values,
   onValues,
+  color,
+  onColor,
   onCommitSensory,
   onPlayback,
   moodLabel: _moodLabel,
@@ -196,6 +202,7 @@ export function SensoryShell({
         visual={visual}
         contentRev={snap.bufferRev}
         scene={scene}
+        color={color}
         onTogglePlay={() => {
           void engine.unlock().then(() => engine.togglePlay())
         }}
@@ -243,6 +250,8 @@ export function SensoryShell({
         onCommit={onCommitSensory}
       />
       </div>
+
+      <ColorSoundPad color={color} onChange={onColor} onCommit={onCommitSensory} />
 
       <PlaybackFeel
         disabled={!snap.sampleLoaded}

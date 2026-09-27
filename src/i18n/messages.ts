@@ -331,6 +331,11 @@ export type Messages = {
     atmosphereNamed: (name: string) => string
     themes: string
     color: string
+    colorSoundAria: string
+    colorSoundRest: string
+    colorSoundRestAria: string
+    colorSoundLight: string
+    colorSoundDark: string
     places: string
     selectRegion: string
     overviewDrag: string
@@ -800,6 +805,11 @@ export const EN: Messages = {
     atmosphereNamed: (name) => `Atmosphere: ${name}`,
     themes: 'Themes',
     color: 'Color',
+    colorSoundAria: 'Sound color. Sideways changes the color, up and down changes light and dark. Double-click to rest.',
+    colorSoundRest: 'rest',
+    colorSoundRestAria: 'Return the sound color to rest',
+    colorSoundLight: 'light',
+    colorSoundDark: 'dark',
     places: 'Places',
     selectRegion: 'Drag the sound to slide it. Edges trim. Empty overview chooses a new fragment. Double-click to play.',
     overviewDrag: 'Drag the highlighted fragment to slide it. Drag empty space to choose a new one. Edges trim.',
@@ -1321,6 +1331,11 @@ export const PL: Messages = {
     atmosphereNamed: (name) => `Atmosfera: ${name}`,
     themes: 'Motywy',
     color: 'Kolor',
+    colorSoundAria: 'Kolor dźwięku. W bok zmienia barwę, w górę i w dół światło i cień. Podwójne kliknięcie wraca do spoczynku.',
+    colorSoundRest: 'spoczynek',
+    colorSoundRestAria: 'Wróć kolorem dźwięku do spoczynku',
+    colorSoundLight: 'jasno',
+    colorSoundDark: 'ciemno',
     places: 'Miejsca',
     selectRegion: 'Przeciągnij dźwięk, aby go przesunąć. Krawędzie przycinają. Puste miejsce w przeglądzie wybiera nowy fragment. Podwójne kliknięcie odtwarza.',
     overviewDrag: 'Przeciągnij podświetlony fragment, aby go przesunąć. Przeciągnij puste miejsce, aby wybrać nowy. Krawędzie przycinają.',
