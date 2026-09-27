@@ -25,6 +25,10 @@
   flex: 1 1 auto;
 }
 
+.display {
+  flex: none;
+}
+
 .view {
   flex: none;
   margin-left: auto;
@@ -43,13 +47,18 @@
   display: flex;
   align-items: center;
   gap: 1px;
-  overflow-x: auto;
-  scrollbar-width: none;
   min-width: 0;
 }
 
 .edit {
   flex: 1 1 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.views {
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .views {
@@ -148,6 +157,53 @@
   min-height: 28px;
   padding: 0 6px;
   color: var(--text-disabled);
+}
+
+.menuWrap {
+  position: relative;
+  flex: none;
+}
+
+.menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 188px;
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-panel-elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--bg-app) 55%, transparent);
+}
+
+.menuItem {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-align: left;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.menuItem:hover {
+  color: var(--text-primary);
+  background: var(--bg-control-hover);
+}
+
+.menuItem:disabled,
+.menuItem:disabled:hover {
+  opacity: 0.38;
+  color: var(--text-disabled);
+  background: transparent;
+  cursor: default;
 }
 
 .minimal {

@@ -74,6 +74,8 @@
   flex: none;
   min-width: 0;
   padding-bottom: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .chainBand {

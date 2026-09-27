@@ -22,7 +22,7 @@ import { CompactTransport, TransportExportButton } from '../components/transport
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
-import { WaveformToolbar } from '../components/waveform/WaveformToolbar'
+import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
 import { ModeGate } from '../modes/ModeGate'
@@ -371,6 +371,28 @@ export default function App() {
   const clearSelection = () => {
     if (!engine.clearSampleSelection()) return
     commit()
+  }
+
+  const copySelection = () => {
+    engine.copySampleSelection()
+  }
+
+  const cutSelection = () => {
+    const before = engine.captureSampleEdit()
+    if (!before || !engine.cutSampleSelection()) return
+    const after = engine.captureSampleEdit()
+    if (!after) return
+    pushSampleEdit(before, after)
+    waveRef.current?.fitSample()
+  }
+
+  const pasteAtPlayhead = () => {
+    const before = engine.captureSampleEdit()
+    if (!before || !engine.pasteAtPlayhead()) return
+    const after = engine.captureSampleEdit()
+    if (!after) return
+    pushSampleEdit(before, after)
+    waveRef.current?.fitSample()
   }
 
   const restorePresent = (present: Hist) => {
@@ -921,11 +943,7 @@ export default function App() {
           onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
           onZoomOut={() => waveRef.current?.zoomBy(1.4)}
           onView={(action) => {
-            if (action === 'fit-sample') waveRef.current?.fitSample()
-            if (action === 'zoom-selection') waveRef.current?.zoomSelection()
-            if (action === 'fit-selection') waveRef.current?.fitSelection()
-            if (action === 'normalize-view') setNormalizeView((n) => !n)
-            if (action === 'reset-zoom') waveRef.current?.resetZoom()
+            runDisplayAction(action, waveRef.current, () => setNormalizeView((n) => !n))
           }}
           onTrim={() => {
             void engine.trimPlayRegion().then((ok) => {
@@ -935,14 +953,24 @@ export default function App() {
               commit()
             })
           }}
+          onCopySelection={copySelection}
+          onCutSelection={cutSelection}
+          onPasteAtPlayhead={pasteAtPlayhead}
           onInsertSilence={insertSilence}
           onDeleteSelection={deleteSelection}
           onMuteSelection={muteSelection}
           onClearSelection={clearSelection}
+          onUndo={() => applyHistory(undoHistory(history))}
+          onRedo={() => applyHistory(redoHistory(history))}
           canInsertSilence={snap.canInsertSilence}
           canDeleteSelection={snap.canDeleteSelection}
           canMuteSelection={snap.canMuteSelection}
           canClearSelection={snap.canClearSelection}
+          canCopySelection={snap.canCopySelection}
+          canCutSelection={snap.canCutSelection}
+          canPaste={snap.canPaste}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
           onAutoFade={() => {
             setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
             commit()
@@ -979,6 +1007,9 @@ export default function App() {
               onRegionCommit={commit}
               onAutomationCommit={commit}
               onDeleteSelection={deleteSelection}
+              onCopySelection={copySelection}
+              onCutSelection={cutSelection}
+              onPasteAtPlayhead={pasteAtPlayhead}
               autoFocus={autoFocus}
               onAutoFocus={setAutoFocus}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}

@@ -1,5 +1,6 @@
 import 'node-web-audio-api/polyfill.js'
 import { describe, expect, it } from 'vitest'
+import { commitHistory, createHistory, redoHistory, undoHistory } from '../../app/history'
 import { AudioEngine } from './AudioEngine'
 import { PLAYHEAD_NUDGE_COARSE_SEC, PLAYHEAD_NUDGE_SEC } from './playheadNudge'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT } from './spectrumFft'
@@ -249,6 +250,187 @@ describe('mute selection', () => {
         }
       }
     }
+  })
+})
+
+describe('copy cut paste', () => {
+  it('copies without changing audio, then cuts and pastes as single undo steps', () => {
+    const engine = new AudioEngine()
+    const rate = 48000
+    const source = tone(2, rate, 0.5)
+    expect(engine.loadPcm(source, rate)).toBe(true)
+    engine.setScrubMode('sample')
+    engine.setRegion(0.1, 0.25)
+    engine.addAutomationNode(0.05, 0.2)
+    engine.addAutomationNode(0.4, 0.9)
+    const seeded = engine.captureSampleEdit()!
+    engine.restoreSamplePcm({
+      ...snapshotFromCapture(seeded),
+      transients: [0.02, 0.15, 0.4],
+    })
+    engine.setRegion(0.1, 0.25)
+    engine.replaceAutomation(seeded.automation)
+    const original = Float32Array.from(engine.getBuffer()!.getChannelData(0))
+    const before = engine.captureSampleEdit()!
+    expect(engine.getSnapshot().canCopySelection).toBe(true)
+    expect(engine.copySampleSelection()).toBe(true)
+    expect(engine.getBuffer()!.length).toBe(original.length)
+    expect(engine.getBuffer()!.getChannelData(0)[1000]).toBeCloseTo(original[1000]!, 6)
+    expect(engine.getBuffer()!.getChannelData(1)[1000]).toBeCloseTo(-0.25, 6)
+    expect(engine.getSnapshot().automation.lanes[0]!.nodes.map((node) => node.time)).toEqual([0.05, 0.4])
+    expect(engine.getSnapshot().transients).toEqual([0.02, 0.15, 0.4])
+    expect(engine.getSnapshot().canPaste).toBe(true)
+
+    expect(engine.cutSampleSelection()).toBe(true)
+    const cut = engine.getBuffer()!
+    const removed = Math.round(0.15 * rate)
+    expect(cut.numberOfChannels).toBe(2)
+    expect(cut.sampleRate).toBe(rate)
+    expect(cut.length).toBe(original.length - removed)
+    expect(cut.getChannelData(0)[Math.round(0.1 * rate)]).toBeCloseTo(original[Math.round(0.25 * rate)]!, 5)
+    expect(engine.getSnapshot().transients.map((time) => Number(time.toFixed(4)))).toEqual([0.02, 0.25])
+    const nodes = engine.getSnapshot().automation.lanes[0]!.nodes.map((node) => node.time)
+    expect(nodes).toContain(0.05)
+    expect(nodes.some((time) => Math.abs(time - 0.25) < 1e-4)).toBe(true)
+    expect(nodes.some((time) => Math.abs(time - 0.4) < 1e-3)).toBe(false)
+
+    const afterCut = engine.captureSampleEdit()!
+    type Step = { pcmId: number; length: number }
+    const eq = (a: Step, b: Step) => a.pcmId === b.pcmId
+    const beforeStep = { pcmId: snapshotFromCapture(before).id, length: original.length }
+    const afterStep = { pcmId: snapshotFromCapture(afterCut).id, length: cut.length }
+    let history = commitHistory(
+      { ...createHistory(beforeStep), present: beforeStep },
+      afterStep,
+      eq,
+    )
+    expect(history.past).toHaveLength(1)
+    history = undoHistory(history)
+    engine.restoreSamplePcm(snapshotFromCapture(before))
+    engine.setRegion(before.start, before.end)
+    engine.replaceAutomation(before.automation)
+    expect(engine.getBuffer()!.length).toBe(original.length)
+    expect(engine.getBuffer()!.getChannelData(0)[5000]).toBeCloseTo(original[5000]!, 6)
+    history = redoHistory(history)
+    engine.restoreSamplePcm(snapshotFromCapture(afterCut))
+    expect(engine.getBuffer()!.length).toBe(cut.length)
+    expect(history.present.length).toBe(cut.length)
+
+    engine.seekSeconds(0.1)
+    const beforePaste = engine.captureSampleEdit()!
+    expect(engine.pasteAtPlayhead()).toBe(true)
+    const restored = engine.getBuffer()!
+    expect(restored.length).toBe(original.length)
+    expect(restored.getChannelData(0)[5000]).toBeCloseTo(original[5000]!, 5)
+    expect(restored.getChannelData(1)[5000]).toBeCloseTo(-0.25, 5)
+    const pasteStep = { pcmId: snapshotFromCapture(engine.captureSampleEdit()!).id, length: restored.length }
+    const pasteHistory = commitHistory(
+      { ...createHistory({ pcmId: snapshotFromCapture(beforePaste).id, length: cut.length }), present: { pcmId: 1, length: cut.length } },
+      pasteStep,
+      eq,
+    )
+    expect(pasteHistory.past).toHaveLength(1)
+    expect(engine.getPlayheadSeconds()).toBeCloseTo(0.1, 4)
+  })
+
+  it('pastes at the beginning, middle, and end and shifts later automation and markers', () => {
+    for (const where of ['start', 'middle', 'end'] as const) {
+      const engine = new AudioEngine()
+      const rate = 48000
+      const source = tone(2, rate, 0.5)
+      expect(engine.loadPcm(source, rate)).toBe(true)
+      engine.setScrubMode('sample')
+      engine.setRegion(0.1, 0.2)
+      engine.addAutomationNode(0.05, 0.2)
+      engine.addAutomationNode(0.4, 0.9)
+      const seeded = engine.captureSampleEdit()!
+      engine.restoreSamplePcm({ ...snapshotFromCapture(seeded), transients: [0.02, 0.45] })
+      engine.setRegion(0.1, 0.2)
+      engine.replaceAutomation(seeded.automation)
+      expect(engine.copySampleSelection()).toBe(true)
+      const duration = engine.getBuffer()!.duration
+      const at = where === 'start' ? 0 : where === 'end' ? duration : 0.25
+      engine.seekSeconds(at)
+      const playhead = engine.getPlayheadSeconds()
+      const beforeLen = engine.getBuffer()!.length
+      expect(engine.pasteAtPlayhead()).toBe(true)
+      const pasted = engine.getBuffer()!
+      const clipFrames = Math.round(0.1 * rate)
+      const atFrame = Math.round(playhead * rate)
+      expect(pasted.numberOfChannels).toBe(2)
+      expect(pasted.sampleRate).toBe(rate)
+      expect(pasted.length).toBe(beforeLen + clipFrames)
+      expect(pasted.duration).toBeCloseTo(duration + clipFrames / rate, 5)
+      for (let i = 0; i < 8; i++) {
+        expect(pasted.getChannelData(0)[atFrame + i]).toBeCloseTo(0.4, 5)
+        expect(pasted.getChannelData(1)[atFrame + i]).toBeCloseTo(-0.25, 5)
+      }
+      if (atFrame > 0) expect(pasted.getChannelData(0)[0]).toBeCloseTo(source[0]![0]!, 5)
+      if (atFrame < beforeLen) expect(pasted.getChannelData(0)[atFrame + clipFrames]).toBeCloseTo(source[0]![atFrame]!, 5)
+      expect(engine.getPlayheadSeconds()).toBeCloseTo(atFrame / rate, 5)
+      const times = engine.getSnapshot().automation.lanes[0]!.nodes.map((node) => node.time)
+      expect(times).toContainEqual(expect.closeTo(0.05 >= playhead ? 0.15 : 0.05, 4))
+      expect(times).toContainEqual(expect.closeTo(0.4 >= playhead ? 0.5 : 0.4, 4))
+      const marks = engine.getSnapshot().transients
+      expect(marks[0]).toBeCloseTo(0.02 >= playhead ? 0.12 : 0.02, 4)
+      expect(marks[1]).toBeCloseTo(0.45 >= playhead ? 0.55 : 0.45, 4)
+    }
+  })
+
+  it('duplicates mono into stereo, mixes stereo into mono, and resamples to the destination rate', () => {
+    const monoToStereo = new AudioEngine()
+    expect(monoToStereo.loadPcm(tone(1, 48000, 0.2), 48000)).toBe(true)
+    monoToStereo.setScrubMode('sample')
+    monoToStereo.setRegion(0.05, 0.1)
+    expect(monoToStereo.copySampleSelection()).toBe(true)
+    expect(monoToStereo.loadPcm(tone(2, 48000, 0.2), 48000)).toBe(true)
+    monoToStereo.setScrubMode('sample')
+    monoToStereo.seekSeconds(0)
+    expect(monoToStereo.pasteAtPlayhead()).toBe(true)
+    const widened = monoToStereo.getBuffer()!
+    const clipFrames = Math.round(0.05 * 48000)
+    expect(widened.numberOfChannels).toBe(2)
+    expect(widened.getChannelData(0)[0]).toBeCloseTo(0.4, 5)
+    expect(widened.getChannelData(1)[0]).toBeCloseTo(0.4, 5)
+    expect(widened.getChannelData(1)[clipFrames]).toBeCloseTo(-0.25, 5)
+    expect(widened.length).toBe(Math.round(0.2 * 48000) + clipFrames)
+
+    const resampled = new AudioEngine()
+    expect(resampled.loadPcm(tone(2, 44100, 0.2), 44100)).toBe(true)
+    resampled.setRegion(0.02, 0.07)
+    expect(resampled.copySampleSelection()).toBe(true)
+    const copiedFrames = Math.round(0.07 * 44100) - Math.round(0.02 * 44100)
+    expect(resampled.loadPcm(tone(1, 48000, 0.3), 48000)).toBe(true)
+    resampled.setScrubMode('sample')
+    resampled.seekSeconds(0.1)
+    expect(resampled.getSnapshot().canPaste).toBe(true)
+    expect(resampled.pasteAtPlayhead()).toBe(true)
+    const mixed = resampled.getBuffer()!
+    const inserted = Math.round(copiedFrames * (48000 / 44100))
+    const at = Math.round(0.1 * 48000)
+    expect(mixed.numberOfChannels).toBe(1)
+    expect(mixed.sampleRate).toBe(48000)
+    expect(mixed.length).toBe(Math.round(0.3 * 48000) + inserted)
+    expect(inserted).not.toBe(copiedFrames)
+    expect(mixed.getChannelData(0)[0]).toBeCloseTo(0.4, 5)
+    expect(mixed.getChannelData(0)[at]).toBeCloseTo(0.075, 3)
+    expect(mixed.getChannelData(0)[at + inserted]).toBeCloseTo(0.4, 5)
+  })
+
+  it('refuses to cut the entire buffer and leaves the clipboard empty', () => {
+    const engine = new AudioEngine()
+    expect(engine.loadPcm(tone(1, 48000, 0.3), 48000)).toBe(true)
+    const duration = engine.getBuffer()!.duration
+    const length = engine.getBuffer()!.length
+    engine.setRegion(0, duration)
+    expect(engine.getSnapshot().canCopySelection).toBe(true)
+    expect(engine.getSnapshot().canCutSelection).toBe(false)
+    expect(engine.cutSampleSelection()).toBe(false)
+    expect(engine.getBuffer()!.length).toBe(length)
+    expect(engine.getSnapshot().canPaste).toBe(false)
+    expect(engine.copySampleSelection()).toBe(true)
+    expect(engine.getBuffer()!.length).toBe(length)
+    expect(engine.getSnapshot().canPaste).toBe(true)
   })
 })
 

@@ -3,10 +3,14 @@ import { commitHistory, createHistory, redoHistory, undoHistory } from '../../ap
 import { defaultAutomation } from '../automation/automation'
 import {
   canClearSampleSelection,
+  canCopySampleSelection,
   canDeleteSampleSelection,
   canMuteSampleSelection,
+  canPasteClipboard,
+  copyFrameRange,
   deleteFrameRange,
   deleteFrameSpan,
+  insertPcmAtFrame,
   muteFrameRange,
   muteFrameSpan,
   insertFrameForTime,
@@ -15,6 +19,10 @@ import {
   mapMarkerTimes,
   mapPlayhead,
   mapRange,
+  matchClipboardChannels,
+  prepareClipboardForDestination,
+  sampleEditRecordsHistory,
+  selectionFrameSpan,
   silenceFrameCount,
 } from './sampleEdit'
 
@@ -198,6 +206,90 @@ describe('mute selection', () => {
     expect(canMuteSampleSelection(0.2, 0.2, 48000, 48000)).toBe(false)
     expect(canMuteSampleSelection(0, 1, 48000, 48000)).toBe(true)
     expect(canDeleteSampleSelection(0, 1, 48000, 48000)).toBe(false)
+  })
+})
+
+describe('copy cut paste', () => {
+  it('copies exact frames on every channel and leaves the source untouched', () => {
+    const left = ramp(16, 1)
+    const right = ramp(16, -1)
+    const beforeLeft = Float32Array.from(left)
+    const span = selectionFrameSpan(0.25, 0.5, 32, 16)
+    expect(span).toEqual({ start: 8, end: 16 })
+    const copied = copyFrameRange([left, right], span!.start, span!.end)!
+    expect(copied).toHaveLength(2)
+    expect(Array.from(copied[0]!)).toEqual(Array.from(beforeLeft.subarray(8, 16)))
+    expect(Array.from(copied[1]!)).toEqual(Array.from(right.subarray(8, 16)))
+    copied[0]![0] = 99
+    expect(Array.from(left)).toEqual(Array.from(beforeLeft))
+    expect(canCopySampleSelection(0, 0.5, 32, 16)).toBe(true)
+    expect(selectionFrameSpan(0, 1, 100, 100)).toEqual({ start: 0, end: 100 })
+    expect(deleteFrameSpan(0, 1, 100, 100)).toBeNull()
+  })
+
+  it('inserts clipboard audio at the start, middle, and end without overwriting', () => {
+    const dest = ramp(10, 1)
+    const clip = new Float32Array([0.2, 0.4, 0.6])
+    for (const at of [0, 4, 10]) {
+      const next = insertPcmAtFrame([dest], at, [clip])!
+      expect(next[0]!.length).toBe(13)
+      expect(Array.from(next[0]!.subarray(0, at))).toEqual(Array.from(dest.subarray(0, at)))
+      expect(Array.from(next[0]!.subarray(at, at + 3))).toEqual(Array.from(clip))
+      expect(Array.from(next[0]!.subarray(at + 3))).toEqual(Array.from(dest.subarray(at)))
+    }
+  })
+
+  it('mixes stereo down and duplicates mono using the playback layout rules', () => {
+    const left = new Float32Array([1, 0.5])
+    const right = new Float32Array([-1, 0.5])
+    const mono = matchClipboardChannels([left, right], 1)!
+    expect(mono).toHaveLength(1)
+    expect(mono[0]![0]).toBeCloseTo(0)
+    expect(mono[0]![1]).toBeCloseTo(0.5)
+    const stereo = matchClipboardChannels([left], 2)!
+    expect(Array.from(stereo[0]!)).toEqual(Array.from(left))
+    expect(Array.from(stereo[1]!)).toEqual(Array.from(left))
+    const firstTwo = matchClipboardChannels([left, right, new Float32Array([0.25, 0.25])], 2)!
+    expect(Array.from(firstTwo[0]!)).toEqual(Array.from(left))
+    expect(Array.from(firstTwo[1]!)).toEqual(Array.from(right))
+    const same = matchClipboardChannels([left, right], 2)!
+    expect(Array.from(same[0]!)).toEqual(Array.from(left))
+    expect(Array.from(same[1]!)).toEqual(Array.from(right))
+  })
+
+  it('resamples clipboard audio to the destination rate instead of reusing the old frames', () => {
+    const frames = 441
+    const clip = {
+      sampleRate: 44100,
+      channels: [new Float32Array(frames).fill(0.5), new Float32Array(frames).fill(-0.25)],
+    }
+    const pasted = prepareClipboardForDestination(clip, 48000, 1)!
+    expect(pasted).toHaveLength(1)
+    expect(pasted[0]!.length).toBe(Math.round(frames * (48000 / 44100)))
+    expect(pasted[0]!.length).not.toBe(frames)
+    expect(pasted[0]!.length / 48000).toBeCloseTo(frames / 44100, 5)
+    expect(pasted[0]![0]).toBeCloseTo(0.125, 5)
+    expect(pasted[0]![pasted[0]!.length - 1]).toBeCloseTo(0.125, 5)
+    const sameRate = prepareClipboardForDestination(clip, 44100, 2)!
+    expect(sameRate[0]!.length).toBe(frames)
+    expect(sameRate[0]![10]).toBeCloseTo(0.5, 6)
+    expect(sameRate[1]![10]).toBeCloseTo(-0.25, 6)
+    expect(canPasteClipboard(clip, 48000, 100, 1)).toBe(true)
+    expect(canPasteClipboard(null, 48000, 100, 1)).toBe(false)
+  })
+
+  it('shifts later markers forward on paste and backward on cut', () => {
+    const paste = { kind: 'insert' as const, atSec: 0.4, deltaSec: 0.25 }
+    expect(mapMarkerTimes([0.1, 0.4, 0.9], paste)).toEqual([0.1, 0.65, 1.15])
+    const cut = { kind: 'delete' as const, startSec: 0.2, endSec: 0.5 }
+    expect(mapMarkerTimes([0.1, 0.3, 0.8], cut)).toEqual([0.1, 0.5])
+    expect(mapPlayhead(0.4, paste, 2)).toBeCloseTo(0.4)
+  })
+
+  it('records history for cut and paste only', () => {
+    expect(sampleEditRecordsHistory('copy')).toBe(false)
+    expect(sampleEditRecordsHistory('cut')).toBe(true)
+    expect(sampleEditRecordsHistory('paste')).toBe(true)
   })
 })
 

@@ -147,6 +147,17 @@ export type Messages = {
     muteSelectionCaption: string
     clearSelection: string
     clearSelectionCaption: string
+    copySelection: string
+    copyCaption: string
+    cutSelection: string
+    cutCaption: string
+    pastePlayhead: string
+    pasteCaption: string
+    moreEdits: string
+    moreEditsCaption: string
+    displayGroup: string
+    undo: string
+    redo: string
     fitSample: string
     fit: string
     fitSelection: string
@@ -614,6 +625,17 @@ export const EN: Messages = {
     muteSelectionCaption: 'Mute',
     clearSelection: 'Clear selection',
     clearSelectionCaption: 'Clear',
+    copySelection: 'Copy selection (Ctrl+C)',
+    copyCaption: 'Copy',
+    cutSelection: 'Cut selection (Ctrl+X)',
+    cutCaption: 'Cut',
+    pastePlayhead: 'Paste at playhead (Ctrl+V)',
+    pasteCaption: 'Paste',
+    moreEdits: 'More edits',
+    moreEditsCaption: 'More',
+    displayGroup: 'Display',
+    undo: 'Undo',
+    redo: 'Redo',
     fitSample: 'Fit sample',
     fit: 'Fit',
     fitSelection: 'Fit selection',
@@ -1166,6 +1188,17 @@ export const PL: Messages = {
     muteSelectionCaption: 'Wycisz',
     clearSelection: 'Wyczyść zaznaczenie',
     clearSelectionCaption: 'Czyść',
+    copySelection: 'Kopiuj zaznaczenie (Ctrl+C)',
+    copyCaption: 'Kopiuj',
+    cutSelection: 'Wytnij zaznaczenie (Ctrl+X)',
+    cutCaption: 'Wytnij',
+    pastePlayhead: 'Wklej przy głowicy (Ctrl+V)',
+    pasteCaption: 'Wklej',
+    moreEdits: 'Więcej edycji',
+    moreEditsCaption: 'Więcej',
+    displayGroup: 'Podgląd',
+    undo: 'Cofnij',
+    redo: 'Ponów',
     fitSample: 'Dopasuj sample',
     fit: 'Całość',
     fitSelection: 'Dopasuj zaznaczenie',
