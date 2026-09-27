@@ -1,3 +1,4 @@
+import { setAudioParamNow, setSmoothedAudioParam, type SmoothingProfile } from './paramSmooth'
 import {
   COMB_MAX_TEETH,
   EQ_MAX_BANDS,
@@ -205,15 +206,14 @@ function writeBiquadParam(
   value: number,
   now: number,
   immediate: boolean,
-  smoothing: number,
+  profile: SmoothingProfile,
 ): void {
   const next = Number.isFinite(value) ? value : 0
   if (immediate) {
-    param.cancelScheduledValues(now)
-    param.setValueAtTime(next, now)
+    setAudioParamNow(param, next, now)
     return
   }
-  param.setTargetAtTime(next, now, Math.max(0.003, smoothing))
+  setSmoothedAudioParam(param, next, now, profile)
 }
 
 /** Coefficient write shared by live anti-click commits and offline export. */
@@ -223,7 +223,7 @@ export function writeEqBandCoefficients(
   now: number,
   immediate: boolean,
   nyquist: number,
-  smoothing: number,
+  _smoothing: number,
 ): void {
   const active = Boolean(band && bandIsActive(band))
   const stages = active && band ? filterStageCount(band) : 0
@@ -239,9 +239,9 @@ export function writeEqBandCoefficients(
     const q = webAudioBiquadQ(band.type, stageQ(band, stage))
     const gainDb = bandUsesGain(band.type) ? stageGain : 0
     if (node.type !== band.type) node.type = band.type as BiquadFilterType
-    writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
-    writeBiquadParam(node.Q, q, now, immediate, smoothing)
-    writeBiquadParam(node.gain, gainDb, now, immediate, smoothing)
+    writeBiquadParam(node.frequency, hz, now, immediate, 'frequency')
+    writeBiquadParam(node.Q, q, now, immediate, 'q')
+    writeBiquadParam(node.gain, gainDb, now, immediate, 'db')
   }
 }
 
@@ -252,7 +252,7 @@ export function writeCombCoefficients(
   now: number,
   immediate: boolean,
   nyquist: number,
-  smoothing: number,
+  _smoothing: number,
 ): void {
   for (let i = 0; i < lane.comb.length; i++) {
     const node = lane.comb[i]
@@ -265,8 +265,8 @@ export function writeCombCoefficients(
     const hz = Math.min(tooth.frequency, nyquist * 0.99)
     const q = Math.min(20, Math.max(0.1, tooth.q))
     if (node.type !== 'peaking') node.type = 'peaking'
-    writeBiquadParam(node.frequency, hz, now, immediate, smoothing)
-    writeBiquadParam(node.Q, q, now, immediate, smoothing)
-    writeBiquadParam(node.gain, tooth.gain, now, immediate, smoothing)
+    writeBiquadParam(node.frequency, hz, now, immediate, 'frequency')
+    writeBiquadParam(node.Q, q, now, immediate, 'q')
+    writeBiquadParam(node.gain, tooth.gain, now, immediate, 'db')
   }
 }

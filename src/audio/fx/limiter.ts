@@ -1,6 +1,6 @@
 import { dbToGain } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
-import { setShaperCurve } from './shaperCurve'
+import { createClickSafeShaper, type ClickSafeShaper } from './shaperCurve'
 
 export type LimiterSettings = {
   inputGain: number
@@ -48,7 +48,7 @@ export const LIMITER_CURVE_POINTS = 2048
 
 export type LimiterGraph = {
   inputGain: GainNode
-  shaper: WaveShaperNode
+  shaper: ClickSafeShaper
   analyserPost: AnalyserNode
   curveKey: string
   lastSettings: LimiterSettings
@@ -84,7 +84,7 @@ export function limiterSettingsKey(s: LimiterSettings): string {
 
 export function createLimiterGraph(ctx: BaseAudioContext, input: AudioNode, wet: GainNode): LimiterGraph {
   const inputGain = ctx.createGain()
-  const shaper = ctx.createWaveShaper()
+  const shaper = createClickSafeShaper(ctx)
   shaper.oversample = '2x'
   const analyserPost = ctx.createAnalyser()
   analyserPost.fftSize = 2048
@@ -104,8 +104,8 @@ export function createLimiterGraph(ctx: BaseAudioContext, input: AudioNode, wet:
   input.connect(inputGain)
   // Drive stays inside the curve so peaks above 0 dBFS still follow limitSample.
   inputGain.gain.value = 1
-  inputGain.connect(shaper)
-  shaper.connect(analyserPost)
+  inputGain.connect(shaper.input)
+  shaper.output.connect(analyserPost)
   analyserPost.connect(wet)
   const keepAlive = ctx.createGain()
   keepAlive.gain.value = 0
@@ -121,10 +121,10 @@ export function createLimiterGraph(ctx: BaseAudioContext, input: AudioNode, wet:
   }
 }
 
-export function applyLimiterSettingsGraph(g: LimiterGraph, s: LimiterSettings): void {
+export function applyLimiterSettingsGraph(g: LimiterGraph, s: LimiterSettings, now = 0): void {
   const key = limiterSettingsKey(s)
   if (key === g.curveKey) return
-  setShaperCurve(g.shaper, key, makeLimiterTransferCurve(s))
+  g.shaper.setCurve(key, makeLimiterTransferCurve(s), now)
   g.curveKey = key
   g.lastSettings = s
 }
@@ -132,10 +132,10 @@ export function applyLimiterSettingsGraph(g: LimiterGraph, s: LimiterSettings): 
 export function applyLimiterGraph(
   g: LimiterGraph,
   params: Record<ParamId, number>,
-  _now: number,
+  now: number,
   _smoothing: number,
 ): void {
-  applyLimiterSettingsGraph(g, limiterBrickwallSettings(params))
+  applyLimiterSettingsGraph(g, limiterBrickwallSettings(params), now)
 }
 
 export function limiterReductionDb(g: LimiterGraph | null | undefined): number {

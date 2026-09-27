@@ -13,6 +13,8 @@ import type { ParamId } from '../parameters/types'
 import { anyFxLfoActive, defaultLfoHold, liveEqBandsFromParams, type FxLfoMap } from '../fx/lfo'
 import { applyFilterModulation, filterModNeedsClock, followerEnvelope } from '../fx/filter'
 import { applyDelayGraph, applyReverbGraph, buildReverbBuffer, reverbImpulseKey } from '../fx/graphs'
+import { convolverHasBuffer, setConvolverPairBuffer } from './convolverCrossfade'
+import { setAudioParamNow, setSmoothedAudioParam } from './paramSmooth'
 import type { DelayType, DistortionNoiseKind, DistortionType, ReverbType } from '../fx/types'
 import { combAsEqBands, defaultCombFilter, type CombFilterState } from './comb'
 import {
@@ -150,6 +152,16 @@ function eqStateFor(state: ProcessingSnapshot, instanceId: string): ExportEqStat
   )
 }
 
+/**
+ * The first control sample is still inaudible: snap so a bypassed wet path
+ * cannot leak. Later samples ramp, matching live knob / automation / LFO ticks.
+ */
+function setAudibleGain(param: AudioParam, value: number, now: number): void {
+  const target = value <= 1e-5 ? 0 : value
+  if (now <= 1e-6) setAudioParamNow(param, target, now)
+  else setSmoothedAudioParam(param, target, now, 'mix')
+}
+
 function scheduleEqLane(
   ctx: BaseAudioContext,
   lane: EqLane,
@@ -158,6 +170,7 @@ function scheduleEqLane(
   now: number,
   nyquist: number,
 ): void {
+  const immediate = now <= 1e-6
   const count = Math.max(lane.bands.length, bands.length)
   for (let i = 0; i < count; i++) {
     const path = lane.bands[i]
@@ -165,14 +178,14 @@ function scheduleEqLane(
     const band = bands[i]
     const active = Boolean(band && bandIsActive(band))
     ensureBandStages(ctx, path, active && band ? Math.max(1, filterStageCount(band)) : 1)
-    writeEqBandCoefficients(path, band, now, true, nyquist, 0)
-    setGainAt(path.wet.gain, active ? 1 : 0, now)
-    setGainAt(path.dry.gain, active ? 0 : 1, now)
+    writeEqBandCoefficients(path, band, now, immediate, nyquist, 0)
+    setAudibleGain(path.wet.gain, active ? 1 : 0, now)
+    setAudibleGain(path.dry.gain, active ? 0 : 1, now)
   }
   const teeth = comb.enabled ? combAsEqBands(comb) : []
-  writeCombCoefficients(lane, teeth, now, true, nyquist, 0)
-  setGainAt(lane.combWet.gain, teeth.length > 0 ? 1 : 0, now)
-  setGainAt(lane.combDry.gain, teeth.length > 0 ? 0 : 1, now)
+  writeCombCoefficients(lane, teeth, now, immediate, nyquist, 0)
+  setAudibleGain(lane.combWet.gain, teeth.length > 0 ? 1 : 0, now)
+  setAudibleGain(lane.combDry.gain, teeth.length > 0 ? 0 : 1, now)
 }
 
 function scheduleEq(
@@ -233,9 +246,9 @@ function scheduleChain(
       smoothing,
     )
   } else if (gainSlot) {
-    setGainAt(gainSlot.output.gain, dbToGain(params.gain), now)
+    setAudibleGain(gainSlot.output.gain, dbToGain(params.gain), now)
   }
-  if (outSlot) setGainAt(outSlot.output.gain, dbToGain(params.outputGain), now)
+  if (outSlot) setAudibleGain(outSlot.output.gain, dbToGain(params.outputGain), now)
   scheduleEq(ctx, slots, state, params, now)
   for (const slot of slots) {
     if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate)
@@ -259,9 +272,9 @@ function scheduleChain(
     if (slot.reverbFx) {
       applyReverbGraph(slot.reverbFx, params, state.reverbType, params.bpm, now, smoothing)
       const key = reverbImpulseKey(params, state.reverbType)
-      if (key !== irKey.current || !slot.reverbFx.conv.buffer) {
+      if (key !== irKey.current || !convolverHasBuffer(slot.reverbFx.conv)) {
         irKey.current = key
-        slot.reverbFx.conv.buffer = buildReverbBuffer(ctx, params, state.reverbType)
+        setConvolverPairBuffer(slot.reverbFx.conv, buildReverbBuffer(ctx, params, state.reverbType), now)
       }
     }
   }
@@ -272,14 +285,16 @@ function scheduleChain(
       eqListenFilters: false,
       spaceLatched: false,
     })
-    setGainAt(slot.dry.gain, mix.dry, now)
-    setGainAt(slot.wet.gain, mix.wet, now)
-    if (mod.type === 'delay' || mod.type === 'reverb') setGainAt(slot.output.gain, mix.output, now)
+    setAudibleGain(slot.dry.gain, mix.dry, now)
+    setAudibleGain(slot.wet.gain, mix.wet, now)
+    if (mod.type === 'delay' || mod.type === 'reverb') setAudibleGain(slot.output.gain, mix.output, now)
     if (mix.muteDelayChannels && slot.delayFx) {
-      setGainAt(slot.delayFx.chanDryL.gain, 0, now)
-      setGainAt(slot.delayFx.chanDryR.gain, 0, now)
-      setGainAt(slot.delayFx.chanWetL.gain, 1, now)
-      setGainAt(slot.delayFx.chanWetR.gain, 1, now)
+      // applyDelayGraph may already have opened the internal dry send.
+      // Close it on the same clock so that send cannot sit on the slot dry path.
+      setAudibleGain(slot.delayFx.chanDryL.gain, 0, now)
+      setAudibleGain(slot.delayFx.chanDryR.gain, 0, now)
+      setAudibleGain(slot.delayFx.chanWetL.gain, 1, now)
+      setAudibleGain(slot.delayFx.chanWetR.gain, 1, now)
     }
   }
 }

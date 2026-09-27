@@ -1,4 +1,5 @@
 import { dbToGain } from '../parameters/mapping'
+import { setSmoothedAudioParam } from '../engine/paramSmooth'
 import { webAudioBiquadQ } from '../engine/eqBands'
 import type { ParamId } from '../parameters/types'
 import {
@@ -10,14 +11,14 @@ import {
   type DistortionProcState,
 } from './distortion'
 import { distortionTypeProfile } from './distortionProfiles'
-import { setShaperCurve } from './shaperCurve'
+import { createClickSafeShaper, type ClickSafeShaper } from './shaperCurve'
 import type { DistortionNoiseKind, DistortionType } from './types'
 
 export type DistortionGraph = {
   hp: BiquadFilterNode
   lp: BiquadFilterNode
   pre: GainNode
-  shaper: WaveShaperNode
+  shaper: ClickSafeShaper
   proc: ScriptProcessorNode
   post: GainNode
   state: DistortionProcState
@@ -39,7 +40,7 @@ export function createDistortionGraph(
   lp.Q.value = webAudioBiquadQ('lowpass', 0.5)
   const pre = ctx.createGain()
   pre.gain.value = 1
-  const shaper = ctx.createWaveShaper()
+  const shaper = createClickSafeShaper(ctx)
   shaper.oversample = '2x'
   const proc = ctx.createScriptProcessor(256, 2, 2)
   const post = ctx.createGain()
@@ -64,8 +65,8 @@ export function createDistortionGraph(
   wet.connect(hp)
   hp.connect(lp)
   lp.connect(pre)
-  pre.connect(shaper)
-  shaper.connect(proc)
+  pre.connect(shaper.input)
+  shaper.output.connect(proc)
   proc.connect(post)
   post.connect(output)
   return { hp, lp, pre, shaper, proc, post, state, curveKey: '' }
@@ -86,7 +87,7 @@ export function applyDistortionGraph(
   type: DistortionType,
   noiseKind: DistortionNoiseKind,
   now: number,
-  smoothing: number,
+  _smoothing: number,
   sampleRate = 48000,
   noiseMuted = false,
   noiseFadeTauSec = 0.02,
@@ -95,15 +96,15 @@ export function applyDistortionGraph(
   const tone = toneToFilters(params.distortionTone)
   const hp = Math.max(profile.hp * 0.35, tone.hp)
   const lp = Math.min(profile.lp * 1.15, tone.lp)
-  g.hp.frequency.setTargetAtTime(hp, now, smoothing)
-  g.lp.frequency.setTargetAtTime(lp, now, smoothing)
+  setSmoothedAudioParam(g.hp.frequency, hp, now, 'frequency')
+  setSmoothedAudioParam(g.lp.frequency, lp, now, 'frequency')
   const drive = params.saturation / 100
   const bias = params.distortionBias / 100
   const key = `${type}:${drive.toFixed(3)}:${bias.toFixed(3)}`
   if (key !== g.curveKey) {
     g.curveKey = key
-    setShaperCurve(g.shaper, key, makeDistortionCurve(type, drive, bias))
     g.shaper.oversample = type === 'digital' || type === 'clip' || type === 'fold' ? '4x' : '2x'
+    g.shaper.setCurve(key, makeDistortionCurve(type, drive, bias), now)
   }
   g.state.bits = params.distortionBits
   g.state.hold = params.distortionDownsample
@@ -111,5 +112,5 @@ export function applyDistortionGraph(
   g.state.noiseSlew = noiseSlewCoeff(sampleRate, noiseFadeTauSec)
   g.state.noiseKind = noiseKind
   const out = dbToGain(params.distortionOutput)
-  g.post.gain.setTargetAtTime(out, now, smoothing)
+  setSmoothedAudioParam(g.post.gain, out, now, 'gain')
 }

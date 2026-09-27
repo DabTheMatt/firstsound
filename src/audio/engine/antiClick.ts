@@ -1,3 +1,5 @@
+import { rampAudioParamLinear } from './paramSmooth'
+
 /**
  * Shared transport / loop click guard.
  * Scheduled in output time so the ramp stays a few milliseconds at any
@@ -80,19 +82,14 @@ export function nextLoopSegment(
   }
 }
 
-/** Linear edge ramp on an AudioParam. Safe to call again: previous events are cleared. */
+/** Linear edge ramp on an AudioParam. Safe to call again: the previous tail is held, not snapped. */
 export function rampGainLinear(
   param: AudioParam,
   target: number,
   now: number,
   seconds: number,
 ): void {
-  const current = Number.isFinite(param.value) ? param.value : target
-  const dur = Math.max(0.001, seconds)
-  param.cancelScheduledValues(now)
-  param.setValueAtTime(current, now)
-  if (Math.abs(current - target) <= 1e-5) return
-  param.linearRampToValueAtTime(target, now + dur)
+  rampAudioParamLinear(param, target, now, Math.max(0.001, seconds))
 }
 
 /**

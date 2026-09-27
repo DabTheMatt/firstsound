@@ -31,7 +31,6 @@ export type ChainSlot = {
   dry: GainNode
   wet: GainNode
   eq?: EqGraph
-  shaper?: WaveShaperNode
   distortionFx?: DistortionGraph
   filterFx?: FilterGraph
   midSideFx?: MidSideGraph
@@ -95,7 +94,6 @@ export function createChainSlot(
   if (mod.type === 'distortion') {
     input.connect(wet)
     slot.distortionFx = createDistortionGraph(ctx, wet, output)
-    slot.shaper = slot.distortionFx.shaper
   }
   if (mod.type === 'delay') {
     input.connect(wet)
@@ -238,7 +236,7 @@ export function bypassBrokenScriptProcessor(slot: ChainSlot): void {
   const fx = slot.distortionFx
   if (!fx || scriptProcessorForwardsOffline()) return
   try {
-    fx.shaper.disconnect(fx.proc)
+    fx.shaper.output.disconnect(fx.proc)
   } catch {
     /* already rewired */
   }
@@ -248,7 +246,7 @@ export function bypassBrokenScriptProcessor(slot: ChainSlot): void {
     /* already disconnected */
   }
   fx.proc.onaudioprocess = null
-  fx.shaper.connect(fx.post)
+  fx.shaper.output.connect(fx.post)
 }
 
 /** Schedule a gain without reading AudioParam.value (offline clock stays at 0). */

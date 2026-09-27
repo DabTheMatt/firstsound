@@ -1,4 +1,5 @@
 import { forceMonoDiscrete, forceStereoDiscrete } from '../engine/stereoStage'
+import { setSmoothedAudioParam } from '../engine/paramSmooth'
 import { webAudioBiquadQ } from '../engine/eqBands'
 import type { ParamId } from '../parameters/types'
 import {
@@ -89,9 +90,9 @@ function eqBand(ctx: BaseAudioContext, type: BiquadFilterType, hz: number, q: nu
 }
 
 function snap(param: AudioParam, value: number, now: number): void {
-  param.cancelScheduledValues(now)
-  param.setValueAtTime(value, now)
-  param.value = value
+  // Solo, polarity, and routing are gains. Ramping them is the click-safe
+  // transition; the enum itself is never interpolated.
+  setSmoothedAudioParam(param, value, now, 'gain')
 }
 
 /** GainNode starts at 1. Neutral M/S is not "all gains open". */
@@ -360,7 +361,7 @@ export function applyMidSideGraph(
   g: MidSideGraph,
   params: Record<ParamId, number>,
   now: number,
-  smoothing: number,
+  _smoothing: number,
 ): void {
   const bal = msBalanceGains(params.msBalance)
   const solo = msSoloGains(params.msSoloMid, params.msSoloSide)
@@ -374,11 +375,11 @@ export function applyMidSideGraph(
   const delayLeft = msHaasDelayLeft(params.msHaasDir)
   const mono = params.msMono > 0.5
 
-  g.midGain.gain.setTargetAtTime(msLevelGain(params.msMidGain), now, smoothing)
-  g.sideGain.gain.setTargetAtTime(msLevelGain(params.msSideGain), now, smoothing)
-  g.width.gain.setTargetAtTime(msWidthGain(params.msWidth), now, smoothing)
-  g.midBal.gain.setTargetAtTime(bal.mid, now, smoothing)
-  g.sideBal.gain.setTargetAtTime(bal.side, now, smoothing)
+  setSmoothedAudioParam(g.midGain.gain, msLevelGain(params.msMidGain), now, 'gain')
+  setSmoothedAudioParam(g.sideGain.gain, msLevelGain(params.msSideGain), now, 'gain')
+  setSmoothedAudioParam(g.width.gain, msWidthGain(params.msWidth), now, 'gain')
+  setSmoothedAudioParam(g.midBal.gain, bal.mid, now, 'gain')
+  setSmoothedAudioParam(g.sideBal.gain, bal.side, now, 'gain')
   snap(g.midSolo.gain, solo.mid, now)
   snap(g.sideSolo.gain, solo.side, now)
   snap(g.midFlip.gain, msPolarity(params.msFlipMid), now)
@@ -386,47 +387,47 @@ export function applyMidSideGraph(
 
   snap(g.sideHpfDry.gain, hpf == null ? 1 : 0, now)
   snap(g.sideHpfWet.gain, hpf == null ? 0 : 1, now)
-  g.sideHpf.frequency.setTargetAtTime(hpf ?? MS_SIDE_HPF_MIN, now, smoothing)
+  setSmoothedAudioParam(g.sideHpf.frequency, hpf ?? MS_SIDE_HPF_MIN, now, 'frequency')
 
-  g.midLow.gain.setTargetAtTime(midTilt.lowDb, now, smoothing)
-  g.midHigh.gain.setTargetAtTime(midTilt.highDb, now, smoothing)
-  g.sideLow.gain.setTargetAtTime(sideTilt.lowDb, now, smoothing)
-  g.sideHigh.gain.setTargetAtTime(sideTilt.highDb, now, smoothing)
+  setSmoothedAudioParam(g.midLow.gain, midTilt.lowDb, now, 'gain')
+  setSmoothedAudioParam(g.midHigh.gain, midTilt.highDb, now, 'gain')
+  setSmoothedAudioParam(g.sideLow.gain, sideTilt.lowDb, now, 'gain')
+  setSmoothedAudioParam(g.sideHigh.gain, sideTilt.highDb, now, 'gain')
 
-  g.midEqLow.frequency.setTargetAtTime(msEqHz(params.msMidLowFreq, MS_EQ_LOW_HZ), now, smoothing)
-  g.midEqLow.gain.setTargetAtTime(msEqGainDb(params.msMidLowGain), now, smoothing)
-  g.midEqPeak.frequency.setTargetAtTime(msEqHz(params.msMidPeakFreq, MS_EQ_PEAK_HZ), now, smoothing)
-  g.midEqPeak.gain.setTargetAtTime(msEqGainDb(params.msMidPeakGain), now, smoothing)
-  g.midEqPeak.Q.setTargetAtTime(msEqQ(params.msMidPeakQ), now, smoothing)
-  g.midEqHigh.frequency.setTargetAtTime(msEqHz(params.msMidHighFreq, MS_EQ_HIGH_HZ), now, smoothing)
-  g.midEqHigh.gain.setTargetAtTime(msEqGainDb(params.msMidHighGain), now, smoothing)
+  setSmoothedAudioParam(g.midEqLow.frequency, msEqHz(params.msMidLowFreq, MS_EQ_LOW_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.midEqLow.gain, msEqGainDb(params.msMidLowGain), now, 'gain')
+  setSmoothedAudioParam(g.midEqPeak.frequency, msEqHz(params.msMidPeakFreq, MS_EQ_PEAK_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.midEqPeak.gain, msEqGainDb(params.msMidPeakGain), now, 'gain')
+  setSmoothedAudioParam(g.midEqPeak.Q, msEqQ(params.msMidPeakQ), now, 'q')
+  setSmoothedAudioParam(g.midEqHigh.frequency, msEqHz(params.msMidHighFreq, MS_EQ_HIGH_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.midEqHigh.gain, msEqGainDb(params.msMidHighGain), now, 'gain')
 
-  g.sideEqLow.frequency.setTargetAtTime(msEqHz(params.msSideLowFreq, MS_EQ_LOW_HZ), now, smoothing)
-  g.sideEqLow.gain.setTargetAtTime(msEqGainDb(params.msSideLowGain), now, smoothing)
-  g.sideEqPeak.frequency.setTargetAtTime(msEqHz(params.msSidePeakFreq, MS_EQ_PEAK_HZ), now, smoothing)
-  g.sideEqPeak.gain.setTargetAtTime(msEqGainDb(params.msSidePeakGain), now, smoothing)
-  g.sideEqPeak.Q.setTargetAtTime(msEqQ(params.msSidePeakQ), now, smoothing)
-  g.sideEqHigh.frequency.setTargetAtTime(msEqHz(params.msSideHighFreq, MS_EQ_HIGH_HZ), now, smoothing)
-  g.sideEqHigh.gain.setTargetAtTime(msEqGainDb(params.msSideHighGain), now, smoothing)
+  setSmoothedAudioParam(g.sideEqLow.frequency, msEqHz(params.msSideLowFreq, MS_EQ_LOW_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.sideEqLow.gain, msEqGainDb(params.msSideLowGain), now, 'gain')
+  setSmoothedAudioParam(g.sideEqPeak.frequency, msEqHz(params.msSidePeakFreq, MS_EQ_PEAK_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.sideEqPeak.gain, msEqGainDb(params.msSidePeakGain), now, 'gain')
+  setSmoothedAudioParam(g.sideEqPeak.Q, msEqQ(params.msSidePeakQ), now, 'q')
+  setSmoothedAudioParam(g.sideEqHigh.frequency, msEqHz(params.msSideHighFreq, MS_EQ_HIGH_HZ), now, 'frequency')
+  setSmoothedAudioParam(g.sideEqHigh.gain, msEqGainDb(params.msSideHighGain), now, 'gain')
 
-  g.rotLL.gain.setTargetAtTime(rot.ll, now, smoothing)
-  g.rotLR.gain.setTargetAtTime(rot.lr, now, smoothing)
-  g.rotRL.gain.setTargetAtTime(rot.rl, now, smoothing)
-  g.rotRR.gain.setTargetAtTime(rot.rr, now, smoothing)
+  setSmoothedAudioParam(g.rotLL.gain, rot.ll, now, 'gain')
+  setSmoothedAudioParam(g.rotLR.gain, rot.lr, now, 'gain')
+  setSmoothedAudioParam(g.rotRL.gain, rot.rl, now, 'gain')
+  setSmoothedAudioParam(g.rotRR.gain, rot.rr, now, 'gain')
 
-  g.xfKeepL.gain.setTargetAtTime(xf.keep, now, smoothing)
-  g.xfKeepR.gain.setTargetAtTime(xf.keep, now, smoothing)
-  g.xfCrossL.gain.setTargetAtTime(xf.cross, now, smoothing)
-  g.xfCrossR.gain.setTargetAtTime(xf.cross, now, smoothing)
+  setSmoothedAudioParam(g.xfKeepL.gain, xf.keep, now, 'gain')
+  setSmoothedAudioParam(g.xfKeepR.gain, xf.keep, now, 'gain')
+  setSmoothedAudioParam(g.xfCrossL.gain, xf.cross, now, 'gain')
+  setSmoothedAudioParam(g.xfCrossR.gain, xf.cross, now, 'gain')
 
-  g.delayL.delayTime.setTargetAtTime(delayLeft ? delaySec : 0, now, smoothing)
-  g.delayR.delayTime.setTargetAtTime(delayLeft ? 0 : delaySec, now, smoothing)
+  setSmoothedAudioParam(g.delayL.delayTime, delayLeft ? delaySec : 0, now, 'delayTime')
+  setSmoothedAudioParam(g.delayR.delayTime, delayLeft ? 0 : delaySec, now, 'delayTime')
   const leftWet = delayLeft ? haas.wet : 0
   const rightWet = delayLeft ? 0 : haas.wet
-  g.haasDryL.gain.setTargetAtTime(delayLeft ? haas.dry : 1, now, smoothing)
-  g.haasDryR.gain.setTargetAtTime(delayLeft ? 1 : haas.dry, now, smoothing)
-  g.haasWetL.gain.setTargetAtTime(leftWet, now, smoothing)
-  g.haasWetR.gain.setTargetAtTime(rightWet, now, smoothing)
+  setSmoothedAudioParam(g.haasDryL.gain, delayLeft ? haas.dry : 1, now, 'gain')
+  setSmoothedAudioParam(g.haasDryR.gain, delayLeft ? 1 : haas.dry, now, 'gain')
+  setSmoothedAudioParam(g.haasWetL.gain, leftWet, now, 'gain')
+  setSmoothedAudioParam(g.haasWetR.gain, rightWet, now, 'gain')
 
   snap(g.monoLL.gain, mono ? 0.5 : 1, now)
   snap(g.monoLR.gain, mono ? 0.5 : 0, now)

@@ -1,4 +1,5 @@
 import type { ParamId } from '../parameters/types'
+import { rampAudioParamLinear, setSmoothedAudioParam } from '../engine/paramSmooth'
 import { webAudioBiquadQ } from '../engine/eqBands'
 import {
   delayFeedbackGains,
@@ -22,7 +23,8 @@ import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStere
 import { reverbWetOutputGain } from './reverbLevel'
 import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
-import { setShaperCurve } from './shaperCurve'
+import { createClickSafeShaper, type ClickSafeShaper } from './shaperCurve'
+import { createConvolverPair, setConvolverPairBuffer, type ConvolverPair } from '../engine/convolverCrossfade'
 import { noteDivisionAt, noteKindAt, type DelayType, type ReverbType } from './types'
 
 const DELAY_MAX = 12
@@ -43,8 +45,8 @@ export type DelayGraph = {
   hpR: BiquadFilterNode
   lpL: BiquadFilterNode
   lpR: BiquadFilterNode
-  driveL: WaveShaperNode
-  driveR: WaveShaperNode
+  driveL: ClickSafeShaper
+  driveR: ClickSafeShaper
   duckAmt: GainNode
   pan: StereoPannerNode
   widthSide: GainNode
@@ -53,7 +55,7 @@ export type DelayGraph = {
   chanDryR: GainNode
   chanWetL: GainNode
   chanWetR: GainNode
-  reverse: ConvolverNode
+  reverse: ConvolverPair
   reverseMix: GainNode
   reverseDirect: GainNode
   allpass: BiquadFilterNode[]
@@ -86,7 +88,7 @@ export type ReverbGraph = {
   predelayR: DelayNode
   early: DelayNode
   earlyGain: GainNode
-  conv: ConvolverNode
+  conv: ConvolverPair
   tankFb: GainNode
   tankDelayL: DelayNode
   tankDelayR: DelayNode
@@ -95,7 +97,7 @@ export type ReverbGraph = {
   damp: BiquadFilterNode
   tiltLow: BiquadFilterNode
   tiltHigh: BiquadFilterNode
-  drive: WaveShaperNode
+  drive: ClickSafeShaper
   duckAmt: GainNode
   gate: DynamicsCompressorNode
   limit: DynamicsCompressorNode
@@ -202,8 +204,8 @@ export function createDelayGraph(
   const hpR = makeLoopFilter(ctx, 'highpass', 20)
   const lpL = makeLoopFilter(ctx, 'lowpass', 12000)
   const lpR = makeLoopFilter(ctx, 'lowpass', 12000)
-  const driveL = ctx.createWaveShaper()
-  const driveR = ctx.createWaveShaper()
+  const driveL = createClickSafeShaper(ctx)
+  const driveR = createClickSafeShaper(ctx)
   driveL.oversample = '2x'
   driveR.oversample = '2x'
   const duckAmt = ctx.createGain()
@@ -211,7 +213,7 @@ export function createDelayGraph(
   const pan = ctx.createStereoPanner()
   const out = ctx.createGain()
   out.gain.value = 1
-  const reverse = ctx.createConvolver()
+  const reverse = createConvolverPair(ctx, false)
   const reverseMix = ctx.createGain()
   reverseMix.gain.value = 0
   const reverseDirect = ctx.createGain()
@@ -273,21 +275,21 @@ export function createDelayGraph(
 
   delayL.connect(hpL)
   hpL.connect(lpL)
-  lpL.connect(driveL)
+  lpL.connect(driveL.input)
   delayR.connect(hpR)
   hpR.connect(lpR)
-  lpR.connect(driveR)
+  lpR.connect(driveR.input)
 
-  driveL.connect(fbL)
-  driveL.connect(pingToR)
-  driveR.connect(fbR)
-  driveR.connect(pingToL)
+  driveL.output.connect(fbL)
+  driveL.output.connect(pingToR)
+  driveR.output.connect(fbR)
+  driveR.output.connect(pingToL)
   fbL.connect(delayL)
   fbR.connect(delayR)
   pingToL.connect(delayL)
   pingToR.connect(delayR)
 
-  driveL.connect(pitchDelay)
+  driveL.output.connect(pitchDelay)
   pitchDelay.connect(pitchMixL)
   pitchDelay.connect(pitchMixR)
   pitchMixL.connect(delayL)
@@ -310,8 +312,8 @@ export function createDelayGraph(
   node.connect(diffWet)
   diffDry.connect(reverseDirect)
   diffWet.connect(reverseDirect)
-  freezeIn.connect(reverse)
-  reverse.connect(reverseMix)
+  freezeIn.connect(reverse.input)
+  reverse.output.connect(reverseMix)
   reverseDirect.connect(pan)
   reverseMix.connect(pan)
   const duckGain = ctx.createGain()
@@ -433,7 +435,7 @@ export function applyDelayGraph(
   type: DelayType,
   bpm: number,
   now: number,
-  smoothing: number,
+  _smoothing: number,
   ctx: BaseAudioContext,
 ): void {
   const stereo = isDelayStereo(params)
@@ -443,83 +445,83 @@ export function applyDelayGraph(
   const offset = stereo ? 0 : (params.delayOffset / 100) * time * 0.85
   const tL = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, timeL - offset))
   const tR = Math.min(DELAY_MAX - 0.05, Math.max(0.0008, timeR + offset))
-  g.delayL.delayTime.setTargetAtTime(tL, now, smoothing)
-  g.delayR.delayTime.setTargetAtTime(tR, now, smoothing)
-  g.tapA.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.5), now, smoothing)
-  g.tapB.delayTime.setTargetAtTime(Math.min(DELAY_MAX - 0.05, time * 0.75), now, smoothing)
+  setSmoothedAudioParam(g.delayL.delayTime, tL, now, 'delayTime')
+  setSmoothedAudioParam(g.delayR.delayTime, tR, now, 'delayTime')
+  setSmoothedAudioParam(g.tapA.delayTime, Math.min(DELAY_MAX - 0.05, time * 0.5), now, 'delayTime')
+  setSmoothedAudioParam(g.tapB.delayTime, Math.min(DELAY_MAX - 0.05, time * 0.75), now, 'delayTime')
   const taps = delayInputTapGains(type)
-  g.tapAGain.gain.setTargetAtTime(taps.tapA, now, smoothing)
-  g.tapBGain.gain.setTargetAtTime(taps.tapB, now, smoothing)
+  setSmoothedAudioParam(g.tapAGain.gain, taps.tapA, now, 'gain')
+  setSmoothedAudioParam(g.tapBGain.gain, taps.tapB, now, 'gain')
 
   const freeze = params.delayFreeze > 0.5
-  g.freezeIn.gain.setTargetAtTime(freeze ? 0.0001 : 1, now, smoothing)
+  setSmoothedAudioParam(g.freezeIn.gain, freeze ? 0.0001 : 1, now, 'gain')
   const loopType = stereo ? type : type === 'pingPong' ? 'digital' : type
   const fbR = stereo ? params.delayFeedbackR : params.delayFeedback
   const fb = delayFeedbackGains(params.delayFeedback, loopType, freeze, params.delayPitch, fbR)
   const mixL = delayChannelSendLevels(params, 'L', stereo)
   const mixR = delayChannelSendLevels(params, 'R', stereo)
   if (stereo) {
-    g.chanDryL.gain.setTargetAtTime(mixL.dry, now, smoothing)
-    g.chanDryR.gain.setTargetAtTime(mixR.dry, now, smoothing)
-    g.chanWetL.gain.setTargetAtTime(mixL.wet, now, smoothing)
-    g.chanWetR.gain.setTargetAtTime(mixR.wet, now, smoothing)
+    setSmoothedAudioParam(g.chanDryL.gain, mixL.dry, now, 'gain')
+    setSmoothedAudioParam(g.chanDryR.gain, mixR.dry, now, 'gain')
+    setSmoothedAudioParam(g.chanWetL.gain, mixL.wet, now, 'gain')
+    setSmoothedAudioParam(g.chanWetR.gain, mixR.wet, now, 'gain')
   } else {
-    g.chanDryL.gain.setTargetAtTime(0, now, smoothing)
-    g.chanDryR.gain.setTargetAtTime(0, now, smoothing)
-    g.chanWetL.gain.setTargetAtTime(1, now, smoothing)
-    g.chanWetR.gain.setTargetAtTime(1, now, smoothing)
+    setSmoothedAudioParam(g.chanDryL.gain, 0, now, 'gain')
+    setSmoothedAudioParam(g.chanDryR.gain, 0, now, 'gain')
+    setSmoothedAudioParam(g.chanWetL.gain, 1, now, 'gain')
+    setSmoothedAudioParam(g.chanWetR.gain, 1, now, 'gain')
   }
-  g.fbL.gain.setTargetAtTime(fb.fbL, now, smoothing)
-  g.fbR.gain.setTargetAtTime(fb.fbR, now, smoothing)
-  g.pingToL.gain.setTargetAtTime(fb.pingToL, now, smoothing)
-  g.pingToR.gain.setTargetAtTime(fb.pingToR, now, smoothing)
-  g.pitchMixL.gain.setTargetAtTime(loopType === 'pingPong' ? 0 : fb.pitchMix, now, smoothing)
-  g.pitchMixR.gain.setTargetAtTime(loopType === 'pingPong' ? fb.pitchMix : 0, now, smoothing)
+  setSmoothedAudioParam(g.fbL.gain, fb.fbL, now, 'gain')
+  setSmoothedAudioParam(g.fbR.gain, fb.fbR, now, 'gain')
+  setSmoothedAudioParam(g.pingToL.gain, fb.pingToL, now, 'gain')
+  setSmoothedAudioParam(g.pingToR.gain, fb.pingToR, now, 'gain')
+  setSmoothedAudioParam(g.pitchMixL.gain, loopType === 'pingPong' ? 0 : fb.pitchMix, now, 'gain')
+  setSmoothedAudioParam(g.pitchMixR.gain, loopType === 'pingPong' ? fb.pitchMix : 0, now, 'gain')
 
   const loop = delayLoopFilters(params.delayHp, params.delayLp, params.delayFeedback, type)
-  g.hpL.frequency.setTargetAtTime(loop.hp, now, smoothing)
-  g.hpR.frequency.setTargetAtTime(loop.hp, now, smoothing)
-  g.lpL.frequency.setTargetAtTime(loop.lp, now, smoothing)
-  g.lpR.frequency.setTargetAtTime(loop.lp, now, smoothing)
-  g.hpL.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
-  g.hpR.Q.setTargetAtTime(webAudioBiquadQ('highpass', loop.q), now, smoothing)
-  g.lpL.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
-  g.lpR.Q.setTargetAtTime(webAudioBiquadQ('lowpass', loop.q), now, smoothing)
+  setSmoothedAudioParam(g.hpL.frequency, loop.hp, now, 'frequency')
+  setSmoothedAudioParam(g.hpR.frequency, loop.hp, now, 'frequency')
+  setSmoothedAudioParam(g.lpL.frequency, loop.lp, now, 'frequency')
+  setSmoothedAudioParam(g.lpR.frequency, loop.lp, now, 'frequency')
+  setSmoothedAudioParam(g.hpL.Q, webAudioBiquadQ('highpass', loop.q), now, 'q')
+  setSmoothedAudioParam(g.hpR.Q, webAudioBiquadQ('highpass', loop.q), now, 'q')
+  setSmoothedAudioParam(g.lpL.Q, webAudioBiquadQ('lowpass', loop.q), now, 'q')
+  setSmoothedAudioParam(g.lpR.Q, webAudioBiquadQ('lowpass', loop.q), now, 'q')
   const driveKey = (params.delayDrive / 100).toFixed(4)
-  setShaperCurve(g.driveL, driveKey, makeDriveCurve(params.delayDrive / 100))
-  setShaperCurve(g.driveR, driveKey, makeDriveCurve(params.delayDrive / 100))
+  g.driveL.setCurve(driveKey, makeDriveCurve(params.delayDrive / 100), now)
+  g.driveR.setCurve(driveKey, makeDriveCurve(params.delayDrive / 100), now)
 
-  g.lfo.frequency.setTargetAtTime(params.delayModRate, now, smoothing)
-  g.lfoGain.gain.setTargetAtTime(delayModSeconds(time, params.delayModDepth / 100), now, smoothing)
-  g.wowGain.gain.setTargetAtTime(delayWowSeconds(time, params.delayWow / 100), now, smoothing)
-  g.flutterGain.gain.setTargetAtTime(delayFlutterSeconds(time, params.delayFlutter / 100), now, smoothing)
-  g.driftGain.gain.setTargetAtTime((params.delayDrift / 100) * time * 0.01, now, smoothing)
+  setSmoothedAudioParam(g.lfo.frequency, params.delayModRate, now, 'frequency')
+  setSmoothedAudioParam(g.lfoGain.gain, delayModSeconds(time, params.delayModDepth / 100), now, 'gain')
+  setSmoothedAudioParam(g.wowGain.gain, delayWowSeconds(time, params.delayWow / 100), now, 'gain')
+  setSmoothedAudioParam(g.flutterGain.gain, delayFlutterSeconds(time, params.delayFlutter / 100), now, 'gain')
+  setSmoothedAudioParam(g.driftGain.gain, (params.delayDrift / 100) * time * 0.01, now, 'gain')
 
-  g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.delayPan / 100)), now, smoothing)
-  g.widthSide.gain.setTargetAtTime(stereo ? sideGainFromWidth(params.delayWidth) : 0, now, smoothing)
-  g.duckAmt.gain.setTargetAtTime(-(params.delayDuck / 100) * 0.92, now, smoothing)
-  g.pitchLfo.frequency.setTargetAtTime(3 + Math.abs(params.delayPitch) * 0.35, now, smoothing)
-  g.pitchDepth.gain.setTargetAtTime(fb.pitchMix > 0.001 ? 0.01 : 0, now, smoothing)
+  setSmoothedAudioParam(g.pan.pan, Math.max(-1, Math.min(1, params.delayPan / 100)), now, 'pan')
+  setSmoothedAudioParam(g.widthSide.gain, stereo ? sideGainFromWidth(params.delayWidth) : 0, now, 'gain')
+  setSmoothedAudioParam(g.duckAmt.gain, -(params.delayDuck / 100) * 0.92, now, 'gain')
+  setSmoothedAudioParam(g.pitchLfo.frequency, 3 + Math.abs(params.delayPitch) * 0.35, now, 'frequency')
+  setSmoothedAudioParam(g.pitchDepth.gain, fb.pitchMix > 0.001 ? 0.01 : 0, now, 'gain')
 
-  g.out.gain.setTargetAtTime(1, now, smoothing)
+  setSmoothedAudioParam(g.out.gain, 1, now, 'gain')
   const reverseAmt = type === 'reverse' ? Math.max(params.delayReverse / 100, 0.7) : params.delayReverse / 100
-  g.reverseMix.gain.setTargetAtTime(reverseAmt * 0.55, now, smoothing)
-  g.reverseDirect.gain.setTargetAtTime(1 - reverseAmt * 0.45, now, smoothing)
+  setSmoothedAudioParam(g.reverseMix.gain, reverseAmt * 0.55, now, 'gain')
+  setSmoothedAudioParam(g.reverseDirect.gain, 1 - reverseAmt * 0.45, now, 'gain')
   if (reverseAmt > 0.05) {
     const key = `${time.toFixed(3)}:${params.delayFeedback.toFixed(0)}`
     if (g.reverseKey !== key) {
       g.reverseKey = key
       const ir = buildDelayReverseIr(ctx, time, params.delayFeedback)
-      if (ir) g.reverse.buffer = ir
+      if (ir) setConvolverPairBuffer(g.reverse, ir, now)
     }
   }
 
   const diff = Math.min(1, (type === 'diffuse' ? 0.4 : 0) + params.delayDiffusion / 100)
-  g.diffWet.gain.setTargetAtTime(diff * 0.55, now, smoothing)
-  g.diffDry.gain.setTargetAtTime(1 - diff * 0.25, now, smoothing)
+  setSmoothedAudioParam(g.diffWet.gain, diff * 0.55, now, 'gain')
+  setSmoothedAudioParam(g.diffDry.gain, 1 - diff * 0.25, now, 'gain')
   for (let i = 0; i < g.allpass.length; i++) {
-    g.allpass[i]!.Q.setTargetAtTime(0.3 + diff * 2.2, now, smoothing)
-    g.allpass[i]!.frequency.setTargetAtTime(400 + i * 700 + diff * 800, now, smoothing)
+    setSmoothedAudioParam(g.allpass[i]!.Q, 0.3 + diff * 2.2, now, 'q')
+    setSmoothedAudioParam(g.allpass[i]!.frequency, 400 + i * 700 + diff * 800, now, 'frequency')
   }
 }
 
@@ -566,9 +568,7 @@ export function createReverbGraph(
   const preMerge = ctx.createChannelMerger(2)
   const early = ctx.createDelay(0.25)
   const earlyGain = ctx.createGain()
-  const conv = ctx.createConvolver()
-  // Scale the IR in fillReverbImpulse. Browser normalize crushes long halls.
-  conv.normalize = false
+  const conv = createConvolverPair(ctx, false)
   const tankSplit = ctx.createChannelSplitter(2)
   const tankDelayL = ctx.createDelay(0.45)
   const tankDelayR = ctx.createDelay(0.45)
@@ -590,7 +590,7 @@ export function createReverbGraph(
   const tiltHigh = ctx.createBiquadFilter()
   tiltHigh.type = 'highshelf'
   tiltHigh.frequency.value = 4200
-  const drive = ctx.createWaveShaper()
+  const drive = createClickSafeShaper(ctx)
   drive.oversample = '2x'
   const duckAmt = ctx.createGain()
   duckAmt.gain.value = 0
@@ -634,25 +634,25 @@ export function createReverbGraph(
   predelayR.connect(preMerge, 0, 1)
   preMerge.connect(early)
   early.connect(earlyGain)
-  earlyGain.connect(conv)
-  preMerge.connect(conv)
-  conv.connect(tankSplit)
+  earlyGain.connect(conv.input)
+  preMerge.connect(conv.input)
+  conv.output.connect(tankSplit)
   tankSplit.connect(tankDelayL, 0)
   tankSplit.connect(tankDelayR, 1)
   tankDelayL.connect(tankMerge, 0, 0)
   tankDelayR.connect(tankMerge, 0, 1)
   tankMerge.connect(tankFb)
-  tankFb.connect(conv)
-  conv.connect(hp)
+  tankFb.connect(conv.input)
+  conv.output.connect(hp)
   hp.connect(lp)
   lp.connect(damp)
   damp.connect(tiltLow)
   tiltLow.connect(tiltHigh)
-  tiltHigh.connect(drive)
+  tiltHigh.connect(drive.input)
   tiltHigh.connect(shimmerDelay)
   shimmerDelay.connect(shimmerMix)
   shimmerMix.connect(pan)
-  drive.connect(gate)
+  drive.output.connect(gate)
   gate.connect(limit)
   limit.connect(pan)
   const duckGain = ctx.createGain()
@@ -775,7 +775,7 @@ export function applyReverbGraph(
   type: ReverbType,
   bpm: number,
   now: number,
-  smoothing: number,
+  _smoothing: number,
 ): void {
   const pre =
     params.reverbSync > 0.5
@@ -785,19 +785,19 @@ export function applyReverbGraph(
   const stereo = isReverbStereo(params)
   const basePre = Math.max(0.0002, pre + dist * 0.05)
   const offset = stereo ? (params.reverbOffset / 100) * basePre * 0.9 : 0
-  g.predelayL.delayTime.setTargetAtTime(Math.max(0.0002, basePre - offset), now, smoothing)
-  g.predelayR.delayTime.setTargetAtTime(Math.max(0.0002, Math.min(1.95, basePre + offset)), now, smoothing)
-  g.early.delayTime.setTargetAtTime(0.01 + dist * 0.035 + params.reverbSize / 3500, now, smoothing)
-  g.earlyGain.gain.setTargetAtTime((params.reverbEarly / 100) * 0.35 * (1 - dist * 0.3), now, smoothing)
+  setSmoothedAudioParam(g.predelayL.delayTime, Math.max(0.0002, basePre - offset), now, 'delayTime')
+  setSmoothedAudioParam(g.predelayR.delayTime, Math.max(0.0002, Math.min(1.95, basePre + offset)), now, 'delayTime')
+  setSmoothedAudioParam(g.early.delayTime, 0.01 + dist * 0.035 + params.reverbSize / 3500, now, 'delayTime')
+  setSmoothedAudioParam(g.earlyGain.gain, (params.reverbEarly / 100) * 0.35 * (1 - dist * 0.3), now, 'gain')
 
   const input = stereoInputMix(stereo ? params.reverbInput : 0)
-  g.inKeepL.gain.setTargetAtTime(input.keep, now, smoothing)
-  g.inKeepR.gain.setTargetAtTime(input.keep, now, smoothing)
-  g.inCrossL.gain.setTargetAtTime(input.cross, now, smoothing)
-  g.inCrossR.gain.setTargetAtTime(input.cross, now, smoothing)
+  setSmoothedAudioParam(g.inKeepL.gain, input.keep, now, 'gain')
+  setSmoothedAudioParam(g.inKeepR.gain, input.keep, now, 'gain')
+  setSmoothedAudioParam(g.inCrossL.gain, input.cross, now, 'gain')
+  setSmoothedAudioParam(g.inCrossR.gain, input.cross, now, 'gain')
 
   const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
-  g.freezeIn.gain.setTargetAtTime(freeze ? 0.05 : 1, now, smoothing)
+  setSmoothedAudioParam(g.freezeIn.gain, freeze ? 0.05 : 1, now, 'gain')
   const huge = type === 'cathedral' || type === 'largeHall' || type === 'cloud' || type === 'bloom' || type === 'infinite'
   const shimmerAmt = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100
   const loop = reverbLoopGains({
@@ -807,52 +807,52 @@ export function applyReverbGraph(
     huge,
     freeze,
   })
-  g.tankFb.gain.setTargetAtTime(loop.tank, now, smoothing)
-  g.tankDelayL.delayTime.setTargetAtTime(0.062 + params.reverbSize / 420, now, smoothing)
-  g.tankDelayR.delayTime.setTargetAtTime(0.089 + params.reverbSize / 310, now, smoothing)
+  setSmoothedAudioParam(g.tankFb.gain, loop.tank, now, 'gain')
+  setSmoothedAudioParam(g.tankDelayL.delayTime, 0.062 + params.reverbSize / 420, now, 'delayTime')
+  setSmoothedAudioParam(g.tankDelayR.delayTime, 0.089 + params.reverbSize / 310, now, 'delayTime')
 
-  g.hp.frequency.setTargetAtTime(params.reverbLowCut + dist * 80, now, smoothing)
-  g.lp.frequency.setTargetAtTime(params.reverbHighCut * (1 - dist * 0.15), now, smoothing)
-  g.damp.frequency.setTargetAtTime(params.reverbDamping, now, smoothing)
+  setSmoothedAudioParam(g.hp.frequency, params.reverbLowCut + dist * 80, now, 'frequency')
+  setSmoothedAudioParam(g.lp.frequency, params.reverbHighCut * (1 - dist * 0.15), now, 'frequency')
+  setSmoothedAudioParam(g.damp.frequency, params.reverbDamping, now, 'frequency')
   const color = params.reverbColor / 100
-  g.tiltLow.gain.setTargetAtTime(-color * 4, now, smoothing)
-  g.tiltHigh.gain.setTargetAtTime(color * 5, now, smoothing)
+  setSmoothedAudioParam(g.tiltLow.gain, -color * 4, now, 'gain')
+  setSmoothedAudioParam(g.tiltHigh.gain, color * 5, now, 'gain')
   const driveKey = (params.reverbDrive / 100).toFixed(4)
-  setShaperCurve(g.drive, driveKey, makeDriveCurve(params.reverbDrive / 100))
-  g.out.gain.setTargetAtTime(reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, smoothing)
+  g.drive.setCurve(driveKey, makeDriveCurve(params.reverbDrive / 100), now)
+  setSmoothedAudioParam(g.out.gain, reverbWetOutputGain(params.reverbOutput, params.reverbDecay), now, 'gain')
 
-  g.lfo.frequency.setTargetAtTime(params.reverbModRate, now, smoothing)
+  setSmoothedAudioParam(g.lfo.frequency, params.reverbModRate, now, 'frequency')
   const modSec = (params.reverbModDepth / 100) * (0.006 + basePre * 0.18)
-  g.lfoGain.gain.setTargetAtTime(modSec, now, smoothing)
-  g.lfoGainR.gain.setTargetAtTime(modSec, now, smoothing)
+  setSmoothedAudioParam(g.lfoGain.gain, modSec, now, 'gain')
+  setSmoothedAudioParam(g.lfoGainR.gain, modSec, now, 'gain')
 
-  g.duckAmt.gain.setTargetAtTime(-(params.reverbDuck / 100) * 0.9, now, smoothing)
+  setSmoothedAudioParam(g.duckAmt.gain, -(params.reverbDuck / 100) * 0.9, now, 'gain')
   let width = stereo ? params.reverbWidth : 0
   if (stereo && huge) width = Math.min(200, width * 1.06 + 6)
-  g.widthSide.gain.setTargetAtTime(sideGainFromWidth(width), now, smoothing)
-  g.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, params.reverbPan / 100)), now, smoothing)
+  setSmoothedAudioParam(g.widthSide.gain, sideGainFromWidth(width), now, 'gain')
+  setSmoothedAudioParam(g.pan.pan, Math.max(-1, Math.min(1, params.reverbPan / 100)), now, 'pan')
   const shimmer = shimmerAmt
-  g.shimmerMix.gain.setTargetAtTime(loop.shimmer, now, smoothing)
-  g.shimmerLfo.frequency.setTargetAtTime(5 + Math.abs(params.reverbShimmerPitch) * 0.4, now, smoothing)
-  g.shimmerDepth.gain.setTargetAtTime(shimmer > 0.02 ? 0.01 : 0, now, smoothing)
+  setSmoothedAudioParam(g.shimmerMix.gain, loop.shimmer, now, 'gain')
+  setSmoothedAudioParam(g.shimmerLfo.frequency, 5 + Math.abs(params.reverbShimmerPitch) * 0.4, now, 'frequency')
+  setSmoothedAudioParam(g.shimmerDepth.gain, shimmer > 0.02 ? 0.01 : 0, now, 'gain')
 
   const gateAmt = type === 'gated' ? Math.max(params.reverbGate / 100, 0.55) : params.reverbGate / 100
   if (gateAmt < 0.02) {
-    g.gate.threshold.setTargetAtTime(0, now, smoothing)
-    g.gate.ratio.setTargetAtTime(1, now, smoothing)
+    setSmoothedAudioParam(g.gate.threshold, 0, now, 'db')
+    setSmoothedAudioParam(g.gate.ratio, 1, now, 'gain')
   } else {
-    g.gate.threshold.setTargetAtTime(params.reverbGateThres, now, smoothing)
-    g.gate.ratio.setTargetAtTime(1 + gateAmt * 18, now, smoothing)
-    g.gate.attack.setTargetAtTime(params.reverbGateAttack / 1000, now, smoothing)
-    g.gate.release.setTargetAtTime(params.reverbGateRelease / 1000, now, smoothing)
-    g.gate.knee.setTargetAtTime(2, now, smoothing)
+    setSmoothedAudioParam(g.gate.threshold, params.reverbGateThres, now, 'db')
+    setSmoothedAudioParam(g.gate.ratio, 1 + gateAmt * 18, now, 'gain')
+    setSmoothedAudioParam(g.gate.attack, params.reverbGateAttack / 1000, now, 'time')
+    setSmoothedAudioParam(g.gate.release, params.reverbGateRelease / 1000, now, 'time')
+    setSmoothedAudioParam(g.gate.knee, 2, now, 'db')
   }
 
-  g.limit.threshold.setTargetAtTime(-1.5, now, smoothing)
-  g.limit.knee.setTargetAtTime(3, now, smoothing)
-  g.limit.ratio.setTargetAtTime(16, now, smoothing)
-  g.limit.attack.setTargetAtTime(0.002, now, smoothing)
-  g.limit.release.setTargetAtTime(0.08, now, smoothing)
+  setSmoothedAudioParam(g.limit.threshold, -1.5, now, 'db')
+  setSmoothedAudioParam(g.limit.knee, 3, now, 'db')
+  setSmoothedAudioParam(g.limit.ratio, 16, now, 'gain')
+  setSmoothedAudioParam(g.limit.attack, 0.002, now, 'time')
+  setSmoothedAudioParam(g.limit.release, 0.08, now, 'time')
 }
 
 export function wetDryFor(
@@ -868,8 +868,7 @@ export function wetDryFor(
 }
 
 function instantGain(param: AudioParam, now: number, value = 0): void {
-  param.cancelScheduledValues(now)
-  param.setValueAtTime(value, now)
+  rampAudioParamLinear(param, value, now, 0.005)
 }
 
 function stopOsc(node: OscillatorNode): void {

@@ -34,10 +34,10 @@ export const createCompressorGraph = createLimiterGraph
 export function applyCompressorGraph(
   g: CompressorGraph,
   params: Record<ParamId, number>,
-  _now: number,
+  now: number,
   _smoothing: number,
 ): void {
-  applyLimiterSettingsGraph(g, compressorSettings(params))
+  applyLimiterSettingsGraph(g, compressorSettings(params), now)
 }
 
 export const compressorReductionDb = limiterReductionDb

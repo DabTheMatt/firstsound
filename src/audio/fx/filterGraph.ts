@@ -1,4 +1,5 @@
 import type { ParamId } from '../parameters/types'
+import { setAudioParamNow, setSmoothedAudioParam } from '../engine/paramSmooth'
 import {
   combDelaySeconds,
   combFeedbackFromReso,
@@ -14,29 +15,44 @@ import {
   peakGainFromReso,
 } from './filter'
 import { webAudioBiquadQ } from '../engine/eqBands'
-import { setShaperCurve } from './shaperCurve'
+import { createClickSafeShaper, type ClickSafeShaper } from './shaperCurve'
 
 export type FilterGraph = {
   analyser: AnalyserNode
-  drive: WaveShaperNode
+  drive: ClickSafeShaper
   series: BiquadFilterNode[]
+  seriesB: BiquadFilterNode[]
   hpMorph: BiquadFilterNode[]
   bp: BiquadFilterNode
   combDelay: DelayNode
   combFb: GainNode
   combMix: GainNode
   seriesGain: GainNode
+  seriesGainB: GainNode
   bpGain: GainNode
   hpGain: GainNode
   sum: GainNode
   curveKey: string
+  seriesLive: 0 | 1
+  seriesTopo: string
+  seriesMix: number
 }
 
-function allpass(node: BiquadFilterNode, now: number, smoothing: number): void {
-  if (node.type !== 'allpass') node.type = 'allpass'
-  node.frequency.setTargetAtTime(1000, now, smoothing)
-  node.Q.setTargetAtTime(0.0001, now, smoothing)
-  node.gain.setTargetAtTime(0, now, smoothing)
+function makeSeries(ctx: BaseAudioContext): BiquadFilterNode[] {
+  const series: BiquadFilterNode[] = []
+  for (let i = 0; i < FILTER_STAGE_COUNT; i++) {
+    const node = ctx.createBiquadFilter()
+    node.type = 'lowpass'
+    series.push(node)
+  }
+  return series
+}
+
+function connectSeries(from: AudioNode, series: BiquadFilterNode[], gain: GainNode, sum: GainNode): void {
+  from.connect(series[0]!)
+  for (let i = 0; i < series.length - 1; i++) series[i]!.connect(series[i + 1]!)
+  series.at(-1)!.connect(gain)
+  gain.connect(sum)
 }
 
 function writeBiquad(
@@ -46,25 +62,38 @@ function writeBiquad(
   q: number,
   gainDb: number,
   now: number,
-  smoothing: number,
   nyquist: number,
+  mode: 'now' | 'smooth',
 ): void {
   if (node.type !== type) node.type = type
-  node.frequency.setTargetAtTime(Math.min(Math.max(hz, FILTER_CUTOFF_MIN), nyquist * 0.99), now, smoothing)
-  node.Q.setTargetAtTime(webAudioBiquadQ(type, Math.min(24, Math.max(0.05, q))), now, smoothing)
-  node.gain.setTargetAtTime(gainDb, now, smoothing)
+  const freq = Math.min(Math.max(hz, FILTER_CUTOFF_MIN), nyquist * 0.99)
+  const qv = type === 'allpass' ? 0.0001 : webAudioBiquadQ(type, Math.min(24, Math.max(0.05, q)))
+  const gain = type === 'allpass' ? 0 : gainDb
+  if (mode === 'now') {
+    setAudioParamNow(node.frequency, type === 'allpass' ? 1000 : freq, now)
+    setAudioParamNow(node.Q, qv, now)
+    setAudioParamNow(node.gain, gain, now)
+    return
+  }
+  setSmoothedAudioParam(node.frequency, type === 'allpass' ? 1000 : freq, now, 'frequency')
+  setSmoothedAudioParam(node.Q, qv, now, 'q')
+  setSmoothedAudioParam(node.gain, gain, now, 'db')
 }
 
 export function createFilterGraph(ctx: BaseAudioContext, wet: GainNode, output: GainNode): FilterGraph {
   const analyser = ctx.createAnalyser()
   analyser.fftSize = 1024
   analyser.smoothingTimeConstant = 0
-  const drive = ctx.createWaveShaper()
+  const drive = createClickSafeShaper(ctx)
   drive.oversample = '2x'
-  const series: BiquadFilterNode[] = []
-  for (let i = 0; i < FILTER_STAGE_COUNT; i++) series.push(ctx.createBiquadFilter())
+  const series = makeSeries(ctx)
+  const seriesB = makeSeries(ctx)
   const hpMorph: BiquadFilterNode[] = []
-  for (let i = 0; i < FILTER_STAGE_COUNT; i++) hpMorph.push(ctx.createBiquadFilter())
+  for (let i = 0; i < FILTER_STAGE_COUNT; i++) {
+    const node = ctx.createBiquadFilter()
+    node.type = 'highpass'
+    hpMorph.push(node)
+  }
   const bp = ctx.createBiquadFilter()
   bp.type = 'bandpass'
   const combDelay = ctx.createDelay(1 / FILTER_CUTOFF_MIN)
@@ -73,6 +102,8 @@ export function createFilterGraph(ctx: BaseAudioContext, wet: GainNode, output: 
   const combMix = ctx.createGain()
   combMix.gain.value = 0
   const seriesGain = ctx.createGain()
+  const seriesGainB = ctx.createGain()
+  seriesGainB.gain.value = 0
   const bpGain = ctx.createGain()
   const hpGain = ctx.createGain()
   bpGain.gain.value = 0
@@ -80,22 +111,20 @@ export function createFilterGraph(ctx: BaseAudioContext, wet: GainNode, output: 
   const sum = ctx.createGain()
 
   wet.connect(analyser)
-  analyser.connect(drive)
-  drive.connect(series[0]!)
-  for (let i = 0; i < series.length - 1; i++) series[i]!.connect(series[i + 1]!)
-  series.at(-1)!.connect(seriesGain)
-  seriesGain.connect(sum)
+  analyser.connect(drive.input)
+  connectSeries(drive.output, series, seriesGain, sum)
+  connectSeries(drive.output, seriesB, seriesGainB, sum)
 
-  drive.connect(bp)
+  drive.output.connect(bp)
   bp.connect(bpGain)
   bpGain.connect(sum)
 
-  drive.connect(hpMorph[0]!)
+  drive.output.connect(hpMorph[0]!)
   for (let i = 0; i < hpMorph.length - 1; i++) hpMorph[i]!.connect(hpMorph[i + 1]!)
   hpMorph.at(-1)!.connect(hpGain)
   hpGain.connect(sum)
 
-  drive.connect(combDelay)
+  drive.output.connect(combDelay)
   combDelay.connect(combFb)
   combFb.connect(combDelay)
   combDelay.connect(combMix)
@@ -107,16 +136,55 @@ export function createFilterGraph(ctx: BaseAudioContext, wet: GainNode, output: 
     analyser,
     drive,
     series,
+    seriesB,
     hpMorph,
     bp,
     combDelay,
     combFb,
     combMix,
     seriesGain,
+    seriesGainB,
     bpGain,
     hpGain,
     sum,
     curveKey: '',
+    seriesLive: 0,
+    seriesTopo: '',
+    seriesMix: 1,
+  }
+}
+
+function seriesTopology(
+  kind: ReturnType<typeof filterTypeAt>,
+  stages: number,
+  seriesType: BiquadFilterType,
+): string {
+  if (kind === 'comb' || kind === 'bandpass') return 'idle'
+  return `${seriesType}:${stages}`
+}
+
+function writeSeriesBank(
+  nodes: BiquadFilterNode[],
+  seriesType: BiquadFilterType,
+  cutoff: number,
+  q: number,
+  peakDb: number,
+  stages: number,
+  qs: number[],
+  kind: ReturnType<typeof filterTypeAt>,
+  now: number,
+  nyquist: number,
+  mode: 'now' | 'smooth',
+): void {
+  for (let i = 0; i < FILTER_STAGE_COUNT; i++) {
+    const node = nodes[i]!
+    if (kind === 'comb' || kind === 'bandpass' || i >= stages) {
+      writeBiquad(node, 'allpass', 1000, 0.0001, 0, now, nyquist, mode)
+      continue
+    }
+    const stageQ = qs[i] ?? 0.707
+    const useQ = kind === 'notch' || kind === 'peak' ? q : q * stageQ
+    writeBiquad(node, seriesType, cutoff, useQ, peakDb, now, nyquist, mode)
   }
 }
 
@@ -124,7 +192,7 @@ export function applyFilterGraph(
   g: FilterGraph,
   params: Record<ParamId, number>,
   now: number,
-  smoothing: number,
+  _smoothing: number,
   sampleRate: number,
 ): void {
   const kind = filterTypeAt(params.filterKind)
@@ -138,8 +206,8 @@ export function applyFilterGraph(
   const key = `${character}:${drive.toFixed(3)}`
   if (key !== g.curveKey) {
     g.curveKey = key
-    setShaperCurve(g.drive, key, makeFilterDriveCurve(drive, character))
     g.drive.oversample = character === 'dirty' || character === 'aggressive' ? '4x' : '2x'
+    g.drive.setCurve(key, makeFilterDriveCurve(drive, character), now)
   }
 
   let seriesMix = 1
@@ -160,46 +228,65 @@ export function applyFilterGraph(
     bpMix = 1
   }
 
-  g.seriesGain.gain.setTargetAtTime(seriesMix, now, smoothing)
-  g.bpGain.gain.setTargetAtTime(bpMix, now, smoothing)
-  g.hpGain.gain.setTargetAtTime(hpMix, now, smoothing)
-  g.combMix.gain.setTargetAtTime(combAmt, now, smoothing)
-
-  const seriesAllpass = kind === 'comb' || kind === 'bandpass'
   const stages = kind === 'notch' || kind === 'peak' ? 1 : qs.length
   const peakDb = kind === 'peak' ? peakGainFromReso(q, character) : 0
   const seriesType: BiquadFilterType =
     kind === 'highpass' ? 'highpass' : kind === 'notch' ? 'notch' : kind === 'peak' ? 'peaking' : 'lowpass'
+  const topo = seriesTopology(kind, stages, seriesType)
+  const liveNodes = g.seriesLive === 0 ? g.series : g.seriesB
+  const silentNodes = g.seriesLive === 0 ? g.seriesB : g.series
+  const liveGain = g.seriesLive === 0 ? g.seriesGain : g.seriesGainB
+  const silentGain = g.seriesLive === 0 ? g.seriesGainB : g.seriesGain
 
-  for (let i = 0; i < FILTER_STAGE_COUNT; i++) {
-    const node = g.series[i]!
-    if (seriesAllpass || i >= stages) {
-      allpass(node, now, smoothing)
-      continue
-    }
-    const stageQ = qs[i] ?? 0.707
-    const useQ = kind === 'notch' || kind === 'peak' ? q : q * stageQ
-    writeBiquad(node, seriesType, cutoff, useQ, peakDb, now, smoothing, nyquist)
+  if (g.seriesTopo === '') {
+    writeSeriesBank(liveNodes, seriesType, cutoff, q, peakDb, stages, qs, kind, now, nyquist, 'now')
+    setAudioParamNow(liveGain.gain, seriesMix, now)
+    setAudioParamNow(silentGain.gain, 0, now)
+    g.seriesTopo = topo
+  } else if (g.seriesTopo !== topo && g.seriesMix > 0.001 && seriesMix > 0.001) {
+    // Audible topology change (lowpass ↔ highpass, slope, notch, peak).
+    // Coefficients land on the silent bank, then the gains crossfade.
+    writeSeriesBank(silentNodes, seriesType, cutoff, q, peakDb, stages, qs, kind, now, nyquist, 'now')
+    setSmoothedAudioParam(silentGain.gain, seriesMix, now, 'mix')
+    setSmoothedAudioParam(liveGain.gain, 0, now, 'mix')
+    g.seriesLive = g.seriesLive === 0 ? 1 : 0
+    g.seriesTopo = topo
+  } else if (g.seriesTopo !== topo) {
+    const bank = g.seriesMix <= 0.001 ? liveNodes : silentNodes
+    const bankGain = g.seriesMix <= 0.001 ? liveGain : silentGain
+    const otherGain = g.seriesMix <= 0.001 ? silentGain : liveGain
+    writeSeriesBank(bank, seriesType, cutoff, q, peakDb, stages, qs, kind, now, nyquist, 'now')
+    setSmoothedAudioParam(bankGain.gain, seriesMix, now, 'mix')
+    setSmoothedAudioParam(otherGain.gain, 0, now, 'mix')
+    if (g.seriesMix > 0.001) g.seriesLive = g.seriesLive === 0 ? 1 : 0
+    g.seriesTopo = topo
+  } else {
+    writeSeriesBank(liveNodes, seriesType, cutoff, q, peakDb, stages, qs, kind, now, nyquist, 'smooth')
+    setSmoothedAudioParam(liveGain.gain, seriesMix, now, 'mix')
+    setSmoothedAudioParam(silentGain.gain, 0, now, 'mix')
   }
+  g.seriesMix = seriesMix
 
   const hpQs = filterStageQs(slope)
   for (let i = 0; i < FILTER_STAGE_COUNT; i++) {
     const node = g.hpMorph[i]!
-    if (kind !== 'morph' || i >= hpQs.length) {
-      allpass(node, now, smoothing)
-      continue
+    if (kind === 'morph' && i < hpQs.length) {
+      writeBiquad(node, 'highpass', cutoff, q * (hpQs[i] ?? 0.707), 0, now, nyquist, 'smooth')
+    } else if (node.type !== 'allpass' && hpMix <= 0.001) {
+      // Path is silent, so the topology write cannot reach the output.
+      writeBiquad(node, 'allpass', 1000, 0.0001, 0, now, nyquist, 'now')
     }
-    writeBiquad(node, 'highpass', cutoff, q * (hpQs[i] ?? 0.707), 0, now, smoothing, nyquist)
   }
+  setSmoothedAudioParam(g.hpGain.gain, hpMix, now, 'mix')
 
   if (kind === 'bandpass' || kind === 'morph') {
-    writeBiquad(g.bp, 'bandpass', cutoff, Math.max(0.3, q * 0.85), 0, now, smoothing, nyquist)
-  } else {
-    allpass(g.bp, now, smoothing)
+    writeBiquad(g.bp, 'bandpass', cutoff, Math.max(0.3, q * 0.85), 0, now, nyquist, 'smooth')
   }
+  setSmoothedAudioParam(g.bpGain.gain, bpMix, now, 'mix')
 
-  g.combDelay.delayTime.setTargetAtTime(combDelaySeconds(cutoff), now, smoothing)
-  g.combFb.gain.setTargetAtTime(kind === 'comb' ? combFeedbackFromReso(q) : 0, now, smoothing)
+  setSmoothedAudioParam(g.combDelay.delayTime, combDelaySeconds(cutoff), now, 'delayTime')
+  setSmoothedAudioParam(g.combFb.gain, kind === 'comb' ? combFeedbackFromReso(q) : 0, now, 'gain')
+  setSmoothedAudioParam(g.combMix.gain, combAmt, now, 'mix')
 }
 
 export function filterDryWetGains(mixPct: number): { dry: number; wet: number } {

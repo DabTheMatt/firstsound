@@ -223,6 +223,8 @@ import {
   scheduleEdgeFades,
   type LoopSegmentPlan,
 } from './antiClick'
+import { setSmoothedAudioParam } from './paramSmooth'
+import { convolverHasBuffer, setConvolverPairBuffer } from './convolverCrossfade'
 import {
   copyChannel,
   duplicateMonoToStereo,
@@ -376,7 +378,6 @@ type StretchControlSeed = {
   windowPitch?: number
 }
 const MIN_REGION = 0.05
-const RAMP = 0.008
 
 function createContext(): AudioContext {
   const Ctor =
@@ -969,7 +970,7 @@ export class AudioEngine {
   setRecMonitor(value: number): void {
     this.recMonitor = Math.min(1, Math.max(0, value))
     if (this.ctx && this.recMute) {
-      this.recMute.gain.setTargetAtTime(this.recMonitor, this.ctx.currentTime, 0.02)
+      setSmoothedAudioParam(this.recMute.gain, this.recMonitor, this.ctx.currentTime, 'gain')
     }
     this.emit()
   }
@@ -1417,8 +1418,7 @@ export class AudioEngine {
     else {
       for (const slot of this.slots.values()) {
         if (!kinds.includes(slot.type as 'delay' | 'reverb')) continue
-        slot.wet.gain.cancelScheduledValues(now)
-        slot.wet.gain.setValueAtTime(0, now)
+        setSmoothedAudioParam(slot.wet.gain, 0, now, 'gain')
       }
     }
     this.emit()
@@ -3428,8 +3428,7 @@ export class AudioEngine {
   private rampSafety(value: number): void {
     if (!this.ctx || !this.safetyGain) return
     const now = this.ctx.currentTime
-    this.safetyGain.gain.cancelScheduledValues(now)
-    this.safetyGain.gain.setTargetAtTime(value, now, RAMP)
+    setSmoothedAudioParam(this.safetyGain.gain, value, now, 'gain')
   }
 
   private applyBypassRamps(smoothing = 0.01): void {
@@ -3632,12 +3631,10 @@ export class AudioEngine {
       const openAt = now + 0.004
       const wet = path.wet.gain
       const dry = path.dry.gain
-      wet.cancelScheduledValues(now)
-      wet.setValueAtTime(0, now)
+      wet.cancelAndHoldAtTime(now)
       wet.setValueAtTime(0, openAt)
       wet.linearRampToValueAtTime(1, openAt + fade)
-      dry.cancelScheduledValues(now)
-      dry.setValueAtTime(Math.max(0, dry.value), now)
+      dry.cancelAndHoldAtTime(now)
       dry.setValueAtTime(1, openAt)
       dry.linearRampToValueAtTime(0, openAt + fade)
       return
@@ -3723,12 +3720,10 @@ export class AudioEngine {
       const openAt = now + 0.004
       const wet = lane.combWet.gain
       const dry = lane.combDry.gain
-      wet.cancelScheduledValues(now)
-      wet.setValueAtTime(0, now)
+      wet.cancelAndHoldAtTime(now)
       wet.setValueAtTime(0, openAt)
       wet.linearRampToValueAtTime(1, openAt + fade)
-      dry.cancelScheduledValues(now)
-      dry.setValueAtTime(Math.max(0, dry.value), now)
+      dry.cancelAndHoldAtTime(now)
       dry.setValueAtTime(1, openAt)
       dry.linearRampToValueAtTime(0, openAt + fade)
       return
@@ -3764,12 +3759,12 @@ export class AudioEngine {
     if (!this.ctx || !this.voiceBus || !this.noiseGain) return
     const now = this.ctx.currentTime
     if (this.eqListen === 'filters') {
-      this.voiceBus.gain.setTargetAtTime(0.0001, now, 0.02)
-      this.noiseGain.gain.setTargetAtTime(0.35, now, 0.02)
+      setSmoothedAudioParam(this.voiceBus.gain, 0.0001, now, 'gain')
+      setSmoothedAudioParam(this.noiseGain.gain, 0.35, now, 'gain')
       this.startNoise()
     } else {
-      this.voiceBus.gain.setTargetAtTime(1, now, 0.02)
-      this.noiseGain.gain.setTargetAtTime(0, now, 0.02)
+      setSmoothedAudioParam(this.voiceBus.gain, 1, now, 'gain')
+      setSmoothedAudioParam(this.noiseGain.gain, 0, now, 'gain')
       this.stopNoise()
     }
   }
@@ -3906,16 +3901,20 @@ export class AudioEngine {
         if (this.spaceLatched) silenceReverbGraph(fx, now)
         else applyReverbGraph(fx, params, this.reverbType, bpm, now, smoothing)
         const key = reverbImpulseKey(params, this.reverbType)
-        if (key !== this.reverbIrKey || !fx.conv.buffer) {
+        if (key !== this.reverbIrKey || !convolverHasBuffer(fx.conv)) {
           this.reverbIrKey = key
           if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
-          if (!fx.conv.buffer) {
-            fx.conv.buffer = buildReverbBuffer(this.ctx, params, this.reverbType)
+          if (!convolverHasBuffer(fx.conv)) {
+            setConvolverPairBuffer(fx.conv, buildReverbBuffer(this.ctx, params, this.reverbType), now)
           } else {
             this.reverbIrTimer = window.setTimeout(() => {
               this.reverbIrTimer = 0
               if (!this.ctx || !fx) return
-              fx.conv.buffer = buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType)
+              setConvolverPairBuffer(
+                fx.conv,
+                buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType),
+                this.ctx.currentTime,
+              )
             }, 40)
           }
         }
@@ -3945,9 +3944,9 @@ export class AudioEngine {
         smoothing,
       )
     } else if (gainSlot) {
-      gainSlot.output.gain.setTargetAtTime(dbToGain(live.gain), now, 0.03)
+      setSmoothedAudioParam(gainSlot.output.gain, dbToGain(live.gain), now, 'gain')
     }
-    if (outSlot) outSlot.output.gain.setTargetAtTime(dbToGain(live.outputGain), now, 0.03)
+    if (outSlot) setSmoothedAudioParam(outSlot.output.gain, dbToGain(live.outputGain), now, 'gain')
     this.applyEq(smoothing)
     this.applyTrackMix(smoothing)
     this.applyFxParams(smoothing)
@@ -3958,7 +3957,7 @@ export class AudioEngine {
         this.handoffToStretch(now)
       } else if (this.source && !this.schedulerId && this.loopScheduling) {
         try {
-          this.source.playbackRate.setTargetAtTime(1, now, 0.03)
+          setSmoothedAudioParam(this.source.playbackRate, 1, now, 'pitch')
         } catch {
           /* voice already stopped */
         }
@@ -4024,7 +4023,7 @@ export class AudioEngine {
       }
       try {
         const g = voice.musical.gain
-        g.cancelScheduledValues(now)
+        g.cancelAndHoldAtTime(now)
         g.setValueCurveAtTime(curve, now, remaining)
       } catch {
         /* overlap with a finishing curve */
@@ -4959,20 +4958,9 @@ function configureSpectrumAnalyser(node: AnalyserNode): void {
   }
 }
 
-function rampGainExact(param: AudioParam, value: number, now: number, smoothing: number): void {
+function rampGainExact(param: AudioParam, value: number, now: number, _smoothing: number): void {
   const target = value <= 1e-5 ? 0 : value
-  const current = Number.isFinite(param.value) ? param.value : target
-  param.cancelScheduledValues(now)
-  param.setValueAtTime(current, now)
-  if (Math.abs(current - target) <= 1e-4) return
-  const tau = Math.max(0.004, smoothing || 0.008)
-  // Bypass and other full-scale jumps are linear so the signal never steps.
-  // Small moves keep the exponential approach.
-  if (target === 0 || Math.abs(target - current) >= 0.2) {
-    param.linearRampToValueAtTime(target, now + Math.min(0.02, tau * 2))
-    return
-  }
-  param.setTargetAtTime(target, now, Math.min(0.02, tau))
+  setSmoothedAudioParam(param, target, now, 'gain')
 }
 
 function eqTopologySignature(band: EqBand | undefined): string {

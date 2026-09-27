@@ -1,3 +1,4 @@
+import { setSmoothedAudioParam } from './paramSmooth'
 import { dbToGain } from '../parameters/mapping'
 
 export type StereoRoute = {
@@ -79,6 +80,11 @@ export function createStereoStage(ctx: BaseAudioContext): StereoStage {
   const leftToR = ctx.createGain()
   const rightToL = ctx.createGain()
   const rightToR = ctx.createGain()
+  // Identity routing. A GainNode defaults to 1, and a mono file is upmixed
+  // onto both splitter inputs — leaving the cross terms at 1 sums that copy
+  // into the left output until the first ramp finishes.
+  leftToR.gain.value = 0
+  rightToL.gain.value = 0
   const merge = ctx.createChannelMerger(2)
   const panner = ctx.createStereoPanner()
   const output = ctx.createGain()
@@ -132,21 +138,21 @@ export function applyStereoStage(
     sourceChannels?: number
   },
   now: number,
-  smoothing: number,
+  _smoothing: number,
 ): void {
   const route = stereoRouteGains(params.mono, params.sourceChannels ?? 2)
   const pol = params.invert ? -1 : 1
-  stage.makeup.gain.setTargetAtTime(dbToGain(params.gainDb), now, smoothing)
-  stage.leftLevel.gain.setTargetAtTime(dbToGain(params.leftDb), now, smoothing)
-  stage.rightLevel.gain.setTargetAtTime(dbToGain(params.rightDb), now, smoothing)
-  snapAudioParam(stage.leftPol.gain, pol, now)
-  snapAudioParam(stage.rightPol.gain, pol, now)
-  snapAudioParam(stage.leftToL.gain, route.leftToL, now)
-  snapAudioParam(stage.leftToR.gain, route.leftToR, now)
-  snapAudioParam(stage.rightToL.gain, route.rightToL, now)
-  snapAudioParam(stage.rightToR.gain, route.rightToR, now)
-  stage.panner.pan.setTargetAtTime(panNorm(params.pan), now, Math.min(smoothing, 0.01))
-  stage.output.gain.setTargetAtTime(1, now, smoothing)
+  setSmoothedAudioParam(stage.makeup.gain, dbToGain(params.gainDb), now, 'gain')
+  setSmoothedAudioParam(stage.leftLevel.gain, dbToGain(params.leftDb), now, 'gain')
+  setSmoothedAudioParam(stage.rightLevel.gain, dbToGain(params.rightDb), now, 'gain')
+  setSmoothedAudioParam(stage.leftPol.gain, pol, now, 'gain')
+  setSmoothedAudioParam(stage.rightPol.gain, pol, now, 'gain')
+  setSmoothedAudioParam(stage.leftToL.gain, route.leftToL, now, 'gain')
+  setSmoothedAudioParam(stage.leftToR.gain, route.leftToR, now, 'gain')
+  setSmoothedAudioParam(stage.rightToL.gain, route.rightToL, now, 'gain')
+  setSmoothedAudioParam(stage.rightToR.gain, route.rightToR, now, 'gain')
+  setSmoothedAudioParam(stage.panner.pan, panNorm(params.pan), now, 'pan')
+  setSmoothedAudioParam(stage.output.gain, 1, now, 'gain')
 }
 
 /** Equal-power pan used by the stereo stage, as linear lane gains. */
@@ -177,7 +183,3 @@ export function waveformLaneLayout(opts: {
   }
 }
 
-function snapAudioParam(param: AudioParam, value: number, now: number): void {
-  param.cancelScheduledValues(now)
-  param.setValueAtTime(value, now)
-}

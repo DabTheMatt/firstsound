@@ -13,6 +13,10 @@ import { prepForWorkingExport, selectionExportAvailable } from './exportTail'
 import { defaultEqBands, type EqBand } from './eqBands'
 import type { OfflineContextFactory, ProcessingSnapshot } from './offlineRender'
 import { renderExportPcm, renderProcessedPcm } from './offlineRender'
+import { binFrequencyHz, timeDomainToDb, type SpectrumFftScratch } from './spectrumFft'
+import { snapshotFromEngine, mapSensoryToDsp } from '../../sensory/mapping/mappingEngine'
+import { applyColorSound } from '../../sensory/colorSound'
+import { defaultSensoryValues, patchSensoryValue } from '../../sensory/sensoryState'
 
 const SR = 22050
 
@@ -118,6 +122,37 @@ function meanAbs(a: Float32Array, b: Float32Array): number {
   let sum = 0
   for (let i = 0; i < n; i++) sum += Math.abs((a[i] ?? 0) - (b[i] ?? 0))
   return n > 0 ? sum / n : 0
+}
+
+function highBandDb(samples: Float32Array, atSec: number): number {
+  const fft = 2048
+  const scratch: SpectrumFftScratch = { window: null, real: null, imag: null }
+  const out = new Float32Array(fft / 2)
+  const start = Math.max(0, Math.min(samples.length - fft, Math.floor(atSec * SR) - fft / 2))
+  timeDomainToDb(samples.subarray(start, start + fft), out, scratch)
+  let acc = 0
+  let n = 0
+  for (let i = 1; i < out.length; i++) {
+    if (binFrequencyHz(i, fft, SR) < 4000) continue
+    acc += out[i] ?? -120
+    n++
+  }
+  return n ? acc / n : -120
+}
+
+function sampleDelta(samples: Float32Array, atSec: number, spanSec = 0.03): number {
+  const a = Math.max(1, Math.floor((atSec - spanSec) * SR))
+  const b = Math.min(samples.length, Math.floor((atSec + spanSec) * SR))
+  let max = 0
+  for (let i = a; i < b; i++) max = Math.max(max, Math.abs((samples[i] ?? 0) - (samples[i - 1] ?? 0)))
+  return max
+}
+
+function stepped(src: Float32Array, atSec: number, from: number, to: number): Float32Array {
+  const out = new Float32Array(src.length)
+  const at = Math.floor(atSec * SR)
+  for (let i = 0; i < src.length; i++) out[i] = (src[i] ?? 0) * (i < at ? from : to)
+  return out
 }
 
 function peak(ch: Float32Array, start = 0, end = ch.length): number {
@@ -531,5 +566,134 @@ describe('offline export renders the audible chain', () => {
     expect(Math.abs(head[8] ?? 0)).toBeGreaterThan(0.5)
     expect(rms(head, 40, Math.min(head.length, 400))).toBeLessThan(0.02)
     expect(meanAbs(baked, head)).toBeGreaterThan(0.2)
+  })
+
+  it('ramps gain, pan, filter, EQ, delay, reverb, LFO, and sensory moves without a broadband click', async () => {
+    const source = sine(330, 0.7, 0.45)
+    const src = mono(source)
+    const at = 0.32
+
+    const gainMoved = mono(
+      await render(source, state({ automation: lane('gain', 0, -18, at, at + 0.001) })),
+    )
+    const gainStep = stepped(src, at, dbToGain(0), dbToGain(-18))
+    expect(highBandDb(gainMoved, at)).toBeLessThan(highBandDb(gainStep, at) - 10)
+    expect(sampleDelta(gainMoved, at)).toBeLessThan(sampleDelta(gainStep, at) * 0.35)
+
+    const panMoved = mono(
+      await render(source, state({ automation: lane('pan', 0, 90, at, at + 0.001) })),
+    )
+    const panStep = stepped(src, at, 1, Math.cos(((0.9 + 1) / 2) * (Math.PI / 2)))
+    expect(highBandDb(panMoved, at)).toBeLessThan(highBandDb(panStep, at) - 8)
+
+    const filtered = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['filter']),
+          params: { filterCutoff: 500, filterKind: 0, filterMix: 100, filterSlope: 2, filterDrive: 0, filterReso: 0.8 },
+          automation: lane('filterCutoff', 500, 8000, at, at + 0.001),
+        }),
+      ),
+    )
+    expect(filtered.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(filtered, at)).toBeLessThan(0.25)
+
+    const eq = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['eq']),
+          params: { eq1Freq: 400, eq1Q: 0.707, eq1Gain: 6 },
+          eqById: {
+            'eq-1': {
+              bands: [
+                { ...defaultEqBands()[0]!, type: 'peaking', frequency: 400, gain: 6, q: 0.9, slope: 12, bypassed: false },
+              ],
+              bandsL: [],
+              bandsR: [],
+              comb: defaultCombFilter(),
+            },
+          },
+          automation: lane('eq1Freq', 400, 5000, at, at + 0.001),
+        }),
+      ),
+    )
+    expect(eq.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(eq, at)).toBeLessThan(0.25)
+
+    const delayed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['delay']),
+          params: { delayWet: 0, delayFeedback: 20, delayTime: 80 },
+          automation: lane('delayWet', 0, 45, at, at + 0.001),
+        }),
+      ),
+    )
+    expect(delayed.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(delayed, at)).toBeLessThan(0.2)
+
+    const reverbed = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['reverb']),
+          params: { reverbWet: 0, reverbDecay: 0.4, reverbSize: 20 },
+          automation: lane('reverbWet', 0, 40, at, at + 0.001),
+        }),
+      ),
+    )
+    expect(reverbed.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(reverbed, at)).toBeLessThan(0.35)
+
+    const lfos: FxLfoMap = defaultFxLfos()
+    lfos.input[0] = { rateHz: 5, shape: 'square', depth: 100, target: 'gain' }
+    const lfo = mono(await render(source, state({ fxLfos: lfos, params: { gain: 0 } })))
+    const lfoStep = stepped(src, 0.2, dbToGain(12), dbToGain(-12))
+    expect(highBandDb(lfo, 0.2)).toBeLessThan(highBandDb(lfoStep, 0.2) - 8)
+    expect(lfo.every((sample) => Number.isFinite(sample))).toBe(true)
+
+    const sensoryBase = snapshotFromEngine({
+      params: defaultParamValues(),
+      eqBands: defaultEqBands(),
+      chain: factoryChain(),
+    })
+    const rest = mapSensoryToDsp(sensoryBase, defaultSensoryValues())
+    const moved = applyColorSound(
+      mapSensoryToDsp(sensoryBase, patchSensoryValue(defaultSensoryValues(), 'space', 0.85)),
+      { x: 0.2, y: 0.85 },
+      patchSensoryValue(defaultSensoryValues(), 'space', 0.85),
+    )
+    const watched: ParamId[] = ['gain', 'filterCutoff', 'reverbWet', 'reverbDecay', 'delayWet', 'eq1Gain', 'eq1Freq', 'pan']
+    let watchedId: ParamId = 'reverbWet'
+    let watchedDelta = 0
+    for (const id of watched) {
+      const delta = Math.abs((moved.params[id] ?? 0) - (rest.params[id] ?? 0))
+      if (delta > watchedDelta) {
+        watchedDelta = delta
+        watchedId = id
+      }
+    }
+    expect(watchedDelta).toBeGreaterThan(0.5)
+    const fromValue = rest.params[watchedId] ?? 0
+    const toValue = moved.params[watchedId] ?? 0
+    const sensory = mono(
+      await render(
+        source,
+        state({
+          chain: chain(['reverb', 'filter', 'eq']),
+          params: { ...rest.params },
+          automation: lane(watchedId, fromValue, toValue, at, at + 0.001),
+        }),
+      ),
+    )
+    expect(sensory.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(sensory, at)).toBeLessThan(0.4)
+    if (watchedId === 'gain' && Math.abs(dbToGain(fromValue) - dbToGain(toValue)) > 0.05) {
+      const sensoryStep = stepped(src, at, dbToGain(fromValue), dbToGain(toValue))
+      expect(highBandDb(sensory, at)).toBeLessThan(highBandDb(sensoryStep, at) - 8)
+    }
   })
 })
