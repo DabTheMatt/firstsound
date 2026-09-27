@@ -13,6 +13,12 @@ type Props = {
   onZoomOut: () => void
   onView: (action: ViewAction) => void
   onTrim?: () => void
+  onInsertSilence?: () => void
+  onDeleteSelection?: () => void
+  onClearSelection?: () => void
+  canInsertSilence?: boolean
+  canDeleteSelection?: boolean
+  canClearSelection?: boolean
   onAutoFade?: () => void
   autoFade?: boolean
   normalizeView: boolean
@@ -41,6 +47,12 @@ export function WaveformToolbar({
   onZoomOut,
   onView,
   onTrim,
+  onInsertSilence,
+  onDeleteSelection,
+  onClearSelection,
+  canInsertSilence = false,
+  canDeleteSelection = false,
+  canClearSelection = false,
   onAutoFade,
   autoFade: _autoFade = false,
   normalizeView,
@@ -70,6 +82,20 @@ export function WaveformToolbar({
               <TrimIcon />
             </IconButton>
           ) : null}
+          <SampleEditButtons
+            insertLabel={t.waveform.insertSilence}
+            insertCaption={t.waveform.insertSilenceCaption}
+            deleteLabel={t.waveform.deleteSelection}
+            deleteCaption={t.waveform.deleteSelectionCaption}
+            clearLabel={t.waveform.clearSelection}
+            clearCaption={t.waveform.clearSelectionCaption}
+            canInsertSilence={canInsertSilence}
+            canDeleteSelection={canDeleteSelection}
+            canClearSelection={canClearSelection}
+            onInsertSilence={onInsertSilence}
+            onDeleteSelection={onDeleteSelection}
+            onClearSelection={onClearSelection}
+          />
           {onAutoFade ? (
             <IconButton
               label={t.waveform.autoFadeTitle}
@@ -105,6 +131,20 @@ export function WaveformToolbar({
         <div className={`${styles.cluster} ${styles.tools}`}>
           <span className={styles.kicker}>{t.waveform.edit}</span>
           <div className={styles.edit}>
+          <SampleEditButtons
+            insertLabel={t.waveform.insertSilence}
+            insertCaption={t.waveform.insertSilenceCaption}
+            deleteLabel={t.waveform.deleteSelection}
+            deleteCaption={t.waveform.deleteSelectionCaption}
+            clearLabel={t.waveform.clearSelection}
+            clearCaption={t.waveform.clearSelectionCaption}
+            canInsertSilence={canInsertSilence}
+            canDeleteSelection={canDeleteSelection}
+            canClearSelection={canClearSelection}
+            onInsertSilence={onInsertSilence}
+            onDeleteSelection={onDeleteSelection}
+            onClearSelection={onClearSelection}
+          />
           <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
             <FitIcon />
           </IconButton>
@@ -213,12 +253,14 @@ function IconButton({
   label,
   caption,
   pressed,
+  disabled = false,
   onClick,
   children,
 }: {
   label: string
   caption: string
   pressed?: boolean
+  disabled?: boolean
   onClick: () => void
   children: ReactNode
 }) {
@@ -229,11 +271,76 @@ function IconButton({
       aria-label={label}
       title={label}
       aria-pressed={pressed}
+      disabled={disabled}
       onClick={onClick}
     >
       {children}
       <span className={styles.caption}>{caption}</span>
     </button>
+  )
+}
+
+function SampleEditButtons({
+  insertLabel,
+  insertCaption,
+  deleteLabel,
+  deleteCaption,
+  clearLabel,
+  clearCaption,
+  canInsertSilence,
+  canDeleteSelection,
+  canClearSelection,
+  onInsertSilence,
+  onDeleteSelection,
+  onClearSelection,
+}: {
+  insertLabel: string
+  insertCaption: string
+  deleteLabel: string
+  deleteCaption: string
+  clearLabel: string
+  clearCaption: string
+  canInsertSilence: boolean
+  canDeleteSelection: boolean
+  canClearSelection: boolean
+  onInsertSilence?: () => void
+  onDeleteSelection?: () => void
+  onClearSelection?: () => void
+}) {
+  if (!onInsertSilence && !onDeleteSelection && !onClearSelection) return null
+  return (
+    <>
+      {onInsertSilence ? (
+        <IconButton
+          label={insertLabel}
+          caption={insertCaption}
+          disabled={!canInsertSilence}
+          onClick={onInsertSilence}
+        >
+          <InsertSilenceIcon />
+        </IconButton>
+      ) : null}
+      {onDeleteSelection ? (
+        <IconButton
+          label={deleteLabel}
+          caption={deleteCaption}
+          disabled={!canDeleteSelection}
+          onClick={onDeleteSelection}
+        >
+          <DeleteSelectionIcon />
+        </IconButton>
+      ) : null}
+      {onClearSelection ? (
+        <IconButton
+          label={clearLabel}
+          caption={clearCaption}
+          disabled={!canClearSelection}
+          onClick={onClearSelection}
+        >
+          <ClearSelectionIcon />
+        </IconButton>
+      ) : null}
+    </>
   )
 }
 
@@ -263,6 +370,57 @@ function AutoFadeIcon() {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
+    </svg>
+  )
+}
+
+function InsertSilenceIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M1.5 9c.7-2.4 1.3 2.4 2 0s1.3 2.4 2 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.5 9c.7-2.4 1.3 2.4 2 0s1.3 2.4 2 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path d="M8 4.5v9M6.2 6.2h3.6" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function DeleteSelectionIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="4" y="4.5" width="10" height="9" rx="1" fill="currentColor" opacity="0.28" />
+      <rect x="4" y="4.5" width="10" height="9" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6.2 9h5.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ClearSelectionIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect
+        x="4"
+        y="4.5"
+        width="10"
+        height="9"
+        rx="1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeDasharray="2.2 1.6"
+      />
+      <path d="M7 11.5 11.2 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }

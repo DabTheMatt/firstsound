@@ -109,6 +109,14 @@
   background: var(--bg-control-hover);
 }
 
+.iconBtn:disabled,
+.iconBtn:disabled:hover {
+  opacity: 0.38;
+  color: var(--text-disabled);
+  background: transparent;
+  cursor: default;
+}
+
 .active,
 .tools .iconBtn.active,
 .view .iconBtn.active {

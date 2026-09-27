@@ -1,4 +1,4 @@
-import { EQ_MAX_BANDS, type EqBand } from '../../audio/engine/eqBands'
+import { planEqBandInsert, type EqBand } from '../../audio/engine/eqBands'
 import { selectEqBand } from '../../audio/engine/eqBandSelection'
 import { engine } from '../../hooks/useEngine'
 
@@ -14,12 +14,15 @@ export function placeEqBell(
   }
   if (!id) return null
   const bands = engine.getSnapshot().eqById[id]?.bands ?? []
-  let index = bands.findIndex((band) => band.type === 'off')
-  if (index < 0) {
-    if (bands.length >= EQ_MAX_BANDS) return null
+  const plan = planEqBandInsert(bands)
+  if (!plan) return null
+  let index: number
+  if (plan.kind === 'append') {
     const next = engine.addEqBand(id)
     if (next == null) return null
     index = next
+  } else {
+    index = plan.index
   }
   engine.setEqBand(
     index,
