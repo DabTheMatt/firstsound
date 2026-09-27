@@ -564,6 +564,8 @@ export class AudioEngine {
   private grainDensitySlew = 8
   private listeners = new Set<Listener>()
   private snapshot: EngineSnapshot
+  private snapshotDirty = false
+  private emitFrame = 0
   private source: AudioBufferSourceNode | null = null
   private playCtxTime = 0
   private playOffset = 0
@@ -618,7 +620,13 @@ export class AudioEngine {
     }
   }
 
-  getSnapshot = (): EngineSnapshot => this.snapshot
+  getSnapshot = (): EngineSnapshot => {
+    if (this.snapshotDirty) {
+      this.snapshot = this.buildSnapshot()
+      this.snapshotDirty = false
+    }
+    return this.snapshot
+  }
 
   getBuffer(): AudioBuffer | null {
     return this.buffer
@@ -1243,6 +1251,32 @@ export class AudioEngine {
     const existing = this.chain.find((m) => m.type === type)
     if (existing) return existing.instanceId
     return this.insertModule(type, Math.max(0, this.chain.length - 2))
+  }
+
+  /**
+   * Open every missing module in one splice. Sensory macros used to insert
+   * them one at a time, and each insert muted the master, waited, and
+   * reconnected the whole graph.
+   */
+  ensureModules(types: readonly ModuleType[]): void {
+    let chain = this.chain
+    const added: ChainModule[] = []
+    for (const type of types) {
+      if (chain.some((mod) => mod.type === type)) continue
+      const next = insertChainModule(chain, type, Math.max(0, chain.length - 2))
+      const mod = next.find((item) => !chain.some((old) => old.instanceId === item.instanceId))
+      if (!mod || modulesEqual(next, chain)) continue
+      chain = next
+      added.push(mod)
+    }
+    if (!added.length) return
+    this.chain = chain
+    for (const mod of added) {
+      if (mod.type === 'eq') this.eqById.set(mod.instanceId, cloneEqState())
+      if (mod.type === 'grain') this.engineMode = 'grain'
+    }
+    this.mountAddedSlots(added)
+    this.emit()
   }
 
   randomizeFilter(): void {
@@ -2200,8 +2234,8 @@ export class AudioEngine {
     this.chain = next
     if (added?.type === 'eq') this.eqById.set(added.instanceId, cloneEqState())
     if (added?.type === 'grain') this.engineMode = 'grain'
+    this.mountAddedSlots(added ? [added] : [])
     this.emit()
-    void this.rebuildGraph()
     return added?.instanceId ?? null
   }
 
@@ -3396,6 +3430,46 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Splice new slots into the running chain without the playback mute.
+   * The disconnect and reconnect happen in one turn, so the audio thread
+   * does not render a hole. A full rebuild is only for a graph that is
+   * not connected yet.
+   */
+  private mountAddedSlots(added: ChainModule[]): void {
+    if (!added.length) return
+    if (!this.ctx || !this.voiceBus || this.slots.size === 0 || this.reconnecting) {
+      void this.rebuildGraph()
+      return
+    }
+    for (const mod of added) {
+      if (mod.type === 'eq') this.eqState(mod.instanceId)
+      if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
+    }
+    this.rewireLive()
+    this.applyLiveAudio()
+    this.applyBypassRamps(0.012)
+  }
+
+  private rewireLive(): void {
+    if (this.reconnecting) {
+      this.graphRebuildQueued = true
+      return
+    }
+    try {
+      this.noiseGain?.disconnect()
+    } catch {
+      /* not connected */
+    }
+    try {
+      this.previewGain?.disconnect()
+    } catch {
+      /* not connected */
+    }
+    this.disconnectSlots()
+    this.connectSlots()
+  }
+
   private graphRebuildQueued = false
 
   private async rebuildGraph(): Promise<void> {
@@ -3686,11 +3760,13 @@ export class AudioEngine {
       const openAt = now + 0.004
       const wet = path.wet.gain
       const dry = path.dry.gain
+      // Ramp to the closed state. setValueAtTime(0) here is a step from
+      // whatever cancelAndHold just captured.
       wet.cancelAndHoldAtTime(now)
-      wet.setValueAtTime(0, openAt)
+      wet.linearRampToValueAtTime(0, openAt)
       wet.linearRampToValueAtTime(1, openAt + fade)
       dry.cancelAndHoldAtTime(now)
-      dry.setValueAtTime(1, openAt)
+      dry.linearRampToValueAtTime(1, openAt)
       dry.linearRampToValueAtTime(0, openAt + fade)
       return
     }
@@ -3776,10 +3852,10 @@ export class AudioEngine {
       const wet = lane.combWet.gain
       const dry = lane.combDry.gain
       wet.cancelAndHoldAtTime(now)
-      wet.setValueAtTime(0, openAt)
+      wet.linearRampToValueAtTime(0, openAt)
       wet.linearRampToValueAtTime(1, openAt + fade)
       dry.cancelAndHoldAtTime(now)
-      dry.setValueAtTime(1, openAt)
+      dry.linearRampToValueAtTime(1, openAt)
       dry.linearRampToValueAtTime(0, openAt + fade)
       return
     }
@@ -4489,6 +4565,8 @@ export class AudioEngine {
       this.windowPitch,
       this.stretchSpeed,
       targetSpeed,
+      this.stretchPitch,
+      live.pitch,
     )
     const horizon = ctx.currentTime + stretchLookahead(horizonBase.hopSec)
     const { start, end } = this.playbackRegion(duration)
@@ -4499,6 +4577,20 @@ export class AudioEngine {
       this.loop && this.direction !== 'pingpong'
         ? playbackReadWrap(playBuffer.sampleRate, start, end, duration, reverse, true, false)
         : undefined
+
+    // Grains that missed their slot during a UI hitch must not all start on
+    // this sample. Skip the hole and keep the read head with the clock.
+    if (this.nextGrainTime < ctx.currentTime - 0.001) {
+      const late = ctx.currentTime - this.nextGrainTime
+      this.stretchHead += late * Math.max(this.stretchSpeed, PARAMS.speed.min) * this.stretchDir
+      const caught = this.wrapStretchHead(this.stretchHead, start, end)
+      if (caught == null) {
+        this.stop()
+        return
+      }
+      this.stretchHead = caught
+      this.nextGrainTime = ctx.currentTime
+    }
 
     while (this.nextGrainTime < horizon) {
       const t = Math.max(this.nextGrainTime, ctx.currentTime)
@@ -4588,8 +4680,10 @@ export class AudioEngine {
     const amp = 0.35 / Math.sqrt(this.grainDensitySlew / 8)
     this.advanceMotion()
 
+    if (this.nextGrainTime < ctx.currentTime) this.nextGrainTime = ctx.currentTime
+
     while (this.nextGrainTime < horizon) {
-      const t = Math.max(this.nextGrainTime, ctx.currentTime)
+      const t = this.nextGrainTime
       const scatter = live.scatter / 100
       const pos = clamp(live.position / 100 + this.motionOffset(t) * 0.5, 0, 1)
       const jitter = (Math.random() * 2 - 1) * scatter * span * 0.5
@@ -4859,7 +4953,29 @@ export class AudioEngine {
   }
 
   private emit(): void {
-    this.snapshot = this.buildSnapshot()
+    this.snapshotDirty = true
+    if (typeof requestAnimationFrame !== 'function') {
+      this.flushSnapshot()
+      return
+    }
+    if (this.emitFrame) return
+    this.emitFrame = requestAnimationFrame(() => {
+      this.emitFrame = 0
+      this.flushSnapshot()
+    })
+  }
+
+  /**
+   * React subscribes to the snapshot. A sensory drag used to notify on every
+   * pointer sample, and that render stalled the grain scheduler. Listeners
+   * hear one update per frame. getSnapshot still flushes immediately so a
+   * caller in the same turn reads the edit it just made.
+   */
+  private flushSnapshot(): void {
+    if (this.snapshotDirty) {
+      this.snapshot = this.buildSnapshot()
+      this.snapshotDirty = false
+    }
     for (const listener of this.listeners) listener()
   }
 

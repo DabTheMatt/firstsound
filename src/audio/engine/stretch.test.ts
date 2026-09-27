@@ -90,6 +90,14 @@ describe('stretchSchedule', () => {
     expect(slow.hopSec / slow.grainSec).toBeCloseTo(unity.hopSec / unity.grainSec, 2)
   })
 
+  it('tightens hop and grain together while pitch is chasing', () => {
+    const settled = stretchSchedule(62, 1, 0, 1, 1, 0, 0)
+    const chasing = stretchSchedule(62, 1, 0, 1, 1, 0, 18)
+    expect(chasing.hopSec).toBeLessThan(settled.hopSec * 0.75)
+    expect(chasing.hopSec / chasing.grainSec).toBeCloseTo(settled.hopSec / settled.grainSec, 2)
+    expect(chasing.peak).toBeCloseTo(settled.peak)
+  })
+
   it('tightens hop and grain together while speed is chasing', () => {
     const settled = stretchSchedule(62, 0.05, 0, 0.05, 0.05)
     const chasing = stretchSchedule(62, 0.05, 0, 1, 0.05)
@@ -121,7 +129,8 @@ describe('speed glide', () => {
   it('reaches a jumped target within a few hundred milliseconds', () => {
     let state = { ...rest, speed: 0.25, windowSpeed: 0.25 }
     let elapsed = 0
-    for (let i = 0; i < 40 && state.speed < 3.6; i++) {
+    // A pitch/speed chase uses 8 ms hops, so the same glide needs more steps.
+    for (let i = 0; i < 80 && state.speed < 3.6; i++) {
       const step = advanceStretchControl(state, 4, 0, 62)
       elapsed += step.hopSec
       state = step

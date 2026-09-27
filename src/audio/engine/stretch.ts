@@ -66,15 +66,24 @@ export function stretchSchedule(
   windowPitchSemitones: number,
   playbackSpeed = windowSpeed,
   targetSpeed = windowSpeed,
+  playbackPitch = windowPitchSemitones,
+  targetPitch = windowPitchSemitones,
 ): StretchSchedule {
   const speed = Math.max(1e-4, windowSpeed)
   const ratio = Math.max(1e-4, pitchRatio(windowPitchSemitones))
   const shaped = stretchWindow(interp, speed, ratio)
-  const mismatch = Math.abs(
+  const speedMismatch = Math.abs(
     Math.log(Math.max(1e-4, targetSpeed)) - Math.log(Math.max(1e-4, playbackSpeed)),
   )
+  // Overlapping grains with different read rates cancel on a sustained tone.
+  // Shrink the window while pitch is still chasing so neighbors agree.
+  const pitchMismatch = Math.abs(targetPitch - playbackPitch) / 12
+  const mismatch = Math.max(speedMismatch, pitchMismatch)
   const tightness = clamp(mismatch / 0.35, 0, 1)
-  const minHop = Math.min(shaped.hopSec, 0.022)
+  // Unity hops already sit under 22 ms, so that floor never tightened a pitch
+  // chase at 1×. Neighbors then kept disagreeing read rates and a sustained
+  // tone dipped. 8 ms is short enough for those windows and still overlaps.
+  const minHop = Math.min(shaped.hopSec, 0.008)
   const hopSec = shaped.hopSec + (minHop - shaped.hopSec) * tightness
   const scale = hopSec / shaped.hopSec
   return { grainSec: shaped.grainSec * scale, hopSec, peak: shaped.peak }
@@ -176,7 +185,15 @@ export function advanceStretchControl(
   targetPitch: number,
   interp: number,
 ): StretchControlStep {
-  const plan = stretchSchedule(interp, state.windowSpeed, state.windowPitch, state.speed, targetSpeed)
+  const plan = stretchSchedule(
+    interp,
+    state.windowSpeed,
+    state.windowPitch,
+    state.speed,
+    targetSpeed,
+    state.pitch,
+    targetPitch,
+  )
   const tau = speedSmoothTau(interp)
   const speed = glideTowardLog(state.speed, Math.max(1e-4, targetSpeed), plan.hopSec, tau)
   const pitch = glideTowardLinear(state.pitch, targetPitch, plan.hopSec, tau)
@@ -230,5 +247,8 @@ export function scaledHannCurve(peak: number, length = 64): Float32Array {
 }
 
 export function stretchLookahead(hopSec: number): number {
-  return Math.max(0.028, hopSec * 2.4)
+  // A gesture re-renders the UI on the same thread as this scheduler.
+  // 80 ms of audio-clock lookahead survives that hitch without dumping
+  // several grains onto one sample.
+  return Math.max(0.08, hopSec * 2.4)
 }

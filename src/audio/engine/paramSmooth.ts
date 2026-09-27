@@ -19,6 +19,13 @@ export const SMOOTH_FREQUENCY_SEC = 0.012
 export const SMOOTH_Q_SEC = 0.006
 export const SMOOTH_PITCH_SEC = 0.016
 export const SMOOTH_DELAY_MIN_SEC = 0.012
+/**
+ * Maximum |d(delayTime)/dt|. Faster than this, a DelayNode read head skips
+ * samples and the output tears (a chirp that reads as a click), especially
+ * inside a feedback loop. 1.15 keeps a full musical jump a short glide.
+ */
+export const DELAY_TIME_SLEW = 1.15
+/** Previous unsafe ceiling. A jump longer than this in 30 ms tears a DelayNode. */
 export const SMOOTH_DELAY_MAX_SEC = 0.03
 export const SMOOTH_TIME_SEC = 0.008
 export const SMOOTH_DB_SEC = 0.008
@@ -171,7 +178,10 @@ export function setAudioParamNow(param: AudioParam, value: number, now: number):
 function delaySeconds(previous: number | undefined, value: number): number {
   if (previous === undefined) return SMOOTH_DELAY_MIN_SEC
   const delta = Math.abs(value - previous)
-  return Math.min(SMOOTH_DELAY_MAX_SEC, Math.max(SMOOTH_DELAY_MIN_SEC, 0.008 + delta * 0.05))
+  if (delta < 1e-4) return SMOOTH_DELAY_MIN_SEC
+  // Duration tracks the distance so the read head never exceeds DELAY_TIME_SLEW.
+  // A 30 ms cap (the previous policy) turned a 200 ms jump into a torn head.
+  return Math.max(SMOOTH_DELAY_MIN_SEC, delta / DELAY_TIME_SLEW)
 }
 
 /**

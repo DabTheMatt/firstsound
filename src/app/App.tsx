@@ -184,12 +184,20 @@ export default function App() {
   useEffect(() => {
     historyRef.current = history
   }, [history])
-  useEffect(() => {
-    sensoryRef.current = sensory
-  }, [sensory])
-  useEffect(() => {
-    colorRef.current = colorSound
-  }, [colorSound])
+  const sensoryUiFrame = useRef(0)
+  const flushSensoryUi = () => {
+    sensoryUiFrame.current = 0
+    setSensory(sensoryRef.current)
+    setColorSound(colorRef.current)
+  }
+  const scheduleSensoryUi = () => {
+    if (typeof requestAnimationFrame !== 'function') {
+      flushSensoryUi()
+      return
+    }
+    if (sensoryUiFrame.current) return
+    sensoryUiFrame.current = requestAnimationFrame(flushSensoryUi)
+  }
 
   useEffect(() => {
     const onFocusIn = (event: FocusEvent) => {
@@ -398,14 +406,14 @@ export default function App() {
 
   const applySensoryValues = (next: SensoryValues) => {
     sensoryRef.current = next
-    setSensory(next)
     appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, next, colorRef.current)
+    scheduleSensoryUi()
   }
 
   const applyColorSoundValue = (next: ColorSound) => {
     colorRef.current = next
-    setColorSound(next)
     appliedRef.current = applySensorySession(engine, sensoryBaseRef.current, sensoryRef.current, next)
+    scheduleSensoryUi()
   }
 
   const applyPlayback = (patch: { speed?: number; pitch?: number }) => {

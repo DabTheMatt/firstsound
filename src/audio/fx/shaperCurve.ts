@@ -149,6 +149,16 @@ export function createClickSafeShaper(ctx: BaseAudioContext): ClickSafeShaper {
         return
       }
       const dest = legs[choice.index]!
+      // A leg that is still fading out is audible. Writing its curve now is a
+      // hard transfer step. Keep replacing the incoming leg until one is silent.
+      if (dest.writableAt > t + 1e-4) {
+        const rising = legs.findIndex((leg) => leg.fadeInAt != null)
+        const index = rising >= 0 ? rising : hot
+        write(index, curve, nextKey)
+        key = nextKey
+        hot = index
+        return
+      }
       const start = Math.max(t, dest.writableAt)
       write(choice.index, curve, nextKey)
       for (let i = 0; i < legs.length; i++) {
@@ -159,10 +169,11 @@ export function createClickSafeShaper(ctx: BaseAudioContext): ClickSafeShaper {
           leg.writableAt = Number.POSITIVE_INFINITY
           continue
         }
-        const becameAudible = leg.fadeInAt != null && leg.fadeInAt < start - 1e-4
         setSmoothedAudioParam(leg.gain.gain, 0, start, 'gain')
         leg.fadeInAt = null
-        leg.writableAt = becameAudible ? start + SMOOTH_GAIN_SEC : start
+        // The primed leg starts at full gain with no fadeInAt. It stays hot
+        // for the whole fade, so it is not writable until that fade ends.
+        leg.writableAt = start + SMOOTH_GAIN_SEC
       }
       key = nextKey
       hot = choice.index
