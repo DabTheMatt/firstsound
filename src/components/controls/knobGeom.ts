@@ -34,6 +34,32 @@ export function arcPath(
   return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
 }
 
+/**
+ * Active-LED overlay in the dial's top-right corner.
+ * Absolute, so showing it does not change knob layout.
+ * Sized to stay outside the value arc, pointer, and LFO ring (viewBox radius 37).
+ */
+export const KNOB_VIEWBOX = 84
+export const KNOB_OUTER_ART_RADIUS = 37
+export const ACTIVE_LED_INSET_PX = 2
+export const ACTIVE_LED_SIZE_PX = 5
+
+/** True when the LED disk stays outside the outermost painted knob ring. */
+export function activeLedClearsOuterArt(
+  dialPx: number,
+  insetPx = ACTIVE_LED_INSET_PX,
+  sizePx = ACTIVE_LED_SIZE_PX,
+): boolean {
+  if (!(dialPx > 0) || !(sizePx > 0) || insetPx < 0) return false
+  if (insetPx + sizePx > dialPx) return false
+  const center = dialPx / 2
+  const ledCenterX = dialPx - insetPx - sizePx / 2
+  const ledCenterY = insetPx + sizePx / 2
+  const nearest = Math.hypot(ledCenterX - center, ledCenterY - center) - sizePx / 2
+  const outer = (KNOB_OUTER_ART_RADIUS / KNOB_VIEWBOX) * dialPx
+  return nearest >= outer + 1
+}
+
 /** Yellow value stroke: unipolar from min; bipolar from 12 o’clock toward L or R. */
 export function knobValueArc(
   normalized: number,

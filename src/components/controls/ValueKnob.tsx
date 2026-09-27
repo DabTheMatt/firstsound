@@ -2,7 +2,14 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEve
 import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { wheelToNormalized } from './scrub'
-import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
+import {
+  ACTIVE_LED_INSET_PX,
+  ACTIVE_LED_SIZE_PX,
+  arcPath,
+  knobAngleDeg,
+  knobValueArc,
+  polar,
+} from './knobGeom'
 import { presentParamLabel } from './paramLabelFit'
 import styles from './Knob.module.css'
 
@@ -219,6 +226,17 @@ export function ValueKnob({
         onFocus={() => setTipOpen(true)}
         onBlur={() => setTipOpen(false)}
       >
+        <span
+          className={styles.activeLed}
+          data-active-led=""
+          aria-hidden="true"
+          style={{
+            top: ACTIVE_LED_INSET_PX,
+            right: ACTIVE_LED_INSET_PX,
+            width: ACTIVE_LED_SIZE_PX,
+            height: ACTIVE_LED_SIZE_PX,
+          }}
+        />
         <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
           <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
           <circle

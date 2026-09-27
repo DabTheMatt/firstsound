@@ -52,6 +52,7 @@
 }
 
 .dial {
+  position: relative;
   width: min(84px, 100%);
   height: auto;
   aspect-ratio: 1;
@@ -66,6 +67,23 @@
   touch-action: none;
   flex: none;
   cursor: ns-resize;
+}
+
+/* Tracks dial :focus — the same element the wheel treats as active. */
+.activeLed {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dial:focus > .activeLed {
+  opacity: 1;
+  background: var(--accent-primary);
+  box-shadow: 0 0 3px 1px color-mix(in srgb, var(--accent-primary) 55%, transparent);
 }
 
 .dial:focus,
@@ -103,6 +121,12 @@
 
   .dial:focus-visible .focusRing {
     stroke: Highlight;
+    opacity: 1;
+  }
+
+  .dial:focus > .activeLed {
+    background: Highlight;
+    box-shadow: none;
     opacity: 1;
   }
 }

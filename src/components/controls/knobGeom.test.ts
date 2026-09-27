@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { arcPath, knobAngleDeg, knobValueArc, polar } from './knobGeom'
+import {
+  ACTIVE_LED_INSET_PX,
+  ACTIVE_LED_SIZE_PX,
+  activeLedClearsOuterArt,
+  arcPath,
+  knobAngleDeg,
+  knobValueArc,
+  polar,
+} from './knobGeom'
 
 describe('knobAngleDeg', () => {
   it('puts min at 7:30 and max at 4:30', () => {
@@ -44,5 +52,18 @@ describe('LFO range ring', () => {
     const end = knobAngleDeg(0.65)
     expect(end - start).toBeCloseTo(0.4 * 270)
     expect(arcPath(36, 36, 31, start, end).startsWith('M ')).toBe(true)
+  })
+})
+
+describe('active LED placement', () => {
+  it('sits in the top-right corner outside the arc on every dial size', () => {
+    for (const dialPx of [44, 64, 72, 84]) {
+      expect(activeLedClearsOuterArt(dialPx)).toBe(true)
+      const center = dialPx / 2
+      const ledCenterX = dialPx - ACTIVE_LED_INSET_PX - ACTIVE_LED_SIZE_PX / 2
+      const ledCenterY = ACTIVE_LED_INSET_PX + ACTIVE_LED_SIZE_PX / 2
+      expect(ledCenterX).toBeGreaterThan(center)
+      expect(ledCenterY).toBeLessThan(center)
+    }
   })
 })
