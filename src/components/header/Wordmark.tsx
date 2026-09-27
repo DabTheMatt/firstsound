@@ -1,6 +1,9 @@
 import type { UiMode } from '../../modes/uiMode'
 import styles from './Wordmark.module.css'
 
+const BRAND_NAME = 'FIELD'
+const BRAND_TAGLINE = 'sound / interference / transformation'
+
 const MODE_LABEL: Record<UiMode, string> = {
   simple: 'Simple',
   technical: 'Technical',
@@ -20,7 +23,10 @@ export function Wordmark({ mode, variant = 'studio', compact = false }: Props) {
       className={`${styles.mark} ${styles[variant]} ${compact ? styles.compact : ''}`}
       aria-hidden={variant === 'gate' ? undefined : true}
     >
-      <span className={styles.name}>INTERFER</span>
+      <span className={styles.identity}>
+        <span className={styles.name}>{BRAND_NAME}</span>
+        <span className={styles.tagline}>{BRAND_TAGLINE}</span>
+      </span>
       {label ? <span className={styles.mode}>{label}</span> : null}
     </p>
   )
