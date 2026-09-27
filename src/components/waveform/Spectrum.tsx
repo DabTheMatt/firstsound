@@ -88,6 +88,7 @@ import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { SPECTRUM_HZ_LABEL_OFFSET, SPECTRUM_PLOT_PAD } from '../../audio/engine/spectrumPlotLayout'
+import { VizBackground } from './VizBackground'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -1048,6 +1049,7 @@ export function Spectrum({ active }: Props) {
         </div>
       </div>
       <div className={styles.stage}>
+        <VizBackground inset="fill" />
         {prefs.legendOpen ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (

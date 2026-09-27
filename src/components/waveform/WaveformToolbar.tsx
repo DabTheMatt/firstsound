@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import { useI18n } from '../../i18n'
+import { BackgroundControl } from './BackgroundControl'
 import styles from './WaveformToolbar.module.css'
 
 type Props = {
@@ -168,6 +169,7 @@ export function WaveformToolbar({
       )}
       <div className={`${styles.cluster} ${styles.view}`}>
         <span className={styles.kicker}>{t.waveform.viewGroup}</span>
+        <BackgroundControl />
         <div className={styles.views}>
         <IconButton
           label={t.waveform.waveTitle}

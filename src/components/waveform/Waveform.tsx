@@ -39,6 +39,7 @@ import { useI18n } from '../../i18n'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
+import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
 import { MixConsole } from '../mix/MixConsole'
 import { TrackLanes } from '../mix/TrackLanes'
@@ -1035,6 +1036,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
           <div className={styles.wavePane}>
+            {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
             {!sensory && !simple && snap.tracks.length > 0 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
                 {snap.tracks.map((track) => {

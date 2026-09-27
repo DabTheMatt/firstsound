@@ -216,6 +216,14 @@ export type Messages = {
     automationLegend: string
     automationAllUsed: string
     automationSegmentHint: string
+    background: string
+    backgroundCaption: string
+    backgroundLoad: string
+    backgroundOpacity: string
+    backgroundGrain: string
+    backgroundRemove: string
+    backgroundSession: string
+    backgroundReject: string
   }
   transport: {
     play: string
@@ -675,6 +683,14 @@ export const EN: Messages = {
     automationLegend: 'Automated parameters',
     automationAllUsed: 'Every parameter of this effect already has automation.',
     automationSegmentHint: 'Click a segment on the waveform.',
+    background: 'Background',
+    backgroundCaption: 'BG',
+    backgroundLoad: 'Load Image',
+    backgroundOpacity: 'Opacity',
+    backgroundGrain: 'Grain',
+    backgroundRemove: 'Remove',
+    backgroundSession: 'Image stays for this session only.',
+    backgroundReject: 'Use a JPG or PNG.',
   },
   transport: {
     play: 'Play',
@@ -1219,6 +1235,14 @@ export const PL: Messages = {
     automationLegend: 'Zautomatyzowane parametry',
     automationAllUsed: 'Każdy parametr tego efektu ma już automatyzację.',
     automationSegmentHint: 'Kliknij odcinek na fali.',
+    background: 'Tło',
+    backgroundCaption: 'Tło',
+    backgroundLoad: 'Wczytaj obraz',
+    backgroundOpacity: 'Krycie',
+    backgroundGrain: 'Ziarno',
+    backgroundRemove: 'Usuń',
+    backgroundSession: 'Obraz zostaje tylko na tę sesję.',
+    backgroundReject: 'Użyj pliku JPG lub PNG.',
   },
   transport: {
     play: 'Odtwórz',
