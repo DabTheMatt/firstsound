@@ -281,3 +281,39 @@ export function parseEqBands(raw: unknown): EqBand[] | null {
   }
   return bands
 }
+
+/**
+ * Where a newly created EQ strip belongs.
+ * The ADD control is not a band, so it is not part of this index.
+ * The new strip is placed immediately after the last active band.
+ * An off slot earlier in the array is a hole, not the insertion point.
+ */
+export function eqCreatedBandIndex(bands: readonly { type: string }[]): number {
+  let lastActive = -1
+  for (let i = 0; i < bands.length; i++) {
+    if (bands[i]!.type !== 'off') lastActive = i
+  }
+  return lastActive + 1
+}
+
+export type EqBandInsertPlan = { kind: 'use'; index: number } | { kind: 'append' }
+
+/**
+ * Activate the off slot that follows every active band, or append a new slot.
+ * Returns null when another active strip would pass EQ_MAX_BANDS, or when the
+ * only free slots sit before the last active band and the array cannot grow.
+ */
+export function planEqBandInsert(
+  bands: readonly { type: string }[],
+  maxBands = EQ_MAX_BANDS,
+): EqBandInsertPlan | null {
+  let active = 0
+  for (const band of bands) {
+    if (band.type !== 'off') active += 1
+  }
+  if (active >= maxBands) return null
+  const index = eqCreatedBandIndex(bands)
+  if (index < bands.length && bands[index]!.type === 'off') return { kind: 'use', index }
+  if (bands.length >= maxBands) return null
+  return { kind: 'append' }
+}

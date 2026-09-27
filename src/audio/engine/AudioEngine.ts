@@ -179,9 +179,28 @@ import {
   parseEqBands,
   eqBypassAfterBandEdit,
   bandIsActive,
+  planEqBandInsert,
   type EqBand,
   type EqFilterType,
 } from './eqBands'
+import {
+  canClearSampleSelection,
+  canDeleteSampleSelection,
+  canInsertSilence,
+  cloneCapture,
+  deleteFrameRange,
+  deleteFrameSpan,
+  insertFrameForTime,
+  insertSilence,
+  mapAutomation,
+  mapMarkerTimes,
+  mapPlayhead,
+  mapRange,
+  silenceFrameCount,
+  type SampleEditCapture,
+  type SamplePcmSnapshot,
+  type TimelineEdit,
+} from './sampleEdit'
 import {
   applyIdentityBiquad,
   cloneEqBands,
@@ -274,6 +293,9 @@ export type EngineSnapshot = {
   sampleRate: number
   channelCount: number
   sampleLoaded: boolean
+  canInsertSilence: boolean
+  canDeleteSelection: boolean
+  canClearSelection: boolean
   playing: boolean
   loop: boolean
   engineMode: EngineMode
@@ -354,10 +376,17 @@ const RAMP = 0.008
 function createContext(): AudioContext {
   const Ctor =
     window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext
-  if (!Ctor) throw new Error('Web Audio is not available in this browser.')
-  return new Ctor()
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (Ctor) {
+    try {
+      return new Ctor()
+    } catch {
+      /* Headless runs have no output device. Buffer edits still need a context. */
+    }
+  }
+  const Offline = (window as unknown as { OfflineAudioContext?: typeof OfflineAudioContext }).OfflineAudioContext
+  if (Offline) return new Offline(2, 128, 48000) as unknown as AudioContext
+  throw new Error('Web Audio is not available in this browser.')
 }
 
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
@@ -413,6 +442,8 @@ type Slot = ChainSlot
  */
 export class AudioEngine {
   private ctx: AudioContext | null = null
+  /** Buffer factory when the output device is not open yet. */
+  private scratchCtx: BaseAudioContext | null = null
   private voiceBus: GainNode | null = null
   private mixBus: GainNode | null = null
   private tracks: MixTrack[] = defaultTracks()
@@ -2267,6 +2298,24 @@ export class AudioEngine {
     return index
   }
 
+  /**
+   * Create one EQ strip at the end of the active sequence.
+   * The ADD control is not a band and is not used as an insertion index.
+   */
+  createEqStrip(type: EqFilterType, instanceId?: string): number | null {
+    if (type === 'off') return null
+    const id = instanceId ?? this.primaryEqId()
+    if (!this.chain.some((mod) => mod.instanceId === id && mod.type === 'eq')) return null
+    const current = this.eqEditBands(this.eqState(id))
+    const plan = planEqBandInsert(current)
+    if (!plan) return null
+    let index = plan.kind === 'use' ? plan.index : this.addEqBand(id)
+    if (index == null) return null
+    const slope = type === 'highpass' || type === 'lowpass' ? 48 : undefined
+    this.setEqBand(index, slope ? { type, slope } : { type }, id)
+    return index
+  }
+
   setComb(patch: Partial<CombFilterState>, instanceId?: string): void {
     const id = instanceId ?? this.primaryEqId()
     const st = this.eqState(id)
@@ -2594,6 +2643,104 @@ export class AudioEngine {
     this.afterBufferEdit()
   }
 
+  captureSampleEdit(): SampleEditCapture | null {
+    const buffer = this.buffer
+    if (!buffer || !(buffer.sampleRate > 0) || buffer.length < 1) return null
+    const channels: Float32Array[] = []
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      const copy = new Float32Array(buffer.length)
+      copy.set(buffer.getChannelData(ch))
+      channels.push(copy)
+    }
+    return cloneCapture({
+      sampleRate: buffer.sampleRate,
+      channels,
+      playhead: this.getPlayheadSeconds(),
+      transients: this.transients.slice(),
+      start: this.params.start,
+      end: this.params.end,
+      automation: this.automation,
+    })
+  }
+
+  /** Restore PCM, playhead, and markers. Region and automation stay with history. */
+  restoreSamplePcm(snap: SamplePcmSnapshot): void {
+    const previous = this.buffer
+    if (!previous) return
+    const next = this.bufferFromChannels(snap.channels, snap.sampleRate)
+    if (!next) return
+    this.stopVoices()
+    this.playing = false
+    this.installEditedBuffer(next, previous)
+    const duration = next.duration
+    this.playOffset = Math.min(duration, Math.max(0, snap.playhead))
+    this.transients = snap.transients.slice()
+    this.showTransients = this.transients.length > 0
+    this.emit()
+  }
+
+  /** Install raw PCM as the working sample. The output device can stay closed. */
+  loadPcm(channels: readonly Float32Array[], sampleRate: number, fileName = 'sample.wav'): boolean {
+    const buffer = this.bufferFromChannels(channels, sampleRate)
+    if (!buffer) return false
+    this.stopVoices()
+    this.playing = false
+    this.fileName = fileName
+    this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId, fileName)
+    return true
+  }
+
+  /** Insert 1.0s of digital silence at the playhead. One call is one edit. */
+  insertSilenceAtPlayhead(): boolean {
+    const buffer = this.buffer
+    if (!buffer || !this.bufferFactory()) return false
+    const silenceFrames = silenceFrameCount(buffer.sampleRate)
+    if (silenceFrames < 1) return false
+    const playhead = this.freezePlayhead()
+    const atFrame = insertFrameForTime(playhead, buffer.sampleRate, buffer.length)
+    const channels = readBufferChannels(buffer)
+    const nextChannels = insertSilence(channels, atFrame, silenceFrames)
+    const next = this.bufferFromChannels(nextChannels, buffer.sampleRate)
+    if (!next) return false
+    const edit: TimelineEdit = {
+      kind: 'insert',
+      atSec: atFrame / buffer.sampleRate,
+      deltaSec: silenceFrames / buffer.sampleRate,
+    }
+    this.installEditedBuffer(next, buffer)
+    this.applyTimelineEdit(edit)
+    return true
+  }
+
+  /** Remove the highlighted region and close the gap. One call is one edit. */
+  deleteSampleSelection(): boolean {
+    const buffer = this.buffer
+    if (!buffer || !this.bufferFactory()) return false
+    const span = deleteFrameSpan(this.params.start, this.params.end, buffer.sampleRate, buffer.length)
+    if (!span) return false
+    this.freezePlayhead()
+    const nextChannels = deleteFrameRange(readBufferChannels(buffer), span.start, span.end)
+    if (!nextChannels) return false
+    const next = this.bufferFromChannels(nextChannels, buffer.sampleRate)
+    if (!next) return false
+    const edit: TimelineEdit = {
+      kind: 'delete',
+      startSec: span.start / buffer.sampleRate,
+      endSec: span.end / buffer.sampleRate,
+    }
+    this.installEditedBuffer(next, buffer)
+    this.applyTimelineEdit(edit)
+    return true
+  }
+
+  /** Deselect the highlight. The sample itself is unchanged. */
+  clearSampleSelection(): boolean {
+    const duration = this.buffer?.duration ?? 0
+    if (!canClearSampleSelection(this.params.start, this.params.end, duration)) return false
+    this.setRegion(0, duration)
+    return true
+  }
+
   renderEdit(edit: {
     fadeIn: number
     fadeOut: number
@@ -2712,6 +2859,93 @@ export class AudioEngine {
     this.emit()
   }
 
+  private freezePlayhead(): number {
+    const time = this.getPlayheadSeconds()
+    this.stopVoices()
+    this.playing = false
+    this.playOffset = time
+    return time
+  }
+
+  private bufferFactory(): BaseAudioContext | null {
+    if (this.ctx) return this.ctx
+    if (this.scratchCtx) return this.scratchCtx
+    const Offline = (globalThis as { OfflineAudioContext?: typeof OfflineAudioContext }).OfflineAudioContext
+    if (!Offline) return null
+    this.scratchCtx = new Offline(2, 128, 48000)
+    return this.scratchCtx
+  }
+
+  private bufferFromChannels(channels: readonly Float32Array[], sampleRate: number): AudioBuffer | null {
+    const ctx = this.bufferFactory()
+    if (!ctx) return null
+    const length = channels[0]?.length ?? 0
+    if (length < 1 || !(sampleRate > 0) || channels.length < 1) return null
+    const buffer = ctx.createBuffer(channels.length, length, sampleRate)
+    for (let ch = 0; ch < channels.length; ch++) {
+      buffer.getChannelData(ch).set(channels[ch] ?? new Float32Array(length))
+    }
+    return buffer
+  }
+
+  /** Swap the working sample. The source follows when it was the same buffer. */
+  private installEditedBuffer(next: AudioBuffer, previous: AudioBuffer): void {
+    const shareSource = this.sourceBuffer === previous
+    this.buffer = next
+    this.trackBuffers.set(this.selectedTrackId, next)
+    if (shareSource) {
+      this.sourceBuffer = next
+      this.sourceMono = mixToMono(next)
+      this.sourceMips = []
+      for (let ch = 0; ch < next.numberOfChannels; ch++) {
+        this.sourceMips.push(buildPeakMips(next.getChannelData(ch)))
+      }
+    }
+    this.reversed = this.buildReversed(next)
+    this.mono = mixToMono(next)
+    this.bufferRev++
+  }
+
+  private applyTimelineEdit(edit: TimelineEdit): void {
+    const duration = this.buffer?.duration ?? 0
+    const previousPlayhead = this.playOffset
+    if (edit.kind === 'delete') {
+      this.params.start = 0
+      this.params.end = duration
+    } else {
+      const mapped = mapRange(this.params.start, this.params.end, edit)
+      const region = clampRegion(mapped.start, mapped.end, duration, MIN_REGION)
+      this.params.start = region.start
+      this.params.end = region.end
+    }
+    this.syncSelectedTrackRegion()
+    this.playOffset = mapPlayhead(previousPlayhead, edit, duration)
+    this.automation = mapAutomation(this.automation, edit)
+    this.transients = mapMarkerTimes(this.transients, edit)
+    this.showTransients = this.transients.length > 0
+    if (!this.prepApplied) {
+      const window = mapRange(this.prep.windowStart, this.prep.windowEnd, edit)
+      const selection =
+        edit.kind === 'delete'
+          ? { start: 0, end: duration }
+          : mapRange(this.prep.selectionStart, this.prep.selectionEnd, edit)
+      const clock = Math.max(duration, this.sourceDuration())
+      this.prep = clampPrep(
+        {
+          ...this.prep,
+          windowStart: window.start,
+          windowEnd: edit.kind === 'insert' ? Math.max(window.end, duration) : window.end,
+          selectionStart: selection.start,
+          selectionEnd: selection.end,
+        },
+        clock,
+      )
+      this.syncPrepSelection(this.params.start, this.params.end)
+    }
+    this.applyRegionChange()
+    this.emit()
+  }
+
   private detachWorkingBuffer(): AudioBuffer | null {
     if (!this.ctx || !this.buffer) return null
     if (this.buffer !== this.sourceBuffer) return this.buffer
@@ -2754,8 +2988,9 @@ export class AudioEngine {
   }
 
   private buildReversed(buffer: AudioBuffer): AudioBuffer | null {
-    if (!this.ctx) return null
-    const rev = this.ctx.createBuffer(
+    const ctx = this.bufferFactory()
+    if (!ctx) return null
+    const rev = ctx.createBuffer(
       buffer.numberOfChannels,
       buffer.length,
       buffer.sampleRate,
@@ -2801,7 +3036,7 @@ export class AudioEngine {
       this.connectSlots()
       this.bindVisibility()
     }
-    if (this.ctx.state === 'suspended') {
+    if (this.ctx.state === 'suspended' && !(this.ctx instanceof OfflineAudioContext)) {
       await this.ctx.resume()
     }
     if (!this.unlocked && this.ctx.state === 'running') {
@@ -4460,6 +4695,18 @@ export class AudioEngine {
       sampleRate: this.buffer?.sampleRate ?? this.ctx?.sampleRate ?? 0,
       channelCount: this.buffer?.numberOfChannels ?? 0,
       sampleLoaded: Boolean(this.buffer),
+      canInsertSilence: canInsertSilence(this.buffer?.sampleRate ?? 0, this.buffer?.length ?? 0),
+      canDeleteSelection: canDeleteSampleSelection(
+        this.params.start,
+        this.params.end,
+        this.buffer?.sampleRate ?? 0,
+        this.buffer?.length ?? 0,
+      ),
+      canClearSelection: canClearSampleSelection(
+        this.params.start,
+        this.params.end,
+        this.buffer?.duration ?? 0,
+      ),
       playing: this.playing,
       loop: this.loop,
       engineMode: this.engineMode,
@@ -4613,6 +4860,12 @@ export class AudioEngine {
     }
     return rec
   }
+}
+
+function readBufferChannels(buffer: AudioBuffer): Float32Array[] {
+  const channels: Float32Array[] = []
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch))
+  return channels
 }
 
 export const engine = new AudioEngine()

@@ -93,6 +93,7 @@ type Props = {
   onLoadDemo: () => void
   onRegionCommit: () => void
   onAutomationCommit?: () => void
+  onDeleteSelection?: () => void
   onFades: (patch: {
     fadeIn?: number
     fadeOut?: number
@@ -118,6 +119,14 @@ export type WaveformHandle = {
   fitSelection: () => void
   resetZoom: () => void
   zoomBy: (factor: number) => void
+}
+
+function blocksSampleDeleteKey(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return true
+  return target.getAttribute('role') === 'slider'
 }
 
 const SPLIT_PREF = 'field.splitWave'
@@ -188,6 +197,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onLoadDemo,
     onRegionCommit,
     onAutomationCommit,
+    onDeleteSelection,
     onFades,
     onFadesCommit,
     contentRev = 0,
@@ -253,23 +263,29 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   }, [start, end, duration, normalizeView, tool, autoSnap])
 
   useEffect(() => {
-    if (viz !== 'automation') return
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Delete' && event.key !== 'Backspace') return
       if (event.repeat) return
-      if (isTypingTarget(event.target) || event.target instanceof HTMLSelectElement) return
-      const selected = autoFocus.nodeId
-      const doc = engine.getSnapshot().automation
-      const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
-      if (!selected || !lane?.nodes.some((node) => node.id === selected)) return
+      if (isTypingTarget(event.target) || blocksSampleDeleteKey(event.target)) return
+      if (viz === 'automation') {
+        const selected = autoFocus.nodeId
+        const doc = engine.getSnapshot().automation
+        const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
+        if (selected && lane?.nodes.some((node) => node.id === selected)) {
+          event.preventDefault()
+          engine.deleteAutomationNode(selected)
+          setAutoFocus(EMPTY_AUTOMATION_FOCUS)
+          onAutomationCommit?.()
+          return
+        }
+      }
+      if (!onDeleteSelection || !engine.getSnapshot().canDeleteSelection) return
       event.preventDefault()
-      engine.deleteAutomationNode(selected)
-      setAutoFocus(EMPTY_AUTOMATION_FOCUS)
-      onAutomationCommit?.()
+      onDeleteSelection()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [viz, autoFocus.nodeId, onAutomationCommit, setAutoFocus])
+  }, [viz, autoFocus.nodeId, onAutomationCommit, setAutoFocus, onDeleteSelection])
 
   useEffect(() => {
     handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22

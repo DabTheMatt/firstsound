@@ -139,6 +139,12 @@ export type Messages = {
     edit: string
     trim: string
     trimTitle: string
+    insertSilence: string
+    insertSilenceCaption: string
+    deleteSelection: string
+    deleteSelectionCaption: string
+    clearSelection: string
+    clearSelectionCaption: string
     fitSample: string
     fit: string
     fitSelection: string
@@ -580,6 +586,12 @@ export const EN: Messages = {
     edit: 'Edit',
     trim: 'Trim',
     trimTitle: 'Trim to selection',
+    insertSilence: 'Insert silence',
+    insertSilenceCaption: 'Gap',
+    deleteSelection: 'Delete selection',
+    deleteSelectionCaption: 'Del',
+    clearSelection: 'Clear selection',
+    clearSelectionCaption: 'Clear',
     fitSample: 'Fit sample',
     fit: 'Fit',
     fitSelection: 'Fit selection',
@@ -1106,6 +1118,12 @@ export const PL: Messages = {
     edit: 'Edycja',
     trim: 'Przytnij',
     trimTitle: 'Przytnij do zaznaczenia',
+    insertSilence: 'Wstaw ciszę',
+    insertSilenceCaption: 'Cisza',
+    deleteSelection: 'Usuń zaznaczenie',
+    deleteSelectionCaption: 'Usuń',
+    clearSelection: 'Wyczyść zaznaczenie',
+    clearSelectionCaption: 'Czyść',
     fitSample: 'Dopasuj sample',
     fit: 'Całość',
     fitSelection: 'Dopasuj zaznaczenie',

@@ -34,6 +34,12 @@ import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
 import { automationEqual, cloneAutomation, EMPTY_AUTOMATION_FOCUS, type AutomationDocument, type AutomationEditFocus } from '../audio/automation/automation'
+import {
+  nextSamplePcmId,
+  snapshotFromCapture,
+  type SampleEditCapture,
+  type SamplePcmSnapshot,
+} from '../audio/engine/sampleEdit'
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
@@ -56,6 +62,7 @@ type Hist = {
   dsp?: DspSnapshot
   sensoryBase?: DspSnapshot
   automation: AutomationDocument
+  pcm?: SamplePcmSnapshot
 }
 
 function cloneDsp(dsp: DspSnapshot): DspSnapshot {
@@ -94,6 +101,7 @@ function histKey(
 }
 
 function histEqual(a: Hist, b: Hist): boolean {
+  if ((a.pcm?.id ?? null) !== (b.pcm?.id ?? null)) return false
   if (!automationEqual(a.automation, b.automation)) return false
   if (
     a.start !== b.start ||
@@ -298,7 +306,59 @@ export default function App() {
     )
   }, [])
 
+  const pushSampleEdit = (before: SampleEditCapture, after: SampleEditCapture) => {
+    const e = editRef.current
+    const chain = engine.getSnapshot().chain
+    setHistory((h) => {
+      const stamped: Hist = {
+        ...h.present,
+        start: before.start,
+        end: before.end,
+        automation: cloneAutomation(before.automation),
+        pcm: snapshotFromCapture(before, nextSamplePcmId()),
+      }
+      const next: Hist = {
+        ...stamped,
+        start: after.start,
+        end: after.end,
+        chain: chain.map((m) => m.instanceId).join(','),
+        fadeIn: e.fadeIn,
+        fadeOut: e.fadeOut,
+        fadeCurve: e.fadeCurve,
+        fadeInBend: e.fadeInBend,
+        fadeOutBend: e.fadeOutBend,
+        automation: cloneAutomation(after.automation),
+        pcm: snapshotFromCapture(after, nextSamplePcmId()),
+      }
+      return commitHistory({ ...h, present: stamped }, next, histEqual)
+    })
+  }
+
+  const insertSilence = () => {
+    const before = engine.captureSampleEdit()
+    if (!before || !engine.insertSilenceAtPlayhead()) return
+    const after = engine.captureSampleEdit()
+    if (!after) return
+    pushSampleEdit(before, after)
+    waveRef.current?.fitSample()
+  }
+
+  const deleteSelection = () => {
+    const before = engine.captureSampleEdit()
+    if (!before || !engine.deleteSampleSelection()) return
+    const after = engine.captureSampleEdit()
+    if (!after) return
+    pushSampleEdit(before, after)
+    waveRef.current?.fitSample()
+  }
+
+  const clearSelection = () => {
+    if (!engine.clearSampleSelection()) return
+    commit()
+  }
+
   const restorePresent = (present: Hist) => {
+    if (present.pcm) engine.restoreSamplePcm(present.pcm)
     engine.setRegion(present.start, present.end)
     engine.replaceAutomation(present.automation)
     setEdit((e) => ({
@@ -860,6 +920,12 @@ export default function App() {
               commit()
             })
           }}
+          onInsertSilence={insertSilence}
+          onDeleteSelection={deleteSelection}
+          onClearSelection={clearSelection}
+          canInsertSilence={snap.canInsertSilence}
+          canDeleteSelection={snap.canDeleteSelection}
+          canClearSelection={snap.canClearSelection}
           onAutoFade={() => {
             setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
             commit()
@@ -895,6 +961,7 @@ export default function App() {
               onFadesCommit={commit}
               onRegionCommit={commit}
               onAutomationCommit={commit}
+              onDeleteSelection={deleteSelection}
               autoFocus={autoFocus}
               onAutoFocus={setAutoFocus}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}

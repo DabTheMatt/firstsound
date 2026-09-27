@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
-import { EQ_MAX_BANDS, eqStripKey, type EqFilterType } from '../../audio/engine/eqBands'
+import { eqStripKey, planEqBandInsert, type EqFilterType } from '../../audio/engine/eqBands'
 import {
   clampEqOverlayFocus,
   eqOverlayIncludes,
@@ -61,7 +61,6 @@ export function EqConsole({ onFocusModule }: Props) {
         {eqs.length === 0 ? (
           <AddEqStrip
             instanceId={null}
-            index={-1}
             label="EQ · ADD"
             chainLength={snap.chain.length}
             onFocusModule={onFocusModule}
@@ -70,30 +69,30 @@ export function EqConsole({ onFocusModule }: Props) {
         {visible.flatMap((mod) => {
           const bands = snap.eqById[mod.instanceId]?.bands ?? []
           const eqNumber = eqs.findIndex((item) => item.instanceId === mod.instanceId) + 1
-          const enabled = bands.flatMap((band, index) =>
-            band.type === 'off'
-              ? []
-              : [
-                  <EqBandStrip
-                    key={eqStripKey(mod.instanceId, band)}
-                    snap={snap}
-                    instanceId={mod.instanceId}
-                    index={index}
-                    band={band}
-                    label={eqStripHeading(eqs.length, eqNumber, index + 1)}
-                    selected={selected?.instanceId === mod.instanceId && selected.index === index}
-                  />,
-                ],
-          )
-          const offIndex = bands.findIndex((b) => b.type === 'off')
-          const canAdd = offIndex >= 0 || bands.length < EQ_MAX_BANDS
+          let visibleNumber = 0
+          const enabled = bands.flatMap((band, index) => {
+            if (band.type === 'off') return []
+            visibleNumber += 1
+            const bandNumber = visibleNumber
+            return [
+              <EqBandStrip
+                key={eqStripKey(mod.instanceId, band)}
+                snap={snap}
+                instanceId={mod.instanceId}
+                index={index}
+                band={band}
+                label={eqStripHeading(eqs.length, eqNumber, bandNumber)}
+                selected={selected?.instanceId === mod.instanceId && selected.index === index}
+              />,
+            ]
+          })
+          const canAdd = planEqBandInsert(bands) != null
           return [
             ...enabled,
             canAdd ? (
               <AddEqStrip
                 key={`${mod.instanceId}-add`}
                 instanceId={mod.instanceId}
-                index={offIndex}
                 label="EQ · ADD"
                 chainLength={snap.chain.length}
                 onFocusModule={onFocusModule}
@@ -109,13 +108,11 @@ export function EqConsole({ onFocusModule }: Props) {
 
 function AddEqStrip({
   instanceId,
-  index,
   label,
   chainLength,
   onFocusModule,
 }: {
   instanceId: string | null
-  index: number
   label: string
   chainLength: number
   onFocusModule?: (instanceId: string) => void
@@ -137,17 +134,8 @@ function AddEqStrip({
             if (id) onFocusModule?.(id)
           }
           if (!id) return
-          const apply = (bandIndex: number) => {
-            const slope = type === 'highpass' || type === 'lowpass' ? 48 : undefined
-            engine.setEqBand(bandIndex, slope ? { type, slope } : { type }, id!)
-            selectEqBand({ instanceId: id!, index: bandIndex })
-          }
-          if (index >= 0) {
-            apply(index)
-            return
-          }
-          const next = engine.addEqBand(id)
-          if (next != null) apply(next)
+          const next = engine.createEqStrip(type, id)
+          if (next != null) selectEqBand({ instanceId: id, index: next })
         }}
       />
     </article>
