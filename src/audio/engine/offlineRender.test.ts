@@ -9,7 +9,7 @@ import type { ParamId } from '../parameters/types'
 import { defaultPrep } from '../samplePrep/state'
 import type { ExportSettings, Pcm } from '../samplePrep/types'
 import { defaultCombFilter } from './comb'
-import { selectionExportAvailable } from './exportTail'
+import { prepForWorkingExport, selectionExportAvailable } from './exportTail'
 import { defaultEqBands, type EqBand } from './eqBands'
 import type { OfflineContextFactory, ProcessingSnapshot } from './offlineRender'
 import { renderExportPcm, renderProcessedPcm } from './offlineRender'
@@ -487,5 +487,49 @@ describe('offline export renders the audible chain', () => {
     expect(out.length).toBeLessThan(selFrames + Math.floor(2.5 * SR))
     expect(rms(out, selFrames, Math.min(out.length, selFrames + Math.floor(0.12 * SR)))).toBeGreaterThan(0.008)
     expect(selectionExportAvailable(defaultPrep(seconds))).toBe(false)
+  })
+
+  it('writes the highlighted span, not a stale prep selection', async () => {
+    const seconds = 1
+    const n = Math.floor(seconds * SR)
+    const ch = new Float32Array(n)
+    const stale0 = Math.floor(0.1 * SR)
+    const stale1 = Math.floor(0.25 * SR)
+    for (let i = stale0; i < stale1; i++) ch[i] = 0.9
+    const keep0 = Math.floor(0.55 * SR)
+    const keep1 = Math.floor(0.75 * SR)
+    for (let i = keep0; i < keep1; i++) ch[i] = 0.4 * Math.sin((2 * Math.PI * 660 * (i - keep0)) / SR)
+    const stale = { ...defaultPrep(seconds), selectionStart: 0.1, selectionEnd: 0.25 }
+    const clock = { bufferDuration: seconds, regionStart: 0.55, regionEnd: 0.75 }
+    const prep = prepForWorkingExport(stale, 'selection', clock)
+    const out = mono(await renderExportPcm({ sampleRate: SR, channels: [ch] }, prep, settings('selection'), state(), { factory }))
+    const tone = ch.slice(keep0, keep1)
+    expect(out.length).toBe(tone.length)
+    expect(meanAbs(out, tone)).toBeLessThan(0.01)
+    expect(rms(out)).toBeGreaterThan(0.15)
+    expect(rms(out)).toBeLessThan(0.35)
+  })
+
+  it('writes a baked later fragment, not the same-length head of the source', async () => {
+    const seconds = 2
+    const n = Math.floor(seconds * SR)
+    const ch = new Float32Array(n)
+    ch[8] = 1
+    const cut = Math.floor(1.2 * SR)
+    const span = Math.floor(0.35 * SR)
+    for (let i = 0; i < span; i++) ch[cut + i] = 0.55 * Math.sin((2 * Math.PI * 440 * i) / SR)
+    const working: Pcm = { sampleRate: SR, channels: [ch.slice(cut, cut + span)] }
+    const stale = { ...defaultPrep(seconds), selectionStart: 1.2, selectionEnd: 1.2 + span / SR }
+    const clock = { bufferDuration: span / SR, regionStart: 0, regionEnd: span / SR }
+    const prep = prepForWorkingExport(stale, 'project', clock)
+    const baked = mono(await renderExportPcm(working, prep, settings(), state(), { factory }))
+    const headPrep = { ...defaultPrep(seconds), windowStart: 0, windowEnd: span / SR }
+    const head = mono(await renderExportPcm({ sampleRate: SR, channels: [ch] }, headPrep, settings(), state(), { factory }))
+    expect(baked.length).toBe(span)
+    expect(meanAbs(baked, working.channels[0]!)).toBeLessThan(0.01)
+    expect(rms(baked)).toBeGreaterThan(0.2)
+    expect(Math.abs(head[8] ?? 0)).toBeGreaterThan(0.5)
+    expect(rms(head, 40, Math.min(head.length, 400))).toBeLessThan(0.02)
+    expect(meanAbs(baked, head)).toBeGreaterThan(0.2)
   })
 })

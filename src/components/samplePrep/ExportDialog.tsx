@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { selectionExportAvailable } from '../../audio/engine/exportTail'
+import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
 import { engine } from '../../hooks/useEngine'
@@ -39,10 +39,24 @@ export function ExportDialog({ snap, onClose }: Props) {
   const [applyReverse, setApplyReverse] = useState(prep.reverse)
   const [applyNormalize, setApplyNormalize] = useState(false)
   const [rendering, setRendering] = useState(false)
-  const selectionReady = selectionExportAvailable(prep)
+  const exportClock = useMemo(
+    () => ({
+      bufferDuration: snap.duration,
+      regionStart: snap.params.start,
+      regionEnd: snap.params.end,
+    }),
+    [snap.duration, snap.params.start, snap.params.end],
+  )
+  const selectionReady = selectionExportAvailable(prep, exportClock)
 
-  const projectLength = useMemo(() => Math.max(0, prep.windowEnd - prep.windowStart), [prep])
-  const selectionLength = useMemo(() => Math.max(0, prep.selectionEnd - prep.selectionStart), [prep])
+  const projectLength = useMemo(() => {
+    const range = exportWorkingRange(prep, 'project', exportClock)
+    return Math.max(0, range.end - range.start)
+  }, [prep, exportClock])
+  const selectionLength = useMemo(() => {
+    const range = exportWorkingRange(prep, 'selection', exportClock)
+    return Math.max(0, range.end - range.start)
+  }, [prep, exportClock])
   const originalHz = snap.sourceSampleRate
 
   useEffect(() => {

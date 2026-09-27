@@ -242,7 +242,7 @@ import { applyStereoStage, forceStereoUpmix } from './stereoStage'
 import { createChainSlot, moduleMixGains, type ChainSlot } from './chainGraph'
 import { writeCombCoefficients, writeEqBandCoefficients } from './eqGraph'
 import { renderExportPcm, type ExportEqState, type ProcessingSnapshot } from './offlineRender'
-import { selectionExportAvailable } from './exportTail'
+import { prepForWorkingExport, selectionExportAvailable, type WorkingExportClock } from './exportTail'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
   effectiveInterpAlgo,
@@ -948,6 +948,7 @@ export class AudioEngine {
       this.params.start = region.start
       this.params.end = region.end
       this.syncSelectedTrackRegion()
+      this.syncPrepSelection(region.start, region.end)
       this.applyRegionChange()
     } else {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
@@ -1393,14 +1394,26 @@ export class AudioEngine {
     this.params.start = region.start
     this.params.end = region.end
     this.syncSelectedTrackRegion()
-    if (!this.prepApplied) {
-      this.prep = clampPrep(
-        { ...this.prep, selectionStart: region.start, selectionEnd: region.end },
-        this.sourceDuration(),
-      )
-    }
+    this.syncPrepSelection(region.start, region.end)
     this.applyRegionChange()
     this.emit()
+  }
+
+  /** Keep the prep selection on the same loop the waveform highlight shows. */
+  private syncPrepSelection(start: number, end: number): void {
+    if (this.prepApplied || !(this.sourceDuration() > 0)) return
+    this.prep = clampPrep(
+      { ...this.prep, selectionStart: start, selectionEnd: end },
+      this.sourceDuration(),
+    )
+  }
+
+  private workingExportClock(bufferDuration: number): WorkingExportClock {
+    return {
+      bufferDuration,
+      regionStart: this.params.start,
+      regionEnd: this.params.end,
+    }
   }
 
   private sourceDuration(): number {
@@ -1810,12 +1823,14 @@ export class AudioEngine {
   async exportWav(
     settings: ExportSettings,
   ): Promise<{ filename: string; blob: Blob; duration: number } | null> {
-    if (!this.sourceBuffer) return null
+    const buffer = this.buffer ?? this.sourceBuffer
+    if (!buffer) return null
     const scope = settings.scope ?? 'project'
-    if (scope === 'selection' && !selectionExportAvailable(this.prep)) return null
+    const clock = this.workingExportClock(buffer.duration)
+    if (scope === 'selection' && !selectionExportAvailable(this.prep, clock)) return null
     const pcm = await renderExportPcm(
-      clonePcmFromBuffer(this.sourceBuffer),
-      this.prep,
+      clonePcmFromBuffer(buffer),
+      prepForWorkingExport(this.prep, scope, clock),
       { ...settings, scope },
       this.processingSnapshot(),
     )

@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { factoryChain, type ChainModule, type ModuleType } from '../chain/chain'
 import { defaultParamValues } from '../parameters/definitions'
 import { defaultPrep } from '../samplePrep/state'
-import { effectTailBudgetSec, exportSourceRange, selectionExportAvailable, trimRenderedTail } from './exportTail'
+import {
+  effectTailBudgetSec,
+  exportSourceRange,
+  exportWorkingRange,
+  prepForWorkingExport,
+  prepMatchesWorkingBuffer,
+  selectionExportAvailable,
+  trimRenderedTail,
+} from './exportTail'
 
 function chain(enabled: ModuleType[], bypassed: ModuleType[] = []): ChainModule[] {
   return factoryChain().map((mod) => ({
@@ -30,6 +38,28 @@ describe('export tail and selection range', () => {
     expect(selectionExportAvailable(prep)).toBe(true)
     expect(exportSourceRange(prep, 'selection')).toEqual({ start: 0.4, end: 0.9 })
     expect(exportSourceRange(prep, 'project')).toEqual({ start: 0, end: 2 })
+  })
+
+  it('exports the highlighted loop, not a stale prep selection', () => {
+    const prep = { ...defaultPrep(2), selectionStart: 0.2, selectionEnd: 1.1 }
+    const clock = { bufferDuration: 2, regionStart: 0.5, regionEnd: 0.9 }
+    expect(exportWorkingRange(prep, 'selection', clock)).toEqual({ start: 0.5, end: 0.9 })
+    expect(exportWorkingRange(prep, 'project', clock)).toEqual({ start: 0, end: 2 })
+    expect(selectionExportAvailable(prep, clock)).toBe(true)
+    const pointed = prepForWorkingExport(prep, 'selection', clock)
+    expect(exportSourceRange(pointed, 'selection')).toEqual({ start: 0.5, end: 0.9 })
+  })
+
+  it('keeps a baked trim on the working buffer instead of the source head', () => {
+    const fitted = { ...defaultPrep(0.4), windowStart: 0, windowEnd: 0.4, selectionStart: 0, selectionEnd: 0.4 }
+    const clock = { bufferDuration: 0.4, regionStart: 0, regionEnd: 0.4 }
+    expect(prepMatchesWorkingBuffer(fitted, 0.4)).toBe(true)
+    expect(exportWorkingRange(fitted, 'project', clock)).toEqual({ start: 0, end: 0.4 })
+    const stale = { ...defaultPrep(4), selectionStart: 1.2, selectionEnd: 1.6 }
+    expect(prepMatchesWorkingBuffer(stale, 0.4)).toBe(false)
+    expect(exportWorkingRange(stale, 'project', clock)).toEqual({ start: 0, end: 0.4 })
+    expect(exportWorkingRange(stale, 'selection', clock)).toEqual({ start: 0, end: 0.4 })
+    expect(selectionExportAvailable(stale, clock)).toBe(false)
   })
 
   it('derives a delay/reverb budget instead of a fixed pad', () => {

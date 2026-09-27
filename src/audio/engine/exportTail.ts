@@ -20,11 +20,93 @@ export function exportSourceRange(
   return { start: prep.windowStart, end: prep.windowEnd }
 }
 
+/** Highlight on the buffer the waveform draws. Times are seconds in that buffer. */
+export type WorkingExportClock = {
+  bufferDuration: number
+  regionStart: number
+  regionEnd: number
+}
+
+const PREP_FIT_EPS = 0.002
+
+/**
+ * Prep times still address this buffer.
+ * A bake that replaced the buffer (trim, use as sample) can leave prep
+ * describing the original file; those times must not slice the new buffer.
+ */
+export function prepMatchesWorkingBuffer(prep: SamplePrepState, bufferDuration: number): boolean {
+  if (!(bufferDuration > 0)) return false
+  return (
+    prep.windowStart >= -PREP_FIT_EPS &&
+    prep.windowEnd <= bufferDuration + PREP_FIT_EPS &&
+    prep.selectionStart >= -PREP_FIT_EPS &&
+    prep.selectionEnd <= bufferDuration + PREP_FIT_EPS
+  )
+}
+
+function clampSpan(start: number, end: number, duration: number): { start: number; end: number } {
+  if (!(duration > 0)) return { start: 0, end: 0 }
+  const s = Math.min(duration, Math.max(0, start))
+  const e = Math.min(duration, Math.max(s, end))
+  return { start: s, end: e }
+}
+
+/**
+ * Slice of the working buffer — the audio the waveform shows.
+ * Project is that working sample. Selection is the highlighted loop,
+ * not a stale prep range and not the head of the original file.
+ */
+export function exportWorkingRange(
+  prep: SamplePrepState,
+  scope: ExportScope,
+  clock: WorkingExportClock,
+): { start: number; end: number } {
+  const duration = Math.max(0, clock.bufferDuration)
+  const highlight = clampSpan(clock.regionStart, clock.regionEnd, duration)
+  if (!prepMatchesWorkingBuffer(prep, duration)) {
+    if (scope === 'selection') return highlight
+    return { start: 0, end: duration }
+  }
+  if (scope === 'selection') return highlight
+  return clampSpan(prep.windowStart, prep.windowEnd, duration)
+}
+
+/** Point prep at the working-buffer slice `renderExportPcm` will read. */
+export function prepForWorkingExport(
+  prep: SamplePrepState,
+  scope: ExportScope,
+  clock: WorkingExportClock,
+): SamplePrepState {
+  const range = exportWorkingRange(prep, scope, clock)
+  if (scope === 'selection') {
+    return {
+      ...prep,
+      windowStart: 0,
+      windowEnd: Math.max(clock.bufferDuration, range.end),
+      selectionStart: range.start,
+      selectionEnd: range.end,
+    }
+  }
+  return {
+    ...prep,
+    windowStart: range.start,
+    windowEnd: range.end,
+  }
+}
+
 /**
  * Export Selection is available only when the region is a real subset.
  * A full-window region is not a selection — the action stays disabled.
+ * Pass `clock` so the check uses the highlighted loop on the working buffer.
  */
-export function selectionExportAvailable(prep: SamplePrepState): boolean {
+export function selectionExportAvailable(prep: SamplePrepState, clock?: WorkingExportClock): boolean {
+  if (clock) {
+    const project = exportWorkingRange(prep, 'project', clock)
+    const selection = exportWorkingRange(prep, 'selection', clock)
+    const span = selection.end - selection.start
+    if (!(span > 0.001)) return false
+    return selection.start > project.start + 0.001 || selection.end < project.end - 0.001
+  }
   const span = prep.selectionEnd - prep.selectionStart
   if (!(span > 0.001)) return false
   return prep.selectionStart > prep.windowStart + 0.001 || prep.selectionEnd < prep.windowEnd - 0.001
