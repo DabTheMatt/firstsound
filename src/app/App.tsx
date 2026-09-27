@@ -5,6 +5,7 @@ import { deleteUserPreset, loadUserPresets, mergeUserPresets, parseUserPresetPac
 import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
+import { inspectorKey, routeCollapse, routeModule, routeReveal, routeViz } from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
@@ -353,9 +354,22 @@ export default function App() {
     const live = engine.getSnapshot().chain
     const mod = live.find((m) => m.instanceId === instanceId)
     if (!mod) return
-    setFocus({ kind: 'module', instanceId, type: mod.type, pane })
-    setInspectorOpen(true)
+    const routed = routeModule(instanceId, mod.type, pane)
+    setFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
     if (mode === 'sheet') setSheetLevel('medium')
+  }
+
+  const hideInspector = () => {
+    const routed = routeCollapse(focus)
+    setFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
+  }
+
+  const revealInspector = () => {
+    const routed = routeReveal(focus)
+    setFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
   }
 
   const revealLfo = (kind: Parameters<typeof moduleTypeForLfoKind>[0], slot: number) => {
@@ -394,13 +408,13 @@ export default function App() {
 
   const moreOpen = menuOpen
 
-  const showAutomation = viz === 'automation' && uiMode !== 'sensory' && uiMode !== 'simple'
+  const panelKey = inspectorKey(resolvedFocus)
   const inspector = inspectorOpen ? (
-    showAutomation ? (
+    resolvedFocus.kind === 'automation' ? (
       <AutomationInspector
         sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
         compact={isPhoneLayout}
-        onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
+        onHideInspector={dockRight ? hideInspector : undefined}
         onCommit={commit}
         focus={autoFocus}
         onFocus={setAutoFocus}
@@ -423,7 +437,7 @@ export default function App() {
       }}
       knobs={mode !== 'sheet' || isPhoneLayout}
       compact={isPhoneLayout}
-      onHideInspector={dockRight ? () => setInspectorOpen(false) : undefined}
+      onHideInspector={dockRight ? hideInspector : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
     />
     )
@@ -797,8 +811,10 @@ export default function App() {
           onTool={selectTool}
           viz={viz}
           onViz={(next) => {
-            setViz(next)
-            if (next === 'automation') setInspectorOpen(true)
+            const routed = routeViz(next, focus, inspectorOpen)
+            setViz(routed.viz)
+            setFocus(routed.focus)
+            setInspectorOpen(routed.inspectorOpen)
           }}
           zoomLabel={zoomLabel}
           normalizeView={normalizeView}
@@ -863,10 +879,14 @@ export default function App() {
               onSelectModule={selectModule}
             />
           </div>
-          {dockRight && inspectorOpen ? <aside className={styles.inspector}>{inspector}</aside> : null}
+          {dockRight && inspectorOpen ? (
+            <aside className={styles.inspector} data-inspector={panelKey}>
+              {inspector}
+            </aside>
+          ) : null}
           {dockRight && !inspectorOpen ? (
-            <div className={styles.inspectorReveal}>
-              <InspectorEye open={false} onClick={() => setInspectorOpen(true)} />
+            <div className={styles.inspectorReveal} data-inspector-toggle="show">
+              <InspectorEye open={false} onClick={revealInspector} />
             </div>
           ) : null}
           <MeterStrip
@@ -877,7 +897,10 @@ export default function App() {
         </div>
 
         {!dockRight && inspectorOpen ? (
-          <div className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}>
+          <div
+            className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}
+            data-inspector={panelKey}
+          >
             {sheet && !isPhoneLayout ? (
               <button
                 type="button"

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   automatedLanes,
   automationColor,
@@ -21,6 +21,8 @@ import inspectorStyles from '../inspector/Inspector.module.css'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import styles from './AutomationInspector.module.css'
 
+let rememberedScroll = 0
+
 type Props = {
   sheet?: boolean
   compact?: boolean
@@ -32,6 +34,17 @@ type Props = {
 
 export function AutomationInspector({ sheet, compact, onHideInspector, onCommit, focus, onFocus }: Props) {
   const { t, paramLabel } = useI18n()
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const node = panelRef.current
+    if (!node) return
+    node.scrollTop = rememberedScroll
+    const onScroll = () => {
+      rememberedScroll = node.scrollTop
+    }
+    node.addEventListener('scroll', onScroll, { passive: true })
+    return () => node.removeEventListener('scroll', onScroll)
+  }, [])
   const snap = useEngine()
   const groups = automationEffectGroups()
   const lanes = automatedLanes(snap.automation)
@@ -100,6 +113,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
 
   return (
     <div
+      ref={panelRef}
       className={`${inspectorStyles.panel} ${sheet ? inspectorStyles.sheet : ''} ${compact ? inspectorStyles.compact : ''}`}
       data-automation-inspector="true"
     >

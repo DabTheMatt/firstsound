@@ -49,7 +49,7 @@ import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
 import { useI18n } from '../../i18n'
 import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, parseDistortionType, type DistortionType } from '../../audio/fx/types'
-import type { EditState, InspectorFocus } from '../../app/editorState'
+import type { EditState, PanelInspectorFocus } from '../../app/editorState'
 import { EqCurve } from './EqCurve'
 import { FilterInspector } from './FilterInspector'
 import { MidSideInspector } from './MidSideInspector'
@@ -66,7 +66,7 @@ function lfoBankResting(bank: readonly { target: string | null }[] | undefined):
 
 type Props = {
   snap: EngineSnapshot
-  focus: InspectorFocus
+  focus: PanelInspectorFocus
   edit: EditState
   onEdit: (patch: Partial<EditState>) => void
   onFine: (which: 'start' | 'end', delta: number) => void

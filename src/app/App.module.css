@@ -37,6 +37,7 @@
 
 .shell {
   --meter-col: 78px;
+  --inspector-toggle: 44px;
   /* Shared with the waveform column so transport centers on the editor,
      not on the inspector or the output meter. */
   --editor-grid: minmax(0, 1fr) var(--meter-col);
@@ -58,6 +59,12 @@
 
 .inspectorHidden.dock-right {
   --editor-grid: minmax(0, 1fr) var(--meter-col);
+}
+
+/* Collapsed inspector toggle owns a column beside the editor.
+   It must not float over the graph toolbar or the meter. */
+.inspectorHidden.dock-right .work {
+  grid-template-columns: minmax(0, 1fr) var(--inspector-toggle) var(--meter-col);
 }
 
 .chrome {
@@ -259,10 +266,22 @@
 }
 
 .inspectorReveal {
-  position: absolute;
-  top: 8px;
-  right: calc(var(--meter-col, 78px) + 16px);
-  z-index: 8;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  align-self: start;
+  justify-self: center;
+  width: var(--inspector-toggle);
+  min-width: var(--inspector-toggle);
+  max-width: var(--inspector-toggle);
+  margin-top: 6px;
+  position: static;
+  z-index: auto;
+  pointer-events: none;
+}
+
+.inspectorReveal > * {
+  pointer-events: auto;
 }
 
 /* Content column under the header. Overlays are positioned against this box,
