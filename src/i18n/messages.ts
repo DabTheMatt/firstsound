@@ -192,6 +192,7 @@ export type Messages = {
     automationNode: (label: string) => string
     automationComb: string
     automationAdd: string
+    automationAddAction: string
     automationRemove: string
     automationRemoveTitle: string
     automationRemoveConfirm: string
@@ -199,7 +200,10 @@ export type Messages = {
     automationCancel: string
     automationEmpty: string
     automationColor: string
+    automationColorChoose: string
+    automationColorOption: (index: number) => string
     automationCurve: string
+    automationCurveIdle: string
     automationLinear: string
     automationSmooth: string
     automationStep: string
@@ -639,6 +643,7 @@ export const EN: Messages = {
     automationNode: (label) => `Automation node, ${label}`,
     automationComb: 'EQ comb',
     automationAdd: 'Add parameter',
+    automationAddAction: 'Add',
     automationRemove: 'Remove',
     automationRemoveTitle: 'Remove automation',
     automationRemoveConfirm: 'Remove this envelope? The effect stays.',
@@ -646,7 +651,10 @@ export const EN: Messages = {
     automationCancel: 'Cancel',
     automationEmpty: 'No automated parameters yet.',
     automationColor: 'Color',
+    automationColorChoose: 'Choose automation color',
+    automationColorOption: (index) => `Color ${index}`,
     automationCurve: 'Curve',
+    automationCurveIdle: 'Select this automation, then a segment.',
     automationLinear: 'Linear',
     automationSmooth: 'Smooth',
     automationStep: 'Step',
@@ -1171,6 +1179,7 @@ export const PL: Messages = {
     automationNode: (label) => `Węzeł automatyzacji, ${label}`,
     automationComb: 'EQ grzebień',
     automationAdd: 'Dodaj parametr',
+    automationAddAction: 'Dodaj',
     automationRemove: 'Usuń',
     automationRemoveTitle: 'Usuń automatyzację',
     automationRemoveConfirm: 'Usunąć tę obwiednię? Efekt zostaje.',
@@ -1178,7 +1187,10 @@ export const PL: Messages = {
     automationCancel: 'Anuluj',
     automationEmpty: 'Brak zautomatyzowanych parametrów.',
     automationColor: 'Kolor',
+    automationColorChoose: 'Wybierz kolor automatyzacji',
+    automationColorOption: (index) => `Kolor ${index}`,
     automationCurve: 'Krzywa',
+    automationCurveIdle: 'Wybierz tę automatyzację, potem odcinek.',
     automationLinear: 'Linia',
     automationSmooth: 'Gładka',
     automationStep: 'Schodek',

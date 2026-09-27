@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   automatedLanes,
   automationColor,
@@ -15,10 +15,11 @@ import type { FxLfoKind } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { Segmented } from '../controls/Segmented'
 import { InspectorEye } from '../inspector/InspectorEye'
 import inspectorStyles from '../inspector/Inspector.module.css'
+import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
+import { CurveSwitch } from './CurveSwitch'
 import styles from './AutomationInspector.module.css'
 
 let rememberedScroll = 0
@@ -30,6 +31,11 @@ type Props = {
   onCommit?: () => void
   focus: AutomationEditFocus
   onFocus: (focus: AutomationEditFocus) => void
+}
+
+type ColorPickerState = {
+  paramId: ParamId
+  anchor: HTMLElement
 }
 
 export function AutomationInspector({ sheet, compact, onHideInspector, onCommit, focus, onFocus }: Props) {
@@ -53,6 +59,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
   const [addOpen, setAddOpen] = useState(false)
   const [effect, setEffect] = useState<FxLfoKind>(selectedKind)
   const [pendingRemove, setPendingRemove] = useState<ParamId | null>(null)
+  const [colorPicker, setColorPicker] = useState<ColorPickerState | null>(null)
   const taken = new Set(lanes.map((lane) => lane.paramId))
   const effectParams = groups.find((group) => group.kind === effect)?.paramIds ?? []
   const available = effectParams.filter((id) => !taken.has(id))
@@ -67,10 +74,18 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
   const curve = hasSegment && segment ? nodeCurve(segment) : 'linear'
   const tension = hasSegment && segment ? nodeTension(segment) : 0
   const color = automationColor(colorIndexForParam(snap.automation, selected))
+  const colorLane = colorPicker ? (lanes.find((lane) => lane.paramId === colorPicker.paramId) ?? null) : null
   const titleFor = (paramId: ParamId) => {
     const kind = effectKindForParam(paramId)
     const effectName = kind ? automationEffectLabel(kind, t.modules, t.waveform.automationComb) : paramId
     return automationLaneTitle(effectName, paramLabel(paramId))
+  }
+  const curveLabels = {
+    step: t.waveform.automationStep,
+    linear: t.waveform.automationLinear,
+    smooth: t.waveform.automationSmooth,
+    group: t.waveform.automationCurve,
+    idle: t.waveform.automationSegmentHint,
   }
 
   const choose = (paramId: ParamId) => {
@@ -85,6 +100,16 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
     setEffect(kind)
     const next = groups.find((group) => group.kind === kind)?.paramIds.find((id) => !taken.has(id)) ?? null
     setDraftParam(next)
+  }
+
+  const closeAdd = () => setAddOpen(false)
+
+  const openAdd = () => {
+    setEffect(selectedKind)
+    const next = groups.find((group) => group.kind === selectedKind)?.paramIds.find((id) => !taken.has(id)) ?? null
+    setDraftParam(next)
+    setColorPicker(null)
+    setAddOpen(true)
   }
 
   const addParameter = () => {
@@ -102,13 +127,13 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
     engine.removeAutomation(paramId)
     onCommit?.()
     setPendingRemove(null)
+    if (colorPicker?.paramId === paramId) setColorPicker(null)
     if (focus.segmentId || focus.nodeId) onFocus({ nodeId: null, segmentId: null })
   }
 
   const setCurve = (next: AutomationCurve) => {
-    if (!segmentId) return
+    if (!segmentId || !hasSegment) return
     engine.setAutomationCurve(segmentId, next)
-    onCommit?.()
   }
 
   return (
@@ -133,26 +158,57 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
       <ul className={styles.list}>
         {lanes.map((lane) => {
           const active = lane.paramId === selected
-          const laneColor = automationColor(lane.colorIndex)
+          const laneIndex = typeof lane.colorIndex === 'number' ? lane.colorIndex : colorIndexForParam(snap.automation, lane.paramId)
+          const laneColor = automationColor(laneIndex)
+          const curveEnabled = active && hasSegment
+          const title = titleFor(lane.paramId)
           return (
-            <li key={lane.paramId}>
-              <div className={`${styles.lane} ${active ? styles.laneOn : ''}`}>
+            <li key={lane.paramId} data-automation-lane={lane.paramId}>
+              <div
+                className={`${styles.lane} ${active ? styles.laneOn : ''}`}
+                style={{ '--lane-color': laneColor } as CSSProperties}
+              >
+                <button
+                  type="button"
+                  className={`${styles.color} ${colorPicker?.paramId === lane.paramId ? styles.colorOpen : ''}`}
+                  aria-label={`${t.waveform.automationColorChoose}: ${title}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={colorPicker?.paramId === lane.paramId}
+                  title={t.waveform.automationColor}
+                  data-automation-color={lane.paramId}
+                  onClick={(event) => {
+                    const opening = colorPicker?.paramId !== lane.paramId
+                    if (opening && !active) choose(lane.paramId)
+                    setColorPicker(opening ? { paramId: lane.paramId, anchor: event.currentTarget } : null)
+                  }}
+                >
+                  <i style={{ background: laneColor }} aria-hidden="true" />
+                </button>
                 <button
                   type="button"
                   className={styles.laneButton}
                   aria-current={active ? 'true' : undefined}
                   onClick={() => choose(lane.paramId)}
                 >
-                  <i className={styles.swatch} style={{ background: laneColor }} aria-hidden="true" />
-                  <span>{titleFor(lane.paramId)}</span>
+                  <span>{title}</span>
                 </button>
+                <CurveSwitch
+                  value={curveEnabled ? curve : null}
+                  disabled={!curveEnabled}
+                  labels={{ ...curveLabels, idle: active ? t.waveform.automationSegmentHint : t.waveform.automationCurveIdle }}
+                  accent={laneColor}
+                  onChange={setCurve}
+                  onCommit={onCommit}
+                />
                 <button
                   type="button"
                   className={styles.remove}
-                  aria-label={`${t.waveform.automationRemoveTitle} ${titleFor(lane.paramId)}`}
+                  aria-label={`${t.waveform.automationRemoveTitle} ${title}`}
+                  title={t.waveform.automationRemove}
+                  data-automation-remove={lane.paramId}
                   onClick={() => setPendingRemove((current) => (current === lane.paramId ? null : lane.paramId))}
                 >
-                  {t.waveform.automationRemove}
+                  <span aria-hidden="true">×</span>
                 </button>
               </div>
               {pendingRemove === lane.paramId ? (
@@ -171,22 +227,15 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
         })}
       </ul>
 
-      <button
-        type="button"
-        className={inspectorStyles.ghost}
-        onClick={() => {
-          if (!addOpen) {
-            setEffect(selectedKind)
-            const next = groups.find((group) => group.kind === selectedKind)?.paramIds.find((id) => !taken.has(id)) ?? null
-            setDraftParam(next)
-          }
-          setAddOpen((open) => !open)
-        }}
-      >
-        + {t.waveform.automationAdd}
-      </button>
       {addOpen ? (
-        <div className={styles.add}>
+        <form
+          className={styles.add}
+          data-automation-add="form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            addParameter()
+          }}
+        >
           <label className={inspectorStyles.field}>
             <span>{t.waveform.automationEffect}</span>
             <select className={inspectorStyles.select} value={effect} onChange={(event) => chooseEffect(event.target.value as FxLfoKind)}>
@@ -213,10 +262,34 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
             </select>
           </label>
           {available.length === 0 ? <p className={styles.empty}>{t.waveform.automationAllUsed}</p> : null}
-          <button type="button" className={inspectorStyles.ghost} disabled={!draft} onClick={addParameter}>
-            {t.waveform.automationAdd}
-          </button>
-        </div>
+          <div className={styles.addActions}>
+            <button type="button" className={inspectorStyles.ghost} data-automation-add="cancel" onClick={closeAdd}>
+              {t.waveform.automationCancel}
+            </button>
+            <button type="submit" className={`${inspectorStyles.ghost} ${inspectorStyles.ghostOn}`} data-automation-add="confirm" disabled={!draft}>
+              {t.waveform.automationAddAction}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className={inspectorStyles.ghost} data-automation-add="start" aria-expanded={false} onClick={openAdd}>
+          + {t.waveform.automationAdd}
+        </button>
+      )}
+
+      {colorLane && colorPicker ? (
+        <AutomationColorPicker
+          anchor={colorPicker.anchor}
+          value={typeof colorLane.colorIndex === 'number' ? colorLane.colorIndex : colorIndexForParam(snap.automation, colorLane.paramId)}
+          label={t.waveform.automationColorChoose}
+          optionLabel={t.waveform.automationColorOption}
+          onPick={(index) => {
+            engine.setAutomationColor(colorLane.paramId, index)
+            onCommit?.()
+            setColorPicker(null)
+          }}
+          onClose={() => setColorPicker(null)}
+        />
       ) : null}
 
       <h3 className={inspectorStyles.sub}>{t.waveform.automationEditing}</h3>
@@ -240,43 +313,26 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
         <strong>{selectedLane?.nodes.length ?? 0}</strong>
       </div>
 
-      <h3 className={inspectorStyles.sub}>{t.waveform.automationCurve}</h3>
-      {hasSegment && segmentId ? (
-        <>
-          <Segmented
-            label={t.waveform.automationCurve}
-            value={curve}
-            wrap
-            options={[
-              { value: 'linear', label: t.waveform.automationLinear },
-              { value: 'smooth', label: t.waveform.automationSmooth },
-              { value: 'step', label: t.waveform.automationStep },
-            ]}
-            onChange={setCurve}
+      {hasSegment && segmentId && curve === 'smooth' ? (
+        <label className={inspectorStyles.field}>
+          <span>
+            {t.waveform.automationTension} {tension.toFixed(2)}
+          </span>
+          <input
+            className={inspectorStyles.range}
+            type="range"
+            min={-1}
+            max={1}
+            step={0.01}
+            value={tension}
+            aria-label={t.waveform.automationTension}
+            onChange={(event) => engine.setAutomationTension(segmentId, Number(event.target.value))}
+            onPointerUp={() => onCommit?.()}
+            onKeyUp={() => onCommit?.()}
           />
-          {curve === 'smooth' ? (
-            <label className={inspectorStyles.field}>
-              <span>
-                {t.waveform.automationTension} {tension.toFixed(2)}
-              </span>
-              <input
-                className={inspectorStyles.range}
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={tension}
-                aria-label={t.waveform.automationTension}
-                onChange={(event) => engine.setAutomationTension(segmentId, Number(event.target.value))}
-                onPointerUp={() => onCommit?.()}
-                onKeyUp={() => onCommit?.()}
-              />
-            </label>
-          ) : null}
-        </>
-      ) : (
-        <p className={styles.empty}>{t.waveform.automationSegmentHint}</p>
-      )}
+        </label>
+      ) : null}
+      {hasSegment ? null : <p className={styles.empty}>{t.waveform.automationSegmentHint}</p>}
     </div>
   )
 }

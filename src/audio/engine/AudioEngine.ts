@@ -67,6 +67,7 @@ import {
   removeAutomationNode,
   resolvePerformanceParams,
   selectAutomationParam,
+  setAutomationLaneColor,
   updateAutomationCurve,
   updateAutomationTension,
   type AutomationCurve,
@@ -2043,6 +2044,14 @@ export class AudioEngine {
     if (next === this.automation) return
     this.automation = next
     this.afterAutomationEdit()
+  }
+
+  /** Line color only. The envelope and the audio graph stay as they are. */
+  setAutomationColor(paramId: ParamId, colorIndex: number): void {
+    const next = setAutomationLaneColor(this.automation, paramId, colorIndex)
+    if (next === this.automation) return
+    this.automation = next
+    this.emit()
   }
 
   /** Live tension drag. History is committed once by the caller when the pointer lifts. */

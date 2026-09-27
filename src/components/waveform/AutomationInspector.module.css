@@ -8,25 +8,30 @@
 }
 
 .lane {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  min-width: 0;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 40px 32px;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
 }
 
 .laneOn .laneButton {
-  border-color: var(--border-strong);
+  border-color: var(--lane-color);
   background: var(--bg-control-active);
+  box-shadow: inset 2px 0 0 var(--lane-color);
 }
 
 .laneButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
   min-width: 0;
-  min-height: 36px;
-  padding: 6px 8px;
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 0 8px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-control);
@@ -42,30 +47,48 @@
   white-space: nowrap;
 }
 
-.laneButton:hover,
-.remove:hover {
+.laneButton:hover {
   background: var(--bg-control-hover);
 }
 
-.swatch {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 25%, transparent);
+.color,
+.remove {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.color i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+
+.color:hover,
+.colorOpen {
+  background: var(--bg-control-hover);
 }
 
 .remove {
-  flex: none;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: transparent;
   color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.remove:hover {
+  color: var(--meter-clip);
+  background: color-mix(in srgb, var(--meter-clip) 14%, transparent);
 }
 
 .confirm {
@@ -95,7 +118,22 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin: 8px 0 4px;
+  margin: 0 0 8px;
+}
+
+.addActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 25%, transparent);
 }
 
 .colorValue {
@@ -106,8 +144,25 @@
 }
 
 @media (pointer: coarse) {
-  .laneButton,
-  .remove {
+  .lane {
+    height: 44px;
     min-height: 44px;
+    max-height: 44px;
+    grid-template-columns: 36px minmax(0, 1fr) 40px 36px;
+  }
+
+  .laneButton,
+  .color,
+  .remove {
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+  }
+
+  .color,
+  .remove {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
   }
 }

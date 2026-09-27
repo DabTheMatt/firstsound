@@ -26,6 +26,7 @@ import {
   resolvePerformanceParams,
   sampleEnvelope,
   selectAutomationParam,
+  setAutomationLaneColor,
   updateAutomationCurve,
   updateAutomationTension,
 } from './automation'
@@ -244,6 +245,40 @@ describe('automation lanes, colors, and undo', () => {
     expect(history.present.lanes).toEqual([])
     history = redoHistory(history)
     expect(history.present.lanes).toHaveLength(1)
+  })
+
+  it('recolors a lane without changing playback, and the color survives reload and undo', () => {
+    const inserted = insertAutomationNode(selectAutomationParam(defaultAutomation(), 'filterCutoff'), 0, 0.2, 2, 'a')!
+    const ended = insertAutomationNode(inserted.doc, 1, 0.8, 2, 'b')!
+    const doc = updateAutomationCurve(ended.doc, 'a', 'smooth')
+    const before = sampleEnvelope(doc.lanes[0]!.nodes, 0.4)
+    if (before == null) throw new Error('expected an envelope sample')
+    const manual = defaultParamValues()
+    const liveBefore = resolvePerformanceParams(manual, doc, 0.4, true, defaultFxLfos(), 0, defaultLfoHold())
+    const current = doc.lanes[0]?.colorIndex ?? 0
+    const next = current === 5 ? 6 : 5
+    const colored = setAutomationLaneColor(doc, 'filterCutoff', next)
+    expect(colored.lanes[0]?.colorIndex).toBe(next)
+    expect(colored.lanes[0]?.nodes).toBe(doc.lanes[0]?.nodes)
+    expect(colored.selectedParamId).toBe(doc.selectedParamId)
+    expect(sampleEnvelope(colored.lanes[0]!.nodes, 0.4)).toBeCloseTo(before)
+    const liveAfter = resolvePerformanceParams(manual, colored, 0.4, true, defaultFxLfos(), 0, defaultLfoHold())
+    expect(liveAfter.filterCutoff).toBeCloseTo(liveBefore.filterCutoff)
+    const stepped = updateAutomationCurve(colored, 'a', 'step')
+    expect(stepped.lanes[0]?.colorIndex).toBe(next)
+    expect(sampleEnvelope(stepped.lanes[0]!.nodes, 0.4)).toBeCloseTo(0.2)
+    const loaded = parseAutomation(JSON.parse(JSON.stringify(cloneAutomation(colored))))
+    expect(loaded.lanes.find((lane) => lane.paramId === 'filterCutoff')?.colorIndex).toBe(next)
+    expect(setAutomationLaneColor(colored, 'filterCutoff', next)).toBe(colored)
+    expect(setAutomationLaneColor(colored, 'filterCutoff', -1)).toBe(colored)
+    expect(setAutomationLaneColor(colored, 'gain', 2)).toBe(colored)
+    let history = createHistory(cloneAutomation(doc))
+    history = commitHistory(history, cloneAutomation(colored), automationEqual)
+    expect(history.past).toHaveLength(1)
+    history = undoHistory(history)
+    expect(history.present.lanes[0]?.colorIndex).toBe(doc.lanes[0]?.colorIndex)
+    history = redoHistory(history)
+    expect(history.present.lanes[0]?.colorIndex).toBe(next)
   })
 
   it('keeps a parameter color stable when another lane is added and after reload', () => {

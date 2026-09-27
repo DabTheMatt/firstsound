@@ -568,6 +568,25 @@ export function removeAutomationLane(doc: AutomationDocument, paramId: ParamId):
   return { ...doc, lanes: doc.lanes.filter((lane) => lane.paramId !== paramId) }
 }
 
+/**
+ * Visualization metadata only. Nodes, curves, and playback values stay put.
+ * Returns the same document when the index is already applied or invalid.
+ */
+export function setAutomationLaneColor(
+  doc: AutomationDocument,
+  paramId: ParamId,
+  colorIndex: number,
+): AutomationDocument {
+  const size = AUTOMATION_PALETTE.length
+  if (!Number.isInteger(colorIndex) || colorIndex < 0 || colorIndex >= size) return doc
+  const lane = doc.lanes.find((item) => item.paramId === paramId)
+  if (!lane || lane.colorIndex === colorIndex) return doc
+  return {
+    selectedParamId: doc.selectedParamId,
+    lanes: doc.lanes.map((item) => (item.paramId === paramId ? { ...item, colorIndex } : item)),
+  }
+}
+
 export function updateAutomationCurve(
   doc: AutomationDocument,
   id: string,

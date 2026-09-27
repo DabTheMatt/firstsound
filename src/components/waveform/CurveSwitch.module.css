@@ -1,0 +1,82 @@
+.switch {
+  position: relative;
+  width: 40px;
+  height: 36px;
+  flex: none;
+  color: var(--text-muted);
+  touch-action: none;
+  border-radius: 8px;
+}
+
+.switch:focus-visible {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.dial {
+  position: absolute;
+  left: 11px;
+  top: 13px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, currentColor 28%, var(--border-default));
+  background: var(--bg-control);
+  pointer-events: none;
+}
+
+.needle {
+  position: absolute;
+  left: 19px;
+  top: 14px;
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: 50% 8px;
+  pointer-events: none;
+}
+
+.hub {
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  pointer-events: none;
+}
+
+.disabled .needle,
+.disabled .hub {
+  opacity: 0;
+}
+
+.mark {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.markOn {
+  color: currentColor;
+}
+
+.disabled .mark {
+  cursor: default;
+}
+
+.mark svg {
+  display: block;
+}
