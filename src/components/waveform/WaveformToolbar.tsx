@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from './BackgroundControl'
@@ -14,14 +14,24 @@ type Props = {
   onZoomOut: () => void
   onView: (action: ViewAction) => void
   onTrim?: () => void
+  onCopySelection?: () => void
+  onCutSelection?: () => void
+  onPasteAtPlayhead?: () => void
   onInsertSilence?: () => void
   onDeleteSelection?: () => void
   onMuteSelection?: () => void
   onClearSelection?: () => void
+  onUndo?: () => void
+  onRedo?: () => void
   canInsertSilence?: boolean
   canDeleteSelection?: boolean
   canMuteSelection?: boolean
   canClearSelection?: boolean
+  canCopySelection?: boolean
+  canCutSelection?: boolean
+  canPaste?: boolean
+  canUndo?: boolean
+  canRedo?: boolean
   onAutoFade?: () => void
   autoFade?: boolean
   normalizeView: boolean
@@ -34,6 +44,56 @@ export type ViewAction =
   | 'zoom-selection'
   | 'normalize-view'
   | 'reset-zoom'
+
+/** Commands that change the sample or the timeline. */
+export const EDIT_COMMANDS = [
+  'trim',
+  'copy',
+  'cut',
+  'paste',
+  'insert-silence',
+  'delete-selection',
+  'mute-selection',
+  'clear-selection',
+  'auto-fade',
+  'undo',
+  'redo',
+] as const
+
+/** Commands that only change how the sample is drawn. */
+export const DISPLAY_COMMANDS = [
+  'fit-sample',
+  'fit-selection',
+  'zoom-selection',
+  'normalize-view',
+  'reset-zoom',
+  'zoom-in',
+  'zoom-out',
+] as const
+
+export function commandGroup(id: string): 'edit' | 'display' | null {
+  if ((EDIT_COMMANDS as readonly string[]).includes(id)) return 'edit'
+  if ((DISPLAY_COMMANDS as readonly string[]).includes(id)) return 'display'
+  return null
+}
+
+/** Display actions never receive the audio engine. */
+export function runDisplayAction(
+  action: ViewAction,
+  view: {
+    fitSample: () => void
+    zoomSelection: () => void
+    fitSelection: () => void
+    resetZoom: () => void
+  } | null,
+  toggleNormalize: () => void,
+): void {
+  if (action === 'fit-sample') view?.fitSample()
+  else if (action === 'zoom-selection') view?.zoomSelection()
+  else if (action === 'fit-selection') view?.fitSelection()
+  else if (action === 'normalize-view') toggleNormalize()
+  else view?.resetZoom()
+}
 
 const TOOLS: { id: WaveTool; key: 'edit' }[] = [{ id: 'select', key: 'edit' }]
 
@@ -50,16 +110,26 @@ export function WaveformToolbar({
   onZoomOut,
   onView,
   onTrim,
+  onCopySelection,
+  onCutSelection,
+  onPasteAtPlayhead,
   onInsertSilence,
   onDeleteSelection,
   onMuteSelection,
   onClearSelection,
+  onUndo,
+  onRedo,
   canInsertSilence = false,
   canDeleteSelection = false,
   canMuteSelection = false,
   canClearSelection = false,
+  canCopySelection = false,
+  canCutSelection = false,
+  canPaste = false,
+  canUndo = false,
+  canRedo = false,
   onAutoFade,
-  autoFade: _autoFade = false,
+  autoFade = false,
   normalizeView,
   minimal = false,
 }: Props) {
@@ -67,24 +137,58 @@ export function WaveformToolbar({
   const tools = TOOLS
 
   return (
-    <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`}>
-      {!minimal ? (
-        <div className={`${styles.cluster} ${styles.tools}`}>
-          <span className={styles.kicker}>{t.waveform.edit}</span>
-          <div className={styles.edit}>
-          {tools.map((item) => (
-            <IconButton
-              key={item.id}
-              label={t.waveform[item.key]}
-              caption={t.waveform[item.key]}
-              onClick={() => onTool(item.id)}
-            >
-              <EditIcon />
-            </IconButton>
-          ))}
-          {onTrim ? (
-            <IconButton label={t.waveform.trimTitle} caption={t.waveform.trim} onClick={onTrim}>
+    <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`} data-waveform-toolbar="">
+      <div className={`${styles.cluster} ${styles.tools}`} data-command-group="edit">
+        <span className={styles.kicker}>{t.waveform.edit}</span>
+        <div className={styles.edit}>
+          {!minimal
+            ? tools.map((item) => (
+                <IconButton
+                  key={item.id}
+                  label={t.waveform[item.key]}
+                  caption={t.waveform[item.key]}
+                  onClick={() => onTool(item.id)}
+                >
+                  <EditIcon />
+                </IconButton>
+              ))
+            : null}
+          {!minimal && onTrim ? (
+            <IconButton label={t.waveform.trimTitle} caption={t.waveform.trim} command="trim" onClick={onTrim}>
               <TrimIcon />
+            </IconButton>
+          ) : null}
+          {onCopySelection ? (
+            <IconButton
+              label={t.waveform.copySelection}
+              caption={t.waveform.copyCaption}
+              command="copy"
+              disabled={!canCopySelection}
+              onClick={onCopySelection}
+            >
+              <CopyIcon />
+            </IconButton>
+          ) : null}
+          {onCutSelection ? (
+            <IconButton
+              label={t.waveform.cutSelection}
+              caption={t.waveform.cutCaption}
+              command="cut"
+              disabled={!canCutSelection}
+              onClick={onCutSelection}
+            >
+              <CutIcon />
+            </IconButton>
+          ) : null}
+          {onPasteAtPlayhead ? (
+            <IconButton
+              label={t.waveform.pastePlayhead}
+              caption={t.waveform.pasteCaption}
+              command="paste"
+              disabled={!canPaste}
+              onClick={onPasteAtPlayhead}
+            >
+              <PasteIcon />
             </IconButton>
           ) : null}
           <SampleEditButtons
@@ -94,79 +198,139 @@ export function WaveformToolbar({
             deleteCaption={t.waveform.deleteSelectionCaption}
             muteLabel={t.waveform.muteSelection}
             muteCaption={t.waveform.muteSelectionCaption}
-            clearLabel={t.waveform.clearSelection}
-            clearCaption={t.waveform.clearSelectionCaption}
             canInsertSilence={canInsertSilence}
             canDeleteSelection={canDeleteSelection}
             canMuteSelection={canMuteSelection}
-            canClearSelection={canClearSelection}
+            showInsert={!minimal}
             onInsertSilence={onInsertSilence}
             onDeleteSelection={onDeleteSelection}
             onMuteSelection={onMuteSelection}
-            onClearSelection={onClearSelection}
           />
-          {onAutoFade ? (
-            <IconButton
-              label={t.waveform.autoFadeTitle}
-              caption={t.waveform.autoFade}
-              onClick={onAutoFade}
-            >
-              <AutoFadeIcon />
-            </IconButton>
-          ) : null}
-          <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
+          <MoreEditsMenu
+            label={t.waveform.moreEdits}
+            caption={t.waveform.moreEditsCaption}
+            items={[
+              minimal && onTrim
+                ? { id: 'trim', label: t.waveform.trimTitle, disabled: false, onClick: onTrim }
+                : null,
+              minimal && onInsertSilence
+                ? {
+                    id: 'insert-silence',
+                    label: t.waveform.insertSilence,
+                    disabled: !canInsertSilence,
+                    onClick: onInsertSilence,
+                  }
+                : null,
+              onClearSelection
+                ? {
+                    id: 'clear-selection',
+                    label: t.waveform.clearSelection,
+                    disabled: !canClearSelection,
+                    onClick: onClearSelection,
+                  }
+                : null,
+              onAutoFade
+                ? {
+                    id: 'auto-fade',
+                    label: t.waveform.autoFadeTitle,
+                    disabled: false,
+                    pressed: autoFade,
+                    onClick: onAutoFade,
+                  }
+                : null,
+              onUndo
+                ? { id: 'undo', label: t.waveform.undo, disabled: !canUndo, onClick: onUndo }
+                : null,
+              onRedo
+                ? { id: 'redo', label: t.waveform.redo, disabled: !canRedo, onClick: onRedo }
+                : null,
+            ]}
+          />
+        </div>
+      </div>
+      <div className={`${styles.cluster} ${styles.display}`} data-command-group="display">
+        <span className={styles.kicker}>{t.waveform.displayGroup}</span>
+        <div className={styles.views}>
+          <IconButton
+            label={t.waveform.fitSample}
+            caption={t.waveform.fit}
+            command="fit-sample"
+            onClick={() => onView('fit-sample')}
+          >
             <FitIcon />
           </IconButton>
-          <IconButton label={t.waveform.fitSelection} caption={t.waveform.sel} onClick={() => onView('fit-selection')}>
-            <FitSelIcon />
-          </IconButton>
-          <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
+          {!minimal ? (
+            <IconButton
+              label={t.waveform.fitSelection}
+              caption={t.waveform.sel}
+              command="fit-selection"
+              onClick={() => onView('fit-selection')}
+            >
+              <FitSelIcon />
+            </IconButton>
+          ) : null}
+          <IconButton
+            label={t.waveform.zoomSelection}
+            caption={t.waveform.zoom}
+            command="zoom-selection"
+            onClick={() => onView('zoom-selection')}
+          >
             <ZoomSelIcon />
           </IconButton>
           <IconButton
             label={t.waveform.normalizeView}
             caption={t.waveform.norm}
+            command="normalize-view"
             pressed={normalizeView}
             onClick={() => onView('normalize-view')}
           >
             <NormIcon />
           </IconButton>
-          <IconButton label={t.waveform.resetZoom} caption={t.waveform.reset} onClick={() => onView('reset-zoom')}>
-            <ResetIcon />
-          </IconButton>
-          </div>
+          {!minimal ? (
+            <IconButton
+              label={t.waveform.resetZoom}
+              caption={t.waveform.reset}
+              command="reset-zoom"
+              onClick={() => onView('reset-zoom')}
+            >
+              <ResetIcon />
+            </IconButton>
+          ) : null}
+          {!minimal ? (
+            <div className={styles.zoom}>
+              <button
+                type="button"
+                className={styles.icon}
+                data-display-command="zoom-out"
+                aria-label={t.waveform.zoomOut}
+                onClick={onZoomOut}
+              >
+                −
+              </button>
+              <span
+                title={t.waveform.scrollZoom}
+                onWheel={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  if (event.deltaY > 0) onZoomOut()
+                  else onZoomIn()
+                }}
+              >
+                {zoomLabel}
+              </span>
+              <button
+                type="button"
+                className={styles.icon}
+                data-display-command="zoom-in"
+                aria-label={t.waveform.zoomIn}
+                onClick={onZoomIn}
+              >
+                +
+              </button>
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <div className={`${styles.cluster} ${styles.tools}`}>
-          <span className={styles.kicker}>{t.waveform.edit}</span>
-          <div className={styles.edit}>
-          <SampleEditButtons
-            insertLabel={t.waveform.insertSilence}
-            insertCaption={t.waveform.insertSilenceCaption}
-            deleteLabel={t.waveform.deleteSelection}
-            deleteCaption={t.waveform.deleteSelectionCaption}
-            muteLabel={t.waveform.muteSelection}
-            muteCaption={t.waveform.muteSelectionCaption}
-            clearLabel={t.waveform.clearSelection}
-            clearCaption={t.waveform.clearSelectionCaption}
-            canInsertSilence={canInsertSilence}
-            canDeleteSelection={canDeleteSelection}
-            canMuteSelection={canMuteSelection}
-            canClearSelection={canClearSelection}
-            onInsertSilence={onInsertSilence}
-            onDeleteSelection={onDeleteSelection}
-            onMuteSelection={onMuteSelection}
-            onClearSelection={onClearSelection}
-          />
-          <IconButton label={t.waveform.fitSample} caption={t.waveform.fit} onClick={() => onView('fit-sample')}>
-            <FitIcon />
-          </IconButton>
-          <IconButton label={t.waveform.zoomSelection} caption={t.waveform.zoom} onClick={() => onView('zoom-selection')}>
-            <ZoomSelIcon />
-          </IconButton>
-          </div>
-        </div>
-      )}
+      </div>
       <div className={`${styles.cluster} ${styles.view}`}>
         <span className={styles.kicker}>{t.waveform.viewGroup}</span>
         <BackgroundControl />
@@ -238,27 +402,6 @@ export function WaveformToolbar({
         </IconButton>
         </div>
       </div>
-      {!minimal ? (
-        <div className={styles.zoom}>
-          <button type="button" className={styles.icon} aria-label={t.waveform.zoomOut} onClick={onZoomOut}>
-            −
-          </button>
-          <span
-            title={t.waveform.scrollZoom}
-            onWheel={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              if (event.deltaY > 0) onZoomOut()
-              else onZoomIn()
-            }}
-          >
-            {zoomLabel}
-          </span>
-          <button type="button" className={styles.icon} aria-label={t.waveform.zoomIn} onClick={onZoomIn}>
-            +
-          </button>
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -268,6 +411,7 @@ function IconButton({
   caption,
   pressed,
   disabled = false,
+  command,
   onClick,
   children,
 }: {
@@ -275,9 +419,11 @@ function IconButton({
   caption: string
   pressed?: boolean
   disabled?: boolean
+  command?: string
   onClick: () => void
   children: ReactNode
 }) {
+  const group = command ? commandGroup(command) : null
   return (
     <button
       type="button"
@@ -286,6 +432,8 @@ function IconButton({
       title={label}
       aria-pressed={pressed}
       disabled={disabled}
+      data-edit-command={group === 'edit' ? command : undefined}
+      data-display-command={group === 'display' ? command : undefined}
       onClick={onClick}
     >
       {children}
@@ -301,16 +449,13 @@ function SampleEditButtons({
   deleteCaption,
   muteLabel,
   muteCaption,
-  clearLabel,
-  clearCaption,
   canInsertSilence,
   canDeleteSelection,
   canMuteSelection,
-  canClearSelection,
+  showInsert,
   onInsertSilence,
   onDeleteSelection,
   onMuteSelection,
-  onClearSelection,
 }: {
   insertLabel: string
   insertCaption: string
@@ -318,24 +463,22 @@ function SampleEditButtons({
   deleteCaption: string
   muteLabel: string
   muteCaption: string
-  clearLabel: string
-  clearCaption: string
   canInsertSilence: boolean
   canDeleteSelection: boolean
   canMuteSelection: boolean
-  canClearSelection: boolean
+  showInsert: boolean
   onInsertSilence?: () => void
   onDeleteSelection?: () => void
   onMuteSelection?: () => void
-  onClearSelection?: () => void
 }) {
-  if (!onInsertSilence && !onDeleteSelection && !onMuteSelection && !onClearSelection) return null
+  if (!onInsertSilence && !onDeleteSelection && !onMuteSelection) return null
   return (
     <>
-      {onInsertSilence ? (
+      {showInsert && onInsertSilence ? (
         <IconButton
           label={insertLabel}
           caption={insertCaption}
+          command="insert-silence"
           disabled={!canInsertSilence}
           onClick={onInsertSilence}
         >
@@ -346,6 +489,7 @@ function SampleEditButtons({
         <IconButton
           label={deleteLabel}
           caption={deleteCaption}
+          command="delete-selection"
           disabled={!canDeleteSelection}
           onClick={onDeleteSelection}
         >
@@ -356,23 +500,130 @@ function SampleEditButtons({
         <IconButton
           label={muteLabel}
           caption={muteCaption}
+          command="mute-selection"
           disabled={!canMuteSelection}
           onClick={onMuteSelection}
         >
           <MuteSelectionIcon />
         </IconButton>
       ) : null}
-      {onClearSelection ? (
-        <IconButton
-          label={clearLabel}
-          caption={clearCaption}
-          disabled={!canClearSelection}
-          onClick={onClearSelection}
-        >
-          <ClearSelectionIcon />
-        </IconButton>
-      ) : null}
     </>
+  )
+}
+
+type MoreEditItem = {
+  id: string
+  label: string
+  disabled: boolean
+  pressed?: boolean
+  onClick: () => void
+}
+
+function MoreEditsMenu({
+  label,
+  caption,
+  items,
+}: {
+  label: string
+  caption: string
+  items: Array<MoreEditItem | null>
+}) {
+  const entries = items.filter((item): item is MoreEditItem => item != null)
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const menuId = useId()
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: PointerEvent) => {
+      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  if (entries.length < 1) return null
+  return (
+    <div className={styles.menuWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={`${styles.iconBtn} ${open ? styles.active : ''}`}
+        aria-label={label}
+        title={label}
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <MoreIcon />
+        <span className={styles.caption}>{caption}</span>
+      </button>
+      {open ? (
+        <div className={styles.menu} id={menuId} role="menu" aria-label={label}>
+          {entries.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className={styles.menuItem}
+              data-edit-command={item.id}
+              aria-pressed={item.pressed}
+              disabled={item.disabled}
+              onClick={() => {
+                setOpen(false)
+                item.onClick()
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function CopyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="6" y="3.5" width="8.5" height="9" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="3.5" y="6" width="8.5" height="9" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
+function CutIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="4.5" cy="13" r="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="4.5" cy="5" r="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6.2 6.4 14.5 13.2M6.2 11.6 14.5 4.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function PasteIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="4.5" y="3.5" width="9" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M7 3.5h4v2H7z" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M7 9h4M7 11.5h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function MoreIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="4.5" cy="9" r="1.2" fill="currentColor" />
+      <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+      <circle cx="13.5" cy="9" r="1.2" fill="currentColor" />
+    </svg>
   )
 }
 
@@ -386,21 +637,6 @@ function EditIcon() {
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function AutoFadeIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        d="M3 14V4l5 5 5-5v10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        strokeLinecap="round"
       />
     </svg>
   )
@@ -458,25 +694,6 @@ function MuteSelectionIcon() {
         strokeWidth="1.3"
         strokeLinecap="round"
       />
-    </svg>
-  )
-}
-
-function ClearSelectionIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <rect
-        x="4"
-        y="4.5"
-        width="10"
-        height="9"
-        rx="1"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeDasharray="2.2 1.6"
-      />
-      <path d="M7 11.5 11.2 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }

@@ -1,4 +1,6 @@
 import { cloneAutomation, type AutomationDocument, type AutomationNode } from '../automation/automation'
+import { resampleChannels } from '../samplePrep/resample'
+import { duplicateMonoToStereo, mixChannelsToMono } from './channelLayout'
 
 /** One second of digital silence, measured in samples of the buffer's rate. */
 export const SILENCE_INSERT_SEC = 1
@@ -24,6 +26,12 @@ export type SampleEditCapture = {
 export type TimelineEdit =
   | { kind: 'insert'; atSec: number; deltaSec: number }
   | { kind: 'delete'; startSec: number; endSec: number }
+
+/** Internal INTERFER clipboard. Not the operating-system audio clipboard. */
+export type AudioClipboard = {
+  sampleRate: number
+  channels: Float32Array[]
+}
 
 let samplePcmSeq = 0
 
@@ -231,6 +239,134 @@ export function mapAutomation(doc: AutomationDocument, edit: TimelineEdit): Auto
     })
     .filter((lane) => lane.nodes.length > 0)
   return { selectedParamId: doc.selectedParamId, lanes }
+}
+
+/**
+ * Inclusive-exclusive frames of the current selection, including a full-buffer copy.
+ * Uses the same rounding as delete so a cut copies exactly the frames it removes.
+ */
+export function selectionFrameSpan(
+  startSec: number,
+  endSec: number,
+  sampleRate: number,
+  length: number,
+): FrameSpan | null {
+  if (!(sampleRate > 0) || length < 1) return null
+  if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) return null
+  const lo = Math.min(startSec, endSec)
+  const hi = Math.max(startSec, endSec)
+  const start = Math.max(0, Math.min(length, Math.round(lo * sampleRate)))
+  const end = Math.max(0, Math.min(length, Math.round(hi * sampleRate)))
+  if (end - start < 1) return null
+  return { start, end }
+}
+
+/** Copy selected frames into new buffers. The source channels are not written. */
+export function copyFrameRange(
+  channels: readonly Float32Array[],
+  startFrame: number,
+  endFrame: number,
+): Float32Array[] | null {
+  const length = channels[0]?.length ?? 0
+  const start = Math.max(0, Math.min(length, Math.round(startFrame)))
+  const end = Math.max(start, Math.min(length, Math.round(endFrame)))
+  if (end - start < 1 || channels.length < 1) return null
+  return channels.map((channel) => {
+    const src = channel.length === length ? channel : fitLength(channel, length)
+    const out = new Float32Array(end - start)
+    out.set(src.subarray(start, end))
+    return out
+  })
+}
+
+export function canCopySampleSelection(
+  start: number,
+  end: number,
+  sampleRate: number,
+  frameCount: number,
+): boolean {
+  return selectionFrameSpan(start, end, sampleRate, frameCount) != null
+}
+
+/**
+ * Fit clipboard channels to the destination layout.
+ * Mono/stereo follow the playback layout rules: equal mix down, duplicate mono up,
+ * and a stereo destination keeps the first two source channels.
+ */
+export function matchClipboardChannels(
+  channels: readonly Float32Array[],
+  destChannelCount: number,
+): Float32Array[] | null {
+  const srcCount = channels.length
+  const length = channels[0]?.length ?? 0
+  if (srcCount < 1 || destChannelCount < 1 || length < 1) return null
+  const aligned = channels.map((channel) =>
+    channel.length === length ? copyChannel(channel) : fitLength(channel, length),
+  )
+  if (srcCount === destChannelCount) return aligned
+  if (destChannelCount === 1) return [mixChannelsToMono(aligned)]
+  if (srcCount === 1) {
+    const mono = aligned[0]!
+    if (destChannelCount === 2) {
+      const stereo = duplicateMonoToStereo(mono)
+      return [stereo.left, stereo.right]
+    }
+    return Array.from({ length: destChannelCount }, () => copyChannel(mono))
+  }
+  if (destChannelCount < srcCount) return aligned.slice(0, destChannelCount)
+  return Array.from({ length: destChannelCount }, (_, index) => copyChannel(aligned[index % srcCount]!))
+}
+
+/** Resample to the destination rate, then match its channel layout. Duration in seconds stays. */
+export function prepareClipboardForDestination(
+  clip: AudioClipboard,
+  destSampleRate: number,
+  destChannelCount: number,
+): Float32Array[] | null {
+  if (!(clip.sampleRate > 0) || !(destSampleRate > 0) || destChannelCount < 1) return null
+  const source = clip.channels.map((channel) => copyChannel(channel))
+  if (source.length < 1 || (source[0]?.length ?? 0) < 1) return null
+  const rated =
+    clip.sampleRate === destSampleRate ? source : resampleChannels(source, clip.sampleRate, destSampleRate)
+  return matchClipboardChannels(rated, destChannelCount)
+}
+
+export function canPasteClipboard(
+  clip: AudioClipboard | null,
+  destSampleRate: number,
+  destFrameCount: number,
+  destChannelCount: number,
+): boolean {
+  if (!clip || !(destSampleRate > 0) || destFrameCount < 1 || destChannelCount < 1) return false
+  if (!(clip.sampleRate > 0) || clip.channels.length < 1) return false
+  return (clip.channels[0]?.length ?? 0) > 0
+}
+
+/** Insert clipboard frames at `atFrame`, shifting the tail right. Does not overwrite. */
+export function insertPcmAtFrame(
+  channels: readonly Float32Array[],
+  atFrame: number,
+  clip: readonly Float32Array[],
+): Float32Array[] | null {
+  const length = channels[0]?.length ?? 0
+  const clipLength = clip[0]?.length ?? 0
+  if (channels.length < 1 || clip.length !== channels.length || clipLength < 1) return null
+  const at = Math.max(0, Math.min(length, Math.round(atFrame)))
+  return channels.map((channel, index) => {
+    const src = channel.length === length ? channel : fitLength(channel, length)
+    const piece = clip[index] ?? new Float32Array(clipLength)
+    const out = new Float32Array(length + clipLength)
+    if (at > 0) out.set(src.subarray(0, at), 0)
+    const copyLength = Math.min(clipLength, piece.length)
+    if (copyLength > 0) out.set(piece.subarray(0, copyLength), at)
+    if (at < length) out.set(src.subarray(at), at + clipLength)
+    return out
+  })
+}
+
+/** Copy does not create an undo step. Cut and paste each create exactly one. */
+export function sampleEditRecordsHistory(kind: 'copy' | 'cut' | 'paste'): boolean {
+  return kind !== 'copy'
 }
 
 export function canInsertSilence(sampleRate: number, frameCount: number): boolean {

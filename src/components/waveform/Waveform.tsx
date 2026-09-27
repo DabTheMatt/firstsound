@@ -33,6 +33,7 @@ import {
 import { isTypingTarget } from '../../a11y/keyboard'
 import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
+import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -98,6 +99,9 @@ type Props = {
   onRegionCommit: () => void
   onAutomationCommit?: () => void
   onDeleteSelection?: () => void
+  onCopySelection?: () => void
+  onCutSelection?: () => void
+  onPasteAtPlayhead?: () => void
   onFades: (patch: {
     fadeIn?: number
     fadeOut?: number
@@ -202,6 +206,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onRegionCommit,
     onAutomationCommit,
     onDeleteSelection,
+    onCopySelection,
+    onCutSelection,
+    onPasteAtPlayhead,
     onFades,
     onFadesCommit,
     contentRev = 0,
@@ -291,6 +298,35 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [viz, autoFocus.nodeId, onAutomationCommit, setAutoFocus, onDeleteSelection])
+
+  useEffect(() => {
+    if (!onCopySelection && !onCutSelection && !onPasteAtPlayhead) return
+    const onKey = (event: KeyboardEvent) => {
+      const action = clipboardShortcut({
+        key: event.key,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+        repeat: event.repeat,
+        typing: isTextEditingTarget(event.target),
+        textSelected: hasUserTextSelection(),
+        editorContext: isWaveformEditorContext(event.target),
+      })
+      if (action === 'copy' && onCopySelection) {
+        event.preventDefault()
+        onCopySelection()
+      } else if (action === 'cut' && onCutSelection) {
+        event.preventDefault()
+        onCutSelection()
+      } else if (action === 'paste' && onPasteAtPlayhead) {
+        event.preventDefault()
+        onPasteAtPlayhead()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCopySelection, onCutSelection, onPasteAtPlayhead])
 
   useEffect(() => {
     handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22
@@ -1023,7 +1059,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
 
     return (
-    <div className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}>
+    <div
+      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}
+      data-waveform-editor=""
+    >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
           ref={editorRef}

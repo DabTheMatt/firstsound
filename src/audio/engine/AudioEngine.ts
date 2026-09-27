@@ -186,13 +186,17 @@ import {
 } from './eqBands'
 import {
   canClearSampleSelection,
+  canCopySampleSelection,
   canDeleteSampleSelection,
   canInsertSilence,
   canMuteSampleSelection,
+  canPasteClipboard,
   cloneCapture,
+  copyFrameRange,
   deleteFrameRange,
   deleteFrameSpan,
   insertFrameForTime,
+  insertPcmAtFrame,
   muteFrameRange,
   muteFrameSpan,
   insertSilence,
@@ -200,7 +204,10 @@ import {
   mapMarkerTimes,
   mapPlayhead,
   mapRange,
+  prepareClipboardForDestination,
+  selectionFrameSpan,
   silenceFrameCount,
+  type AudioClipboard,
   type SampleEditCapture,
   type SamplePcmSnapshot,
   type TimelineEdit,
@@ -310,6 +317,9 @@ export type EngineSnapshot = {
   canDeleteSelection: boolean
   canMuteSelection: boolean
   canClearSelection: boolean
+  canCopySelection: boolean
+  canCutSelection: boolean
+  canPaste: boolean
   playing: boolean
   loop: boolean
   engineMode: EngineMode
@@ -549,6 +559,7 @@ export class AudioEngine {
   private eqListen: EqListenMode = 'sample'
   private eqChannelMode: EqChannelMode = 'shared'
   private channelLayout: ChannelLayoutMode = 'original'
+  private clipboard: AudioClipboard | null = null
   private noiseGain: GainNode | null = null
   private noiseSource: AudioBufferSourceNode | null = null
   private recStream: MediaStream | null = null
@@ -2780,6 +2791,71 @@ export class AudioEngine {
     return true
   }
 
+  /** Copy the selected frames into the internal clipboard. The source sample is unchanged. */
+  copySampleSelection(): boolean {
+    const buffer = this.buffer
+    if (!buffer) return false
+    const span = selectionFrameSpan(this.params.start, this.params.end, buffer.sampleRate, buffer.length)
+    if (!span) return false
+    const channels = copyFrameRange(readBufferChannels(buffer), span.start, span.end)
+    if (!channels) return false
+    this.clipboard = { sampleRate: buffer.sampleRate, channels }
+    this.emit()
+    return true
+  }
+
+  /**
+   * Copy the selection, then delete it and close the gap.
+   * One call is one edit. The clipboard is left unchanged when the delete cannot run.
+   */
+  cutSampleSelection(): boolean {
+    const buffer = this.buffer
+    if (!buffer || !this.bufferFactory()) return false
+    const span = deleteFrameSpan(this.params.start, this.params.end, buffer.sampleRate, buffer.length)
+    if (!span) return false
+    const source = readBufferChannels(buffer)
+    const copied = copyFrameRange(source, span.start, span.end)
+    const nextChannels = deleteFrameRange(source, span.start, span.end)
+    if (!copied || !nextChannels) return false
+    const next = this.bufferFromChannels(nextChannels, buffer.sampleRate)
+    if (!next) return false
+    this.clipboard = { sampleRate: buffer.sampleRate, channels: copied }
+    this.freezePlayhead()
+    this.installEditedBuffer(next, buffer)
+    this.applyTimelineEdit({
+      kind: 'delete',
+      startSec: span.start / buffer.sampleRate,
+      endSec: span.end / buffer.sampleRate,
+    })
+    return true
+  }
+
+  /**
+   * Insert clipboard audio at the playhead, shifting the tail right.
+   * Channel layout and sample rate are adapted to the destination. One call is one edit.
+   */
+  pasteAtPlayhead(): boolean {
+    const buffer = this.buffer
+    const clip = this.clipboard
+    if (!buffer || !clip || !this.bufferFactory()) return false
+    const clipChannels = prepareClipboardForDestination(clip, buffer.sampleRate, buffer.numberOfChannels)
+    if (!clipChannels || (clipChannels[0]?.length ?? 0) < 1) return false
+    const playhead = this.freezePlayhead()
+    const atFrame = insertFrameForTime(playhead, buffer.sampleRate, buffer.length)
+    const nextChannels = insertPcmAtFrame(readBufferChannels(buffer), atFrame, clipChannels)
+    if (!nextChannels) return false
+    const next = this.bufferFromChannels(nextChannels, buffer.sampleRate)
+    if (!next) return false
+    const inserted = clipChannels[0]!.length
+    this.installEditedBuffer(next, buffer)
+    this.applyTimelineEdit({
+      kind: 'insert',
+      atSec: atFrame / buffer.sampleRate,
+      deltaSec: inserted / buffer.sampleRate,
+    })
+    return true
+  }
+
   /** Remove the highlighted region and close the gap. One call is one edit. */
   deleteSampleSelection(): boolean {
     const buffer = this.buffer
@@ -4799,6 +4875,24 @@ export class AudioEngine {
         this.params.start,
         this.params.end,
         this.buffer?.duration ?? 0,
+      ),
+      canCopySelection: canCopySampleSelection(
+        this.params.start,
+        this.params.end,
+        this.buffer?.sampleRate ?? 0,
+        this.buffer?.length ?? 0,
+      ),
+      canCutSelection: canDeleteSampleSelection(
+        this.params.start,
+        this.params.end,
+        this.buffer?.sampleRate ?? 0,
+        this.buffer?.length ?? 0,
+      ),
+      canPaste: canPasteClipboard(
+        this.clipboard,
+        this.buffer?.sampleRate ?? 0,
+        this.buffer?.length ?? 0,
+        this.buffer?.numberOfChannels ?? 0,
       ),
       playing: this.playing,
       loop: this.loop,
