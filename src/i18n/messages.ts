@@ -216,6 +216,7 @@ export type Messages = {
     automationColorChoose: string
     automationColorOption: (index: number) => string
     automationCurve: string
+    automationSegmentCurve: string
     automationCurveIdle: string
     automationLinear: string
     automationSmooth: string
@@ -714,6 +715,7 @@ export const EN: Messages = {
     automationColorChoose: 'Choose automation color',
     automationColorOption: (index) => `Color ${index}`,
     automationCurve: 'Curve',
+    automationSegmentCurve: 'Curve — selected segment',
     automationCurveIdle: 'Select this automation, then a segment.',
     automationLinear: 'Linear',
     automationSmooth: 'Smooth',
@@ -1297,6 +1299,7 @@ export const PL: Messages = {
     automationColorChoose: 'Wybierz kolor automatyzacji',
     automationColorOption: (index) => `Kolor ${index}`,
     automationCurve: 'Krzywa',
+    automationSegmentCurve: 'Krzywa — zaznaczony odcinek',
     automationCurveIdle: 'Wybierz tę automatyzację, potem odcinek.',
     automationLinear: 'Linia',
     automationSmooth: 'Gładka',

@@ -182,6 +182,41 @@ describe('automation curves', () => {
     }
   })
 
+  it('changes only the selected segment and keeps the drawn line on the playback curve', () => {
+    const first = insertAutomationNode(selectAutomationParam(defaultAutomation(), 'gain'), 0, 0.2, 3, 'a')!
+    const second = insertAutomationNode(first.doc, 1, 0.8, 3, 'b')!
+    const third = insertAutomationNode(second.doc, 2, 0.3, 3, 'c')!
+    const stepped = updateAutomationCurve(third.doc, 'a', 'step')
+    const nodes = stepped.lanes[0]!.nodes
+    expect(nodes.find((node) => node.id === 'a')?.curve).toBe('step')
+    expect(nodes.find((node) => node.id === 'b')?.curve).toBeUndefined()
+    expect(sampleEnvelope(nodes, 0.5)).toBeCloseTo(0.2)
+    expect(sampleEnvelope(nodes, 1.5)).toBeCloseTo(0.55)
+    const smoothed = updateAutomationCurve(stepped, 'b', 'smooth')
+    const both = smoothed.lanes[0]!.nodes
+    expect(both.find((node) => node.id === 'a')?.curve).toBe('step')
+    expect(both.find((node) => node.id === 'b')?.curve).toBe('smooth')
+    expect(sampleEnvelope(both, 0.5)).toBeCloseTo(0.2)
+    const smoothMid = sampleEnvelope(both, 1.5)
+    expect(smoothMid).toBeGreaterThan(0.3)
+    expect(smoothMid).toBeLessThan(0.8)
+    for (const sample of laneSamples(both, 0, 2)) {
+      const played = sampleEnvelope(both, sample.time)!
+      const stepRiser = Math.abs(sample.time - 1) <= 1e-6 && Math.abs(sample.value - 0.2) < 1e-6
+      if (stepRiser) continue
+      expect(sample.value).toBeCloseTo(played)
+    }
+    expect(lanePolyline(both, 0, 2)).toBe(
+      laneSamples(both, 0, 2)
+        .map((point) => {
+          const x = (point.time / 2) * 100
+          const y = (1 - point.value) * 100
+          return `${x.toFixed(3)},${y.toFixed(3)}`
+        })
+        .join(' '),
+    )
+  })
+
   it('stores curve and tension on the segment and restores them from old linear saves', () => {
     const inserted = insertAutomationNode(selectAutomationParam(defaultAutomation(), 'gain'), 0, 0.2, 2, 'a')!
     const withEnd = insertAutomationNode(inserted.doc, 1, 0.8, 2, 'b')!

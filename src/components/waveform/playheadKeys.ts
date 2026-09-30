@@ -19,7 +19,7 @@ const ARROW_ROLES = new Set([
 ])
 
 const EMBEDDED_ARROW_CONTROL =
-  '[data-auto-node],[data-auto-tension],[data-auto-segment],[data-curve-switch],[data-knob],[data-arrow-keys]'
+  '[data-auto-node],[data-auto-tension],[data-auto-segment],[data-segment-curve],[data-knob],[data-arrow-keys]'
 
 export type ArrowKeyOwner = {
   tagName: string

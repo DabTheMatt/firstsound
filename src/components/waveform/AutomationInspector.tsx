@@ -19,7 +19,7 @@ import { InspectorEye } from '../inspector/InspectorEye'
 import inspectorStyles from '../inspector/Inspector.module.css'
 import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
-import { CurveSwitch } from './CurveSwitch'
+import { SegmentCurveControl } from './SegmentCurveControl'
 import styles from './AutomationInspector.module.css'
 
 let rememberedScroll = 0
@@ -84,8 +84,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
     step: t.waveform.automationStep,
     linear: t.waveform.automationLinear,
     smooth: t.waveform.automationSmooth,
-    group: t.waveform.automationCurve,
-    idle: t.waveform.automationSegmentHint,
+    group: t.waveform.automationSegmentCurve,
   }
 
   const choose = (paramId: ParamId) => {
@@ -160,7 +159,6 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
           const active = lane.paramId === selected
           const laneIndex = typeof lane.colorIndex === 'number' ? lane.colorIndex : colorIndexForParam(snap.automation, lane.paramId)
           const laneColor = automationColor(laneIndex)
-          const curveEnabled = active && hasSegment
           const title = titleFor(lane.paramId)
           return (
             <li key={lane.paramId} data-automation-lane={lane.paramId}>
@@ -192,14 +190,6 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
                 >
                   <span>{title}</span>
                 </button>
-                <CurveSwitch
-                  value={curveEnabled ? curve : null}
-                  disabled={!curveEnabled}
-                  labels={{ ...curveLabels, idle: active ? t.waveform.automationSegmentHint : t.waveform.automationCurveIdle }}
-                  accent={laneColor}
-                  onChange={setCurve}
-                  onCommit={onCommit}
-                />
                 <button
                   type="button"
                   className={styles.remove}
@@ -313,6 +303,21 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
         <strong>{selectedLane?.nodes.length ?? 0}</strong>
       </div>
 
+      {hasSegment && segmentId ? (
+        <div className={styles.segmentCurve} data-automation-segment-curve="inspector">
+          <SegmentCurveControl
+            value={curve}
+            labels={curveLabels}
+            accent={color}
+            caption={t.waveform.automationSegmentCurve}
+            onChange={setCurve}
+            onCommit={onCommit}
+          />
+        </div>
+      ) : (
+        <p className={styles.empty}>{t.waveform.automationSegmentHint}</p>
+      )}
+
       {hasSegment && segmentId && curve === 'smooth' ? (
         <label className={inspectorStyles.field}>
           <span>
@@ -332,7 +337,6 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
           />
         </label>
       ) : null}
-      {hasSegment ? null : <p className={styles.empty}>{t.waveform.automationSegmentHint}</p>}
     </div>
   )
 }

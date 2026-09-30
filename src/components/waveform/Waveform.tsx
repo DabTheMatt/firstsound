@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,7 +14,6 @@ import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engin
 import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
 import { waveformLaneLayout } from '../../audio/engine/stereoStage'
 import { PARAMS } from '../../audio/parameters/definitions'
-import { formatParamValue } from '../../audio/parameters/mapping'
 import {
   EMPTY_AUTOMATION_FOCUS,
   automatedLanes,
@@ -37,7 +37,10 @@ import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWavefor
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { placeAutomationLabels } from './automationLabelLayout'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
+import { formatAutomationNodeValue } from './automationValue'
+import { SegmentCurveControl } from './SegmentCurveControl'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { VizBackground } from './VizBackground'
@@ -236,6 +239,22 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const editorRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [panning, setPanning] = useState(false)
+  const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
+  const [plotSize, setPlotSize] = useState({ width: 0, height: 0 })
+  useLayoutEffect(() => {
+    const node = overlayRef.current
+    if (!node) return
+    const measure = () => {
+      const rect = node.getBoundingClientRect()
+      setPlotSize((current) =>
+        current.width === rect.width && current.height === rect.height ? current : { width: rect.width, height: rect.height },
+      )
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
   const [waveShare, setWaveShare] = useState(loadSplitShare)
   const waveShareRef = useRef(waveShare)
   const [eqStripHeight, setEqStripHeight] = useState(loadEqStripHeight)
@@ -1119,6 +1138,42 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     tensionSegment && tensionNext && nodeCurve(tensionSegment) === 'smooth'
       ? sampleEnvelope(activeNodes, tensionTime ?? tensionSegment.time)
       : null
+  const segmentCurveValue =
+    tensionSegment && tensionNext && tensionTime != null ? sampleEnvelope([tensionSegment, tensionNext], tensionTime) : null
+  const segmentCurveFrac = tensionTime != null ? timeToFrac(tensionTime, view) : null
+  const showSegmentCurve =
+    Boolean(tensionSegment && tensionNext && segmentCurveValue != null && segmentCurveFrac != null) &&
+    segmentCurveFrac! >= -0.02 &&
+    segmentCurveFrac! <= 1.02
+  const segmentCurveY = segmentCurveValue != null ? (1 - segmentCurveValue) * 100 : 0
+  const activeDef = PARAMS[snap.automation.selectedParamId]
+  const placedLabels = automationView
+    ? placeAutomationLabels(
+        activeNodes.flatMap((node) => {
+          const frac = timeToFrac(node.time, view)
+          if (frac < -0.02 || frac > 1.02) return []
+          const selected = node.id === autoFocus.nodeId
+          const hovered = node.id === hoverNodeId
+          return [
+            {
+              id: node.id,
+              x: frac,
+              y: 1 - node.value,
+              text: formatAutomationNodeValue(envelopeToParam(activeDef.id, node.value), activeDef),
+              priority: selected ? 3 : hovered ? 2 : 1,
+            },
+          ]
+        }),
+        plotSize.width,
+        plotSize.height,
+      )
+    : []
+  const curveLabels = {
+    step: t.waveform.automationStep,
+    linear: t.waveform.automationLinear,
+    smooth: t.waveform.automationSmooth,
+    group: t.waveform.automationSegmentCurve,
+  }
   const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
@@ -1342,14 +1397,25 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                           if (!next) return null
                           const points = segmentPolyline(node, next, view.start, view.end)
                           if (!points) return null
+                          const selectedSegment = node.id === autoFocus.segmentId
                           return (
-                            <polyline
-                              key={node.id}
-                              points={points}
-                              data-auto-segment={node.id}
-                              className={styles.autoHit}
-                              vectorEffect="non-scaling-stroke"
-                            />
+                            <g key={node.id}>
+                              {selectedSegment ? (
+                                <polyline
+                                  points={points}
+                                  className={styles.autoSegmentOn}
+                                  stroke={activeColor}
+                                  vectorEffect="non-scaling-stroke"
+                                  data-auto-segment-selected={node.id}
+                                />
+                              ) : null}
+                              <polyline
+                                points={points}
+                                data-auto-segment={node.id}
+                                className={styles.autoHit}
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            </g>
                           )
                         })}
                       </svg>
@@ -1357,8 +1423,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         const frac = timeToFrac(node.time, view)
                         if (frac < -0.02 || frac > 1.02) return null
                         const selected = node.id === autoFocus.nodeId
-                        const def = PARAMS[snap.automation.selectedParamId]
-                        const valueLabel = formatParamValue(envelopeToParam(def.id, node.value), def)
+                        const valueLabel = formatAutomationNodeValue(envelopeToParam(activeDef.id, node.value), activeDef)
                         return (
                           <button
                             key={node.id}
@@ -1367,10 +1432,45 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                             className={`${styles.autoNode} ${selected ? styles.autoNodeOn : ''}`}
                             style={{ left: `${frac * 100}%`, top: `${(1 - node.value) * 100}%`, color: activeColor }}
                             aria-label={t.waveform.automationNode(valueLabel)}
+                            title={valueLabel}
                             aria-pressed={selected}
+                            onPointerEnter={() => setHoverNodeId(node.id)}
+                            onPointerLeave={() => setHoverNodeId((current) => (current === node.id ? null : current))}
                           />
                         )
                       })}
+                      {placedLabels.map((label) =>
+                        label.visible ? (
+                          <span
+                            key={label.id}
+                            className={`${styles.autoValue} ${label.id === autoFocus.nodeId || label.id === hoverNodeId ? styles.autoValueOn : ''}`}
+                            style={{ left: `${label.left}%`, top: `${label.top}%` }}
+                            data-auto-value={label.id}
+                            aria-hidden="true"
+                          >
+                            {label.text}
+                          </span>
+                        ) : null,
+                      )}
+                      {showSegmentCurve && tensionSegment && segmentCurveFrac != null ? (
+                        <div
+                          className={`${styles.curvePop} ${segmentCurveY < 22 ? styles.curvePopBelow : ''}`}
+                          style={{
+                            left: `${Math.min(84, Math.max(16, segmentCurveFrac * 100))}%`,
+                            top: `${segmentCurveY}%`,
+                          }}
+                          data-automation-segment-curve="graph"
+                        >
+                          <SegmentCurveControl
+                            value={nodeCurve(tensionSegment)}
+                            labels={curveLabels}
+                            accent={activeColor}
+                            caption={t.waveform.automationSegmentCurve}
+                            onChange={(curve) => engine.setAutomationCurve(tensionSegment.id, curve)}
+                            onCommit={onAutomationCommit}
+                          />
+                        </div>
+                      ) : null}
                       {tensionSegment && tensionNext && tensionValue != null && tensionTime != null && timeToFrac(tensionTime, view) >= -0.02 && timeToFrac(tensionTime, view) <= 1.02 ? (
                         <button
                           type="button"

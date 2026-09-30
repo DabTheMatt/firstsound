@@ -1,0 +1,58 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.caption {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+}
+
+.option {
+  width: 22px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.option:hover {
+  color: var(--text-primary);
+  background: var(--bg-control-hover);
+}
+
+.option:focus-visible {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.on {
+  color: var(--lane, var(--text-primary));
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 22%, var(--bg-control));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lane, var(--accent-primary)) 72%, transparent);
+}
