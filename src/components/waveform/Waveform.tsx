@@ -40,7 +40,6 @@ import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { formatAutomationNodeValue } from './automationValue'
-import { SegmentCurveControl } from './SegmentCurveControl'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { VizBackground } from './VizBackground'
@@ -1138,14 +1137,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     tensionSegment && tensionNext && nodeCurve(tensionSegment) === 'smooth'
       ? sampleEnvelope(activeNodes, tensionTime ?? tensionSegment.time)
       : null
-  const segmentCurveValue =
-    tensionSegment && tensionNext && tensionTime != null ? sampleEnvelope([tensionSegment, tensionNext], tensionTime) : null
-  const segmentCurveFrac = tensionTime != null ? timeToFrac(tensionTime, view) : null
-  const showSegmentCurve =
-    Boolean(tensionSegment && tensionNext && segmentCurveValue != null && segmentCurveFrac != null) &&
-    segmentCurveFrac! >= -0.02 &&
-    segmentCurveFrac! <= 1.02
-  const segmentCurveY = segmentCurveValue != null ? (1 - segmentCurveValue) * 100 : 0
   const activeDef = PARAMS[snap.automation.selectedParamId]
   const placedLabels = automationView
     ? placeAutomationLabels(
@@ -1168,12 +1159,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         plotSize.height,
       )
     : []
-  const curveLabels = {
-    step: t.waveform.automationStep,
-    linear: t.waveform.automationLinear,
-    smooth: t.waveform.automationSmooth,
-    group: t.waveform.automationSegmentCurve,
-  }
   const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
   const showEqConsole = viz === 'eq-split'
@@ -1384,7 +1369,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               points={points}
                               fill="none"
                               stroke={color}
-                              strokeWidth={active ? 2.4 : 1}
+                              strokeWidth={1}
                               strokeOpacity={active ? 1 : 0.28}
                               vectorEffect="non-scaling-stroke"
                               strokeLinejoin="round"
@@ -1397,25 +1382,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                           if (!next) return null
                           const points = segmentPolyline(node, next, view.start, view.end)
                           if (!points) return null
-                          const selectedSegment = node.id === autoFocus.segmentId
                           return (
-                            <g key={node.id}>
-                              {selectedSegment ? (
-                                <polyline
-                                  points={points}
-                                  className={styles.autoSegmentOn}
-                                  stroke={activeColor}
-                                  vectorEffect="non-scaling-stroke"
-                                  data-auto-segment-selected={node.id}
-                                />
-                              ) : null}
-                              <polyline
-                                points={points}
-                                data-auto-segment={node.id}
-                                className={styles.autoHit}
-                                vectorEffect="non-scaling-stroke"
-                              />
-                            </g>
+                            <polyline
+                              key={node.id}
+                              points={points}
+                              data-auto-segment={node.id}
+                              className={styles.autoHit}
+                              vectorEffect="non-scaling-stroke"
+                            />
                           )
                         })}
                       </svg>
@@ -1452,25 +1426,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                           </span>
                         ) : null,
                       )}
-                      {showSegmentCurve && tensionSegment && segmentCurveFrac != null ? (
-                        <div
-                          className={`${styles.curvePop} ${segmentCurveY < 22 ? styles.curvePopBelow : ''}`}
-                          style={{
-                            left: `${Math.min(84, Math.max(16, segmentCurveFrac * 100))}%`,
-                            top: `${segmentCurveY}%`,
-                          }}
-                          data-automation-segment-curve="graph"
-                        >
-                          <SegmentCurveControl
-                            value={nodeCurve(tensionSegment)}
-                            labels={curveLabels}
-                            accent={activeColor}
-                            caption={t.waveform.automationSegmentCurve}
-                            onChange={(curve) => engine.setAutomationCurve(tensionSegment.id, curve)}
-                            onCommit={onAutomationCommit}
-                          />
-                        </div>
-                      ) : null}
                       {tensionSegment && tensionNext && tensionValue != null && tensionTime != null && timeToFrac(tensionTime, view) >= -0.02 && timeToFrac(tensionTime, view) <= 1.02 ? (
                         <button
                           type="button"
