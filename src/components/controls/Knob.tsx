@@ -32,18 +32,19 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
   const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const live = liveValue ?? value
+  const lfoMotion = lfoDepth != null && liveValue != null
   const mapped = liveValue != null && lfoDepth == null
   const baseN = toNormalized(value, def)
   return (
     <ValueKnob
       label={paramLabel(id)}
       valueText={formatParamValue(value, def)}
-      valueTextAccessible={formatAccessibleValue(lfoDepth != null ? value : live, def, locale)}
+      valueTextAccessible={formatAccessibleValue(lfoMotion ? value : live, def, locale)}
       description={paramDescription(id, locale)}
       visualValueText={mapped ? formatParamValue(live, def) : undefined}
       baseValueText={mapped ? formatParamValue(value, def) : undefined}
       normalized={baseN}
-      visualNormalized={mapped ? toNormalized(live, def) : undefined}
+      visualNormalized={lfoMotion || mapped ? toNormalized(live, def) : undefined}
       lfoRange={lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}
       min={def.min}
       max={def.max}

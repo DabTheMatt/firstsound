@@ -24,7 +24,12 @@ export function ParamControl({ id, value, variant }: Props) {
       {variant === 'slider' ? (
         <ParamSlider id={id} value={value} modulationRange={range} />
       ) : (
-        <Knob id={id} value={value} lfoDepth={active ? binding?.lfo.depth : undefined} />
+        <Knob
+          id={id}
+          value={value}
+          liveValue={active ? snap.liveParams[id] : undefined}
+          lfoDepth={active ? binding?.lfo.depth : undefined}
+        />
       )}
     </LfoParamShell>
   )

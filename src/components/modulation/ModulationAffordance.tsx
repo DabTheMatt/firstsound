@@ -31,11 +31,7 @@ import {
   setParameterLfoPrimary,
 } from './modulationActions'
 import { readModulationEditor, setModulationEditorOpen, subscribeModulationEditor } from './modulationEditor'
-import {
-  modulationDepthLabel,
-  parameterModulationState,
-  type ModulationSourceId,
-} from './modulationModel'
+import { parameterModulationState, type ModulationSourceId } from './modulationModel'
 import styles from './Modulation.module.css'
 
 const RATE_DEF: ParamDef = {
@@ -50,9 +46,11 @@ const RATE_DEF: ParamDef = {
 
 type Props = {
   id: ParamId
+  /** Sits in the knob column, between the dial and the stored value. */
+  compact?: boolean
 }
 
-export function ModulationAffordance({ id }: Props) {
+export function ModulationAffordance({ id, compact = false }: Props) {
   const snap = useEngine()
   const { paramLabel } = useI18n()
   const editorOpen = useSyncExternalStore(
@@ -75,8 +73,7 @@ export function ModulationAffordance({ id }: Props) {
   if (!state.supportsModulation) return null
 
   const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
-  const depthText = state.lfoActive ? modulationDepthLabel(state.depthPct) : ''
-  const tip = depthText ? `Modulate ${label}, ${depthText}` : `Modulate ${label}`
+  const tip = `Modulate ${label}`
   const panel =
     editorOpen && typeof document !== 'undefined' ? (
       <ModulationEditorSession
@@ -97,7 +94,7 @@ export function ModulationAffordance({ id }: Props) {
       <button
         ref={buttonRef}
         type="button"
-        className={styles.button}
+        className={compact ? `${styles.button} ${styles.buttonCompact}` : styles.button}
         data-active={state.lfoActive ? 'true' : 'false'}
         data-open={editorOpen ? 'true' : 'false'}
         data-modulation-for={id}
@@ -115,7 +112,6 @@ export function ModulationAffordance({ id }: Props) {
         <span className={styles.mark} aria-hidden="true">
           〰
         </span>
-        {depthText ? <span className={styles.depth}>{depthText}</span> : null}
       </button>
       {panel}
     </>

@@ -30,9 +30,14 @@
   line-height: 1;
 }
 
-.depth {
-  font-size: 10px;
-  letter-spacing: 0.02em;
+.buttonCompact {
+  min-width: 22px;
+  min-height: 18px;
+  padding: 0;
+}
+
+.buttonCompact .mark {
+  font-size: 13px;
 }
 
 @media (hover: hover) and (pointer: fine) {

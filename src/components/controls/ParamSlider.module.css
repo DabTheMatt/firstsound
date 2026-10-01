@@ -24,7 +24,7 @@
 .row:hover .readouts,
 .row:focus-within .readouts,
 .row:has([data-active='true']) .readouts {
-  padding-right: 72px;
+  padding-right: 32px;
 }
 
 .modRange {

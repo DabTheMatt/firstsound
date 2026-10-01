@@ -91,10 +91,6 @@ export function activeLfoSpan(
   }
 }
 
-export function modulationDepthLabel(depthPct: number): string {
-  return `±${Math.round(depthPct)}%`
-}
-
 export type EqModulationGuides = {
   frequency: { minHz: number; maxHz: number } | null
   gain: { minDb: number; maxDb: number } | null

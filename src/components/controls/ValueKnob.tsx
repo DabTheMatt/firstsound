@@ -253,10 +253,10 @@ export function ValueKnob({
   const cy = 42
   const r = 24
   const rangeR = 36
-  const tipDeg = knobAngleDeg(lfoRange ? normalized : shown)
+  const tipDeg = knobAngleDeg(shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
-  const valueArc = knobValueArc(lfoRange ? normalized : shown, bipolar)
+  const valueArc = knobValueArc(shown, bipolar)
   const fill = arcPath(cx, cy, r, valueArc.startDeg, valueArc.endDeg)
   const rangeStartDeg = lfoRange ? knobAngleDeg(lfoRange.min) : 0
   const rangeEndDeg = lfoRange ? knobAngleDeg(lfoRange.max) : 0
@@ -284,11 +284,6 @@ export function ValueKnob({
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
       >
-      {paramId ? (
-        <span className={styles.modSlot}>
-          <ModulationAffordance id={paramId} />
-        </span>
-      ) : null}
       {adjusting ? (
         <span className={styles.dragReadout} role="status">
           <span>{label}</span>
@@ -401,6 +396,11 @@ export function ValueKnob({
           />
         </svg>
       </div>
+      {paramId ? (
+        <span className={styles.modSlot}>
+          <ModulationAffordance id={paramId} compact />
+        </span>
+      ) : null}
       {editing ? (
         <input
           className={styles.valueInput}
