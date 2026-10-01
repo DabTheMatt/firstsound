@@ -7,6 +7,20 @@ export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 18, bottom: 40 }
  */
 export const SPECTRUM_PLOT_PAD_COMPACT = { left: 4, right: 4, top: 6, bottom: 4 }
 
+/** Focused EQ editing. Labels are drawn inside the plot, so the curve uses the canvas. */
+export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 4, bottom: 4 }
+
+export function spectrumPlotPad(input: { compact?: boolean; focus?: boolean }): {
+  left: number
+  right: number
+  top: number
+  bottom: number
+} {
+  if (input.focus) return SPECTRUM_PLOT_PAD_FOCUS
+  if (input.compact) return SPECTRUM_PLOT_PAD_COMPACT
+  return SPECTRUM_PLOT_PAD
+}
+
 /** Fewer frequency labels than the desktop grid, chosen from the available width. */
 export function phoneFrequencyTicks(widthPx: number): readonly number[] {
   if (widthPx < 340) return [100, 1000, 10000]

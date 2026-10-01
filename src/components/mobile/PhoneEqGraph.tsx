@@ -6,12 +6,12 @@ import styles from './PhoneEqGraph.module.css'
 
 type Props = {
   instanceId?: string
-  cleanEq?: boolean
   onSelectModule?: (instanceId: string) => void
+  phoneFocus?: boolean
 }
 
 /** Phone EQ workspace: realtime spectrum, EQ response, and band nodes. */
-export function PhoneEqGraph({ instanceId, cleanEq = false, onSelectModule }: Props) {
+export function PhoneEqGraph({ instanceId, onSelectModule, phoneFocus = false }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const eq = snap.chain.find((mod) => mod.instanceId === instanceId && mod.type === 'eq')
@@ -19,7 +19,7 @@ export function PhoneEqGraph({ instanceId, cleanEq = false, onSelectModule }: Pr
 
   return (
     <div className={styles.stage} data-phone-eq="">
-      <Spectrum active phoneEq cleanEq={cleanEq} />
+      <Spectrum active phoneEq phoneFocus={phoneFocus} />
       {eq ? null : (
         <button
           type="button"
@@ -27,7 +27,8 @@ export function PhoneEqGraph({ instanceId, cleanEq = false, onSelectModule }: Pr
           onClick={() => {
             const created = engine.insertModule('eq', Math.max(0, snap.chain.length - 2))
             if (!created) return
-            selectEqBand({ instanceId: created, index: 0 })
+            const index = engine.createEqStrip('peaking', created)
+            if (index != null) selectEqBand({ instanceId: created, index })
             onSelectModule?.(created)
           }}
         >

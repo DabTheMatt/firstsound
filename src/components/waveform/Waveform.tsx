@@ -35,7 +35,7 @@ import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
 import type { WaveTool, VizMode } from '../../app/editorState'
-import { phoneDisplayViz } from '../../app/phoneWorkspace'
+import { phoneDisplayViz, type FocusWorkspace } from '../../app/phoneWorkspace'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
@@ -78,8 +78,7 @@ import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
 import { rulerMarks, rulerMinFracGap } from './rulerTicks'
 import { PhoneEqGraph } from '../mobile/PhoneEqGraph'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
-import { automationInsertTime, defaultSelectionFadeSeconds, focusWorkspaceForViz, segmentAtTime } from '../../app/focusWorkspace'
-import { FocusChrome, type WaveFocusActions } from '../focus/FocusChrome'
+import { automationInsertTime, defaultSelectionFadeSeconds, focusLaneFraction, focusLanePolyline, focusLaneValue, segmentAtTime } from '../../app/focusWorkspace'
 import styles from './Waveform.module.css'
 
 type Props = {
@@ -125,14 +124,12 @@ type Props = {
   autoFocus?: AutomationEditFocus
   onAutoFocus?: (focus: AutomationEditFocus) => void
   phone?: boolean
+  /** Focused editing workspace. Null keeps the normal phone layout. */
+  phoneFocus?: FocusWorkspace | null
   onGraphEdit?: () => void
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   phoneEqId?: string
-  workspaceFocus?: boolean
-  onExitFocus?: () => void
-  onFocusViz?: (viz: VizMode) => void
-  waveFocus?: WaveFocusActions
 }
 
 export type WaveformHandle = {
@@ -141,6 +138,9 @@ export type WaveformHandle = {
   fitSelection: () => void
   resetZoom: () => void
   zoomBy: (factor: number) => void
+  addAutomationNode: () => void
+  deleteAutomationNode: () => void
+  applyFade: (side: 'in' | 'out') => void
 }
 
 function blocksSampleDeleteKey(target: EventTarget | null): boolean {
@@ -235,14 +235,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     autoFocus: autoFocusProp,
     onAutoFocus,
     phone = false,
+    phoneFocus = null,
     onGraphEdit,
     analyzerOpen = false,
     onAnalyzerClose,
     phoneEqId,
-    workspaceFocus = false,
-    onExitFocus,
-    onFocusViz,
-    waveFocus,
   },
   ref,
 ) {
@@ -262,6 +259,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [panning, setPanning] = useState(false)
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
   const [fadeDrag, setFadeDrag] = useState<'in' | 'out' | null>(null)
+  const addAutomationNodeRef = useRef<() => void>(() => undefined)
+  const deleteAutomationNodeRef = useRef<() => void>(() => undefined)
+  const applyFadeRef = useRef<(side: 'in' | 'out') => void>(() => undefined)
   const [plotSize, setPlotSize] = useState({ width: 0, height: 0 })
   useLayoutEffect(() => {
     const node = overlayRef.current
@@ -387,6 +387,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const v = viewRef.current
       setView(zoomAround(v, factor, (v.start + v.end) / 2, duration))
     },
+    addAutomationNode: () => addAutomationNodeRef.current(),
+    deleteAutomationNode: () => deleteAutomationNodeRef.current(),
+    applyFade: (side) => applyFadeRef.current(side),
   }))
 
   useEffect(() => {
@@ -826,7 +829,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         return
       }
       const under = segmentAtTime(lane?.nodes ?? [], t)
-      if (workspaceFocus && under) setAutoFocus({ nodeId: null, segmentId: under })
+      if (phoneFocus === 'auto' && under) setAutoFocus({ nodeId: null, segmentId: under })
       else setAutoFocus(EMPTY_AUTOMATION_FOCUS)
     }
 
@@ -985,7 +988,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       return
     }
     if (mode === 'autoNode' && drag.current.autoNodeId) {
-      const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
+      const yFrac = (event.clientY - rect.top) / Math.max(1, rect.height)
+      const value = phoneFocus === 'auto' ? focusLaneValue(yFrac) : normalizedFromLaneY(event.clientY - rect.top, rect.height)
       engine.moveAutomationNode(drag.current.autoNodeId, next, value)
       return
     }
@@ -1129,7 +1133,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       if (!overlay || duration <= 0) return
       const rect = overlay.getBoundingClientRect()
       const time = fracToTime((event.clientX - rect.left) / Math.max(1, rect.width), viewRef.current)
-      const value = normalizedFromLaneY(event.clientY - rect.top, rect.height)
+      const yFrac = (event.clientY - rect.top) / Math.max(1, rect.height)
+      const value = phoneFocus === 'auto' ? focusLaneValue(yFrac) : normalizedFromLaneY(event.clientY - rect.top, rect.height)
       const id = engine.addAutomationNode(time, value)
       if (!id) return
       const lane = engine.getSnapshot().automation.lanes.find((item) => item.paramId === engine.getSnapshot().automation.selectedParamId)
@@ -1158,8 +1163,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     [view, duration, plotSize.width, phone],
   )
 
-  const showFadeAffordances =
-    workspaceFocus && focusWorkspaceForViz(phone ? phoneDisplayViz(viz) : viz) === 'wave' && snap.canClearSelection
+  const showFadeAffordances = phoneFocus === 'wave' && snap.canClearSelection
   const applyDefaultFade = (side: 'in' | 'out') => {
     const seconds = defaultSelectionFadeSeconds(start, end)
     if (!(seconds > 0)) return
@@ -1186,7 +1190,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     setAutoFocus(EMPTY_AUTOMATION_FOCUS)
     onAutomationCommit?.()
   }
-  const showWave = viz === 'waveform' || viz === 'split' || viz === 'automation'
+  useLayoutEffect(() => {
+    addAutomationNodeRef.current = addAutomationNodeAtPlayhead
+    deleteAutomationNodeRef.current = deleteSelectedAutomationNode
+    applyFadeRef.current = applyDefaultFade
+  })
+  const showWave = phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
   const automationLanes = automationView ? automatedLanes(snap.automation) : []
   const automationLane = automationLanes.find((lane) => lane.paramId === snap.automation.selectedParamId) ?? null
@@ -1221,7 +1230,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             {
               id: node.id,
               x: frac,
-              y: 1 - node.value,
+              y: phoneFocus === 'auto' ? focusLaneFraction(node.value) : 1 - node.value,
               text: formatAutomationNodeValue(envelopeToParam(activeDef.id, node.value), activeDef),
               priority: selected ? 3 : hovered ? 2 : 1,
             },
@@ -1231,40 +1240,26 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         plotSize.height,
       )
     : []
-  const showMultiWave = viz === 'waveform-multi'
+  const showMultiWave = viz === 'waveform-multi' && phoneFocus == null
   const shownViz = phone ? phoneDisplayViz(viz) : viz
   const phoneEq = phone && shownViz === 'eq-split'
-  const showSpec = !phoneEq && (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
-  const eqFocusClean = phoneEq || (workspaceFocus && focusWorkspaceForViz(shownViz) === 'eq')
+  const showSpec =
+    !phoneEq &&
+    phoneFocus !== 'wave' &&
+    (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
+  const eqFocus = phoneFocus === 'eq'
+  const eqFocusClean = phoneEq || eqFocus
   const showEqConsole = shownViz === 'eq-split' && !phone && !eqFocusClean
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
-  const showMixConsole = viz === 'mix-split'
-  const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
+  const showMixConsole = viz === 'mix-split' && phoneFocus == null
+  const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split' || viz === 'mix-split')
 
     return (
     <div
-      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''}`}
+      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
-        {workspaceFocus && waveFocus && onExitFocus ? (
-          <FocusChrome
-            viz={shownViz}
-            phone={phone}
-            onViz={onFocusViz}
-            onExit={onExitFocus}
-            wave={{
-              ...waveFocus,
-              onFadeIn: () => applyDefaultFade('in'),
-              onFadeOut: () => applyDefaultFade('out'),
-            }}
-            autoFocus={autoFocus}
-            onAutoFocus={setAutoFocus}
-            onAutomationCommit={() => onAutomationCommit?.()}
-            onAddNode={addAutomationNodeAtPlayhead}
-            onDeleteNode={deleteSelectedAutomationNode}
-          />
-        ) : null}
         <div
           ref={editorRef}
           className={styles.wrap}
@@ -1472,7 +1467,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         ))}
                         {automationLanes.map((lane) => {
                           const active = lane.paramId === snap.automation.selectedParamId
-                          const points = lanePolyline(lane.nodes, view.start, view.end)
+                          const drawn = lanePolyline(lane.nodes, view.start, view.end)
+                          const points = drawn && phoneFocus === 'auto' ? focusLanePolyline(drawn) : drawn
                           if (!points) return null
                           const color = automationColor(lane.colorIndex)
                           return (
@@ -1481,8 +1477,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               points={points}
                               fill="none"
                               stroke={color}
-                              strokeWidth={1}
-                              strokeOpacity={active ? 1 : workspaceFocus ? 0.12 : 0.28}
+                              strokeWidth={active && phoneFocus === 'auto' ? 2 : 1}
+                              strokeOpacity={active ? 1 : phoneFocus === 'auto' ? 0.12 : 0.28}
                               vectorEffect="non-scaling-stroke"
                               strokeLinejoin="round"
                               strokeLinecap="round"
@@ -1492,7 +1488,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         {activeNodes.slice(0, -1).map((node, index) => {
                           const next = activeNodes[index + 1]
                           if (!next) return null
-                          const points = segmentPolyline(node, next, view.start, view.end)
+                          const drawn = segmentPolyline(node, next, view.start, view.end)
+                          const points = drawn && phoneFocus === 'auto' ? focusLanePolyline(drawn) : drawn
                           if (!points) return null
                           return (
                             <polyline
@@ -1516,7 +1513,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                             type="button"
                             data-auto-node={node.id}
                             className={`${styles.autoNode} ${selected ? styles.autoNodeOn : ''}`}
-                            style={{ left: `${frac * 100}%`, top: `${(1 - node.value) * 100}%`, color: activeColor }}
+                            style={{ left: `${frac * 100}%`, top: `${(phoneFocus === 'auto' ? focusLaneFraction(node.value) : 1 - node.value) * 100}%`, color: activeColor }}
                             aria-label={t.waveform.automationNode(valueLabel)}
                             title={valueLabel}
                             aria-pressed={selected}
@@ -1545,7 +1542,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                           className={styles.autoTension}
                           style={{
                             left: `${timeToFrac(tensionTime, view) * 100}%`,
-                            top: `${(1 - tensionValue) * 100}%`,
+                            top: `${(phoneFocus === 'auto' ? focusLaneFraction(tensionValue) : 1 - tensionValue) * 100}%`,
                             background: activeColor,
                           }}
                           aria-label={t.waveform.automationTensionHandle}
@@ -1596,7 +1593,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) ? (
+          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) && !phoneFocus ? (
             <Overview
               thin={phone}
               duration={duration}
@@ -1646,7 +1643,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         ) : null}
         {showSpec ? (
           <div
-            className={`${styles.spec} ${viz === 'spectrum' ? styles.specSolo : ''}`}
+            className={`${styles.spec} ${viz === 'spectrum' || eqFocus ? styles.specSolo : ''}`}
             style={
               viz === 'split'
                 ? { flex: 1 - waveShare }
@@ -1656,7 +1653,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <Spectrum
               active={showSpec}
               compact={phone}
-              cleanEq={workspaceFocus && focusWorkspaceForViz(shownViz) === 'eq'}
+              phoneFocus={eqFocus}
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
@@ -1664,7 +1661,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           </div>
         ) : null}
         {phoneEq ? (
-          <PhoneEqGraph instanceId={phoneEqId} cleanEq={eqFocusClean} onSelectModule={onSelectModule} />
+          <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} phoneFocus={phoneFocus === 'eq'} />
         ) : null}
         {showEqConsole ? (
           <>
@@ -1716,7 +1713,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             </div>
         ) : null}
       </div>
-      {loaded && duration > 0 && !showWave && !phone ? (
+      {loaded && duration > 0 && !showWave && !phone && !phoneFocus ? (
         <Overview
           duration={duration}
           start={start}
@@ -1726,7 +1723,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onScrub={setView}
         />
       ) : null}
-      {!sensory && !simple && !phone ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
+      {!sensory && !simple && !phone && !phoneFocus ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
     </div>
   )
 })

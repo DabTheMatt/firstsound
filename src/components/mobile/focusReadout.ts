@@ -1,0 +1,42 @@
+import { EQ_FILTER_TYPES, bandUsesGain, type EqBand, type EqFilterType } from '../../audio/engine/eqBands'
+
+export type FocusGesture = 'idle' | 'xy' | 'q'
+
+export function formatFocusHz(hz: number): string {
+  const n = Number.isFinite(hz) ? Math.max(0, hz) : 0
+  if (n >= 10000) return `${(n / 1000).toFixed(1)} kHz`
+  if (n >= 1000) return `${(n / 1000).toFixed(2)} kHz`
+  return `${Math.round(n)} Hz`
+}
+
+export function formatFocusDb(db: number): string {
+  const n = Number.isFinite(db) ? Math.round(db * 10) / 10 : 0
+  if (n > 0) return `+${n.toFixed(1)} dB`
+  if (n < 0) return `${n.toFixed(1)} dB`
+  return '0.0 dB'
+}
+
+export function formatFocusQ(q: number): string {
+  const n = Number.isFinite(q) ? q : 0
+  return `Q ${n.toFixed(2)}`
+}
+
+export function focusEqTypeLabel(type: EqFilterType): string {
+  const found = EQ_FILTER_TYPES.find((item) => item.value === type)
+  return (found?.short ?? type).toUpperCase()
+}
+
+export function focusEqReadout(
+  band: EqBand,
+  index: number,
+  gesture: FocusGesture = 'idle',
+): { title: string; values: string } {
+  if (gesture === 'q') return { title: '', values: formatFocusQ(band.q) }
+  const parts = [formatFocusHz(band.frequency)]
+  if (bandUsesGain(band.type)) parts.push(formatFocusDb(band.gain))
+  parts.push(formatFocusQ(band.q))
+  return {
+    title: `${focusEqTypeLabel(band.type)} ${index + 1}`,
+    values: parts.join('  '),
+  }
+}

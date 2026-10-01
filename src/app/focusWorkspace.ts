@@ -1,11 +1,11 @@
-import type { VizMode } from './editorState'
+import type { FocusWorkspace } from './phoneWorkspace'
+
+export { focusWorkspaceForViz, type FocusWorkspace } from './phoneWorkspace'
 
 /**
  * Focus Mode hides everything unrelated to the current task and keeps the
  * complete minimal toolset for that task.
  */
-export type FocusWorkspace = 'wave' | 'eq' | 'auto' | 'fft'
-
 export type FocusCapability =
   | 'addBand'
   | 'nodeEdit'
@@ -31,13 +31,6 @@ const CAPABILITIES: Record<FocusWorkspace, readonly FocusCapability[]> = {
   fft: ['minimalAnalyzerControls'],
 }
 
-export function focusWorkspaceForViz(viz: VizMode): FocusWorkspace {
-  if (viz === 'automation') return 'auto'
-  if (viz === 'eq-split') return 'eq'
-  if (viz === 'spectrum') return 'fft'
-  return 'wave'
-}
-
 export function focusCapabilities(workspace: FocusWorkspace): readonly FocusCapability[] {
   return CAPABILITIES[workspace]
 }
@@ -51,6 +44,28 @@ export function defaultSelectionFadeSeconds(start: number, end: number): number 
   const span = Math.max(0, end - start)
   if (!(span > 0)) return 0
   return Math.min(0.12, Math.max(0.01, span * 0.2))
+}
+
+/** Keeps a 0% / 100% automation line inside the focus plot instead of on the clip edge. */
+export const FOCUS_LANE_PAD = 0.08
+
+export function focusLaneFraction(value: number): number {
+  const v = Math.min(1, Math.max(0, value))
+  return FOCUS_LANE_PAD + (1 - v) * (1 - 2 * FOCUS_LANE_PAD)
+}
+
+export function focusLaneValue(yFraction: number): number {
+  const span = 1 - 2 * FOCUS_LANE_PAD
+  const raw = 1 - (yFraction - FOCUS_LANE_PAD) / span
+  return Math.min(1, Math.max(0, raw))
+}
+
+/** Remap a 0–100 polyline so its values use the focus lane inset. */
+export function focusLanePolyline(points: string): string {
+  return points.replace(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g, (_, x: string, y: string) => {
+    const mapped = focusLaneFraction(1 - Number(y) / 100) * 100
+    return `${x},${mapped.toFixed(3)}`
+  })
 }
 
 /** Prefer the playhead when it is on screen. Otherwise use the middle of the view. */

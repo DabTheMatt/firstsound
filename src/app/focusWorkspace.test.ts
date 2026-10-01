@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   automationInsertTime,
   defaultSelectionFadeSeconds,
+  focusLaneFraction,
+  focusLanePolyline,
+  focusLaneValue,
   segmentAtTime,
   focusCapabilities,
   focusHas,
@@ -31,6 +34,14 @@ describe('focus workspace', () => {
     expect(defaultSelectionFadeSeconds(1, 1.2)).toBeCloseTo(0.04)
     expect(defaultSelectionFadeSeconds(0, 4)).toBeCloseTo(0.12)
     expect(defaultSelectionFadeSeconds(2, 2)).toBe(0)
+  })
+
+  it('insets focus automation so a zero line stays on the plot', () => {
+    expect(focusLaneFraction(0)).toBeCloseTo(0.92)
+    expect(focusLaneFraction(1)).toBeCloseTo(0.08)
+    expect(focusLaneValue(0.92)).toBeCloseTo(0)
+    expect(focusLaneValue(0.08)).toBeCloseTo(1)
+    expect(focusLanePolyline('0.000,100.000 50.000,0.000')).toBe('0.000,92.000 50.000,8.000')
   })
 
   it('inserts an automation node at the playhead when it is visible', () => {

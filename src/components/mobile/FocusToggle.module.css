@@ -1,0 +1,27 @@
+.hit {
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.hit svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.hit:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: -2px;
+}

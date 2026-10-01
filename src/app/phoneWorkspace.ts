@@ -43,6 +43,21 @@ export function phoneDisplayViz(viz: VizMode): VizMode {
   return vizForPhone(phoneVizFromMode(viz))
 }
 
+/**
+ * Presentation-only focused editing workspace.
+ * Null is the normal FIELD layout. This is not browser fullscreen and it is
+ * not effect-enabled, playback, or DSP state. Specialized effect editors can
+ * extend the union later; EQ, wave, and automation are the first workspaces.
+ */
+export type FocusWorkspace = PhoneViz | 'fft'
+
+export function focusWorkspaceForViz(viz: VizMode): FocusWorkspace {
+  if (viz === 'automation') return 'auto'
+  if (viz === 'eq-split') return 'eq'
+  if (viz === 'spectrum') return 'fft'
+  return 'wave'
+}
+
 export function nextSheetLevel(level: PhoneSheetLevel): PhoneSheetLevel {
   if (level === 'collapsed') return 'medium'
   if (level === 'medium') return 'expanded'

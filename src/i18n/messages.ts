@@ -140,6 +140,9 @@ export type Messages = {
     analyzer: string
     expandWorkspace: string
     collapseWorkspace: string
+    enterFocus: string
+    exitFocus: string
+    deleteBand: string
     expandContext: string
     collapseContext: string
     on: string
@@ -680,6 +683,9 @@ export const EN: Messages = {
     analyzer: 'Analyzer',
     expandWorkspace: 'Expand workspace',
     collapseWorkspace: 'Exit full workspace',
+    enterFocus: 'Enter focused editing',
+    exitFocus: 'Exit focused editing',
+    deleteBand: 'Delete band',
     expandContext: 'Show parameters',
     collapseContext: 'Hide parameters',
     on: 'On',
@@ -1309,6 +1315,9 @@ export const PL: Messages = {
     analyzer: 'Analizator',
     expandWorkspace: 'Powiększ przestrzeń',
     collapseWorkspace: 'Zamknij pełny widok',
+    enterFocus: 'Wejdź w skupioną edycję',
+    exitFocus: 'Wyjdź ze skupionej edycji',
+    deleteBand: 'Usuń pasmo',
     expandContext: 'Pokaż parametry',
     collapseContext: 'Ukryj parametry',
     on: 'Wł.',

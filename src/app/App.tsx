@@ -42,8 +42,9 @@ import {
 } from '../audio/engine/sampleEdit'
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { MobileContext } from '../components/mobile/MobileContext'
+import { FocusChrome } from '../components/mobile/FocusChrome'
 import { MobileModeBar } from '../components/mobile/MobileModeBar'
-import { phoneDisplayViz } from './phoneWorkspace'
+import { focusWorkspaceForViz, phoneDisplayViz, type FocusWorkspace } from './phoneWorkspace'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
@@ -154,7 +155,7 @@ export default function App() {
   const [normalizeView, setNormalizeView] = useState(false)
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
-  const [workspaceFocus, setWorkspaceFocus] = useState(false)
+  const [focusWorkspace, setFocusWorkspace] = useState<FocusWorkspace | null>(null)
   const [analyzerOpen, setAnalyzerOpen] = useState(false)
   const [collapseToken, setCollapseToken] = useState(0)
   const [zoomLabel, setZoomLabel] = useState('100%')
@@ -537,6 +538,30 @@ export default function App() {
   const applyHistory = (next: typeof history) => {
     setHistory(next)
     restorePresent(next.present)
+  }
+
+  const activeFocus = focusWorkspace
+
+  const enterFocus = () => {
+    setMenuOpen(false)
+    setLfoCenterOpen(false)
+    const shown = isPhoneLayout ? phoneDisplayViz(viz) : viz
+    setFocusWorkspace(focusWorkspaceForViz(shown))
+  }
+
+  const focusViz = (next: VizMode) => {
+    if (next === 'eq-split') {
+      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+      if (eq) selectModule(eq.instanceId)
+    }
+    const routed = routeViz(next, focus, inspectorOpen)
+    setViz(routed.viz)
+    setFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
+    if (focusWorkspace) {
+      const shown = isPhoneLayout ? phoneDisplayViz(routed.viz) : routed.viz
+      setFocusWorkspace(focusWorkspaceForViz(shown))
+    }
   }
 
   const dockRight = mode === 'dock-right'
@@ -926,7 +951,8 @@ export default function App() {
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
-        data-workspace={workspaceFocus ? 'focus' : 'edit'}
+        data-workspace={activeFocus ? 'focus' : 'edit'}
+        data-focus={activeFocus ?? undefined}
         data-phone-viz={isPhoneLayout ? phoneDisplayViz(viz) : undefined}
         style={
           mode === 'dock-right' && inspectorOpen
@@ -1029,13 +1055,61 @@ export default function App() {
           }}
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
-          onToggleWorkspace={() => setWorkspaceFocus(true)}
+          onToggleWorkspace={enterFocus}
         />
         )}
         </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
           <div className={styles.waveCol}>
+            {activeFocus ? (
+              <FocusChrome
+                workspace={activeFocus}
+                playing={snap.playing}
+                canPlay={snap.sampleLoaded}
+                onTogglePlay={() => {
+                  void engine.unlock().then(() => engine.togglePlay())
+                }}
+                onExit={() => setFocusWorkspace(null)}
+                onSelectModule={selectModule}
+                autoFocus={autoFocus}
+                onAutoFocus={setAutoFocus}
+                onAutomationCommit={commit}
+                onAddNode={() => waveRef.current?.addAutomationNode()}
+                onDeleteNode={() => waveRef.current?.deleteAutomationNode()}
+                onViz={isPhoneLayout ? undefined : focusViz}
+                edit={{
+                  canCopy: snap.canCopySelection,
+                  canCut: snap.canCutSelection,
+                  canPaste: snap.canPaste,
+                  canDelete: snap.canDeleteSelection,
+                  canMute: snap.canMuteSelection,
+                  canClear: snap.canClearSelection,
+                  canInsert: snap.canInsertSilence,
+                  canUndo: history.past.length > 0,
+                  canRedo: history.future.length > 0,
+                  onCopy: copySelection,
+                  onCut: cutSelection,
+                  onPaste: pasteAtPlayhead,
+                  onDelete: deleteSelection,
+                  onMute: muteSelection,
+                  onClear: clearSelection,
+                  onTrim: () => {
+                    void engine.trimPlayRegion().then((ok) => {
+                      if (!ok) return
+                      setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                      waveRef.current?.fitSample()
+                      commit()
+                    })
+                  },
+                  onInsertSilence: insertSilence,
+                  onUndo: () => applyHistory(undoHistory(history)),
+                  onRedo: () => applyHistory(redoHistory(history)),
+                  onFadeIn: () => waveRef.current?.applyFade('in'),
+                  onFadeOut: () => waveRef.current?.applyFade('out'),
+                }}
+              />
+            ) : null}
             {isPhoneLayout ? (
               <MobileModeBar
                 viz={viz}
@@ -1053,8 +1127,7 @@ export default function App() {
                   setFocus(routed.focus)
                   setInspectorOpen(routed.inspectorOpen)
                 }}
-                workspaceFocus={workspaceFocus}
-                onToggleWorkspace={() => setWorkspaceFocus((open) => !open)}
+                onEnterFocus={enterFocus}
                 normalizeView={normalizeView}
                 onView={(action) => {
                   if (action === 'zoom-in') waveRef.current?.zoomBy(1 / 1.4)
@@ -1113,52 +1186,11 @@ export default function App() {
               }}
               onSelectModule={selectModule}
               phone={isPhoneLayout}
+              phoneFocus={activeFocus}
               onGraphEdit={() => setCollapseToken((token) => token + 1)}
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={() => setAnalyzerOpen(false)}
               phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
-              workspaceFocus={workspaceFocus}
-              onExitFocus={() => setWorkspaceFocus(false)}
-              onFocusViz={(next) => {
-                if (next === 'eq-split') {
-                  const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-                  if (eq) selectModule(eq.instanceId)
-                }
-                const routed = routeViz(next, focus, inspectorOpen)
-                setViz(routed.viz)
-                setFocus(routed.focus)
-                setInspectorOpen(routed.inspectorOpen)
-              }}
-              waveFocus={{
-                onUndo: () => applyHistory(undoHistory(history)),
-                onRedo: () => applyHistory(redoHistory(history)),
-                onCopy: copySelection,
-                onCut: cutSelection,
-                onPaste: pasteAtPlayhead,
-                onDelete: deleteSelection,
-                onMute: muteSelection,
-                onTrim: () => {
-                  void engine.trimPlayRegion().then((ok) => {
-                    if (!ok) return
-                    setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
-                    waveRef.current?.fitSample()
-                    commit()
-                  })
-                },
-                onInsertSilence: insertSilence,
-                onClear: clearSelection,
-                onFadeIn: () => undefined,
-                onFadeOut: () => undefined,
-                canUndo: history.past.length > 0,
-                canRedo: history.future.length > 0,
-                canCopy: snap.canCopySelection,
-                canCut: snap.canCutSelection,
-                canPaste: snap.canPaste,
-                canDelete: snap.canDeleteSelection,
-                canMute: snap.canMuteSelection,
-                canClear: snap.canClearSelection,
-                canInsert: snap.canInsertSilence,
-              }}
             />
           </div>
           {dockRight && inspectorOpen ? (
@@ -1171,7 +1203,7 @@ export default function App() {
               <InspectorEye open={false} onClick={revealInspector} />
             </div>
           ) : null}
-          {isPhoneLayout || workspaceFocus ? null : (
+          {isPhoneLayout || activeFocus ? null : (
           <MeterStrip
             channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
             range={meterRange}

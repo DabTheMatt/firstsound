@@ -132,6 +132,12 @@
   display: flex;
 }
 
+.phoneFocus .trackTabs,
+.phoneFocus .monoBadge,
+.phoneFocus .autoLegend {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .editor,
   .stage,

@@ -251,9 +251,63 @@
   display: none;
 }
 
-.phoneShell[data-workspace='focus'][data-phone-viz='eq-split']:not([data-orient='landscape']) .phoneWork {
-  max-height: none;
+.phoneShell[data-focus] {
+  padding: 0;
+  gap: 0;
+}
+
+.phoneShell[data-focus] > header,
+.phoneShell[data-focus] .chrome,
+.phoneShell[data-focus] .phoneContext,
+.phoneShell[data-focus] .transportPinned,
+.phoneShell[data-focus] [data-mobile-modes],
+.phoneShell[data-focus] .overlay {
+  display: none;
+}
+
+.phoneShell[data-focus] .stage,
+.phoneShell[data-focus] .stageMain,
+.phoneShell[data-focus] .phoneWork,
+.phoneShell[data-focus] .waveCol {
   flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.phoneShell[data-focus] .stageMain {
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneShell[data-focus] .phoneWork,
+.phoneShell[data-focus][data-phone-viz='eq-split'] .phoneWork,
+.phoneShell[data-focus][data-orient='landscape'] .phoneWork {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
+
+.phoneShell[data-focus] .waveCol {
+  position: relative;
+  height: 100%;
+}
+
+.phoneShell[data-focus] .waveCol > :last-child {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.shell[data-workspace='focus'] > header,
+.shell[data-workspace='focus'] .transportWrap {
+  display: none;
+}
+
+.shell[data-workspace='focus'] .waveCol {
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .phoneShell[data-orient='landscape'] .stageMain {
@@ -324,6 +378,20 @@
   flex: 1 1 0;
   min-height: 0;
   max-height: 40dvh;
+}
+
+.phoneShell[data-focus][data-orient='landscape'] .stageMain,
+.phoneShell[data-focus] .stageMain {
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneShell[data-focus] .phoneWork,
+.phoneShell[data-focus][data-orient='landscape'] .phoneWork,
+.phoneShell[data-focus][data-phone-viz='eq-split']:not([data-orient='landscape']) .phoneWork {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
 }
 
 .phoneChain {
