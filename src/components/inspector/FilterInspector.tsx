@@ -24,7 +24,6 @@ import { LfoParamShell } from '../controls/LfoParamShell'
 import { ParamControl } from '../controls/ParamControl'
 import { Toggle } from '../controls/Toggle'
 import { useFxLfoConnect } from './FxLfoConnect'
-import { FxLfoSection } from './FxLfoSection'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
 import inspectorStyles from './Inspector.module.css'
 import styles from './FilterInspector.module.css'
@@ -147,7 +146,6 @@ export function FilterInspector({ snap, variant, pane }: Props) {
             </select>
           </label>
           <FilterFollowerPanel snap={snap} variant={variant} />
-          <FxLfoSection snap={snap} kind="filter" variant={variant} />
         </>
       ) : (
         <>

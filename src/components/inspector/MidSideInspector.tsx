@@ -15,7 +15,6 @@ import { PresetMenu } from '../controls/PresetMenu'
 import { MODULE_PRESET_CATEGORIES, modulePresetsFor } from '../../audio/fx/modulePresets'
 import { Toggle } from '../controls/Toggle'
 import { isPrimaryPadPress, shouldApplyPadMove, xyFromClient } from './filterXyPad'
-import { FxLfoSection } from './FxLfoSection'
 import inspectorStyles from './Inspector.module.css'
 import styles from './MidSideInspector.module.css'
 
@@ -136,7 +135,6 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
             </button>
           </div>
           <div className={knobs}>{MIX_IDS.map((id) => control(id, snap, variant))}</div>
-          <FxLfoSection snap={snap} kind="midside" variant={variant} />
           <p className={inspectorStyles.help}>
             Live Width {formatParamValue(live.msWidth, PARAMS.msWidth)} · Balance{' '}
             {formatParamValue(live.msBalance, PARAMS.msBalance)}
@@ -176,7 +174,6 @@ export function MidSideInspector({ snap, variant, pane }: Props) {
               Ø Side
             </button>
           </div>
-          <FxLfoSection snap={snap} kind="midside" variant={variant} />
         </>
       )}
     </div>

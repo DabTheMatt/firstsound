@@ -331,6 +331,24 @@
     0 0 0 4px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 }
 
+.modH,
+.modV {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+}
+
+.modH {
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.modV {
+  width: 1px;
+  transform: translateX(-50%);
+}
+
 .nodeLfo::after {
   content: '';
   position: absolute;

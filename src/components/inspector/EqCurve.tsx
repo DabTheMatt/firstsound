@@ -1,13 +1,12 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MIN_HZ, bandIsActive, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_MIN_HZ, bandUsesGain, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
 import {
   dbToY,
   eqBandDragPatch,
   eqNodePlotDb,
   eqResponseCurveStyle,
-  eqResponsesDiverge,
   EQ_MINI_BAND_COUNT,
   EQ_PLOT_MAX_DB,
   EQ_PLOT_MIN_DB,
@@ -20,7 +19,7 @@ import {
   yToDb,
 } from '../../audio/engine/eqPlot'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
-import { eqModuleHasLiveCurve, liveEqBandsFromParams } from '../../audio/fx/lfo'
+import { eqModulationGuides } from '../modulation/modulationModel'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -141,43 +140,7 @@ export function EqCurve({
       ctx.clip()
       ctx.lineJoin = 'round'
       ctx.lineCap = 'round'
-      const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, Boolean(comb?.enabled))
-      let processing = plotBands
-      if (showLive) {
-        const liveComb = comb
-          ? {
-              ...comb,
-              teeth: live.liveParams.eqcfTeeth ?? comb.teeth,
-              gain: live.liveParams.eqcfGain ?? comb.gain,
-              spacing: live.liveParams.eqcfSpacing ?? comb.spacing,
-              frequency: live.liveParams.eqcfFreq ?? comb.frequency,
-            }
-          : undefined
-        const liveBands = [
-          ...liveEqBandsFromParams(bands, live.liveParams, true),
-          ...(liveComb ? combAsEqBands(liveComb) : []),
-        ]
-        processing = liveBands
-        const activeCount = plotBands.filter((band) => bandIsActive(band)).length
-        if (activeCount > 1 && eqResponsesDiverge(plotBands, liveBands, freqs, sr)) {
-          const ghostStyle = eqResponseCurveStyle('live', false, dpr)
-          const ghostVerts = layoutMagnitudeCurve(
-            freqs,
-            (hz) => eqMagnitudeDb(plotBands, hz, sr),
-            plot,
-            EQ_MIN_HZ,
-            plotMax,
-            EQ_PLOT_MIN_DB,
-            EQ_PLOT_MAX_DB,
-            'log',
-          )
-          ctx.setLineDash([4 * dpr, 3 * dpr])
-          ctx.strokeStyle = colorWithAlpha(tone.curve, ghostStyle.alpha)
-          ctx.lineWidth = Math.max(0.75, ghostStyle.width)
-          strokeMagnitudeVertices(ctx, ghostVerts)
-          ctx.setLineDash([])
-        }
-      }
+      const processing = plotBands
       const storedStyle = eqResponseCurveStyle('stored', false, dpr)
       const eqVerts = layoutMagnitudeCurve(
         freqs,
@@ -256,16 +219,40 @@ export function EqCurve({
       <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
       {bands.map((band, index) => {
         if (band.type === 'off') return null
-        const xPct = freqToX(band.frequency, 1, spectrumMaxHz(sr)) * 100
-        const liveBands = liveEqBandsFromParams(bands, engine.getSnapshot().liveParams, modulate)
-        const yPct =
-          dbToY(eqNodePlotDb(liveBands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
+        const plotMax = spectrumMaxHz(sr)
+        const xPct = freqToX(band.frequency, 1, plotMax) * 100
+        const yPct = dbToY(eqNodePlotDb(bands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
         const selected = index === selectedBand
+        const guides = selected && modulate ? eqModulationGuides(engine.getSnapshot().fxLfos, index, band) : null
+        const freqGuide = guides?.frequency
+        const gainGuide = guides?.gain && bandUsesGain(band.type) ? guides.gain : null
         const colors = readThemeColors()
         const tone = eqTone(toneIndex, colors)
+        const freqX0 = freqGuide ? freqToX(freqGuide.minHz, 1, plotMax) * 100 : 0
+        const freqX1 = freqGuide ? freqToX(freqGuide.maxHz, 1, plotMax) * 100 : 0
+        const gainY0 = gainGuide ? dbToY(gainGuide.minDb, 1) * 100 : 0
+        const gainY1 = gainGuide ? dbToY(gainGuide.maxDb, 1) * 100 : 0
         return (
+          <Fragment key={eqStripKey('curve', band)}>
+          {freqGuide ? (
+            <span
+              className={styles.modH}
+              aria-hidden="true"
+              style={{ left: `${Math.min(freqX0, freqX1)}%`, width: `${Math.abs(freqX1 - freqX0)}%`, top: `${yPct}%` }}
+            />
+          ) : null}
+          {gainGuide ? (
+            <span
+              className={styles.modV}
+              aria-hidden="true"
+              style={{
+                left: `${xPct}%`,
+                top: `${Math.min(gainY0, gainY1)}%`,
+                height: `${Math.abs(gainY1 - gainY0)}%`,
+              }}
+            />
+          ) : null}
           <button
-            key={eqStripKey('curve', band)}
             type="button"
             className={`${styles.node} ${touch ? styles.nodeTouch : ''} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
             style={{
@@ -284,6 +271,7 @@ export function EqCurve({
           >
             {index + 1}
           </button>
+          </Fragment>
         )
       })}
     </div>

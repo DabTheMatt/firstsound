@@ -42,6 +42,13 @@ type Props = {
   /** Band-owned expansion. Ignored unless `bandId` is set. */
   lfoExpanded?: boolean
   onLfoExpandedChange?: (open: boolean) => void
+  /**
+   * Hide rate, depth, and shape. Those live on the parameter editor so this
+   * panel only keeps routing and extra slots.
+   */
+  omitPrimary?: boolean
+  /** Always show the body. Disclosure here must not rewrite section expansion. */
+  embedded?: boolean
 }
 
 const activeSlotBySection = new Map<string, number>()
@@ -59,6 +66,8 @@ export function FxLfoSection({
   bandId,
   lfoExpanded,
   onLfoExpandedChange,
+  omitPrimary = false,
+  embedded = false,
 }: Props) {
   const shown = Math.max(1, Math.min(FX_LFO_SLOTS, snap.lfoShown[kind] ?? 1))
   const sectionKey = bandId ?? kind
@@ -74,7 +83,7 @@ export function FxLfoSection({
     slots,
     storedExpansionForSection({ bandId, bandExpanded: lfoExpanded, kindStored }),
   )
-  const open = isLfoExpanded
+  const open = embedded || isLfoExpanded
   const connected = isLfoConnected
   const slot = slotState?.key === sectionKey ? slotState.slot : rememberedSlot(sectionKey, shown)
   const activeSlot = Math.min(slot, shown - 1)
@@ -173,6 +182,7 @@ export function FxLfoSection({
       data-lfo-open={open ? 'true' : 'false'}
       data-lfo-connected={connected ? 'true' : 'false'}
     >
+      {embedded ? null : (
       <div className={styles.lfoHead}>
         <h3 className={styles.sub}>
           <span>{compact ? 'LFO' : 'Modulation / LFO'}</span>
@@ -200,6 +210,7 @@ export function FxLfoSection({
           <LfoDisclosureIcon open={open} />
         </button>
       </div>
+      )}
       {open ? (
       <>
       {compact ? null : (
@@ -273,12 +284,14 @@ export function FxLfoSection({
           </button>
         </div>
       )}
-      <LfoShapePicker
-        value={lfo?.shape ?? 'sine'}
-        compact={compact}
-        onChange={(shape) => engine.setFxLfo(kind, activeSlot, { shape })}
-      />
-      {knobs}
+      {omitPrimary ? null : (
+        <LfoShapePicker
+          value={lfo?.shape ?? 'sine'}
+          compact={compact}
+          onChange={(shape) => engine.setFxLfo(kind, activeSlot, { shape })}
+        />
+      )}
+      {omitPrimary ? null : knobs}
       <div className={`${styles.row} ${styles.connectRow}`}>
         <LfoConnectButton
           kind={kind}

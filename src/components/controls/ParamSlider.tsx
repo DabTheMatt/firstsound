@@ -5,6 +5,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { ModulationAffordance } from '../modulation/ModulationAffordance'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { classifyGesture } from '../mobile/gestureIntent'
 import { createCoarseGestureSession, isCoarsePointer } from './gestureIntent'
@@ -17,9 +18,11 @@ type Props = {
   /** Touch: vertical movement scrolls, horizontal movement edits, a tap focuses. */
   gestureSafe?: boolean
   onFocusRequest?: () => void
+  /** Normalized LFO swing around the stored center. The thumb stays on `value`. */
+  modulationRange?: { min: number; max: number }
 }
 
-export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocusRequest }: Props) {
+export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocusRequest, modulationRange }: Props) {
   const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
@@ -187,8 +190,9 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
     else engine.setParam(id, fromNormalized(next.normalized, def))
   }
 
+  const fillN = modulationRange ? n : shown
   return (
-    <div ref={rowRef} className={styles.row}>
+    <div ref={rowRef} className={styles.row} data-param-id={id}>
       <div
         className={styles.meta}
         onClick={() => onFocusRequest?.()}
@@ -211,7 +215,10 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
               {formatParamValue(value, def)}
             </span>
           ) : null}
-          <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
+          <span className={styles.value}>{formatParamValue(modulationRange ? value : shownValue, def)}</span>
+          <span className={styles.modSlot}>
+            <ModulationAffordance id={id} />
+          </span>
         {adjusting ? (
           <span className={styles.dragReadout} role="status">
             <span>{paramLabel(id)}</span>
@@ -242,7 +249,17 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
         onDoubleClick={() => engine.resetParam(id)}
         onKeyDown={onKeyDown}
       >
-        <span className={styles.fill} style={{ width: `${shown * 100}%` }} />
+        {modulationRange ? (
+          <span
+            className={styles.modRange}
+            aria-hidden="true"
+            style={{
+              left: `${modulationRange.min * 100}%`,
+              width: `${Math.max(0, (modulationRange.max - modulationRange.min) * 100)}%`,
+            }}
+          />
+        ) : null}
+        <span className={styles.fill} style={{ width: `${fillN * 100}%` }} />
       </div>
     </div>
   )

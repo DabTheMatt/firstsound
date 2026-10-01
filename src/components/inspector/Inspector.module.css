@@ -260,6 +260,14 @@
   color: var(--text-muted);
 }
 
+.fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+
 .field input {
   accent-color: var(--accent-primary);
   height: 36px;

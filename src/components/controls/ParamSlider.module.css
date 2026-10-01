@@ -11,6 +11,30 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
+  position: relative;
+}
+
+.modSlot {
+  position: absolute;
+  top: -6px;
+  right: 0;
+  z-index: 3;
+}
+
+.row:hover .readouts,
+.row:focus-within .readouts,
+.row:has([data-active='true']) .readouts {
+  padding-right: 72px;
+}
+
+.modRange {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  pointer-events: none;
 }
 
 .label {

@@ -1,0 +1,380 @@
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from 'react'
+import { createPortal } from 'react-dom'
+import {
+  LFO_RATE_DEFAULT,
+  LFO_RATE_MAX,
+  LFO_RATE_MIN,
+  fxLfoKindForParam,
+  type FxLfo,
+  type FxLfoKind,
+  type LfoShape,
+} from '../../audio/fx/lfo'
+import { fromNormalized, toNormalized } from '../../audio/parameters/mapping'
+import type { ParamDef, ParamId } from '../../audio/parameters/types'
+import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { engine, useEngine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
+import { LfoShapePicker } from '../controls/LfoShapePicker'
+import { FxLfoSection } from '../inspector/FxLfoSection'
+import {
+  connectParameterLfo,
+  removeParameterLfo,
+  setParameterLfoPrimary,
+} from './modulationActions'
+import { readModulationEditor, setModulationEditorOpen, subscribeModulationEditor } from './modulationEditor'
+import {
+  modulationDepthLabel,
+  parameterModulationState,
+  type ModulationSourceId,
+} from './modulationModel'
+import styles from './Modulation.module.css'
+
+const RATE_DEF: ParamDef = {
+  id: 'delayModRate',
+  label: 'Rate',
+  min: LFO_RATE_MIN,
+  max: LFO_RATE_MAX,
+  defaultValue: LFO_RATE_DEFAULT,
+  unit: 'Hz',
+  mapping: 'log',
+}
+
+type Props = {
+  id: ParamId
+}
+
+export function ModulationAffordance({ id }: Props) {
+  const snap = useEngine()
+  const { paramLabel } = useI18n()
+  const editorOpen = useSyncExternalStore(
+    subscribeModulationEditor,
+    () => readModulationEditor(id),
+    () => false,
+  )
+  const def = PARAMS[id]
+  const state = parameterModulationState({
+    lfos: snap.fxLfos,
+    automation: snap.automation,
+    paramId: id,
+    baseNormalized: toNormalized(snap.params[id], def),
+    editorOpen,
+  })
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const label = paramLabel(id)
+  const kind = fxLfoKindForParam(id)
+
+  if (!state.supportsModulation) return null
+
+  const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
+  const depthText = state.lfoActive ? modulationDepthLabel(state.depthPct) : ''
+  const tip = depthText ? `Modulate ${label}, ${depthText}` : `Modulate ${label}`
+  const panel =
+    editorOpen && typeof document !== 'undefined' ? (
+      <ModulationEditorSession
+        buttonRef={buttonRef}
+        id={id}
+        label={label}
+        kind={kind}
+        snap={snap}
+        lfo={lfo}
+        lfoActive={state.lfoActive}
+        lfoConnected={state.isLfoConnected}
+        automationActive={state.automationActive}
+      />
+    ) : null
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={styles.button}
+        data-active={state.lfoActive ? 'true' : 'false'}
+        data-open={editorOpen ? 'true' : 'false'}
+        data-modulation-for={id}
+        aria-expanded={editorOpen}
+        aria-haspopup="dialog"
+        aria-label={tip}
+        title={tip}
+        onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => event.stopPropagation()}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setModulationEditorOpen(id, !editorOpen)
+        }}
+      >
+        <span className={styles.mark} aria-hidden="true">
+          〰
+        </span>
+        {depthText ? <span className={styles.depth}>{depthText}</span> : null}
+      </button>
+      {panel}
+    </>
+  )
+}
+
+function ModulationEditorSession({
+  buttonRef,
+  id,
+  label,
+  kind,
+  snap,
+  lfo,
+  lfoActive,
+  lfoConnected,
+  automationActive,
+}: {
+  buttonRef: RefObject<HTMLButtonElement | null>
+  id: ParamId
+  label: string
+  kind: FxLfoKind | null
+  snap: EngineSnapshot
+  lfo: FxLfo | null
+  lfoActive: boolean
+  lfoConnected: boolean
+  automationActive: boolean
+}) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const [source, setSource] = useState<ModulationSourceId | null>(lfoConnected ? 'lfo' : null)
+  const [advanced, setAdvanced] = useState(false)
+  const [box, setBox] = useState<{ top: number; left: number } | null>(null)
+  const shownSource = source ?? (lfoConnected ? 'lfo' : null)
+
+  useEffect(() => {
+    const place = () => {
+      const button = buttonRef.current
+      if (!button) return
+      const rect = button.getBoundingClientRect()
+      const width = 280
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))
+      const panelHeight = panelRef.current?.offsetHeight ?? 220
+      const below = rect.bottom + 6
+      const top = below + panelHeight > window.innerHeight - 8 ? Math.max(8, rect.top - panelHeight - 6) : below
+      setBox((prev) => (prev && prev.top === top && prev.left === left ? prev : { top, left }))
+    }
+    const frame = window.requestAnimationFrame(place)
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setModulationEditorOpen(id, false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setModulationEditorOpen(id, false)
+      buttonRef.current?.focus()
+    }
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [buttonRef, id, advanced, shownSource, lfoConnected, automationActive])
+
+  useEffect(() => {
+    if (!box) return
+    panelRef.current?.focus()
+  }, [box])
+
+  if (!box) return null
+  return createPortal(
+    <ModulatePanel
+      panelRef={panelRef}
+      titleId={titleId}
+      label={label}
+      top={box.top}
+      left={box.left}
+      shownSource={shownSource}
+      lfoActive={lfoActive}
+      lfoConnected={lfoConnected}
+      automationActive={automationActive}
+      lfo={lfo}
+      kind={kind}
+      snap={snap}
+      onChooseLfo={() => {
+        setSource('lfo')
+        if (!lfoConnected) connectParameterLfo(engine, id)
+      }}
+      onChooseAutomation={() => {
+        setSource('automation')
+        engine.setAutomationParam(id)
+      }}
+      onAddAutomation={() => engine.armAutomation(id)}
+      onRate={(hz) => setParameterLfoPrimary(engine, id, { rateHz: hz })}
+      onDepth={(depth) => setParameterLfoPrimary(engine, id, { depth })}
+      onShape={(shape) => setParameterLfoPrimary(engine, id, { shape })}
+      advanced={advanced}
+      onToggleAdvanced={() => setAdvanced((value) => !value)}
+      onRemove={() => removeParameterLfo(engine, id)}
+    />,
+    document.body,
+  )
+}
+
+function ModulatePanel({
+  panelRef,
+  titleId,
+  label,
+  top,
+  left,
+  shownSource,
+  lfoActive,
+  lfoConnected,
+  automationActive,
+  lfo,
+  kind,
+  snap,
+  onChooseLfo,
+  onChooseAutomation,
+  onAddAutomation,
+  onRate,
+  onDepth,
+  onShape,
+  advanced,
+  onToggleAdvanced,
+  onRemove,
+}: {
+  panelRef: RefObject<HTMLDivElement | null>
+  titleId: string
+  label: string
+  top: number
+  left: number
+  shownSource: ModulationSourceId | null
+  lfoActive: boolean
+  lfoConnected: boolean
+  automationActive: boolean
+  lfo: FxLfo | null
+  kind: FxLfoKind | null
+  snap: EngineSnapshot
+  onChooseLfo: () => void
+  onChooseAutomation: () => void
+  onAddAutomation: () => void
+  onRate: (hz: number) => void
+  onDepth: (depth: number) => void
+  onShape: (shape: LfoShape) => void
+  advanced: boolean
+  onToggleAdvanced: () => void
+  onRemove: () => void
+}) {
+  const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
+  const depth = lfo?.depth ?? 0
+  const rateText = `${rateHz < 10 ? rateHz.toFixed(2) : rateHz.toFixed(1)} Hz`
+  return (
+    <div
+      ref={panelRef}
+      className={styles.editor}
+      style={{ top, left }}
+      role="dialog"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      data-modulation-editor="true"
+    >
+      <h2 id={titleId} className={styles.title}>
+        Modulate {label}
+      </h2>
+      <div className={styles.sources}>
+        <button
+          type="button"
+          className={styles.source}
+          aria-pressed={shownSource === 'lfo'}
+          aria-label={lfoActive ? 'LFO, active' : lfoConnected ? 'LFO, connected' : 'LFO'}
+          onClick={onChooseLfo}
+        >
+          <span>LFO</span>
+          {lfoActive ? <span className={styles.status}>Active</span> : null}
+        </button>
+        <button
+          type="button"
+          className={styles.source}
+          aria-pressed={shownSource === 'automation'}
+          aria-label={automationActive ? 'Automation, active' : 'Automation'}
+          onClick={onChooseAutomation}
+        >
+          <span>Automation</span>
+          {automationActive ? <span className={styles.status}>Active</span> : null}
+        </button>
+      </div>
+      {shownSource === 'lfo' && lfoConnected && lfo ? (
+        <div className={styles.primary}>
+          <label className={styles.field}>
+            Rate
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.001}
+              value={toNormalized(rateHz, RATE_DEF)}
+              aria-label="LFO rate"
+              onChange={(event) => onRate(fromNormalized(Number(event.target.value), RATE_DEF))}
+            />
+            <span>{rateText}</span>
+          </label>
+          <label className={styles.field}>
+            Depth
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round(depth)}
+              aria-label="LFO depth"
+              onChange={(event) => onDepth(Number(event.target.value))}
+            />
+            <span>{Math.round(depth)}%</span>
+          </label>
+          <LfoShapePicker value={lfo.shape} compact onChange={onShape} />
+        </div>
+      ) : null}
+      {shownSource === 'automation' ? (
+        <>
+          <p className={styles.note}>
+            {automationActive
+              ? 'Automation is active on this parameter. Its curve stays separate from the LFO.'
+              : 'No automation on this parameter yet.'}
+          </p>
+          {automationActive ? null : (
+            <div className={styles.actions}>
+              <button type="button" className={styles.ghost} onClick={onAddAutomation}>
+                Add automation
+              </button>
+            </div>
+          )}
+        </>
+      ) : null}
+      <div className={styles.actions}>
+        {kind ? (
+          <button type="button" className={styles.ghost} aria-expanded={advanced} onClick={onToggleAdvanced}>
+            Advanced
+          </button>
+        ) : null}
+        {lfoConnected ? (
+          <button type="button" className={styles.remove} onClick={onRemove}>
+            Remove modulation
+          </button>
+        ) : null}
+      </div>
+      {advanced && kind ? (
+        <div className={styles.advanced}>
+          <FxLfoSection snap={snap} kind={kind} variant="slider" omitPrimary embedded />
+        </div>
+      ) : null}
+    </div>
+  )
+}

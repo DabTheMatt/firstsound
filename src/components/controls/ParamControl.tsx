@@ -1,5 +1,7 @@
+import { fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
-import { lfoBinding } from '../../audio/fx/lfo'
 import { useEngine } from '../../hooks/useEngine'
 import { Knob } from './Knob'
 import { LfoParamShell } from './LfoParamShell'
@@ -14,20 +16,15 @@ type Props = {
 export function ParamControl({ id, value, variant }: Props) {
   const snap = useEngine()
   const binding = lfoBinding(snap.fxLfos, id)
-  const mapped = Boolean(binding)
-  const live = snap.liveParams[id]
-  const showLive = mapped || live !== value
+  const active = Boolean(binding && fxLfoIsActive(binding.lfo))
+  const range =
+    active && binding ? lfoRangeNormalized(toNormalized(value, PARAMS[id]), binding.lfo.depth) : undefined
   return (
     <LfoParamShell id={id}>
       {variant === 'slider' ? (
-        <ParamSlider id={id} value={value} liveValue={showLive ? live : undefined} />
+        <ParamSlider id={id} value={value} modulationRange={range} />
       ) : (
-        <Knob
-          id={id}
-          value={value}
-          liveValue={showLive ? live : undefined}
-          lfoDepth={mapped ? binding?.lfo.depth : undefined}
-        />
+        <Knob id={id} value={value} lfoDepth={active ? binding?.lfo.depth : undefined} />
       )}
     </LfoParamShell>
   )

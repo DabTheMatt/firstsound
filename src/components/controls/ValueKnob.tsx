@@ -12,6 +12,8 @@ import {
   polar,
 } from './knobGeom'
 import { presentParamLabel } from './paramLabelFit'
+import { useModulationParamId } from './LfoParamShell'
+import { ModulationAffordance } from '../modulation/ModulationAffordance'
 import styles from './Knob.module.css'
 
 type Props = {
@@ -246,11 +248,12 @@ export function ValueKnob({
 
   const shown = visualNormalized ?? normalized
   const shownText = visualValueText ?? valueText
+  const paramId = useModulationParamId()
   const cx = 42
   const cy = 42
   const r = 24
   const rangeR = 36
-  const tipDeg = knobAngleDeg(shown)
+  const tipDeg = knobAngleDeg(lfoRange ? normalized : shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
   const valueArc = knobValueArc(lfoRange ? normalized : shown, bipolar)
@@ -281,6 +284,11 @@ export function ValueKnob({
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
       >
+      {paramId ? (
+        <span className={styles.modSlot}>
+          <ModulationAffordance id={paramId} />
+        </span>
+      ) : null}
       {adjusting ? (
         <span className={styles.dragReadout} role="status">
           <span>{label}</span>
