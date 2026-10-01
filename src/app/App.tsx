@@ -540,12 +540,28 @@ export default function App() {
     restorePresent(next.present)
   }
 
-  const activeFocus = isPhoneLayout ? focusWorkspace : null
+  const activeFocus = focusWorkspace
 
   const enterFocus = () => {
     setMenuOpen(false)
     setLfoCenterOpen(false)
-    setFocusWorkspace(focusWorkspaceForViz(viz))
+    const shown = isPhoneLayout ? phoneDisplayViz(viz) : viz
+    setFocusWorkspace(focusWorkspaceForViz(shown))
+  }
+
+  const focusViz = (next: VizMode) => {
+    if (next === 'eq-split') {
+      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+      if (eq) selectModule(eq.instanceId)
+    }
+    const routed = routeViz(next, focus, inspectorOpen)
+    setViz(routed.viz)
+    setFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
+    if (focusWorkspace) {
+      const shown = isPhoneLayout ? phoneDisplayViz(routed.viz) : routed.viz
+      setFocusWorkspace(focusWorkspaceForViz(shown))
+    }
   }
 
   const dockRight = mode === 'dock-right'
@@ -1039,6 +1055,7 @@ export default function App() {
           }}
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
+          onToggleWorkspace={enterFocus}
         />
         )}
         </div>
@@ -1056,20 +1073,40 @@ export default function App() {
                 onExit={() => setFocusWorkspace(null)}
                 onSelectModule={selectModule}
                 autoFocus={autoFocus}
+                onAutoFocus={setAutoFocus}
+                onAutomationCommit={commit}
+                onAddNode={() => waveRef.current?.addAutomationNode()}
+                onDeleteNode={() => waveRef.current?.deleteAutomationNode()}
+                onViz={isPhoneLayout ? undefined : focusViz}
                 edit={{
                   canCopy: snap.canCopySelection,
                   canCut: snap.canCutSelection,
+                  canPaste: snap.canPaste,
                   canDelete: snap.canDeleteSelection,
                   canMute: snap.canMuteSelection,
                   canClear: snap.canClearSelection,
+                  canInsert: snap.canInsertSilence,
                   canUndo: history.past.length > 0,
                   canRedo: history.future.length > 0,
                   onCopy: copySelection,
                   onCut: cutSelection,
+                  onPaste: pasteAtPlayhead,
                   onDelete: deleteSelection,
                   onMute: muteSelection,
+                  onClear: clearSelection,
+                  onTrim: () => {
+                    void engine.trimPlayRegion().then((ok) => {
+                      if (!ok) return
+                      setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                      waveRef.current?.fitSample()
+                      commit()
+                    })
+                  },
+                  onInsertSilence: insertSilence,
                   onUndo: () => applyHistory(undoHistory(history)),
                   onRedo: () => applyHistory(redoHistory(history)),
+                  onFadeIn: () => waveRef.current?.applyFade('in'),
+                  onFadeOut: () => waveRef.current?.applyFade('out'),
                 }}
               />
             ) : null}
@@ -1166,7 +1203,7 @@ export default function App() {
               <InspectorEye open={false} onClick={revealInspector} />
             </div>
           ) : null}
-          {isPhoneLayout ? null : (
+          {isPhoneLayout || activeFocus ? null : (
           <MeterStrip
             channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
             range={meterRange}

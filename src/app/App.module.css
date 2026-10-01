@@ -227,6 +227,25 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.shell[data-workspace='focus'] {
+  --editor-grid: minmax(0, 1fr);
+  --meter-col: 0px;
+}
+
+.shell[data-workspace='focus'] .chrome,
+.shell[data-workspace='focus'] .phoneContext,
+.shell[data-workspace='focus'] .bottom,
+.shell[data-workspace='focus'] .inspector,
+.shell[data-workspace='focus'] .inspectorReveal {
+  display: none;
+}
+
+.shell[data-workspace='focus'] .work,
+.shell[data-workspace='focus'].dock-right .work,
+.shell[data-workspace='focus'].inspectorHidden.dock-right .work {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .phoneShell[data-workspace='focus'] .chainBand,
 .phoneShell[data-workspace='focus'] .phoneContext {
   display: none;
@@ -278,6 +297,17 @@
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
+}
+
+.shell[data-workspace='focus'] > header,
+.shell[data-workspace='focus'] .transportWrap {
+  display: none;
+}
+
+.shell[data-workspace='focus'] .waveCol {
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .phoneShell[data-orient='landscape'] .stageMain {

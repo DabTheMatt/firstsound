@@ -27,6 +27,20 @@
   background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
 }
 
+.option.labeled {
+  width: auto;
+  height: auto;
+  min-height: 28px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .option {
   width: 22px;
   height: 20px;

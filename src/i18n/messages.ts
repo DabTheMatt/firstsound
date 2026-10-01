@@ -155,6 +155,20 @@ export type Messages = {
     q: string
     context: string
   }
+  focus: {
+    restore: string
+    enter: string
+    addNode: string
+    deleteNode: string
+    addAutomation: string
+    lane: string
+    eq: string
+    auto: string
+    wave: string
+    fft: string
+    more: string
+    fadeMs: (label: string, ms: number) => string
+  }
   waveform: {
     empty: string
     loadDemo: string
@@ -683,6 +697,20 @@ export const EN: Messages = {
     gain: 'Gain',
     q: 'Q',
     context: 'Effect parameters',
+  },
+  focus: {
+    restore: 'Restore',
+    enter: 'Focus',
+    addNode: 'Add node',
+    deleteNode: 'Delete node',
+    addAutomation: 'Add automation',
+    lane: 'Lane',
+    eq: 'EQ',
+    auto: 'Auto',
+    wave: 'Wave',
+    fft: 'FFT',
+    more: 'More edit actions',
+    fadeMs: (label, ms) => `${label}  ${ms} ms`,
   },
   waveform: {
     empty: 'Load a sample to begin',
@@ -1301,6 +1329,20 @@ export const PL: Messages = {
     gain: 'Gain',
     q: 'Q',
     context: 'Parametry efektu',
+  },
+  focus: {
+    restore: 'Przywróć',
+    enter: 'Fokus',
+    addNode: 'Dodaj węzeł',
+    deleteNode: 'Usuń węzeł',
+    addAutomation: 'Dodaj automatyzację',
+    lane: 'Ścieżka',
+    eq: 'EQ',
+    auto: 'Auto',
+    wave: 'Fala',
+    fft: 'FFT',
+    more: 'Więcej edycji',
+    fadeMs: (label, ms) => `${label}  ${ms} ms`,
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',

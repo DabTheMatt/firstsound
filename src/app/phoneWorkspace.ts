@@ -49,10 +49,13 @@ export function phoneDisplayViz(viz: VizMode): VizMode {
  * not effect-enabled, playback, or DSP state. Specialized effect editors can
  * extend the union later; EQ, wave, and automation are the first workspaces.
  */
-export type FocusWorkspace = PhoneViz
+export type FocusWorkspace = PhoneViz | 'fft'
 
 export function focusWorkspaceForViz(viz: VizMode): FocusWorkspace {
-  return phoneVizFromMode(viz)
+  if (viz === 'automation') return 'auto'
+  if (viz === 'eq-split') return 'eq'
+  if (viz === 'spectrum') return 'fft'
+  return 'wave'
 }
 
 export function nextSheetLevel(level: PhoneSheetLevel): PhoneSheetLevel {

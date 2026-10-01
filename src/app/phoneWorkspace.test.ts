@@ -30,7 +30,7 @@ describe('focus workspace', () => {
   it('maps the current phone view onto a presentation-only workspace', () => {
     expect(focusWorkspaceForViz('waveform')).toBe('wave')
     expect(focusWorkspaceForViz('eq-split')).toBe('eq')
-    expect(focusWorkspaceForViz('spectrum')).toBe('eq')
+    expect(focusWorkspaceForViz('spectrum')).toBe('fft')
     expect(focusWorkspaceForViz('automation')).toBe('auto')
   })
 })

@@ -8,8 +8,41 @@
   overflow: hidden;
 }
 
-.compact .chrome {
+.compact .chrome,
+.cleanEq .chrome {
   display: none;
+}
+
+.focusReadout {
+  position: absolute;
+  z-index: 5;
+  left: 10px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.focusReadout span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.focusReadout strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.cleanEq .nodeOn {
+  box-shadow:
+    0 0 0 2px var(--eq-curve, var(--accent-primary)),
+    0 0 10px color-mix(in srgb, var(--eq-curve, var(--accent-primary)) 55%, transparent);
 }
 
 .compact.analyzerOpen .chrome {
@@ -387,7 +420,9 @@
 }
 
 .phoneEq .chrome,
-.phoneEq .legendDock {
+.phoneEq .legendDock,
+.eqFocus .chrome,
+.eqFocus .legendDock {
   display: none;
 }
 

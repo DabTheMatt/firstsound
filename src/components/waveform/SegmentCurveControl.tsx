@@ -22,6 +22,7 @@ type Props = {
   labels: SegmentCurveLabels
   accent?: string
   caption?: string
+  showLabels?: boolean
   onChange: (curve: AutomationCurve) => void
   onCommit?: () => void
 }
@@ -42,7 +43,7 @@ function CurveIcon({ curve }: { curve: AutomationCurve }) {
 }
 
 /** Compact step / linear / smooth icons for one automation segment. */
-export function SegmentCurveControl({ value, labels, accent, caption, onChange, onCommit }: Props) {
+export function SegmentCurveControl({ value, labels, accent, caption, showLabels = false, onChange, onCommit }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   const choose = (curve: AutomationCurve) => {
@@ -99,10 +100,11 @@ export function SegmentCurveControl({ value, labels, accent, caption, onChange, 
               title={labels[curve]}
               tabIndex={checked ? 0 : -1}
               data-curve={curve}
-              className={`${styles.option} ${checked ? styles.on : ''}`}
+              className={`${styles.option} ${checked ? styles.on : ''} ${showLabels ? styles.labeled : ''}`}
               onClick={() => choose(curve)}
             >
               <CurveIcon curve={curve} />
+              {showLabels ? <span>{labels[curve]}</span> : null}
             </button>
           )
         })}
