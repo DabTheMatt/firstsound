@@ -328,7 +328,8 @@
 }
 
 .compact:not(.settingsOpen) .chromeLeft > :not([data-essential]):not(.settingsBtn),
-.compact:not(.settingsOpen) .chromeRight {
+.compact:not(.settingsOpen) .chromeRight,
+.compact:not(.settingsOpen) .legendDock {
   display: none;
 }
 

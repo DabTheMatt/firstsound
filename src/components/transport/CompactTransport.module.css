@@ -294,6 +294,39 @@ button.export {
   font-size: 15px;
 }
 
+.minimal .transport {
+  justify-self: start;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+@container transport (max-width: 360px) {
+  .minimal {
+    column-gap: 6px;
+  }
+
+  .minimal .transport {
+    gap: 4px;
+  }
+
+  .minimal .transport > :first-child {
+    width: 48px;
+    height: 48px;
+  }
+
+  .minimal .icon,
+  .minimal .loop {
+    min-width: 40px;
+    padding: 0 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .minimal .head {
+    font-size: 13px;
+  }
+}
+
 :global(html[data-low-vision='on']) .bar,
 :global(html[data-ui-scale='large']) .bar,
 :global(html[data-low-vision='on']) button.export,

@@ -23,9 +23,10 @@ type Props = {
   range: MeterRange
   onRange: (range: MeterRange) => void
   variant?: 'column' | 'inline'
+  className?: string
 }
 
-export function MeterStrip({ channels, range, onRange, variant = 'column' }: Props) {
+export function MeterStrip({ channels, range, onRange, variant = 'column', className }: Props) {
   const { t, locale } = useI18n()
   const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
@@ -98,7 +99,7 @@ export function MeterStrip({ channels, range, onRange, variant = 'column' }: Pro
 
   if (variant === 'inline') {
     return (
-      <div className={styles.inline} role="region" aria-label={t.meters.strip}>
+      <div className={`${styles.inline} ${className ?? ''}`} role="region" aria-label={t.meters.strip}>
         <button
           type="button"
           className={`${styles.clip} ${styles.inlineClip} ${clipped ? styles.clipOn : ''}`}

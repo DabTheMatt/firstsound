@@ -301,4 +301,24 @@
     grid-area: trailing;
     margin-left: 0;
   }
+
+  .header.minimal {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    min-height: 48px;
+    height: auto;
+    row-gap: 0;
+  }
+
+  .header.minimal .file {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header.minimal .tools {
+    flex: none;
+  }
 }

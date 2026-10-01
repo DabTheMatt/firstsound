@@ -6,8 +6,9 @@ describe('resolveLayoutMode', () => {
     expect(resolveLayoutMode({ width: 390, height: 844 })).toBe('sheet')
   })
 
-  it('uses a bottom inspector on portrait tablets', () => {
-    expect(resolveLayoutMode({ width: 768, height: 1024 })).toBe('dock-bottom')
+  it('keeps a portrait tablet in the focused sheet until the dock has room', () => {
+    expect(resolveLayoutMode({ width: 768, height: 1024 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 834, height: 1112 })).toBe('dock-bottom')
   })
 
   it('uses a right inspector on landscape / desktop widths', () => {

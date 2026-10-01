@@ -81,7 +81,7 @@ export function SpectralMixer({ onCommit, layout = 'studio' }: Props) {
         </button>
         {spectral.computing ? <span className={styles.computing}>{copy.computing}</span> : null}
       </div>
-      {spectral.enabled ? (
+      {spectral.enabled || layout === 'phone' ? (
         <>
           <div className={styles.rows}>
             {spectral.bands.map((band) => {

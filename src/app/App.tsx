@@ -1099,6 +1099,7 @@ export default function App() {
             range={meterRange}
             onRange={setMeterRange}
             variant={isPhoneLayout ? 'inline' : 'column'}
+            className={isPhoneLayout ? styles.phoneMeter : undefined}
           />
         </div>
 

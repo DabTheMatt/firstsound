@@ -40,6 +40,7 @@ import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { formatAutomationNodeValue } from './automationValue'
+import { PhoneEqSurface } from '../eq/PhoneEqSurface'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { VizBackground } from './VizBackground'
@@ -1165,7 +1166,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       )
     : []
   const showMultiWave = viz === 'waveform-multi'
-  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
+  const showPhoneEq = phone && viz === 'eq-split'
+  const showSpec = !showPhoneEq && (viz === 'spectrum' || viz === 'split' || viz === 'eq-split')
   const showEqConsole = viz === 'eq-split' && !phone
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
@@ -1531,6 +1533,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             }}
           />
         ) : null}
+        {showPhoneEq ? (
+          <div className={styles.phoneEq}>
+            <PhoneEqSurface onAdded={onSelectModule} />
+          </div>
+        ) : null}
         {showSpec ? (
           <div
             className={`${styles.spec} ${viz === 'spectrum' ? styles.specSolo : ''}`}
@@ -1593,7 +1600,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             </div>
         ) : null}
       </div>
-      {loaded && duration > 0 && !showWave ? (
+      {loaded && duration > 0 && !showWave && !phone ? (
         <Overview
           duration={duration}
           start={start}

@@ -150,6 +150,13 @@
   background: var(--bg-control-hover);
 }
 
+@media (orientation: landscape) and (max-height: 520px) {
+  .moreMenu {
+    bottom: auto;
+    top: calc(100% + 6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mode,
   .modeOn,

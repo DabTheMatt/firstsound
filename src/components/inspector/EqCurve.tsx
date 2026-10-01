@@ -37,6 +37,8 @@ type Props = {
   modulate?: boolean
   onSelectBand?: (index: number) => void
   onDragBand?: (index: number, patch: Partial<EqBand>) => void
+  /** Fill the parent. Phone workspace uses this instead of the 188px inspector plot. */
+  fill?: boolean
 }
 
 export { dbToY, freqToX, xToFreq, yToDb }
@@ -50,6 +52,7 @@ export function EqCurve({
   modulate = true,
   onSelectBand,
   onDragBand,
+  fill = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -242,7 +245,7 @@ export function EqCurve({
   }
 
   return (
-    <div ref={wrapRef} className={styles.wrap}>
+    <div ref={wrapRef} className={`${styles.wrap} ${fill ? styles.fill : ''}`}>
       <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
       {bands.map((band, index) => {
         if (band.type === 'off') return null

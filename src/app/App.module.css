@@ -193,6 +193,9 @@
   margin-top: auto;
   position: relative;
   z-index: 9;
+  /* The desktop transport grid reserves a meter column. On a phone that
+     column has no control and clips the time readout into Loop. */
+  grid-template-columns: minmax(0, 1fr);
   margin-left: -8px;
   margin-right: -8px;
   /* Keep only the home-indicator inset — extra padding read as wasted black space. */
@@ -325,9 +328,11 @@
 .phoneSheetBody {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  touch-action: pan-y;
 }
 
 .phoneSheetBody > * {
@@ -340,10 +345,16 @@
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
+  .phoneShell .stage,
+  .phoneShell .stageMain {
+    height: 100%;
+    min-height: 0;
+  }
+
   .phoneShell .stageMain {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 38vw);
-    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 34vw);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     column-gap: 8px;
     align-items: stretch;
   }
@@ -351,34 +362,72 @@
   .phoneShell .phoneSwitch {
     grid-column: 1;
     grid-row: 1;
-  }
-
-  .phoneShell .phoneWork {
-    grid-column: 1;
-    grid-row: 2;
-    min-height: 0;
+    justify-self: start;
+    width: max-content;
+    max-width: 58%;
+    min-width: 0;
   }
 
   .phoneShell .phoneChain {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  /* The work wrapper drops out so the waveform and the meter can sit in
+     different columns. The meter stays in the side column and does not
+     shorten the visualization. */
+  .phoneShell .phoneWork {
+    display: contents;
+  }
+
+  .phoneShell .waveCol {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 2;
+    min-height: 0;
+    height: auto;
   }
 
   .phoneShell .phoneContext {
+    display: flex;
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    width: max-content;
+    max-width: 42%;
+    min-width: 0;
   }
 
   .phoneShell .phoneSheet {
     grid-column: 2;
-    grid-row: 1 / span 4;
+    grid-row: 2;
     max-height: none;
-    height: 100%;
+    height: auto;
+    min-height: 0;
     border-radius: 12px;
+    padding-bottom: 52px;
+  }
+
+  .phoneShell .phoneSheet[data-sheet='collapsed'] {
+    max-height: none;
+  }
+
+  .phoneShell .phoneMeter {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    z-index: 2;
+    width: auto;
+    margin: 0 0 4px;
+    padding: 0 6px;
+    background: var(--bg-panel);
+    border-radius: 10px;
   }
 
   .phoneShell .transportPinned {
     grid-column: 1 / -1;
+    grid-row: 3;
   }
 }
 

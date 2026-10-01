@@ -14,7 +14,7 @@ export type LayoutInput = {
 export function resolveLayoutMode(input: LayoutInput): LayoutMode {
   const width = Math.max(0, input.width)
   const height = Math.max(0, input.height)
-  if (width < 720) return 'sheet'
+  if (width < 800) return 'sheet'
   // Phone landscape stays on the sheet. A short edge above this is a tablet.
   if (height > 0 && height < 520 && width < 1024) return 'sheet'
   const portrait = height >= width
