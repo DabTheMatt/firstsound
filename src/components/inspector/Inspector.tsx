@@ -35,6 +35,7 @@ import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
 import { parseTypedRange } from '../../audio/parameters/mapping'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
+import { modulationCenterValue } from '../../audio/parameters/evaluation'
 import { eqBandLfoIds, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { engine } from '../../hooks/useEngine'
 import { PresetMenu } from '../controls/PresetMenu'
@@ -868,6 +869,8 @@ function EqEditor({
     const binding = lfoBinding(snap.fxLfos, id)
     return binding ? lfoRangeNormalized(baseN, binding.lfo.depth) : undefined
   }
+  const centerOf = (id: ParamId | undefined, stored: number) =>
+    id ? modulationCenterValue(id, stored, snap.paramCenters[id] ?? stored, snap.automation, snap.playing) : stored
   const liveFreq = (index: number, band: (typeof bands)[number]) => {
     const id = eqBandLfoIds(index)?.freq
     return modulate && id ? (snap.liveParams[id] ?? band.frequency) : band.frequency
@@ -983,7 +986,10 @@ function EqEditor({
                   }
                   normalized={freqToN(band.frequency)}
                   visualNormalized={freqToN(liveFreq(index, band))}
-                  lfoRange={eqKnobLfo(eqBandLfoIds(index)?.freq, freqToN(band.frequency))}
+                  lfoRange={eqKnobLfo(
+                    eqBandLfoIds(index)?.freq,
+                    freqToN(centerOf(eqBandLfoIds(index)?.freq, band.frequency)),
+                  )}
                   min={EQ_MIN_HZ}
                   max={EQ_MAX_HZ}
                   now={band.frequency}
@@ -1024,7 +1030,10 @@ function EqEditor({
                     }
                     normalized={(band.gain + 18) / 36}
                     visualNormalized={(liveGain(index, band) + 18) / 36}
-                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.gain, (band.gain + 18) / 36)}
+                    lfoRange={eqKnobLfo(
+                      eqBandLfoIds(index)?.gain,
+                      (centerOf(eqBandLfoIds(index)?.gain, band.gain) + 18) / 36,
+                    )}
                     min={-18}
                     max={18}
                     now={band.gain}
@@ -1060,7 +1069,15 @@ function EqEditor({
                         liveQ(index, band),
                       ),
                     )}
-                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.q, widthToN(bandwidthHz(band.frequency, band.q)))}
+                    lfoRange={eqKnobLfo(
+                      eqBandLfoIds(index)?.q,
+                      widthToN(
+                        bandwidthHz(
+                          centerOf(eqBandLfoIds(index)?.freq, band.frequency),
+                          centerOf(eqBandLfoIds(index)?.q, band.q),
+                        ),
+                      ),
+                    )}
                     min={10}
                     max={10000}
                     now={bandwidthHz(band.frequency, band.q)}
@@ -1085,7 +1102,7 @@ function EqEditor({
                     }
                     normalized={qToN(band.q)}
                     visualNormalized={qToN(liveQ(index, band))}
-                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.q, qToN(band.q))}
+                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.q, qToN(centerOf(eqBandLfoIds(index)?.q, band.q)))}
                     min={0.1}
                     max={20}
                     now={band.q}

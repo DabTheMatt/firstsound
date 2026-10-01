@@ -1,4 +1,5 @@
-import { automationHasNodes, resolvePerformanceParams, type AutomationDocument } from '../automation/automation'
+import { automationHasNodes, type AutomationDocument } from '../automation/automation'
+import { resolvePerformanceParams } from '../parameters/evaluation'
 import type { ChainModule } from '../chain/chain'
 import { applyGain, peakAmplitude } from '../samplePrep/prepare'
 import { renderPrep } from '../samplePrep/render'

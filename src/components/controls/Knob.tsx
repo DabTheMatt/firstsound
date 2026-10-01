@@ -26,9 +26,11 @@ type Props = {
   value: number
   liveValue?: number
   lfoDepth?: number
+  /** Reachable normalized range around the current center. Falls back to the stored value. */
+  lfoRange?: { min: number; max: number }
 }
 
-export function Knob({ id, value, liveValue, lfoDepth }: Props) {
+export function Knob({ id, value, liveValue, lfoDepth, lfoRange }: Props) {
   const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const live = liveValue ?? value
@@ -44,7 +46,7 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
       baseValueText={mapped ? formatParamValue(value, def) : undefined}
       normalized={baseN}
       visualNormalized={mapped ? toNormalized(live, def) : undefined}
-      lfoRange={mapped && lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}
+      lfoRange={lfoRange ?? (mapped && lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined)}
       min={def.min}
       max={def.max}
       now={Number(live.toFixed(3))}

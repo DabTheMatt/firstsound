@@ -477,6 +477,11 @@ export function lfoPhase(timeSec: number, rateHz: number): number {
   return phase - Math.floor(phase)
 }
 
+/** Bipolar sample for one LFO, including its phase origin. Does not advance sample-and-hold. */
+export function fxLfoBipolar(lfo: FxLfo, timeSec: number, holdValue = 0): number {
+  return lfoWave(lfoPhase(timeSec - (lfo.phaseOriginSec ?? 0), lfo.rateHz), lfo.shape, holdValue)
+}
+
 export function snhHoldIndex(timeSec: number, rateHz: number): number {
   return Math.floor(Math.max(0, timeSec) * clampLfoRate(rateHz))
 }
@@ -488,14 +493,16 @@ export function fittedLfoDepth(baseN: number, depthPct: number): number {
   return Math.min(want, room)
 }
 
-/** Offset a stored parameter by LFO in normalized space so log params sweep evenly.
- *  The stored value is oscillator zero. Depth is ± that much of the full range,
- *  fitted so the waveform never dwells on the rails. */
-export function modulateParam(base: number, id: ParamId, bipolar: number, depthPct: number): number {
+/** Offset a center by LFO in the parameter's normalized domain.
+ *  `center` is oscillator zero: the manual base, or the current automated value.
+ *  Depth is ± that fraction of the full mapped range, fitted so the wave touches
+ *  a rail only at its peak instead of dwelling there. Callers must pass the
+ *  current center, never a previous modulated sample. */
+export function modulateParam(center: number, id: ParamId, bipolar: number, depthPct: number): number {
   const def = PARAMS[id]
-  const n0 = toNormalized(base, def)
+  const n0 = toNormalized(center, def)
   const depth = fittedLfoDepth(n0, depthPct)
-  if (depth <= 0) return applyParamValue(base, def)
+  if (depth <= 0) return applyParamValue(center, def)
   return applyParamValue(fromNormalized(n0 + bipolar * depth, def), def)
 }
 
@@ -617,13 +624,19 @@ export function lfoConnectCopy(connecting: boolean, targetLabel: string | null):
   return { label: 'Connect', detail: null, mode }
 }
 
-export function applyFxLfos(
+/**
+ * Relative LFO offsets around the supplied centers.
+ * Does not resolve parameter links and does not write an AudioParam.
+ * `params` must be the current center (manual base, or automation), never a
+ * previous modulated buffer — otherwise the offset accumulates.
+ */
+export function offsetFxLfos(
   params: Record<ParamId, number>,
   lfos: FxLfoMap,
   timeSec: number,
   hold: LfoHoldState,
   rand: () => number = Math.random,
-): Record<ParamId, number> {
+): { values: Record<ParamId, number>; claimed: Set<ParamId> } {
   const next = { ...params }
   const claimed = new Set<ParamId>()
   for (const kind of FX_LFO_KINDS) {
@@ -642,12 +655,23 @@ export function applyFxLfos(
           slotHold.value = rand() * 2 - 1
         }
       }
-      const wave = lfoWave(lfoPhase(timeSec - (lfo.phaseOriginSec ?? 0), lfo.rateHz), lfo.shape, slotHold.value)
+      const wave = fxLfoBipolar(lfo, timeSec, slotHold.value)
       next[target] = modulateParam(params[target], target, wave, lfo.depth)
     }
   }
-  applyParamLinks(next, claimed)
-  return next
+  return { values: next, claimed }
+}
+
+export function applyFxLfos(
+  params: Record<ParamId, number>,
+  lfos: FxLfoMap,
+  timeSec: number,
+  hold: LfoHoldState,
+  rand: () => number = Math.random,
+): Record<ParamId, number> {
+  const { values, claimed } = offsetFxLfos(params, lfos, timeSec, hold, rand)
+  applyParamLinks(values, claimed)
+  return values
 }
 
 /** Overlay live (LFO-modulated) freq/gain/Q onto stored EQ bands for plots. */

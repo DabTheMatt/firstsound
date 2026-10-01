@@ -733,3 +733,52 @@ describe('offline export renders the audible chain', () => {
     }
   })
 })
+
+describe('automation center with LFO', () => {
+  it('sweeps cutoff under an LFO without a step or a non-finite sample', async () => {
+    const lfos = defaultFxLfos()
+    lfos.filter[0] = { rateHz: 3, shape: 'sine', depth: 22, target: 'filterCutoff' }
+    const rendered = mono(
+      await render(
+        sine(330, 0.5, 0.45),
+        state({
+          chain: chain(['filter']),
+          params: {
+            filterCutoff: 2000,
+            filterKind: 0,
+            filterMix: 100,
+            filterSlope: 2,
+            filterDrive: 0,
+            filterReso: 0.7,
+          },
+          automation: lane('filterCutoff', 700, 5000, 0.05, 0.45),
+          fxLfos: lfos,
+        }),
+      ),
+    )
+    expect(rendered.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(peak(rendered)).toBeLessThan(1.2)
+    expect(sampleDelta(rendered, 0.25)).toBeLessThan(0.35)
+  })
+
+  it('moves an EQ frequency center under an LFO without a step', async () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { rateHz: 3, shape: 'sine', depth: 18, target: 'eq1Freq' }
+    const bands = defaultEqBands()
+    bands[0] = { ...bands[0]!, type: 'peaking', frequency: 400, gain: 6, q: 1.2, slope: 12, bypassed: false }
+    const rendered = mono(
+      await render(
+        sine(330, 0.5, 0.45),
+        state({
+          chain: chain(['eq']),
+          params: { eq1Freq: 400, eq1Gain: 6, eq1Q: 1.2 },
+          eqById: { 'eq-1': { bands, bandsL: [], bandsR: [], comb: defaultCombFilter() } },
+          automation: lane('eq1Freq', 300, 2400, 0.05, 0.45),
+          fxLfos: lfos,
+        }),
+      ),
+    )
+    expect(rendered.every((sample) => Number.isFinite(sample))).toBe(true)
+    expect(sampleDelta(rendered, 0.25)).toBeLessThan(0.35)
+  })
+})

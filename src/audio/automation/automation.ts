@@ -1,24 +1,13 @@
-import {
-  FX_LFO_KINDS,
-  FX_LFO_TARGETS,
-  anyFxLfoActive,
-  applyFxLfos,
-  fxLfoKindForParam,
-  type FxLfoKind,
-  type FxLfoMap,
-  type LfoHoldState,
-} from '../fx/lfo'
+import { FX_LFO_KINDS, FX_LFO_TARGETS, fxLfoKindForParam, type FxLfoKind } from '../fx/lfo'
 import { PARAMS } from '../parameters/definitions'
-import { applyParamLinks } from '../parameters/links'
 import { applyParamValue, clamp, fromNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 
 /**
- * Playback pipeline for a parameter:
- * stored manual value → automation envelope (transport running) → LFO → clamp.
- * The envelope replaces the manual value only while playing, so a knob edit
- * cannot erase nodes. LFO depth is measured around the automated value, not
- * against a second writer racing the same AudioParam.
+ * Automation lanes are an absolute trajectory in normalized parameter space.
+ * Playback evaluation (base → automation center → relative LFO → safe range)
+ * lives in `parameters/evaluation.ts`. The envelope replaces the manual value
+ * only while the transport is running, so a knob edit cannot erase nodes.
  *
  * Every lane with nodes runs during playback. `selectedParamId` is the lane
  * being edited, not a solo.
@@ -443,30 +432,6 @@ export function applyAutomation(
     next[lane.paramId] = envelopeToParam(lane.paramId, normalized)
   }
   return next ?? params
-}
-
-export function resolvePerformanceParams(
-  manual: Record<ParamId, number>,
-  automation: AutomationDocument,
-  timeSec: number,
-  playing: boolean,
-  lfos: FxLfoMap,
-  lfoTimeSec: number,
-  hold: LfoHoldState,
-  rand?: () => number,
-): Record<ParamId, number> {
-  const base = playing ? applyAutomation(manual, automation, timeSec) : manual
-  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold, rand) : base
-  // Linked pairs (delay correlate, L/R link) follow the automated or modulated
-  // value. Skip when the result is still the stored object so a stopped
-  // transport cannot rewrite the manual knobs.
-  if (modulated === manual) return modulated
-  const changed: ParamId[] = []
-  for (const id of Object.keys(modulated) as ParamId[]) {
-    if (modulated[id] !== manual[id]) changed.push(id)
-  }
-  if (changed.length > 0) applyParamLinks(modulated, changed)
-  return modulated
 }
 
 function withLane(doc: AutomationDocument, paramId: ParamId, nodes: AutomationNode[]): AutomationDocument {

@@ -65,7 +65,6 @@ import {
   relocateAutomationNode,
   removeAutomationLane,
   removeAutomationNode,
-  resolvePerformanceParams,
   selectAutomationParam,
   setAutomationLaneColor,
   updateAutomationCurve,
@@ -99,6 +98,7 @@ import {
 import { applyLimiterGraph, limiterReductionDb } from '../fx/limiter'
 import { applyCompressorGraph, compressorReductionDb } from '../fx/compressor'
 import { legacyDensityToGrainOverlap, legacyInterpToQualityIndex, migrateSpaceParams } from '../fx/migrate'
+import { resolvePerformance } from '../parameters/evaluation'
 import { commitParamEdit, commitParamPatch } from '../parameters/links'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet, NOISE_CUT_TAU_SEC, NOISE_PAUSE_FADE_TAU_SEC } from '../fx/distortion'
@@ -346,10 +346,16 @@ export type EngineSnapshot = {
   scrubMode: ScrubMode
   params: Record<ParamId, number>
   /**
-   * Parameter values after automation (while playing), LFO, and filter modulation.
+   * Parameter values after automation (while playing), LFO, links, and filter modulation.
    * Same as `params` when transport is stopped and no modulator is running.
    */
   liveParams: Record<ParamId, number>
+  /**
+   * Absolute center after automation and before LFO. Equal to `params` when the
+   * transport is stopped or the parameter has no lane. Published so UI can draw
+   * the real modulation range without sampling the envelope itself.
+   */
+  paramCenters: Record<ParamId, number>
   automation: AutomationDocument
   chain: ChainModule[]
   eqBands: EqBand[]
@@ -570,6 +576,8 @@ export class AudioEngine {
   private reverbIrKey = ''
   private reverbIrTimer = 0
   private params: Record<ParamId, number> = defaultParamValues()
+  /** Filled by `liveParams`. Starts as the stored base. */
+  private paramCenters: Record<ParamId, number> = this.params
   private chain: ChainModule[] = defaultChain()
   private eqById = new Map<string, EqModuleState>()
   private eqBands: EqBand[] = defaultEqBands()
@@ -3880,10 +3888,9 @@ export class AudioEngine {
     setSmoothedAudioParam(this.safetyGain.gain, value, now, 'gain')
   }
 
-  private applyBypassRamps(smoothing = 0.01): void {
+  private applyBypassRamps(smoothing = 0.01, params: Record<ParamId, number> = this.liveParams()): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    const params = this.liveParams()
     const flags = { eqListenFilters: this.eqListen === 'filters', spaceLatched: this.spaceLatched }
     for (const mod of this.chain) {
       const slot = this.slots.get(mod.instanceId)
@@ -3946,11 +3953,10 @@ export class AudioEngine {
     this.setEqBand(0, { type: type as EqFilterType })
   }
 
-  private applyEq(smoothing: number): void {
+  private applyEq(smoothing: number, live: Record<ParamId, number> = this.liveParams()): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const nyquist = this.ctx.sampleRate / 2
-    const live = this.liveParams()
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
@@ -4264,7 +4270,7 @@ export class AudioEngine {
     this.updateFilterFollower(dt)
     // Stored speed keeps this clock independent of the value automation writes.
     const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
-    const performed = resolvePerformanceParams(
+    const performed = resolvePerformance(
       this.params,
       this.automation,
       transport,
@@ -4273,7 +4279,8 @@ export class AudioEngine {
       this.lfoTime(),
       this.lfoHold,
     )
-    return applyFilterModulation(performed, {
+    this.paramCenters = performed.centers
+    return applyFilterModulation(performed.values, {
       timeSec: this.lfoTime(),
       playing: this.playing,
       envOriginSec: this.filterEnvOrigin,
@@ -4316,10 +4323,9 @@ export class AudioEngine {
     }
   }
 
-  private applyFxParams(smoothing: number): void {
+  private applyFxParams(smoothing: number, params: Record<ParamId, number> = this.liveParams()): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    const params = this.liveParams()
     const bpm = params.bpm
     for (const slot of this.slots.values()) {
       if (slot.filterFx) {
@@ -4398,10 +4404,10 @@ export class AudioEngine {
       setSmoothedAudioParam(gainSlot.output.gain, dbToGain(live.gain), now, 'gain')
     }
     if (outSlot) setSmoothedAudioParam(outSlot.output.gain, dbToGain(live.outputGain), now, 'gain')
-    this.applyEq(smoothing)
+    this.applyEq(smoothing, live)
     this.applyTrackMix(smoothing)
-    this.applyFxParams(smoothing)
-    this.applyBypassRamps(smoothing)
+    this.applyFxParams(smoothing, live)
+    this.applyBypassRamps(smoothing, live)
     this.syncEqListen()
     if (this.playing && this.engineMode === 'playback') {
       if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
@@ -5190,6 +5196,8 @@ export class AudioEngine {
   }
 
   private buildSnapshot(): EngineSnapshot {
+    const live = this.liveParams()
+    const centers = this.paramCenters
     return {
       fileName: this.fileName,
       duration: this.buffer?.duration ?? 0,
@@ -5240,7 +5248,8 @@ export class AudioEngine {
       audioStatus: this.audioStatus,
       scrubMode: this.scrubMode,
       params: { ...this.params },
-      liveParams: { ...this.liveParams() },
+      liveParams: { ...live },
+      paramCenters: { ...centers },
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
       eqById: this.snapshotEqById(),

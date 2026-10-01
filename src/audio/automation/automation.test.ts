@@ -23,13 +23,13 @@ import {
   relocateAutomationNode,
   removeAutomationLane,
   removeAutomationNode,
-  resolvePerformanceParams,
   sampleEnvelope,
   selectAutomationParam,
   setAutomationLaneColor,
   updateAutomationCurve,
   updateAutomationTension,
 } from './automation'
+import { resolvePerformanceParams } from '../parameters/evaluation'
 
 describe('automation envelope', () => {
   it('holds outside the nodes and interpolates linearly between them', () => {
