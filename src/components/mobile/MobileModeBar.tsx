@@ -113,7 +113,7 @@ export function MobileModeBar({
           {t.mobile.view}
         </button>
       </div>
-      {hasSelection ? (
+      {hasSelection && !workspaceFocus ? (
         <div className={styles.edit} data-mobile-edit="">
           {canCut && onCut ? (
             <button type="button" onClick={onCut}>
@@ -145,7 +145,7 @@ export function MobileModeBar({
           </button>
         </div>
       ) : null}
-      {editMore && hasSelection ? (
+      {editMore && hasSelection && !workspaceFocus ? (
         <div className={styles.menu} role="menu">
           <button type="button" role="menuitem" disabled={!canUndo} onClick={onUndo}>
             {t.waveform.undo}

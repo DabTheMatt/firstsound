@@ -18,8 +18,9 @@ import {
   xToFreq,
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
+import { eqGraphLayers, eqFocusReadout } from '../../audio/engine/eqFocusGraph'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
-import { bandIsActive } from '../../audio/engine/eqBands'
+import { EQ_FILTER_TYPES, bandIsActive, type EqBand, type EqFilterType } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
   FREQ_SCALE_HZ,
@@ -104,6 +105,11 @@ type Props = {
   compact?: boolean
   /** Phone EQ workspace: real spectrum, response, and nodes. Analyzer chrome stays closed. */
   phoneEq?: boolean
+  /**
+   * EQ focus graph: one spectrum, one combined response, colored nodes.
+   * Per-band curves, the LFO ghost, and the filter overlay stay off.
+   */
+  cleanEq?: boolean
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
@@ -182,7 +188,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, cleanEq = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -190,10 +196,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const compactRef = useRef(compact)
   const phoneEqRef = useRef(phoneEq)
+  const cleanEqRef = useRef(cleanEq)
   useEffect(() => {
     compactRef.current = compact
     phoneEqRef.current = phoneEq
-  }, [compact, phoneEq])
+    cleanEqRef.current = cleanEq
+  }, [compact, phoneEq, cleanEq])
   const plotRef = useRef<HTMLDivElement>(null)
   const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const freqScaleRef = useRef(freqScale)
@@ -303,8 +311,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
       const ctx = canvas.getContext('2d')
       if (ctx) {
         const colors = readThemeColors()
-        const { layer, bands, regionColors, showBars, showLine, follow, fall, range, resolution } =
-          prefsRef.current
+        const prefsNow = prefsRef.current
+        const clean = cleanEqRef.current
+        const layer = clean ? 'post' : prefsNow.layer
+        const follow = clean ? 'peak' : prefsNow.follow
+        const regionColors = clean ? false : prefsNow.regionColors
+        const showBars = clean ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
+        const showLine = clean ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
+        const { bands, fall, range, resolution } = prefsNow
         engine.setSpectrumFftSize(resolution)
         const ballistics = spectrumFallBallistics(fall)
         const display = spectrumDisplayUses(follow)
@@ -590,6 +604,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
         const overlayFocus = eqFocusRef.current
         const freqs = displayFrequencies(responseSampleCount(plotW), minHz, maxHz, scale)
         const responsePlot = { left, right, top, bottom }
+        const combinedBands: EqBand[] = []
+        let combinedAudible = false
         for (let ei = 0; ei < eqs.length; ei++) {
           const mod = eqs[ei]
           if (!mod) continue
@@ -618,7 +634,16 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
           const showLive = modulate && eqModuleHasLiveCurve(live.fxLfos, st.comb.enabled)
           const processing = showLive ? liveBands : storedBands
           const activeCount = storedBands.filter((band) => bandIsActive(band)).length
+          const layers = eqGraphLayers(clean)
+          if (clean) {
+            if (focused) {
+              combinedBands.push(...processing)
+              if (!mod.bypassed) combinedAudible = true
+            }
+            continue
+          }
           const ghost =
+            layers.includes('storedGhost') &&
             showLive &&
             activeCount > 1 &&
             eqResponsesDiverge(storedBands, liveBands, freqs, sr)
@@ -646,28 +671,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
             strokeMagnitudeVertices(ctx, ghostVerts)
           }
           const storedStyle = eqResponseCurveStyle('stored', mod.bypassed, dpr)
-          if (phoneEqRef.current && focused) {
-            const userBands = showLive ? liveEqBandsFromParams(st.bands, live.liveParams, modulate) : st.bands
-            for (let bi = 0; bi < userBands.length; bi++) {
-              const band = userBands[bi]
-              if (!band || !bandIsActive(band)) continue
-              const bandTone = eqBandTone(bi, colors)
-              const bandVerts = layoutMagnitudeCurve(
-                freqs,
-                (hz) => eqMagnitudeDb([band], hz, sr),
-                responsePlot,
-                minHz,
-                maxHz,
-                SPECTRUM_EQ_MIN_DB,
-                SPECTRUM_EQ_MAX_DB,
-                scale,
-              )
-              ctx.setLineDash([])
-              ctx.strokeStyle = colorWithAlpha(bandTone.curve, mod.bypassed ? 0.28 : 0.7)
-              ctx.lineWidth = Math.max(1, dpr * 1.15)
-              strokeMagnitudeVertices(ctx, bandVerts)
-            }
-          }
           const eqVerts = layoutMagnitudeCurve(
             freqs,
             (hz) => eqMagnitudeDb(processing, hz, sr),
@@ -678,15 +681,39 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
             SPECTRUM_EQ_MAX_DB,
             scale,
           )
-          const responseInk = phoneEqRef.current ? colors.textPrimary : tone.curve
+          const responseInk = tone.curve
           ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
           ctx.strokeStyle = colorWithAlpha(responseInk, storedStyle.alpha * (focused ? 1 : 0.28))
-          ctx.lineWidth = storedStyle.width * (phoneEqRef.current ? 1.45 : 1) * (focused ? 1 : 0.85)
+          ctx.lineWidth = storedStyle.width * (focused ? 1 : 0.85)
+          strokeMagnitudeVertices(ctx, eqVerts)
+          ctx.restore()
+        }
+        if (clean && combinedBands.some((band) => bandIsActive(band))) {
+          const storedStyle = eqResponseCurveStyle('stored', false, dpr)
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(left, top, plotW, plotH)
+          ctx.clip()
+          ctx.lineJoin = 'round'
+          ctx.lineCap = 'round'
+          const eqVerts = layoutMagnitudeCurve(
+            freqs,
+            (hz) => eqMagnitudeDb(combinedBands, hz, sr),
+            responsePlot,
+            minHz,
+            maxHz,
+            SPECTRUM_EQ_MIN_DB,
+            SPECTRUM_EQ_MAX_DB,
+            scale,
+          )
+          ctx.setLineDash(combinedAudible ? [] : [5 * dpr, 4 * dpr])
+          ctx.strokeStyle = colorWithAlpha(colors.textPrimary, combinedAudible ? storedStyle.alpha : storedStyle.alpha * 0.45)
+          ctx.lineWidth = storedStyle.width * 1.45
           strokeMagnitudeVertices(ctx, eqVerts)
           ctx.restore()
         }
         const filterMod = live.chain.find((m) => m.type === 'filter')
-        if (filterMod && filterModuleIsAudible(filterMod.bypassed, live.liveParams.filterMix)) {
+        if (!clean && filterMod && filterModuleIsAudible(filterMod.bypassed, live.liveParams.filterMix)) {
           const filterVerts = layoutMagnitudeCurve(
             freqs,
             (hz) =>
@@ -814,7 +841,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
   const showResponseKey = shouldShowResponseLegend(eqCurveOn, filterCurveOn)
   return (
     <div
-      className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${analyzerOpen && !phoneEq ? styles.analyzerOpen : ''}`}
+      className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${cleanEq ? styles.cleanEq : ''} ${analyzerOpen && !phoneEq && !cleanEq ? styles.analyzerOpen : ''}`}
       role="region"
       aria-label="Spectrum analyzer"
     >
@@ -1158,7 +1185,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
       </div>
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen && (!compact || analyzerOpen) ? (
+        {prefs.legendOpen && !cleanEq && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (
               <ul className={styles.regions}>
@@ -1279,7 +1306,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
             const moduleTone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
             const bandTone = eqBandTone(index, readThemeColors())
             const freqColor = eqBandColorForHz(band.frequency)
-            const tone = phoneEq ? bandTone : moduleTone
+            const tone = phoneEq || cleanEq ? bandTone : moduleTone
             const nodeColor = !phoneEq && prefs.eqFreqColors ? freqColor : tone.node
             const curveColor = !phoneEq && prefs.eqFreqColors ? freqColor : tone.curve
             return (
@@ -1312,6 +1339,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
           })
           })}
         </div>
+        {cleanEq ? <EqReadout selection={selectedBand} /> : null}
         {hover ? (
           <div
             className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}
@@ -1321,6 +1349,23 @@ export function Spectrum({ active, compact = false, phoneEq = false, analyzerOpe
           </div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function EqReadout({ selection }: { selection: EqBandSelection | null }) {
+  const snap = useEngine()
+  if (!selection) return null
+  const band = snap.eqById[selection.instanceId]?.bands[selection.index]
+  if (!band) return null
+  const typeLabel = (type: EqFilterType) => EQ_FILTER_TYPES.find((item) => item.value === type)?.short ?? type
+  const model = eqFocusReadout(selection.index, band, typeLabel)
+  if (!model) return null
+  return (
+    <div className={styles.focusReadout} data-eq-readout="">
+      <span>{model.title}</span>
+      <strong>{model.frequency}</strong>
+      <strong>{model.detail}</strong>
     </div>
   )
 }

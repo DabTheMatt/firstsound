@@ -36,6 +36,7 @@ type Props = {
   autoFade?: boolean
   normalizeView: boolean
   minimal?: boolean
+  onToggleWorkspace?: () => void
 }
 
 export type ViewAction =
@@ -132,6 +133,7 @@ export function WaveformToolbar({
   autoFade = false,
   normalizeView,
   minimal = false,
+  onToggleWorkspace,
 }: Props) {
   const { t } = useI18n()
   const tools = TOOLS
@@ -400,9 +402,22 @@ export function WaveformToolbar({
         >
           <AutomationIcon />
         </IconButton>
+        {onToggleWorkspace ? (
+          <IconButton label={t.focus.enter} caption={t.focus.enter} onClick={onToggleWorkspace}>
+            <FocusIcon />
+          </IconButton>
+        ) : null}
         </div>
       </div>
     </div>
+  )
+}
+
+function FocusIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="M3 6.5V3.5H6M10 3.5h3V6.5M13 9.5v3H10M6 12.5H3V9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   )
 }
 

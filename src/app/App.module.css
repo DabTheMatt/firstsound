@@ -227,9 +227,33 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.shell[data-workspace='focus'] {
+  --editor-grid: minmax(0, 1fr);
+  --meter-col: 0px;
+}
+
+.shell[data-workspace='focus'] .chrome,
+.shell[data-workspace='focus'] .phoneContext,
+.shell[data-workspace='focus'] .bottom,
+.shell[data-workspace='focus'] .inspector,
+.shell[data-workspace='focus'] .inspectorReveal {
+  display: none;
+}
+
+.shell[data-workspace='focus'] .work,
+.shell[data-workspace='focus'].dock-right .work,
+.shell[data-workspace='focus'].inspectorHidden.dock-right .work {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .phoneShell[data-workspace='focus'] .chainBand,
 .phoneShell[data-workspace='focus'] .phoneContext {
   display: none;
+}
+
+.phoneShell[data-workspace='focus'][data-phone-viz='eq-split']:not([data-orient='landscape']) .phoneWork {
+  max-height: none;
+  flex: 1 1 auto;
 }
 
 .phoneShell[data-orient='landscape'] .stageMain {

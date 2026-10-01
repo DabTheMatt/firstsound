@@ -6,11 +6,12 @@ import styles from './PhoneEqGraph.module.css'
 
 type Props = {
   instanceId?: string
+  cleanEq?: boolean
   onSelectModule?: (instanceId: string) => void
 }
 
 /** Phone EQ workspace: realtime spectrum, EQ response, and band nodes. */
-export function PhoneEqGraph({ instanceId, onSelectModule }: Props) {
+export function PhoneEqGraph({ instanceId, cleanEq = false, onSelectModule }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const eq = snap.chain.find((mod) => mod.instanceId === instanceId && mod.type === 'eq')
@@ -18,7 +19,7 @@ export function PhoneEqGraph({ instanceId, onSelectModule }: Props) {
 
   return (
     <div className={styles.stage} data-phone-eq="">
-      <Spectrum active phoneEq />
+      <Spectrum active phoneEq cleanEq={cleanEq} />
       {eq ? null : (
         <button
           type="button"
