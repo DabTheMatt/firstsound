@@ -8,6 +8,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import { canvasBitmapSize } from './canvasBitmap'
 import { colorWithAlpha, readThemeColors, subscribeThemeChange } from '../../theme'
 import { ParamControl } from '../controls/ParamControl'
 import { PresetMenu } from '../controls/PresetMenu'
@@ -217,13 +218,16 @@ function StereoField({ snap }: { snap: EngineSnapshot }) {
     let frame = 0
     const paint = () => {
       const ctx = canvas.getContext('2d')
-      if (!ctx) return
+      const box = wrapRef.current
+      if (!ctx || !box) return
       const dpr = Math.min(2, window.devicePixelRatio || 1)
-      const w = canvas.clientWidth
-      const h = canvas.clientHeight
-      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
-        canvas.width = Math.floor(w * dpr)
-        canvas.height = Math.floor(h * dpr)
+      const w = box.clientWidth
+      const h = box.clientHeight
+      if (w < 2 || h < 2) return
+      const bitmap = canvasBitmapSize(w, h, dpr)
+      if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+        canvas.width = bitmap.width
+        canvas.height = bitmap.height
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const theme = readThemeColors()

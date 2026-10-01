@@ -6,14 +6,14 @@ describe('phone visualization', () => {
     expect(phoneDisplayViz('split')).toBe('waveform')
     expect(phoneDisplayViz('mix-split')).toBe('waveform')
     expect(phoneDisplayViz('waveform-multi')).toBe('waveform')
-    expect(phoneDisplayViz('spectrum')).toBe('spectrum')
+    expect(phoneDisplayViz('spectrum')).toBe('eq-split')
     expect(phoneDisplayViz('eq-split')).toBe('eq-split')
     expect(phoneDisplayViz('automation')).toBe('automation')
   })
 
   it('maps the compact switch onto editor viz modes', () => {
     expect(phoneVizFromMode('waveform')).toBe('wave')
-    expect(vizForPhone('fft')).toBe('spectrum')
+    expect(phoneVizFromMode('spectrum')).toBe('eq')
     expect(vizForPhone('eq')).toBe('eq-split')
     expect(vizForPhone('auto')).toBe('automation')
   })

@@ -64,10 +64,18 @@ export function loadFreqScale(): FreqScaleKind {
   }
 }
 
+const scaleListeners = new Set<(kind: FreqScaleKind) => void>()
+
 export function persistFreqScale(kind: FreqScaleKind): void {
   try {
     localStorage.setItem(FFT_FREQ_SCALE_KEY, kind)
   } catch {
     /* private mode */
   }
+  for (const listener of scaleListeners) listener(kind)
+}
+
+export function subscribeFreqScale(onChange: (kind: FreqScaleKind) => void): () => void {
+  scaleListeners.add(onChange)
+  return () => scaleListeners.delete(onChange)
 }

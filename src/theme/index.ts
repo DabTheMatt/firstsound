@@ -5,6 +5,7 @@ export {
   readThemeColors,
   invalidateThemeColors,
   eqTone,
+  eqBandTone,
   subscribeThemeChange,
   colorWithAlpha,
   getThemePreference,

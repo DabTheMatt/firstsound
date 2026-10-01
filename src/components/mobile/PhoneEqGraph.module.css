@@ -1,9 +1,26 @@
 .stage,
 .empty {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  width: 100%;
   display: flex;
+}
+
+.stage > :first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.add {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .empty {
@@ -11,7 +28,8 @@
   justify-content: center;
 }
 
-.empty button {
+.empty button,
+.add {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--accent-primary);

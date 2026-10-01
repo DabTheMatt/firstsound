@@ -35,8 +35,9 @@ export function meterColumnWidth(mode: LayoutMode): number {
   return mode === 'dock-right' ? 78 : 0
 }
 
-/** Layout pixels for a fullscreen shell. Prefer the largest reliable viewport
- *  metric so iOS standalone PWA does not leave a gap under the transport. */
+/** Layout pixels for the shell. The visual viewport is the area not covered by
+ * mobile browser chrome. When it is missing, keep the larger of inner and
+ * client so a standalone PWA does not leave a gap under the transport. */
 export function appViewportHeightPx(
   innerHeight: number,
   visualHeight?: number | null,
@@ -45,5 +46,6 @@ export function appViewportHeightPx(
   const inner = Math.max(0, innerHeight)
   const visual = visualHeight && visualHeight > 0 ? visualHeight : 0
   const client = clientHeight && clientHeight > 0 ? clientHeight : 0
-  return Math.round(Math.max(inner, visual, client))
+  if (visual > 0) return Math.round(visual)
+  return Math.round(Math.max(inner, client))
 }

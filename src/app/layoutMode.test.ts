@@ -51,13 +51,17 @@ describe('inspectorWidth', () => {
 })
 
 describe('appViewportHeightPx', () => {
-  it('uses the largest of inner, visual, and client heights', () => {
+  it('uses the visual viewport when browser chrome shortens the page', () => {
     expect(appViewportHeightPx(844)).toBe(844)
-    expect(appViewportHeightPx(844, 700)).toBe(844)
-    expect(appViewportHeightPx(720, 800, 844)).toBe(844)
+    expect(appViewportHeightPx(844, 700)).toBe(700)
+    expect(appViewportHeightPx(844, 700, 844)).toBe(700)
   })
 
   it('grows to the visual viewport so standalone PWA does not leave a bottom gap', () => {
     expect(appViewportHeightPx(720, 844)).toBe(844)
+  })
+
+  it('falls back to the larger layout height when the visual viewport is missing', () => {
+    expect(appViewportHeightPx(720, 0, 844)).toBe(844)
   })
 })

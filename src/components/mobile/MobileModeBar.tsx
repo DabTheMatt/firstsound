@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { VizMode } from '../../app/editorState'
+import { phoneDisplayViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from '../waveform/BackgroundControl'
 import styles from './MobileModeBar.module.css'
@@ -9,8 +10,6 @@ type Props = {
   onViz: (viz: VizMode) => void
   workspaceFocus: boolean
   onToggleWorkspace: () => void
-  analyzerOpen: boolean
-  onToggleAnalyzer: () => void
   normalizeView: boolean
   onView: (action: 'fit-sample' | 'fit-selection' | 'normalize-view' | 'reset-zoom' | 'zoom-in' | 'zoom-out') => void
   canCopy: boolean
@@ -31,7 +30,6 @@ type Props = {
 
 const MODES: { id: VizMode; label: string }[] = [
   { id: 'waveform', label: 'Wave' },
-  { id: 'spectrum', label: 'FFT' },
   { id: 'eq-split', label: 'EQ' },
   { id: 'automation', label: 'Auto' },
 ]
@@ -41,8 +39,6 @@ export function MobileModeBar({
   onViz,
   workspaceFocus,
   onToggleWorkspace,
-  analyzerOpen,
-  onToggleAnalyzer,
   normalizeView,
   onView,
   canCopy,
@@ -64,6 +60,7 @@ export function MobileModeBar({
   const [editMore, setEditMore] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
   const hasSelection = canClear
+  const active = phoneDisplayViz(viz)
 
   useEffect(() => {
     if (!viewOpen && !editMore) return
@@ -85,8 +82,8 @@ export function MobileModeBar({
             key={mode.id}
             type="button"
             role="tab"
-            aria-selected={viz === mode.id}
-            className={viz === mode.id ? styles.modeOn : styles.mode}
+            aria-selected={active === mode.id}
+            className={active === mode.id ? styles.modeOn : styles.mode}
             onClick={() => onViz(mode.id)}
           >
             {mode.id === 'waveform' ? t.waveform.wave : mode.id === 'automation' ? t.waveform.automationCaption : mode.label}
@@ -177,9 +174,6 @@ export function MobileModeBar({
           </button>
           <button type="button" role="menuitem" onClick={() => onView('reset-zoom')}>
             {t.waveform.resetZoom}
-          </button>
-          <button type="button" role="menuitem" aria-pressed={analyzerOpen} onClick={onToggleAnalyzer}>
-            {t.mobile.analyzer}
           </button>
           <BackgroundControl />
         </div>
