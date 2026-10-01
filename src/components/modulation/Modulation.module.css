@@ -40,7 +40,18 @@
 }
 
 .buttonCompact .mark {
-  font-size: 11px;
+  font-size: 13px;
+}
+
+:global([data-param-id]:hover) .buttonCompact,
+:global([data-param-id]:focus-within) .buttonCompact,
+.buttonCompact:hover,
+.buttonCompact:focus-visible,
+:global([data-param-id]:hover) .buttonCompact .mark,
+:global([data-param-id]:focus-within) .buttonCompact .mark,
+.buttonCompact:hover .mark,
+.buttonCompact:focus-visible .mark {
+  color: var(--accent-primary-hover);
 }
 
 .buttonCompact:focus-visible {

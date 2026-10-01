@@ -101,7 +101,7 @@ export function ModulationAffordance({ id, compact = false }: Props) {
         aria-expanded={editorOpen}
         aria-haspopup="dialog"
         aria-label={tip}
-        title={tip}
+        title={compact ? undefined : tip}
         onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => event.stopPropagation()}
         onClick={(event) => {
           event.preventDefault()

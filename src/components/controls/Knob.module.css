@@ -29,8 +29,26 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  height: 12px;
+  height: 28px;
   pointer-events: none;
+}
+
+/* Hit target is larger than the glyph and grows upward into the dial padding, so the value row does not move. */
+.modSlot :global(button) {
+  width: 36px;
+  height: 26px;
+  min-width: 36px;
+  min-height: 26px;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 1px;
+}
+
+.knob:hover .modSlot :global(button),
+.knob:focus-within .modSlot :global(button),
+.modSlot :global(button):hover,
+.modSlot :global(button):focus-visible {
+  color: var(--accent-primary-hover);
 }
 
 .label {
