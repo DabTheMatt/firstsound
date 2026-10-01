@@ -16,15 +16,14 @@
 
 .modSlot {
   position: absolute;
-  top: -6px;
+  top: 0;
   right: 0;
   z-index: 3;
-}
-
-.row:hover .readouts,
-.row:focus-within .readouts,
-.row:has([data-active='true']) .readouts {
-  padding-right: 32px;
+  display: flex;
+  align-items: center;
+  height: 12px;
+  pointer-events: none;
+  transform: translateY(-100%);
 }
 
 .modRange {

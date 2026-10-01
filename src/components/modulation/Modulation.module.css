@@ -31,13 +31,20 @@
 }
 
 .buttonCompact {
-  min-width: 22px;
-  min-height: 18px;
+  min-width: 14px;
+  min-height: 12px;
+  width: 14px;
+  height: 12px;
   padding: 0;
+  pointer-events: auto;
 }
 
 .buttonCompact .mark {
-  font-size: 13px;
+  font-size: 11px;
+}
+
+.buttonCompact:focus-visible {
+  outline-offset: 1px;
 }
 
 @media (hover: hover) and (pointer: fine) {

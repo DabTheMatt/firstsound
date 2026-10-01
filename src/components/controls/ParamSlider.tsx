@@ -217,7 +217,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
           ) : null}
           <span className={styles.value}>{formatParamValue(modulationRange ? value : shownValue, def)}</span>
           <span className={styles.modSlot}>
-            <ModulationAffordance id={id} />
+            <ModulationAffordance id={id} compact />
           </span>
         {adjusting ? (
           <span className={styles.dragReadout} role="status">

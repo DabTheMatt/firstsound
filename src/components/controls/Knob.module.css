@@ -14,22 +14,23 @@
   position: relative;
 }
 
-.modSlot {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 0;
-  overflow: visible;
+.dialWrap {
   position: relative;
-  z-index: 5;
+  width: min(84px, 100%);
+  max-width: 100%;
 }
 
-.knob:hover .modSlot,
-.knob:focus-within .modSlot,
-.modSlot:has([data-active='true']),
-.modSlot:has([data-open='true']) {
-  height: 18px;
+.modSlot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 12px;
+  pointer-events: none;
 }
 
 .label {
@@ -71,7 +72,7 @@
 
 .dial {
   position: relative;
-  width: min(84px, 100%);
+  width: 100%;
   height: auto;
   aspect-ratio: 1;
   min-width: 0;
@@ -268,10 +269,8 @@ html[data-a11y-tips='off'] .tip {
   gap: 1px;
 }
 
-.compact .dial {
+.compact .dialWrap {
   width: min(64px, 100%);
-  height: auto;
-  aspect-ratio: 1;
 }
 
 .compact .label {
@@ -298,10 +297,8 @@ html[data-a11y-tips='off'] .tip {
   gap: 0;
 }
 
-.mini .dial {
+.mini .dialWrap {
   width: min(44px, 100%);
-  height: auto;
-  aspect-ratio: 1;
 }
 
 .mini .label {
@@ -335,10 +332,8 @@ html[data-a11y-tips='off'] .tip {
     max-width: 100%;
   }
 
-  .dial {
+  .dialWrap {
     width: min(72px, 100%);
-    height: auto;
-    aspect-ratio: 1;
   }
 
   .valueInput {

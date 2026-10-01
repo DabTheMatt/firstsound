@@ -303,6 +303,7 @@ export function ValueKnob({
           {description}
         </span>
       ) : null}
+      <div className={styles.dialWrap}>
       <div
         ref={dialRef}
         role="slider"
@@ -401,6 +402,7 @@ export function ValueKnob({
           <ModulationAffordance id={paramId} compact />
         </span>
       ) : null}
+      </div>
       {editing ? (
         <input
           className={styles.valueInput}
