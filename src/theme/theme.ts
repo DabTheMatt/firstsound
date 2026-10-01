@@ -386,6 +386,27 @@ export function eqTone(index: number, colors: ThemeColors): { curve: string; nod
   return tones[i]!
 }
 
+const BAND_TONE_KEYS = [
+  'eqCurve',
+  'eqCurve2',
+  'eqCurve3',
+  'accent',
+  'accentSecondary',
+  'waveform',
+  'playhead',
+  'spectrum',
+  'ridgeWarm',
+  'waveformSecondary',
+] as const satisfies readonly (keyof ThemeColors)[]
+
+/** Stable per-band accent. Index, not frequency, so a drag does not recolor the node. */
+export function eqBandTone(index: number, colors: ThemeColors): { curve: string; node: string } {
+  const count = BAND_TONE_KEYS.length
+  const i = ((Math.round(index) % count) + count) % count
+  const curve = colors[BAND_TONE_KEYS[i]!]
+  return { curve, node: curve }
+}
+
 export function subscribeThemeChange(onChange: () => void): () => void {
   const handler = () => onChange()
   document.addEventListener(THEME_CHANGE, handler)

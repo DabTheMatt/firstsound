@@ -43,6 +43,7 @@ import {
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { MobileContext } from '../components/mobile/MobileContext'
 import { MobileModeBar } from '../components/mobile/MobileModeBar'
+import { phoneDisplayViz } from './phoneWorkspace'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
@@ -926,6 +927,7 @@ export default function App() {
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
         data-workspace={isPhoneLayout && workspaceFocus ? 'focus' : 'edit'}
+        data-phone-viz={isPhoneLayout ? phoneDisplayViz(viz) : undefined}
         style={
           mode === 'dock-right' && inspectorOpen
             ? ({ '--inspector-col': `${inspectorWidth(mode, viewportWidth)}px` } as CSSProperties)
@@ -1052,8 +1054,6 @@ export default function App() {
                 }}
                 workspaceFocus={workspaceFocus}
                 onToggleWorkspace={() => setWorkspaceFocus((open) => !open)}
-                analyzerOpen={analyzerOpen}
-                onToggleAnalyzer={() => setAnalyzerOpen((open) => !open)}
                 normalizeView={normalizeView}
                 onView={(action) => {
                   if (action === 'zoom-in') waveRef.current?.zoomBy(1 / 1.4)

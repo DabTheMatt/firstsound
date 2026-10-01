@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { PhoneViz } from '../../app/phoneWorkspace'
+import { PHONE_VIZ_ORDER, type PhoneViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from '../waveform/BackgroundControl'
 import styles from './MobileChrome.module.css'
@@ -11,26 +11,22 @@ type VizProps = {
   onToggleExpanded: () => void
 }
 
-const VIZ_ORDER: PhoneViz[] = ['wave', 'fft', 'eq', 'auto']
-
 export function MobileVizSwitch({ viz, expanded, onViz, onToggleExpanded }: VizProps) {
   const { t } = useI18n()
   const labels: Record<PhoneViz, string> = {
     wave: 'Wave',
-    fft: 'FFT',
     eq: 'EQ',
     auto: t.waveform.automationCaption,
   }
   const titles: Record<PhoneViz, string> = {
     wave: t.waveform.waveTitle,
-    fft: t.waveform.spectrum,
     eq: t.waveform.eqTitle,
     auto: t.waveform.automationTitle,
   }
   return (
     <div className={styles.vizSwitch} role="toolbar" aria-label={t.waveform.viewGroup}>
       <div className={styles.modes} role="radiogroup" aria-label={t.waveform.viewGroup}>
-        {VIZ_ORDER.map((id) => (
+        {PHONE_VIZ_ORDER.map((id) => (
           <button
             key={id}
             type="button"

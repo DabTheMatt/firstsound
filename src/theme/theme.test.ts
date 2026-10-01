@@ -9,7 +9,7 @@ import {
   userThemeId,
   userThemePreference,
 } from './tokens'
-import { customColorsFromComputed, eqTone } from './theme'
+import { customColorsFromComputed, eqBandTone, eqTone } from './theme'
 import { colorWithAlpha, mixCssColor, parseCssColor, toCssHex } from './cssColor'
 
 describe('theme tokens', () => {
@@ -69,6 +69,25 @@ describe('eq overlay tones', () => {
     expect(eqTone(1, colors as never).curve).toBe('#4eb8c6')
     expect(eqTone(2, colors as never).curve).toBe('#c084fc')
     expect(eqTone(3, colors as never).curve).toBe('#e6ad48')
+  })
+
+  it('keeps a band color stable when only frequency would have changed', () => {
+    const colors = {
+      eqCurve: '#e6ad48',
+      eqCurve2: '#4eb8c6',
+      eqCurve3: '#c084fc',
+      accent: '#67b36d',
+      accentSecondary: '#d98a4a',
+      waveform: '#8eb4ff',
+      playhead: '#f2f2f2',
+      spectrum: '#9aa0a6',
+      ridgeWarm: '#e07a5f',
+      waveformSecondary: '#c4b5fd',
+    }
+    expect(eqBandTone(0, colors as never).curve).toBe('#e6ad48')
+    expect(eqBandTone(1, colors as never).curve).toBe('#4eb8c6')
+    expect(eqBandTone(0, colors as never)).toEqual(eqBandTone(10, colors as never))
+    expect(eqBandTone(0, colors as never).curve).not.toBe(eqBandTone(1, colors as never).curve)
   })
 })
 

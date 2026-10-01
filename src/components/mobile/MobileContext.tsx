@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { isFixedType, type ModuleType } from '../../audio/chain/chain'
 import {
   EQ_FILTER_TYPES,
@@ -20,6 +20,8 @@ import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { ParamSlider } from '../controls/ParamSlider'
 import { Toggle } from '../controls/Toggle'
+import { eqBandTone, readThemeColors } from '../../theme'
+import { AnalyzerSettings } from './AnalyzerSettings'
 import { TouchRange } from './TouchRange'
 import styles from './MobileContext.module.css'
 
@@ -45,13 +47,15 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
   const [eqField, setEqField] = useState<'freq' | 'gain' | 'q' | null>(null)
   const [band, setBand] = useState<EqBandSelection | null>(null)
   const [hold, setHold] = useState(false)
+  const [analyzerOpen, setAnalyzerOpen] = useState(false)
   const [seenToken, setSeenToken] = useState(collapseToken)
   const focusKey = focus.kind === 'module' ? `${focus.kind}:${focus.instanceId}` : focus.kind
+  const focusIsEq = focus.kind === 'module' && focus.type === 'eq'
   const [seenFocus, setSeenFocus] = useState(focusKey)
 
   if (collapseToken !== seenToken) {
     setSeenToken(collapseToken)
-    if (!hold) {
+    if (!hold && !focusIsEq) {
       setLevel('summary')
       setFocused(null)
       setEqField(null)
@@ -64,6 +68,8 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
     setEqField(null)
     setMenuOpen(false)
     setTypeOpen(false)
+    setAnalyzerOpen(false)
+    if (focusIsEq) setLevel('primary')
   }
 
   useEffect(() => subscribeEqBandSelection(setBand), [])
@@ -146,8 +152,22 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
           </button>
         </div>
       </header>
-      {menuOpen && mod ? (
+      {menuOpen && (mod || focusIsEq) ? (
         <div className={styles.menu} role="menu">
+          {focusIsEq ? (
+            <button
+              type="button"
+              role="menuitem"
+              aria-pressed={analyzerOpen}
+              onClick={() => {
+                setAnalyzerOpen((open) => !open)
+                setMenuOpen(false)
+                setLevel('primary')
+              }}
+            >
+              {t.mobile.analyzer}
+            </button>
+          ) : null}
           {type && type !== 'output' && type !== 'gain' ? (
             <button type="button" role="menuitem" onClick={() => engine.resetEffect(type, instanceId)}>
               {t.waveform.reset}
@@ -167,6 +187,8 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
           ) : null}
         </div>
       ) : null}
+
+      {analyzerOpen && focusIsEq ? <AnalyzerSettings /> : null}
 
       {level !== 'summary' && type === 'eq' ? (
         <EqStrip
@@ -369,6 +391,8 @@ function EqStrip({
 
   const typeInfo = EQ_FILTER_TYPES.find((item) => item.value === band.type) ?? EQ_FILTER_TYPES[0]!
   const showGain = bandUsesGain(band.type)
+  const activeField: 'freq' | 'gain' | 'q' = field === 'gain' && showGain ? 'gain' : field === 'q' ? 'q' : 'freq'
+  const bandColor = eqBandTone(selected, readThemeColors()).curve
   const set = (patch: Parameters<typeof engine.setEqBand>[1]) => engine.setEqBand(selected, patch, instanceId)
   const canAdd = planEqBandInsert(bands) != null && bands.length < EQ_MAX_BANDS
 
@@ -377,18 +401,18 @@ function EqStrip({
   const qN = qToN(band.q)
 
   return (
-    <div className={styles.body}>
-      <div className={styles.eqRow}>
+    <div className={styles.body} data-eq-field={activeField}>
+      <div className={styles.eqRow} style={{ '--band': bandColor } as CSSProperties}>
         <button type="button" className={styles.eqCell} onClick={() => onTypeOpen(!typeOpen)}>
           <span>{t.mobile.type}</span>
           <strong>{typeInfo.short}</strong>
         </button>
-        <button type="button" className={styles.eqCell} onClick={() => onField(field === 'freq' ? null : 'freq')}>
+        <button type="button" className={`${styles.eqCell} ${activeField === 'freq' ? styles.eqCellOn : ''}`} onClick={() => onField('freq')}>
           <span>{t.mobile.freq}</span>
           <strong>{formatEqHz(band.frequency)}</strong>
         </button>
         {showGain ? (
-          <button type="button" className={styles.eqCell} onClick={() => onField(field === 'gain' ? null : 'gain')}>
+          <button type="button" className={`${styles.eqCell} ${activeField === 'gain' ? styles.eqCellOn : ''}`} onClick={() => onField('gain')}>
             <span>{t.mobile.gain}</span>
             <strong>
               {band.gain >= 0 ? '+' : ''}
@@ -396,7 +420,7 @@ function EqStrip({
             </strong>
           </button>
         ) : null}
-        <button type="button" className={styles.eqCell} onClick={() => onField(field === 'q' ? null : 'q')}>
+        <button type="button" className={`${styles.eqCell} ${activeField === 'q' ? styles.eqCellOn : ''}`} onClick={() => onField('q')}>
           <span>{t.mobile.q}</span>
           <strong>{band.q.toFixed(2)}</strong>
         </button>
@@ -436,7 +460,7 @@ function EqStrip({
           ))}
         </div>
       ) : null}
-      {field === 'freq' ? (
+      {activeField === 'freq' ? (
         <TouchRange
           label={t.mobile.freq}
           valueText={formatEqHz(band.frequency)}
@@ -447,7 +471,7 @@ function EqStrip({
           onChange={(n) => set({ frequency: nToFreq(n) })}
         />
       ) : null}
-      {field === 'gain' && showGain ? (
+      {activeField === 'gain' && showGain ? (
         <TouchRange
           label={t.mobile.gain}
           valueText={`${band.gain.toFixed(1)} dB`}
@@ -458,7 +482,7 @@ function EqStrip({
           onChange={(n) => set({ gain: n * 36 - 18 })}
         />
       ) : null}
-      {field === 'q' ? (
+      {activeField === 'q' ? (
         <TouchRange
           label={t.mobile.q}
           valueText={band.q.toFixed(2)}

@@ -35,6 +35,7 @@ import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
 import type { WaveTool, VizMode } from '../../app/editorState'
+import { phoneDisplayViz } from '../../app/phoneWorkspace'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
@@ -1184,9 +1185,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       )
     : []
   const showMultiWave = viz === 'waveform-multi'
-  const phoneEq = phone && viz === 'eq-split'
-  const showSpec = !phoneEq && (viz === 'spectrum' || viz === 'split' || viz === 'eq-split')
-  const showEqConsole = viz === 'eq-split' && !phone
+  const shownViz = phone ? phoneDisplayViz(viz) : viz
+  const phoneEq = phone && shownViz === 'eq-split'
+  const showSpec = !phoneEq && (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
+  const showEqConsole = shownViz === 'eq-split' && !phone
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
@@ -1577,7 +1579,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           </div>
         ) : null}
         {phoneEq ? (
-          <PhoneEqGraph instanceId={phoneEqId} onGraphEdit={onGraphEdit} onSelectModule={onSelectModule} />
+          <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} />
         ) : null}
         {showEqConsole ? (
           <>

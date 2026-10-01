@@ -90,7 +90,7 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  max-height: 32vh;
+  max-height: none;
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0 2px 8px;
@@ -148,6 +148,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 4px;
   align-items: stretch;
+  box-shadow: inset 3px 0 0 var(--band, var(--accent-primary));
 }
 
 .eqCell {
@@ -163,6 +164,20 @@
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
+}
+
+.eqCellOn {
+  outline: 1px solid var(--band, var(--accent-primary));
+  outline-offset: -1px;
+}
+
+.analyzer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 168px;
+  overflow: auto;
+  padding: 0 2px 8px;
 }
 
 .eqCell span {

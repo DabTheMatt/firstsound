@@ -34,11 +34,14 @@
       (function () {
         try {
           var h = window.innerHeight
-          var v = window.visualViewport && window.visualViewport.height
+          var vv = window.visualViewport
+          var v = vv && vv.height
           var c = document.documentElement.clientHeight
-          if (v && v > h) h = v
-          if (c && c > h) h = c
+          var offset = vv && vv.offsetTop > 0 ? Math.round(vv.offsetTop) : 0
+          if (v && v > 0) h = v
+          else if (c && c > h) h = c
           document.documentElement.style.setProperty('--app-height', Math.round(h) + 'px')
+          document.documentElement.style.setProperty('--vv-offset-top', offset + 'px')
         } catch (e) {}
         try {
           var storedLocale = localStorage.getItem('field.uiLocale')

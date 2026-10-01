@@ -230,8 +230,12 @@
 }
 
 @media (max-width: 720px) {
+  /* A definite height is required. aspect-ratio: auto plus only min-height
+     lets the canvas bitmap define the box, and the scope doubles every frame. */
   .scopeWrap {
-    min-height: 280px;
+    height: 168px;
+    min-height: 168px;
+    max-height: 168px;
     aspect-ratio: auto;
   }
 }
