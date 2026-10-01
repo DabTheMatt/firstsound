@@ -25,6 +25,11 @@
   color: var(--text-disabled);
 }
 
+.prominent {
+  width: 56px;
+  height: 56px;
+}
+
 .icon {
   display: block;
 }

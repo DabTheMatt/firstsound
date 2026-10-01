@@ -136,3 +136,47 @@
   color: inherit;
   padding: 0 6px;
 }
+
+.phone {
+  border-top: 0;
+  background: transparent;
+  padding: 4px 4px 8px;
+}
+
+.phone .row {
+  grid-template-columns: minmax(72px, 1fr) minmax(0, 1.6fr) 44px 44px;
+  min-height: 44px;
+}
+
+.phone .fft,
+.phone .fftOn {
+  display: none;
+}
+
+.phone .ms,
+.phone .msOn,
+.phone .fft,
+.phone .fftOn,
+.phone .toggle,
+.phone .toggleOn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.phone .gain input {
+  min-height: 44px;
+}
+
+.advanced {
+  margin-top: 4px;
+}
+
+.advanced summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--text-muted);
+}

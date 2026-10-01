@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
+import { createCoarseGestureSession, fineDragSpan, isCoarsePointer } from './gestureIntent'
 import { wheelToNormalized } from './scrub'
 import {
   ACTIVE_LED_INSET_PX,
@@ -70,6 +71,7 @@ export function ValueKnob({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [tipOpen, setTipOpen] = useState(false)
+  const [adjusting, setAdjusting] = useState(false)
   const labelId = useId()
   const descId = useId()
   const spoken = valueTextAccessible ?? valueText
@@ -91,14 +93,95 @@ export function ValueKnob({
     { blurRootRef: rootRef },
   )
 
+  const markGesture = (role: '' | 'adjust') => {
+    const root = rootRef.current
+    if (!root) return
+    if (role) root.dataset.gesture = role
+    else delete root.dataset.gesture
+  }
+
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    event.preventDefault()
     const target = event.currentTarget
+    if (isCoarsePointer(event.pointerType)) {
+      const armed = document.activeElement === target
+      let current = normalized
+      const session = createCoarseGestureSession(
+        { clientX: event.clientX, clientY: event.clientY, timeStamp: event.timeStamp },
+        {
+          armed,
+          axis: 'either',
+          onScroll: () => {
+            if (armed) target.blur()
+          },
+          onAdjustStart: () => {
+            markGesture('adjust')
+            setAdjusting(true)
+            focusParameterControl(target)
+            try {
+              target.setPointerCapture(event.pointerId)
+            } catch {
+              /* pointer already gone */
+            }
+          },
+          onAdjust: (info) => {
+            const span = fineDragSpan(DRAG_PX, info.fine)
+            const dominant = Math.abs(info.dy) >= Math.abs(info.dx) ? info.dy : info.dx
+            current = Math.min(1, Math.max(0, current + dominant / span))
+            onChange(current)
+          },
+          onTap: () => {
+            const prev = target.dataset.lastTap
+            if (armed && prev && event.timeStamp - Number(prev) < 400) {
+              onReset?.()
+              target.dataset.lastTap = ''
+              return
+            }
+            target.dataset.lastTap = String(event.timeStamp)
+            focusParameterControl(target)
+          },
+          onEnd: ({ adjusted }) => {
+            markGesture('')
+            setAdjusting(false)
+            if (adjusted) onGestureEnd?.()
+          },
+        },
+      )
+      const up = (upEvent: PointerEvent) => {
+        try {
+          target.releasePointerCapture(upEvent.pointerId)
+        } catch {
+          /* capture already released */
+        }
+        target.removeEventListener('pointermove', move)
+        target.removeEventListener('pointerup', up)
+        target.removeEventListener('pointercancel', up)
+        session.end(upEvent.type === 'pointercancel' ? 'cancel' : 'up')
+      }
+      const move = (moveEvent: PointerEvent) => {
+        if (moveEvent.buttons === 0 && session.role === 'adjust') {
+          up(moveEvent)
+          return
+        }
+        session.move({
+          clientX: moveEvent.clientX,
+          clientY: moveEvent.clientY,
+          timeStamp: moveEvent.timeStamp,
+          shiftKey: moveEvent.shiftKey,
+        })
+      }
+      target.addEventListener('pointermove', move)
+      target.addEventListener('pointerup', up)
+      target.addEventListener('pointercancel', up)
+      return
+    }
+
+    event.preventDefault()
     focusParameterControl(target)
     target.setPointerCapture(event.pointerId)
     let lastY = event.clientY
     let current = normalized
     const started = event.timeStamp
+    setAdjusting(true)
 
     const up = (upEvent: PointerEvent) => {
       try {
@@ -110,6 +193,7 @@ export function ValueKnob({
       target.removeEventListener('pointerup', up)
       target.removeEventListener('pointercancel', up)
       target.removeEventListener('lostpointercapture', up)
+      setAdjusting(false)
       if (upEvent.type === 'pointerup') onGestureEnd?.()
       if (
         upEvent.type === 'pointerup' &&
@@ -132,7 +216,8 @@ export function ValueKnob({
       }
       const dy = lastY - moveEvent.clientY
       lastY = moveEvent.clientY
-      current = Math.min(1, Math.max(0, current + dy / DRAG_PX))
+      const span = fineDragSpan(DRAG_PX, moveEvent.shiftKey)
+      current = Math.min(1, Math.max(0, current + dy / span))
       onChange(current)
     }
     target.addEventListener('pointermove', move)
@@ -189,13 +274,19 @@ export function ValueKnob({
           : ''
 
   return (
-    <div
-      ref={rootRef}
-      className={`${styles.knob} ${mini ? styles.mini : compact ? styles.compact : ''}`}
-      title={description}
-      onMouseEnter={() => setTipOpen(true)}
-      onMouseLeave={() => setTipOpen(false)}
-    >
+      <div
+        ref={rootRef}
+        className={`${styles.knob} ${mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
+        title={description}
+        onMouseEnter={() => setTipOpen(true)}
+        onMouseLeave={() => setTipOpen(false)}
+      >
+      {adjusting ? (
+        <span className={styles.dragReadout} role="status">
+          <span>{label}</span>
+          <strong>{shownText}</strong>
+        </span>
+      ) : null}
       <p className={captionClass ? `${styles.label} ${captionClass}` : styles.label} id={labelId} title={label}>
         {caption.text}
       </p>

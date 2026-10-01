@@ -95,6 +95,8 @@ import styles from './Spectrum.module.css'
 
 type Props = {
   active: boolean
+  /** Phone: essential layer/scale only. The rest lives in a settings disclosure. */
+  compact?: boolean
 }
 
 function emptyBands(n: number): Float32Array {
@@ -170,7 +172,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active }: Props) {
+export function Spectrum({ active, compact = false }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -182,6 +184,7 @@ export function Spectrum({ active }: Props) {
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
   const [selectedBand, setSelectedBand] = useState<EqBandSelection | null>(null)
   const prefsRef = useRef(prefs)
@@ -749,11 +752,24 @@ export function Spectrum({ active }: Props) {
   )
   const showResponseKey = shouldShowResponseLegend(eqCurveOn, filterCurveOn)
   return (
-    <div className={styles.wrap} role="region" aria-label="Spectrum analyzer">
-      <div
-        className={styles.chrome}
-      >
+    <div
+      className={`${styles.wrap} ${compact ? styles.compact : ''} ${settingsOpen ? styles.settingsOpen : ''}`}
+      role="region"
+      aria-label="Spectrum analyzer"
+    >
+      <div className={styles.chrome}>
         <div className={styles.chromeLeft}>
+          {compact ? (
+            <button
+              type="button"
+              className={styles.settingsBtn}
+              aria-expanded={settingsOpen}
+              aria-label="Analyzer settings"
+              onClick={() => setSettingsOpen((open) => !open)}
+            >
+              FFT
+            </button>
+          ) : null}
           {listenBand ? (
             <span className={styles.bands}>
               {t.waveform.spectral.analyseBand}: {t.waveform.spectral[listenBand === 'sub-bass' ? 'subBass' : listenBand === 'low-mid' ? 'lowMid' : listenBand === 'high-mid' ? 'highMid' : listenBand === 'high' ? 'high' : 'analyseSum']}
@@ -761,6 +777,7 @@ export function Spectrum({ active }: Props) {
           ) : null}
           <label
             className={styles.bands}
+            data-essential=""
             onMouseDown={(event) => {
               const sel = event.currentTarget.querySelector('select')
               if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {
@@ -813,6 +830,7 @@ export function Spectrum({ active }: Props) {
           ) : null}
           <label
             className={styles.bands}
+            data-essential=""
             onMouseDown={(event) => {
               const sel = event.currentTarget.querySelector('select')
               if (sel && 'showPicker' in sel && typeof sel.showPicker === 'function' && event.target !== sel) {

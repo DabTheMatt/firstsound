@@ -224,12 +224,176 @@
 }
 
 .phoneWork {
-  flex: 1 1 0;
-  min-height: 168px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 34vh;
+  min-width: 0;
+  gap: 4px;
+}
+
+.phoneChain {
+  flex: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 48px;
+}
+
+.phoneContext {
+  flex: none;
   min-width: 0;
 }
 
-.phoneWork .waveCol,
+.phoneSheet {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border-radius: 12px 12px 0 0;
+  transition: max-height 180ms ease;
+}
+
+.phoneSheet[data-sheet='collapsed'] {
+  max-height: 56px;
+}
+
+.phoneSheet[data-sheet='medium'] {
+  max-height: 34vh;
+}
+
+.phoneSheet[data-sheet='expanded'] {
+  max-height: 58vh;
+}
+
+.sheetPeek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.peekTitle {
+  flex: none;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.peekValues {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.peekValues span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.peekValues span span {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.peekValues strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.peekChevron {
+  flex: none;
+  width: 44px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.phoneSheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.phoneSheetBody > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vizExpanded .phoneWork {
+  min-height: 0;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .phoneShell .stageMain {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 38vw);
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    column-gap: 8px;
+    align-items: stretch;
+  }
+
+  .phoneShell .phoneSwitch {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .phoneShell .phoneWork {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+  }
+
+  .phoneShell .phoneChain {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .phoneShell .phoneContext {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .phoneShell .phoneSheet {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    max-height: none;
+    height: 100%;
+    border-radius: 12px;
+  }
+
+  .phoneShell .transportPinned {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phoneSheet {
+    transition: none;
+  }
+}
+
+.phoneWork .waveCol {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
 .phoneWork .waveCol > * {
   height: 100%;
   min-height: 0;
@@ -386,6 +550,22 @@
   padding: 8px 6px 6px;
   margin-top: 4px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.appearance > button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.phoneSwitch {
+  flex: none;
+  min-width: 0;
 }
 
 .appearanceTitle {

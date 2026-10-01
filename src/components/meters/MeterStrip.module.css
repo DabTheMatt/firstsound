@@ -246,3 +246,56 @@
   padding: 4px 2px;
   margin: 2px 0 0;
 }
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.inlineClip {
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
+}
+
+.inlineLane {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.inlineTrack {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-control);
+  overflow: hidden;
+}
+
+.inlineFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--accent-primary);
+}
+
+.inlineHold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-primary);
+  opacity: 0;
+}

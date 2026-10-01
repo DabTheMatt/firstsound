@@ -120,6 +120,8 @@ type Props = {
   onSelectModule?: (instanceId: string) => void
   autoFocus?: AutomationEditFocus
   onAutoFocus?: (focus: AutomationEditFocus) => void
+  /** Phone composition: one visualization, no inline spectral mixer. */
+  phone?: boolean
 }
 
 export type WaveformHandle = {
@@ -221,6 +223,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onSelectModule,
     autoFocus: autoFocusProp,
     onAutoFocus,
+    phone = false,
   },
   ref,
 ) {
@@ -680,7 +683,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     return () => overlay.removeEventListener('wheel', onWheel)
   }, [])
 
-  const pointers = useRef(new Map<number, number>())
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
   const drag = useRef<{
     mode: DragMode
     span: number
@@ -727,15 +730,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     }
     event.preventDefault()
     overlay.setPointerCapture(event.pointerId)
-    pointers.current.set(event.pointerId, event.clientX)
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
 
     if (pointers.current.size === 2) {
       drag.current = null
-      const xs = [...pointers.current.values()]
+      const pts = [...pointers.current.values()]
       const rect = overlay.getBoundingClientRect()
-      const midFrac = ((xs[0] + xs[1]) / 2 - rect.left) / rect.width
+      const midFrac = ((pts[0].x + pts[1].x) / 2 - rect.left) / rect.width
+      const dx = pts[0].x - pts[1].x
+      const dy = pts[0].y - pts[1].y
       pinch.current = {
-        dist: Math.max(1, Math.abs(xs[0] - xs[1])),
+        dist: Math.max(1, Math.hypot(dx, dy)),
         view: viewRef.current,
         focus: fracToTime(midFrac, viewRef.current),
       }
@@ -932,13 +937,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       endPointer(event)
       return
     }
-    pointers.current.set(event.pointerId, event.clientX)
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
     if (!overlay) return
     const rect = overlay.getBoundingClientRect()
 
     if (pinch.current && pointers.current.size >= 2) {
-      const xs = [...pointers.current.values()]
-      const dist = Math.max(1, Math.abs(xs[0] - xs[1]))
+      const pts = [...pointers.current.values()]
+      const dist = Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y))
       const factor = pinch.current.dist / dist
       setView(zoomAround(pinch.current.view, factor, pinch.current.focus, duration))
       return
@@ -1161,13 +1166,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     : []
   const showMultiWave = viz === 'waveform-multi'
   const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
-  const showEqConsole = viz === 'eq-split'
+  const showEqConsole = viz === 'eq-split' && !phone
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
 
     return (
     <div
-      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}
+      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''}`}
       data-waveform-editor=""
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
@@ -1205,7 +1210,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
-            {snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
+            {snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && !phone && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">
                 {snap.spectral.bands.map((band) => (
                   <span key={band.id}>{spectralBandCopy(band.id, t.waveform.spectral)}</span>
@@ -1535,7 +1540,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 : undefined
             }
           >
-            <Spectrum active={showSpec} />
+            <Spectrum active={showSpec} compact={phone} />
           </div>
         ) : null}
         {showEqConsole ? (
@@ -1598,7 +1603,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onScrub={setView}
         />
       ) : null}
-      {!sensory && !simple ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
+      {!sensory && !simple && !phone ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
     </div>
   )
 })

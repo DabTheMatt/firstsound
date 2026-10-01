@@ -111,6 +111,7 @@ export function CompactTransport({
         <TransportButton
           playing={playing}
           disabled={disabled}
+          prominent={minimal}
           onToggle={() => {
             void engine.unlock().then(() => engine.togglePlay())
           }}
@@ -127,17 +128,15 @@ export function CompactTransport({
         >
           |◀
         </button>
-        {!minimal ? (
-          <button
-            type="button"
-            className={styles.icon}
-            disabled={disabled}
-            aria-label={t.transport.stop}
-            onClick={() => engine.stop()}
-          >
-            ■
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={styles.icon}
+          disabled={disabled}
+          aria-label={t.transport.stop}
+          onClick={() => engine.stop()}
+        >
+          ■
+        </button>
         <button
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
@@ -156,14 +155,16 @@ export function CompactTransport({
           </span>
           <span className={styles.details}>
             {!minimal ? (
-              <span className={styles.selRange} title={t.transport.selection}>
-                {formatTimecode(start)} — {formatTimecode(end)}
-              </span>
+              <>
+                <span className={styles.selRange} title={t.transport.selection}>
+                  {formatTimecode(start)} — {formatTimecode(end)}
+                </span>
+                <strong className={styles.length}>{length.toFixed(3)} s</strong>
+                <span className={styles.bpm} title={t.transport.bpmTitle}>
+                  {bpm.toFixed(1)} BPM
+                </span>
+              </>
             ) : null}
-            <strong className={styles.length}>{length.toFixed(3)} s</strong>
-            <span className={styles.bpm} title={t.transport.bpmTitle}>
-              {bpm.toFixed(1)} BPM
-            </span>
           </span>
         </p>
       </div>

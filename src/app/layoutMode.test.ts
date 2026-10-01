@@ -18,6 +18,16 @@ describe('resolveLayoutMode', () => {
   it('treats a narrow desktop window like a tablet', () => {
     expect(resolveLayoutMode({ width: 820, height: 900 })).toBe('dock-bottom')
   })
+
+  it('keeps phone landscape on the sheet composition', () => {
+    expect(resolveLayoutMode({ width: 844, height: 390 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 932, height: 430 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 320, height: 568 })).toBe('sheet')
+  })
+
+  it('keeps landscape tablets on the dock', () => {
+    expect(resolveLayoutMode({ width: 1024, height: 768 })).toBe('dock-right')
+  })
 })
 
 describe('inspectorWidth', () => {

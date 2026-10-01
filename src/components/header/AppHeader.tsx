@@ -62,10 +62,17 @@ export function AppHeader({
         </button>
       </div>
       <div className={styles.tools}>
-        <ThemePicker compact={minimal} />
-        <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
-          <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
-        </button>
+        {minimal ? null : <ThemePicker compact={minimal} />}
+        {!minimal || !snap.sampleLoaded ? (
+          <button
+            type="button"
+            className={`${styles.load} ${minimal && !snap.sampleLoaded ? styles.loadProminent : ''}`}
+            data-load-sample=""
+            onClick={onLoadSample}
+          >
+            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
+          </button>
+        ) : null}
         <button
           type="button"
           className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
@@ -82,6 +89,7 @@ export function AppHeader({
             </span>
           </span>
         </button>
+        {minimal ? null : (
         <button
           type="button"
           className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
@@ -100,11 +108,14 @@ export function AppHeader({
             />
           </svg>
         </button>
+        )}
       </div>
       <div className={styles.trailing}>
+        {minimal ? null : (
         <div className={styles.runtime}>
           <RuntimeStatus />
         </div>
+        )}
         {!minimal ? (
           <p className={styles.meta}>
             <span>{rate}</span>

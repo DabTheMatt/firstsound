@@ -268,6 +268,13 @@ button.export {
   gap: 6px;
 }
 
+.minimal {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'transport meta';
+  min-height: 64px;
+  padding-bottom: 4px;
+}
+
 .minimal .actions {
   display: none;
 }
@@ -275,10 +282,16 @@ button.export {
 .minimal .icon,
 .minimal .loop,
 .minimal .export {
-  min-width: 40px;
-  padding: 0 8px;
-  font-size: 9px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
+}
+
+.minimal .head {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
 }
 
 :global(html[data-low-vision='on']) .bar,

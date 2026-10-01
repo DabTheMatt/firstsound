@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
@@ -6,6 +6,7 @@ import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
+import { createCoarseGestureSession, isCoarsePointer } from './gestureIntent'
 import styles from './ParamSlider.module.css'
 
 type Props = {
@@ -22,6 +23,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   const shownValue = liveValue ?? value
   const rowRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const [adjusting, setAdjusting] = useState(false)
   const labelId = useId()
   const descId = useId()
   const spoken = formatAccessibleValue(shownValue, def, locale)
@@ -48,10 +50,69 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    event.preventDefault()
     const target = event.currentTarget
+    if (isCoarsePointer(event.pointerType)) {
+      const armed = document.activeElement === target
+      const session = createCoarseGestureSession(
+        { clientX: event.clientX, clientY: event.clientY, timeStamp: event.timeStamp },
+        {
+          armed,
+          axis: 'horizontal',
+          onScroll: () => {
+            if (armed) target.blur()
+          },
+          onAdjustStart: (info) => {
+            target.dataset.gesture = 'adjust'
+            setAdjusting(true)
+            focusParameterControl(target)
+            try {
+              target.setPointerCapture(event.pointerId)
+            } catch {
+              /* pointer already gone */
+            }
+            apply(info.clientX, target)
+          },
+          onAdjust: (info) => apply(info.clientX, target),
+          onTap: () => focusParameterControl(target),
+          onEnd: () => {
+            delete target.dataset.gesture
+            setAdjusting(false)
+          },
+        },
+      )
+      const up = (upEvent: PointerEvent) => {
+        try {
+          target.releasePointerCapture(upEvent.pointerId)
+        } catch {
+          /* already released */
+        }
+        target.removeEventListener('pointermove', move)
+        target.removeEventListener('pointerup', up)
+        target.removeEventListener('pointercancel', up)
+        session.end(upEvent.type === 'pointercancel' ? 'cancel' : 'up')
+      }
+      const move = (moveEvent: PointerEvent) => {
+        if (moveEvent.buttons === 0 && session.role === 'adjust') {
+          up(moveEvent)
+          return
+        }
+        session.move({
+          clientX: moveEvent.clientX,
+          clientY: moveEvent.clientY,
+          timeStamp: moveEvent.timeStamp,
+          shiftKey: moveEvent.shiftKey,
+        })
+      }
+      target.addEventListener('pointermove', move)
+      target.addEventListener('pointerup', up)
+      target.addEventListener('pointercancel', up)
+      return
+    }
+
+    event.preventDefault()
     focusParameterControl(target)
     target.setPointerCapture(event.pointerId)
+    setAdjusting(true)
     apply(event.clientX, target)
     const move = (e: PointerEvent) => {
       if (e.buttons === 0) {
@@ -69,6 +130,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
       target.removeEventListener('pointermove', move)
       target.removeEventListener('pointerup', up)
       target.removeEventListener('pointercancel', up)
+      setAdjusting(false)
     }
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerup', up)
@@ -96,6 +158,12 @@ export function ParamSlider({ id, value, liveValue }: Props) {
             </span>
           ) : null}
           <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
+        {adjusting ? (
+          <span className={styles.dragReadout} role="status">
+            <span>{paramLabel(id)}</span>
+            <strong>{formatParamValue(shownValue, def)}</strong>
+          </span>
+        ) : null}
         </span>
       </div>
       <p id={descId} className="sr-only">

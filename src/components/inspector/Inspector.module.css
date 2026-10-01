@@ -877,6 +877,10 @@
   color: var(--accent-primary);
 }
 
+.essential {
+  gap: 10px;
+}
+
 .compact {
   flex: 1 1 auto;
   gap: 4px;

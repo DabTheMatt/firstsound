@@ -32,6 +32,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const drag = useRef<{ id: string; from: number } | null>(null)
   const hoverIndex = useRef<number | null>(null)
   const press = useRef<number | null>(null)
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null)
   const chainRef = useRef(chain)
   useEffect(() => {
     chainRef.current = chain
@@ -199,11 +200,19 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 onPointerDown={(event) => {
                   if (fixed) return
                   if (touch) {
+                    pressOrigin.current = { x: event.clientX, y: event.clientY }
                     press.current = window.setTimeout(() => beginReorder(index), 420)
                     return
                   }
                   if (event.button !== 0) return
                   beginReorder(index)
+                }}
+                onPointerMove={(event) => {
+                  if (!press.current || !pressOrigin.current) return
+                  const moved = Math.hypot(event.clientX - pressOrigin.current.x, event.clientY - pressOrigin.current.y)
+                  if (moved < 8) return
+                  window.clearTimeout(press.current)
+                  press.current = null
                 }}
                 onPointerUp={() => {
                   if (press.current) {

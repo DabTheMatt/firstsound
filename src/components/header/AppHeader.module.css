@@ -223,20 +223,27 @@
 }
 
 .minimal .settings {
-  min-height: 28px;
-  min-width: 28px;
-  padding: 0 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
 }
 
 .minimal .load {
-  height: 28px;
-  min-height: 28px;
-  padding: 0 8px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.loadProminent {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  border-color: transparent;
 }
 
 .minimal .rec {
-  min-height: 28px;
-  padding: 0 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
   font-size: 9px;
 }
 

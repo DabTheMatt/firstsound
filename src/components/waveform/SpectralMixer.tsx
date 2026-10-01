@@ -27,9 +27,10 @@ function formatDb(db: number): string {
 
 type Props = {
   onCommit?: () => void
+  layout?: 'studio' | 'phone'
 }
 
-export function SpectralMixer({ onCommit }: Props) {
+export function SpectralMixer({ onCommit, layout = 'studio' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const spectral = snap.spectral
@@ -49,7 +50,7 @@ export function SpectralMixer({ onCommit }: Props) {
   }
 
   return (
-    <section className={styles.panel} aria-label={`${copy.title} ${copy.experimental}`}>
+    <section className={`${styles.panel} ${layout === 'phone' ? styles.phone : ''}`} aria-label={`${copy.title} ${copy.experimental}`}>
       <div className={styles.head}>
         <div className={styles.titleBlock}>
           <strong>{copy.title}</strong>
@@ -143,34 +144,68 @@ export function SpectralMixer({ onCommit }: Props) {
               )
             })}
           </div>
-          <div className={styles.crossovers}>
-            {crossovers.map((hz, index) => {
-              const label = index === 0 ? copy.crossoverLow : index === 1 ? copy.crossoverMid : copy.crossoverHigh
-              return (
-                <label key={label} className={styles.cross}>
-                  <span>{label}</span>
-                  <input
-                    type="number"
-                    min={40}
-                    max={18000}
-                    step={1}
-                    aria-label={label}
-                    value={Math.round(hz)}
-                    onChange={(event) => {
-                      const next = crossovers.slice()
-                      next[index] = Number(event.target.value)
-                      setCrossoverDraft({ key: crossoverKey, values: next })
-                    }}
-                    onBlur={commitCrossovers}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') commitCrossovers()
-                    }}
-                  />
-                  <span>Hz</span>
-                </label>
-              )
-            })}
-          </div>
+          {layout === 'phone' ? (
+            <details className={styles.advanced}>
+              <summary>Crossovers</summary>
+              <div className={styles.crossovers}>
+                {crossovers.map((hz, index) => {
+                  const label = index === 0 ? copy.crossoverLow : index === 1 ? copy.crossoverMid : copy.crossoverHigh
+                  return (
+                    <label key={label} className={styles.cross}>
+                      <span>{label}</span>
+                      <input
+                        type="number"
+                        min={40}
+                        max={18000}
+                        step={1}
+                        aria-label={label}
+                        value={Math.round(hz)}
+                        onChange={(event) => {
+                          const next = crossovers.slice()
+                          next[index] = Number(event.target.value)
+                          setCrossoverDraft({ key: crossoverKey, values: next })
+                        }}
+                        onBlur={commitCrossovers}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') commitCrossovers()
+                        }}
+                      />
+                      <span>Hz</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </details>
+          ) : (
+            <div className={styles.crossovers}>
+              {crossovers.map((hz, index) => {
+                const label = index === 0 ? copy.crossoverLow : index === 1 ? copy.crossoverMid : copy.crossoverHigh
+                return (
+                  <label key={label} className={styles.cross}>
+                    <span>{label}</span>
+                    <input
+                      type="number"
+                      min={40}
+                      max={18000}
+                      step={1}
+                      aria-label={label}
+                      value={Math.round(hz)}
+                      onChange={(event) => {
+                        const next = crossovers.slice()
+                        next[index] = Number(event.target.value)
+                        setCrossoverDraft({ key: crossoverKey, values: next })
+                      }}
+                      onBlur={commitCrossovers}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') commitCrossovers()
+                      }}
+                    />
+                    <span>Hz</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
         </>
       ) : null}
     </section>
