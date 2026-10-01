@@ -1,7 +1,31 @@
+import { GRAIN_OVERLAP_MAX, GRAIN_OVERLAP_MIN } from '../engine/stretch'
 import { complementaryPct, isCorrelated } from './dryWet'
 import { PARAMS } from '../parameters/definitions'
-import { applyParamValue } from '../parameters/mapping'
+import { applyParamValue, clamp } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
+
+/**
+ * v1 stored Grain Overlap as a 0–100 density index.
+ * 0 → 56% overlap, 62 → ~76%, 100 → 88%.
+ */
+export function legacyDensityToGrainOverlap(density: number): number {
+  const n = clamp(density / 100, 0, 1)
+  const hopRatio = 0.44 - n * 0.32
+  const pct = Math.round((1 - hopRatio) * 100)
+  return clamp(pct, GRAIN_OVERLAP_MIN, GRAIN_OVERLAP_MAX)
+}
+
+/**
+ * v1 stored nearest / linear / cubic / sinc, and an on/off flag.
+ * Off forced nearest. The current index is Fast / Smooth / High Quality.
+ */
+export function legacyInterpToQualityIndex(index: number, on: number): number {
+  if (!(on > 0.5)) return 0
+  const i = Math.round(index)
+  if (i >= 3) return 2
+  if (i === 2) return 1
+  return 0
+}
 
 /** Lift pre-space-overhaul presets into the current delay/reverb ranges. */
 export function migrateSpaceParams(incoming: Record<string, number>): Partial<Record<ParamId, number>> {

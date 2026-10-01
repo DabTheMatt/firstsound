@@ -1,3 +1,4 @@
+import { GRAIN_OVERLAP_DEFAULT, GRAIN_OVERLAP_MAX, GRAIN_OVERLAP_MIN } from '../engine/stretch'
 import type { FilterType, ParamDef, ParamId, PlaybackDirection, StretchInterpAlgo } from './types'
 
 export const PARAMS: Record<ParamId, ParamDef> = {
@@ -40,10 +41,10 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   },
   stretchInterp: {
     id: 'stretchInterp',
-    label: 'Overlap',
-    min: 0,
-    max: 100,
-    defaultValue: 62,
+    label: 'Grain Overlap',
+    min: GRAIN_OVERLAP_MIN,
+    max: GRAIN_OVERLAP_MAX,
+    defaultValue: GRAIN_OVERLAP_DEFAULT,
     unit: '%',
     mapping: 'linear',
     step: 1,
@@ -53,17 +54,17 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     label: 'Interpolation',
     min: 0,
     max: 1,
-    defaultValue: 0,
+    defaultValue: 1,
     unit: '',
     mapping: 'linear',
     step: 1,
   },
   stretchInterpAlgo: {
     id: 'stretchInterpAlgo',
-    label: 'Interp Algo',
+    label: 'Interpolation',
     min: 0,
-    max: 3,
-    defaultValue: 2,
+    max: 2,
+    defaultValue: 1,
     unit: '',
     mapping: 'linear',
     step: 1,
@@ -1713,10 +1714,24 @@ export const PARAM_IDS = Object.keys(PARAMS) as ParamId[]
 export const SOURCE_KNOBS: ParamId[] = ['speed', 'pitch', 'stretchInterp', 'gain', 'pan']
 
 export const STRETCH_INTERP_ALGOS: { value: StretchInterpAlgo; label: string; title: string }[] = [
-  { value: 'nearest', label: 'Nearest', title: 'Drop-sample, no reconstruction' },
-  { value: 'linear', label: 'Linear', title: 'Two-point lerp' },
-  { value: 'cubic', label: 'Cubic', title: '4-point Hermite, fuller lows' },
-  { value: 'sinc', label: 'Sinc', title: 'Windowed sinc, band-limited' },
+  {
+    value: 'linear',
+    label: 'Fast',
+    title:
+      'Linear resampling. Lowest CPU. Rougher, with more aliasing, when Pitch leaves 0. Speed alone barely changes this.',
+  },
+  {
+    value: 'cubic',
+    label: 'Smooth',
+    title:
+      'Cubic resampling for everyday playback. Smoother than Fast between samples, still light on CPU. Bright material pitched up can still alias.',
+  },
+  {
+    value: 'sinc',
+    label: 'High Quality',
+    title:
+      'Windowed sinc. Band-limits the read so high pitches stay cleaner. Higher CPU. Offline bounce uses a longer kernel.',
+  },
 ]
 export const GRAIN_KNOBS: ParamId[] = [
   'grainSize',

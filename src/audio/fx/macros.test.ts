@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultParamValues } from '../parameters/definitions'
 import { applyDelayMacro, applyReverbMacro, delayMacroNormalized } from './macros'
-import { migrateSpaceParams } from './migrate'
+import { legacyDensityToGrainOverlap, legacyInterpToQualityIndex, migrateSpaceParams } from './migrate'
 import {
   defaultPresetFor,
   findSpacePreset,
@@ -101,5 +101,20 @@ describe('presets', () => {
     expect(analog.some((p) => p.id === 'dly-tape')).toBe(false)
     expect(presetsForDelayType('tape').every((p) => p.delayType === 'tape')).toBe(true)
     expect(presetsForDelayType('digital').some((p) => p.id === 'dly-1-4')).toBe(true)
+  })
+})
+
+describe('legacy playback controls', () => {
+  it('turns the old density index into grain-overlap percent', () => {
+    expect(legacyDensityToGrainOverlap(0)).toBe(56)
+    expect(legacyDensityToGrainOverlap(62)).toBe(76)
+    expect(legacyDensityToGrainOverlap(100)).toBe(88)
+  })
+
+  it('drops nearest and the off switch into Fast / Smooth / High Quality', () => {
+    expect(legacyInterpToQualityIndex(3, 0)).toBe(0)
+    expect(legacyInterpToQualityIndex(1, 1)).toBe(0)
+    expect(legacyInterpToQualityIndex(2, 1)).toBe(1)
+    expect(legacyInterpToQualityIndex(3, 1)).toBe(2)
   })
 })

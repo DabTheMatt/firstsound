@@ -16,12 +16,47 @@ export function stretchLfScale(speed: number, pitchRatio: number): number {
   return clamp(Math.max(slow, down, 1), 1, 8)
 }
 
-/** Sparse (0) → longer grains, wider hops. Dense (100) → tighter overlap-add. */
-export function stretchWindow(interp: number, speed = 1, pitchRatio = 1): StretchWindow {
-  const n = clamp(interp / 100, 0, 1)
+/**
+ * Grain overlap of the time-stretch voice, as a percent of the grain length.
+ * This is the overlap-add train used when Speed or Pitch leave unity.
+ * It is not a crossfade, and it is not the granular engine's Density.
+ *
+ * 56% → hop ≈ 44% of the grain (clearer attacks, fewer grains).
+ * 88% → hop ≈ 12% of the grain (smoother, softer attacks, more CPU).
+ * The floor stays above 50% so Hann windows do not leave gaps or clicks.
+ *
+ * Speed does not change this ratio. It advances the read head by hop × speed
+ * (tempo without pitch). Pitch is the resampling step inside each grain.
+ * When Speed or Pitch drop below 1, grains lengthen together so the window
+ * still passes bass; the overlap percent stays put.
+ *
+ * Higher overlap also shortens the grain slightly and slows the Speed/Pitch
+ * glide, so neighboring grains do not cancel while the read rate is moving.
+ */
+export const GRAIN_OVERLAP_MIN = 56
+export const GRAIN_OVERLAP_MAX = 88
+export const GRAIN_OVERLAP_DEFAULT = 76
+
+/** 0 at 56% overlap, 1 at 88%. */
+export function grainOverlapNorm(overlapPercent: number): number {
+  return clamp(
+    (overlapPercent - GRAIN_OVERLAP_MIN) / (GRAIN_OVERLAP_MAX - GRAIN_OVERLAP_MIN),
+    0,
+    1,
+  )
+}
+
+/** Hop as a fraction of the grain. Inverse of the overlap percent. */
+export function grainHopRatio(overlapPercent: number): number {
+  const overlap = clamp(overlapPercent, GRAIN_OVERLAP_MIN, GRAIN_OVERLAP_MAX)
+  return 1 - overlap / 100
+}
+
+export function stretchWindow(overlapPercent: number, speed = 1, pitchRatio = 1): StretchWindow {
+  const n = grainOverlapNorm(overlapPercent)
   const lf = stretchLfScale(speed, pitchRatio)
   const grainSec = (0.112 - n * 0.058) * lf
-  const hopRatio = 0.44 - n * 0.32
+  const hopRatio = grainHopRatio(overlapPercent)
   const hopSec = Math.max(0.004, grainSec * hopRatio)
   const peak = clamp((hopSec / grainSec) * 1.08, 0.14, 0.62)
   return { grainSec, hopSec, peak }
@@ -32,9 +67,8 @@ export function stretchWindow(interp: number, speed = 1, pitchRatio = 1): Stretc
  * Sparse overlap stays quicker; dense overlap eases a little longer.
  * Kept well under 200 ms so automation and LFO still read as the gesture.
  */
-export function speedSmoothTau(interp: number): number {
-  const n = clamp(interp / 100, 0, 1)
-  return 0.022 + n * 0.16
+export function speedSmoothTau(overlapPercent: number): number {
+  return 0.022 + grainOverlapNorm(overlapPercent) * 0.16
 }
 
 /**
@@ -44,8 +78,8 @@ export function speedSmoothTau(interp: number): number {
 export const WINDOW_FOLLOW_TAU = 0.26
 
 /** One-pole mix so hop-sized updates share a stable time constant. */
-export function stretchSlew(hopSec: number, interp: number): number {
-  return 1 - Math.exp(-Math.max(hopSec, 0.001) / speedSmoothTau(interp))
+export function stretchSlew(hopSec: number, overlapPercent: number): number {
+  return 1 - Math.exp(-Math.max(hopSec, 0.001) / speedSmoothTau(overlapPercent))
 }
 
 export type StretchSchedule = {
@@ -61,7 +95,7 @@ export type StretchSchedule = {
  * put and the glide can update faster than a slowed-down hop.
  */
 export function stretchSchedule(
-  interp: number,
+  overlapPercent: number,
   windowSpeed: number,
   windowPitchSemitones: number,
   playbackSpeed = windowSpeed,
@@ -71,7 +105,7 @@ export function stretchSchedule(
 ): StretchSchedule {
   const speed = Math.max(1e-4, windowSpeed)
   const ratio = Math.max(1e-4, pitchRatio(windowPitchSemitones))
-  const shaped = stretchWindow(interp, speed, ratio)
+  const shaped = stretchWindow(overlapPercent, speed, ratio)
   const speedMismatch = Math.abs(
     Math.log(Math.max(1e-4, targetSpeed)) - Math.log(Math.max(1e-4, playbackSpeed)),
   )
@@ -183,10 +217,10 @@ export function advanceStretchControl(
   state: StretchControl,
   targetSpeed: number,
   targetPitch: number,
-  interp: number,
+  overlapPercent: number,
 ): StretchControlStep {
   const plan = stretchSchedule(
-    interp,
+    overlapPercent,
     state.windowSpeed,
     state.windowPitch,
     state.speed,
@@ -194,7 +228,7 @@ export function advanceStretchControl(
     state.pitch,
     targetPitch,
   )
-  const tau = speedSmoothTau(interp)
+  const tau = speedSmoothTau(overlapPercent)
   const speed = glideTowardLog(state.speed, Math.max(1e-4, targetSpeed), plan.hopSec, tau)
   const pitch = glideTowardLinear(state.pitch, targetPitch, plan.hopSec, tau)
   const windowSpeed = smoothTowardLogDt(

@@ -31,9 +31,18 @@ export const PARAM_DESCRIPTIONS: Record<ParamId, LocalizedText> = {
   end: d('Sets where playback of the selected region ends.', 'Ustawia koniec odtwarzania zaznaczonego obszaru.'),
   speed: d('Changes playback speed without using this as a display-only control.', 'Zmienia prędkość odtwarzania próbki.'),
   pitch: d('Shifts the musical pitch of the sample in semitones.', 'Przesuwa wysokość dźwięku próbki w półtonach.'),
-  stretchInterp: d('Controls overlap used when speed or pitch leave the original rate.', 'Określa nakładanie się ziaren przy zmianie prędkości lub wysokości.'),
-  stretchInterpOn: d('Turns time-stretch interpolation on or off.', 'Włącza lub wyłącza interpolację przy zmianie tempa.'),
-  stretchInterpAlgo: d('Chooses the interpolation algorithm for pitch and speed changes.', 'Wybiera algorytm interpolacji przy zmianie wysokości i prędkości.'),
+  stretchInterp: d(
+    'Sets how much consecutive time-stretch grains overlap. Higher overlap sounds smoother and softer on attacks. Lower overlap keeps transients clearer. Does not change Speed or Pitch, and stays overlapped so grains do not gap.',
+    'Ustawia, jak bardzo kolejne ziarna time-stretchu nachodzą na siebie. Większe nakładanie wygładza dźwięk i zmiękcza ataki. Mniejsze zostawia wyraźniejsze transjenty. Nie zmienia prędkości ani wysokości i zawsze się nakłada, więc nie ma dziur.',
+  ),
+  stretchInterpOn: d(
+    'Legacy switch kept so older presets still load. Resampling quality is the Interpolation menu.',
+    'Stary przełącznik zostawiony, żeby starsze presety się wczytywały. Jakość przeliczania jest w menu Interpolacja.',
+  ),
+  stretchInterpAlgo: d(
+    'Chooses resampling quality when Pitch leaves 0 semitones. Fast is linear and lightest, Smooth is cubic for everyday use, High Quality is a band-limited sinc and costs more CPU. Changing only Speed barely shows the difference, because grains still play at the original rate.',
+    'Wybiera jakość przeliczania próbek, gdy wysokość schodzi z 0 półtonów. Szybka jest liniowa i najlżejsza, Gładka jest kubiczna do zwykłego grania, Wysoka jakość to sinc z ograniczeniem pasma i większym CPU. Sama zmiana prędkości prawie nie pokazuje różnicy, bo ziarna i tak grają w oryginalnym tempie.',
+  ),
   gain: d('Adjusts the input signal level.', 'Reguluje poziom sygnału wejściowego.'),
   pan: d('Places the signal in the stereo field from left to right.', 'Umieszcza sygnał w polu stereo od lewej do prawej.'),
   channelGainL: d('Sets the left channel level of the input.', 'Ustawia poziom lewego kanału wejścia.'),

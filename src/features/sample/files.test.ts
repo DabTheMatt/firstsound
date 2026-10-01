@@ -14,6 +14,17 @@ describe('parsePreset', () => {
     expect(preset?.engineMode).toBe('grain')
   })
 
+  it('accepts a v2 field preset', () => {
+    const preset = parsePreset({
+      instrument: 'field',
+      version: 2,
+      loop: false,
+      engineMode: 'playback',
+      params: { stretchInterp: 76 },
+    })
+    expect(preset?.version).toBe(2)
+  })
+
   it('rejects other shapes', () => {
     expect(parsePreset(null)).toBeNull()
     expect(parsePreset({ instrument: 'other', version: 1, params: {} })).toBeNull()

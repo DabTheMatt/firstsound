@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  GRAIN_OVERLAP_DEFAULT,
+  GRAIN_OVERLAP_MAX,
+  GRAIN_OVERLAP_MIN,
   WINDOW_FOLLOW_TAU,
   advanceStretchControl,
   glideTowardLog,
+  grainHopRatio,
   hannCurve,
   scaledHannCurve,
   smoothTowardLinear,
@@ -16,30 +20,32 @@ import {
 } from './stretch'
 
 describe('stretchWindow', () => {
-  it('uses denser hops at high interpolation', () => {
-    const sparse = stretchWindow(0)
-    const dense = stretchWindow(100)
+  it('uses denser hops at high grain overlap', () => {
+    const sparse = stretchWindow(GRAIN_OVERLAP_MIN)
+    const dense = stretchWindow(GRAIN_OVERLAP_MAX)
     expect(dense.hopSec).toBeLessThan(sparse.hopSec)
     expect(dense.grainSec).toBeLessThan(sparse.grainSec)
     expect(dense.hopSec / dense.grainSec).toBeLessThan(sparse.hopSec / sparse.grainSec)
   })
 
-  it('keeps hops shorter than the grain', () => {
-    for (const interp of [0, 35, 62, 100]) {
-      const w = stretchWindow(interp)
-      expect(w.hopSec).toBeLessThan(w.grainSec)
+  it('keeps every overlap above a half grain so the windows do not gap', () => {
+    for (const overlap of [GRAIN_OVERLAP_MIN, 64, GRAIN_OVERLAP_DEFAULT, GRAIN_OVERLAP_MAX]) {
+      const w = stretchWindow(overlap)
+      expect(w.hopSec / w.grainSec).toBeCloseTo(grainHopRatio(overlap), 3)
+      expect(w.hopSec).toBeLessThan(w.grainSec * 0.5)
       expect(w.peak).toBeGreaterThan(0)
       expect(w.peak).toBeLessThanOrEqual(0.62)
     }
   })
 
   it('lengthens grains when pitching down or slowing so bass can pass', () => {
-    const unity = stretchWindow(62, 1, 1)
-    const down = stretchWindow(62, 1, 0.5)
-    const slow = stretchWindow(62, 0.5, 1)
+    const unity = stretchWindow(GRAIN_OVERLAP_DEFAULT, 1, 1)
+    const down = stretchWindow(GRAIN_OVERLAP_DEFAULT, 1, 0.5)
+    const slow = stretchWindow(GRAIN_OVERLAP_DEFAULT, 0.5, 1)
     expect(down.grainSec).toBeGreaterThan(unity.grainSec * 1.4)
     expect(slow.grainSec).toBeGreaterThan(unity.grainSec * 1.4)
-    expect(stretchWindow(62, 2, 2).grainSec).toBeCloseTo(unity.grainSec)
+    expect(stretchWindow(GRAIN_OVERLAP_DEFAULT, 2, 2).grainSec).toBeCloseTo(unity.grainSec)
+    expect(slow.hopSec / slow.grainSec).toBeCloseTo(unity.hopSec / unity.grainSec, 3)
   })
 })
 
@@ -54,26 +60,26 @@ describe('stretch smoothing', () => {
     expect(smoothTowardLinear(0, 12, 0.5)).toBeCloseTo(6)
   })
 
-  it('slows the slew as interpolation densifies', () => {
-    expect(stretchSlew(0.01, 100)).toBeLessThan(stretchSlew(0.01, 0))
+  it('slows the slew as grain overlap densifies', () => {
+    expect(stretchSlew(0.01, GRAIN_OVERLAP_MAX)).toBeLessThan(stretchSlew(0.01, GRAIN_OVERLAP_MIN))
   })
 
   it('keeps lookahead at least a couple of hops', () => {
-    const hop = stretchWindow(80).hopSec
+    const hop = stretchWindow(GRAIN_OVERLAP_DEFAULT).hopSec
     expect(stretchLookahead(hop)).toBeGreaterThan(hop * 2)
   })
 
   it('uses a longer window follow than the speed glide', () => {
-    expect(WINDOW_FOLLOW_TAU).toBeGreaterThan(speedSmoothTau(100))
-    expect(speedSmoothTau(100)).toBeGreaterThan(speedSmoothTau(0))
+    expect(WINDOW_FOLLOW_TAU).toBeGreaterThan(speedSmoothTau(GRAIN_OVERLAP_MAX))
+    expect(speedSmoothTau(GRAIN_OVERLAP_MAX)).toBeGreaterThan(speedSmoothTau(GRAIN_OVERLAP_MIN))
   })
 })
 
 describe('stretchSchedule', () => {
   it('matches the unity window so 1× playback is unchanged', () => {
-    for (const interp of [0, 35, 62, 100]) {
-      const unity = stretchWindow(interp, 1, 1)
-      const plan = stretchSchedule(interp, 1, 0, 1, 1)
+    for (const overlap of [GRAIN_OVERLAP_MIN, 64, GRAIN_OVERLAP_DEFAULT, GRAIN_OVERLAP_MAX]) {
+      const unity = stretchWindow(overlap, 1, 1)
+      const plan = stretchSchedule(overlap, 1, 0, 1, 1)
       expect(plan.hopSec).toBeCloseTo(unity.hopSec)
       expect(plan.grainSec).toBeCloseTo(unity.grainSec)
       expect(plan.peak).toBeCloseTo(unity.peak)
@@ -81,9 +87,9 @@ describe('stretchSchedule', () => {
   })
 
   it('keeps the long window once a slow speed has settled', () => {
-    const unity = stretchSchedule(62, 1, 0, 1, 1)
-    const slow = stretchSchedule(62, 0.05, 0, 0.05, 0.05)
-    const down = stretchSchedule(62, 1, -24, 1, 1)
+    const unity = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 1, 0, 1, 1)
+    const slow = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 0.05, 0, 0.05, 0.05)
+    const down = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 1, -24, 1, 1)
     expect(slow.hopSec).toBeGreaterThan(unity.hopSec * 4)
     expect(slow.grainSec).toBeGreaterThan(unity.grainSec * 4)
     expect(down.grainSec).toBeGreaterThan(unity.grainSec * 2)
@@ -91,16 +97,16 @@ describe('stretchSchedule', () => {
   })
 
   it('tightens hop and grain together while pitch is chasing', () => {
-    const settled = stretchSchedule(62, 1, 0, 1, 1, 0, 0)
-    const chasing = stretchSchedule(62, 1, 0, 1, 1, 0, 18)
+    const settled = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 1, 0, 1, 1, 0, 0)
+    const chasing = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 1, 0, 1, 1, 0, 18)
     expect(chasing.hopSec).toBeLessThan(settled.hopSec * 0.75)
     expect(chasing.hopSec / chasing.grainSec).toBeCloseTo(settled.hopSec / settled.grainSec, 2)
     expect(chasing.peak).toBeCloseTo(settled.peak)
   })
 
   it('tightens hop and grain together while speed is chasing', () => {
-    const settled = stretchSchedule(62, 0.05, 0, 0.05, 0.05)
-    const chasing = stretchSchedule(62, 0.05, 0, 1, 0.05)
+    const settled = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 0.05, 0, 0.05, 0.05)
+    const chasing = stretchSchedule(GRAIN_OVERLAP_DEFAULT, 0.05, 0, 1, 0.05)
     expect(chasing.hopSec).toBeLessThan(settled.hopSec * 0.5)
     expect(chasing.hopSec / chasing.grainSec).toBeCloseTo(settled.hopSec / settled.grainSec, 2)
     expect(chasing.peak).toBeCloseTo(settled.peak)
@@ -115,7 +121,7 @@ describe('speed glide', () => {
     let prev = state.speed
     const ratios: number[] = []
     for (let i = 0; i < 8; i++) {
-      const step = advanceStretchControl(state, 8, 0, 62)
+      const step = advanceStretchControl(state, 8, 0, GRAIN_OVERLAP_DEFAULT)
       ratios.push(step.speed / prev)
       expect(step.speed).toBeGreaterThan(prev)
       expect(step.speed).toBeLessThan(8)
@@ -131,7 +137,7 @@ describe('speed glide', () => {
     let elapsed = 0
     // A pitch/speed chase uses 8 ms hops, so the same glide needs more steps.
     for (let i = 0; i < 80 && state.speed < 3.6; i++) {
-      const step = advanceStretchControl(state, 4, 0, 62)
+      const step = advanceStretchControl(state, 4, 0, GRAIN_OVERLAP_DEFAULT)
       elapsed += step.hopSec
       state = step
     }
@@ -144,7 +150,7 @@ describe('speed glide', () => {
     let state = { ...rest }
     for (let i = 0; i < 30; i++) {
       const target = 1 + Math.sin(i / 3) * 0.4
-      const step = advanceStretchControl(state, target, 0, 40)
+      const step = advanceStretchControl(state, target, 0, 64)
       if (target > state.speed) expect(step.speed).toBeLessThanOrEqual(target + 1e-9)
       else expect(step.speed).toBeGreaterThanOrEqual(target - 1e-9)
       state = step
@@ -152,7 +158,7 @@ describe('speed glide', () => {
   })
 
   it('holds a constant speed so source advance stays hop × speed', () => {
-    const step = advanceStretchControl({ ...rest, speed: 2, windowSpeed: 2 }, 2, 0, 62)
+    const step = advanceStretchControl({ ...rest, speed: 2, windowSpeed: 2 }, 2, 0, GRAIN_OVERLAP_DEFAULT)
     expect(step.speed).toBeCloseTo(2)
     expect(step.sourceAdvance).toBeCloseTo(step.hopSec * 2, 5)
     expect(step.readPitch).toBeCloseTo(1, 5)
@@ -160,18 +166,18 @@ describe('speed glide', () => {
 
   it('keeps pitch independent of a speed ramp', () => {
     let state = { ...rest, pitch: 7, windowPitch: 7 }
-    const step = advanceStretchControl(state, 0.5, 7, 62)
+    const step = advanceStretchControl(state, 0.5, 7, GRAIN_OVERLAP_DEFAULT)
     expect(step.readPitch).toBeCloseTo(2 ** (7 / 12), 2)
     expect(step.speed).toBeLessThan(1)
     state = step
-    const pitched = advanceStretchControl(state, 0.5, 0, 62)
+    const pitched = advanceStretchControl(state, 0.5, 0, GRAIN_OVERLAP_DEFAULT)
     expect(pitched.pitch).toBeLessThan(7)
     expect(pitched.pitch).toBeGreaterThan(0)
   })
 
   it('lets the window lag the read-head speed', () => {
     let state = { ...rest }
-    for (let i = 0; i < 6; i++) state = advanceStretchControl(state, 0.2, 0, 62)
+    for (let i = 0; i < 6; i++) state = advanceStretchControl(state, 0.2, 0, GRAIN_OVERLAP_DEFAULT)
     expect(state.speed).toBeLessThan(state.windowSpeed)
     expect(state.windowSpeed).toBeLessThan(1)
   })

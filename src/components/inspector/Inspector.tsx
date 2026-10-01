@@ -81,6 +81,22 @@ type Props = {
 }
 
 const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
+
+function stretchInterpCopy(
+  algo: string | undefined,
+  copy: {
+    interpFast: string
+    interpSmooth: string
+    interpHigh: string
+    interpFastTitle: string
+    interpSmoothTitle: string
+    interpHighTitle: string
+  },
+): { label: string; title: string } {
+  if (algo === 'linear') return { label: copy.interpFast, title: copy.interpFastTitle }
+  if (algo === 'sinc') return { label: copy.interpHigh, title: copy.interpHighTitle }
+  return { label: copy.interpSmooth, title: copy.interpSmoothTitle }
+}
 const GRAIN_MAIN_IDS: ParamId[] = GRAIN_KNOBS
 const GRAIN_ADV_IDS: ParamId[] = MOTION_KNOBS.filter((id) => id !== 'position')
 const PAN_IDS: ParamId[] = ['pan', 'channelGainL', 'channelGainR']
@@ -510,6 +526,36 @@ function ModuleInspector({
           {params(detail === 'essential' ? (['gain', 'speed', 'pitch'] as ParamId[]) : GAIN_IDS)}
           {detail === 'essential' ? null : (
           <>
+          <div className={styles.stack}>
+            <label className={styles.field} title={t.inspector.interpAlgo}>
+              {t.inspector.interpolation}
+              <select
+                className={styles.select}
+                aria-label={t.inspector.interpAlgo}
+                title={
+                  stretchInterpCopy(
+                    STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value,
+                    t.inspector,
+                  ).title
+                }
+                value={STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value ?? 'cubic'}
+                onChange={(event) => {
+                  const i = STRETCH_INTERP_ALGOS.findIndex((a) => a.value === event.target.value)
+                  if (i >= 0) engine.setParam('stretchInterpAlgo', i)
+                }}
+              >
+                {STRETCH_INTERP_ALGOS.map((a) => {
+                  const copy = stretchInterpCopy(a.value, t.inspector)
+                  return (
+                    <option key={a.value} value={a.value} title={copy.title}>
+                      {copy.label}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+          </div>
+          <p className={styles.help}>{t.inspector.stretchHelp}</p>
           <h3 className={styles.sub}>Channels</h3>
           <p className={styles.help}>
             Make mono sums left and right. Make stereo copies a mono file onto both sides so pan and
@@ -542,41 +588,6 @@ function ModuleInspector({
             />
           </div>
           {params(PAN_IDS)}
-          <div className={styles.stack}>
-            <Toggle
-              pressed={snap.params.stretchInterpOn > 0.5}
-              label="Interpolation"
-              title="Reconstructs in-between samples when Speed or Pitch leave 1× / 0 st. Off by default to keep the original grain edges."
-              onToggle={() =>
-                engine.setParam('stretchInterpOn', snap.params.stretchInterpOn > 0.5 ? 0 : 1)
-              }
-            />
-            <label className={styles.field} title="Pitch and speed interpolation algorithm">
-              Algorithm
-              <select
-                className={styles.select}
-                aria-label="Pitch and speed interpolation algorithm"
-                disabled={snap.params.stretchInterpOn <= 0.5}
-                value={STRETCH_INTERP_ALGOS[Math.round(snap.params.stretchInterpAlgo)]?.value ?? 'cubic'}
-                onChange={(event) => {
-                  const i = STRETCH_INTERP_ALGOS.findIndex((a) => a.value === event.target.value)
-                  if (i >= 0) engine.setParam('stretchInterpAlgo', i)
-                }}
-              >
-                {STRETCH_INTERP_ALGOS.map((a) => (
-                  <option key={a.value} value={a.value} title={a.title}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className={styles.help}>
-            Speed changes tempo without pitch; Pitch transposes without tempo. Pitching down or
-            slowing lengthens the overlap-add grains so low frequencies can come through.
-            Interpolation reconstructs in-between samples (Nearest / Linear / Cubic / Sinc). Overlap
-            densifies the grain train that smooths those moves.
-          </p>
           <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />
           </>

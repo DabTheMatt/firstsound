@@ -82,8 +82,8 @@ describe('delay read-head continuity', () => {
 
 describe('stretch pitch glide', () => {
   it('shortens the window while pitch is still chasing', () => {
-    const settled = stretchSchedule(62, 1, 0, 1, 1, 0, 0)
-    const chasing = stretchSchedule(62, 1, 0, 1, 1, 0, 24)
+    const settled = stretchSchedule(76, 1, 0, 1, 1, 0, 0)
+    const chasing = stretchSchedule(76, 1, 0, 1, 1, 0, 24)
     expect(chasing.hopSec).toBeLessThan(settled.hopSec)
     expect(chasing.hopSec / chasing.grainSec).toBeCloseTo(settled.hopSec / settled.grainSec, 2)
   })
@@ -91,7 +91,7 @@ describe('stretch pitch glide', () => {
   it('keeps a bass tone continuous while pitch runs the sensory range', () => {
     const sr = 48000
     const src = sine(sr * 6, sr, 80, 0.75)
-    const out = renderGlidedStretch(src, Math.floor(sr * 0.9), sr, 62, 1, 1, 19, 'nearest', 'realtime')
+    const out = renderGlidedStretch(src, Math.floor(sr * 0.9), sr, 76, 1, 1, 19, 'cubic', 'realtime')
     const limit = ((2 * Math.PI * 80 * 0.75) / sr) * 8
     expect(maxDelta(out, 4000, out.length - 4000)).toBeLessThan(Math.max(0.05, limit))
     let body = 0

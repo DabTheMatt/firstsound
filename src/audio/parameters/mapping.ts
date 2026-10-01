@@ -272,8 +272,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
     case 'stretchInterpOn':
       return value > 0.5 ? 'On' : 'Off'
     case 'stretchInterpAlgo': {
-      const names = ['Nearest', 'Linear', 'Cubic', 'Sinc']
-      return names[Math.round(clamp(value, 0, names.length - 1))] ?? 'Cubic'
+      const names = ['Fast', 'Smooth', 'High Quality']
+      return names[Math.round(clamp(value, 0, names.length - 1))] ?? 'Smooth'
     }
     case 'msHaasDir':
       return value < 0.5 ? 'L' : 'R'

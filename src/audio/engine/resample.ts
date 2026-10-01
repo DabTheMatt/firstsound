@@ -5,11 +5,15 @@ import { antiClickSeconds } from './antiClick'
 import { advanceStretchControl, type StretchControl } from './stretch'
 
 /**
- * fast — nearest / linear, cheap enough for every grain
- * balanced — cubic, or 4-lobe sinc while a voice is playing
- * high — 8-lobe windowed sinc for offline renders
+ * Resampling quality for the read inside a grain.
+ * Speed does not select this — it only advances the grain train.
+ * Pitch sets the step (source samples per output sample).
+ *
+ * fast — linear (nearest exists only as an internal kernel, not a user mode)
+ * smooth — 4-point cubic Hermite, everyday realtime
+ * high — windowed sinc, band-limited; 4 lobes live, 8 lobes offline
  */
-export type InterpQuality = 'fast' | 'balanced' | 'high'
+export type InterpQuality = 'fast' | 'smooth' | 'high'
 
 /** Live grains use the lighter kernel. Offline renders keep the long sinc. */
 export type InterpBudget = 'realtime' | 'offline'
@@ -23,10 +27,29 @@ export function sincLobes(budget: InterpBudget): number {
   return budget === 'realtime' ? REALTIME_SINC_LOBES : OFFLINE_SINC_LOBES
 }
 
-export function interpQuality(algo: StretchInterpAlgo, budget: InterpBudget): InterpQuality {
-  if (algo === 'nearest' || algo === 'linear') return 'fast'
-  if (algo === 'sinc' && budget === 'offline') return 'high'
-  return 'balanced'
+export function interpQuality(algo: StretchInterpAlgo, _budget: InterpBudget = 'realtime'): InterpQuality {
+  if (algo === 'sinc') return 'high'
+  if (algo === 'cubic') return 'smooth'
+  return 'fast'
+}
+
+function sincRadius(step: number, budget: InterpBudget): number {
+  const cutoff = Math.min(1, 1 / Math.max(step, 1e-6))
+  const lobes = sincLobes(budget)
+  const cap = budget === 'realtime' ? REALTIME_SINC_RADIUS_CAP : OFFLINE_SINC_RADIUS_CAP
+  return Math.min(cap, Math.max(lobes, Math.ceil(lobes / cutoff)))
+}
+
+/** Source samples read for one output sample. Sinc grows when pitching up. */
+export function interpKernelTaps(
+  algo: StretchInterpAlgo,
+  step = 1,
+  budget: InterpBudget = 'realtime',
+): number {
+  if (algo === 'nearest') return 1
+  if (algo === 'linear') return 2
+  if (algo === 'cubic') return 4
+  return sincRadius(step, budget) * 2 + 1
 }
 
 export function stretchInterpAlgoAt(value: number): StretchInterpAlgo {
@@ -36,12 +59,14 @@ export function stretchInterpAlgoAt(value: number): StretchInterpAlgo {
 
 export function stretchInterpAlgoIndex(algo: StretchInterpAlgo): number {
   const i = STRETCH_INTERP_ALGOS.findIndex((o) => o.value === algo)
-  return i < 0 ? 2 : i
+  return i < 0 ? 1 : i
 }
 
-/** Effective interpolator: off → nearest, on → selected algorithm. */
-export function effectiveInterpAlgo(on: number, algoValue: number): StretchInterpAlgo {
-  if (on <= 0.5) return 'nearest'
+/**
+ * Selected resampling quality.
+ * The legacy on/off flag used to force nearest-neighbor and is ignored.
+ */
+export function effectiveInterpAlgo(_on: number, algoValue: number): StretchInterpAlgo {
   return stretchInterpAlgoAt(algoValue)
 }
 
@@ -184,8 +209,7 @@ export function sampleAt(
       const cutoff = Math.min(1, 1 / Math.max(step, 1e-6))
       const center = Math.floor(pos)
       const lobes = sincLobes(budget)
-      const cap = budget === 'realtime' ? REALTIME_SINC_RADIUS_CAP : OFFLINE_SINC_RADIUS_CAP
-      const radius = Math.min(cap, Math.max(lobes, Math.ceil(lobes / cutoff)))
+      const radius = sincRadius(step, budget)
       let sum = 0
       let wsum = 0
       const i0 = center - radius
@@ -206,7 +230,7 @@ export function hannAt(i: number, n: number): number {
   return 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)))
 }
 
-/** Short equal-power ramps at grain edges — stops clicks when interpolation is off. */
+/** Short ramps at unwindowed grain edges — stops clicks on a hard read. */
 export function edgeFadeAt(i: number, n: number, fadeSamples: number): number {
   if (n <= 1) return 1
   const fade = Math.max(1, Math.min(fadeSamples, Math.floor(n / 4)))
@@ -301,7 +325,7 @@ export function renderGlidedStretch(
   src: ArrayLike<number>,
   outputLength: number,
   sampleRate: number,
-  interp: number,
+  overlap: number,
   speedFrom: number,
   speedTo: number,
   pitchSemitones: number,
@@ -322,7 +346,7 @@ export function renderGlidedStretch(
   let guard = 0
   while (outPos < out.length && guard < out.length) {
     guard += 1
-    const step = advanceStretchControl(control, speedTo, pitchSemitones, interp)
+    const step = advanceStretchControl(control, speedTo, pitchSemitones, overlap)
     control = step
     const grain = Math.max(8, Math.round(step.grainSec * sr))
     const hop = Math.max(1, Math.round(step.hopSec * sr))

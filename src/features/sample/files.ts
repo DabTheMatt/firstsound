@@ -31,7 +31,7 @@ export function downloadJson(filename: string, data: unknown): void {
 export function parsePreset(raw: unknown): PresetV1 | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Partial<PresetV1>
-  if (obj.instrument !== 'field' || obj.version !== 1) return null
+  if (obj.instrument !== 'field' || (obj.version !== 1 && obj.version !== 2)) return null
   if (!obj.params || typeof obj.params !== 'object') return null
   return obj as PresetV1
 }
