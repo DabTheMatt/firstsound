@@ -35,8 +35,11 @@ type Props = {
   comb?: CombFilterState
   toneIndex?: number
   modulate?: boolean
+  layout?: 'inset' | 'fill'
+  touch?: boolean
   onSelectBand?: (index: number) => void
   onDragBand?: (index: number, patch: Partial<EqBand>) => void
+  onInteract?: () => void
 }
 
 export { dbToY, freqToX, xToFreq, yToDb }
@@ -48,8 +51,11 @@ export function EqCurve({
   comb,
   toneIndex = 0,
   modulate = true,
+  layout = 'inset',
+  touch = false,
   onSelectBand,
   onDragBand,
+  onInteract,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -204,6 +210,7 @@ export function EqCurve({
     event.preventDefault()
     event.stopPropagation()
     onSelectBand?.(index)
+    onInteract?.()
     event.currentTarget.setPointerCapture(event.pointerId)
     drag.current = {
       index,
@@ -242,7 +249,7 @@ export function EqCurve({
   }
 
   return (
-    <div ref={wrapRef} className={styles.wrap}>
+    <div ref={wrapRef} className={`${styles.wrap} ${layout === 'fill' ? styles.fill : ''}`}>
       <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
       {bands.map((band, index) => {
         if (band.type === 'off') return null
@@ -257,7 +264,7 @@ export function EqCurve({
           <button
             key={eqStripKey('curve', band)}
             type="button"
-            className={`${styles.node} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
+            className={`${styles.node} ${touch ? styles.nodeTouch : ''} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
             style={{
               left: `${xPct}%`,
               top: `${yPct}%`,

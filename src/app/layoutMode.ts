@@ -14,7 +14,8 @@ export type LayoutInput = {
 export function resolveLayoutMode(input: LayoutInput): LayoutMode {
   const width = Math.max(0, input.width)
   const height = Math.max(0, input.height)
-  if (width < 640) return 'sheet'
+  const landscapePhone = height > 0 && height < 520 && width < 1100
+  if (width < 640 || landscapePhone) return 'sheet'
   const portrait = height >= width
   if (width < 1024 && portrait) return 'dock-bottom'
   if (width < 900) return 'dock-bottom'

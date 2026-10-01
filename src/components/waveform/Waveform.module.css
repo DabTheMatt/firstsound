@@ -689,6 +689,44 @@
   white-space: nowrap;
 }
 
+.tickStart {
+  transform: translateX(0);
+}
+
+.tickEnd {
+  transform: translateX(-100%);
+}
+
+.phone .wrap {
+  gap: 0;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.phone .wavePane {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.phone .canvas {
+  height: 100%;
+}
+
+.phone .ruler {
+  height: 16px;
+}
+
+.phone .tick {
+  font-size: 9px;
+  color: color-mix(in srgb, var(--text-muted) 75%, transparent);
+}
+
+.phone .stage {
+  gap: 0;
+  min-height: 0;
+}
+
 .tick::before {
   content: '';
   position: absolute;

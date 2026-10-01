@@ -240,6 +240,16 @@
   font-size: 9px;
 }
 
+.minimal .rec:not(.recOn) {
+  border-color: transparent;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.minimal .runtime {
+  display: none;
+}
+
 :global(html[data-low-vision='on']) .header,
 :global(html[data-ui-scale='large']) .header {
   flex-wrap: wrap;
@@ -293,5 +303,15 @@
   .trailing {
     grid-area: trailing;
     margin-left: 0;
+  }
+
+  .minimal {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    row-gap: 0;
   }
 }

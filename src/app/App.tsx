@@ -41,6 +41,9 @@ import {
   type SamplePcmSnapshot,
 } from '../audio/engine/sampleEdit'
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
+import { MobileContext } from '../components/mobile/MobileContext'
+import { MobileModeBar } from '../components/mobile/MobileModeBar'
+import { ThemePicker } from '../components/header/ThemePicker'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
 import { cloneSpectralState, spectralStatesEqual, type SpectralState } from '../audio/spectral/bands'
@@ -136,7 +139,7 @@ export default function App() {
   const { t } = useI18n()
   const { settings: a11y } = useA11ySettings()
   const snap = useEngine()
-  const { mode, width: viewportWidth } = useLayoutMode()
+  const { mode, width: viewportWidth, height: viewportHeight } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
   const [menuOpen, setMenuOpen] = useState(false)
   const [libraryTick, setLibraryTick] = useState(0)
@@ -150,6 +153,9 @@ export default function App() {
   const [normalizeView, setNormalizeView] = useState(false)
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
+  const [workspaceFocus, setWorkspaceFocus] = useState(false)
+  const [analyzerOpen, setAnalyzerOpen] = useState(false)
+  const [collapseToken, setCollapseToken] = useState(0)
   const [zoomLabel, setZoomLabel] = useState('100%')
   const [editMode, setEditMode] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -485,7 +491,10 @@ export default function App() {
     const routed = routeModule(instanceId, mod.type, pane)
     setFocus(routed.focus)
     setInspectorOpen(routed.inspectorOpen)
-    if (mode === 'sheet') setSheetLevel('medium')
+    if (mode === 'sheet') {
+      setSheetLevel('medium')
+      if (mod.type === 'eq') setViz('eq-split')
+    }
   }
 
   const hideInspector = () => {
@@ -578,6 +587,35 @@ export default function App() {
           <button type="button" onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
           </button>
+        {isPhoneLayout ? (
+          <button
+            type="button"
+            disabled={!snap.sampleLoaded}
+            onClick={() => {
+              setExportOpen(true)
+              setMenuOpen(false)
+            }}
+          >
+            {t.transport.export}
+          </button>
+        ) : null}
+        {isPhoneLayout ? (
+          <button
+            type="button"
+            onClick={() => {
+              setLfoCenterOpen(true)
+              setMenuOpen(false)
+            }}
+          >
+            {t.header.lfoCenter}
+          </button>
+        ) : null}
+        {isPhoneLayout ? <ThemePicker compact /> : null}
+        {isPhoneLayout ? (
+          <div className={styles.modeCluster}>
+            <ModeSwitch mode="technical" onChange={chooseMode} compact />
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -692,7 +730,7 @@ export default function App() {
         <A11ySettings />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, t, libraryTick],
+    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout],
   )
 
   const fileInputs = (
@@ -886,6 +924,8 @@ export default function App() {
       <LiveAnnouncer />
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
+        data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
+        data-workspace={isPhoneLayout && workspaceFocus ? 'focus' : 'edit'}
         style={
           mode === 'dock-right' && inspectorOpen
             ? ({ '--inspector-col': `${inspectorWidth(mode, viewportWidth)}px` } as CSSProperties)
@@ -912,9 +952,11 @@ export default function App() {
           compact={sheet}
           minimal={isPhoneLayout}
           modeSwitch={
+            isPhoneLayout ? undefined : (
             <div className={styles.modeCluster}>
               <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />
             </div>
+            )
           }
         />
         <div className={styles.stage}>
@@ -935,6 +977,7 @@ export default function App() {
           />
         </section>
 
+        {isPhoneLayout ? null : (
         <WaveformToolbar
           tool={tool}
           onTool={selectTool}
@@ -985,10 +1028,53 @@ export default function App() {
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
         />
+        )}
         </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
           <div className={styles.waveCol}>
+            {isPhoneLayout ? (
+              <MobileModeBar
+                viz={viz}
+                onViz={(next) => {
+                  if (next === 'eq-split') {
+                    const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+                    if (eq) {
+                      selectModule(eq.instanceId)
+                      setViz('eq-split')
+                      return
+                    }
+                  }
+                  const routed = routeViz(next, focus, inspectorOpen)
+                  setViz(routed.viz)
+                  setFocus(routed.focus)
+                  setInspectorOpen(routed.inspectorOpen)
+                }}
+                workspaceFocus={workspaceFocus}
+                onToggleWorkspace={() => setWorkspaceFocus((open) => !open)}
+                analyzerOpen={analyzerOpen}
+                onToggleAnalyzer={() => setAnalyzerOpen((open) => !open)}
+                normalizeView={normalizeView}
+                onView={(action) => {
+                  if (action === 'zoom-in') waveRef.current?.zoomBy(1 / 1.4)
+                  else if (action === 'zoom-out') waveRef.current?.zoomBy(1.4)
+                  else runDisplayAction(action, waveRef.current, () => setNormalizeView((n) => !n))
+                }}
+                canCopy={snap.canCopySelection}
+                canCut={snap.canCutSelection}
+                canDelete={snap.canDeleteSelection}
+                canMute={snap.canMuteSelection}
+                canClear={snap.canClearSelection}
+                onCopy={copySelection}
+                onCut={cutSelection}
+                onDelete={deleteSelection}
+                onMute={muteSelection}
+                onUndo={() => applyHistory(undoHistory(history))}
+                onRedo={() => applyHistory(redoHistory(history))}
+                canUndo={history.past.length > 0}
+                canRedo={history.future.length > 0}
+              />
+            ) : null}
             <Waveform
               ref={waveRef}
               key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}`}
@@ -1025,6 +1111,11 @@ export default function App() {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}
               onSelectModule={selectModule}
+              phone={isPhoneLayout}
+              onGraphEdit={() => setCollapseToken((token) => token + 1)}
+              analyzerOpen={analyzerOpen}
+              onAnalyzerClose={() => setAnalyzerOpen(false)}
+              phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
             />
           </div>
           {dockRight && inspectorOpen ? (
@@ -1037,19 +1128,27 @@ export default function App() {
               <InspectorEye open={false} onClick={revealInspector} />
             </div>
           ) : null}
+          {isPhoneLayout ? null : (
           <MeterStrip
             channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
             range={meterRange}
             onRange={setMeterRange}
           />
+          )}
         </div>
 
-        {!dockRight && inspectorOpen ? (
+        {isPhoneLayout ? (
+          <div className={styles.phoneContext}>
+            <MobileContext snap={snap} focus={resolvedFocus} collapseToken={collapseToken} />
+          </div>
+        ) : null}
+
+        {!isPhoneLayout && !dockRight && inspectorOpen ? (
           <div
             className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}
             data-inspector={panelKey}
           >
-            {sheet && !isPhoneLayout ? (
+            {sheet ? (
               <button
                 type="button"
                 className={styles.sheetHandle}
@@ -1062,7 +1161,7 @@ export default function App() {
                 {t.banner.inspector}
               </button>
             ) : null}
-            {isPhoneLayout || activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
+            {activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
           </div>
         ) : null}
 
@@ -1081,7 +1180,7 @@ export default function App() {
           />
         ) : null}
 
-        <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`}>
+        <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`} data-transport="">
           <CompactTransport
             playing={snap.playing}
             loop={snap.loop}
@@ -1096,9 +1195,11 @@ export default function App() {
             onUndo={() => applyHistory(undoHistory(history))}
             onRedo={() => applyHistory(redoHistory(history))}
           />
+          {isPhoneLayout ? null : (
           <div className={styles.exportCol}>
             <TransportExportButton disabled={!snap.sampleLoaded} onExport={() => setExportOpen(true)} />
           </div>
+          )}
         </div>
 
         <p className={styles.sr}>{t.transport.selectionSr(formatTimecode(snap.params.start), formatTimecode(snap.params.end))}</p>

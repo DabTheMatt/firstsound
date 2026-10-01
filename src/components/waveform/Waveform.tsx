@@ -74,7 +74,8 @@ import {
   selectionFromAnchor,
 } from './handleLayout'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
-import { rulerMarks } from './rulerTicks'
+import { rulerMarks, rulerMinFracGap } from './rulerTicks'
+import { PhoneEqGraph } from '../mobile/PhoneEqGraph'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './Waveform.module.css'
 
@@ -120,6 +121,11 @@ type Props = {
   onSelectModule?: (instanceId: string) => void
   autoFocus?: AutomationEditFocus
   onAutoFocus?: (focus: AutomationEditFocus) => void
+  phone?: boolean
+  onGraphEdit?: () => void
+  analyzerOpen?: boolean
+  onAnalyzerClose?: () => void
+  phoneEqId?: string
 }
 
 export type WaveformHandle = {
@@ -221,6 +227,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onSelectModule,
     autoFocus: autoFocusProp,
     onAutoFocus,
+    phone = false,
+    onGraphEdit,
+    analyzerOpen = false,
+    onAnalyzerClose,
+    phoneEqId,
   },
   ref,
 ) {
@@ -760,6 +771,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       if (tensionEl && tensionId) {
         const anchor = lane?.nodes.find((node) => node.id === tensionId)
         setAutoFocus({ nodeId: null, segmentId: tensionId })
+        onGraphEdit?.()
         drag.current = {
           mode: 'autoTension',
           span: end - start,
@@ -780,6 +792,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       if (nodeEl && nodeId) {
         setAutoFocus({ nodeId, segmentId: segmentIdForNode(lane?.nodes ?? [], nodeId) })
         nodeEl.focus({ preventScroll: true })
+        onGraphEdit?.()
         drag.current = {
           mode: 'autoNode',
           span: end - start,
@@ -884,6 +897,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     if (mode === 'fadeIn' || mode === 'fadeInShape') onFades({ fadeFocus: 'in' })
     else if (mode === 'fadeOut' || mode === 'fadeOutShape') onFades({ fadeFocus: 'out' })
     if (mode === 'playhead') engine.seekSeconds(t, 'sample')
+    if (mode === 'start' || mode === 'end' || mode === 'move') onGraphEdit?.()
     const originTransient = transientIndex != null ? transients[transientIndex] : t
     drag.current = {
       mode,
@@ -997,6 +1011,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         return
       }
       drag.current.mode = 'select'
+      onGraphEdit?.()
       const spanSel = selectionFromAnchor(originT, next)
       engine.setRegion(spanSel.start, spanSel.end)
       return
@@ -1112,7 +1127,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const endPct = pct(end)
   const regionLeft = Math.max(0, Math.min(100, startPct))
   const regionRight = Math.max(0, Math.min(100, endPct))
-  const ticks = useMemo(() => rulerMarks(view.start, view.end, duration), [view, duration])
+  const ticks = useMemo(
+    () =>
+      rulerMarks(
+        view.start,
+        view.end,
+        duration,
+        plotSize.width > 0 ? rulerMinFracGap(plotSize.width, phone ? 96 : 58) : 0.16,
+      ),
+    [view, duration, plotSize.width, phone],
+  )
 
   const showWave = viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
@@ -1160,14 +1184,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       )
     : []
   const showMultiWave = viz === 'waveform-multi'
-  const showSpec = viz === 'spectrum' || viz === 'split' || viz === 'eq-split'
-  const showEqConsole = viz === 'eq-split'
+  const phoneEq = phone && viz === 'eq-split'
+  const showSpec = !phoneEq && (viz === 'spectrum' || viz === 'split' || viz === 'eq-split')
+  const showEqConsole = viz === 'eq-split' && !phone
+  const zoomed = duration > 0 && view.end - view.start < duration * 0.92
   const showMixConsole = viz === 'mix-split'
   const splitStage = viz === 'split' || viz === 'eq-split' || viz === 'mix-split'
 
     return (
     <div
-      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''}`}
+      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''}`}
       data-waveform-editor=""
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
@@ -1470,7 +1496,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <div className={styles.ruler} hidden={sensory || simple}>
               {loaded
                 ? ticks.map((mark) => (
-                    <span key={mark.t} className={styles.tick} style={{ left: `${mark.frac * 100}%` }}>
+                    <span
+                      key={mark.t}
+                      data-time-tick=""
+                      className={`${styles.tick} ${mark.frac <= 0.04 ? styles.tickStart : ''} ${mark.frac >= 0.96 ? styles.tickEnd : ''}`}
+                      style={{ left: `${mark.frac * 100}%` }}
+                    >
                       {mark.label}
                     </span>
                   ))
@@ -1479,8 +1510,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 && !sensory && !simple ? (
+          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) ? (
             <Overview
+              thin={phone}
               duration={duration}
               start={start}
               end={end}
@@ -1535,8 +1567,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 : undefined
             }
           >
-            <Spectrum active={showSpec} />
+            <Spectrum
+              active={showSpec}
+              compact={phone}
+              analyzerOpen={analyzerOpen}
+              onAnalyzerClose={onAnalyzerClose}
+              onGraphEdit={onGraphEdit}
+            />
           </div>
+        ) : null}
+        {phoneEq ? (
+          <PhoneEqGraph instanceId={phoneEqId} onGraphEdit={onGraphEdit} onSelectModule={onSelectModule} />
         ) : null}
         {showEqConsole ? (
           <>
@@ -1588,7 +1629,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             </div>
         ) : null}
       </div>
-      {loaded && duration > 0 && !showWave ? (
+      {loaded && duration > 0 && !showWave && !phone ? (
         <Overview
           duration={duration}
           start={start}
@@ -1598,7 +1639,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onScrub={setView}
         />
       ) : null}
-      {!sensory && !simple ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
+      {!sensory && !simple && !phone ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
     </div>
   )
 })

@@ -1,0 +1,25 @@
+.stage,
+.empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.empty button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--accent-primary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

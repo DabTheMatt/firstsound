@@ -1,0 +1,93 @@
+.bar {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 32px;
+  padding: 0 0 4px;
+}
+
+.modes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mode,
+.modeOn {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modeOn {
+  color: var(--accent-primary);
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.icon,
+.edit button,
+.menu button {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.icon[aria-pressed='true'],
+.modeOn {
+  color: var(--accent-primary);
+}
+
+.edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.menu {
+  position: absolute;
+  z-index: 8;
+  top: 100%;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: min(280px, 100%);
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 24px color-mix(in srgb, black 28%, transparent);
+}
+
+.menu button {
+  text-align: left;
+  width: 100%;
+  min-height: 40px;
+}
+
+.menu button:disabled {
+  color: var(--text-disabled);
+}

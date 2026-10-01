@@ -89,12 +89,22 @@ import {
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
-import { SPECTRUM_HZ_LABEL_OFFSET, SPECTRUM_PLOT_PAD } from '../../audio/engine/spectrumPlotLayout'
+import {
+  SPECTRUM_HZ_LABEL_OFFSET,
+  SPECTRUM_PLOT_PAD,
+  SPECTRUM_PLOT_PAD_COMPACT,
+  compactDbMarks,
+  phoneFrequencyTicks,
+} from '../../audio/engine/spectrumPlotLayout'
 import { VizBackground } from './VizBackground'
 import styles from './Spectrum.module.css'
 
 type Props = {
   active: boolean
+  compact?: boolean
+  analyzerOpen?: boolean
+  onAnalyzerClose?: () => void
+  onGraphEdit?: () => void
 }
 
 function emptyBands(n: number): Float32Array {
@@ -170,12 +180,16 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active }: Props) {
+export function Spectrum({ active, compact = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const compactRef = useRef(compact)
+  useEffect(() => {
+    compactRef.current = compact
+  }, [compact])
   const plotRef = useRef<HTMLDivElement>(null)
   const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const freqScaleRef = useRef(freqScale)
@@ -286,10 +300,11 @@ export function Spectrum({ active }: Props) {
         const sr = live.sampleRate || 44100
         const maxHz = spectrumMaxHz(sr, SPECTRUM_AXIS_MAX_HZ)
         const minHz = SPECTRUM_AXIS_MIN_HZ
-        const padL = SPECTRUM_PLOT_PAD.left * dpr
-        const padR = SPECTRUM_PLOT_PAD.right * dpr
-        const padT = SPECTRUM_PLOT_PAD.top * dpr
-        const padB = SPECTRUM_PLOT_PAD.bottom * dpr
+        const plotPad = compactRef.current ? SPECTRUM_PLOT_PAD_COMPACT : SPECTRUM_PLOT_PAD
+        const padL = plotPad.left * dpr
+        const padR = plotPad.right * dpr
+        const padT = plotPad.top * dpr
+        const padB = plotPad.bottom * dpr
         const left = padL
         const right = width - padR
         const top = padT
@@ -298,11 +313,12 @@ export function Spectrum({ active }: Props) {
 
         const plotH = Math.max(1, bottom - top)
         const dbFloor = spectrumDisplayFloorDb(range)
-        const dbMarks = spectrumDbScaleMarks(dbFloor, plotH / dpr)
+        const tight = compactRef.current
+        const dbMarks = tight ? compactDbMarks(dbFloor) : spectrumDbScaleMarks(dbFloor, plotH / dpr)
 
         ctx.fillStyle = colors.textMuted
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = 'right'
+        ctx.textAlign = tight ? 'left' : 'right'
         ctx.textBaseline = 'middle'
         for (const db of dbMarks) {
           const y = dbToY(db, top, bottom, dbFloor)
@@ -312,18 +328,21 @@ export function Spectrum({ active }: Props) {
           ctx.moveTo(left, y)
           ctx.lineTo(right, y)
           ctx.stroke()
-          ctx.fillStyle = colors.textMuted
-          ctx.fillText(`${db}`, left - 5 * dpr, y)
+          ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.55 : 1)
+          ctx.fillText(`${db}`, tight ? left + 4 * dpr : left - 5 * dpr, y)
         }
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'bottom'
-        ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
-        ctx.font = `${7 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        ctx.fillText('dB', 4 * dpr, top - 3 * dpr)
+        if (!tight) {
+          ctx.textAlign = 'left'
+          ctx.textBaseline = 'bottom'
+          ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
+          ctx.font = `${7 * dpr}px ui-sans-serif, system-ui, sans-serif`
+          ctx.fillText('dB', 4 * dpr, top - 3 * dpr)
+        }
 
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        const hzTicks = FREQ_SCALE_HZ.filter((hz) => hz <= maxHz + 1).map((hz) => {
+        const hzSource = tight ? phoneFrequencyTicks(width / dpr) : FREQ_SCALE_HZ
+        const hzTicks = hzSource.filter((hz) => hz >= minHz - 1 && hz <= maxHz + 1).map((hz) => {
           const major = freqTickIsMajor(hz)
           ctx.font = `${(major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
           const label = formatFreqTick(hz)
@@ -663,22 +682,29 @@ export function Spectrum({ active }: Props) {
           ctx.restore()
         }
 
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.82)
-        ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        for (let i = 0; i < noteTicks.length; i++) {
-          if (!noteLabelOn.has(i)) continue
-          const tick = noteTicks[i]!
-          ctx.fillText(tick.label, tick.x, top - 6 * dpr)
+        if (!compactRef.current) {
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'bottom'
+          ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.82)
+          ctx.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`
+          for (let i = 0; i < noteTicks.length; i++) {
+            if (!noteLabelOn.has(i)) continue
+            const tick = noteTicks[i]!
+            ctx.fillText(tick.label, tick.x, top - 6 * dpr)
+          }
         }
-        ctx.textBaseline = 'top'
-        ctx.fillStyle = colors.textMuted
+        ctx.textAlign = 'center'
+        ctx.textBaseline = compactRef.current ? 'bottom' : 'top'
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, compactRef.current ? 0.62 : 1)
         for (let i = 0; i < hzTicks.length; i++) {
           if (!hzLabelOn.has(i)) continue
           const tick = hzTicks[i]!
-          ctx.font = `${(tick.major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
-          ctx.fillText(tick.label, tick.x, bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr)
+          ctx.font = `${(tick.major ? 9 : 8) * dpr}px ui-sans-serif, system-ui, sans-serif`
+          ctx.fillText(
+            tick.label,
+            tick.x,
+            compactRef.current ? bottom - 4 * dpr : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr,
+          )
         }
       }
       frame = requestAnimationFrame(tick)
@@ -699,6 +725,7 @@ export function Spectrum({ active }: Props) {
     event.preventDefault()
     event.stopPropagation()
     selectEqBand({ instanceId, index })
+    onGraphEdit?.()
     event.currentTarget.setPointerCapture(event.pointerId)
     const bands = snap.eqById[instanceId]?.bands ?? snap.eqBands
     drag.current = {
@@ -739,6 +766,7 @@ export function Spectrum({ active }: Props) {
   }
 
   if (!active) return null
+  const plotPad = compact ? SPECTRUM_PLOT_PAD_COMPACT : SPECTRUM_PLOT_PAD
   const eqCurveOn = eqMods.some((mod) => {
     const st = snap.eqById[mod.instanceId]
     if (!st) return false
@@ -749,11 +777,20 @@ export function Spectrum({ active }: Props) {
   )
   const showResponseKey = shouldShowResponseLegend(eqCurveOn, filterCurveOn)
   return (
-    <div className={styles.wrap} role="region" aria-label="Spectrum analyzer">
+    <div
+      className={`${styles.wrap} ${compact ? styles.compact : ''} ${analyzerOpen ? styles.analyzerOpen : ''}`}
+      role="region"
+      aria-label="Spectrum analyzer"
+    >
       <div
         className={styles.chrome}
       >
         <div className={styles.chromeLeft}>
+          {compact ? (
+            <button type="button" className={styles.analyzerClose} onClick={onAnalyzerClose}>
+              ×
+            </button>
+          ) : null}
           {listenBand ? (
             <span className={styles.bands}>
               {t.waveform.spectral.analyseBand}: {t.waveform.spectral[listenBand === 'sub-bass' ? 'subBass' : listenBand === 'low-mid' ? 'lowMid' : listenBand === 'high-mid' ? 'highMid' : listenBand === 'high' ? 'high' : 'analyseSum']}
@@ -1085,7 +1122,7 @@ export function Spectrum({ active }: Props) {
       </div>
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen ? (
+        {prefs.legendOpen && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (
               <ul className={styles.regions}>
@@ -1119,10 +1156,10 @@ export function Spectrum({ active }: Props) {
             const rect = canvas.getBoundingClientRect()
             const x = event.clientX - rect.left
             const y = event.clientY - rect.top
-            const left = SPECTRUM_PLOT_PAD.left
-            const right = rect.width - SPECTRUM_PLOT_PAD.right
-            const top = SPECTRUM_PLOT_PAD.top
-            const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
+            const left = plotPad.left
+            const right = rect.width - plotPad.right
+            const top = plotPad.top
+            const bottom = rect.height - plotPad.bottom
             if (x < left || x > right || y < top || y > bottom) return
             const live = engine.getSnapshot()
             const plotMax = spectrumMaxHz(live.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
@@ -1151,10 +1188,10 @@ export function Spectrum({ active }: Props) {
             const y = event.clientY - rect.top
             const sr = engine.getSnapshot().sampleRate || 44100
             const maxHz = spectrumMaxHz(sr, SPECTRUM_AXIS_MAX_HZ)
-            const left = SPECTRUM_PLOT_PAD.left
-            const right = rect.width - SPECTRUM_PLOT_PAD.right
-            const top = SPECTRUM_PLOT_PAD.top
-            const bottom = rect.height - SPECTRUM_PLOT_PAD.bottom
+            const left = plotPad.left
+            const right = rect.width - plotPad.right
+            const top = plotPad.top
+            const bottom = rect.height - plotPad.bottom
             if (x < left || x > right || y < top || y > bottom) {
               setHover(null)
               return
@@ -1168,13 +1205,15 @@ export function Spectrum({ active }: Props) {
           ref={plotRef}
           className={styles.plot}
           style={{
-            left: SPECTRUM_PLOT_PAD.left,
-            right: SPECTRUM_PLOT_PAD.right,
-            top: SPECTRUM_PLOT_PAD.top,
-            bottom: SPECTRUM_PLOT_PAD.bottom,
+            left: plotPad.left,
+            right: plotPad.right,
+            top: plotPad.top,
+            bottom: plotPad.bottom,
           }}
         >
-          {eqMods.flatMap((mod) => {
+          {compact
+            ? null
+            : eqMods.flatMap((mod) => {
             if (!eqOverlayIncludes(eqFocus, mod.instanceId)) return []
             const bands = snap.eqById[mod.instanceId]?.bands ?? []
             const modulate = eqInstanceUsesSharedLfo(snap.chain, mod.instanceId)

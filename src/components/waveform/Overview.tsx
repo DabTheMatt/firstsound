@@ -14,6 +14,7 @@ type Props = {
   onScrub: (view: View) => void
   contentRev?: number
   silence?: { startSec: number; endSec: number } | null
+  thin?: boolean
 }
 
 /**
@@ -21,7 +22,7 @@ type Props = {
  * the selection and the playhead. A click parks the playhead; dragging pans the
  * main viewport. Edge handles shrink/grow the frame to zoom the waveform view.
  */
-export function Overview({ duration, start, end, view, onScrub, contentRev = 0, silence }: Props) {
+export function Overview({ duration, start, end, view, onScrub, contentRev = 0, silence, thin = false }: Props) {
   const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const playheadRef = useRef<HTMLDivElement>(null)
@@ -180,7 +181,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
 
   return (
     <div
-      className={styles.overview}
+      className={`${styles.overview} ${thin ? styles.thin : ''}`}
       aria-label={t.waveform.overviewAria}
       onPointerDown={onPointerDown}
     >

@@ -156,7 +156,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
         const prev = chain[index - 1]
         return (
           <Fragment key={mod.instanceId}>
-            {prev ? (
+            {prev && (!minimal || reorder) ? (
               <span className={`${styles.insertSlot} ${reorder && gapAt === index ? styles.dropSlot : ''}`}>
                 <button
                   type="button"
@@ -297,6 +297,18 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
           </Fragment>
         )
       })}
+      {minimal ? (
+        <button
+          type="button"
+          className={styles.addOne}
+          aria-label={t.chain.addEffect}
+          title={t.chain.addEffect}
+          disabled={!canAdd}
+          onClick={(event) => openInsert(Math.max(0, chain.length - 2), event.currentTarget)}
+        >
+          +
+        </button>
+      ) : null}
       {addAt != null && menuPos
         ? createPortal(
             <>

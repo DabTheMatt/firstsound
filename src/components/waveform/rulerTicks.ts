@@ -32,6 +32,12 @@ export type RulerMark = {
   label: string
 }
 
+/** Minimum fractional gap so timecode labels of `labelPx` do not overlap. */
+export function rulerMinFracGap(widthPx: number, labelPx = 58): number {
+  if (!(widthPx > 0)) return 0.16
+  return Math.min(0.55, Math.max(0.045, (labelPx + 10) / widthPx))
+}
+
 export function rulerMarks(
   viewStart: number,
   viewEnd: number,

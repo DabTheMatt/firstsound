@@ -15,6 +15,11 @@ describe('resolveLayoutMode', () => {
     expect(resolveLayoutMode({ width: 1180, height: 820 })).toBe('dock-right')
   })
 
+  it('keeps a landscape phone on the phone composition', () => {
+    expect(resolveLayoutMode({ width: 844, height: 390 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 932, height: 430 })).toBe('sheet')
+  })
+
   it('treats a narrow desktop window like a tablet', () => {
     expect(resolveLayoutMode({ width: 820, height: 900 })).toBe('dock-bottom')
   })

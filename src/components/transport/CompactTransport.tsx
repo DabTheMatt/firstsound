@@ -108,36 +108,51 @@ export function CompactTransport({
       </div>
 
       <div className={styles.transport}>
+        {minimal ? (
+          <button
+            type="button"
+            className={styles.icon}
+            disabled={disabled}
+            aria-label={t.transport.playFromStart}
+            title={t.transport.playFromStartTitle}
+            onClick={() => {
+              void engine.unlock().then(() => engine.playFromStart())
+            }}
+          >
+            |◀
+          </button>
+        ) : null}
         <TransportButton
           playing={playing}
           disabled={disabled}
+          compact={minimal}
           onToggle={() => {
             void engine.unlock().then(() => engine.togglePlay())
           }}
         />
-        <button
-          type="button"
-          className={styles.icon}
-          disabled={disabled}
-          aria-label={t.transport.playFromStart}
-          title={t.transport.playFromStartTitle}
-          onClick={() => {
-            void engine.unlock().then(() => engine.playFromStart())
-          }}
-        >
-          |◀
-        </button>
         {!minimal ? (
           <button
             type="button"
             className={styles.icon}
             disabled={disabled}
-            aria-label={t.transport.stop}
-            onClick={() => engine.stop()}
+            aria-label={t.transport.playFromStart}
+            title={t.transport.playFromStartTitle}
+            onClick={() => {
+              void engine.unlock().then(() => engine.playFromStart())
+            }}
           >
-            ■
+            |◀
           </button>
         ) : null}
+        <button
+          type="button"
+          className={styles.icon}
+          disabled={disabled}
+          aria-label={t.transport.stop}
+          onClick={() => engine.stop()}
+        >
+          ■
+        </button>
         <button
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
@@ -160,10 +175,12 @@ export function CompactTransport({
                 {formatTimecode(start)} — {formatTimecode(end)}
               </span>
             ) : null}
-            <strong className={styles.length}>{length.toFixed(3)} s</strong>
-            <span className={styles.bpm} title={t.transport.bpmTitle}>
-              {bpm.toFixed(1)} BPM
-            </span>
+            {!minimal ? <strong className={styles.length}>{length.toFixed(3)} s</strong> : null}
+            {!minimal ? (
+              <span className={styles.bpm} title={t.transport.bpmTitle}>
+                {bpm.toFixed(1)} BPM
+              </span>
+            ) : null}
           </span>
         </p>
       </div>

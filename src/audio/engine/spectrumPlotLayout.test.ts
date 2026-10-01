@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { FREQ_SCALE_HZ } from './pitchScale'
 import { hzToX, type FreqScaleKind } from './freqScale'
-import { SPECTRUM_HZ_LABEL_OFFSET, SPECTRUM_PLOT_PAD, spectrumPlotBox } from './spectrumPlotLayout'
+import {
+  SPECTRUM_HZ_LABEL_OFFSET,
+  SPECTRUM_PLOT_PAD,
+  SPECTRUM_PLOT_PAD_COMPACT,
+  phoneFrequencyTicks,
+  spectrumPlotBox,
+} from './spectrumPlotLayout'
 
 const SCALES: FreqScaleKind[] = ['log', 'linear', 'mel']
 const WIDTHS = [280, 640, 1280, 1920]
@@ -24,5 +30,15 @@ describe('spectrumPlotBox', () => {
         }
       }
     }
+  })
+})
+
+describe('phone spectrum scale', () => {
+  it('uses a tight inset and fewer labels on narrow widths', () => {
+    expect(SPECTRUM_PLOT_PAD_COMPACT.left).toBeLessThan(SPECTRUM_PLOT_PAD.left)
+    expect(SPECTRUM_PLOT_PAD_COMPACT.bottom).toBeLessThan(12)
+    expect(phoneFrequencyTicks(320).length).toBeLessThanOrEqual(4)
+    expect(phoneFrequencyTicks(390)).toContain(1000)
+    expect(phoneFrequencyTicks(430).length).toBeGreaterThan(phoneFrequencyTicks(320).length)
   })
 })

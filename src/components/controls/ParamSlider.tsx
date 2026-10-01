@@ -6,15 +6,19 @@ import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
+import { classifyGesture } from '../mobile/gestureIntent'
 import styles from './ParamSlider.module.css'
 
 type Props = {
   id: ParamId
   value: number
   liveValue?: number
+  /** Touch: vertical movement scrolls, horizontal movement edits, a tap focuses. */
+  gestureSafe?: boolean
+  onFocusRequest?: () => void
 }
 
-export function ParamSlider({ id, value, liveValue }: Props) {
+export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocusRequest }: Props) {
   const { paramLabel, locale } = useI18n()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
@@ -27,6 +31,12 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   const spoken = formatAccessibleValue(shownValue, def, locale)
   const description = paramDescription(id, locale)
   const nRef = useRef(n)
+  const gesture = useRef<{
+    x: number
+    y: number
+    intent: 'pending' | 'scroll' | 'edit'
+    pointerId: number
+  } | null>(null)
   useEffect(() => {
     nRef.current = n
   }, [n])
@@ -48,6 +58,11 @@ export function ParamSlider({ id, value, liveValue }: Props) {
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const coarse = event.pointerType === 'touch' || event.pointerType === 'pen'
+    if (gestureSafe && coarse) {
+      gesture.current = { x: event.clientX, y: event.clientY, intent: 'pending', pointerId: event.pointerId }
+      return
+    }
     event.preventDefault()
     const target = event.currentTarget
     focusParameterControl(target)
@@ -75,6 +90,33 @@ export function ParamSlider({ id, value, liveValue }: Props) {
     target.addEventListener('pointercancel', up)
   }
 
+  const onSafePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = gesture.current
+    if (!active || active.pointerId !== event.pointerId || active.intent === 'scroll') return
+    if (active.intent === 'pending') {
+      const next = classifyGesture(event.clientX - active.x, event.clientY - active.y)
+      if (next === 'pending') return
+      active.intent = next
+      if (next === 'scroll') return
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    apply(event.clientX, event.currentTarget)
+  }
+
+  const finishSafe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = gesture.current
+    if (!active || active.pointerId !== event.pointerId) return
+    const tapped = active.intent === 'pending'
+    gesture.current = null
+    if (tapped) onFocusRequest?.()
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+  }
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const next = applySliderKey(event, n)
     if (!next) return
@@ -85,7 +127,19 @@ export function ParamSlider({ id, value, liveValue }: Props) {
 
   return (
     <div ref={rowRef} className={styles.row}>
-      <div className={styles.meta}>
+      <div
+        className={styles.meta}
+        onClick={() => onFocusRequest?.()}
+        role={onFocusRequest ? 'button' : undefined}
+        tabIndex={onFocusRequest ? 0 : undefined}
+        onKeyDown={(event) => {
+          if (!onFocusRequest) return
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onFocusRequest()
+          }
+        }}
+      >
         <span className={styles.label} id={labelId}>
           {paramLabel(id)}
         </span>
@@ -103,7 +157,7 @@ export function ParamSlider({ id, value, liveValue }: Props) {
       </p>
       <div
         ref={trackRef}
-        className={styles.track}
+        className={`${styles.track} ${gestureSafe ? styles.safe : ''}`}
         role="slider"
         tabIndex={0}
         aria-labelledby={labelId}
@@ -114,6 +168,9 @@ export function ParamSlider({ id, value, liveValue }: Props) {
         aria-valuetext={spoken}
         title={description}
         onPointerDown={onPointerDown}
+        onPointerMove={gestureSafe ? onSafePointerMove : undefined}
+        onPointerUp={gestureSafe ? finishSafe : undefined}
+        onPointerCancel={gestureSafe ? finishSafe : undefined}
         onDoubleClick={() => engine.resetParam(id)}
         onKeyDown={onKeyDown}
       >

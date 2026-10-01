@@ -205,8 +205,62 @@
 
 /* Phone overrides must come after base .shell/.work/.bottom so they win. */
 .phoneShell {
-  padding: 6px 8px 0;
-  gap: 4px;
+  --editor-grid: minmax(0, 1fr);
+  --meter-col: 0px;
+  padding: 4px 8px 0;
+  gap: 0;
+}
+
+.phoneContext {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 38%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.phoneShell[data-workspace='focus'] .chainBand,
+.phoneShell[data-workspace='focus'] .phoneContext {
+  display: none;
+}
+
+.phoneShell[data-orient='landscape'] .stageMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(168px, 0.72fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'chain chain'
+    'work context'
+    'transport transport';
+}
+
+.phoneShell[data-orient='landscape'] .banner {
+  grid-column: 1 / -1;
+}
+
+.phoneShell[data-orient='landscape'] .chrome {
+  grid-area: chain;
+}
+
+.phoneShell[data-orient='landscape'] .phoneWork {
+  grid-area: work;
+}
+
+.phoneShell[data-orient='landscape'] .phoneContext {
+  grid-area: context;
+  max-height: none;
+  border-top: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.phoneShell[data-orient='landscape'] .transportPinned {
+  grid-area: transport;
+}
+
+.phoneShell[data-workspace='focus'][data-orient='landscape'] .phoneWork {
+  grid-column: 1 / -1;
 }
 
 .phoneShell .chrome {
@@ -214,7 +268,11 @@
 }
 
 .phoneShell .chainBand {
-  min-height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .phoneShell .transportPinned {
@@ -232,6 +290,17 @@
 .phoneWork .waveCol,
 .phoneWork .waveCol > * {
   height: 100%;
+  min-height: 0;
+}
+
+.phoneShell .waveCol > :first-child {
+  flex: 0 0 auto;
+  height: auto;
+}
+
+.phoneShell .waveCol > :last-child {
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
 }
 
@@ -309,7 +378,12 @@
 }
 
 .phoneShell .stageMain {
-  gap: 4px;
+  gap: 0;
+}
+
+:global(html[data-low-vision='on']) .phoneShell,
+:global(html[data-ui-scale='large']) .phoneShell {
+  overflow: hidden;
 }
 
 .overlay {

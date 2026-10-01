@@ -133,6 +133,25 @@ export type Messages = {
   }
   runtime: { refresh: string; refreshing: string; refreshTitle: string }
   banner: { audioBlocked: string; inspector: string }
+  mobile: {
+    more: string
+    back: string
+    view: string
+    analyzer: string
+    expandWorkspace: string
+    collapseWorkspace: string
+    expandContext: string
+    collapseContext: string
+    on: string
+    off: string
+    type: string
+    addBand: string
+    addEq: string
+    freq: string
+    gain: string
+    q: string
+    context: string
+  }
   waveform: {
     empty: string
     loadDemo: string
@@ -639,6 +658,25 @@ export const EN: Messages = {
   banner: {
     audioBlocked: 'Audio is paused by the browser. Tap Play to resume.',
     inspector: 'Inspector',
+  },
+  mobile: {
+    more: 'More',
+    back: 'Back',
+    view: 'View',
+    analyzer: 'Analyzer',
+    expandWorkspace: 'Expand workspace',
+    collapseWorkspace: 'Exit full workspace',
+    expandContext: 'Show parameters',
+    collapseContext: 'Hide parameters',
+    on: 'On',
+    off: 'Off',
+    type: 'Type',
+    addBand: 'Add band',
+    addEq: 'Add EQ',
+    freq: 'Freq',
+    gain: 'Gain',
+    q: 'Q',
+    context: 'Effect parameters',
   },
   waveform: {
     empty: 'Load a sample to begin',
@@ -1235,6 +1273,25 @@ export const PL: Messages = {
   banner: {
     audioBlocked: 'Przeglądarka wstrzymała dźwięk. Dotknij Odtwórz, aby wznowić.',
     inspector: 'Inspektor',
+  },
+  mobile: {
+    more: 'Więcej',
+    back: 'Wróć',
+    view: 'Widok',
+    analyzer: 'Analizator',
+    expandWorkspace: 'Powiększ przestrzeń',
+    collapseWorkspace: 'Zamknij pełny widok',
+    expandContext: 'Pokaż parametry',
+    collapseContext: 'Ukryj parametry',
+    on: 'Wł.',
+    off: 'Wył.',
+    type: 'Typ',
+    addBand: 'Dodaj pasmo',
+    addEq: 'Dodaj EQ',
+    freq: 'Częst.',
+    gain: 'Gain',
+    q: 'Q',
+    context: 'Parametry efektu',
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
