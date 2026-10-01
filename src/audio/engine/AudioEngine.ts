@@ -98,7 +98,7 @@ import {
 } from '../fx/graphs'
 import { applyLimiterGraph, limiterReductionDb } from '../fx/limiter'
 import { applyCompressorGraph, compressorReductionDb } from '../fx/compressor'
-import { migrateSpaceParams } from '../fx/migrate'
+import { legacyDensityToGrainOverlap, legacyInterpToQualityIndex, migrateSpaceParams } from '../fx/migrate'
 import { commitParamEdit, commitParamPatch } from '../parameters/links'
 import { mixWhenEnablingReverb, reverbMixEngagesModule } from '../fx/reverbEngage'
 import { distortionDryWet, NOISE_CUT_TAU_SEC, NOISE_PAUSE_FADE_TAU_SEC } from '../fx/distortion'
@@ -2736,7 +2736,7 @@ export class AudioEngine {
   toPreset(): PresetV1 {
     return {
       instrument: 'field',
-      version: 1,
+      version: 2,
       loop: this.loop,
       engineMode: this.engineMode,
       direction: this.direction,
@@ -2775,7 +2775,17 @@ export class AudioEngine {
     this.lfoHold = defaultLfoHold()
     this.lfoShown = lfoShownFromMap(this.fxLfos)
     this.reverbIrKey = ''
-    const migrated = migrateSpaceParams(preset.params)
+    const incoming = { ...preset.params }
+    if ((preset.version ?? 1) < 2) {
+      if (typeof incoming.stretchInterp === 'number') {
+        incoming.stretchInterp = legacyDensityToGrainOverlap(incoming.stretchInterp)
+      }
+      const on = typeof incoming.stretchInterpOn === 'number' ? incoming.stretchInterpOn : 0
+      const algo = typeof incoming.stretchInterpAlgo === 'number' ? incoming.stretchInterpAlgo : 2
+      incoming.stretchInterpAlgo = legacyInterpToQualityIndex(algo, on)
+      incoming.stretchInterpOn = 1
+    }
+    const migrated = migrateSpaceParams(incoming)
     for (const id of Object.keys(this.params) as ParamId[]) {
       const value = migrated[id]
       if (typeof value === 'number') {

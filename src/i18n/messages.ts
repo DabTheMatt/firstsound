@@ -342,7 +342,15 @@ export type Messages = {
     taps: string
     hide: string
     show: string
+    interpolation: string
     interpAlgo: string
+    interpFast: string
+    interpSmooth: string
+    interpHigh: string
+    interpFastTitle: string
+    interpSmoothTitle: string
+    interpHighTitle: string
+    stretchHelp: string
     remove: string
   }
   theme: {
@@ -855,7 +863,19 @@ export const EN: Messages = {
     taps: 'Taps',
     hide: 'Hide inspector',
     show: 'Show inspector',
-    interpAlgo: 'Pitch and speed interpolation algorithm',
+    interpolation: 'Interpolation',
+    interpAlgo: 'Resampling quality. Matters when Pitch leaves 0 semitones.',
+    interpFast: 'Fast',
+    interpSmooth: 'Smooth',
+    interpHigh: 'High Quality',
+    interpFastTitle:
+      'Linear resampling. Lowest CPU. Rougher, with more aliasing, when Pitch moves far from 0. Speed alone barely changes this, because each grain still plays at the original rate.',
+    interpSmoothTitle:
+      'Cubic resampling for everyday playback. Smoother than Fast between samples, still light on CPU. Bright material pitched up can still alias.',
+    interpHighTitle:
+      'Windowed sinc. Band-limits the read so high pitches stay cleaner. Higher CPU. A bounce uses a longer kernel than live playback.',
+    stretchHelp:
+      'Speed changes tempo without pitch. Pitch transposes without changing tempo. Grain Overlap is how much consecutive time-stretch grains cover each other: higher is smoother and softer on attacks, lower keeps transients clearer. Grains always overlap, so the train does not gap. Interpolation rebuilds samples between the original ones. It is most audible when Pitch leaves 0 — especially pitching up — and stays subtle if you only change Speed.',
     remove: 'Remove',
   },
   theme: {
@@ -1439,7 +1459,19 @@ export const PL: Messages = {
     taps: 'Odbicia',
     hide: 'Ukryj inspektor',
     show: 'Pokaż inspektor',
-    interpAlgo: 'Algorytm interpolacji wysokości i prędkości',
+    interpolation: 'Interpolacja',
+    interpAlgo: 'Jakość przeliczania próbek, gdy wysokość schodzi z 0 półtonów.',
+    interpFast: 'Szybka',
+    interpSmooth: 'Gładka',
+    interpHigh: 'Wysoka jakość',
+    interpFastTitle:
+      'Interpolacja liniowa. Najmniej CPU. Ostrzejsza i z większym aliasingiem, gdy wysokość mocno odchodzi od 0. Sama prędkość prawie tego nie zmienia, bo ziarno i tak gra w oryginalnym tempie.',
+    interpSmoothTitle:
+      'Interpolacja kubiczna do zwykłego odtwarzania. Gładsza niż Szybka pomiędzy próbkami, wciąż lekka dla CPU. Jasny materiał transponowany w górę nadal może aliasować.',
+    interpHighTitle:
+      'Okienkowany sinc. Ogranicza pasmo odczytu, więc wysokie transpozycje zostają czystsze. Więcej CPU. Zapis offline używa dłuższego jądra niż odtwarzanie na żywo.',
+    stretchHelp:
+      'Prędkość zmienia tempo bez wysokości. Wysokość transponuje bez zmiany tempa. Nakładanie ziaren mówi, jak bardzo kolejne ziarna time-stretchu nachodzą na siebie: wyższe wygładza i zmiękcza ataki, niższe zostawia wyraźniejsze transjenty. Ziarna zawsze się nakładają, więc nie ma dziur. Interpolacja odbudowuje próbki pomiędzy oryginalnymi. Słychać ją głównie, gdy wysokość schodzi z 0 — szczególnie w górę — a przy samej zmianie prędkości różnica jest subtelna.',
     remove: 'Usuń',
   },
   theme: {

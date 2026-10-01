@@ -230,7 +230,11 @@ export type EngineMode = 'playback' | 'grain'
 
 export type PlaybackDirection = 'forward' | 'reverse' | 'pingpong'
 
-/** Sample interpolator used when Speed or Pitch leave 1× / 0 st. */
+/**
+ * Sample interpolator used when the grain read falls between samples.
+ * Pitch sets that step. Speed only moves the grain train.
+ * `nearest` is an internal kernel, not a user-facing mode.
+ */
 export type StretchInterpAlgo = 'nearest' | 'linear' | 'cubic' | 'sinc'
 
 /** Where transport scrubbing (ring drag / wheel) is allowed to land. */
@@ -246,7 +250,7 @@ export type EqListenMode = 'sample' | 'filters'
 
 export type PresetV1 = {
   instrument: 'field'
-  version: 1
+  version: 1 | 2
   loop: boolean
   engineMode: EngineMode
   params: Record<string, number>
