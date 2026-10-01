@@ -17,6 +17,7 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PARAMS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
+import { modulationCenterValue } from '../../audio/parameters/evaluation'
 import { EQ_BAND_LFO_IDS, eqBandLfoKind, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
@@ -47,9 +48,20 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const liveFreq = modulate && ids ? (snap.liveParams[ids.freq] ?? band.frequency) : band.frequency
   const liveGain = modulate && ids ? (snap.liveParams[ids.gain] ?? band.gain) : band.gain
   const liveQ = modulate && ids ? (snap.liveParams[ids.q] ?? band.q) : band.q
-  const freqLfo = modulate && ids ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
-  const gainLfo = modulate && ids ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
-  const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
+  const centerFreq = ids
+    ? modulationCenterValue(ids.freq, band.frequency, snap.paramCenters[ids.freq] ?? band.frequency, snap.automation, snap.playing)
+    : band.frequency
+  const centerGain = ids
+    ? modulationCenterValue(ids.gain, band.gain, snap.paramCenters[ids.gain] ?? band.gain, snap.automation, snap.playing)
+    : band.gain
+  const centerQ = ids
+    ? modulationCenterValue(ids.q, band.q, snap.paramCenters[ids.q] ?? band.q, snap.automation, snap.playing)
+    : band.q
+  const freqLfo = modulate && ids ? lfoRangeFor(snap, ids.freq, toNormalized(centerFreq, PARAMS.eq1Freq)) : undefined
+  const gainLfo = modulate && ids ? lfoRangeFor(snap, ids.gain, toNormalized(centerGain, PARAMS.eq1Gain)) : undefined
+  const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(centerQ, PARAMS.eq1Q)) : undefined
+  const widthLfo =
+    modulate && ids ? lfoRangeFor(snap, ids.q, widthToN(bandwidthHz(centerFreq, centerQ))) : undefined
   const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
   useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
   const instanceCurve = eqTone(eqColorIndex(snap.chain, instanceId), readThemeColors()).curve
@@ -174,7 +186,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                   baseValueText={qLfo ? formatEqHz(bandwidthHz(band.frequency, band.q)) : undefined}
                   normalized={widthToN(bandwidthHz(band.frequency, band.q))}
                   visualNormalized={widthToN(bandwidthHz(liveFreq, liveQ))}
-                  lfoRange={qLfo}
+                  lfoRange={widthLfo}
                   min={10}
                   max={10000}
                   now={bandwidthHz(band.frequency, band.q)}
