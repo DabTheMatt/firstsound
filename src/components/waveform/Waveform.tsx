@@ -35,7 +35,7 @@ import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
 import type { WaveTool, VizMode } from '../../app/editorState'
-import { phoneDisplayViz } from '../../app/phoneWorkspace'
+import { phoneDisplayViz, type FocusWorkspace } from '../../app/phoneWorkspace'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
@@ -123,6 +123,8 @@ type Props = {
   autoFocus?: AutomationEditFocus
   onAutoFocus?: (focus: AutomationEditFocus) => void
   phone?: boolean
+  /** Focused editing workspace. Null keeps the normal phone layout. */
+  phoneFocus?: FocusWorkspace | null
   onGraphEdit?: () => void
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
@@ -229,6 +231,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     autoFocus: autoFocusProp,
     onAutoFocus,
     phone = false,
+    phoneFocus = null,
     onGraphEdit,
     analyzerOpen = false,
     onAnalyzerClose,
@@ -1195,7 +1198,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     return (
     <div
-      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''}`}
+      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
@@ -1512,7 +1515,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) ? (
+          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) && !phoneFocus ? (
             <Overview
               thin={phone}
               duration={duration}
@@ -1579,7 +1582,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           </div>
         ) : null}
         {phoneEq ? (
-          <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} />
+          <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} phoneFocus={phoneFocus === 'eq'} />
         ) : null}
         {showEqConsole ? (
           <>

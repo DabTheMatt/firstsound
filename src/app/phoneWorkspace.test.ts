@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { essentialParamIds, nextSheetLevel, phoneDisplayViz, phoneVizFromMode, vizForPhone } from './phoneWorkspace'
+import {
+  essentialParamIds,
+  focusWorkspaceForViz,
+  nextSheetLevel,
+  phoneDisplayViz,
+  phoneVizFromMode,
+  vizForPhone,
+} from './phoneWorkspace'
 
 describe('phone visualization', () => {
   it('collapses stacked analyzer views to one primary mode', () => {
@@ -16,6 +23,15 @@ describe('phone visualization', () => {
     expect(phoneVizFromMode('spectrum')).toBe('eq')
     expect(vizForPhone('eq')).toBe('eq-split')
     expect(vizForPhone('auto')).toBe('automation')
+  })
+})
+
+describe('focus workspace', () => {
+  it('maps the current phone view onto a presentation-only workspace', () => {
+    expect(focusWorkspaceForViz('waveform')).toBe('wave')
+    expect(focusWorkspaceForViz('eq-split')).toBe('eq')
+    expect(focusWorkspaceForViz('spectrum')).toBe('eq')
+    expect(focusWorkspaceForViz('automation')).toBe('auto')
   })
 })
 

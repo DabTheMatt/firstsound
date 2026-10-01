@@ -409,3 +409,74 @@
     0 0 0 2px var(--eq-curve, var(--accent-primary)),
     0 0 10px color-mix(in srgb, var(--eq-curve, var(--accent-primary)) 55%, transparent);
 }
+
+.focusReadout {
+  position: absolute;
+  z-index: 5;
+  top: 46px;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  max-width: min(240px, 68%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--band, var(--text-secondary));
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.focusTitle {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.focusValues {
+  color: color-mix(in srgb, var(--text-secondary) 88%, transparent);
+}
+
+.focusReadout[data-live='true'] .focusValues,
+.focusReadout[data-q-armed='true'] .focusValues {
+  color: var(--text-primary);
+}
+
+.focusReadout[data-live='true'] {
+  font-size: 13px;
+}
+
+.focusMenu {
+  position: absolute;
+  z-index: 8;
+  top: 46px;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
+  pointer-events: auto;
+}
+
+.focusMenu button {
+  min-height: 36px;
+  min-width: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-app) 78%, transparent);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.focusMenuOn {
+  color: var(--accent-primary);
+}
+
+.focusDelete {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+}

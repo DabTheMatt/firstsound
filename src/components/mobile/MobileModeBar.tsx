@@ -3,13 +3,13 @@ import type { VizMode } from '../../app/editorState'
 import { phoneDisplayViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from '../waveform/BackgroundControl'
+import { FocusToggle } from './FocusToggle'
 import styles from './MobileModeBar.module.css'
 
 type Props = {
   viz: VizMode
   onViz: (viz: VizMode) => void
-  workspaceFocus: boolean
-  onToggleWorkspace: () => void
+  onEnterFocus: () => void
   normalizeView: boolean
   onView: (action: 'fit-sample' | 'fit-selection' | 'normalize-view' | 'reset-zoom' | 'zoom-in' | 'zoom-out') => void
   canCopy: boolean
@@ -37,8 +37,7 @@ const MODES: { id: VizMode; label: string }[] = [
 export function MobileModeBar({
   viz,
   onViz,
-  workspaceFocus,
-  onToggleWorkspace,
+  onEnterFocus,
   normalizeView,
   onView,
   canCopy,
@@ -91,15 +90,7 @@ export function MobileModeBar({
         ))}
       </div>
       <div className={styles.tools}>
-        <button
-          type="button"
-          className={styles.icon}
-          aria-pressed={workspaceFocus}
-          aria-label={workspaceFocus ? t.mobile.collapseWorkspace : t.mobile.expandWorkspace}
-          onClick={onToggleWorkspace}
-        >
-          {workspaceFocus ? '▾' : '▴'}
-        </button>
+        <FocusToggle expanded={false} onClick={onEnterFocus} />
         <button
           type="button"
           className={styles.icon}

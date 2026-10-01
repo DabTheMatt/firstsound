@@ -42,8 +42,9 @@ import {
 } from '../audio/engine/sampleEdit'
 import { AutomationInspector } from '../components/waveform/AutomationInspector'
 import { MobileContext } from '../components/mobile/MobileContext'
+import { FocusChrome } from '../components/mobile/FocusChrome'
 import { MobileModeBar } from '../components/mobile/MobileModeBar'
-import { phoneDisplayViz } from './phoneWorkspace'
+import { focusWorkspaceForViz, phoneDisplayViz, type FocusWorkspace } from './phoneWorkspace'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
@@ -154,7 +155,7 @@ export default function App() {
   const [normalizeView, setNormalizeView] = useState(false)
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
-  const [workspaceFocus, setWorkspaceFocus] = useState(false)
+  const [focusWorkspace, setFocusWorkspace] = useState<FocusWorkspace | null>(null)
   const [analyzerOpen, setAnalyzerOpen] = useState(false)
   const [collapseToken, setCollapseToken] = useState(0)
   const [zoomLabel, setZoomLabel] = useState('100%')
@@ -537,6 +538,14 @@ export default function App() {
   const applyHistory = (next: typeof history) => {
     setHistory(next)
     restorePresent(next.present)
+  }
+
+  const activeFocus = isPhoneLayout ? focusWorkspace : null
+
+  const enterFocus = () => {
+    setMenuOpen(false)
+    setLfoCenterOpen(false)
+    setFocusWorkspace(focusWorkspaceForViz(viz))
   }
 
   const dockRight = mode === 'dock-right'
@@ -926,7 +935,8 @@ export default function App() {
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
-        data-workspace={isPhoneLayout && workspaceFocus ? 'focus' : 'edit'}
+        data-workspace={activeFocus ? 'focus' : 'edit'}
+        data-focus={activeFocus ?? undefined}
         data-phone-viz={isPhoneLayout ? phoneDisplayViz(viz) : undefined}
         style={
           mode === 'dock-right' && inspectorOpen
@@ -1035,6 +1045,34 @@ export default function App() {
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
           <div className={styles.waveCol}>
+            {activeFocus ? (
+              <FocusChrome
+                workspace={activeFocus}
+                playing={snap.playing}
+                canPlay={snap.sampleLoaded}
+                onTogglePlay={() => {
+                  void engine.unlock().then(() => engine.togglePlay())
+                }}
+                onExit={() => setFocusWorkspace(null)}
+                onSelectModule={selectModule}
+                autoFocus={autoFocus}
+                edit={{
+                  canCopy: snap.canCopySelection,
+                  canCut: snap.canCutSelection,
+                  canDelete: snap.canDeleteSelection,
+                  canMute: snap.canMuteSelection,
+                  canClear: snap.canClearSelection,
+                  canUndo: history.past.length > 0,
+                  canRedo: history.future.length > 0,
+                  onCopy: copySelection,
+                  onCut: cutSelection,
+                  onDelete: deleteSelection,
+                  onMute: muteSelection,
+                  onUndo: () => applyHistory(undoHistory(history)),
+                  onRedo: () => applyHistory(redoHistory(history)),
+                }}
+              />
+            ) : null}
             {isPhoneLayout ? (
               <MobileModeBar
                 viz={viz}
@@ -1052,8 +1090,7 @@ export default function App() {
                   setFocus(routed.focus)
                   setInspectorOpen(routed.inspectorOpen)
                 }}
-                workspaceFocus={workspaceFocus}
-                onToggleWorkspace={() => setWorkspaceFocus((open) => !open)}
+                onEnterFocus={enterFocus}
                 normalizeView={normalizeView}
                 onView={(action) => {
                   if (action === 'zoom-in') waveRef.current?.zoomBy(1 / 1.4)
@@ -1112,6 +1149,7 @@ export default function App() {
               }}
               onSelectModule={selectModule}
               phone={isPhoneLayout}
+              phoneFocus={activeFocus}
               onGraphEdit={() => setCollapseToken((token) => token + 1)}
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={() => setAnalyzerOpen(false)}
