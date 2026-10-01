@@ -141,6 +141,50 @@
   cursor: ns-resize;
 }
 
+@media (pointer: coarse) {
+  .knob,
+  .dial {
+    touch-action: pan-y;
+  }
+
+  .knob[data-gesture='adjust'],
+  .knob[data-gesture='adjust'] .dial {
+    touch-action: none;
+  }
+}
+
+.dragReadout {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  z-index: 8;
+  min-width: 7.5rem;
+  padding: 6px 10px 8px;
+  border-radius: 10px;
+  background: var(--bg-panel-elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, black 28%, transparent);
+  text-align: center;
+  pointer-events: none;
+}
+
+.dragReadout span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dragReadout strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .value {
   margin: 0;
   width: 100%;

@@ -326,3 +326,55 @@
 .cursorReadoutFlip {
   transform: translate(calc(-100% - 12px), -50%);
 }
+
+.settingsBtn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  color: var(--text-primary);
+  letter-spacing: 0.12em;
+  font-size: 11px;
+}
+
+.compact {
+  position: relative;
+}
+
+.compact .chrome {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  right: 6px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.compact .chromeLeft,
+.compact .chromeRight {
+  pointer-events: auto;
+}
+
+.compact:not(.settingsOpen) .chromeLeft > :not([data-essential]):not(.settingsBtn),
+.compact:not(.settingsOpen) .chromeRight,
+.compact:not(.settingsOpen) .legendDock {
+  display: none;
+}
+
+.compact.settingsOpen .chrome {
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  border-radius: 12px;
+  max-height: 72%;
+  overflow: auto;
+}
+
+.compact .iconTap {
+  width: 44px;
+  min-height: 44px;
+}
+
+.compact .bands {
+  min-height: 44px;
+}

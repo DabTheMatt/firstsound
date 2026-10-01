@@ -22,9 +22,11 @@ type Props = {
   channels: number
   range: MeterRange
   onRange: (range: MeterRange) => void
+  variant?: 'column' | 'inline'
+  className?: string
 }
 
-export function MeterStrip({ channels, range, onRange }: Props) {
+export function MeterStrip({ channels, range, onRange, variant = 'column', className }: Props) {
   const { t, locale } = useI18n()
   const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
@@ -54,15 +56,32 @@ export function MeterStrip({ channels, range, onRange }: Props) {
       hold.current.t = now
       hold.current.l = fallHoldDb(hold.current.l, l, dt)
       hold.current.r = fallHoldDb(hold.current.r, r, dt)
-      if (leftRef.current) leftRef.current.style.height = `${dbToMeterPct(l, minDb)}%`
-      if (rightRef.current) rightRef.current.style.height = `${dbToMeterPct(r, minDb)}%`
-      if (leftHoldRef.current) {
-        leftHoldRef.current.style.bottom = `${dbToMeterPct(hold.current.l, minDb)}%`
-        leftHoldRef.current.style.opacity = Number.isFinite(hold.current.l) ? '1' : '0'
-      }
-      if (rightHoldRef.current) {
-        rightHoldRef.current.style.bottom = `${dbToMeterPct(hold.current.r, minDb)}%`
-        rightHoldRef.current.style.opacity = Number.isFinite(hold.current.r) ? '1' : '0'
+      const lPct = `${dbToMeterPct(l, minDb)}%`
+      const rPct = `${dbToMeterPct(r, minDb)}%`
+      const holdL = `${dbToMeterPct(hold.current.l, minDb)}%`
+      const holdR = `${dbToMeterPct(hold.current.r, minDb)}%`
+      if (variant === 'inline') {
+        if (leftRef.current) leftRef.current.style.width = lPct
+        if (rightRef.current) rightRef.current.style.width = rPct
+        if (leftHoldRef.current) {
+          leftHoldRef.current.style.left = holdL
+          leftHoldRef.current.style.opacity = Number.isFinite(hold.current.l) ? '1' : '0'
+        }
+        if (rightHoldRef.current) {
+          rightHoldRef.current.style.left = holdR
+          rightHoldRef.current.style.opacity = Number.isFinite(hold.current.r) ? '1' : '0'
+        }
+      } else {
+        if (leftRef.current) leftRef.current.style.height = lPct
+        if (rightRef.current) rightRef.current.style.height = rPct
+        if (leftHoldRef.current) {
+          leftHoldRef.current.style.bottom = holdL
+          leftHoldRef.current.style.opacity = Number.isFinite(hold.current.l) ? '1' : '0'
+        }
+        if (rightHoldRef.current) {
+          rightHoldRef.current.style.bottom = holdR
+          rightHoldRef.current.style.opacity = Number.isFinite(hold.current.r) ? '1' : '0'
+        }
       }
       if (l >= -0.1 || r >= -0.1) {
         setClipped(true)
@@ -71,12 +90,46 @@ export function MeterStrip({ channels, range, onRange }: Props) {
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [range])
+  }, [range, variant])
 
   const stereo = channels !== 1
   const minDb = meterDbMin(range)
   const marks = meterScaleMarks(minDb)
   const sweet = meterSweetBand(minDb)
+
+  if (variant === 'inline') {
+    return (
+      <div className={`${styles.inline} ${className ?? ''}`} role="region" aria-label={t.meters.strip}>
+        <button
+          type="button"
+          className={`${styles.clip} ${styles.inlineClip} ${clipped ? styles.clipOn : ''}`}
+          aria-pressed={clipped}
+          aria-label={t.meters.clipState(clipped ? t.meters.clipOn : t.meters.clipOff)}
+          title={t.meters.resetClipTitle}
+          onClick={() => setClipped(false)}
+        >
+          <span className={styles.led} aria-hidden="true" />
+          <span className={styles.clipLabel}>{t.meters.clip}</span>
+        </button>
+        <div className={styles.inlineLane} aria-hidden="true">
+          <span>{stereo ? 'L' : 'M'}</span>
+          <div className={styles.inlineTrack}>
+            <div ref={leftRef} className={styles.inlineFill} />
+            <div ref={leftHoldRef} className={styles.inlineHold} />
+          </div>
+        </div>
+        {stereo ? (
+          <div className={styles.inlineLane} aria-hidden="true">
+            <span>R</span>
+            <div className={styles.inlineTrack}>
+              <div ref={rightRef} className={styles.inlineFill} />
+              <div ref={rightHoldRef} className={styles.inlineHold} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className={styles.strip} role="region" aria-label={t.meters.strip}>

@@ -171,15 +171,15 @@ export function CompactTransport({
           </span>
           <span className={styles.details}>
             {!minimal ? (
-              <span className={styles.selRange} title={t.transport.selection}>
-                {formatTimecode(start)} — {formatTimecode(end)}
-              </span>
-            ) : null}
-            {!minimal ? <strong className={styles.length}>{length.toFixed(3)} s</strong> : null}
-            {!minimal ? (
-              <span className={styles.bpm} title={t.transport.bpmTitle}>
-                {bpm.toFixed(1)} BPM
-              </span>
+              <>
+                <span className={styles.selRange} title={t.transport.selection}>
+                  {formatTimecode(start)} — {formatTimecode(end)}
+                </span>
+                <strong className={styles.length}>{length.toFixed(3)} s</strong>
+                <span className={styles.bpm} title={t.transport.bpmTitle}>
+                  {bpm.toFixed(1)} BPM
+                </span>
+              </>
             ) : null}
           </span>
         </p>

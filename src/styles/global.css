@@ -92,3 +92,10 @@ select:focus-visible {
   outline: 1.5px solid var(--accent-primary);
   outline-offset: 2px;
 }
+
+/* A vertical swipe on a native slider should keep scrolling the sheet. */
+@media (pointer: coarse) {
+  input[type='range'] {
+    touch-action: pan-y;
+  }
+}

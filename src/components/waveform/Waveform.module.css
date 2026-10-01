@@ -109,6 +109,28 @@
   min-height: 160px;
 }
 
+.phone,
+.phone .stage,
+.phone .wrap,
+.phone .spec,
+.phone .specSolo {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.phone .wrap {
+  min-height: 0;
+}
+
+.phoneEq {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+}
+
 @media (max-width: 640px) {
   .editor,
   .stage,

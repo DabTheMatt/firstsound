@@ -75,6 +75,8 @@ type Props = {
   sheet?: boolean
   knobs?: boolean
   compact?: boolean
+  /** Phone sheet: essentials only until the sheet is expanded. */
+  detail?: 'essential' | 'full'
   onHideInspector?: () => void
 }
 
@@ -148,11 +150,12 @@ export function Inspector({
   sheet,
   knobs = true,
   compact = false,
+  detail = 'full',
   onHideInspector,
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   return (
-    <div className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''}`}>
+    <div className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''} ${detail === 'essential' ? styles.essential : ''}`}>
       {focus.kind === 'tool' ? (
         <ToolInspector
           snap={snap}
@@ -171,6 +174,7 @@ export function Inspector({
           instanceId={focus.instanceId}
           variant={variant}
           paneHint={focus.pane}
+          detail={detail}
           onHideInspector={onHideInspector}
         />
       )}
@@ -442,6 +446,7 @@ function ModuleInspector({
   instanceId,
   variant,
   paneHint,
+  detail = 'full',
   onHideInspector,
 }: {
   snap: EngineSnapshot
@@ -449,6 +454,7 @@ function ModuleInspector({
   instanceId: string
   variant: 'knob' | 'slider'
   paneHint?: 'main' | 'advanced'
+  detail?: 'essential' | 'full'
   onHideInspector?: () => void
 }) {
   const { t } = useI18n()
@@ -458,7 +464,7 @@ function ModuleInspector({
     if (!paneHint) return
     setPaneById((prev) => (prev[instanceId] === paneHint ? prev : { ...prev, [instanceId]: paneHint }))
   }, [paneHint, instanceId])
-  const pane = paneById[instanceId] ?? paneHint ?? 'main'
+  const pane = detail === 'essential' ? 'main' : (paneById[instanceId] ?? paneHint ?? 'main')
   const setPane = (next: 'main' | 'advanced') =>
     setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
   const hasAdvanced = type !== 'output'
@@ -500,7 +506,7 @@ function ModuleInspector({
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
-      {hasAdvanced ? (
+      {hasAdvanced && detail !== 'essential' ? (
         <InspectorTabs
           value={pane}
           onChange={setPane}
@@ -517,7 +523,9 @@ function ModuleInspector({
             wrap
             onChange={(d) => engine.setDirection(d)}
           />
-          {params(GAIN_IDS)}
+          {params(detail === 'essential' ? (['gain', 'speed', 'pitch'] as ParamId[]) : GAIN_IDS)}
+          {detail === 'essential' ? null : (
+          <>
           <div className={styles.stack}>
             <label className={styles.field} title={t.inspector.interpAlgo}>
               {t.inspector.interpolation}
@@ -582,6 +590,8 @@ function ModuleInspector({
           {params(PAN_IDS)}
           <SampleTempo snap={snap} variant={variant} />
           <FxLfoSection snap={snap} kind="input" variant={variant} />
+          </>
+          )}
         </>
       ) : null}
       {type === 'gain' && pane === 'advanced' ? (
@@ -638,7 +648,7 @@ function ModuleInspector({
               engine.setEngineMode(snap.engineMode === 'grain' ? 'playback' : 'grain')
             }
           />
-          {params(GRAIN_MAIN_IDS)}
+          {params(detail === 'essential' ? GRAIN_MAIN_IDS.slice(0, 3) : GRAIN_MAIN_IDS)}
           <FxLfoSection snap={snap} kind="grain" variant={variant} />
         </>
       ) : null}

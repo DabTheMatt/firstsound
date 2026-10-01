@@ -1,0 +1,167 @@
+.vizSwitch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.modes {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.mode,
+.modeOn,
+.expand,
+.group,
+.groupOn,
+.action,
+.actionOn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mode,
+.modeOn {
+  flex: 1;
+}
+
+.modeOn,
+.groupOn,
+.actionOn {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+}
+
+.expand {
+  flex: none;
+  width: 44px;
+  padding: 0;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.context {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.groups {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.group,
+.groupOn {
+  flex: 1;
+}
+
+.moreWrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+.moreWrap .group,
+.moreWrap .groupOn {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.actions::-webkit-scrollbar {
+  display: none;
+}
+
+.zoom {
+  flex: none;
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.hint {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.moreMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: min(280px, 80vw);
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg-panel-elevated);
+  box-shadow: 0 10px 28px color-mix(in srgb, black 28%, transparent);
+}
+
+.menuItem {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  font-size: 14px;
+}
+
+.menuItem:disabled {
+  color: var(--text-disabled);
+}
+
+.menuItem:hover:not(:disabled),
+.menuItem:active:not(:disabled) {
+  background: var(--bg-control-hover);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .moreMenu {
+    bottom: auto;
+    top: calc(100% + 6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode,
+  .modeOn,
+  .group,
+  .groupOn {
+    transition: none;
+  }
+}

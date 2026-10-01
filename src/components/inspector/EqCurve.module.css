@@ -21,6 +21,18 @@
   border: 1px solid var(--border-subtle);
 }
 
+.fill,
+.fill .canvas {
+  height: 100%;
+  min-height: 0;
+}
+
+.fill .node {
+  width: 44px;
+  height: 44px;
+  font-size: 12px;
+}
+
 .node {
   position: absolute;
   width: 16px;

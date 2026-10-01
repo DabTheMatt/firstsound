@@ -272,6 +272,8 @@ button.export {
   display: flex;
   justify-content: center;
   gap: 12px;
+  min-height: 0;
+  padding-bottom: 4px;
 }
 
 .minimal .actions {
@@ -281,10 +283,49 @@ button.export {
 .minimal .icon,
 .minimal .loop,
 .minimal .export {
-  min-width: 40px;
-  padding: 0 8px;
-  font-size: 9px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
+}
+
+.minimal .head {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+
+.minimal .transport {
+  justify-self: start;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+@container transport (max-width: 360px) {
+  .minimal {
+    column-gap: 6px;
+  }
+
+  .minimal .transport {
+    gap: 4px;
+  }
+
+  .minimal .transport > :first-child {
+    width: 48px;
+    height: 48px;
+  }
+
+  .minimal .icon,
+  .minimal .loop {
+    min-width: 40px;
+    padding: 0 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .minimal .head {
+    font-size: 13px;
+  }
 }
 
 :global(html[data-low-vision='on']) .bar,

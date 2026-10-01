@@ -6,14 +6,15 @@ type Props = {
   onToggle: () => void
   disabled?: boolean
   compact?: boolean
+  prominent?: boolean
 }
 
-export function TransportButton({ playing, onToggle, disabled, compact = false }: Props) {
+export function TransportButton({ playing, onToggle, disabled, compact = false, prominent = false }: Props) {
   const { t } = useI18n()
   return (
     <button
       type="button"
-      className={`${styles.play} ${compact ? styles.compact : ''}`}
+      className={`${styles.play} ${compact ? styles.compact : ''} ${prominent ? styles.prominent : ''}`}
       data-geometry="circle"
       onClick={onToggle}
       disabled={disabled}

@@ -6,8 +6,9 @@ describe('resolveLayoutMode', () => {
     expect(resolveLayoutMode({ width: 390, height: 844 })).toBe('sheet')
   })
 
-  it('uses a bottom inspector on portrait tablets', () => {
-    expect(resolveLayoutMode({ width: 768, height: 1024 })).toBe('dock-bottom')
+  it('keeps a portrait tablet in the focused sheet until the dock has room', () => {
+    expect(resolveLayoutMode({ width: 768, height: 1024 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 834, height: 1112 })).toBe('dock-bottom')
   })
 
   it('uses a right inspector on landscape / desktop widths', () => {
@@ -22,6 +23,16 @@ describe('resolveLayoutMode', () => {
 
   it('treats a narrow desktop window like a tablet', () => {
     expect(resolveLayoutMode({ width: 820, height: 900 })).toBe('dock-bottom')
+  })
+
+  it('keeps phone landscape on the sheet composition', () => {
+    expect(resolveLayoutMode({ width: 844, height: 390 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 932, height: 430 })).toBe('sheet')
+    expect(resolveLayoutMode({ width: 320, height: 568 })).toBe('sheet')
+  })
+
+  it('keeps landscape tablets on the dock', () => {
+    expect(resolveLayoutMode({ width: 1024, height: 768 })).toBe('dock-right')
   })
 })
 

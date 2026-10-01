@@ -629,6 +629,11 @@
   gap: 8px;
 }
 
+/* Phone draws the EQ curve in the main workspace. The sheet keeps band controls. */
+.compact .eqViz {
+  display: none;
+}
+
 .eqAddBar {
   position: sticky;
   top: 44px;
@@ -875,6 +880,10 @@
 
 .lfoToggleLive:not(.lfoToggleOn) {
   color: var(--accent-primary);
+}
+
+.essential {
+  gap: 10px;
 }
 
 .compact {
