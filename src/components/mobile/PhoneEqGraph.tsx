@@ -27,7 +27,8 @@ export function PhoneEqGraph({ instanceId, onSelectModule, phoneFocus = false }:
           onClick={() => {
             const created = engine.insertModule('eq', Math.max(0, snap.chain.length - 2))
             if (!created) return
-            selectEqBand({ instanceId: created, index: 0 })
+            const index = engine.createEqStrip('peaking', created)
+            if (index != null) selectEqBand({ instanceId: created, index })
             onSelectModule?.(created)
           }}
         >

@@ -271,6 +271,13 @@
 
 .phoneShell[data-focus] .waveCol {
   position: relative;
+  height: 100%;
+}
+
+.phoneShell[data-focus] .waveCol > :last-child {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .phoneShell[data-orient='landscape'] .stageMain {
