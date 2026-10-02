@@ -1514,6 +1514,25 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Deleting a band drops every LFO slot and automation lane for that index.
+   * A later strip that reuses the slot must not inherit rate, depth, shape,
+   * routing, bypass, phase, or an automation curve.
+   */
+  private clearEqBandModulation(bandIndex: number): void {
+    const ids = EQ_BAND_LFO_IDS[bandIndex]
+    const kind = EQ_BAND_LFO_KINDS[bandIndex]
+    if (!ids || !kind) return
+    this.clearLfoKind(kind)
+    this.lfoShown[kind] = 1
+    let automation = this.automation
+    for (const paramId of [ids.freq, ids.gain, ids.q]) {
+      automation = removeAutomationLane(automation, paramId)
+    }
+    this.automation = automation
+    this.syncLfoClock()
+  }
+
   private resetEqToDefault(instanceId?: string): void {
     const eqId = instanceId ?? this.primaryEqId()
     if (!this.chain.some((mod) => mod.instanceId === eqId && mod.type === 'eq')) return
@@ -2544,12 +2563,15 @@ export class AudioEngine {
     const current = this.eqEditBands(st)
     const band = current[index]
     if (!band) return
-    const nextBand = initializeCreatedEqBand(band, patch, eqBandHasLfo(this.fxLfos, index))
+    const removing = band.type !== 'off' && patch.type === 'off'
+    const nextBand = initializeCreatedEqBand(band, patch, removing ? false : eqBandHasLfo(this.fxLfos, index))
+    if (removing) nextBand.lfoExpanded = false
     if (eqBandUiEqual(band, nextBand)) return
     const next = current.map((item, i) => (i === index ? nextBand : item))
     this.writeEqEditBands(st, next)
     this.eqById.set(id, st)
     this.syncPrimaryEq()
+    if (removing) this.clearEqBandModulation(index)
     if (eqBandAudioEqual(band, nextBand)) {
       this.emit()
       return

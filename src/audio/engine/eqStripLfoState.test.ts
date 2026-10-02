@@ -8,7 +8,7 @@ import {
   type EqBand,
   type EqFilterType,
 } from './eqBands'
-import { eqBandHasLfo } from '../fx/lfo'
+import { eqBandHasLfo, LFO_DEPTH_DEFAULT, LFO_RATE_DEFAULT } from '../fx/lfo'
 
 function idsOf(engine: AudioEngine, instanceId: string): string[] {
   return engine.getSnapshot().eqById[instanceId]!.bands.map((band) => band.id ?? '')
@@ -129,6 +129,98 @@ describe('new EQ strips', () => {
 
     const keys = idsOf(engine, id).filter(Boolean)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('forgets every LFO and automation setting when the band is removed', () => {
+    const engine = new AudioEngine()
+    const id = engine.ensureModule('eq')!
+    engine.createEqStrip('peaking', id)
+    engine.createEqStrip('notch', id)
+    engine.setEqBand(0, { lfoExpanded: true }, id)
+    engine.addFxLfo('eq1')
+    engine.setFxLfo('eq1', 0, {
+      target: 'eq1Freq',
+      depth: 80,
+      rateHz: 2.5,
+      shape: 'square',
+      enabled: false,
+    })
+    engine.setFxLfo('eq1', 1, {
+      target: 'eq1Gain',
+      depth: 12,
+      rateHz: 0.2,
+      shape: 'saw',
+      enabled: false,
+    })
+    engine.setFxLfo('eq2', 0, {
+      target: 'eq2Freq',
+      depth: 50,
+      rateHz: 1.2,
+      shape: 'triangle',
+      enabled: false,
+    })
+    engine.armAutomation('eq1Q')
+    expect(engine.getSnapshot().automation.lanes.some((lane) => lane.paramId === 'eq1Q')).toBe(true)
+
+    engine.setEqBand(0, { type: 'off' }, id)
+
+    const removed = engine.getSnapshot().fxLfos.eq1
+    expect(removed.every((lfo) => lfo.target == null)).toBe(true)
+    expect(removed.every((lfo) => lfo.depth === LFO_DEPTH_DEFAULT)).toBe(true)
+    expect(removed.every((lfo) => lfo.rateHz === LFO_RATE_DEFAULT)).toBe(true)
+    expect(removed.every((lfo) => lfo.shape === 'sine')).toBe(true)
+    expect(removed.every((lfo) => lfo.enabled !== false)).toBe(true)
+    expect(engine.getSnapshot().lfoShown.eq1).toBe(1)
+    expect(engine.getSnapshot().automation.lanes.some((lane) => lane.paramId === 'eq1Q')).toBe(false)
+    expect(engine.getSnapshot().fxLfos.eq2[0]!.target).toBe('eq2Freq')
+    expect(engine.getSnapshot().fxLfos.eq2[0]!.depth).toBe(50)
+    expect(engine.getSnapshot().fxLfos.eq2[0]!.enabled).toBe(false)
+  })
+
+  it('gives a reused slot a blank LFO after the last band is removed', () => {
+    const engine = new AudioEngine()
+    const id = engine.ensureModule('eq')!
+    engine.createEqStrip('peaking', id)
+    engine.setEqBand(0, { lfoExpanded: true }, id)
+    engine.setFxLfo('eq1', 0, {
+      target: 'eq1Freq',
+      depth: 80,
+      rateHz: 2.5,
+      shape: 'square',
+      enabled: false,
+    })
+    engine.armAutomation('eq1Gain')
+    engine.setEqBand(0, { type: 'off' }, id)
+
+    const created = engine.createEqStrip('peaking', id)
+    expect(created).toBe(0)
+    const band = engine.getSnapshot().eqById[id]!.bands[0]!
+    expect(band.type).toBe('peaking')
+    expect(band.lfoExpanded).toBe(false)
+    expect(eqBandHasLfo(engine.getSnapshot().fxLfos, 0)).toBe(false)
+    expect(engine.getSnapshot().fxLfos.eq1[0]!.rateHz).toBe(LFO_RATE_DEFAULT)
+    expect(engine.getSnapshot().fxLfos.eq1[0]!.depth).toBe(LFO_DEPTH_DEFAULT)
+    expect(engine.getSnapshot().fxLfos.eq1[0]!.shape).toBe('sine')
+    expect(engine.getSnapshot().automation.lanes.some((lane) => lane.paramId.startsWith('eq1'))).toBe(false)
+  })
+
+  it('keeps the LFO when the filter type changes without removing the band', () => {
+    const engine = new AudioEngine()
+    const id = engine.ensureModule('eq')!
+    engine.createEqStrip('peaking', id)
+    engine.setFxLfo('eq1', 0, {
+      target: 'eq1Freq',
+      depth: 40,
+      rateHz: 1.5,
+      shape: 'triangle',
+      enabled: false,
+    })
+    engine.setEqBand(0, { type: 'notch' }, id)
+    const lfo = engine.getSnapshot().fxLfos.eq1[0]!
+    expect(lfo.target).toBe('eq1Freq')
+    expect(lfo.depth).toBe(40)
+    expect(lfo.rateHz).toBe(1.5)
+    expect(lfo.shape).toBe('triangle')
   })
 
   it('does not disconnect an LFO when the section is collapsed', () => {

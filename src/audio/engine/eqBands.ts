@@ -64,8 +64,8 @@ const CREATED_EQ_STRIP_TYPE_SET = new Set<string>(CREATED_EQ_STRIP_TYPES)
 /**
  * Turning an empty slot into a Bell / Notch / HP / LP / shelf / band-pass is a new strip.
  * With no LFO connected, give it a fresh id and a collapsed section so a previous
- * occupant cannot leak expansion into it. A connected LFO keeps its id and UI flag.
- * This does not change modulation routing.
+ * occupant cannot leak expansion into it. A slot that still has a connected LFO
+ * keeps its id and UI flag. Deleting a band clears that connection first.
  */
 export function initializeCreatedEqBand(
   band: EqBand,
