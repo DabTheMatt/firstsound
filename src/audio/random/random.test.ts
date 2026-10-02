@@ -5,7 +5,14 @@ import { AudioEngine } from '../engine/AudioEngine'
 import { defaultEqBandAt } from '../engine/eqBands'
 import { defaultFxLfos, defaultLfoHold } from '../fx/lfo'
 import { isRandomizable, randomParamValue, randomWindow, randomizeEqBandPatch } from './distributions'
+import { generateRandomEqBands, resolveEqFilterCount, separateCutFilters } from './eqGenerate'
 import { participatingTargets } from './groups'
+import { randomLfoDepth, randomLfoPatch, randomLfoRate } from './lfoRandom'
+import { commitDspGesture } from '../../app/dspHistory'
+import { createHistory } from '../../app/history'
+import { captureDsp } from '../../sensory/applySensory'
+import { lfoBinding } from '../fx/lfo'
+import { getEqBandSelection } from '../engine/eqBandSelection'
 import { mulberry32 } from './rng'
 import { randomBudgetScale, randomIntervalSec, stepRandom } from './schedule'
 import { defaultParamRandom, defaultRandomDocument, defaultRandomRuntime, type RandomDocument } from './types'
@@ -26,9 +33,9 @@ beforeEach(() => {
 
 function docWith(id: 'gain' | 'filterCutoff', patch: Partial<ReturnType<typeof defaultParamRandom>>): RandomDocument {
   return {
+    ...defaultRandomDocument(),
     chaos: true,
     generators: { [id]: { ...defaultParamRandom(), auto: true, ...patch } },
-    participation: {},
   }
 }
 
@@ -207,7 +214,7 @@ describe('random scheduler', () => {
     const generators: RandomDocument['generators'] = {}
     const ids = ['gain', 'pan', 'pitch', 'filterCutoff', 'filterReso', 'filterMix', 'delayTime', 'delayFeedback', 'delayWet', 'reverbWet', 'reverbSize', 'reverbDecay', 'outputGain', 'grainSize', 'density', 'scatter'] as const
     for (const id of ids) generators[id] = { ...defaultParamRandom(), auto: true, sync: 'free', rateHz: 4 }
-    const doc: RandomDocument = { chaos: true, generators, participation: {} }
+    const doc: RandomDocument = { ...defaultRandomDocument(), chaos: true, generators }
     expect(randomBudgetScale(doc, 120)).toBeGreaterThan(1)
     const armed = stepRandom({
       doc,
@@ -409,5 +416,171 @@ describe('engine random', () => {
       (id) => next[id] !== before[id],
     )
     expect(moved).toBe(true)
+  })
+
+  it('draws interpolation only from the legal algorithms', () => {
+    const rand = mulberry32(4)
+    const values = new Set<number>()
+    for (let i = 0; i < 24; i++) {
+      values.add(randomParamValue({ id: 'stretchInterpAlgo', current: 1, intensity: 1, chaos: true, rand }))
+    }
+    expect(values.size).toBeGreaterThan(1)
+    for (const value of values) expect([0, 1, 2]).toContain(value)
+    expect(isRandomizable('stretchInterpAlgo')).toBe(true)
+    expect(isRandomizable('makeMono')).toBe(false)
+  })
+
+  it('includes reverb type in the effect catalog and keeps freeze out', () => {
+    const ids = participatingTargets(defaultRandomDocument(), 'reverb')
+    expect(ids).toContain('reverbNote')
+    expect(ids).not.toContain('reverbFreeze')
+    expect(ids).not.toContain('reverbSync')
+  })
+})
+
+describe('modulation random', () => {
+  it('rewrites rate, depth, and shape on the existing slot', () => {
+    const engine = new AudioEngine()
+    engine.setFxLfo('input', 0, { target: 'gain', rateHz: 0.6, depth: 20, shape: 'sine', enabled: true })
+    const before = engine.getSnapshot().fxLfos.input.filter((slot) => slot.target === 'gain')
+    expect(before).toHaveLength(1)
+    let changed = false
+    for (let i = 0; i < 8; i++) {
+      engine.randomizeParameterLfo('gain')
+      const slot = lfoBinding(engine.getSnapshot().fxLfos, 'gain')
+      expect(slot?.slot).toBe(0)
+      expect(slot?.lfo.target).toBe('gain')
+      expect(engine.getSnapshot().fxLfos.input.filter((item) => item.target === 'gain')).toHaveLength(1)
+      if (!slot) continue
+      if (slot.lfo.rateHz !== 0.6 || slot.lfo.depth !== 20 || slot.lfo.shape !== 'sine') changed = true
+      expect(slot.lfo.depth).toBeGreaterThanOrEqual(0)
+      expect(slot.lfo.depth).toBeLessThanOrEqual(100)
+      expect(slot.lfo.rateHz).toBeGreaterThan(0)
+      expect(slot.lfo.rateHz).toBeLessThanOrEqual(20)
+    }
+    expect(changed).toBe(true)
+  })
+
+  it('keeps free rate and depth in a musical window', () => {
+    const rand = mulberry32(9)
+    const rates = Array.from({ length: 40 }, () => randomLfoRate(false, 0.5, rand))
+    const depths = Array.from({ length: 40 }, () => randomLfoDepth(false, 0.5, rand))
+    expect(Math.max(...rates)).toBeLessThanOrEqual(8)
+    expect(Math.min(...rates)).toBeGreaterThanOrEqual(0.12)
+    expect(Math.max(...depths)).toBeLessThanOrEqual(100)
+    expect(Math.min(...depths)).toBeGreaterThan(0)
+    const patch = randomLfoPatch({
+      lfo: { rateHz: 1, depth: 10, shape: 'sine', target: 'gain', enabled: true },
+      fields: ['shape'],
+      chaos: false,
+      intensity: 0.5,
+      rand,
+    })
+    expect(patch.target).toBeUndefined()
+    expect(['triangle', 'square', 'saw', 'snh']).toContain(patch.shape)
+  })
+})
+
+describe('generative EQ', () => {
+  it('builds 1–6 valid filters sorted low to high with stable ids', () => {
+    const rand = mulberry32(21)
+    for (let i = 0; i < 12; i++) {
+      const count = resolveEqFilterCount('random', rand)
+      expect(count).toBeGreaterThanOrEqual(1)
+      expect(count).toBeLessThanOrEqual(6)
+      const bands = generateRandomEqBands({ count, chaos: false, rand, createId: () => `band-${i}-${bandsSeq(i)}` })
+      expect(bands).toHaveLength(count)
+      const ids = new Set(bands.map((band) => band.id))
+      expect(ids.size).toBe(count)
+      for (let n = 1; n < bands.length; n++) {
+        expect(bands[n]!.frequency).toBeGreaterThanOrEqual(bands[n - 1]!.frequency)
+      }
+      for (const band of bands) {
+        expect(band.type).not.toBe('off')
+        expect(band.frequency).toBeGreaterThan(20)
+        expect(band.q).toBeGreaterThanOrEqual(0.1)
+        expect(band.q).toBeLessThanOrEqual(20)
+        if (band.type === 'lowpass' || band.type === 'highpass' || band.type === 'notch' || band.type === 'bandpass') {
+          expect(band.gain).toBe(0)
+        } else {
+          expect(Math.abs(band.gain)).toBeLessThanOrEqual(18)
+        }
+      }
+    }
+  })
+
+  it('does not routinely pair a high-pass above a low-pass', () => {
+    const rand = mulberry32(8)
+    let bad = 0
+    let paired = 0
+    for (let i = 0; i < 120; i++) {
+      const bands = generateRandomEqBands({ count: 4, chaos: false, rand })
+      const hp = bands.find((band) => band.type === 'highpass')
+      const lp = bands.find((band) => band.type === 'lowpass')
+      if (!hp || !lp) continue
+      paired += 1
+      if (hp.frequency >= lp.frequency) bad += 1
+    }
+    expect(bad).toBe(0)
+    expect(paired).toBeGreaterThan(0)
+  })
+
+  it('applies a whole EQ as one replacement and drops stale modulation', () => {
+    const engine = new AudioEngine()
+    engine.ensureModule('eq')
+    engine.setChaos(true)
+    engine.setEqRandom({ scope: 'whole', count: 3 })
+    engine.setFxLfo('eq1', 0, { target: 'eq1Freq', depth: 40, rateHz: 1, shape: 'sine', enabled: true })
+    const beforeId = engine.getSnapshot().eqBands[0]?.id
+    const proto = Object.getPrototypeOf(engine) as { rebuildGraph: () => Promise<void> }
+    const original = proto.rebuildGraph
+    let rebuilds = 0
+    proto.rebuildGraph = function (this: typeof engine) {
+      rebuilds += 1
+      return original.call(this)
+    }
+    const picked = engine.generateRandomEq()
+    const bands = engine.getSnapshot().eqBands.filter((band) => band.type !== 'off')
+    expect(bands.length).toBe(3)
+    expect(picked).toBeGreaterThanOrEqual(0)
+    for (let n = 1; n < bands.length; n++) expect(bands[n]!.frequency).toBeGreaterThanOrEqual(bands[n - 1]!.frequency)
+    expect(bands[0]?.id).not.toBe(beforeId)
+    expect(lfoBinding(engine.getSnapshot().fxLfos, 'eq1Freq')).toBeNull()
+    expect(rebuilds).toBe(0)
+    expect(getEqBandSelection()?.index).toBe(picked)
+  })
+
+  it('undoes a whole EQ as one history step', () => {
+    const engine = new AudioEngine()
+    engine.ensureModule('eq')
+    engine.setEqBand(0, { type: 'peaking', frequency: 400, gain: 3, q: 1 })
+    const before = captureDsp(engine)
+    engine.setEqRandom({ count: 4 })
+    engine.generateRandomEq()
+    const after = captureDsp(engine)
+    type Hist = { layer: string; dsp?: typeof before; mark: string }
+    let history = createHistory<Hist>({ layer: 'region', mark: 'start' })
+    history = commitDspGesture(history, before, after, (a, b) => a.mark === b.mark && a.layer === b.layer && a.dsp === b.dsp)
+    expect(history.past).toHaveLength(1)
+    expect(history.present.dsp?.eqBands.filter((band) => band.type !== 'off').length).toBe(4)
+    const undone = history.past[0]
+    expect(undone?.dsp?.eqBands[0]?.frequency).toBeCloseTo(400, 0)
+  })
+})
+
+let seq = 0
+function bandsSeq(_i: number): string {
+  seq += 1
+  return seq.toString(36)
+}
+
+describe('eq separation helper', () => {
+  it('pulls a contradictory high-pass back below the low-pass', () => {
+    const bands = [
+      { id: 'a', type: 'highpass' as const, frequency: 15000, gain: 0, q: 0.7, slope: 24 as const },
+      { id: 'b', type: 'lowpass' as const, frequency: 80, gain: 0, q: 0.7, slope: 24 as const },
+    ]
+    separateCutFilters(bands, false, mulberry32(1))
+    expect(bands[0]!.frequency).toBeLessThan(bands[1]!.frequency)
   })
 })

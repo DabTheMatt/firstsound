@@ -60,6 +60,7 @@ import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
 import { EffectRandomMenu } from '../random/EffectRandomMenu'
+import { selectEqBand, subscribeEqBandSelection } from '../../audio/engine/eqBandSelection'
 import { ParamActionPair } from '../random/ParamActionPair'
 import styles from './Inspector.module.css'
 
@@ -496,7 +497,7 @@ function ModuleInspector({
               onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
-          <EffectRandomMenu type={type} instanceId={instanceId} />
+          <EffectRandomMenu type={type} />
           {mod && !isFixedType(mod.type) ? (
             <button
               type="button"
@@ -848,7 +849,16 @@ function EqEditor({
   pane: 'main' | 'advanced'
 }) {
   const [openBand, setOpenBand] = useState(0)
-  const { t } = useI18n()
+  const chooseBand = (index: number) => {
+    setOpenBand(index)
+    selectEqBand({ instanceId, index })
+  }
+  useEffect(() => {
+    return subscribeEqBandSelection((selection) => {
+      if (!selection || selection.instanceId !== instanceId) return
+      setOpenBand(selection.index)
+    })
+  }, [instanceId])
   const st = snap.eqById[instanceId] ?? { bands: snap.eqBands, comb: snap.comb }
   const bands = st.bands
   const comb = st.comb
@@ -890,7 +900,7 @@ function EqEditor({
             className={styles.ghost}
             onClick={() => {
               const next = engine.addEqBand(instanceId)
-              if (next != null) setOpenBand(next)
+              if (next != null) chooseBand(next)
             }}
           >
             Add band ({bands.length}/{EQ_MAX_BANDS})
@@ -915,7 +925,7 @@ function EqEditor({
           comb={comb}
           toneIndex={toneIndex}
           modulate={eqInstanceUsesSharedLfo(snap.chain, instanceId)}
-          onSelectBand={setOpenBand}
+          onSelectBand={chooseBand}
           onDragBand={(index, patch) => setBand(index, patch)}
         />
       </div>
@@ -926,7 +936,7 @@ function EqEditor({
           open={openBand === index}
           style={eqBandAccentVars(band.frequency) as CSSProperties}
           onToggle={(event) => {
-            if (event.currentTarget.open) setOpenBand(index)
+            if (event.currentTarget.open) chooseBand(index)
           }}
         >
           <summary>
@@ -942,11 +952,6 @@ function EqEditor({
               onToggle={() => setBand(index, { bypassed: !band.bypassed })}
             />
           </summary>
-          {snap.random.chaos && openBand === index && band.type !== 'off' ? (
-            <button type="button" className={styles.ghost} onClick={() => engine.randomizeEqBand(index, true)}>
-              {t.random.randomizeBand}
-            </button>
-          ) : null}
           <Segmented
             label={`Band ${index + 1} type`}
             value={band.type}
@@ -1171,7 +1176,7 @@ function EqEditor({
           className={styles.ghost}
           onClick={() => {
             const next = engine.addEqBand(instanceId)
-            if (next != null) setOpenBand(next)
+            if (next != null) chooseBand(next)
           }}
         >
           Add band ({bands.length}/{EQ_MAX_BANDS})

@@ -13,7 +13,7 @@ type Props = {
   touch?: boolean
 }
 
-/** One-shot random for a single parameter. Setup lives on the effect. */
+/** One-shot random for this parameter. Setup lives on the effect. */
 export function RandomAffordance({ id, compact = false, touch = false }: Props) {
   const snap = useEngine()
   const { paramLabel, t } = useI18n()
@@ -21,13 +21,14 @@ export function RandomAffordance({ id, compact = false, touch = false }: Props) 
   const gen = snap.random.generators[id] ?? defaultParamRandom()
   const auto = Boolean(gen.auto && snap.random.chaos)
   const label = paramLabel(id)
-  const className = touch ? styles.touch : compact ? `${styles.button} ${styles.buttonCompact}` : styles.button
+  const className = touch ? styles.touch : compact ? `${styles.button} ${styles.buttonCompact} ${styles.diceSlot}` : styles.button
   return (
     <button
       type="button"
       className={className}
       data-active={auto ? 'true' : 'false'}
       data-random-for={id}
+      data-random-action="dice"
       aria-label={t.random.onceFor(label)}
       title={t.random.parameterTip}
       onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => event.stopPropagation()}

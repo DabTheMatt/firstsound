@@ -77,10 +77,69 @@
   }
 }
 
+.pair,
+.pairCompact,
+.touchPair {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 0;
+}
+
+.pairCompact {
+  width: 36px;
+  height: 26px;
+}
+
+.pairCompact .button {
+  width: 18px;
+  min-width: 18px;
+  height: 26px;
+  min-height: 26px;
+}
+
+.touchPair {
+  width: 44px;
+  height: 44px;
+}
+
+.touchPair .touch {
+  width: 22px;
+  min-width: 22px;
+  height: 44px;
+  min-height: 44px;
+}
+
+.dice,
+.gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dice:hover,
+.gear:hover,
+.dice:focus-visible,
+.gear:focus-visible,
+.gear[aria-expanded='true'] {
+  color: var(--accent-primary);
+}
+
 .editor,
 .sheet,
 .dialog,
-.menu {
+.menu,
+.frame {
   position: fixed;
   z-index: 40;
   box-sizing: border-box;
@@ -90,6 +149,87 @@
   border: 1px solid var(--border-subtle);
   box-shadow: 0 16px 40px color-mix(in srgb, black 28%, transparent);
   color: var(--text-primary);
+}
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  z-index: 61;
+}
+
+.sheetFrame {
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.frameHead,
+.frameFoot {
+  flex: none;
+  padding: 12px 12px 8px;
+  background: var(--bg-panel-elevated, var(--bg-panel));
+}
+
+.frameFoot {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.frameBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 12px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.group {
+  margin: 0 0 10px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+
+.groupHead h3 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.quick {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.check em {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 10px;
 }
 
 .editor,
@@ -112,14 +252,19 @@
   top: 50%;
   transform: translate(-50%, -50%);
   width: min(360px, calc(100vw - 24px));
+  z-index: 80;
 }
 
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 39;
+  z-index: 60;
   border: 0;
   background: color-mix(in srgb, black 35%, transparent);
+}
+
+.scrim:has(+ .dialog) {
+  z-index: 79;
 }
 
 .title {
@@ -243,40 +388,13 @@
   cursor: pointer;
 }
 
-.pair {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
+.diceSlot {
+  width: 36px;
+  min-width: 36px;
+  height: 26px;
+  min-height: 26px;
 }
 
-.icon {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin: 0;
-  padding: 0;
-  border: 1.5px solid var(--border-default);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.icon[data-open='true'],
-.icon:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-
-.group {
-  margin: 0 0 4px;
-}
-
-.groupTitle,
 .sectionLabel {
   margin: 8px 0 4px;
   font-size: 10px;
@@ -284,30 +402,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-}
-
-.groupTitle {
-  color: var(--text-secondary);
-}
-
-.bulk {
-  display: flex;
-  gap: 12px;
-  margin: 0 0 8px;
-}
-
-.bulk button {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent-primary);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
 }
 
 .targetBlock {
@@ -321,9 +415,14 @@
   min-height: 36px;
 }
 
-.target .check {
+.target > .check {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.target > .check:not(:last-child) {
   flex: none;
-  min-height: 0;
 }
 
 .targetName {
@@ -340,6 +439,13 @@
   text-align: left;
   text-transform: none;
   cursor: pointer;
+}
+
+.target em {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 10px;
 }
 
 .chevron {

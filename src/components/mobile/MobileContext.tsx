@@ -21,6 +21,7 @@ import { eqModulationParamId } from '../modulation/modulationModel'
 import { useI18n } from '../../i18n'
 import { ParamSlider } from '../controls/ParamSlider'
 import { Toggle } from '../controls/Toggle'
+import { EffectRandomMenu } from '../random/EffectRandomMenu'
 import { eqBandTone, readThemeColors } from '../../theme'
 import { AnalyzerSettings } from './AnalyzerSettings'
 import { TouchRange } from './TouchRange'
@@ -142,6 +143,7 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
               {snap.muted ? t.inspector.mute : t.mobile.on}
             </button>
           ) : null}
+          {type ? <EffectRandomMenu type={type} /> : null}
           <button
             type="button"
             className={styles.moreBtn}

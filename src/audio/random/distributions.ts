@@ -4,6 +4,7 @@ import type { NoteDivision, NoteKind } from '../fx/types'
 import { PARAMS } from '../parameters/definitions'
 import { applyParamValue, clamp } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
+import { isAutoRandomizable, isDiscreteRandom, randomMeta } from './metadata'
 import { randomUnit } from './rng'
 
 export type RandomFamily =
@@ -26,38 +27,22 @@ const DENY = new Set<ParamId>([
   'makeMono',
   'invertPhase',
   'stretchInterpOn',
-  'stretchInterpAlgo',
   'delaySync',
   'delaySyncR',
   'delayLinkLR',
   'delayCorrelate',
   'delayFreeze',
   'delayReverse',
-  'delayNote',
-  'delayNoteKind',
-  'delayNoteR',
-  'delayNoteKindR',
   'reverbSync',
   'reverbCorrelate',
   'reverbFreeze',
   'reverbReverse',
-  'reverbNote',
-  'reverbNoteKind',
   'reverbGate',
   'msSoloMid',
   'msSoloSide',
   'msMono',
   'msFlipMid',
   'msFlipSide',
-  'msHaasDir',
-  'filterKind',
-  'filterSlope',
-  'filterCharacter',
-  'filterLfoShape',
-  'filterLfoSync',
-  'filterLfoNote',
-  'filterLfoNoteKind',
-  'filterEnvDir',
   'limiterAutoMakeup',
   'compressorAutoMakeup',
 ])
@@ -138,14 +123,17 @@ export function randomFamily(id: ParamId): RandomFamily {
   return 'generic'
 }
 
-/** Continuous shared-registry parameters. Switches, routing, and identity stay out. */
+/** Shared-registry parameters Random may write. Switches, routing, and identity stay out. */
 export function isRandomizable(id: ParamId): boolean {
   if (DENY.has(id)) return false
+  if (randomMeta(id)) return true
   const def = PARAMS[id]
   if (!def) return false
   if (def.step === 1 && def.max - def.min <= 8) return false
   return true
 }
+
+export { isAutoRandomizable, isDiscreteRandom }
 
 type Window = { lo: number; hi: number; space: 'linear' | 'log'; shape: 'uniform' | 'triangular' | 'low' }
 
@@ -274,6 +262,38 @@ function randomDelay(
   return applyParamValue(sampleRange(lo, hi, 'log', 'triangular', rand), PARAMS[id])
 }
 
+function weightedIndex(weights: readonly number[] | undefined, count: number, rand: () => number): number {
+  if (!weights || weights.length !== count) return Math.floor(randomUnit(rand) * count)
+  let sum = 0
+  for (const weight of weights) sum += Math.max(0, weight)
+  if (!(sum > 0)) return Math.floor(randomUnit(rand) * count)
+  let cursor = randomUnit(rand) * sum
+  for (let i = 0; i < count; i++) {
+    cursor -= Math.max(0, weights[i] ?? 0)
+    if (cursor <= 0) return i
+  }
+  return count - 1
+}
+
+function randomDiscrete(id: ParamId, current: number, rand: () => number): number {
+  const meta = randomMeta(id)
+  const def = PARAMS[id]
+  const options = meta?.options?.length
+    ? [...meta.options]
+    : Array.from({ length: Math.round(def.max - def.min) + 1 }, (_, index) => def.min + index)
+  if (options.length === 0) return applyParamValue(current, def)
+  const pool = options.length > 1 ? options.filter((value) => value !== Math.round(current)) : options
+  const source = pool.length > 0 ? pool : options
+  const weights = meta?.weights && meta.options
+    ? source.map((value) => {
+        const at = meta.options?.indexOf(value) ?? -1
+        return at >= 0 ? (meta.weights?.[at] ?? 1) : 1
+      })
+    : undefined
+  const pick = source[weightedIndex(weights, source.length, rand)] ?? source[0]!
+  return applyParamValue(pick, def)
+}
+
 export function randomParamValue(input: {
   id: ParamId
   current: number
@@ -285,6 +305,7 @@ export function randomParamValue(input: {
   const rand = input.rand ?? Math.random
   const def = PARAMS[input.id]
   if (!Number.isFinite(input.current)) return def.defaultValue
+  if (isDiscreteRandom(input.id)) return randomDiscrete(input.id, input.current, rand)
   if (randomFamily(input.id) === 'pitch') {
     return randomPitch(input.current, input.id, input.intensity, input.chaos, rand)
   }

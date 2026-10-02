@@ -78,6 +78,7 @@ export function dspSnapshotsEqual(a: DspSnapshot, b: DspSnapshot, eps = 1e-3): b
     if (Math.abs(x.gain - y.gain) > eps) return false
     if (Math.abs(x.frequency - y.frequency) > 0.5) return false
     if (Math.abs(x.q - y.q) > eps) return false
+    if ((x.slope ?? 12) !== (y.slope ?? 12)) return false
   }
   const keys = new Set([...Object.keys(a.bypass), ...Object.keys(b.bypass)]) as Set<ModuleType>
   for (const key of keys) {

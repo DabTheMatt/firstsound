@@ -7,6 +7,8 @@ import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
 import { inspectorKey, routeCollapse, routeModule, routeReveal, routeViz } from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
+import { commitDspGesture } from './dspHistory'
+import { setRandomHistoryRunner } from '../audio/random/historyBridge'
 import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
@@ -326,6 +328,16 @@ export default function App() {
     setHistory((h) =>
       commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, current.automation, extra, current.spectral), histEqual),
     )
+  }, [])
+
+  useEffect(() => {
+    setRandomHistoryRunner((apply) => {
+      const before = captureDsp(engine)
+      apply()
+      const after = captureDsp(engine)
+      setHistory((h) => commitDspGesture(h, before, after, histEqual))
+    })
+    return () => setRandomHistoryRunner(null)
   }, [])
 
   const pushSampleEdit = (before: SampleEditCapture, after: SampleEditCapture) => {

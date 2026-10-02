@@ -1,11 +1,19 @@
 import type { ParamId } from '../parameters/types'
+import { parseSelectRef } from './catalog'
 import { isRandomizable } from './distributions'
+import { LFO_RANDOM_FIELDS } from './lfoRandom'
 import {
   cloneRandomDocument,
+  defaultEqRandomSettings,
   defaultParamRandom,
   defaultRandomDocument,
   isRandomDivision,
   nearestFreeRate,
+  type EqBandRandomField,
+  type EqRandomCount,
+  type EqRandomScope,
+  type LfoRandomField,
+  type LfoRandomTarget,
   type ParamRandom,
   type RandomDocument,
   type RandomSync,
@@ -32,6 +40,47 @@ function parseGenerator(raw: unknown): ParamRandom | null {
   return next
 }
 
+const EQ_COUNTS = new Set<EqRandomCount>(['random', 1, 2, 3, 4, 5, 6])
+const EQ_FIELDS = new Set<EqBandRandomField>(['frequency', 'gain', 'q', 'type', 'slope'])
+
+function parseEqCount(value: unknown): EqRandomCount {
+  if (value === 'random') return 'random'
+  if (typeof value === 'number' && EQ_COUNTS.has(value as EqRandomCount)) return value as EqRandomCount
+  return 'random'
+}
+
+function parseEq(raw: unknown): RandomDocument['eq'] {
+  const next = defaultEqRandomSettings()
+  if (!raw || typeof raw !== 'object') return next
+  const rec = raw as Partial<RandomDocument['eq']>
+  if (rec.scope === 'band' || rec.scope === 'whole') next.scope = rec.scope as EqRandomScope
+  next.count = parseEqCount(rec.count)
+  if (rec.auto === true) next.auto = true
+  const gen = parseGenerator(rec.gen)
+  if (gen) next.gen = gen
+  if (Array.isArray(rec.bandFields)) {
+    next.bandFields = rec.bandFields.filter((field): field is EqBandRandomField => typeof field === 'string' && EQ_FIELDS.has(field as EqBandRandomField))
+  }
+  if (next.auto && !next.gen.auto) next.gen = { ...next.gen, auto: true }
+  return next
+}
+
+function parseLfoTarget(raw: unknown): LfoRandomTarget | null {
+  if (!raw || typeof raw !== 'object') return null
+  const rec = raw as Partial<LfoRandomTarget>
+  const gen = parseGenerator(rec.gen) ?? defaultParamRandom()
+  const fields = Array.isArray(rec.fields)
+    ? rec.fields.filter((field): field is LfoRandomField => typeof field === 'string' && (LFO_RANDOM_FIELDS as readonly string[]).includes(field))
+    : []
+  return { fields, gen }
+}
+
+function parseParticipationRef(ref: unknown): string | null {
+  if (typeof ref !== 'string') return null
+  if (parseSelectRef(ref)) return ref
+  return isRandomizable(ref as ParamId) ? ref : null
+}
+
 export function parseRandomDocument(raw: unknown): RandomDocument {
   const next = defaultRandomDocument()
   if (!raw || typeof raw !== 'object') return next
@@ -48,7 +97,17 @@ export function parseRandomDocument(raw: unknown): RandomDocument {
     for (const key of Object.keys(rec.participation)) {
       const ids = rec.participation[key]
       if (!Array.isArray(ids)) continue
-      next.participation[key] = ids.filter((id): id is ParamId => typeof id === 'string' && isRandomizable(id as ParamId))
+      next.participation[key] = ids.flatMap((id) => {
+        const ref = parseParticipationRef(id)
+        return ref ? [ref] : []
+      })
+    }
+  }
+  next.eq = parseEq(rec.eq)
+  if (rec.lfo && typeof rec.lfo === 'object') {
+    for (const id of Object.keys(rec.lfo) as ParamId[]) {
+      const target = parseLfoTarget(rec.lfo[id])
+      if (target) next.lfo[id] = target
     }
   }
   return next

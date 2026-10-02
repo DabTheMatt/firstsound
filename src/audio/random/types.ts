@@ -46,11 +46,51 @@ export type ParamRandom = {
   transition: RandomTransition
 }
 
+/** How a shared parameter is drawn. Continuous stays on the existing windows. */
+export type RandomValueKind = 'continuous' | 'integer' | 'boolean' | 'enum' | 'division' | 'filterType'
+
+export type RandomMeta = {
+  kind: RandomValueKind
+  /** False keeps the value on Randomize now and out of Auto Random. */
+  auto?: boolean
+  /** Legal draws. When omitted, every integer from min to max is legal. */
+  options?: readonly number[]
+  /** Weights aligned with `options`. */
+  weights?: readonly number[]
+  /** Topology or kernel changes. Auto Random cannot run faster than twice a second. */
+  expensive?: boolean
+}
+
+export type EqRandomCount = 'random' | 1 | 2 | 3 | 4 | 5 | 6
+export type EqRandomScope = 'band' | 'whole'
+export type EqBandRandomField = 'frequency' | 'gain' | 'q' | 'type' | 'slope'
+export type LfoRandomField = 'rate' | 'depth' | 'shape' | 'phase'
+
+export type EqRandomSettings = {
+  scope: EqRandomScope
+  count: EqRandomCount
+  /** Missing means every meaningful field for the current filter. */
+  bandFields?: EqBandRandomField[]
+  auto: boolean
+  gen: ParamRandom
+}
+
+export type LfoRandomTarget = {
+  fields: LfoRandomField[]
+  gen: ParamRandom
+}
+
 export type RandomDocument = {
   chaos: boolean
   generators: Partial<Record<ParamId, ParamRandom>>
-  /** Missing entry means the default meaningful set for that effect. */
-  participation: Partial<Record<string, ParamId[]>>
+  /**
+   * Parameter ids and `sel:` engine selects.
+   * A missing entry means the default meaningful set for that effect.
+   */
+  participation: Partial<Record<string, string[]>>
+  eq: EqRandomSettings
+  /** Keyed by the modulated parameter, not by LFO slot index. */
+  lfo: Partial<Record<ParamId, LfoRandomTarget>>
 }
 
 export type RandomGlide = {
@@ -65,6 +105,9 @@ export type RandomRuntime = {
   /** Transport time of the previous auto event. Absent until the generator is armed. */
   lastSec: Partial<Record<ParamId, number>>
   glides: Partial<Record<ParamId, RandomGlide>>
+  /** Same clock as parameter Auto Random. Keyed by the modulated parameter. */
+  lfoLastSec: Partial<Record<ParamId, number>>
+  eqLastSec: number | null
 }
 
 export function defaultParamRandom(): ParamRandom {
@@ -78,12 +121,16 @@ export function defaultParamRandom(): ParamRandom {
   }
 }
 
+export function defaultEqRandomSettings(): EqRandomSettings {
+  return { scope: 'whole', count: 'random', auto: false, gen: defaultParamRandom() }
+}
+
 export function defaultRandomDocument(): RandomDocument {
-  return { chaos: false, generators: {}, participation: {} }
+  return { chaos: false, generators: {}, participation: {}, eq: defaultEqRandomSettings(), lfo: {} }
 }
 
 export function defaultRandomRuntime(): RandomRuntime {
-  return { lastSec: {}, glides: {} }
+  return { lastSec: {}, glides: {}, lfoLastSec: {}, eqLastSec: null }
 }
 
 export function cloneRandomDocument(doc: RandomDocument): RandomDocument {
@@ -97,7 +144,23 @@ export function cloneRandomDocument(doc: RandomDocument): RandomDocument {
     const ids = doc.participation[key]
     if (ids) participation[key] = ids.slice()
   }
-  return { chaos: doc.chaos, generators, participation }
+  const lfo: RandomDocument['lfo'] = {}
+  for (const id of Object.keys(doc.lfo) as ParamId[]) {
+    const target = doc.lfo[id]
+    if (!target) continue
+    lfo[id] = { fields: target.fields.slice(), gen: { ...target.gen } }
+  }
+  return {
+    chaos: doc.chaos,
+    generators,
+    participation,
+    eq: {
+      ...doc.eq,
+      bandFields: doc.eq.bandFields?.slice(),
+      gen: { ...doc.eq.gen },
+    },
+    lfo,
+  }
 }
 
 export function nearestFreeRate(hz: number): RandomFreeRate {

@@ -1,6 +1,7 @@
 import { envelopeToParam, laneFor, sampleEnvelope, type AutomationDocument } from '../automation/automation'
 import type { ParamId } from '../parameters/types'
-import { isRandomizable, randomParamValue } from './distributions'
+import { isAutoRandomizable, isDiscreteRandom, isRandomizable, randomParamValue } from './distributions'
+import { isExpensiveRandom } from './metadata'
 import { applyRandomOffset, automationOwnsCenter, offsetForTarget } from './ownership'
 import {
   RANDOM_EVENT_BUDGET_HZ,
@@ -40,7 +41,7 @@ function activeGenerators(doc: RandomDocument): ParamId[] {
   const ids: ParamId[] = []
   for (const id of Object.keys(doc.generators) as ParamId[]) {
     const gen = doc.generators[id]
-    if (gen?.auto && isRandomizable(id)) ids.push(id)
+    if (gen?.auto && isRandomizable(id) && isAutoRandomizable(id)) ids.push(id)
   }
   return ids
 }
@@ -104,6 +105,8 @@ export function stepRandom(input: {
   const runtime: RandomRuntime = {
     lastSec: { ...input.runtime.lastSec },
     glides: { ...input.runtime.glides },
+    lfoLastSec: { ...(input.runtime.lfoLastSec ?? {}) },
+    eqLastSec: input.runtime.eqLastSec ?? null,
   }
   const offsets: Partial<Record<ParamId, number>> = { ...input.offsets }
   const writes: RandomBaseWrite[] = []
@@ -115,7 +118,9 @@ export function stepRandom(input: {
   const ids = activeGenerators(input.doc)
   for (const id of ids) {
     const gen = generatorOf(input.doc, id)
-    const interval = randomIntervalSec(gen, input.bpm) * scale
+    let interval = randomIntervalSec(gen, input.bpm) * scale
+    if (isExpensiveRandom(id)) interval = Math.max(interval, 0.5)
+    const discrete = isDiscreteRandom(id)
     if (runtime.lastSec[id] == null) {
       runtime.lastSec[id] = input.clockSec
       continue
@@ -132,7 +137,7 @@ export function stepRandom(input: {
       rand,
       bpm: input.bpm,
     })
-    if (gen.transition === 'smooth') {
+    if (gen.transition === 'smooth' && !discrete) {
       const dur = Math.min(0.4, Math.max(0.02, interval * 0.55))
       const glide: RandomGlide = heard.owned
         ? {
@@ -166,5 +171,11 @@ export function stepRandom(input: {
 }
 
 export function hasAutoRandom(doc: RandomDocument): boolean {
-  return activeGenerators(doc).length > 0
+  if (activeGenerators(doc).length > 0) return true
+  if (doc.eq?.auto && doc.chaos) return true
+  for (const id of Object.keys(doc.lfo ?? {}) as ParamId[]) {
+    const target = doc.lfo[id]
+    if (target?.gen.auto && target.fields.length > 0) return true
+  }
+  return false
 }
