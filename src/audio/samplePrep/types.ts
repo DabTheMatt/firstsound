@@ -77,7 +77,11 @@ export type ExportSettings = {
   applyGain: boolean
   applyReverse: boolean
   applyNormalize: boolean
-  /** `project` is the working sample. `selection` is the current region only. */
+  /**
+   * `project` exports the selected track. `selection` exports that track's region.
+   * A future master bounce must sum every track on the shared timeline; it must
+   * not assume the project is a single global sample.
+   */
   scope?: ExportScope
 }
 

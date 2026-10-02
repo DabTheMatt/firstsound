@@ -9,6 +9,8 @@ import styles from './MobileModeBar.module.css'
 type Props = {
   viz: VizMode
   onViz: (viz: VizMode) => void
+  arrangement?: 'single' | 'multi'
+  onArrangement?: (arrangement: 'single' | 'multi') => void
   onEnterFocus: () => void
   normalizeView: boolean
   onView: (action: 'fit-sample' | 'fit-selection' | 'normalize-view' | 'reset-zoom' | 'zoom-in' | 'zoom-out') => void
@@ -37,6 +39,8 @@ const MODES: { id: VizMode; label: string }[] = [
 export function MobileModeBar({
   viz,
   onViz,
+  arrangement = 'single',
+  onArrangement,
   onEnterFocus,
   normalizeView,
   onView,
@@ -90,6 +94,16 @@ export function MobileModeBar({
         ))}
       </div>
       <div className={styles.tools}>
+        {onArrangement ? (
+          <button
+            type="button"
+            className={arrangement === 'multi' ? styles.modeOn : styles.mode}
+            aria-pressed={arrangement === 'multi'}
+            onClick={() => onArrangement(arrangement === 'multi' ? 'single' : 'multi')}
+          >
+            {arrangement === 'multi' ? t.mix.single : t.mix.multi}
+          </button>
+        ) : null}
         <FocusToggle expanded={false} onClick={onEnterFocus} />
         <button
           type="button"

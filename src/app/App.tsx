@@ -151,6 +151,7 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
   const [viz, setViz] = useState<VizMode>('waveform')
+  const [arrangement, setArrangement] = useState<'single' | 'multi'>('single')
   const [autoFocus, setAutoFocus] = useState<AutomationEditFocus>(EMPTY_AUTOMATION_FOCUS)
   const [meterRange, setMeterRange] = useState<MeterRange>('normal')
   const [edit, setEdit] = useState<EditState>(DEFAULT_EDIT)
@@ -1068,6 +1069,8 @@ export default function App() {
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
           onToggleWorkspace={enterFocus}
+          arrangement={arrangement}
+          onArrangement={setArrangement}
         />
         )}
         </div>
@@ -1078,7 +1081,7 @@ export default function App() {
               <FocusChrome
                 workspace={activeFocus}
                 playing={snap.playing}
-                canPlay={snap.sampleLoaded}
+                canPlay={snap.projectAudible}
                 onTogglePlay={() => {
                   void engine.unlock().then(() => engine.togglePlay())
                 }}
@@ -1126,6 +1129,8 @@ export default function App() {
             {isPhoneLayout ? (
               <MobileModeBar
                 viz={viz}
+                arrangement={arrangement}
+                onArrangement={setArrangement}
                 onViz={(next) => {
                   if (next === 'eq-split') {
                     const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
@@ -1204,6 +1209,7 @@ export default function App() {
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={() => setAnalyzerOpen(false)}
               phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
+              arrangement={arrangement}
             />
           </div>
           {dockRight && inspectorOpen && !activeFocus ? (
@@ -1275,7 +1281,7 @@ export default function App() {
             start={snap.params.start}
             end={snap.params.end}
             bpm={snap.params.bpm}
-            disabled={!snap.sampleLoaded}
+            disabled={!snap.projectAudible}
             compact={compact}
             minimal={isPhoneLayout}
             canUndo={history.past.length > 0}

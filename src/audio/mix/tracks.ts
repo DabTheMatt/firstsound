@@ -1,33 +1,109 @@
-export const MAX_TRACKS = 6
+/**
+ * Project tracks. Audio buffers live beside this model (keyed by id).
+ * Reordering moves these objects; it does not copy state between ids.
+ *
+ * DSP insertion (not built in this pass):
+ *   source → future per-track FX → track gain → future pan / mid-side → master sum
+ * The selected track still enters the single project effect chain. That chain
+ * is not cloned onto every slot. Mute and solo already fold into trackMixGain
+ * so a later strip can drive them without a second mixer engine.
+ */
+
+export const MAX_TRACKS = 4
 export const TRACK_MIX_MIN = 0
 export const TRACK_MIX_MAX = 150
+
+export const TRACK_COLOR_IDS = ['accent', 'secondary', 'warm', 'cool', 'eq', 'spectrum'] as const
+export type TrackColorId = (typeof TRACK_COLOR_IDS)[number]
+export type StereoDisplay = 'combined' | 'split'
 
 export type MixTrack = {
   id: string
   name: string
+  /** Set when the user renames the track. File replacement keeps that name. */
+  nameLocked: boolean
+  color: TrackColorId
+  /** 100 = unity (0 dB). Volume belongs to the track, not the file. */
   mix: number
   muted: boolean
   solo: boolean
   start: number
   end: number
   fileName: string | null
+  channelCount: number
+  stereoDisplay: StereoDisplay
 }
 
-export function defaultTracks(start = 0, end = 0): MixTrack[] {
-  return [createTrack(1, start, end, 'Track 1')]
+export function isTrackColorId(value: unknown): value is TrackColorId {
+  return typeof value === 'string' && (TRACK_COLOR_IDS as readonly string[]).includes(value)
 }
 
-export function createTrack(n: number, start: number, end: number, name?: string): MixTrack {
+export function trackColorForIndex(index: number): TrackColorId {
+  const n = Number.isFinite(index) ? Math.max(0, Math.floor(index)) : 0
+  return TRACK_COLOR_IDS[n % TRACK_COLOR_IDS.length]!
+}
+
+/** Theme token. Canvas code resolves the variable; the lane must not bake a hex. */
+export function trackColorVar(id: TrackColorId): string {
+  switch (id) {
+    case 'accent':
+      return 'var(--accent-primary)'
+    case 'secondary':
+      return 'var(--accent-secondary)'
+    case 'warm':
+      return 'var(--ridge-warm)'
+    case 'cool':
+      return 'var(--ridge-cool)'
+    case 'eq':
+      return 'var(--eq-curve)'
+    case 'spectrum':
+      return 'var(--spectrum-line)'
+  }
+}
+
+export function sourceTrackName(fileName: string): string {
+  const base = fileName.replace(/\.[^/.]+$/, '').trim()
+  return (base || 'Track').slice(0, 24)
+}
+
+export function trackNameAfterLoad(track: MixTrack, fileName: string): { name: string; nameLocked: boolean } {
+  if (track.nameLocked) return { name: track.name, nameLocked: true }
+  return { name: sourceTrackName(fileName), nameLocked: false }
+}
+
+export function mixToDbLabel(mix: number): string {
+  if (!(mix > 0)) return '-inf'
+  const db = 20 * Math.log10(mix / 100)
+  const rounded = Math.round(db * 10) / 10
+  if (Math.abs(rounded) < 0.05) return '0 dB'
+  const text = rounded.toFixed(1)
+  return `${rounded > 0 ? '+' : ''}${text} dB`
+}
+
+export function createTrack(n: number, start = 0, end = 0, name?: string): MixTrack {
   return {
     id: `track-${n}`,
     name: name ?? `Track ${n}`,
+    nameLocked: false,
+    color: trackColorForIndex(n - 1),
     mix: 100,
     muted: false,
     solo: false,
     start,
     end,
     fileName: null,
+    channelCount: 0,
+    stereoDisplay: 'combined',
   }
+}
+
+export function createTrackList(count: number, start = 0, end = 0): MixTrack[] {
+  const n = Math.max(0, Math.min(MAX_TRACKS, Math.floor(count)))
+  return Array.from({ length: n }, (_, i) => createTrack(i + 1, start, end))
+}
+
+export function defaultTracks(start = 0, end = 0): MixTrack[] {
+  return createTrackList(MAX_TRACKS, start, end)
 }
 
 export function cloneTrack(track: MixTrack): MixTrack {
@@ -84,20 +160,37 @@ export function selectedTrack(tracks: readonly MixTrack[], id: string | null): M
   return tracks.find((track) => track.id === id) ?? tracks[0] ?? null
 }
 
+export function trackHasAudio(track: MixTrack): boolean {
+  return track.channelCount > 0 || Boolean(track.fileName)
+}
+
+/** Pad or trim to the slot count. Ids already in the list are kept. */
+export function ensureTrackSlots(tracks: readonly MixTrack[], start = 0, end = 0): MixTrack[] {
+  const next = tracks.slice(0, MAX_TRACKS).map(cloneTrack)
+  const used = new Set(next.map((track) => track.id))
+  let n = 1
+  while (next.length < MAX_TRACKS) {
+    while (used.has(`track-${n}`) || used.has(`layer-${n}`)) n++
+    const id = `track-${n}`
+    used.add(id)
+    n++
+    const slot = createTrack(next.length + 1, start, end)
+    slot.id = id
+    slot.color = trackColorForIndex(next.length)
+    next.push(slot)
+  }
+  return next
+}
+
 export function addTrack(tracks: readonly MixTrack[], start: number, end: number): MixTrack[] {
   if (tracks.length >= MAX_TRACKS) return cloneTracks(tracks)
   const next = cloneTracks(tracks)
   const id = nextTrackId(next)
-  next.push({
-    id,
-    name: nextTrackName(next),
-    mix: 100,
-    muted: false,
-    solo: false,
-    start,
-    end,
-    fileName: null,
-  })
+  const slot = createTrack(next.length + 1, start, end)
+  slot.id = id
+  slot.name = nextTrackName(next)
+  slot.color = trackColorForIndex(next.length)
+  next.push(slot)
   return next
 }
 
@@ -109,15 +202,40 @@ export function duplicateTrack(tracks: readonly MixTrack[], id: string): MixTrac
   const copy = cloneTrack(source)
   copy.id = nextTrackId(next)
   copy.name = nextTrackName(next, source.name)
+  copy.nameLocked = false
   copy.solo = false
   next.push(copy)
   return next
 }
 
+/** Empty the slot in place. Neighbours keep their index and id. */
+export function clearTrackAudio(tracks: readonly MixTrack[], id: string): MixTrack[] {
+  return tracks.map((track, index) => {
+    if (track.id !== id) return cloneTrack(track)
+    const next = cloneTrack(track)
+    next.fileName = null
+    next.channelCount = 0
+    next.stereoDisplay = 'combined'
+    next.start = 0
+    next.end = 0
+    if (!next.nameLocked) next.name = `Track ${index + 1}`
+    return next
+  })
+}
+
 export function removeTrack(tracks: readonly MixTrack[], id: string): MixTrack[] {
-  if (tracks.length <= 1) return cloneTracks(tracks)
-  const next = tracks.filter((track) => track.id !== id).map(cloneTrack)
-  return next.length ? next : defaultTracks()
+  return clearTrackAudio(tracks, id)
+}
+
+export function moveTrack(tracks: readonly MixTrack[], from: number, to: number): MixTrack[] {
+  if (from === to || from < 0 || to < 0 || from >= tracks.length || to >= tracks.length) {
+    return cloneTracks(tracks)
+  }
+  const next = cloneTracks(tracks)
+  const [item] = next.splice(from, 1)
+  if (!item) return cloneTracks(tracks)
+  next.splice(to, 0, item)
+  return next
 }
 
 export function patchTrack(
@@ -128,7 +246,13 @@ export function patchTrack(
   return tracks.map((track) => {
     if (track.id !== id) return cloneTrack(track)
     const next = cloneTrack(track)
-    if (typeof patch.name === 'string' && patch.name.trim()) next.name = patch.name.trim().slice(0, 24)
+    if (typeof patch.name === 'string' && patch.name.trim()) {
+      next.name = patch.name.trim().slice(0, 24)
+      next.nameLocked = patch.nameLocked !== false
+    }
+    if (patch.nameLocked === true) next.nameLocked = true
+    if (patch.nameLocked === false) next.nameLocked = false
+    if (isTrackColorId(patch.color)) next.color = patch.color
     if (typeof patch.mix === 'number') next.mix = clampMix(patch.mix)
     if (typeof patch.muted === 'boolean') next.muted = patch.muted
     if (typeof patch.solo === 'boolean') next.solo = patch.solo
@@ -136,6 +260,12 @@ export function patchTrack(
     if (typeof patch.end === 'number' && Number.isFinite(patch.end)) next.end = patch.end
     if (patch.fileName === null) next.fileName = null
     else if (typeof patch.fileName === 'string') next.fileName = patch.fileName.slice(0, 80)
+    if (typeof patch.channelCount === 'number' && Number.isFinite(patch.channelCount)) {
+      next.channelCount = Math.max(0, Math.min(8, Math.round(patch.channelCount)))
+    }
+    if (patch.stereoDisplay === 'combined' || patch.stereoDisplay === 'split') {
+      next.stereoDisplay = patch.stereoDisplay
+    }
     return next
   })
 }
@@ -151,7 +281,7 @@ export function writeTrackRegion(
 
 /** Accept current tracks JSON or legacy mix-layer snapshots (insert/eq ignored). */
 export function parseTracks(raw: unknown): MixTrack[] | null {
-  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_TRACKS) return null
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 16) return null
   const parsed: MixTrack[] = []
   const used = new Set<string>()
   for (const item of raw) {
@@ -159,15 +289,29 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
     const rec = item as Partial<MixTrack>
     if (typeof rec.id !== 'string' || !rec.id || used.has(rec.id)) return null
     used.add(rec.id)
+    const fileName = typeof rec.fileName === 'string' && rec.fileName.trim() ? rec.fileName.trim().slice(0, 80) : null
+    const name = typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim().slice(0, 24) : 'Track'
+    const derived = fileName ? sourceTrackName(fileName) : ''
+    const nameLocked =
+      typeof rec.nameLocked === 'boolean'
+        ? rec.nameLocked
+        : Boolean(name && derived && name !== derived && !/^Track \d+$/.test(name))
     parsed.push({
       id: rec.id,
-      name: typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim().slice(0, 24) : 'Track',
+      name,
+      nameLocked,
+      color: isTrackColorId(rec.color) ? rec.color : trackColorForIndex(parsed.length),
       mix: clampMix(typeof rec.mix === 'number' ? rec.mix : 100),
       muted: Boolean(rec.muted),
       solo: Boolean(rec.solo),
       start: typeof rec.start === 'number' && Number.isFinite(rec.start) ? rec.start : 0,
       end: typeof rec.end === 'number' && Number.isFinite(rec.end) ? rec.end : 0,
-      fileName: typeof rec.fileName === 'string' && rec.fileName.trim() ? rec.fileName.trim().slice(0, 80) : null,
+      fileName,
+      channelCount:
+        typeof rec.channelCount === 'number' && rec.channelCount > 0
+          ? Math.min(8, Math.round(rec.channelCount))
+          : 0,
+      stereoDisplay: rec.stereoDisplay === 'split' ? 'split' : 'combined',
     })
   }
   return parsed.length ? parsed : null
@@ -188,12 +332,16 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       !!other &&
       track.id === other.id &&
       track.name === other.name &&
+      track.nameLocked === other.nameLocked &&
+      track.color === other.color &&
       track.mix === other.mix &&
       track.muted === other.muted &&
       track.solo === other.solo &&
       track.start === other.start &&
       track.end === other.end &&
-      track.fileName === other.fileName
+      track.fileName === other.fileName &&
+      track.channelCount === other.channelCount &&
+      track.stereoDisplay === other.stereoDisplay
     )
   })
 }

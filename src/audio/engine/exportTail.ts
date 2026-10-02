@@ -9,6 +9,16 @@ import type { ExportScope, SamplePrepState } from '../samplePrep/types'
 
 export type { ExportScope }
 
+/** Current export is one track. `master` is the future sum and is not rendered here. */
+export type PlannedExportTarget =
+  | { kind: 'track'; trackId: string }
+  | { kind: 'selection'; trackId: string }
+  | { kind: 'master' }
+
+export function plannedExportTarget(scope: ExportScope, trackId: string): PlannedExportTarget {
+  return scope === 'selection' ? { kind: 'selection', trackId } : { kind: 'track', trackId }
+}
+
 /** Working sample for Export, or the inner region for Export Selection. */
 export function exportSourceRange(
   prep: SamplePrepState,

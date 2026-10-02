@@ -45,8 +45,8 @@ import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
-import { MixConsole } from '../mix/MixConsole'
-import { TrackLanes } from '../mix/TrackLanes'
+import { trackHasAudio } from '../../audio/mix/tracks'
+import { MultiTrackView } from '../mix/MultiTrackView'
 import {
   clampView,
   fitView,
@@ -130,6 +130,8 @@ type Props = {
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   phoneEqId?: string
+  /** Presentation only. Does not change transport or project audio. */
+  arrangement?: 'single' | 'multi'
 }
 
 export type WaveformHandle = {
@@ -240,6 +242,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     analyzerOpen = false,
     onAnalyzerClose,
     phoneEqId,
+    arrangement = 'single',
   },
   ref,
 ) {
@@ -1240,19 +1243,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         plotSize.height,
       )
     : []
-  const showMultiWave = viz === 'waveform-multi' && phoneFocus == null
+  const showArrangement = arrangement === 'multi' && !sensory && !simple && phoneFocus == null
   const shownViz = phone ? phoneDisplayViz(viz) : viz
   const phoneEq = phone && shownViz === 'eq-split'
   const showSpec =
+    !showArrangement &&
     !phoneEq &&
     phoneFocus !== 'wave' &&
     (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
   const eqFocus = phoneFocus === 'eq'
   const eqFocusClean = phoneEq || eqFocus
-  const showEqConsole = shownViz === 'eq-split' && !phone && !eqFocusClean
+  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
-  const showMixConsole = viz === 'mix-split' && phoneFocus == null
-  const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split' || viz === 'mix-split')
+  const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split')
 
     return (
     <div
@@ -1263,7 +1266,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         <div
           ref={editorRef}
           className={styles.wrap}
-          hidden={!showWave}
+          hidden={!showWave || showArrangement}
           role="region"
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
@@ -1272,7 +1275,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         >
           <div className={styles.wavePane}>
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
-            {!sensory && !simple && snap.tracks.length > 0 ? (
+            {!sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
                 {snap.tracks.map((track) => {
                   const on = track.id === snap.selectedTrackId
@@ -1605,11 +1608,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           ) : null}
         </div>
-        {showMultiWave ? (
-          <div className={styles.multiWave}>
-            <TrackLanes variant="editor" />
-          </div>
-        ) : null}
+        {showArrangement ? <MultiTrackView phone={phone} /> : null}
         {viz === 'split' && showWave && showSpec ? (
           <button
             type="button"
@@ -1703,18 +1702,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             </div>
           </>
         ) : null}
-        {showMixConsole ? (
-            <div className={styles.mixDesk}>
-              <div className={styles.trackLanes}>
-                <TrackLanes />
-              </div>
-              <div className={styles.mixStrips}>
-                <MixConsole />
-              </div>
-            </div>
-        ) : null}
       </div>
-      {loaded && duration > 0 && !showWave && !phone && !phoneFocus ? (
+      {loaded && duration > 0 && !showWave && !showArrangement && !phone && !phoneFocus ? (
         <Overview
           duration={duration}
           start={start}

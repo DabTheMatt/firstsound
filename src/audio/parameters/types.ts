@@ -269,6 +269,7 @@ export type PresetV1 = {
   comb?: CombFilterState
   fxLfos?: unknown
   tracks?: MixTrack[]
+  selectedTrackId?: string
   /** Legacy parallel mix-layer snapshots; parsed as tracks. */
   mixLayers?: unknown
   masterMix?: number

@@ -1,0 +1,222 @@
+.desk {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  gap: 4px;
+}
+
+.list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.wave::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--project-playhead, 0%);
+  width: 1px;
+  background: var(--playhead);
+  pointer-events: none;
+}
+
+.lane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 88px;
+  min-height: 78px;
+  border: 1px solid var(--border-subtle);
+  border-left-width: 2px;
+  border-radius: 8px;
+  background: transparent;
+  min-width: 0;
+}
+
+.laneOn {
+  border-color: color-mix(in srgb, var(--lane, var(--accent-primary)) 55%, var(--border-subtle));
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 6px 0;
+}
+
+.grip {
+  width: 16px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background:
+    linear-gradient(currentColor, currentColor) 4px 6px / 8px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) 4px 10px / 8px 1px no-repeat,
+    linear-gradient(currentColor, currentColor) 4px 14px / 8px 1px no-repeat;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 99px;
+  background: var(--lane, var(--accent-primary));
+}
+
+.palette {
+  display: flex;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.chip {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 99px;
+}
+
+.name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 0;
+}
+
+.nameInput {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+}
+
+.meta {
+  flex: none;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.icon {
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  width: 118px;
+}
+
+.fader input {
+  width: 72px;
+  accent-color: var(--lane, var(--accent-primary));
+}
+
+.db {
+  width: 40px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.wave {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 46px;
+  margin: 2px 6px 4px;
+}
+
+.wave canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 46px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin: 2px 6px 6px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.channels {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 2px;
+}
+
+.channelLabel {
+  margin: 0 6px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 6px 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.phone .lane {
+  flex: 0 0 auto;
+  min-height: 96px;
+}
+

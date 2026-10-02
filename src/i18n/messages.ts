@@ -478,6 +478,27 @@ export type Messages = {
     monitor: string
     monitorHint: string
     masterHint: string
+    single: string
+    multi: string
+    singleTitle: string
+    multiTitle: string
+    loadAudio: string
+    replaceAudio: string
+    clearTrack: string
+    volume: string
+    mono: string
+    stereo: string
+    expandStereo: string
+    collapseStereo: string
+    rename: string
+    color: string
+    empty: string
+    replaceAsk: string
+    replaceYes: string
+    replaceNo: string
+    left: string
+    right: string
+    reorder: string
   }
   meters: {
     resetClip: string
@@ -1186,6 +1207,27 @@ export const EN: Messages = {
     monitor: 'Monitor',
     monitorHint: 'Mic level in the speakers while recording. Keep at 0 without headphones to avoid feedback.',
     masterHint: 'Sums every audible track into the effect chain.',
+    single: 'Single',
+    multi: 'Multi',
+    singleTitle: 'Single track view',
+    multiTitle: 'Multi track view',
+    loadAudio: 'Load audio',
+    replaceAudio: 'Replace',
+    clearTrack: 'Clear',
+    volume: 'Volume',
+    mono: 'Mono',
+    stereo: 'Stereo',
+    expandStereo: 'Expand channels',
+    collapseStereo: 'Collapse channels',
+    rename: 'Rename',
+    color: 'Track color',
+    empty: 'Empty track',
+    replaceAsk: 'Replace audio?',
+    replaceYes: 'Replace',
+    replaceNo: 'Cancel',
+    left: 'Left',
+    right: 'Right',
+    reorder: 'Reorder track',
   },
   meters: {
     resetClip: 'Reset clip',
@@ -1898,6 +1940,27 @@ export const PL: Messages = {
     monitor: 'Monitor',
     monitorHint: 'Poziom mikrofonu w głośnikach podczas nagrania. Bez słuchawek zostaw 0, żeby uniknąć sprzężenia.',
     masterHint: 'Sumuje każdy słyszalny ślad do łańcucha efektów.',
+    single: 'Jeden',
+    multi: 'Wiele',
+    singleTitle: 'Widok jednego śladu',
+    multiTitle: 'Widok wielu śladów',
+    loadAudio: 'Wczytaj audio',
+    replaceAudio: 'Podmień',
+    clearTrack: 'Wyczyść',
+    volume: 'Głośność',
+    mono: 'Mono',
+    stereo: 'Stereo',
+    expandStereo: 'Rozwiń kanały',
+    collapseStereo: 'Zwiń kanały',
+    rename: 'Zmień nazwę',
+    color: 'Kolor śladu',
+    empty: 'Pusty ślad',
+    replaceAsk: 'Podmienić audio?',
+    replaceYes: 'Podmień',
+    replaceNo: 'Anuluj',
+    left: 'Lewy',
+    right: 'Prawy',
+    reorder: 'Zmień kolejność',
   },
   meters: {
     resetClip: 'Reset clip',

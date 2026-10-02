@@ -37,6 +37,8 @@ type Props = {
   normalizeView: boolean
   minimal?: boolean
   onToggleWorkspace?: () => void
+  arrangement?: 'single' | 'multi'
+  onArrangement?: (arrangement: 'single' | 'multi') => void
 }
 
 export type ViewAction =
@@ -98,9 +100,6 @@ export function runDisplayAction(
 
 const TOOLS: { id: WaveTool; key: 'edit' }[] = [{ id: 'select', key: 'edit' }]
 
-/** Unfinished waveform views. Flip to restore MULTI and TRACKS in the toolbar. */
-const SHOW_UNFINISHED_VIEWS = false
-
 export function WaveformToolbar({
   tool: _tool,
   onTool,
@@ -134,6 +133,8 @@ export function WaveformToolbar({
   normalizeView,
   minimal = false,
   onToggleWorkspace,
+  arrangement = 'single',
+  onArrangement,
 }: Props) {
   const { t } = useI18n()
   const tools = TOOLS
@@ -337,6 +338,16 @@ export function WaveformToolbar({
         <span className={styles.kicker}>{t.waveform.viewGroup}</span>
         <BackgroundControl />
         <div className={styles.views}>
+        {onArrangement ? (
+          <IconButton
+            label={arrangement === 'multi' ? t.mix.singleTitle : t.mix.multiTitle}
+            caption={arrangement === 'multi' ? t.mix.single : t.mix.multi}
+            pressed={arrangement === 'multi'}
+            onClick={() => onArrangement(arrangement === 'multi' ? 'single' : 'multi')}
+          >
+            <MultiWaveIcon />
+          </IconButton>
+        ) : null}
         <IconButton
           label={t.waveform.waveTitle}
           caption={t.waveform.wave}
@@ -345,17 +356,6 @@ export function WaveformToolbar({
         >
           <WaveIcon />
         </IconButton>
-        {/* MULTI and TRACKS stay implemented below, but stay out of navigation until finished. */}
-        {SHOW_UNFINISHED_VIEWS && !minimal ? (
-          <IconButton
-            label={t.waveform.multiTitle}
-            caption={t.waveform.multi}
-            pressed={viz === 'waveform-multi'}
-            onClick={() => onViz('waveform-multi')}
-          >
-            <MultiWaveIcon />
-          </IconButton>
-        ) : null}
         <IconButton
           label={t.waveform.spectrum}
           caption="FFT"
@@ -382,16 +382,6 @@ export function WaveformToolbar({
             onClick={() => onViz('eq-split')}
           >
             <EqSplitIcon />
-          </IconButton>
-        ) : null}
-        {SHOW_UNFINISHED_VIEWS && !minimal ? (
-          <IconButton
-            label={t.waveform.tracksTitle}
-            caption={t.waveform.tracks}
-            pressed={viz === 'mix-split'}
-            onClick={() => onViz('mix-split')}
-          >
-            <MixSplitIcon />
           </IconButton>
         ) : null}
         <IconButton
@@ -826,15 +816,6 @@ function EqSplitIcon() {
       <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
       <path d="M2 9h14" stroke="currentColor" strokeWidth="1.6" />
       <path d="M6 9v6M10 9v6M14 9v6" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  )
-}
-
-function MixSplitIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <rect x="2" y="3" width="14" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M6 13V8M9 13V6M12 13V9" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   )
 }
