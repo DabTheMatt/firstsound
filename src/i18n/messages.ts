@@ -538,6 +538,35 @@ export type Messages = {
     warning: string
     cancel: string
     enable: string
+    randomize: string
+    randomizeNow: string
+    setup: string
+    setupAria: string
+    parameters: string
+    selects: string
+    all: string
+    none: string
+    scope: string
+    scopeWhole: string
+    scopeBand: string
+    filterCount: string
+    countRandom: string
+    frequency: string
+    gain: string
+    q: string
+    filterType: string
+    slope: string
+    wholeEq: string
+    oneShot: string
+    direction: string
+    delayType: string
+    reverbType: string
+    distortionType: string
+    lfoRate: string
+    lfoDepth: string
+    lfoShape: string
+    lfoPhase: string
+    lfoConnect: string
   }
   a11y: {
     title: string
@@ -1215,12 +1244,41 @@ export const EN: Messages = {
     randomizeEffect: 'Randomize effect',
     randomizeBand: 'Randomize band',
     effectMenu: (name) => `Random ${name}`,
-    chaosHint: 'Auto Random and effect randomization need Chaos.',
+    chaosHint: 'Auto Random needs Chaos. One click still randomizes now.',
     budget: 'Event rate is capped so the instrument stays responsive.',
     warning:
       'Chaos enables automatic and multi-parameter random generation. It can create extreme sound changes, sudden level changes, higher CPU use, and feedback or resonance extremes inside protected limits.',
     cancel: 'Cancel',
     enable: 'Enable Chaos',
+    randomize: 'Randomize',
+    randomizeNow: 'Randomize now',
+    setup: 'Random setup',
+    setupAria: 'Open randomization settings',
+    parameters: 'Parameters',
+    selects: 'Selects / modes',
+    all: 'All',
+    none: 'None',
+    scope: 'Scope',
+    scopeWhole: 'Whole EQ',
+    scopeBand: 'Selected band',
+    filterCount: 'Filter count',
+    countRandom: 'Random 1–6',
+    frequency: 'Frequency',
+    gain: 'Gain',
+    q: 'Q',
+    filterType: 'Filter type',
+    slope: 'Slope',
+    wholeEq: 'Generate EQ',
+    oneShot: 'Filter type changes on Randomize now.',
+    direction: 'Direction',
+    delayType: 'Delay type',
+    reverbType: 'Reverb type',
+    distortionType: 'Distortion type',
+    lfoRate: 'Rate',
+    lfoDepth: 'Depth',
+    lfoShape: 'Shape',
+    lfoPhase: 'Phase',
+    lfoConnect: 'Randomize connects this LFO if it is not routed yet.',
   },
   a11y: {
     title: 'Accessibility',
@@ -1898,12 +1956,41 @@ export const PL: Messages = {
     randomizeEffect: 'Losuj efekt',
     randomizeBand: 'Losuj pasmo',
     effectMenu: (name) => `Random ${name}`,
-    chaosHint: 'Auto Random i losowanie efektu wymagają trybu Chaos.',
+    chaosHint: 'Auto Random wymaga Chaosu. Jedno kliknięcie i tak losuje od razu.',
     budget: 'Częstotliwość zdarzeń jest ograniczona, żeby instrument został responsywny.',
     warning:
       'Chaos włącza automatyczne i wieloparametrowe losowanie. Może powodować skrajne zmiany brzmienia, nagłe zmiany poziomu, wyższe użycie CPU oraz skrajne sprzężenie lub rezonans w granicach ochrony.',
     cancel: 'Anuluj',
     enable: 'Włącz Chaos',
+    randomize: 'Losuj',
+    randomizeNow: 'Losuj teraz',
+    setup: 'Ustawienia losowania',
+    setupAria: 'Otwórz ustawienia losowania',
+    parameters: 'Parametry',
+    selects: 'Wybory / tryby',
+    all: 'Wszystkie',
+    none: 'Żadne',
+    scope: 'Zakres',
+    scopeWhole: 'Cały EQ',
+    scopeBand: 'Wybrane pasmo',
+    filterCount: 'Liczba filtrów',
+    countRandom: 'Losowo 1–6',
+    frequency: 'Częstotliwość',
+    gain: 'Gain',
+    q: 'Q',
+    filterType: 'Typ filtra',
+    slope: 'Nachylenie',
+    wholeEq: 'Generuj EQ',
+    oneShot: 'Typ filtra zmienia się przy Losuj teraz.',
+    direction: 'Kierunek',
+    delayType: 'Typ delaya',
+    reverbType: 'Typ reverbu',
+    distortionType: 'Typ zniekształcenia',
+    lfoRate: 'Tempo',
+    lfoDepth: 'Głębokość',
+    lfoShape: 'Kształt',
+    lfoPhase: 'Faza',
+    lfoConnect: 'Losowanie podłączy to LFO, jeśli jeszcze nie jest skierowane.',
   },
   a11y: {
     title: 'Dostępność',

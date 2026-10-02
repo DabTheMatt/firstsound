@@ -45,6 +45,22 @@
   padding: 0 0 1px;
 }
 
+/* Dice + setup share the width the single random button already occupied. */
+.modSlot :global([data-random-pair]) {
+  display: inline-flex;
+  width: 36px;
+  min-width: 36px;
+  height: 26px;
+  flex: none;
+}
+
+.modSlot :global([data-random-pair] button) {
+  width: 18px;
+  min-width: 18px;
+  height: 26px;
+  min-height: 26px;
+}
+
 .knob:hover .modSlot :global(button),
 .knob:focus-within .modSlot :global(button),
 .modSlot :global(button):hover,

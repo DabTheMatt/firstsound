@@ -15,6 +15,7 @@ import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { classifyGesture } from '../mobile/gestureIntent'
 import { connectParameterLfo, removeParameterLfo, setParameterLfoEnabled, setParameterLfoPrimary } from './modulationActions'
 import { formatModulationDepth, parameterModulationState } from './modulationModel'
+import { LfoRandomActions } from '../random/LfoRandomActions'
 import styles from './Modulation.module.css'
 
 const RATE_DEF: ParamDef = {
@@ -93,6 +94,7 @@ export function MobileModulationSheet({ id, label, onClose }: Props) {
           <h2 id={titleId} className={styles.sheetTitle}>
             {t.modulation.title(label)}
           </h2>
+          <LfoRandomActions id={id} />
           <button type="button" className={styles.sheetClose} onClick={onClose}>
             {t.modulation.close}
           </button>

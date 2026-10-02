@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fxLfoKindForParam } from '../../audio/fx/lfo'
 import { eqParamIndex } from '../../audio/random/groups'
@@ -15,6 +15,8 @@ import { isRandomizable } from '../../audio/random/distributions'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { DiceIcon, GearIcon } from './icons'
+import { RandomLayer } from './RandomLayer'
 import styles from './Random.module.css'
 
 type Props = {
@@ -23,90 +25,66 @@ type Props = {
   touch?: boolean
 }
 
-function DiceIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-      <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="5" cy="5" r="1" fill="currentColor" />
-      <circle cx="11" cy="5" r="1" fill="currentColor" />
-      <circle cx="8" cy="8" r="1" fill="currentColor" />
-      <circle cx="5" cy="11" r="1" fill="currentColor" />
-      <circle cx="11" cy="11" r="1" fill="currentColor" />
-    </svg>
-  )
-}
-
 export function RandomAffordance({ id, compact = false, touch = false }: Props) {
   const snap = useEngine()
   const { paramLabel, t } = useI18n()
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const held = useRef(false)
-  const timer = useRef(0)
   if (!isRandomizable(id)) return null
   const gen = snap.random.generators[id] ?? defaultParamRandom()
   const auto = Boolean(gen.auto && snap.random.chaos)
   const label = paramLabel(id)
-  const tip = auto ? t.random.autoFor(label) : t.random.onceFor(label)
-
-  const openEditor = () => setOpen(true)
   const closeEditor = () => setOpen(false)
+  const pairClass = touch ? styles.touchPair : compact ? styles.pairCompact : styles.pair
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    held.current = false
-    window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => {
-      held.current = true
-      openEditor()
-    }, 480)
-  }
-  const clearHold = () => window.clearTimeout(timer.current)
-
-  const onClick = (event: React.MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    clearHold()
-    if (held.current) {
-      held.current = false
-      return
-    }
-    engine.randomizeParam(id)
-  }
-
-  const className = touch ? styles.touch : compact ? `${styles.button} ${styles.buttonCompact}` : styles.button
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={className}
-        data-active={auto ? 'true' : 'false'}
-        data-open={open ? 'true' : 'false'}
-        data-random-for={id}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={tip}
-        title={compact || touch ? undefined : tip}
-        onPointerDown={onPointerDown}
-        onPointerUp={clearHold}
-        onPointerCancel={clearHold}
-        onContextMenu={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          openEditor()
-        }}
-        onClick={onClick}
-      >
-        <DiceIcon />
-      </button>
+      <div ref={rootRef} className={pairClass} data-random-pair="param" data-random-for={id}>
+        <button
+          type="button"
+          className={touch ? styles.touch : compact ? `${styles.button} ${styles.buttonCompact}` : styles.dice}
+          data-active={auto ? 'true' : 'false'}
+          data-random-for={id}
+          aria-label={t.random.randomizeNow}
+          title={compact || touch ? undefined : t.random.randomize}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            engine.randomizeParam(id)
+          }}
+        >
+          <DiceIcon />
+        </button>
+        <button
+          type="button"
+          className={touch ? styles.touch : compact ? `${styles.button} ${styles.buttonCompact}` : styles.gear}
+          data-active={auto ? 'true' : 'false'}
+          data-open={open ? 'true' : 'false'}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={t.random.setupAria}
+          title={compact || touch ? undefined : t.random.setup}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setOpen((value) => !value)
+          }}
+        >
+          <GearIcon />
+        </button>
+      </div>
       {open && typeof document !== 'undefined'
         ? createPortal(
-            touch ? (
-              <RandomSheet id={id} label={label} gen={gen} chaos={snap.random.chaos} budget={snap.random.budgetLimited} onClose={closeEditor} />
-            ) : (
-              <RandomEditor buttonRef={buttonRef} id={id} label={label} gen={gen} chaos={snap.random.chaos} budget={snap.random.budgetLimited} onClose={closeEditor} />
-            ),
+            <RandomLayer
+              anchorRef={rootRef}
+              label={t.random.setup}
+              title={t.random.title(label)}
+              onClose={closeEditor}
+            >
+              <RandomFields id={id} gen={gen} chaos={snap.random.chaos} budget={snap.random.budgetLimited} onClose={closeEditor} />
+            </RandomLayer>,
             document.body,
           )
         : null}
@@ -114,127 +92,25 @@ export function RandomAffordance({ id, compact = false, touch = false }: Props) 
   )
 }
 
-function useDismiss(onClose: () => void, panelRef: RefObject<HTMLElement | null>, buttonRef?: RefObject<HTMLButtonElement | null>) {
-  useEffect(() => {
-    const onPointer = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (panelRef.current?.contains(target) || buttonRef?.current?.contains(target)) return
-      onClose()
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      onClose()
-    }
-    document.addEventListener('pointerdown', onPointer)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [buttonRef, onClose, panelRef])
-}
-
-function RandomEditor({
-  buttonRef,
-  id,
-  label,
-  gen,
-  chaos,
-  budget,
-  onClose,
-}: {
-  buttonRef: RefObject<HTMLButtonElement | null>
-  id: ParamId
-  label: string
-  gen: ParamRandom
-  chaos: boolean
-  budget: boolean
-  onClose: () => void
-}) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [box, setBox] = useState<{ top: number; left: number } | null>(null)
-  useDismiss(onClose, panelRef, buttonRef)
-  useEffect(() => {
-    const place = () => {
-      const button = buttonRef.current
-      if (!button) return
-      const rect = button.getBoundingClientRect()
-      const width = 280
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))
-      const panelHeight = panelRef.current?.offsetHeight ?? 280
-      const below = rect.bottom + 6
-      const top = below + panelHeight > window.innerHeight - 8 ? Math.max(8, rect.top - panelHeight - 6) : below
-      setBox({ top, left })
-    }
-    const frame = window.requestAnimationFrame(place)
-    window.addEventListener('resize', place)
-    return () => {
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener('resize', place)
-    }
-  }, [buttonRef])
-  if (!box) return <div ref={panelRef} />
-  return (
-    <div ref={panelRef} className={styles.editor} style={{ top: box.top, left: box.left }} role="dialog" aria-label={label}>
-      <RandomFields id={id} label={label} gen={gen} chaos={chaos} budget={budget} onClose={onClose} />
-    </div>
-  )
-}
-
-function RandomSheet({
-  id,
-  label,
-  gen,
-  chaos,
-  budget,
-  onClose,
-}: {
-  id: ParamId
-  label: string
-  gen: ParamRandom
-  chaos: boolean
-  budget: boolean
-  onClose: () => void
-}) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  useDismiss(onClose, panelRef)
-  return (
-    <>
-      <button type="button" className={styles.scrim} aria-label="Close" onClick={onClose} />
-      <div ref={panelRef} className={styles.sheet} role="dialog" aria-label={label}>
-        <RandomFields id={id} label={label} gen={gen} chaos={chaos} budget={budget} onClose={onClose} />
-      </div>
-    </>
-  )
-}
-
 function RandomFields({
   id,
-  label,
   gen,
   chaos,
   budget,
   onClose,
 }: {
   id: ParamId
-  label: string
   gen: ParamRandom
   chaos: boolean
   budget: boolean
   onClose: () => void
 }) {
   const { t } = useI18n()
-  const titleId = useId()
   const kind = fxLfoKindForParam(id)
   const band = eqParamIndex(id)
   const set = (patch: Partial<ParamRandom>) => engine.setParamRandom(id, patch)
   return (
     <>
-      <h2 id={titleId} className={styles.title}>
-        {t.random.title(label)}
-      </h2>
       <div className={styles.actions}>
         <button
           type="button"

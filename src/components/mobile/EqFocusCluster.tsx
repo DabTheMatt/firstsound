@@ -14,6 +14,7 @@ import { ValueKnob } from '../controls/ValueKnob'
 import { focusEqTypePatch } from './eqFocusGesture'
 import { focusEqKnobs, focusEqTypeOptions, type FocusEqKnob } from './eqFocusControls'
 import { focusEqTypeLabel, formatFocusDb, formatFocusHz, formatFocusQValue, formatFocusSlope } from './focusReadout'
+import { EffectRandomMenu } from '../random/EffectRandomMenu'
 import styles from './FocusChrome.module.css'
 
 type Props = {
@@ -70,6 +71,7 @@ export function EqFocusCluster({ onSelectModule }: Props) {
         {active ? (
           <span className={styles.eqName}>{t.focus.band(index + 1, focusEqTypeLabel(active.type))}</span>
         ) : null}
+        <EffectRandomMenu type="eq" />
         {eq && active ? (
           <button
             type="button"

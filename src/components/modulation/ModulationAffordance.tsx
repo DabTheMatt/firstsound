@@ -42,6 +42,7 @@ import {
   subscribeModulationEditor,
 } from './modulationEditor'
 import { MobileModulationSheet } from './MobileModulationSheet'
+import { LfoRandomActions } from '../random/LfoRandomActions'
 import { modulationAffordanceModel, parameterModulationState, type ModulationSourceId } from './modulationModel'
 import styles from './Modulation.module.css'
 
@@ -285,6 +286,7 @@ function ModulationEditorSession({
       lfo={lfo}
       kind={kind}
       snap={snap}
+      paramId={id}
       onChooseLfo={() => {
         setSource('lfo')
         if (!lfoConnected) connectParameterLfo(engine, id)
@@ -310,6 +312,7 @@ function ModulatePanel({
   panelRef,
   titleId,
   label,
+  paramId,
   top,
   left,
   shownSource,
@@ -332,6 +335,7 @@ function ModulatePanel({
   panelRef: RefObject<HTMLDivElement | null>
   titleId: string
   label: string
+  paramId: ParamId
   top: number
   left: number
   shownSource: ModulationSourceId | null
@@ -380,6 +384,7 @@ function ModulatePanel({
           >
             LFO
           </button>
+          <LfoRandomActions id={paramId} />
           {lfoConnected ? (
             <button
               type="button"

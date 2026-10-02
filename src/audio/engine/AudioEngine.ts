@@ -9,7 +9,7 @@ import {
   type ChainModule,
   type ModuleType,
 } from '../chain/chain'
-import { defaultParamValues, PARAMS } from '../parameters/definitions'
+import { defaultParamValues, PARAMS, PLAYBACK_DIRECTIONS } from '../parameters/definitions'
 import {
   applyParamValue,
   clamp,
@@ -47,9 +47,14 @@ import {
   EQ_BAND_LFO_KINDS,
   FX_LFO_SLOTS,
   eqBandHasLfo,
+  fxLfoKindForParam,
   isFxLfoKind,
   isFxLfoTarget,
+  lfoBinding,
+  LFO_DEPTH_DEFAULT,
+  LFO_RATE_DEFAULT,
   lfoShownFromMap,
+  nextFreeLfoSlot,
   parseFxLfos,
   stepTransportClock,
   type FxLfo,
@@ -77,17 +82,39 @@ import {
   type AutomationCurve,
   type AutomationDocument,
 } from '../automation/automation'
+import {
+  DELAY_TYPE_OPTIONS,
+  DELAY_TYPE_WEIGHTS,
+  DISTORTION_TYPE_OPTIONS,
+  DISTORTION_TYPE_WEIGHTS,
+  REVERB_TYPE_OPTIONS,
+  REVERB_TYPE_WEIGHTS,
+  participatingEntries,
+  type EngineSelectId,
+} from '../random/catalog'
 import { isRandomizable, randomParamValue } from '../random/distributions'
-import { eqRandomPatch, eqShadowField, moduleRandomKind, participatingTargets } from '../random/groups'
+import {
+  defaultEqBandFields,
+  generateRandomEqBands,
+  preferredGeneratedBand,
+  randomizeEqBandFields,
+  resolveEqFilterCount,
+} from '../random/eqGenerate'
+import { eqShadowField, moduleRandomKind, participatingTargets } from '../random/groups'
+import { LFO_RANDOM_DEFAULT_FIELDS, randomLfoPatch } from '../random/lfoRandom'
+import { isAutoRandomizable } from '../random/metadata'
+import { pickDifferent } from '../random/rng'
 import { applyRandomOffset, offsetForTarget } from '../random/ownership'
 import { loadRandomDocument, parseRandomDocument, saveRandomDocument } from '../random/persist'
-import { hasAutoRandom, stepRandom } from '../random/schedule'
+import { hasAutoRandom, randomBudgetScale, randomIntervalSec, stepRandom } from '../random/schedule'
 import {
   cloneRandomDocument,
   defaultParamRandom,
   defaultRandomDocument,
   defaultRandomRuntime,
   nearestFreeRate,
+  type EqRandomSettings,
+  type LfoRandomField,
   type ParamRandom,
   type RandomDocument,
   type RandomRuntime,
@@ -98,6 +125,7 @@ import {
   parseCombFilter,
   type CombFilterState,
 } from './comb'
+import { selectEqBand } from './eqBandSelection'
 import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
 import { SPECTRUM_FLOOR_DB } from './spectrumBands'
 import { createPinkNoiseBuffer } from './pinkNoise'
@@ -190,6 +218,7 @@ import type { SilenceProposal } from '../samplePrep/prepare'
 import { pingPongChannel, reverseChannel, reverseRegionInPlace, reverseTime, applyGainInPlace } from './buffers'
 import {
   copyEqBand,
+  createEqBandId,
   defaultEqBandAt,
   defaultEqBands,
   initializeCreatedEqBand,
@@ -400,6 +429,10 @@ export type EngineSnapshot = {
     budgetLimited: boolean
     generators: RandomDocument['generators']
     participation: RandomDocument['participation']
+    eq: EqRandomSettings
+    lfo: RandomDocument['lfo']
+    /** Bumps when Whole EQ or a selected-band random should reveal a band. */
+    eqPick: { index: number; token: number } | null
   }
   lfoShown: Record<FxLfoKind, number>
   spacePresetId: string | null
@@ -591,11 +624,15 @@ export class AudioEngine {
   private fxLfos = defaultFxLfos()
   private automation: AutomationDocument = defaultAutomation()
   private randomDoc: RandomDocument = loadRandomDocument()
+  private eqPick: { index: number; token: number } | null = null
+  private eqPickToken = 0
   private randomOffsets: Partial<Record<ParamId, number>> = {}
   private randomRuntime: RandomRuntime = defaultRandomRuntime()
   private randomWarned = false
   private randomPrompt = false
   private randomPendingId: ParamId | null = null
+  private randomPendingEq = false
+  private randomPendingLfo: ParamId | null = null
   private randomBudgetLimited = false
   private randomDirty = false
   private randomUiAt = 0
@@ -1355,6 +1392,15 @@ export class AudioEngine {
     if (this.randomWarned) {
       this.setChaos(true)
       if (pendingId) this.setParamRandom(pendingId, { auto: true })
+      if (this.randomPendingEq) {
+        this.randomPendingEq = false
+        this.setEqRandom({ auto: true })
+      }
+      if (this.randomPendingLfo) {
+        const id = this.randomPendingLfo
+        this.randomPendingLfo = null
+        this.setLfoRandom(id, { gen: { auto: true } })
+      }
       return
     }
     this.randomPendingId = pendingId ?? null
@@ -1366,23 +1412,95 @@ export class AudioEngine {
     this.randomWarned = true
     this.randomPrompt = false
     const pending = this.randomPendingId
+    const pendingEq = this.randomPendingEq
+    const pendingLfo = this.randomPendingLfo
     this.randomPendingId = null
+    this.randomPendingEq = false
+    this.randomPendingLfo = null
     this.setChaos(true)
     if (pending) this.setParamRandom(pending, { auto: true })
+    if (pendingEq) this.setEqRandom({ auto: true })
+    if (pendingLfo) this.setLfoRandom(pendingLfo, { gen: { auto: true } })
   }
 
   cancelChaos(): void {
     this.randomPrompt = false
     this.randomPendingId = null
+    this.randomPendingEq = false
+    this.randomPendingLfo = null
     this.emit()
   }
 
-  setRandomParticipation(kind: string, ids: readonly ParamId[]): void {
+  armEqAuto(): void {
+    if (this.randomDoc.eq.auto && this.randomDoc.chaos) {
+      this.setEqRandom({ auto: false })
+      return
+    }
+    if (!this.randomDoc.chaos) {
+      this.randomPendingEq = true
+      this.requestChaos()
+      return
+    }
+    this.setEqRandom({ auto: true })
+  }
+
+  armLfoAuto(id: ParamId): void {
+    const current = this.randomDoc.lfo[id]
+    if (current?.gen.auto && this.randomDoc.chaos) {
+      this.setLfoRandom(id, { gen: { auto: false } })
+      return
+    }
+    if (!this.randomDoc.chaos) {
+      this.randomPendingLfo = id
+      this.requestChaos()
+      return
+    }
+    this.setLfoRandom(id, { gen: { auto: true } })
+  }
+
+  setRandomParticipation(kind: string, ids: readonly string[]): void {
     this.randomDoc = {
       ...this.randomDoc,
-      participation: { ...this.randomDoc.participation, [kind]: ids.filter((id) => isRandomizable(id)) },
+      participation: {
+        ...this.randomDoc.participation,
+        [kind]: ids.filter((id) => isRandomizable(id as ParamId) || id.startsWith('sel:')),
+      },
     }
     this.persistRandom()
+    this.emit()
+  }
+
+  setEqRandom(patch: Partial<EqRandomSettings>): void {
+    const prev = this.randomDoc.eq
+    const next: EqRandomSettings = {
+      ...prev,
+      ...patch,
+      gen: patch.gen ? { ...prev.gen, ...patch.gen } : prev.gen,
+      bandFields: patch.bandFields ? patch.bandFields.slice() : prev.bandFields,
+    }
+    if (patch.gen?.rateHz != null) next.gen.rateHz = nearestFreeRate(patch.gen.rateHz)
+    next.gen.intensity = Math.min(1, Math.max(0, next.gen.intensity))
+    if (next.auto && !this.randomDoc.chaos) next.auto = false
+    if (!next.auto) this.randomRuntime.eqLastSec = null
+    this.randomDoc = { ...this.randomDoc, eq: next }
+    this.persistRandom()
+    this.syncLfoClock()
+    this.emit()
+  }
+
+  setLfoRandom(id: ParamId, patch: { fields?: readonly LfoRandomField[]; gen?: Partial<ParamRandom> }): void {
+    const prev = this.randomDoc.lfo[id] ?? { fields: [...LFO_RANDOM_DEFAULT_FIELDS], gen: defaultParamRandom() }
+    const next = {
+      fields: patch.fields ? [...patch.fields] : prev.fields.slice(),
+      gen: { ...prev.gen, ...patch.gen },
+    }
+    if (patch.gen?.rateHz != null) next.gen.rateHz = nearestFreeRate(patch.gen.rateHz)
+    next.gen.intensity = Math.min(1, Math.max(0, next.gen.intensity))
+    if (next.gen.auto && !this.randomDoc.chaos) next.gen.auto = false
+    if (!next.gen.auto) delete this.randomRuntime.lfoLastSec[id]
+    this.randomDoc = { ...this.randomDoc, lfo: { ...this.randomDoc.lfo, [id]: next } }
+    this.persistRandom()
+    this.syncLfoClock()
     this.emit()
   }
 
@@ -1392,6 +1510,7 @@ export class AudioEngine {
     const selected = new Set(participatingTargets(this.randomDoc, kind))
     const generators = { ...this.randomDoc.generators }
     for (const id of participatingTargets({ ...this.randomDoc, participation: {} }, kind)) {
+      if (!isAutoRandomizable(id)) continue
       const prev = generators[id] ?? defaultParamRandom()
       const next = { ...prev, auto: auto && selected.has(id) }
       generators[id] = next
@@ -1407,19 +1526,22 @@ export class AudioEngine {
   }
 
   randomizeEffect(kind: FxLfoKind): boolean {
-    if (!this.randomDoc.chaos) return false
     const bandIndex = EQ_BAND_LFO_KINDS.indexOf(kind)
     if (bandIndex >= 0) return this.randomizeEqBand(bandIndex)
-    const ids = participatingTargets(this.randomDoc, kind)
+    const entries = participatingEntries(this.randomDoc, kind)
+    for (const entry of entries) {
+      if (entry.selectId) this.applyRandomSelect(entry.selectId)
+    }
     const patch: Partial<Record<ParamId, number>> = {}
-    let changed = false
-    for (const id of ids) {
+    let changed = entries.some((entry) => entry.selectId)
+    const chaos = this.randomDoc.chaos
+    for (const id of entries.flatMap((entry) => (entry.paramId ? [entry.paramId] : []))) {
       const gen = this.randomDoc.generators[id] ?? defaultParamRandom()
       const next = randomParamValue({
         id,
         current: this.randomCenter(id),
         intensity: gen.intensity,
-        chaos: true,
+        chaos,
         bpm: this.params.bpm,
       })
       if (this.randomOwns(id)) {
@@ -1454,12 +1576,16 @@ export class AudioEngine {
   }
 
   randomizeEqBand(index: number, includeType = true): boolean {
-    if (!this.randomDoc.chaos) return false
     const id = this.primaryEqId()
     const bands = this.eqEditBands(this.eqState(id))
     const band = bands[index]
     if (!band || band.type === 'off') return false
-    const patch = eqRandomPatch(band, 0.75, true, Math.random, includeType)
+    const stored = this.randomDoc.eq.bandFields
+    const fields = (stored && stored.length > 0 ? stored : defaultEqBandFields(band.type)).filter((field) =>
+      includeType ? true : field !== 'type',
+    )
+    const chaos = this.randomDoc.chaos
+    const patch = randomizeEqBandFields(band, fields, chaos ? 0.75 : 0.5, chaos, Math.random)
     const base: Partial<EqBand> = {}
     if (patch.type) base.type = patch.type
     if (patch.slope != null) base.slope = patch.slope
@@ -1482,7 +1608,131 @@ export class AudioEngine {
       if (patch.q != null) base.q = patch.q
     }
     this.setEqBand(index, base, id)
+    this.revealEqBand(id, index)
     return true
+  }
+
+  /**
+   * Replace the EQ with 1–6 generated filters in one band write.
+   * Bands are sorted low to high. Stable ids are new, so old LFO and
+   * automation routes on those slots are dropped instead of following the index.
+   */
+  generateRandomEq(instanceId?: string): number | null {
+    const id = instanceId ?? this.primaryEqId()
+    if (!this.chain.some((mod) => mod.instanceId === id && mod.type === 'eq')) return null
+    const chaos = this.randomDoc.chaos
+    const count = resolveEqFilterCount(this.randomDoc.eq.count, Math.random)
+    const bands = generateRandomEqBands({
+      count,
+      chaos,
+      intensity: chaos ? 0.8 : 0.55,
+    })
+    this.replaceEqBands(bands, id, true)
+    const picked = preferredGeneratedBand(bands)
+    this.revealEqBand(id, picked)
+    return picked
+  }
+
+  /**
+   * One band-list write and one EQ coefficient pass.
+   * `detachStale` clears modulation only where the stable band id at that index changed.
+   */
+  replaceEqBands(bands: readonly EqBand[], instanceId?: string, detachStale = true): void {
+    const id = instanceId ?? this.primaryEqId()
+    if (!this.chain.some((mod) => mod.instanceId === id && mod.type === 'eq')) return
+    const st = this.eqState(id)
+    const previous = this.eqEditBands(st).map((band) => ({ ...band }))
+    const next = bands.map((band) => ({ ...band, id: band.id || createEqBandId() }))
+    this.writeEqEditBands(st, next)
+    this.eqById.set(id, st)
+    if (detachStale) this.detachStaleEqModulation(previous, next)
+    this.syncPrimaryEq()
+    const slot = this.slots.get(id)
+    if (slot?.eq && this.ctx) growEqGraph(this.ctx, slot.eq, next.length)
+    this.syncEqLfoParams(id)
+    this.filterType = this.eqBands[0]?.type ?? 'off'
+    this.applyEq(0.03)
+    const mod = this.chain.find((item) => item.instanceId === id)
+    const bypass = eqBypassAfterBandEdit(Boolean(mod?.bypassed), next)
+    if (mod && mod.bypassed !== bypass) {
+      this.setModuleBypass(id, bypass)
+      return
+    }
+    this.emit()
+  }
+
+  /** Randomize the LFO already routed to this parameter. Does not allocate another slot. */
+  randomizeParameterLfo(id: ParamId): boolean {
+    const kind = fxLfoKindForParam(id)
+    if (!kind) return false
+    let binding = lfoBinding(this.fxLfos, id)
+    if (!binding) {
+      let slot = nextFreeLfoSlot(this.fxLfos[kind])
+      if (slot == null) return false
+      const shown = this.lfoShown[kind] ?? 1
+      if (slot >= shown) {
+        const added = this.addFxLfo(kind)
+        if (added == null) return false
+        slot = added
+      }
+      const current = this.fxLfos[kind][slot] ?? defaultFxLfo()
+      this.setFxLfo(kind, slot, {
+        target: id,
+        depth: current.depth > 0 ? current.depth : LFO_DEPTH_DEFAULT,
+        rateHz: current.rateHz || LFO_RATE_DEFAULT,
+        shape: current.shape,
+      })
+      binding = lfoBinding(this.fxLfos, id)
+    }
+    if (!binding || binding.lfo.target !== id) return false
+    const stored = this.randomDoc.lfo[id]
+    const fields = stored?.fields?.length ? stored.fields : LFO_RANDOM_DEFAULT_FIELDS
+    const patch = randomLfoPatch({
+      lfo: binding.lfo,
+      fields,
+      chaos: this.randomDoc.chaos,
+      intensity: stored?.gen.intensity ?? 0.55,
+      nowSec: this.lfoTime(),
+    })
+    this.setFxLfo(binding.kind, binding.slot, patch)
+    return true
+  }
+
+  private applyRandomSelect(id: EngineSelectId): void {
+    if (id === 'playbackDirection') {
+      const options = PLAYBACK_DIRECTIONS.map((item) => item.value)
+      this.setDirection(pickDifferent(options, this.direction, undefined, Math.random))
+      return
+    }
+    if (id === 'delayType') {
+      this.setDelayType(pickDifferent(DELAY_TYPE_OPTIONS, this.delayType, DELAY_TYPE_WEIGHTS, Math.random))
+      return
+    }
+    if (id === 'reverbType') {
+      const next = pickDifferent(REVERB_TYPE_OPTIONS, this.reverbType, REVERB_TYPE_WEIGHTS, Math.random)
+      if (next !== 'custom') this.setReverbType(next)
+      return
+    }
+    this.setDistortionType(pickDifferent(DISTORTION_TYPE_OPTIONS, this.distortionType, DISTORTION_TYPE_WEIGHTS, Math.random))
+  }
+
+  private revealEqBand(instanceId: string, index: number): void {
+    this.eqPickToken += 1
+    this.eqPick = { index, token: this.eqPickToken }
+    selectEqBand({ instanceId, index })
+  }
+
+  /** Drop LFO and automation when the band id at a slot is no longer the one that owned them. */
+  private detachStaleEqModulation(previous: readonly EqBand[], next: readonly EqBand[]): void {
+    for (let index = 0; index < EQ_BAND_LFO_KINDS.length; index++) {
+      const before = previous[index]
+      const after = next[index]
+      if (!before?.id) continue
+      if (before.id === after?.id && after.type !== 'off') continue
+      const hadRoute = eqBandHasLfo(this.fxLfos, index) || before.type !== 'off'
+      if (!hadRoute && before.type === 'off') continue
+      this.clearEqBandModulation(index)
+    }
   }
 
   private randomOwns(id: ParamId): boolean {
@@ -1532,9 +1782,71 @@ export class AudioEngine {
     this.randomRuntime = step.runtime
     this.randomOffsets = step.offsets
     this.randomBudgetLimited = step.budgetLimited
-    if (step.writes.length === 0) return
+    if (step.writes.length > 0) {
+      this.randomDirty = true
+      for (const write of step.writes) this.writeRandomBase(write.id, write.value)
+    }
+    this.advanceLfoRandom()
+    this.advanceEqRandom()
+  }
+
+  /** Auto Random for an existing LFO. Runs on the shared transport clock, not a UI timer. */
+  private advanceLfoRandom(): void {
+    if (!this.playing || !this.randomDoc.chaos) return
+    const scale = randomBudgetScale(this.randomDoc, this.params.bpm)
+    for (const id of Object.keys(this.randomDoc.lfo) as ParamId[]) {
+      const target = this.randomDoc.lfo[id]
+      if (!target?.gen.auto || target.fields.length === 0) continue
+      const interval = Math.max(0.05, randomIntervalSec(target.gen, this.params.bpm) * scale)
+      const last = this.randomRuntime.lfoLastSec[id]
+      if (last == null) {
+        this.randomRuntime.lfoLastSec[id] = this.lfoClockSec
+        continue
+      }
+      if (this.lfoClockSec + 1e-6 < last + interval) continue
+      this.randomRuntime.lfoLastSec[id] = this.lfoClockSec
+      const binding = lfoBinding(this.fxLfos, id)
+      if (!binding || binding.lfo.target !== id) continue
+      const patch = randomLfoPatch({
+        lfo: binding.lfo,
+        fields: target.fields,
+        chaos: true,
+        intensity: target.gen.intensity,
+        nowSec: this.lfoTime(),
+      })
+      const slot = this.fxLfos[binding.kind][binding.slot] ?? defaultFxLfo()
+      this.fxLfos[binding.kind][binding.slot] = { ...slot, ...patch }
+      this.randomDirty = true
+    }
+  }
+
+  /** Whole-EQ or selected-band Auto Random. Topology changes stay at least one second apart. */
+  private advanceEqRandom(): void {
+    const eq = this.randomDoc.eq
+    if (!this.playing || !this.randomDoc.chaos || !eq.auto) return
+    const interval = Math.max(1, randomIntervalSec(eq.gen, this.params.bpm))
+    if (this.randomRuntime.eqLastSec == null) {
+      this.randomRuntime.eqLastSec = this.lfoClockSec
+      return
+    }
+    if (this.lfoClockSec + 1e-6 < this.randomRuntime.eqLastSec + interval) return
+    this.randomRuntime.eqLastSec = this.lfoClockSec
+    if (eq.scope === 'whole') {
+      const id = this.primaryEqId()
+      if (!this.chain.some((mod) => mod.instanceId === id && mod.type === 'eq')) return
+      const bands = generateRandomEqBands({
+        count: resolveEqFilterCount(eq.count, Math.random),
+        chaos: true,
+        intensity: eq.gen.intensity,
+      })
+      this.replaceEqBands(bands, id, true)
+      this.revealEqBand(id, preferredGeneratedBand(bands))
+      this.randomDirty = true
+      return
+    }
+    const selected = this.eqPick?.index ?? 0
+    this.randomizeEqBand(selected, true)
     this.randomDirty = true
-    for (const write of step.writes) this.writeRandomBase(write.id, write.value)
   }
 
   private writeRandomBase(id: ParamId, value: number): void {
@@ -3850,6 +4162,8 @@ export class AudioEngine {
   }
 
   private async ensureContext(): Promise<void> {
+    // Node tests mutate LFO state without a browser. Skip the context entirely.
+    if (typeof window === 'undefined') return
     setPlaybackAudioSession()
     if (!this.ctx) {
       this.ctx = createContext()
@@ -5688,6 +6002,9 @@ export class AudioEngine {
         budgetLimited: this.randomBudgetLimited,
         generators: cloneRandomDocument(this.randomDoc).generators,
         participation: cloneRandomDocument(this.randomDoc).participation,
+        eq: cloneRandomDocument(this.randomDoc).eq,
+        lfo: cloneRandomDocument(this.randomDoc).lfo,
+        eqPick: this.eqPick ? { ...this.eqPick } : null,
       },
       lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,

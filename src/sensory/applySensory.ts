@@ -62,10 +62,9 @@ export function writeDsp(engine: AudioEngine, dsp: DspSnapshot): void {
     if (dsp.bypass[type] === false) opening.push(type)
   }
   engine.ensureModules(opening)
-  dsp.eqBands.forEach((band, i) => {
-    engine.setEqBand(i, band)
-  })
   const chain = engine.getSnapshot().chain
+  const eqModule = chain.find((mod) => mod.type === 'eq')
+  if (eqModule) engine.replaceEqBands(dsp.eqBands, eqModule.instanceId, false)
   for (const mod of chain) {
     const want = dsp.bypass[mod.type]
     if (typeof want !== 'boolean') continue
