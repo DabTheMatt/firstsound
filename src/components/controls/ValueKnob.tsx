@@ -397,11 +397,9 @@ export function ValueKnob({
           />
         </svg>
       </div>
-      {paramId ? (
-        <span className={styles.modSlot}>
-          <ModulationAffordance id={paramId} compact />
-        </span>
-      ) : null}
+      <span className={styles.modSlot}>
+        {paramId ? <ModulationAffordance id={paramId} compact /> : null}
+      </span>
       </div>
       {editing ? (
         <input

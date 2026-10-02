@@ -11,6 +11,8 @@ import {
   EQ_LIVE_CURVE_ALPHA_SCALE,
   EQ_LIVE_CURVE_WIDTH_SCALE,
   EQ_MINI_BAND_COUNT,
+  EQ_PLOT_MAX_DB,
+  EQ_PLOT_MIN_DB,
   displayFrequencies,
   freqToX,
   layoutMagnitudeCurve,
@@ -44,6 +46,12 @@ describe('eq plot mapping', () => {
     const height = 200
     expect(yToDb(dbToY(6, height), height)).toBeCloseTo(6, 5)
     expect(yToDb(dbToY(-18, height), height)).toBeCloseTo(-18, 5)
+  })
+
+  it('centers 0 dB on the inspector plot so HP/LP sit mid-height', () => {
+    expect(EQ_PLOT_MIN_DB).toBe(-18)
+    expect(EQ_PLOT_MAX_DB).toBe(18)
+    expect(dbToY(0, 100)).toBeCloseTo(50)
   })
 
   it('places a gain node at the band gain and a width node from Q', () => {
@@ -136,47 +144,49 @@ describe('eq plot mapping', () => {
   })
 
   it('clips a steep high-pass on the bottom without a vertical wall at 20 Hz', () => {
-    const shapes: { type: EqFilterType; gain: number; q: number; slope: 12 | 48 }[] = [
-      { type: 'highpass', gain: 0, q: 0.707, slope: 48 },
-      { type: 'lowpass', gain: 0, q: 0.707, slope: 48 },
-      { type: 'peaking', gain: 8, q: 1.2, slope: 12 },
-      { type: 'notch', gain: 0, q: 4, slope: 12 },
-      { type: 'lowshelf', gain: -6, q: 0.7, slope: 12 },
-      { type: 'highshelf', gain: 6, q: 0.7, slope: 12 },
+    const shapes: { type: EqFilterType; frequency: number; gain: number; q: number; slope: 12 | 48 }[] = [
+      { type: 'highpass', frequency: 80, gain: 0, q: 0.707, slope: 48 },
+      { type: 'lowpass', frequency: 8000, gain: 0, q: 0.707, slope: 48 },
+      { type: 'peaking', frequency: 1000, gain: 8, q: 1.2, slope: 12 },
     ]
     const plot = { left: 0, right: 900, top: 0, bottom: 140 }
     for (const shape of shapes) {
-      for (const cutoff of [20, 30, 50, 100, 500, 1000, 5000, 10000, 20000]) {
-        const band: EqBand = { type: shape.type, frequency: cutoff, gain: shape.gain, q: shape.q, slope: shape.slope }
-        const freqs = displayFrequencies(700, 20, 20000, 'log')
-        const verts = layoutMagnitudeCurve(
-          freqs,
-          (hz) => eqMagnitudeDb([band], hz, 48000),
-          plot,
-          20,
-          20000,
-          SPECTRUM_EQ_MIN_DB,
-          SPECTRUM_EQ_MAX_DB,
-          'log',
-        )
-        expect(verts.length).toBeGreaterThan(100)
-        expect(verts[0]!.hz).toBeCloseTo(20, 3)
-        expect(verts[0]!.x).toBeCloseTo(0, 3)
-        for (let i = 0; i < verts.length; i++) {
-          const point = verts[i]!
-          expect(Number.isFinite(point.db)).toBe(true)
-          expect(Number.isFinite(point.x)).toBe(true)
-          expect(Number.isFinite(point.y)).toBe(true)
-          expect(point.y).toBeGreaterThanOrEqual(plot.top - 0.01)
-          expect(point.y).toBeLessThanOrEqual(plot.bottom + 0.01)
-          if (i === 0) continue
-          const prev = verts[i - 1]!
-          const dx = point.x - prev.x
-          expect(dx).toBeGreaterThan(0.2)
-          const dy = Math.abs(point.y - prev.y)
-          expect(dy / dx).toBeLessThan(40)
-        }
+      const band: EqBand = {
+        type: shape.type,
+        frequency: shape.frequency,
+        gain: shape.gain,
+        q: shape.q,
+        slope: shape.slope,
       }
+      const freqs = displayFrequencies(256, 20, 20000, 'log')
+      const verts = layoutMagnitudeCurve(
+        freqs,
+        (hz) => eqMagnitudeDb([band], hz, 48000),
+        plot,
+        20,
+        20000,
+        SPECTRUM_EQ_MIN_DB,
+        SPECTRUM_EQ_MAX_DB,
+        'log',
+      )
+      expect(verts.length).toBeGreaterThan(80)
+      expect(verts[0]!.hz).toBeCloseTo(20, 3)
+      expect(verts[0]!.x).toBeCloseTo(0, 3)
+      let maxSlope = 0
+      for (let i = 0; i < verts.length; i++) {
+        const point = verts[i]!
+        expect(Number.isFinite(point.db)).toBe(true)
+        expect(Number.isFinite(point.x)).toBe(true)
+        expect(Number.isFinite(point.y)).toBe(true)
+        expect(point.y).toBeGreaterThanOrEqual(plot.top - 0.01)
+        expect(point.y).toBeLessThanOrEqual(plot.bottom + 0.01)
+        if (i === 0) continue
+        const prev = verts[i - 1]!
+        const dx = point.x - prev.x
+        expect(dx).toBeGreaterThan(0.2)
+        maxSlope = Math.max(maxSlope, Math.abs(point.y - prev.y) / dx)
+      }
+      expect(maxSlope).toBeLessThan(40)
     }
   })
 

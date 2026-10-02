@@ -47,6 +47,7 @@ import { ParamControl } from '../controls/ParamControl'
 import { Segmented } from '../controls/Segmented'
 import { Toggle } from '../controls/Toggle'
 import { ValueKnob } from '../controls/ValueKnob'
+import paramWrap from '../controls/ParamControl.module.css'
 import { useI18n } from '../../i18n'
 import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, parseDistortionType, type DistortionType } from '../../audio/fx/types'
 import type { EditState, PanelInspectorFocus } from '../../app/editorState'
@@ -970,21 +971,23 @@ function EqEditor({
                 />
               </EqLfoShell>
               {band.type === 'highpass' || band.type === 'lowpass' ? (
-                <ValueKnob
-                  label="Slope"
-                  valueText={`${band.slope} dB`}
-                  normalized={slopeToNormalized(band.slope)}
-                  min={12}
-                  max={96}
-                  now={band.slope}
-                  onChange={(n) => setBand(index, { slope: slopeFromNormalized(n) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 12, 96, 'dB')
-                    if (next == null) return false
-                    setBand(index, { slope: nearestFilterSlope(next) })
-                    return true
-                  }}
-                />
+                <div className={paramWrap.wrap}>
+                  <ValueKnob
+                    label="Slope"
+                    valueText={`${band.slope} dB`}
+                    normalized={slopeToNormalized(band.slope)}
+                    min={12}
+                    max={96}
+                    now={band.slope}
+                    onChange={(n) => setBand(index, { slope: slopeFromNormalized(n) })}
+                    onTypedValue={(text) => {
+                      const next = parseTypedRange(text, 12, 96, 'dB')
+                      if (next == null) return false
+                      setBand(index, { slope: nearestFilterSlope(next) })
+                      return true
+                    }}
+                  />
+                </div>
               ) : bandUsesGain(band.type) ? (
                 <EqLfoShell index={index} which="gain" afford={modulate}>
                   <ValueKnob
