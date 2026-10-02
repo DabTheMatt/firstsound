@@ -216,12 +216,12 @@ import {
   applyIdentityBiquad,
   cloneEqBands,
   ensureBandStages,
-  eqBandsForChannel,
   growEqGraph,
   type EqBandPath,
   type EqChannelMode,
   type EqLane,
 } from './eqGraph'
+import { eqHeardBandLists, modulatedEqBands, withEqBandCenters } from './eqPerformance'
 import {
   antiClickSeconds,
   loopCrossfadeSeconds,
@@ -350,6 +350,8 @@ export type EngineSnapshot = {
    * Same as `params` when transport is stopped and no modulator is running.
    */
   liveParams: Record<ParamId, number>
+  /** Transport time used to build `liveParams`. Stopped playback stays at 0. */
+  transportSec: number
   automation: AutomationDocument
   chain: ChainModule[]
   eqBands: EqBand[]
@@ -565,6 +567,7 @@ export class AudioEngine {
   private lfoTimer = 0
   private exportBusy = false
   private lfoClockSec = 0
+  private lastTransportSec = 0
   private lfoWallMs = 0
   private lfoShown: Record<FxLfoKind, number> = defaultLfoShown()
   private reverbIrKey = ''
@@ -1407,6 +1410,8 @@ export class AudioEngine {
       }
     }
     this.eqChannelMode = mode
+    this.syncEqLfoParams(this.primaryEqId())
+    this.syncPrimaryEq()
     this.applyEq(0.03)
     this.emit()
   }
@@ -3954,31 +3959,30 @@ export class AudioEngine {
     if (!this.ctx) return
     const now = this.ctx.currentTime
     const nyquist = this.ctx.sampleRate / 2
-    const live = this.liveParams()
+    const clock = {
+      transportSec: this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0,
+      lfoTimeSec: this.lfoTime(),
+      playing: this.playing,
+      hold: this.lfoHold,
+    }
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
       const overlay = slot.instanceId === this.primaryEqId()
-      const shared = overlay ? this.liveEqBands(st.bands, live) : st.bands
-      const leftBands = eqBandsForChannel(this.eqChannelMode, 'left', shared, st.bandsL, st.bandsR)
-      const rightBands = eqBandsForChannel(this.eqChannelMode, 'right', shared, st.bandsL, st.bandsR)
-      const comb = overlay ? this.liveComb(st.comb, live) : st.comb
-      this.syncEqLane(slot.eq.left, leftBands, comb, now, smoothing, nyquist)
-      this.syncEqLane(slot.eq.right, rightBands, comb, now, smoothing, nyquist)
+      const heard = eqHeardBandLists(this.eqChannelMode, st.bands, st.bandsL, st.bandsR)
+      const left = overlay
+        ? modulatedEqBands(heard.left, this.params, this.automation, clock, this.fxLfos)
+        : { bands: heard.left, live: this.params }
+      const right =
+        heard.left === heard.right
+          ? left
+          : overlay
+            ? modulatedEqBands(heard.right, this.params, this.automation, clock, this.fxLfos)
+            : { bands: heard.right, live: this.params }
+      const comb = overlay ? this.liveComb(st.comb, left.live) : st.comb
+      this.syncEqLane(slot.eq.left, left.bands, comb, now, smoothing, nyquist)
+      this.syncEqLane(slot.eq.right, right.bands, comb, now, smoothing, nyquist)
     }
-  }
-
-  private liveEqBands(bands: EqBand[], live: Record<ParamId, number>): EqBand[] {
-    return bands.map((band, index) => {
-      const ids = EQ_BAND_LFO_IDS[index]
-      if (!ids) return band
-      return {
-        ...band,
-        frequency: live[ids.freq] ?? band.frequency,
-        gain: live[ids.gain] ?? band.gain,
-        q: live[ids.q] ?? band.q,
-      }
-    })
   }
 
   private liveComb(comb: CombFilterState, live: Record<ParamId, number>): CombFilterState {
@@ -3994,8 +3998,9 @@ export class AudioEngine {
   private syncEqLfoParams(instanceId: string): void {
     if (instanceId !== this.primaryEqId()) return
     const st = this.eqState(instanceId)
+    const edited = this.eqEditBands(st)
     for (let i = 0; i < EQ_BAND_LFO_IDS.length; i++) {
-      const band = st.bands[i]
+      const band = edited[i]
       const ids = EQ_BAND_LFO_IDS[i]
       if (!band || !ids) continue
       this.params[ids.freq] = band.frequency
@@ -4268,8 +4273,14 @@ export class AudioEngine {
     this.updateFilterFollower(dt)
     // Stored speed keeps this clock independent of the value automation writes.
     const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
+    this.lastTransportSec = transport
+    const primaryId = this.chain.find((mod) => mod.type === 'eq')?.instanceId
+    const primaryBands = primaryId ? this.eqById.get(primaryId) : undefined
+    const manual = primaryBands
+      ? withEqBandCenters(this.params, this.eqEditBands(primaryBands))
+      : this.params
     const performed = resolvePerformanceParams(
-      this.params,
+      manual,
       this.automation,
       transport,
       this.playing,
@@ -5245,6 +5256,7 @@ export class AudioEngine {
       scrubMode: this.scrubMode,
       params: { ...this.params },
       liveParams: { ...this.liveParams() },
+      transportSec: this.lastTransportSec,
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),
       eqById: this.snapshotEqById(),

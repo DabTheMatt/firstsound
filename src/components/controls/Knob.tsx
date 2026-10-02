@@ -44,7 +44,8 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
       visualValueText={mapped ? formatParamValue(live, def) : undefined}
       baseValueText={mapped ? formatParamValue(value, def) : undefined}
       normalized={baseN}
-      visualNormalized={lfoMotion || mapped ? toNormalized(live, def) : undefined}
+      visualNormalized={mapped ? toNormalized(live, def) : undefined}
+      liveNormalized={lfoMotion ? toNormalized(live, def) : undefined}
       lfoRange={lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}
       min={def.min}
       max={def.max}

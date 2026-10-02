@@ -286,14 +286,21 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
       >
         {gestureSafe && range ? <ModulationMarks center={n} range={range} live={touchLive} /> : null}
         {!gestureSafe && modulationRange ? (
-          <span
-            className={styles.modRange}
-            aria-hidden="true"
-            style={{
-              left: `${modulationRange.min * 100}%`,
-              width: `${Math.max(0, (modulationRange.max - modulationRange.min) * 100)}%`,
-            }}
-          />
+          <>
+            <span
+              className={styles.modRange}
+              aria-hidden="true"
+              style={{
+                left: `${modulationRange.min * 100}%`,
+                width: `${Math.max(0, (modulationRange.max - modulationRange.min) * 100)}%`,
+              }}
+            />
+            <span
+              className={styles.modLive}
+              aria-hidden="true"
+              style={{ left: `${toNormalized(snap.liveParams[id], def) * 100}%` }}
+            />
+          </>
         ) : null}
         {gestureSafe && range ? null : <span className={styles.fill} style={{ width: `${fillN * 100}%` }} />}
       </div>

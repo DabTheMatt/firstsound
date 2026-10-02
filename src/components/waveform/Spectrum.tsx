@@ -82,7 +82,12 @@ import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import type { ParamId } from '../../audio/parameters/types'
 import { EQ_BAND_LFO_IDS, fxLfoIsActive, lfoBinding } from '../../audio/fx/lfo'
 import { ModulationAffordance } from '../modulation/ModulationAffordance'
-import { eqFocusModulationFrame, eqFocusModulationParam, eqModulationGuides } from '../modulation/modulationModel'
+import {
+  eqFocusModulationFrame,
+  eqFocusModulationParam,
+  eqModulationCenter,
+  eqModulationGuides,
+} from '../modulation/modulationModel'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
@@ -1384,7 +1389,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               return Boolean(binding && fxLfoIsActive(binding.lfo))
             }
             const mapped = Boolean(ids && (lfoOn(ids.freq) || lfoOn(ids.gain) || lfoOn(ids.q)))
-            const guides = selected && modulate ? eqModulationGuides(snap.fxLfos, index, band) : null
+            const guides = selected && modulate
+              ? eqModulationGuides(
+                  snap.fxLfos,
+                  index,
+                  band,
+                  eqModulationCenter(snap.automation, index, band, snap.transportSec, snap.playing),
+                )
+              : null
             const freqGuide = guides?.frequency ?? null
             const gainGuide = guides?.gain && bandUsesGain(band.type) ? guides.gain : null
             const moduleTone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
@@ -1407,6 +1419,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     gainY: gainGuide ? [gainY0, gainY1] : null,
                   })
                 : null
+            const liveHz = ids ? snap.liveParams[ids.freq] : null
+            const liveDb = ids ? snap.liveParams[ids.gain] : null
+            const liveFreqX = freqGuide && liveHz != null && Number.isFinite(liveHz)
+              ? freqToX(liveHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
+              : null
+            const liveGainY = gainGuide && liveDb != null && Number.isFinite(liveDb)
+              ? spectrumEqOverlayY(liveDb, 0, 100)
+              : null
             return (
               <Fragment key={eqStripKey(mod.instanceId, band)}>
               {focusFrame?.kind === 'horizontal' ? (
@@ -1466,6 +1486,20 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     top: `${Math.min(gainY0, gainY1)}%`,
                     height: `${Math.abs(gainY1 - gainY0)}%`,
                   }}
+                />
+              ) : null}
+              {liveFreqX != null ? (
+                <span
+                  className={styles.modLive}
+                  aria-hidden="true"
+                  style={{ left: `${liveFreqX}%`, top: `${Math.min(100, Math.max(0, yPct))}%` }}
+                />
+              ) : null}
+              {liveGainY != null ? (
+                <span
+                  className={styles.modLive}
+                  aria-hidden="true"
+                  style={{ left: `${xPct}%`, top: `${liveGainY}%` }}
                 />
               ) : null}
               <button

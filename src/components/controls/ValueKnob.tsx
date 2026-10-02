@@ -31,6 +31,8 @@ type Props = {
   mini?: boolean
   /** Thin outer ring showing LFO ±depth around the stored zero. */
   lfoRange?: { min: number; max: number }
+  /** Current modulated position on the same normalized scale. The needle stays on the center. */
+  liveNormalized?: number
   onChange: (normalized: number) => void
   onReset?: () => void
   onGestureEnd?: () => void
@@ -57,6 +59,7 @@ export function ValueKnob({
   compact = false,
   mini = false,
   lfoRange,
+  liveNormalized,
   onChange,
   onReset,
   onGestureEnd,
@@ -264,6 +267,12 @@ export function ValueKnob({
   const rangeStart = lfoRange ? polar(cx, cy, rangeR, rangeStartDeg) : null
   const rangeEnd = lfoRange ? polar(cx, cy, rangeR, rangeEndDeg) : null
   const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
+  const liveDeg =
+    lfoRange && liveNormalized != null && Number.isFinite(liveNormalized)
+      ? knobAngleDeg(Math.min(1, Math.max(0, liveNormalized)))
+      : null
+  const liveTickInner = liveDeg == null ? null : polar(cx, cy, rangeR - 4, liveDeg)
+  const liveTickOuter = liveDeg == null ? null : polar(cx, cy, rangeR + 3.5, liveDeg)
   const marker =
     markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
   const caption = presentParamLabel(label)
@@ -382,6 +391,17 @@ export function ValueKnob({
           {rangeEnd ? <circle cx={rangeEnd.x} cy={rangeEnd.y} r="2" fill="var(--accent-primary)" /> : null}
           {zeroTick ? (
             <circle cx={zeroTick.x} cy={zeroTick.y} r="2.25" fill="var(--text-primary)" />
+          ) : null}
+          {liveTickInner && liveTickOuter ? (
+            <line
+              x1={liveTickInner.x}
+              y1={liveTickInner.y}
+              x2={liveTickOuter.x}
+              y2={liveTickOuter.y}
+              stroke="var(--accent-primary)"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
           ) : null}
           {marker ? (
             <circle cx={marker.x} cy={marker.y} r="2.4" fill="var(--text-muted)" />

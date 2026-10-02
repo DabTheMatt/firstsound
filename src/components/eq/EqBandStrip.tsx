@@ -18,6 +18,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import { EQ_BAND_LFO_IDS, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
 import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
@@ -46,6 +47,11 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const freqLfo = modulate && ids ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
   const gainLfo = modulate && ids ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
   const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
+  const widthLfo = modulate && ids ? widthModulationRange(snap.fxLfos, ids.q, band.frequency, band.q) : undefined
+  const freqLive = ids ? liveControlNormalized(snap.liveParams[ids.freq], ids.freq, Boolean(freqLfo)) : undefined
+  const gainLive = ids ? liveControlNormalized(snap.liveParams[ids.gain], ids.gain, Boolean(gainLfo)) : undefined
+  const qLive = ids ? liveControlNormalized(snap.liveParams[ids.q], ids.q, Boolean(qLfo)) : undefined
+  const widthLive = widthLfo && ids ? liveWidthNormalized(band.frequency, snap.liveParams[ids.q]) : undefined
   const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
   useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
   const instanceCurve = eqTone(eqColorIndex(snap.chain, instanceId), readThemeColors()).curve
@@ -104,6 +110,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                   valueText={formatEqHz(band.frequency)}
                   normalized={toNormalized(band.frequency, PARAMS.eq1Freq)}
                   lfoRange={freqLfo}
+                  liveNormalized={freqLive}
                   min={EQ_MIN_HZ}
                   max={EQ_MAX_HZ}
                   now={band.frequency}
@@ -145,6 +152,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                   valueText={`${band.gain.toFixed(1)} dB`}
                   normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
                   lfoRange={gainLfo}
+                  liveNormalized={gainLive}
                   min={-18}
                   max={18}
                   now={band.gain}
@@ -165,7 +173,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                   label="Width"
                   valueText={formatEqHz(bandwidthHz(band.frequency, band.q))}
                   normalized={widthToN(bandwidthHz(band.frequency, band.q))}
-                  lfoRange={qLfo}
+                  lfoRange={widthLfo}
+                  liveNormalized={widthLive}
                   min={10}
                   max={10000}
                   now={bandwidthHz(band.frequency, band.q)}
@@ -187,6 +196,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                   valueText={band.q.toFixed(2)}
                   normalized={toNormalized(band.q, PARAMS.eq1Q)}
                   lfoRange={qLfo}
+                  liveNormalized={qLive}
                   min={0.1}
                   max={20}
                   now={band.q}
