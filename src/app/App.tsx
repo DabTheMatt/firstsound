@@ -1194,12 +1194,12 @@ export default function App() {
               phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
             />
           </div>
-          {dockRight && inspectorOpen ? (
+          {dockRight && inspectorOpen && !activeFocus ? (
             <aside className={styles.inspector} data-inspector={panelKey}>
               {inspector}
             </aside>
           ) : null}
-          {dockRight && !inspectorOpen ? (
+          {dockRight && !inspectorOpen && !activeFocus ? (
             <div className={styles.inspectorReveal} data-inspector-toggle="show">
               <InspectorEye open={false} onClick={revealInspector} />
             </div>
@@ -1213,13 +1213,13 @@ export default function App() {
           )}
         </div>
 
-        {isPhoneLayout ? (
+        {isPhoneLayout && !activeFocus ? (
           <div className={styles.phoneContext}>
             <MobileContext snap={snap} focus={resolvedFocus} collapseToken={collapseToken} />
           </div>
         ) : null}
 
-        {!isPhoneLayout && !dockRight && inspectorOpen ? (
+        {!isPhoneLayout && !dockRight && inspectorOpen && !activeFocus ? (
           <div
             className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}
             data-inspector={panelKey}
