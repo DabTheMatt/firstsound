@@ -12,3 +12,17 @@ export function classifyGesture(dx: number, dy: number, threshold = 10): Gesture
 export function isTap(dx: number, dy: number, threshold = 10): boolean {
   return Math.hypot(dx, dy) < threshold
 }
+
+/**
+ * A modulation affordance opens only on a tap.
+ * Once a gesture locks to scroll or a sideways drag, it stays there.
+ */
+export type ModulationPress = 'pending' | 'scroll' | 'ignore'
+
+export function lockModulationGesture(current: ModulationPress, dx: number, dy: number): ModulationPress {
+  if (current !== 'pending') return current
+  const next = classifyGesture(dx, dy)
+  if (next === 'pending') return 'pending'
+  if (next === 'scroll') return 'scroll'
+  return 'ignore'
+}

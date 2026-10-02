@@ -1,6 +1,7 @@
 import { laneFor, type AutomationDocument } from '../../audio/automation/automation'
 import {
   EQ_BAND_LFO_IDS,
+  eqBandLfoIds,
   fxLfoIsActive,
   fxLfoKindForParam,
   lfoBinding,
@@ -72,6 +73,68 @@ export function parameterModulationState(input: {
     depthPct,
     range: lfoActive ? lfoRangeNormalized(input.baseNormalized, depthPct) : null,
     binding: found ? { kind: found.kind, slot: found.slot } : null,
+  }
+}
+
+/** Compact active-state label, e.g. depth 18 → "±18%". */
+export function formatModulationDepth(depthPct: number): string {
+  const pct = Math.round(Math.min(100, Math.max(0, depthPct)))
+  return `±${pct}%`
+}
+
+export type ModulationAffordanceModel = {
+  depthLabel: string | null
+  /** Both sources are moving the parameter. */
+  automationMark: boolean
+}
+
+/** What the touch row shows. Editor disclosure is not part of this. */
+export function modulationAffordanceModel(state: ParameterModulationState): ModulationAffordanceModel {
+  return {
+    depthLabel: state.lfoActive ? formatModulationDepth(state.depthPct) : null,
+    automationMark: state.lfoActive && state.automationActive,
+  }
+}
+
+/** Selected EQ band field → shared LFO target. Unsupported bands stay null. */
+export function eqModulationParamId(index: number, field: 'freq' | 'gain' | 'q'): ParamId | null {
+  const ids = eqBandLfoIds(index)
+  if (!ids) return null
+  if (field === 'freq') return ids.freq
+  if (field === 'gain') return ids.gain
+  return ids.q
+}
+
+export type SliderModulationMarks = {
+  /** Stored center. The thumb stays here. */
+  thumb: number
+  range: { left: number; width: number } | null
+  /** Current modulated position. Separate from the thumb. */
+  live: number | null
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
+
+/**
+ * Slider presentation for an active LFO.
+ * `live` is omitted unless the range exists, so a closed editor cannot invent motion.
+ */
+export function sliderModulationMarks(input: {
+  center: number
+  range: { min: number; max: number } | null
+  live: number | null
+}): SliderModulationMarks {
+  const thumb = clamp01(input.center)
+  if (!input.range) return { thumb, range: null, live: null }
+  const min = clamp01(input.range.min)
+  const max = clamp01(input.range.max)
+  const live = input.live != null && Number.isFinite(input.live) ? clamp01(input.live) : null
+  return {
+    thumb,
+    range: { left: min * 100, width: Math.max(0, (max - min) * 100) },
+    live,
   }
 }
 

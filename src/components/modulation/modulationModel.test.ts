@@ -11,7 +11,14 @@ import {
   setParameterLfoPrimary,
 } from './modulationActions'
 import { readModulationEditor, resetModulationEditors, setModulationEditorOpen } from './modulationEditor'
-import { eqModulationGuides, parameterModulationState } from './modulationModel'
+import {
+  eqModulationGuides,
+  eqModulationParamId,
+  formatModulationDepth,
+  modulationAffordanceModel,
+  parameterModulationState,
+  sliderModulationMarks,
+} from './modulationModel'
 
 afterEach(() => {
   resetModulationEditors()
@@ -60,6 +67,42 @@ describe('parameter modulation state', () => {
     expect(state.isLfoConnected).toBe(true)
     expect(state.lfoActive).toBe(false)
     expect(state.range).toBeNull()
+  })
+
+  it('formats the touch affordance without treating the editor as a route', () => {
+    expect(formatModulationDepth(18.2)).toBe('±18%')
+    const idle = modulationAffordanceModel(cutoffState(true))
+    expect(idle.depthLabel).toBeNull()
+    expect(idle.automationMark).toBe(false)
+
+    const lfos = defaultFxLfos()
+    lfos.filter[0] = { ...lfos.filter[0]!, target: 'filterCutoff', depth: 18, rateHz: 2, shape: 'sine' }
+    const automation = ensureAutomationLane(defaultAutomation(), 'filterCutoff', 0.42, 3)
+    const both = modulationAffordanceModel(cutoffState(false, lfos, automation))
+    expect(both.depthLabel).toBe('±18%')
+    expect(both.automationMark).toBe(true)
+  })
+
+  it('maps EQ fields onto the shared bank and leaves later bands alone', () => {
+    expect(eqModulationParamId(0, 'freq')).toBe('eq1Freq')
+    expect(eqModulationParamId(0, 'gain')).toBe('eq1Gain')
+    expect(eqModulationParamId(0, 'q')).toBe('eq1Q')
+    expect(eqModulationParamId(7, 'freq')).toBe('eq8Freq')
+    expect(eqModulationParamId(8, 'freq')).toBeNull()
+    expect(eqModulationParamId(8, 'gain')).toBeNull()
+    expect(eqModulationParamId(8, 'q')).toBeNull()
+  })
+
+  it('keeps the slider thumb on the stored center and the live mark separate', () => {
+    const marks = sliderModulationMarks({
+      center: 0.4,
+      range: { min: 0.22, max: 0.58 },
+      live: 0.51,
+    })
+    expect(marks.thumb).toBe(0.4)
+    expect(marks.range).toEqual({ left: 22, width: 36 })
+    expect(marks.live).toBe(0.51)
+    expect(sliderModulationMarks({ center: 0.4, range: null, live: 0.9 }).live).toBeNull()
   })
 
   it('reports LFO and automation together without mixing their ranges', () => {

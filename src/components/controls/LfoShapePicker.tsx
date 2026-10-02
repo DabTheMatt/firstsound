@@ -6,12 +6,14 @@ type Props = {
   value: LfoShape
   onChange: (shape: LfoShape) => void
   compact?: boolean
+  /** Larger targets for the phone sheet. The shape set stays the shared one. */
+  touch?: boolean
 }
 
-export function LfoShapePicker({ value, onChange, compact = false }: Props) {
+export function LfoShapePicker({ value, onChange, compact = false, touch = false }: Props) {
   return (
     <div
-      className={`${styles.group} ${compact ? styles.compact : ''}`}
+      className={`${styles.group} ${compact ? styles.compact : ''} ${touch ? styles.touch : ''}`}
       role="radiogroup"
       aria-label="LFO shape"
     >

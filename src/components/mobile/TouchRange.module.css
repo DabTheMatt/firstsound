@@ -8,11 +8,18 @@
 .meta {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
+  min-height: 44px;
 }
 
 .label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -20,7 +27,16 @@
   color: var(--text-muted);
 }
 
+.modSlot {
+  flex: none;
+}
+
 .value {
+  flex: none;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--accent-primary);
@@ -28,11 +44,12 @@
 
 .track {
   position: relative;
-  height: 40px;
+  height: 44px;
   border-radius: 8px;
   background: var(--bg-control);
   touch-action: pan-y;
   cursor: pointer;
+  overflow: visible;
 }
 
 .fill {

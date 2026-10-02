@@ -3,11 +3,13 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a11y'
-import { engine } from '../../hooks/useEngine'
+import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ModulationMarks } from '../modulation/ModulationMarks'
+import { parameterModulationState } from '../modulation/modulationModel'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
-import { classifyGesture } from '../mobile/gestureIntent'
+import { classifyGesture, lockModulationGesture, type ModulationPress } from '../mobile/gestureIntent'
 import { createCoarseGestureSession, isCoarsePointer } from './gestureIntent'
 import styles from './ParamSlider.module.css'
 
@@ -24,16 +26,30 @@ type Props = {
 
 export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocusRequest, modulationRange }: Props) {
   const { paramLabel, locale } = useI18n()
+  const snap = useEngine()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
   const shown = toNormalized(liveValue ?? value, def)
   const shownValue = liveValue ?? value
+  const touchRange =
+    modulationRange ??
+    (gestureSafe
+      ? parameterModulationState({
+          lfos: snap.fxLfos,
+          automation: snap.automation,
+          paramId: id,
+          baseNormalized: n,
+          editorOpen: false,
+        }).range
+      : null)
+  const touchLive = gestureSafe && touchRange ? toNormalized(snap.liveParams[id], def) : null
   const rowRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const [adjusting, setAdjusting] = useState(false)
   const labelId = useId()
   const descId = useId()
-  const spoken = formatAccessibleValue(shownValue, def, locale)
+  const announced = touchRange ? value : shownValue
+  const spoken = formatAccessibleValue(announced, def, locale)
   const description = paramDescription(id, locale)
   const nRef = useRef(n)
   const gesture = useRef<{
@@ -42,6 +58,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
     intent: 'pending' | 'scroll' | 'edit'
     pointerId: number
   } | null>(null)
+  const labelPress = useRef<{ x: number; y: number; id: number; role: ModulationPress } | null>(null)
   useEffect(() => {
     nRef.current = n
   }, [n])
@@ -190,41 +207,59 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
     else engine.setParam(id, fromNormalized(next.normalized, def))
   }
 
-  const fillN = modulationRange ? n : shown
+  const range = gestureSafe ? touchRange : modulationRange
+  const fillN = range ? n : shown
   return (
-    <div ref={rowRef} className={styles.row} data-param-id={id}>
-      <div
-        className={styles.meta}
-        onClick={() => onFocusRequest?.()}
-        role={onFocusRequest ? 'button' : undefined}
-        tabIndex={onFocusRequest ? 0 : undefined}
-        onKeyDown={(event) => {
-          if (!onFocusRequest) return
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
+    <div ref={rowRef} className={styles.row} data-param-id={id} data-touch={gestureSafe ? 'true' : 'false'}>
+      <div className={styles.meta}>
+        <div
+          className={styles.identity}
+          role={onFocusRequest ? 'button' : undefined}
+          tabIndex={onFocusRequest ? 0 : undefined}
+          onPointerDown={(event) => {
+            if (!onFocusRequest || event.pointerType === 'mouse') return
+            labelPress.current = { x: event.clientX, y: event.clientY, id: event.pointerId, role: 'pending' }
+          }}
+          onPointerMove={(event) => {
+            const active = labelPress.current
+            if (!active || active.id !== event.pointerId) return
+            active.role = lockModulationGesture(active.role, event.clientX - active.x, event.clientY - active.y)
+          }}
+          onClick={() => {
+            const active = labelPress.current
+            labelPress.current = null
+            if (!onFocusRequest) return
+            if (active && active.role !== 'pending') return
             onFocusRequest()
-          }
-        }}
-      >
-        <span className={styles.label} id={labelId}>
-          {paramLabel(id)}
-        </span>
-        <span className={styles.readouts}>
-          {liveValue != null ? (
-            <span className={styles.baseValue} title="Stored value (LFO zero)">
-              {formatParamValue(value, def)}
-            </span>
-          ) : null}
-          <span className={styles.value}>{formatParamValue(modulationRange ? value : shownValue, def)}</span>
-          <span className={styles.modSlot}>
-            <ModulationAffordance id={id} compact />
+          }}
+          onKeyDown={(event) => {
+            if (!onFocusRequest) return
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onFocusRequest()
+            }
+          }}
+        >
+          <span className={styles.label} id={labelId}>
+            {paramLabel(id)}
           </span>
-        {adjusting ? (
-          <span className={styles.dragReadout} role="status">
-            <span>{paramLabel(id)}</span>
-            <strong>{formatParamValue(shownValue, def)}</strong>
+          <span className={styles.readouts}>
+            {liveValue != null ? (
+              <span className={styles.baseValue} title="Stored value (LFO zero)">
+                {formatParamValue(value, def)}
+              </span>
+            ) : null}
+            <span className={styles.value}>{formatParamValue(range ? value : shownValue, def)}</span>
+            {adjusting ? (
+              <span className={styles.dragReadout} role="status">
+                <span>{paramLabel(id)}</span>
+                <strong>{formatParamValue(shownValue, def)}</strong>
+              </span>
+            ) : null}
           </span>
-        ) : null}
+        </div>
+        <span className={styles.modSlot}>
+          <ModulationAffordance id={id} compact={!gestureSafe} touch={gestureSafe} />
         </span>
       </div>
       <p id={descId} className="sr-only">
@@ -239,7 +274,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
         aria-describedby={descId}
         aria-valuemin={def.min}
         aria-valuemax={def.max}
-        aria-valuenow={Number(shownValue.toFixed(3))}
+        aria-valuenow={Number(announced.toFixed(3))}
         aria-valuetext={spoken}
         title={description}
         onPointerDown={onPointerDown}
@@ -249,7 +284,8 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
         onDoubleClick={() => engine.resetParam(id)}
         onKeyDown={onKeyDown}
       >
-        {modulationRange ? (
+        {gestureSafe && range ? <ModulationMarks center={n} range={range} live={touchLive} /> : null}
+        {!gestureSafe && modulationRange ? (
           <span
             className={styles.modRange}
             aria-hidden="true"
@@ -259,7 +295,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
             }}
           />
         ) : null}
-        <span className={styles.fill} style={{ width: `${fillN * 100}%` }} />
+        {gestureSafe && range ? null : <span className={styles.fill} style={{ width: `${fillN * 100}%` }} />}
       </div>
     </div>
   )

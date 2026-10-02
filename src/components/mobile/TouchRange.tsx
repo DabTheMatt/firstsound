@@ -1,4 +1,11 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { PARAMS } from '../../audio/parameters/definitions'
+import { toNormalized } from '../../audio/parameters/mapping'
+import type { ParamId } from '../../audio/parameters/types'
+import { useEngine } from '../../hooks/useEngine'
+import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ModulationMarks } from '../modulation/ModulationMarks'
+import { parameterModulationState } from '../modulation/modulationModel'
 import { classifyGesture } from './gestureIntent'
 import styles from './TouchRange.module.css'
 
@@ -10,11 +17,25 @@ type Props = {
   max: number
   now: number
   onChange: (normalized: number) => void
+  /** Shared LFO target. Omitted when this control cannot be modulated. */
+  paramId?: ParamId
 }
 
 /** Full-width value control. A vertical touch scrolls; a horizontal touch edits. */
-export function TouchRange({ label, valueText, normalized, min, max, now, onChange }: Props) {
+export function TouchRange({ label, valueText, normalized, min, max, now, onChange, paramId }: Props) {
+  const snap = useEngine()
   const trackRef = useRef<HTMLDivElement>(null)
+  const modulation = paramId
+    ? parameterModulationState({
+        lfos: snap.fxLfos,
+        automation: snap.automation,
+        paramId,
+        baseNormalized: normalized,
+        editorOpen: false,
+      })
+    : null
+  const range = modulation?.range ?? null
+  const live = paramId && range ? toNormalized(snap.liveParams[paramId], PARAMS[paramId]) : null
   const gesture = useRef<{ x: number; y: number; intent: 'pending' | 'scroll' | 'edit'; pointerId: number } | null>(
     null,
   )
@@ -62,10 +83,15 @@ export function TouchRange({ label, valueText, normalized, min, max, now, onChan
   }
 
   return (
-    <div className={styles.row}>
+    <div className={styles.row} data-param-id={paramId} data-touch="true">
       <div className={styles.meta}>
         <span className={styles.label}>{label}</span>
         <span className={styles.value}>{valueText}</span>
+        {paramId ? (
+          <span className={styles.modSlot}>
+            <ModulationAffordance id={paramId} touch />
+          </span>
+        ) : null}
       </div>
       <div
         ref={trackRef}
@@ -82,7 +108,11 @@ export function TouchRange({ label, valueText, normalized, min, max, now, onChan
         onPointerUp={end}
         onPointerCancel={end}
       >
-        <span className={styles.fill} style={{ width: `${shown * 100}%` }} />
+        {range ? (
+          <ModulationMarks center={normalized} range={range} live={live} />
+        ) : (
+          <span className={styles.fill} style={{ width: `${shown * 100}%` }} />
+        )}
       </div>
     </div>
   )

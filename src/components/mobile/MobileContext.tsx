@@ -17,6 +17,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import type { InspectorFocus } from '../../app/editorState'
 import { mobilePriority, primarySummary } from '../../app/mobilePriority'
 import { engine } from '../../hooks/useEngine'
+import { eqModulationParamId } from '../modulation/modulationModel'
 import { useI18n } from '../../i18n'
 import { ParamSlider } from '../controls/ParamSlider'
 import { Toggle } from '../controls/Toggle'
@@ -468,6 +469,7 @@ function EqStrip({
           min={EQ_MIN_HZ}
           max={EQ_MAX_HZ}
           now={band.frequency}
+          paramId={eqModulationParamId(selected, 'freq') ?? undefined}
           onChange={(n) => set({ frequency: nToFreq(n) })}
         />
       ) : null}
@@ -479,6 +481,7 @@ function EqStrip({
           min={-18}
           max={18}
           now={band.gain}
+          paramId={eqModulationParamId(selected, 'gain') ?? undefined}
           onChange={(n) => set({ gain: n * 36 - 18 })}
         />
       ) : null}
@@ -490,6 +493,7 @@ function EqStrip({
           min={0.1}
           max={20}
           now={band.q}
+          paramId={eqModulationParamId(selected, 'q') ?? undefined}
           onChange={(n) => set({ q: nToQ(n) })}
         />
       ) : null}

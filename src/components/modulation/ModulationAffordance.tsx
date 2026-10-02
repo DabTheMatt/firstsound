@@ -25,13 +25,15 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { FxLfoSection } from '../inspector/FxLfoSection'
+import { lockModulationGesture, type ModulationPress } from '../mobile/gestureIntent'
 import {
   connectParameterLfo,
   removeParameterLfo,
   setParameterLfoPrimary,
 } from './modulationActions'
 import { readModulationEditor, setModulationEditorOpen, subscribeModulationEditor } from './modulationEditor'
-import { parameterModulationState, type ModulationSourceId } from './modulationModel'
+import { MobileModulationSheet } from './MobileModulationSheet'
+import { modulationAffordanceModel, parameterModulationState, type ModulationSourceId } from './modulationModel'
 import styles from './Modulation.module.css'
 
 const RATE_DEF: ParamDef = {
@@ -48,11 +50,13 @@ type Props = {
   id: ParamId
   /** Sits in the knob column, between the dial and the stored value. */
   compact?: boolean
+  /** Phone row: compact glyph, 44px target, bottom sheet. Same LFO bank. */
+  touch?: boolean
 }
 
-export function ModulationAffordance({ id, compact = false }: Props) {
+export function ModulationAffordance({ id, compact = false, touch = false }: Props) {
   const snap = useEngine()
-  const { paramLabel } = useI18n()
+  const { paramLabel, t } = useI18n()
   const editorOpen = useSyncExternalStore(
     subscribeModulationEditor,
     () => readModulationEditor(id),
@@ -67,10 +71,59 @@ export function ModulationAffordance({ id, compact = false }: Props) {
     editorOpen,
   })
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const press = useRef<{ x: number; y: number; id: number; role: ModulationPress } | null>(null)
   const label = paramLabel(id)
   const kind = fxLfoKindForParam(id)
 
   if (!state.supportsModulation) return null
+
+  if (touch) {
+    const face = modulationAffordanceModel(state)
+    const tip = t.modulation.affordance(label, face.depthLabel, face.automationMark)
+    return (
+      <>
+        <button
+          ref={buttonRef}
+          type="button"
+          className={styles.touch}
+          data-active={state.lfoActive ? 'true' : 'false'}
+          data-open={editorOpen ? 'true' : 'false'}
+          data-automation={face.automationMark ? 'true' : 'false'}
+          data-modulation-for={id}
+          data-modulation-presentation="touch"
+          aria-expanded={editorOpen}
+          aria-haspopup="dialog"
+          aria-label={tip}
+          onPointerDown={(event) => {
+            if (event.pointerType === 'mouse') return
+            press.current = { x: event.clientX, y: event.clientY, id: event.pointerId, role: 'pending' }
+          }}
+          onPointerMove={(event) => {
+            const active = press.current
+            if (!active || active.id !== event.pointerId) return
+            active.role = lockModulationGesture(active.role, event.clientX - active.x, event.clientY - active.y)
+          }}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            const active = press.current
+            press.current = null
+            if (active && active.role !== 'pending') return
+            setModulationEditorOpen(id, !editorOpen)
+          }}
+        >
+          <span className={styles.mark} aria-hidden="true">
+            〰
+          </span>
+          {face.depthLabel ? <span className={styles.depth}>{face.depthLabel}</span> : null}
+          {face.automationMark ? <span className={styles.autoDot} aria-hidden="true" /> : null}
+        </button>
+        {editorOpen && typeof document !== 'undefined' ? (
+          <MobileModulationSheet id={id} label={label} onClose={() => setModulationEditorOpen(id, false)} />
+        ) : null}
+      </>
+    )
+  }
 
   const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
   const tip = `Modulate ${label}`

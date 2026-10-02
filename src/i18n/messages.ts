@@ -492,6 +492,20 @@ export type Messages = {
     center: string
     lead: (slots: number) => string
   }
+  modulation: {
+    title: (name: string) => string
+    rate: string
+    depth: string
+    shape: string
+    lfo: string
+    more: string
+    remove: string
+    close: string
+    automationOn: string
+    automationOff: string
+    addAutomation: string
+    affordance: (name: string, depth: string | null, automation: boolean) => string
+  }
   a11y: {
     title: string
     theme: string
@@ -1124,6 +1138,23 @@ export const EN: Messages = {
     center: 'LFO center',
     lead: (slots) => `Running modulators and their targets. Up to ${slots} LFOs on each effect.`,
   },
+  modulation: {
+    title: (name) => `${name} modulation`,
+    rate: 'Rate',
+    depth: 'Depth',
+    shape: 'Shape',
+    lfo: 'LFO',
+    more: 'More',
+    remove: 'Remove',
+    close: 'Close',
+    automationOn: 'Automation is also active. Its curve stays separate from the LFO.',
+    automationOff: 'No automation on this parameter.',
+    addAutomation: 'Add automation',
+    affordance: (name, depth, automation) =>
+      depth
+        ? `Modulate ${name}, LFO ${depth}${automation ? ', automation active' : ''}`
+        : `Modulate ${name}`,
+  },
   a11y: {
     title: 'Accessibility',
     theme: 'High Contrast / Low Vision Theme',
@@ -1755,6 +1786,23 @@ export const PL: Messages = {
   lfo: {
     center: 'Centrum LFO',
     lead: (slots) => `Działające modulacje i ich cele. Do ${slots} LFO na każdy efekt.`,
+  },
+  modulation: {
+    title: (name) => `Modulacja: ${name}`,
+    rate: 'Tempo',
+    depth: 'Głębokość',
+    shape: 'Kształt',
+    lfo: 'LFO',
+    more: 'Więcej',
+    remove: 'Usuń',
+    close: 'Zamknij',
+    automationOn: 'Automatyzacja też jest aktywna. Jej krzywa zostaje osobno od LFO.',
+    automationOff: 'Brak automatyzacji tego parametru.',
+    addAutomation: 'Dodaj automatyzację',
+    affordance: (name, depth, automation) =>
+      depth
+        ? `Moduluj ${name}, LFO ${depth}${automation ? ', automatyzacja aktywna' : ''}`
+        : `Moduluj ${name}`,
   },
   a11y: {
     title: 'Dostępność',

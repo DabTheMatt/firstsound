@@ -91,7 +91,8 @@
   gap: 8px;
   min-height: 0;
   max-height: none;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 2px 8px;
   -webkit-overflow-scrolling: touch;
