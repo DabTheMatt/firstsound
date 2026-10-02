@@ -2254,9 +2254,13 @@ export class AudioEngine {
    * Arms a parameter for editing. A new lane gets a flat envelope at the
    * current knob value so playback stays put until the curve is edited.
    * An existing lane is only selected.
+   * With a sample loaded, the envelope spans that buffer. Before a sample
+   * exists, it spans the default one-second region so the lane is real
+   * and a later file still holds the stored value.
    */
   armAutomation(id: ParamId): void {
-    const duration = this.buffer?.duration ?? 0
+    const loaded = this.buffer?.duration ?? 0
+    const duration = loaded > 0 ? loaded : Math.max(this.params.end, 1)
     const normalized = toNormalized(this.params[id], PARAMS[id])
     const next = ensureAutomationLane(this.automation, id, normalized, duration)
     if (next === this.automation) return

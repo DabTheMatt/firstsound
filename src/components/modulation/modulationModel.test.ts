@@ -195,6 +195,31 @@ describe('parameter modulation actions', () => {
     expect(engine.getSnapshot().fxLfos.eq1.every((slot) => slot.target !== 'eq1Freq')).toBe(true)
   })
 
+  it('arms one flat automation lane before a sample exists and keeps the LFO route', () => {
+    stubLfoClock()
+    const engine = new AudioEngine()
+    expect(engine.getBuffer()).toBeNull()
+    connectParameterLfo(engine, 'filterCutoff')
+    setParameterLfoPrimary(engine, 'filterCutoff', { depth: 18, shape: 'square' })
+    const before = engine.getSnapshot().fxLfos.filter[0]
+    engine.armAutomation('filterCutoff')
+    engine.armAutomation('filterCutoff')
+    const lane = engine.getSnapshot().automation.lanes.find((item) => item.paramId === 'filterCutoff')
+    expect(lane?.nodes).toHaveLength(2)
+    expect(engine.getSnapshot().automation.lanes.filter((item) => item.paramId === 'filterCutoff')).toHaveLength(1)
+    expect(engine.getSnapshot().fxLfos.filter[0]).toEqual(before)
+    const state = parameterModulationState({
+      lfos: engine.getSnapshot().fxLfos,
+      automation: engine.getSnapshot().automation,
+      paramId: 'filterCutoff',
+      baseNormalized: toNormalized(engine.getSnapshot().params.filterCutoff, PARAMS.filterCutoff),
+      editorOpen: false,
+    })
+    expect(state.lfoActive).toBe(true)
+    expect(state.automationActive).toBe(true)
+    expect(modulationAffordanceModel(state)).toEqual({ depthLabel: '±18%', automationMark: true })
+  })
+
   it('leaves an unrelated LFO and the stored value when modulation is removed', () => {
     stubLfoClock()
     const engine = new AudioEngine()
