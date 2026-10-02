@@ -553,6 +553,26 @@ export type Messages = {
     smooth: string
     randomizeEffect: string
     randomizeBand: string
+    randomizeEq: string
+    parameterTip: string
+    effectAria: (name: string) => string
+    setupTip: string
+    setupAria: string
+    setupTitle: (name: string) => string
+    targets: string
+    modes: string
+    all: string
+    none: string
+    behavior: string
+    timing: string
+    range: string
+    autoAllowed: string
+    showTarget: (name: string) => string
+    hideTarget: (name: string) => string
+    mixed: string
+    appliesTo: string
+    eqTypeNote: string
+    noEqBands: string
     effectMenu: (name: string) => string
     chaosHint: string
     budget: string
@@ -562,11 +582,8 @@ export type Messages = {
     randomize: string
     randomizeNow: string
     setup: string
-    setupAria: string
     parameters: string
     selects: string
-    all: string
-    none: string
     scope: string
     scopeWhole: string
     scopeBand: string
@@ -1285,6 +1302,26 @@ export const EN: Messages = {
     smooth: 'Smooth',
     randomizeEffect: 'Randomize effect',
     randomizeBand: 'Randomize band',
+    randomizeEq: 'Randomize EQ',
+    parameterTip: 'Randomize parameter',
+    effectAria: (name) => `Randomize ${name}`,
+    setupTip: 'Random setup',
+    setupAria: 'Open randomization settings',
+    setupTitle: (name) => `Random setup — ${name}`,
+    targets: 'Targets',
+    modes: 'Selects / Modes',
+    all: 'All',
+    none: 'None',
+    behavior: 'Behavior',
+    timing: 'Timing',
+    range: 'Range',
+    autoAllowed: 'Allowed',
+    showTarget: (name) => `Show ${name} random settings`,
+    hideTarget: (name) => `Hide ${name} random settings`,
+    mixed: 'Mixed',
+    appliesTo: 'Applies to selected targets',
+    eqTypeNote: 'A full band also randomizes filter type and slope.',
+    noEqBands: 'Turn a band on to choose targets.',
     effectMenu: (name) => `Random ${name}`,
     chaosHint: 'Auto Random needs Chaos. One click still randomizes now.',
     budget: 'Event rate is capped so the instrument stays responsive.',
@@ -1295,11 +1332,8 @@ export const EN: Messages = {
     randomize: 'Randomize',
     randomizeNow: 'Randomize now',
     setup: 'Random setup',
-    setupAria: 'Open randomization settings',
     parameters: 'Parameters',
     selects: 'Selects / modes',
-    all: 'All',
-    none: 'None',
     scope: 'Scope',
     scopeWhole: 'Whole EQ',
     scopeBand: 'Selected band',
@@ -2018,6 +2052,26 @@ export const PL: Messages = {
     smooth: 'Smooth',
     randomizeEffect: 'Losuj efekt',
     randomizeBand: 'Losuj pasmo',
+    randomizeEq: 'Losuj EQ',
+    parameterTip: 'Losuj parametr',
+    effectAria: (name) => `Losuj ${name}`,
+    setupTip: 'Ustawienia Random',
+    setupAria: 'Otwórz ustawienia losowania',
+    setupTitle: (name) => `Ustawienia Random — ${name}`,
+    targets: 'Cele',
+    modes: 'Wybory / tryby',
+    all: 'Wszystkie',
+    none: 'Żadne',
+    behavior: 'Zachowanie',
+    timing: 'Rytm',
+    range: 'Zakres',
+    autoAllowed: 'Dozwolone',
+    showTarget: (name) => `Pokaż ustawienia Random: ${name}`,
+    hideTarget: (name) => `Ukryj ustawienia Random: ${name}`,
+    mixed: 'Różne',
+    appliesTo: 'Dotyczy zaznaczonych celów',
+    eqTypeNote: 'Pełne pasmo losuje też typ filtra i nachylenie.',
+    noEqBands: 'Włącz pasmo, żeby wybrać cele.',
     effectMenu: (name) => `Random ${name}`,
     chaosHint: 'Auto Random wymaga Chaosu. Jedno kliknięcie i tak losuje od razu.',
     budget: 'Częstotliwość zdarzeń jest ograniczona, żeby instrument został responsywny.',
@@ -2028,11 +2082,8 @@ export const PL: Messages = {
     randomize: 'Losuj',
     randomizeNow: 'Losuj teraz',
     setup: 'Ustawienia losowania',
-    setupAria: 'Otwórz ustawienia losowania',
     parameters: 'Parametry',
     selects: 'Wybory / tryby',
-    all: 'Wszystkie',
-    none: 'Żadne',
     scope: 'Zakres',
     scopeWhole: 'Cały EQ',
     scopeBand: 'Wybrane pasmo',

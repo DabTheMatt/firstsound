@@ -1,17 +1,18 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { ModuleType } from '../../audio/chain/chain'
 import { getEqBandSelection } from '../../audio/engine/eqBandSelection'
 import { bandUsesGain, bandUsesSlope, type EqFilterType } from '../../audio/engine/eqBands'
-import { FX_LFO_KIND_LABELS } from '../../audio/fx/lfo'
+import { EQ_BAND_LFO_IDS, FX_LFO_KIND_LABELS } from '../../audio/fx/lfo'
 import { withRandomHistory } from '../../audio/random/historyBridge'
 import { catalogFor, catalogLabel, participatingRefs, type RandomCatalogEntry } from '../../audio/random/catalog'
-import { moduleRandomKind } from '../../audio/random/groups'
-import type { EqBandRandomField, EqRandomCount } from '../../audio/random/types'
+import { moduleRandomKind, participatingTargets } from '../../audio/random/groups'
+import { defaultParamRandom, type EqBandRandomField, type EqRandomCount, type ParamRandom } from '../../audio/random/types'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { DiceIcon, GearIcon } from './icons'
+import { ParamRandomFields } from './ParamRandomFields'
 import { RandomLayer } from './RandomLayer'
 import styles from './Random.module.css'
 
@@ -49,8 +50,9 @@ export function EffectRandomMenu({ type }: Props) {
       <button
         type="button"
         className={styles.dice}
-        aria-label={t.random.randomizeNow}
-        title={t.random.randomize}
+        data-random-action="dice"
+        aria-label={eq ? t.random.randomizeEq : t.random.effectAria(title)}
+        title={eq ? t.random.randomizeEq : t.random.randomizeEffect}
         onClick={(event) => {
           event.stopPropagation()
           randomizeNow()
@@ -61,6 +63,8 @@ export function EffectRandomMenu({ type }: Props) {
       <button
         type="button"
         className={styles.gear}
+        data-random-action="setup"
+        data-open={open ? 'true' : 'false'}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={t.random.setupAria}
@@ -93,6 +97,8 @@ function EffectSetup({ kind, paramLabel }: { kind: NonNullable<ReturnType<typeof
   const selected = participatingRefs(snap.random, kind)
   const parameters = entries.filter((entry) => entry.group === 'parameter')
   const selects = entries.filter((entry) => entry.group === 'select')
+  const selectedIds = participatingTargets(snap.random, kind)
+  const shared = selectedIds[0] ? snap.random.generators[selectedIds[0]] ?? defaultParamRandom() : defaultParamRandom()
   const toggle = (entry: RandomCatalogEntry) => {
     const on = selected.includes(entry.ref)
     const next = on ? selected.filter((item) => item !== entry.ref) : [...selected, entry.ref]
@@ -104,7 +110,77 @@ function EffectSetup({ kind, paramLabel }: { kind: NonNullable<ReturnType<typeof
       {selects.length > 0 ? (
         <Group title={t.random.selects} entries={selects} selected={selected} labelOf={(entry) => selectLabel(entry, t.random)} onToggle={toggle} />
       ) : null}
+      {selectedIds.length > 0 ? (
+        <BehaviorRow
+          gen={shared}
+          onPatch={(patch) => {
+            for (const id of selectedIds) engine.setParamRandom(id, patch)
+          }}
+        />
+      ) : null}
     </>
+  )
+}
+
+function TargetRow({
+  entry,
+  label,
+  checked,
+  onToggle,
+}: {
+  entry: RandomCatalogEntry
+  label: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  const snap = useEngine()
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const paramId = entry.paramId ?? null
+  const gen = paramId ? snap.random.generators[paramId] ?? defaultParamRandom() : null
+  return (
+    <div className={styles.targetBlock} data-open={open ? 'true' : 'false'}>
+      <div className={styles.target}>
+        <label className={styles.check}>
+          <input type="checkbox" checked={checked} aria-label={label} onChange={onToggle} />
+          {paramId ? null : (
+            <span>
+              {label}
+              {entry.auto ? null : <em>1×</em>}
+            </span>
+          )}
+        </label>
+        {paramId ? (
+          <button type="button" className={styles.targetName} onClick={() => setOpen((value) => !value)}>
+            {label}
+            {entry.auto ? null : <em>1×</em>}
+          </button>
+        ) : null}
+        {paramId ? (
+          <button
+            type="button"
+            className={styles.chevron}
+            aria-expanded={open}
+            aria-label={open ? t.random.hideTarget(label) : t.random.showTarget(label)}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? '˅' : '›'}
+          </button>
+        ) : null}
+      </div>
+      {open && paramId && gen ? (
+        <div className={styles.detail}>
+          <ParamRandomFields
+            gen={gen}
+            chaos={snap.random.chaos}
+            autoId={paramId}
+            showAuto={entry.auto}
+            showRange
+            onPatch={(patch) => engine.setParamRandom(paramId, patch)}
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -149,11 +225,13 @@ function Group({
         ) : null}
       </div>
       {entries.map((entry) => (
-        <label key={entry.ref} className={styles.check}>
-          <input type="checkbox" checked={selected.includes(entry.ref)} onChange={() => onToggle(entry)} />
-          <span>{labelOf(entry)}</span>
-          {entry.auto ? null : <em>1×</em>}
-        </label>
+        <TargetRow
+          key={entry.ref}
+          entry={entry}
+          label={labelOf(entry)}
+          checked={selected.includes(entry.ref)}
+          onToggle={() => onToggle(entry)}
+        />
       ))}
     </section>
   )
@@ -223,23 +301,119 @@ function EqSetup() {
           <div className={styles.groupHead}>
             <h3>{t.random.parameters}</h3>
           </div>
-          {fields.filter((field) => fieldVisible(field, band?.type)).map((field) => (
-            <label key={field} className={styles.check}>
-              <input
-                type="checkbox"
+          {fields.filter((field) => fieldVisible(field, band?.type)).map((field) => {
+            const paramId = bandParamId(index, field)
+            return (
+              <FieldRow
+                key={field}
+                label={fieldLabel(field, t.random)}
                 checked={active.includes(field)}
-                onChange={() => {
+                paramId={paramId}
+                onToggle={() => {
                   const on = active.includes(field)
                   const next = on ? active.filter((item) => item !== field) : [...active, field]
                   engine.setEqRandom({ bandFields: next })
                 }}
               />
-              <span>{fieldLabel(field, t.random)}</span>
-            </label>
-          ))}
+            )
+          })}
         </section>
       )}
+      <BehaviorRow
+        gen={eq.gen}
+        onPatch={(patch) => engine.setEqRandom({ gen: { ...eq.gen, ...patch } })}
+      />
     </>
+  )
+}
+
+function bandParamId(index: number, field: EqBandRandomField): ParamId | null {
+  const ids = EQ_BAND_LFO_IDS[index]
+  if (!ids) return null
+  if (field === 'frequency') return ids.freq
+  if (field === 'gain') return ids.gain
+  if (field === 'q') return ids.q
+  return null
+}
+
+function FieldRow({
+  label,
+  checked,
+  paramId,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  paramId: ParamId | null
+  onToggle: () => void
+}) {
+  const snap = useEngine()
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const gen = paramId ? snap.random.generators[paramId] ?? defaultParamRandom() : null
+  return (
+    <div className={styles.targetBlock} data-open={open ? 'true' : 'false'}>
+      <div className={styles.target}>
+        <label className={styles.check}>
+          <input type="checkbox" checked={checked} aria-label={label} onChange={onToggle} />
+        </label>
+        <button type="button" className={styles.targetName} onClick={() => paramId && setOpen((value) => !value)}>
+          {label}
+        </button>
+        {paramId ? (
+          <button
+            type="button"
+            className={styles.chevron}
+            aria-expanded={open}
+            aria-label={open ? t.random.hideTarget(label) : t.random.showTarget(label)}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? '˅' : '›'}
+          </button>
+        ) : null}
+      </div>
+      {open && paramId && gen ? (
+        <div className={styles.detail}>
+          <ParamRandomFields
+            gen={gen}
+            chaos={snap.random.chaos}
+            autoId={paramId}
+            showAuto
+            showRange
+            onPatch={(patch) => engine.setParamRandom(paramId, patch)}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function BehaviorRow({ gen, onPatch }: { gen: ParamRandom; onPatch: (patch: Partial<ParamRandom>) => void }) {
+  const snap = useEngine()
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  return (
+    <section className={styles.group}>
+      <div className={styles.target}>
+        <button type="button" className={styles.targetName} onClick={() => setOpen((value) => !value)}>
+          {t.random.behavior}
+        </button>
+        <button
+          type="button"
+          className={styles.chevron}
+          aria-expanded={open}
+          aria-label={open ? t.random.hideTarget(t.random.behavior) : t.random.showTarget(t.random.behavior)}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? '˅' : '›'}
+        </button>
+      </div>
+      {open ? (
+        <div className={styles.detail}>
+          <ParamRandomFields gen={gen} chaos={snap.random.chaos} onPatch={onPatch} />
+        </div>
+      ) : null}
+    </section>
   )
 }
 

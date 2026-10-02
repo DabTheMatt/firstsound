@@ -11,17 +11,18 @@ export function DiceIcon() {
   )
 }
 
+/** Cog. The previous mark was a sun and read as a sparkle, not settings. */
 export function GearIcon() {
   return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
       <path
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth="1.3"
         strokeLinejoin="round"
-        d="M8 1.6v1.7M8 12.7v1.7M1.6 8h1.7M12.7 8h1.7M3.2 3.2l1.2 1.2M11.6 11.6l1.2 1.2M12.8 3.2l-1.2 1.2M4.4 11.6l-1.2 1.2"
+        d="M6.15 1.55h3.7l.4 1.45.95.4 1.2-1.05 1.85 1.85-1.05 1.2.4.95 1.45.4v3.7l-1.45.4-.4.95 1.05 1.2-1.85 1.85-1.2-1.05-.95.4-.4 1.45h-3.7l-.4-1.45-.95-.4-1.2 1.05-1.85-1.85 1.05-1.2-.4-.95-1.45-.4v-3.7l1.45-.4.4-.95-1.05-1.2 1.85-1.85 1.2 1.05.95-.4.4-1.45Z"
       />
+      <circle cx="8" cy="8" r="1.85" fill="none" stroke="currentColor" strokeWidth="1.3" />
     </svg>
   )
 }

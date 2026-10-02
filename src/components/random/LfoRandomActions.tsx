@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom'
 import { lfoBinding } from '../../audio/fx/lfo'
 import { withRandomHistory } from '../../audio/random/historyBridge'
 import { LFO_RANDOM_DEFAULT_FIELDS, LFO_RANDOM_FIELDS } from '../../audio/random/lfoRandom'
-import type { LfoRandomField } from '../../audio/random/types'
+import { defaultParamRandom, type LfoRandomField } from '../../audio/random/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import type { ParamId } from '../../audio/parameters/types'
 import { useI18n } from '../../i18n'
 import { DiceIcon, GearIcon } from './icons'
+import { ParamRandomFields } from './ParamRandomFields'
 import { RandomLayer } from './RandomLayer'
 import styles from './Random.module.css'
 
@@ -28,6 +29,7 @@ export function LfoRandomActions({ id }: Props) {
   const { t } = useI18n()
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [behavior, setBehavior] = useState(false)
   const stored = snap.random.lfo[id]
   const fields = stored?.fields ?? [...LFO_RANDOM_DEFAULT_FIELDS]
   const auto = Boolean(stored?.gen.auto && snap.random.chaos)
@@ -40,12 +42,14 @@ export function LfoRandomActions({ id }: Props) {
 
   return (
     <div ref={rootRef} className={styles.pair} data-lfo-random={id}>
-      <button type="button" className={styles.dice} aria-label={t.random.randomizeNow} title={t.random.randomize} onClick={randomize}>
+      <button type="button" className={styles.dice} data-random-action="dice" aria-label={`${t.random.randomize} ${t.modulation.lfo}`} title={t.random.randomize} onClick={randomize}>
         <DiceIcon />
       </button>
       <button
         type="button"
         className={styles.gear}
+        data-random-action="setup"
+        data-open={open ? 'true' : 'false'}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={t.random.setupAria}
@@ -94,6 +98,29 @@ export function LfoRandomActions({ id }: Props) {
                   </label>
                 ))}
               </section>
+              <div className={styles.target}>
+                <button type="button" className={styles.targetName} onClick={() => setBehavior((value) => !value)}>
+                  {t.random.behavior}
+                </button>
+                <button
+                  type="button"
+                  className={styles.chevron}
+                  aria-expanded={behavior}
+                  aria-label={behavior ? t.random.hideTarget(t.random.behavior) : t.random.showTarget(t.random.behavior)}
+                  onClick={() => setBehavior((value) => !value)}
+                >
+                  {behavior ? '˅' : '›'}
+                </button>
+              </div>
+              {behavior ? (
+                <div className={styles.detail}>
+                  <ParamRandomFields
+                    gen={stored?.gen ?? defaultParamRandom()}
+                    chaos={snap.random.chaos}
+                    onPatch={(patch) => engine.setLfoRandom(id, { gen: patch })}
+                  />
+                </div>
+              ) : null}
               {lfoBinding(snap.fxLfos, id) ? null : <p className={styles.note}>{t.random.lfoConnect}</p>}
             </RandomLayer>,
             document.body,

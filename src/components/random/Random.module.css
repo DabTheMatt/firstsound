@@ -51,7 +51,10 @@
 
 .button:focus-visible,
 .touch:focus-visible,
-.chaos:focus-visible {
+.chaos:focus-visible,
+.icon:focus-visible,
+.chevron:focus-visible,
+.targetName:focus-visible {
   outline: 1px solid var(--accent-primary);
   outline-offset: 2px;
 }
@@ -231,8 +234,8 @@
 
 .editor,
 .menu {
-  width: min(280px, calc(100vw - 16px));
-  max-height: min(70vh, 520px);
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(70vh, 560px);
   overflow: auto;
 }
 
@@ -383,4 +386,100 @@
   font: inherit;
   letter-spacing: 0.12em;
   cursor: pointer;
+}
+
+.diceSlot {
+  width: 36px;
+  min-width: 36px;
+  height: 26px;
+  min-height: 26px;
+}
+
+.sectionLabel {
+  margin: 8px 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.targetBlock {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.target > .check {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 32px;
+}
+
+.target > .check:not(:last-child) {
+  flex: none;
+}
+
+.targetName {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.target em {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 10px;
+}
+
+.chevron {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail {
+  padding: 0 0 8px 24px;
+}
+
+.rangeLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.choice:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
