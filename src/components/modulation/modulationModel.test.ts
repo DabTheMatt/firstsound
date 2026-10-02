@@ -10,7 +10,14 @@ import {
   removeParameterLfo,
   setParameterLfoPrimary,
 } from './modulationActions'
-import { readModulationEditor, resetModulationEditors, setModulationEditorOpen } from './modulationEditor'
+import {
+  modulationPortalOwnedBy,
+  preferModulationPortal,
+  readModulationEditor,
+  releaseModulationPortal,
+  resetModulationEditors,
+  setModulationEditorOpen,
+} from './modulationEditor'
 import {
   automationFocusLfoCue,
   eqFocusModulationFrame,
@@ -45,6 +52,18 @@ function cutoffState(editorOpen: boolean, lfos = defaultFxLfos(), automation = d
     editorOpen,
   })
 }
+
+describe('shared modulation editor portal', () => {
+  it('keeps a single portal on the control that opened it', () => {
+    preferModulationPortal('eq1Freq', 'focus')
+    expect(modulationPortalOwnedBy('eq1Freq', 'focus')).toBe(true)
+    expect(modulationPortalOwnedBy('eq1Freq', 'inspector')).toBe(false)
+    releaseModulationPortal('eq1Freq', 'inspector')
+    expect(modulationPortalOwnedBy('eq1Freq', 'focus')).toBe(true)
+    releaseModulationPortal('eq1Freq', 'focus')
+    expect(modulationPortalOwnedBy('eq1Freq', 'inspector')).toBe(true)
+  })
+})
 
 describe('parameter modulation state', () => {
   it('keeps the editor apart from LFO connection', () => {

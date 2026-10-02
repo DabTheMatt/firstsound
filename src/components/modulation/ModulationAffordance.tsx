@@ -31,7 +31,14 @@ import {
   removeParameterLfo,
   setParameterLfoPrimary,
 } from './modulationActions'
-import { readModulationEditor, setModulationEditorOpen, subscribeModulationEditor } from './modulationEditor'
+import {
+  modulationPortalOwnedBy,
+  preferModulationPortal,
+  readModulationEditor,
+  releaseModulationPortal,
+  setModulationEditorOpen,
+  subscribeModulationEditor,
+} from './modulationEditor'
 import { MobileModulationSheet } from './MobileModulationSheet'
 import { modulationAffordanceModel, parameterModulationState, type ModulationSourceId } from './modulationModel'
 import styles from './Modulation.module.css'
@@ -71,7 +78,14 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
     editorOpen,
   })
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const portalToken = useId()
   const press = useRef<{ x: number; y: number; id: number; role: ModulationPress } | null>(null)
+  const toggleEditor = () => {
+    if (editorOpen) releaseModulationPortal(id, portalToken)
+    else preferModulationPortal(id, portalToken)
+    setModulationEditorOpen(id, !editorOpen)
+  }
+  useEffect(() => () => releaseModulationPortal(id, portalToken), [id, portalToken])
   const label = paramLabel(id)
   const kind = fxLfoKindForParam(id)
 
@@ -109,7 +123,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
             const active = press.current
             press.current = null
             if (active && active.role !== 'pending') return
-            setModulationEditorOpen(id, !editorOpen)
+            toggleEditor()
           }}
         >
           <span className={styles.mark} aria-hidden="true">
@@ -118,7 +132,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
           {face.depthLabel ? <span className={styles.depth}>{face.depthLabel}</span> : null}
           {face.automationMark ? <span className={styles.autoDot} aria-hidden="true" /> : null}
         </button>
-        {editorOpen && typeof document !== 'undefined' ? (
+        {editorOpen && modulationPortalOwnedBy(id, portalToken) && typeof document !== 'undefined' ? (
           <MobileModulationSheet id={id} label={label} onClose={() => setModulationEditorOpen(id, false)} />
         ) : null}
       </>
@@ -128,7 +142,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
   const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
   const tip = `Modulate ${label}`
   const panel =
-    editorOpen && typeof document !== 'undefined' ? (
+    editorOpen && modulationPortalOwnedBy(id, portalToken) && typeof document !== 'undefined' ? (
       <ModulationEditorSession
         buttonRef={buttonRef}
         id={id}
@@ -159,7 +173,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          setModulationEditorOpen(id, !editorOpen)
+          toggleEditor()
         }}
       >
         <span className={styles.mark} aria-hidden="true">
