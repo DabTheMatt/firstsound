@@ -496,7 +496,7 @@ function ModuleInspector({
               onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
-          <EffectRandomMenu type={type} />
+          <EffectRandomMenu type={type} instanceId={instanceId} />
           {mod && !isFixedType(mod.type) ? (
             <button
               type="button"

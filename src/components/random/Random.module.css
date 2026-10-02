@@ -51,7 +51,10 @@
 
 .button:focus-visible,
 .touch:focus-visible,
-.chaos:focus-visible {
+.chaos:focus-visible,
+.icon:focus-visible,
+.chevron:focus-visible,
+.targetName:focus-visible {
   outline: 1px solid var(--accent-primary);
   outline-offset: 2px;
 }
@@ -91,8 +94,8 @@
 
 .editor,
 .menu {
-  width: min(280px, calc(100vw - 16px));
-  max-height: min(70vh, 520px);
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(70vh, 560px);
   overflow: auto;
 }
 
@@ -238,4 +241,139 @@
   font: inherit;
   letter-spacing: 0.12em;
   cursor: pointer;
+}
+
+.pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.icon[data-open='true'],
+.icon:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.group {
+  margin: 0 0 4px;
+}
+
+.groupTitle,
+.sectionLabel {
+  margin: 8px 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.groupTitle {
+  color: var(--text-secondary);
+}
+
+.bulk {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+
+.bulk button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-primary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.targetBlock {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.target .check {
+  flex: none;
+  min-height: 0;
+}
+
+.targetName {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.chevron {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail {
+  padding: 0 0 8px 24px;
+}
+
+.rangeLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.choice:disabled {
+  opacity: 0.45;
+  cursor: default;
 }

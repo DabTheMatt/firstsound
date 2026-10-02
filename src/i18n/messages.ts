@@ -532,6 +532,26 @@ export type Messages = {
     smooth: string
     randomizeEffect: string
     randomizeBand: string
+    randomizeEq: string
+    parameterTip: string
+    effectAria: (name: string) => string
+    setupTip: string
+    setupAria: string
+    setupTitle: (name: string) => string
+    targets: string
+    modes: string
+    all: string
+    none: string
+    behavior: string
+    timing: string
+    range: string
+    autoAllowed: string
+    showTarget: (name: string) => string
+    hideTarget: (name: string) => string
+    mixed: string
+    appliesTo: string
+    eqTypeNote: string
+    noEqBands: string
     effectMenu: (name: string) => string
     chaosHint: string
     budget: string
@@ -1214,6 +1234,26 @@ export const EN: Messages = {
     smooth: 'Smooth',
     randomizeEffect: 'Randomize effect',
     randomizeBand: 'Randomize band',
+    randomizeEq: 'Randomize EQ',
+    parameterTip: 'Randomize parameter',
+    effectAria: (name) => `Randomize ${name}`,
+    setupTip: 'Random setup',
+    setupAria: 'Open randomization settings',
+    setupTitle: (name) => `Random setup — ${name}`,
+    targets: 'Targets',
+    modes: 'Selects / Modes',
+    all: 'All',
+    none: 'None',
+    behavior: 'Behavior',
+    timing: 'Timing',
+    range: 'Range',
+    autoAllowed: 'Allowed',
+    showTarget: (name) => `Show ${name} random settings`,
+    hideTarget: (name) => `Hide ${name} random settings`,
+    mixed: 'Mixed',
+    appliesTo: 'Applies to selected targets',
+    eqTypeNote: 'A full band also randomizes filter type and slope.',
+    noEqBands: 'Turn a band on to choose targets.',
     effectMenu: (name) => `Random ${name}`,
     chaosHint: 'Auto Random and effect randomization need Chaos.',
     budget: 'Event rate is capped so the instrument stays responsive.',
@@ -1897,6 +1937,26 @@ export const PL: Messages = {
     smooth: 'Smooth',
     randomizeEffect: 'Losuj efekt',
     randomizeBand: 'Losuj pasmo',
+    randomizeEq: 'Losuj EQ',
+    parameterTip: 'Losuj parametr',
+    effectAria: (name) => `Losuj ${name}`,
+    setupTip: 'Ustawienia Random',
+    setupAria: 'Otwórz ustawienia losowania',
+    setupTitle: (name) => `Ustawienia Random — ${name}`,
+    targets: 'Cele',
+    modes: 'Wybory / tryby',
+    all: 'Wszystkie',
+    none: 'Żadne',
+    behavior: 'Zachowanie',
+    timing: 'Rytm',
+    range: 'Zakres',
+    autoAllowed: 'Dozwolone',
+    showTarget: (name) => `Pokaż ustawienia Random: ${name}`,
+    hideTarget: (name) => `Ukryj ustawienia Random: ${name}`,
+    mixed: 'Różne',
+    appliesTo: 'Dotyczy zaznaczonych celów',
+    eqTypeNote: 'Pełne pasmo losuje też typ filtra i nachylenie.',
+    noEqBands: 'Włącz pasmo, żeby wybrać cele.',
     effectMenu: (name) => `Random ${name}`,
     chaosHint: 'Auto Random i losowanie efektu wymagają trybu Chaos.',
     budget: 'Częstotliwość zdarzeń jest ograniczona, żeby instrument został responsywny.',
