@@ -135,6 +135,23 @@
   letter-spacing: 0.04em;
 }
 
+.lfoCue {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  pointer-events: auto;
+}
+
+.lfoDepth {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
 .meta {
   display: flex;
   flex-direction: column;

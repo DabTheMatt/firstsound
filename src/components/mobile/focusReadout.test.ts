@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EqBand } from '../../audio/engine/eqBands'
-import { focusEqReadout, formatFocusDb, formatFocusHz, formatFocusQ } from './focusReadout'
+import { focusEqParts, focusEqReadout, formatFocusDb, formatFocusHz, formatFocusQ } from './focusReadout'
 
 function band(patch: Partial<EqBand> = {}): EqBand {
   return {
@@ -41,5 +41,12 @@ describe('focus EQ readout', () => {
 
   it('shows only Q while that gesture is active', () => {
     expect(focusEqReadout(band(), 0, 'q')).toEqual({ title: '', values: 'Q 0.71' })
+  })
+
+  it('splits the same line into fields a modulation affordance can attach to', () => {
+    const parts = focusEqParts(band())
+    expect(parts.map((part) => part.field)).toEqual(['freq', 'gain', 'q'])
+    expect(parts.map((part) => part.text).join('  ')).toBe(focusEqReadout(band(), 0).values)
+    expect(focusEqParts(band({ type: 'notch' }), 'q')).toEqual([{ field: 'q', text: 'Q 0.71' }])
   })
 })

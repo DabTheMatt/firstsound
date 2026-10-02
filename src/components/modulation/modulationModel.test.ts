@@ -12,6 +12,9 @@ import {
 } from './modulationActions'
 import { readModulationEditor, resetModulationEditors, setModulationEditorOpen } from './modulationEditor'
 import {
+  automationFocusLfoCue,
+  eqFocusModulationFrame,
+  eqFocusModulationParam,
   eqModulationGuides,
   eqModulationParamId,
   formatModulationDepth,
@@ -115,6 +118,42 @@ describe('parameter modulation state', () => {
     expect(state.range).not.toBeNull()
     expect(state.depthPct).toBe(18)
     expect(automation.lanes.find((lane) => lane.paramId === 'filterCutoff')?.nodes.length).toBeGreaterThan(0)
+  })
+
+  it('offers focus modulation only on fields the shared bank can move', () => {
+    expect(eqFocusModulationParam(0, 'freq', 'peaking', true)).toBe('eq1Freq')
+    expect(eqFocusModulationParam(0, 'gain', 'peaking', true)).toBe('eq1Gain')
+    expect(eqFocusModulationParam(0, 'q', 'highpass', true)).toBe('eq1Q')
+    expect(eqFocusModulationParam(0, 'gain', 'highpass', true)).toBeNull()
+    expect(eqFocusModulationParam(0, 'freq', 'peaking', false)).toBeNull()
+    expect(eqFocusModulationParam(8, 'freq', 'peaking', true)).toBeNull()
+  })
+
+  it('draws frequency, gain, and both as separate selected-node ranges', () => {
+    expect(
+      eqFocusModulationFrame({ x: 40, y: 50, freqX: [20, 60], gainY: null }),
+    ).toEqual({ kind: 'horizontal', left: 20, width: 40, centerY: 50 })
+    expect(
+      eqFocusModulationFrame({ x: 40, y: 50, freqX: null, gainY: [70, 30] }),
+    ).toEqual({ kind: 'vertical', centerX: 40, top: 30, height: 40 })
+    expect(
+      eqFocusModulationFrame({ x: 40, y: 50, freqX: [20, 60], gainY: [30, 70] }),
+    ).toEqual({ kind: 'area', left: 20, width: 40, top: 30, height: 40 })
+    expect(eqFocusModulationFrame({ x: 40, y: 50, freqX: [20, 20], gainY: null })).toEqual({ kind: 'none' })
+  })
+
+  it('mentions an LFO in automation focus only when that lane is also automated', () => {
+    const lfos = defaultFxLfos()
+    lfos.filter[0] = { ...lfos.filter[0]!, target: 'filterCutoff', depth: 18, rateHz: 2, shape: 'sine' }
+    const connected = cutoffState(false, lfos)
+    expect(automationFocusLfoCue(connected)).toEqual({ visible: false, depthLabel: null })
+    const automation = ensureAutomationLane(defaultAutomation(), 'filterCutoff', 0.42, 3)
+    const both = cutoffState(false, lfos, automation)
+    expect(automationFocusLfoCue(both)).toEqual({ visible: true, depthLabel: '±18%' })
+    expect(automationFocusLfoCue(cutoffState(true, lfos, automation))).toEqual({
+      visible: true,
+      depthLabel: '±18%',
+    })
   })
 
   it('gives an EQ frequency a horizontal span and leaves gain alone', () => {

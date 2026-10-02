@@ -81,7 +81,8 @@ import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, subscribeFre
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import type { ParamId } from '../../audio/parameters/types'
 import { EQ_BAND_LFO_IDS, fxLfoIsActive, lfoBinding } from '../../audio/fx/lfo'
-import { eqModulationGuides } from '../modulation/modulationModel'
+import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { eqFocusModulationFrame, eqFocusModulationParam, eqModulationGuides } from '../modulation/modulationModel'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
@@ -101,7 +102,7 @@ import {
   qFromVertical,
   type EqDragMode,
 } from '../mobile/eqFocusGesture'
-import { focusEqReadout, focusEqTypeLabel, type FocusGesture } from '../mobile/focusReadout'
+import { focusEqParts, focusEqReadout, focusEqTypeLabel, type FocusGesture } from '../mobile/focusReadout'
 import { VizBackground } from './VizBackground'
 import styles from './Spectrum.module.css'
 
@@ -903,10 +904,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     phoneFocus && selectedBand
       ? (snap.eqById[selectedBand.instanceId]?.bands ?? [])[selectedBand.index]
       : undefined
+  const activeFocusBand = focusBand && focusBand.type !== 'off' ? focusBand : null
   const focusText =
-    focusBand && focusBand.type !== 'off' && selectedBand
-      ? focusEqReadout(focusBand, selectedBand.index, liveGesture)
-      : null
+    activeFocusBand && selectedBand ? focusEqReadout(activeFocusBand, selectedBand.index, liveGesture) : null
+  const focusParts = activeFocusBand ? focusEqParts(activeFocusBand, liveGesture) : []
+  const focusShared = selectedBand ? eqInstanceUsesSharedLfo(snap.chain, selectedBand.instanceId) : false
   const focusTone = selectedBand ? eqBandTone(selectedBand.index, readThemeColors()) : null
   const menuBand =
     bandMenu ? (snap.eqById[bandMenu.instanceId]?.bands ?? [])[bandMenu.index] : undefined
@@ -1389,20 +1391,67 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const freqX1 = freqGuide ? freqToX(freqGuide.maxHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100 : 0
             const gainY0 = gainGuide ? spectrumEqOverlayY(gainGuide.minDb, 0, 100) : 0
             const gainY1 = gainGuide ? spectrumEqOverlayY(gainGuide.maxDb, 0, 100) : 0
+            const nodeY = Math.min(100, Math.max(0, yPct))
+            const focusFrame =
+              phoneFocus && selected
+                ? eqFocusModulationFrame({
+                    x: xPct,
+                    y: nodeY,
+                    freqX: freqGuide ? [freqX0, freqX1] : null,
+                    gainY: gainGuide ? [gainY0, gainY1] : null,
+                  })
+                : null
             return (
               <Fragment key={eqStripKey(mod.instanceId, band)}>
-              {freqGuide ? (
+              {focusFrame?.kind === 'horizontal' ? (
+                <span
+                  className={styles.modRangeH}
+                  data-eq-mod-range="freq"
+                  aria-hidden="true"
+                  style={{
+                    left: `${focusFrame.left}%`,
+                    width: `${focusFrame.width}%`,
+                    top: `${focusFrame.centerY}%`,
+                  }}
+                />
+              ) : null}
+              {focusFrame?.kind === 'vertical' ? (
+                <span
+                  className={styles.modRangeV}
+                  data-eq-mod-range="gain"
+                  aria-hidden="true"
+                  style={{
+                    left: `${focusFrame.centerX}%`,
+                    top: `${focusFrame.top}%`,
+                    height: `${focusFrame.height}%`,
+                  }}
+                />
+              ) : null}
+              {focusFrame?.kind === 'area' ? (
+                <span
+                  className={styles.modRangeArea}
+                  data-eq-mod-range="both"
+                  aria-hidden="true"
+                  style={{
+                    left: `${focusFrame.left}%`,
+                    width: `${focusFrame.width}%`,
+                    top: `${focusFrame.top}%`,
+                    height: `${focusFrame.height}%`,
+                  }}
+                />
+              ) : null}
+              {!phoneFocus && freqGuide ? (
                 <span
                   className={styles.modH}
                   aria-hidden="true"
                   style={{
                     left: `${Math.min(freqX0, freqX1)}%`,
                     width: `${Math.abs(freqX1 - freqX0)}%`,
-                    top: `${Math.min(100, Math.max(0, yPct))}%`,
+                    top: `${nodeY}%`,
                   }}
                 />
               ) : null}
-              {gainGuide ? (
+              {!phoneFocus && gainGuide ? (
                 <span
                   className={styles.modV}
                   aria-hidden="true"
@@ -1415,7 +1464,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ) : null}
               <button
                 type="button"
-                className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped ? styles.nodeLfo : ''}`}
+                className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped && !phoneFocus ? styles.nodeLfo : ''}`}
                 style={
                   {
                     left: `${xPct}%`,
@@ -1459,7 +1508,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           })
           })}
         </div>
-        {focusText && focusTone ? (
+        {focusText && focusTone && activeFocusBand && selectedBand ? (
           <div
             className={styles.focusReadout}
             data-eq-readout=""
@@ -1468,7 +1517,23 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             style={{ '--band': focusTone.curve } as CSSProperties}
           >
             {focusText.title ? <span className={styles.focusTitle}>{focusText.title}</span> : null}
-            <span className={styles.focusValues}>{focusText.values}</span>
+            <span className={styles.focusValues}>
+              {focusParts.map((part) => {
+                const paramId = eqFocusModulationParam(selectedBand.index, part.field, activeFocusBand.type, focusShared)
+                return (
+                  <span
+                    key={part.field}
+                    className={styles.focusPart}
+                    data-eq-mod={part.field}
+                    data-focus-mod={paramId ? '' : undefined}
+                    data-param-id={paramId ?? undefined}
+                  >
+                    <span>{part.text}</span>
+                    {paramId ? <ModulationAffordance id={paramId} compact={!phoneEq} touch={phoneEq} /> : null}
+                  </span>
+                )
+              })}
+            </span>
           </div>
         ) : null}
         {phoneFocus && bandMenu && menuBand && menuBand.type !== 'off' ? (

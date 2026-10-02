@@ -1078,6 +1078,7 @@ export default function App() {
                 onAddNode={() => waveRef.current?.addAutomationNode()}
                 onDeleteNode={() => waveRef.current?.deleteAutomationNode()}
                 onViz={isPhoneLayout ? undefined : focusViz}
+                touch={isPhoneLayout}
                 edit={{
                   canCopy: snap.canCopySelection,
                   canCut: snap.canCutSelection,

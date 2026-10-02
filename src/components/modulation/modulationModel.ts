@@ -1,4 +1,5 @@
 import { laneFor, type AutomationDocument } from '../../audio/automation/automation'
+import { bandUsesGain, type EqFilterType } from '../../audio/engine/eqBands'
 import {
   EQ_BAND_LFO_IDS,
   eqBandLfoIds,
@@ -103,6 +104,69 @@ export function eqModulationParamId(index: number, field: 'freq' | 'gain' | 'q')
   if (field === 'freq') return ids.freq
   if (field === 'gain') return ids.gain
   return ids.q
+}
+
+/**
+ * Focus EQ can offer modulation only for a field the shared bank actually owns.
+ * A secondary EQ, a later band, or a filter without gain stays quiet.
+ */
+export function eqFocusModulationParam(
+  index: number,
+  field: 'freq' | 'gain' | 'q',
+  bandType: EqFilterType,
+  shared: boolean,
+): ParamId | null {
+  if (!shared) return null
+  if (field === 'gain' && !bandUsesGain(bandType)) return null
+  return eqModulationParamId(index, field)
+}
+
+export type EqFocusModulationFrame =
+  | { kind: 'none' }
+  | { kind: 'horizontal'; left: number; width: number; centerY: number }
+  | { kind: 'vertical'; centerX: number; top: number; height: number }
+  | { kind: 'area'; left: number; width: number; top: number; height: number }
+
+function axisSpan(a: number, b: number): { start: number; size: number } | null {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null
+  const start = Math.min(a, b)
+  const size = Math.abs(b - a)
+  if (!(size > 0)) return null
+  return { start, size }
+}
+
+/**
+ * Selected-node range in plot percent.
+ * Frequency is horizontal, gain is vertical, and both together are one area.
+ */
+export function eqFocusModulationFrame(input: {
+  x: number
+  y: number
+  freqX: readonly [number, number] | null
+  gainY: readonly [number, number] | null
+}): EqFocusModulationFrame {
+  const freq = input.freqX ? axisSpan(input.freqX[0], input.freqX[1]) : null
+  const gain = input.gainY ? axisSpan(input.gainY[0], input.gainY[1]) : null
+  if (freq && gain) {
+    return { kind: 'area', left: freq.start, width: freq.size, top: gain.start, height: gain.size }
+  }
+  if (freq) return { kind: 'horizontal', left: freq.start, width: freq.size, centerY: input.y }
+  if (gain) return { kind: 'vertical', centerX: input.x, top: gain.start, height: gain.size }
+  return { kind: 'none' }
+}
+
+/**
+ * Automation Focus may admit that an LFO is also connected.
+ * The cue is separate from the lane: it never describes a mixed curve.
+ */
+export function automationFocusLfoCue(
+  state: Pick<ParameterModulationState, 'isLfoConnected' | 'lfoActive' | 'automationActive' | 'depthPct'>,
+): { visible: boolean; depthLabel: string | null } {
+  if (!state.automationActive || !state.isLfoConnected) return { visible: false, depthLabel: null }
+  return {
+    visible: true,
+    depthLabel: state.lfoActive ? formatModulationDepth(state.depthPct) : null,
+  }
 }
 
 export type SliderModulationMarks = {

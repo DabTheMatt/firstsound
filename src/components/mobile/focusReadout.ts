@@ -26,17 +26,31 @@ export function focusEqTypeLabel(type: EqFilterType): string {
   return (found?.short ?? type).toUpperCase()
 }
 
+export type FocusEqField = 'freq' | 'gain' | 'q'
+
+export type FocusEqPart = {
+  field: FocusEqField
+  text: string
+}
+
+/** The same readout, split so each value can carry its own modulation affordance. */
+export function focusEqParts(band: EqBand, gesture: FocusGesture = 'idle'): FocusEqPart[] {
+  if (gesture === 'q') return [{ field: 'q', text: formatFocusQ(band.q) }]
+  const parts: FocusEqPart[] = [{ field: 'freq', text: formatFocusHz(band.frequency) }]
+  if (bandUsesGain(band.type)) parts.push({ field: 'gain', text: formatFocusDb(band.gain) })
+  parts.push({ field: 'q', text: formatFocusQ(band.q) })
+  return parts
+}
+
 export function focusEqReadout(
   band: EqBand,
   index: number,
   gesture: FocusGesture = 'idle',
 ): { title: string; values: string } {
-  if (gesture === 'q') return { title: '', values: formatFocusQ(band.q) }
-  const parts = [formatFocusHz(band.frequency)]
-  if (bandUsesGain(band.type)) parts.push(formatFocusDb(band.gain))
-  parts.push(formatFocusQ(band.q))
   return {
-    title: `${focusEqTypeLabel(band.type)} ${index + 1}`,
-    values: parts.join('  '),
+    title: gesture === 'q' ? '' : `${focusEqTypeLabel(band.type)} ${index + 1}`,
+    values: focusEqParts(band, gesture)
+      .map((part) => part.text)
+      .join('  '),
   }
 }

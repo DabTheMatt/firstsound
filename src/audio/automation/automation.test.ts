@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { commitHistory, createHistory, redoHistory, undoHistory } from '../../app/history'
 import { defaultFxLfos, defaultLfoHold, modulateParam } from '../fx/lfo'
 import { defaultParamValues, PARAMS } from '../parameters/definitions'
-import { fromNormalized } from '../parameters/mapping'
+import { fromNormalized, toNormalized } from '../parameters/mapping'
 import {
   applyAutomation,
   automationEffectGroups,
@@ -114,6 +114,23 @@ describe('automation versus manual and LFO', () => {
     expect(stopped.delayWet).toBe(15)
     expect(manual.delayWet).toBe(15)
     expect(playing.delayDry).toBeCloseTo(20)
+  })
+
+  it('moves an EQ frequency LFO around the automated center', () => {
+    const manual = defaultParamValues()
+    manual.eq1Freq = 1000
+    const low = toNormalized(400, PARAMS.eq1Freq)
+    const high = toNormalized(4000, PARAMS.eq1Freq)
+    const started = insertAutomationNode(selectAutomationParam(defaultAutomation(), 'eq1Freq'), 0, low, 2, 'a')!
+    const doc = insertAutomationNode(started.doc, 2, high, 2, 'b')!.doc
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { rateHz: 1, shape: 'square', depth: 25, target: 'eq1Freq' }
+    const early = resolvePerformanceParams(manual, doc, 0, true, lfos, 0, defaultLfoHold())
+    const late = resolvePerformanceParams(manual, doc, 2, true, lfos, 0, defaultLfoHold())
+    expect(early.eq1Freq).toBeCloseTo(modulateParam(envelopeToParam('eq1Freq', low), 'eq1Freq', 1, 25))
+    expect(late.eq1Freq).toBeCloseTo(modulateParam(envelopeToParam('eq1Freq', high), 'eq1Freq', 1, 25))
+    expect(late.eq1Freq).toBeGreaterThan(early.eq1Freq)
+    expect(manual.eq1Freq).toBe(1000)
   })
 
   it('lets LFO move around the automated value instead of the stored knob', () => {

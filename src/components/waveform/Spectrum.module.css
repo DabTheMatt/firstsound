@@ -509,7 +509,55 @@
 }
 
 .focusValues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
   color: color-mix(in srgb, var(--text-secondary) 88%, transparent);
+}
+
+.focusPart {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.focusPart button {
+  pointer-events: auto;
+}
+
+.eqFocus .focusPart button:not([data-modulation-presentation='touch']) {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.modRangeH,
+.modRangeV,
+.modRangeArea {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--text-muted) 42%, transparent);
+}
+
+.modRangeH {
+  height: 3px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+.modRangeV {
+  width: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.modRangeArea {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
 }
 
 .focusReadout[data-live='true'] .focusValues,

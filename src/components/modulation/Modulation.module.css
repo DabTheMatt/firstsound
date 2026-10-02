@@ -67,6 +67,7 @@
   :global([data-param-id]:hover) .button[data-active='false'],
   :global([data-param-id]:focus-within) .button[data-active='false'],
   :global([data-eq-strip][data-selected='true']) .button[data-active='false'],
+  :global([data-focus-mod]) .button[data-active='false'],
   .button[data-active='false']:focus-visible,
   .button[data-open='true'] {
     opacity: 1;

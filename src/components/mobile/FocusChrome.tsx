@@ -20,8 +20,11 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
 import type { VizMode } from '../../app/editorState'
 import type { FocusWorkspace } from '../../app/phoneWorkspace'
+import { toNormalized } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { automationFocusLfoCue, parameterModulationState } from '../modulation/modulationModel'
 import { automationEffectLabel, automationLaneTitle } from '../waveform/automationLabels'
 import { formatAutomationNodeValue } from '../waveform/automationValue'
 import { SegmentCurveControl } from '../waveform/SegmentCurveControl'
@@ -66,6 +69,8 @@ type Props = {
   onDeleteNode: () => void
   /** Desktop can switch the focused task without leaving Focus Mode. */
   onViz?: (viz: VizMode) => void
+  /** Phone uses the shared touch modulation sheet. Desktop uses the shared popover. */
+  touch?: boolean
 }
 
 export function FocusChrome({
@@ -82,6 +87,7 @@ export function FocusChrome({
   onAddNode,
   onDeleteNode,
   onViz,
+  touch = false,
 }: Props) {
   const { t } = useI18n()
   const title =
@@ -101,6 +107,7 @@ export function FocusChrome({
               onAutomationCommit={onAutomationCommit}
               onAddNode={onAddNode}
               onDeleteNode={onDeleteNode}
+              touch={touch}
             />
           ) : null}
           {workspace === 'wave' ? <WaveTools edit={edit} /> : null}
@@ -220,12 +227,14 @@ function AutoTools({
   onAutomationCommit,
   onAddNode,
   onDeleteNode,
+  touch,
 }: {
   autoFocus: AutomationEditFocus
   onAutoFocus: (focus: AutomationEditFocus) => void
   onAutomationCommit: () => void
   onAddNode: () => void
   onDeleteNode: () => void
+  touch: boolean
 }) {
   const { t, paramLabel } = useI18n()
   const snap = useEngine()
@@ -257,6 +266,15 @@ function AutoTools({
   const valueSource = selectedNode?.value ?? (nodes.length > 0 ? sampleEnvelope(nodes, playhead) : null)
   const valueLabel = def && valueSource != null ? formatAutomationNodeValue(envelopeToParam(selected, valueSource), def) : ''
   const color = automationColor(colorIndexForParam(snap.automation, selected))
+  const lfoCue = automationFocusLfoCue(
+    parameterModulationState({
+      lfos: snap.fxLfos,
+      automation: snap.automation,
+      paramId: selected,
+      baseNormalized: def ? toNormalized(snap.params[selected], def) : 0,
+      editorOpen: false,
+    }),
+  )
 
   useEffect(() => {
     if (!addOpen) return
@@ -408,6 +426,12 @@ function AutoTools({
           }}
           onCommit={onAutomationCommit}
         />
+      ) : null}
+      {lfoCue.visible ? (
+        <span className={styles.lfoCue} data-auto-lfo="" data-focus-mod="">
+          <ModulationAffordance id={selected} compact={!touch} touch={touch} />
+          {touch || !lfoCue.depthLabel ? null : <span className={styles.lfoDepth}>{lfoCue.depthLabel}</span>}
+        </span>
       ) : null}
       <p className={styles.meta} data-auto-readout="">
         <span>{title}</span>
