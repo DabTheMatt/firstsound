@@ -21,6 +21,18 @@ export function formatFocusQ(q: number): string {
   return `Q ${n.toFixed(2)}`
 }
 
+/** Knob face for Q. The label already says Q, so the value stays numeric. */
+export function formatFocusQValue(q: number): string {
+  const n = Number.isFinite(q) ? q : 0
+  return n.toFixed(2)
+}
+
+/** Discrete cascade slope, in the units the filter actually uses. */
+export function formatFocusSlope(slope: number): string {
+  const n = Number.isFinite(slope) ? Math.round(slope) : 12
+  return `${n} dB/oct`
+}
+
 export function focusEqTypeLabel(type: EqFilterType): string {
   const found = EQ_FILTER_TYPES.find((item) => item.value === type)
   return (found?.short ?? type).toUpperCase()

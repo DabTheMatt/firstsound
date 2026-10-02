@@ -293,9 +293,16 @@
   height: 100%;
 }
 
-.phoneShell[data-focus] .waveCol > :last-child {
+.shell[data-workspace='focus'] .waveCol > [data-focus-chrome] {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.phoneShell[data-focus] .waveCol > :last-child,
+.shell[data-workspace='focus'] .waveCol > :last-child {
   flex: 1 1 auto;
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 

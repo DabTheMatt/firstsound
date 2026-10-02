@@ -8,12 +8,14 @@ type Props = {
 
 export function FocusToggle({ expanded, onClick }: Props) {
   const { t } = useI18n()
+  const label = expanded ? t.focus.exit : t.focus.enter
   return (
     <button
       type="button"
       className={styles.hit}
       aria-pressed={expanded}
-      aria-label={expanded ? t.mobile.exitFocus : t.mobile.enterFocus}
+      aria-label={label}
+      title={label}
       onClick={onClick}
     >
       {expanded ? <CollapseIcon /> : <ExpandIcon />}

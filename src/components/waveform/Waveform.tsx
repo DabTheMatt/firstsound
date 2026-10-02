@@ -1654,6 +1654,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               active={showSpec}
               compact={phone}
               phoneFocus={eqFocus}
+              suppressAnalyzerChrome={phoneFocus === 'fft'}
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
