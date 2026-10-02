@@ -325,47 +325,30 @@
   opacity: 0.35;
 }
 
-.nodeLfo {
-  box-shadow:
-    0 0 0 1.5px var(--accent-primary),
-    0 0 0 4px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-}
-
-.modH,
-.modV {
+.node::before {
+  content: '';
   position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
-}
-
-.modH {
-  height: 1px;
-  transform: translateY(-50%);
-}
-
-.modV {
-  width: 1px;
-  transform: translateX(-50%);
-}
-
-.modLive {
-  position: absolute;
-  z-index: 2;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  pointer-events: none;
-  background: var(--accent-primary);
+  width: 32px;
+  height: 32px;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, -50%);
 }
 
-.nodeLfo::after {
-  content: '';
+.node[data-q-live='true'] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--eq-curve, var(--text-muted)) 22%, transparent);
+}
+
+.modCenter {
   position: absolute;
-  inset: -6px;
-  border-radius: 999px;
-  border: 1px dashed color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  z-index: 1;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
+  background: transparent;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
@@ -451,9 +434,14 @@
 .phoneEq .chrome,
 .phoneEq .legendDock,
 .eqFocus .chrome,
-.eqFocus .legendDock,
-.eqFocus .focusReadout {
+.eqFocus .legendDock {
   display: none;
+}
+
+.wrap:not(.phoneEq):not(.eqFocus) .focusReadout {
+  top: auto;
+  bottom: 22px;
+  left: 8px;
 }
 
 .phoneEq .stage {
@@ -544,32 +532,6 @@
   height: 28px;
   min-width: 28px;
   min-height: 28px;
-}
-
-.modRangeH,
-.modRangeV,
-.modRangeArea {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--text-muted) 42%, transparent);
-}
-
-.modRangeH {
-  height: 3px;
-  border-radius: 999px;
-  transform: translateY(-50%);
-}
-
-.modRangeV {
-  width: 3px;
-  border-radius: 999px;
-  transform: translateX(-50%);
-}
-
-.modRangeArea {
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
 }
 
 .focusReadout[data-live='true'] .focusValues,

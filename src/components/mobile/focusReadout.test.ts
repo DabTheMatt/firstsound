@@ -43,6 +43,22 @@ describe('focus EQ readout', () => {
     expect(focusEqReadout(band(), 0, 'q')).toEqual({ title: '', values: 'Q 0.71' })
   })
 
+  it('shows the center and the current modulated value on one line', () => {
+    expect(
+      focusEqReadout(band(), 0, 'idle', {
+        frequencyHz: 1480,
+        gainDb: 3.2,
+        q: 0.71,
+        centerHz: 1330,
+        centerGainDb: 3.2,
+        centerQ: 0.71,
+        freqOffset: true,
+        gainOffset: false,
+        qLive: false,
+      }).values,
+    ).toBe('1.33 kHz → 1.48 kHz  +3.2 dB  Q 0.71')
+  })
+
   it('splits the same line into fields a modulation affordance can attach to', () => {
     const parts = focusEqParts(band())
     expect(parts.map((part) => part.field)).toEqual(['freq', 'gain', 'q'])

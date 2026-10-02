@@ -1,6 +1,6 @@
 import { bandUsesGain, bandUsesWidth, type EqFilterType } from '../../audio/engine/eqBands'
 
-/** Fixed parameter rows on every EQ strip. Fewer controls leave an empty row. */
+/** Parameter rows for one filter. Empty rows are omitted by the strip layout. */
 export type EqStripSlot = 'freq' | 'gain' | 'slope' | 'width' | 'q' | 'empty'
 
 export const EQ_STRIP_SLOT_COUNT = 3
@@ -14,4 +14,9 @@ export function eqStripParamSlots(type: EqFilterType): readonly [EqStripSlot, Eq
         : 'empty'
   const third: EqStripSlot = bandUsesWidth(type) ? 'width' : 'q'
   return ['freq', second, third]
+}
+
+/** Controls that actually render. Empty rows do not take vertical space. */
+export function eqStripVisibleSlots(type: EqFilterType): EqStripSlot[] {
+  return eqStripParamSlots(type).filter((slot) => slot !== 'empty')
 }

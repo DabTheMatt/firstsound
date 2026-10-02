@@ -19,7 +19,7 @@ import {
 } from '../../audio/engine/eqPlot'
 import { eqGraphLayers } from '../../audio/engine/eqFocusGraph'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
-import { bandIsActive, bandUsesGain, EQ_FILTER_TYPES, eqStripKey } from '../../audio/engine/eqBands'
+import { bandIsActive, EQ_FILTER_TYPES, eqStripKey } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
   FREQ_SCALE_HZ,
@@ -79,14 +79,12 @@ import { useI18n } from '../../i18n'
 import { colorWithAlpha, eqBandTone, eqTone, readThemeColors } from '../../theme'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, subscribeFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
-import type { ParamId } from '../../audio/parameters/types'
-import { EQ_BAND_LFO_IDS, fxLfoIsActive, lfoBinding } from '../../audio/fx/lfo'
+import { liveEqBandsFromParams } from '../../audio/fx/lfo'
 import { ModulationAffordance } from '../modulation/ModulationAffordance'
 import {
-  eqFocusModulationFrame,
   eqFocusModulationParam,
-  eqModulationCenter,
-  eqModulationGuides,
+  eqNodeAnchorBands,
+  eqNodeMotion,
 } from '../modulation/modulationModel'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -223,6 +221,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const [qArmed, setQArmed] = useState(false)
   const [liveGesture, setLiveGesture] = useState<FocusGesture>('idle')
   const [bandMenu, setBandMenu] = useState<{ instanceId: string; index: number } | null>(null)
+  const [dragNode, setDragNode] = useState<{ instanceId: string; index: number } | null>(null)
   const qArmedRef = useRef(false)
   const lastGraphTap = useRef<{ t: number; x: number; y: number } | null>(null)
   const graphDown = useRef<{ id: number; x: number; y: number; t: number } | null>(null)
@@ -634,7 +633,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           if (!st) continue
           const hasShape = st.bands.some((b) => b.type !== 'off') || st.comb.enabled
           if (!hasShape) continue
-          const storedBands = [...st.bands, ...combAsEqBands(st.comb)]
+          const modulateCurve = eqInstanceUsesSharedLfo(live.chain, mod.instanceId)
+          const shaped = modulateCurve ? liveEqBandsFromParams(st.bands, live.liveParams) : st.bands
+          const storedBands = [...shaped, ...combAsEqBands(st.comb)]
           const tone = eqTone(ei, colors)
           const focused = eqOverlayIncludes(overlayFocus, mod.instanceId)
           const processing = storedBands
@@ -773,6 +774,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         setQArmed(armed)
       }
       drag.current = null
+      setDragNode(null)
       setLiveGesture('idle')
     }
     try {
@@ -810,6 +812,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           setBandMenu({ instanceId, index })
         }, EQ_FOCUS_LONG_PRESS_MS)
       : 0
+    setDragNode({ instanceId, index })
     drag.current = {
       index,
       instanceId,
@@ -832,6 +835,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     if (!isPrimaryPointerHeld(event)) {
       if (d.timer) window.clearTimeout(d.timer)
       drag.current = null
+      setDragNode(null)
       setLiveGesture('idle')
       return
     }
@@ -909,14 +913,44 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
   if (!active) return null
   const plotPad = spectrumPlotPad({ compact, focus: phoneFocus })
-  const focusBand =
-    phoneFocus && selectedBand
-      ? (snap.eqById[selectedBand.instanceId]?.bands ?? [])[selectedBand.index]
-      : undefined
-  const activeFocusBand = focusBand && focusBand.type !== 'off' ? focusBand : null
+  const selectedStored = selectedBand
+    ? (snap.eqById[selectedBand.instanceId]?.bands ?? [])[selectedBand.index]
+    : undefined
+  const readoutBand = selectedStored && selectedStored.type !== 'off' ? selectedStored : null
+  const selectedMotion =
+    readoutBand && selectedBand
+      ? eqNodeMotion({
+          band: readoutBand,
+          index: selectedBand.index,
+          lfos: snap.fxLfos,
+          automation: snap.automation,
+          live: snap.liveParams,
+          timeSec: snap.transportSec,
+          playing: snap.playing,
+          dragging: dragNode?.instanceId === selectedBand.instanceId && dragNode.index === selectedBand.index,
+          modulate: eqInstanceUsesSharedLfo(snap.chain, selectedBand.instanceId),
+        })
+      : null
+  const readoutMotion = selectedMotion
+    ? {
+        frequencyHz: selectedMotion.frequencyHz,
+        gainDb: selectedMotion.gainDb,
+        q: selectedMotion.heardQ,
+        centerHz: selectedMotion.centerHz,
+        centerGainDb: selectedMotion.centerGainDb,
+        centerQ: selectedMotion.centerQ,
+        freqOffset: selectedMotion.freqOffset,
+        gainOffset: selectedMotion.gainOffset,
+        qLive: selectedMotion.qLive,
+      }
+    : null
+  const focusGesture = phoneFocus ? liveGesture : 'idle'
   const focusText =
-    activeFocusBand && selectedBand ? focusEqReadout(activeFocusBand, selectedBand.index, liveGesture) : null
-  const focusParts = activeFocusBand ? focusEqParts(activeFocusBand, liveGesture) : []
+    readoutBand && selectedBand ? focusEqReadout(readoutBand, selectedBand.index, focusGesture, readoutMotion) : null
+  const focusParts = readoutBand ? focusEqParts(readoutBand, focusGesture, readoutMotion) : []
+  const showModReadout = Boolean(
+    readoutMotion && (readoutMotion.freqOffset || readoutMotion.gainOffset || readoutMotion.qLive),
+  )
   const focusShared = selectedBand ? eqInstanceUsesSharedLfo(snap.chain, selectedBand.instanceId) : false
   const focusTone = selectedBand ? eqBandTone(selectedBand.index, readThemeColors()) : null
   const menuBand =
@@ -1373,142 +1407,62 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             return bands.map((band, index) => {
             if (band.type === 'off') return null
             const plotMaxHz = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
-            const xPct = freqToX(band.frequency, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
-            const yPct = spectrumEqOverlayY(
-              eqNodePlotDb(bands, band.frequency, snap.sampleRate || 44100),
-              0,
-              100,
-            )
+            const sr = snap.sampleRate || 44100
+            const dragging = dragNode?.instanceId === mod.instanceId && dragNode.index === index
+            const motion = eqNodeMotion({
+              band,
+              index,
+              lfos: snap.fxLfos,
+              automation: snap.automation,
+              live: snap.liveParams,
+              timeSec: snap.transportSec,
+              playing: snap.playing,
+              dragging,
+              modulate,
+            })
+            const liveBands = modulate ? liveEqBandsFromParams(bands, snap.liveParams) : bands
+            const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
+            const xPct = freqToX(motion.frequencyHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
+            const yPct = spectrumEqOverlayY(eqNodePlotDb(anchor, motion.frequencyHz, sr), 0, 100)
             const selected =
               selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
             const dim = mod.bypassed || band.bypassed
-            const ids = EQ_BAND_LFO_IDS[index]
-            const lfoOn = (id: ParamId) => {
-              if (!modulate) return false
-              const binding = lfoBinding(snap.fxLfos, id)
-              return Boolean(binding && fxLfoIsActive(binding.lfo))
-            }
-            const mapped = Boolean(ids && (lfoOn(ids.freq) || lfoOn(ids.gain) || lfoOn(ids.q)))
-            const guides = selected && modulate
-              ? eqModulationGuides(
-                  snap.fxLfos,
-                  index,
-                  band,
-                  eqModulationCenter(snap.automation, index, band, snap.transportSec, snap.playing),
-                )
-              : null
-            const freqGuide = guides?.frequency ?? null
-            const gainGuide = guides?.gain && bandUsesGain(band.type) ? guides.gain : null
             const moduleTone = eqTone(eqColorIndex(snap.chain, mod.instanceId), readThemeColors())
             const bandTone = eqBandTone(index, readThemeColors())
-            const freqColor = eqBandColorForHz(band.frequency)
+            const freqColor = eqBandColorForHz(motion.frequencyHz)
             const tone = phoneEq || phoneFocus ? bandTone : moduleTone
             const nodeColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.node
             const curveColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.curve
-            const freqX0 = freqGuide ? freqToX(freqGuide.minHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100 : 0
-            const freqX1 = freqGuide ? freqToX(freqGuide.maxHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100 : 0
-            const gainY0 = gainGuide ? spectrumEqOverlayY(gainGuide.minDb, 0, 100) : 0
-            const gainY1 = gainGuide ? spectrumEqOverlayY(gainGuide.maxDb, 0, 100) : 0
             const nodeY = Math.min(100, Math.max(0, yPct))
-            const focusFrame =
-              phoneFocus && selected
-                ? eqFocusModulationFrame({
-                    x: xPct,
-                    y: nodeY,
-                    freqX: freqGuide ? [freqX0, freqX1] : null,
-                    gainY: gainGuide ? [gainY0, gainY1] : null,
-                  })
-                : null
-            const liveHz = ids ? snap.liveParams[ids.freq] : null
-            const liveDb = ids ? snap.liveParams[ids.gain] : null
-            const liveFreqX = freqGuide && liveHz != null && Number.isFinite(liveHz)
-              ? freqToX(liveHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
+            const showCenter = motion.freqOffset || motion.gainOffset
+            const centerAnchor = showCenter
+              ? eqNodeAnchorBands(liveBands, index, motion.centerHz, motion.centerGainDb, motion.centerQ)
               : null
-            const liveGainY = gainGuide && liveDb != null && Number.isFinite(liveDb)
-              ? spectrumEqOverlayY(liveDb, 0, 100)
-              : null
+            const centerX = showCenter
+              ? freqToX(motion.centerHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
+              : 0
+            const centerY = centerAnchor
+              ? spectrumEqOverlayY(eqNodePlotDb(centerAnchor, motion.centerHz, sr), 0, 100)
+              : 0
             return (
               <Fragment key={eqStripKey(mod.instanceId, band)}>
-              {focusFrame?.kind === 'horizontal' ? (
+              {showCenter ? (
                 <span
-                  className={styles.modRangeH}
-                  data-eq-mod-range="freq"
+                  className={styles.modCenter}
+                  data-eq-center=""
                   aria-hidden="true"
-                  style={{
-                    left: `${focusFrame.left}%`,
-                    width: `${focusFrame.width}%`,
-                    top: `${focusFrame.centerY}%`,
-                  }}
-                />
-              ) : null}
-              {focusFrame?.kind === 'vertical' ? (
-                <span
-                  className={styles.modRangeV}
-                  data-eq-mod-range="gain"
-                  aria-hidden="true"
-                  style={{
-                    left: `${focusFrame.centerX}%`,
-                    top: `${focusFrame.top}%`,
-                    height: `${focusFrame.height}%`,
-                  }}
-                />
-              ) : null}
-              {focusFrame?.kind === 'area' ? (
-                <span
-                  className={styles.modRangeArea}
-                  data-eq-mod-range="both"
-                  aria-hidden="true"
-                  style={{
-                    left: `${focusFrame.left}%`,
-                    width: `${focusFrame.width}%`,
-                    top: `${focusFrame.top}%`,
-                    height: `${focusFrame.height}%`,
-                  }}
-                />
-              ) : null}
-              {!phoneFocus && freqGuide ? (
-                <span
-                  className={styles.modH}
-                  aria-hidden="true"
-                  style={{
-                    left: `${Math.min(freqX0, freqX1)}%`,
-                    width: `${Math.abs(freqX1 - freqX0)}%`,
-                    top: `${nodeY}%`,
-                  }}
-                />
-              ) : null}
-              {!phoneFocus && gainGuide ? (
-                <span
-                  className={styles.modV}
-                  aria-hidden="true"
-                  style={{
-                    left: `${xPct}%`,
-                    top: `${Math.min(gainY0, gainY1)}%`,
-                    height: `${Math.abs(gainY1 - gainY0)}%`,
-                  }}
-                />
-              ) : null}
-              {liveFreqX != null ? (
-                <span
-                  className={styles.modLive}
-                  aria-hidden="true"
-                  style={{ left: `${liveFreqX}%`, top: `${Math.min(100, Math.max(0, yPct))}%` }}
-                />
-              ) : null}
-              {liveGainY != null ? (
-                <span
-                  className={styles.modLive}
-                  aria-hidden="true"
-                  style={{ left: `${xPct}%`, top: `${liveGainY}%` }}
+                  style={{ left: `${centerX}%`, top: `${Math.min(100, Math.max(0, centerY))}%` }}
                 />
               ) : null}
               <button
                 type="button"
-                className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''} ${mapped && !phoneFocus ? styles.nodeLfo : ''}`}
+                data-eq-node=""
+                data-q-live={motion.qLive ? 'true' : 'false'}
+                className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''}`}
                 style={
                   {
                     left: `${xPct}%`,
-                    top: `${Math.min(100, Math.max(0, yPct))}%`,
+                    top: `${nodeY}%`,
                     background: dim ? undefined : nodeColor,
                     borderColor: curveColor,
                     '--eq-curve': curveColor,
@@ -1517,11 +1471,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   } as CSSProperties
                 }
                 title={`${eqName} band ${index + 1} ${band.type}`}
-                aria-label={
-                  phoneFocus
-                    ? `${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)} ${focusEqReadout(band, index).values}`
-                    : `${eqName} band ${index + 1} ${band.type}`
-                }
+                aria-label={`${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)}`}
                 onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
                 onDoubleClick={(event) => event.stopPropagation()}
                 onPointerMove={onNodePointerMove}
@@ -1548,7 +1498,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           })
           })}
         </div>
-        {focusText && focusTone && activeFocusBand && selectedBand ? (
+        {focusText && focusTone && readoutBand && selectedBand && (phoneFocus || showModReadout) ? (
           <div
             className={styles.focusReadout}
             data-eq-readout=""
@@ -1559,7 +1509,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {focusText.title ? <span className={styles.focusTitle}>{focusText.title}</span> : null}
             <span className={styles.focusValues}>
               {focusParts.map((part) => {
-                const paramId = eqFocusModulationParam(selectedBand.index, part.field, activeFocusBand.type, focusShared)
+                const paramId = eqFocusModulationParam(selectedBand.index, part.field, readoutBand.type, focusShared)
                 return (
                   <span
                     key={part.field}

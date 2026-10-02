@@ -45,12 +45,53 @@ export type FocusEqPart = {
   text: string
 }
 
+/** Center versus the current modulated value. Identical strings stay as the center. */
+export function formatSteppedValue(center: string, live: string, changed: boolean): string {
+  if (!changed || live === center) return center
+  return `${center} → ${live}`
+}
+
+export type EqReadoutMotion = {
+  frequencyHz: number
+  gainDb: number
+  q: number
+  centerHz?: number
+  centerGainDb?: number
+  centerQ?: number
+  freqOffset: boolean
+  gainOffset: boolean
+  qLive: boolean
+}
+
 /** The same readout, split so each value can carry its own modulation affordance. */
-export function focusEqParts(band: EqBand, gesture: FocusGesture = 'idle'): FocusEqPart[] {
-  if (gesture === 'q') return [{ field: 'q', text: formatFocusQ(band.q) }]
-  const parts: FocusEqPart[] = [{ field: 'freq', text: formatFocusHz(band.frequency) }]
-  if (bandUsesGain(band.type)) parts.push({ field: 'gain', text: formatFocusDb(band.gain) })
-  parts.push({ field: 'q', text: formatFocusQ(band.q) })
+export function focusEqParts(
+  band: EqBand,
+  gesture: FocusGesture = 'idle',
+  motion: EqReadoutMotion | null = null,
+): FocusEqPart[] {
+  const qText = formatSteppedValue(
+    formatFocusQ(motion?.centerQ ?? band.q),
+    formatFocusQ(motion?.q ?? band.q),
+    Boolean(motion?.qLive),
+  )
+  if (gesture === 'q') return [{ field: 'q', text: qText }]
+  const freqText = formatSteppedValue(
+    formatFocusHz(motion?.centerHz ?? band.frequency),
+    formatFocusHz(motion?.frequencyHz ?? band.frequency),
+    Boolean(motion?.freqOffset),
+  )
+  const parts: FocusEqPart[] = [{ field: 'freq', text: freqText }]
+  if (bandUsesGain(band.type)) {
+    parts.push({
+      field: 'gain',
+      text: formatSteppedValue(
+        formatFocusDb(motion?.centerGainDb ?? band.gain),
+        formatFocusDb(motion?.gainDb ?? band.gain),
+        Boolean(motion?.gainOffset),
+      ),
+    })
+  }
+  parts.push({ field: 'q', text: qText })
   return parts
 }
 
@@ -58,10 +99,11 @@ export function focusEqReadout(
   band: EqBand,
   index: number,
   gesture: FocusGesture = 'idle',
+  motion: EqReadoutMotion | null = null,
 ): { title: string; values: string } {
   return {
     title: gesture === 'q' ? '' : `${focusEqTypeLabel(band.type)} ${index + 1}`,
-    values: focusEqParts(band, gesture)
+    values: focusEqParts(band, gesture, motion)
       .map((part) => part.text)
       .join('  '),
   }

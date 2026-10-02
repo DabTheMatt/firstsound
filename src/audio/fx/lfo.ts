@@ -32,8 +32,26 @@ export type FxLfo = {
   shape: LfoShape
   depth: number
   target: ParamId | null
+  /**
+   * Route bypass. False freezes this LFO at the center without deleting
+   * rate, depth, shape, target, or phase. Omitted means enabled.
+   */
+  enabled?: boolean
   /** Subtracted from the shared LFO clock so a new connection starts at wave zero. */
   phaseOriginSec?: number
+}
+
+export type TransportClock = { sec: number; wallMs: number }
+
+/**
+ * Advance a modulation clock only while `running`.
+ * A pause parks the phase. The next running sample does not swallow the gap
+ * and does not restart from zero.
+ */
+export function stepTransportClock(clock: TransportClock, nowMs: number, running: boolean): TransportClock {
+  if (!running) return { sec: clock.sec, wallMs: 0 }
+  const elapsed = clock.wallMs > 0 ? Math.max(0, nowMs - clock.wallMs) / 1000 : 0
+  return { sec: clock.sec + elapsed, wallMs: nowMs }
 }
 
 export const LFO_SHAPES: { value: LfoShape; label: string }[] = [
@@ -323,6 +341,7 @@ export function defaultFxLfo(): FxLfo {
     shape: 'sine',
     depth: LFO_DEPTH_DEFAULT,
     target: null,
+    enabled: true,
   }
 }
 
@@ -373,6 +392,7 @@ export function parseFxLfo(raw: unknown, kind: FxLfoKind): FxLfo {
   if (typeof rec.rateHz === 'number' && Number.isFinite(rec.rateHz)) next.rateHz = clampLfoRate(rec.rateHz)
   if (isLfoShape(rec.shape)) next.shape = rec.shape
   if (typeof rec.depth === 'number' && Number.isFinite(rec.depth)) next.depth = clampLfoDepth(rec.depth)
+  if (rec.enabled === false) next.enabled = false
   const target = rec.target === 'delayFeedbackR' ? 'delayFeedback' : rec.target
   if (target == null) next.target = null
   else if (typeof target === 'string' && isFxLfoTarget(kind, target as ParamId)) {
@@ -520,7 +540,7 @@ export function defaultLfoHold(): LfoHoldState {
 }
 
 export function fxLfoIsActive(lfo: FxLfo): boolean {
-  return lfo.target != null && lfo.depth > 0
+  return lfo.target != null && lfo.depth > 0 && lfo.enabled !== false
 }
 
 export function anyFxLfoActive(lfos: FxLfoMap): boolean {
@@ -630,7 +650,7 @@ export function applyFxLfos(
     for (let i = 0; i < FX_LFO_SLOTS; i++) {
       const lfo = lfos[kind][i]
       const target = lfo?.target
-      if (!lfo || !target || !isFxLfoTarget(kind, target) || lfo.depth <= 0) continue
+      if (!lfo || !target || !isFxLfoTarget(kind, target) || lfo.depth <= 0 || lfo.enabled === false) continue
       if (claimed.has(target)) continue
       claimed.add(target)
       const slotHold = hold[kind][i] ?? emptyHold()

@@ -504,6 +504,10 @@ export type Messages = {
     more: string
     remove: string
     close: string
+    active: string
+    inactive: string
+    activeAria: string
+    inactiveAria: string
     automationOn: string
     automationOff: string
     addAutomation: string
@@ -1153,6 +1157,10 @@ export const EN: Messages = {
     more: 'More',
     remove: 'Remove',
     close: 'Close',
+    active: 'ACTIVE',
+    inactive: 'INACTIVE',
+    activeAria: 'LFO active',
+    inactiveAria: 'LFO inactive',
     automationOn: 'Automation is also active. Its curve stays separate from the LFO.',
     automationOff: 'No automation on this parameter.',
     addAutomation: 'Add automation',
@@ -1805,6 +1813,10 @@ export const PL: Messages = {
     more: 'Więcej',
     remove: 'Usuń',
     close: 'Zamknij',
+    active: 'AKTYWNE',
+    inactive: 'NIEAKTYWNE',
+    activeAria: 'LFO aktywne',
+    inactiveAria: 'LFO nieaktywne',
     automationOn: 'Automatyzacja też jest aktywna. Jej krzywa zostaje osobno od LFO.',
     automationOff: 'Brak automatyzacji tego parametru.',
     addAutomation: 'Dodaj automatyzację',

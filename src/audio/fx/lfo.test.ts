@@ -9,6 +9,7 @@ import {
   eqBandLfoIds,
   liveEqBandsFromParams,
   eqModuleHasLiveCurve,
+  fxLfoIsActive,
   fxLfoSlotName,
   inspectorPaneForLfo,
   isFxLfoTarget,
@@ -19,6 +20,7 @@ import {
   modulateParam,
   moduleTypeForLfoKind,
   parseFxLfos,
+  stepTransportClock,
 } from './lfo'
 
 describe('lfoWave', () => {
@@ -152,6 +154,54 @@ describe('applyFxLfos', () => {
     const c = applyFxLfos(params, lfos, 1.1, hold, rand)
     expect(a.delayWet).toBe(b.delayWet)
     expect(c.delayWet).not.toBe(a.delayWet)
+  })
+})
+
+describe('stepTransportClock', () => {
+  it('freezes on pause and resumes from the same phase', () => {
+    let clock = stepTransportClock({ sec: 0, wallMs: 0 }, 1000, true)
+    clock = stepTransportClock(clock, 1600, true)
+    expect(clock.sec).toBeCloseTo(0.6)
+    const paused = stepTransportClock(clock, 9000, false)
+    expect(paused.sec).toBeCloseTo(0.6)
+    expect(paused.wallMs).toBe(0)
+    const resumed = stepTransportClock({ sec: paused.sec, wallMs: 10000 }, 11250, true)
+    expect(resumed.sec).toBeCloseTo(1.85)
+  })
+
+  it('does not restart from zero when playback continues', () => {
+    const parked = stepTransportClock({ sec: 2.4, wallMs: 50 }, 5000, false)
+    const next = stepTransportClock({ sec: parked.sec, wallMs: 5000 }, 5000, true)
+    expect(next.sec).toBeCloseTo(2.4)
+  })
+})
+
+describe('fx LFO bypass', () => {
+  it('keeps the route and drops the offset while inactive', () => {
+    const params = defaultParamValues()
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { rateHz: 1, shape: 'sine', depth: 80, target: 'eq1Freq', enabled: false, phaseOriginSec: 0 }
+    lfos.eq2[0] = { rateHz: 1, shape: 'sine', depth: 80, target: 'eq2Gain', enabled: false, phaseOriginSec: 0 }
+    expect(fxLfoIsActive(lfos.eq1[0]!)).toBe(false)
+    const held = applyFxLfos(params, lfos, 0.25, defaultLfoHold())
+    expect(held.eq1Freq).toBe(params.eq1Freq)
+    expect(held.eq2Gain).toBe(params.eq2Gain)
+    lfos.eq1[0]!.enabled = true
+    lfos.eq2[0]!.enabled = true
+    const moving = applyFxLfos(params, lfos, 0.25, defaultLfoHold())
+    expect(moving.eq1Freq).not.toBe(params.eq1Freq)
+    expect(moving.eq2Gain).not.toBe(params.eq2Gain)
+    const again = applyFxLfos(params, lfos, 0.25, defaultLfoHold())
+    expect(again.eq1Freq).toBe(moving.eq1Freq)
+    expect(again.eq2Gain).toBe(moving.eq2Gain)
+  })
+
+  it('remembers an inactive flag from a saved bank', () => {
+    const parsed = parseFxLfos({ eq1: { target: 'eq1Freq', depth: 40, rateHz: 0.5, enabled: false, shape: 'triangle' } })
+    expect(parsed.eq1[0]!.enabled).toBe(false)
+    expect(parsed.eq1[0]!.target).toBe('eq1Freq')
+    expect(parsed.eq1[0]!.depth).toBe(40)
+    expect(parsed.eq1[0]!.shape).toBe('triangle')
   })
 })
 

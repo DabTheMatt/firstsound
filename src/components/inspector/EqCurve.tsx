@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
-import { EQ_MIN_HZ, bandUsesGain, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
-import { EQ_BAND_LFO_IDS } from '../../audio/fx/lfo'
+import { EQ_MIN_HZ, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
+import { liveEqBandsFromParams } from '../../audio/fx/lfo'
 import {
   dbToY,
   eqBandDragPatch,
@@ -20,7 +20,7 @@ import {
   yToDb,
 } from '../../audio/engine/eqPlot'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
-import { eqModulationCenter, eqModulationGuides } from '../modulation/modulationModel'
+import { eqNodeAnchorBands, eqNodeMotion } from '../modulation/modulationModel'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -69,6 +69,7 @@ export function EqCurve({
     q0: number
     y0: number
   } | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -131,7 +132,8 @@ export function EqCurve({
       ctx.stroke()
       const live = engine.getSnapshot()
       const plotMax = spectrumMaxHz(live.sampleRate || sr)
-      const plotBands = comb ? [...bands, ...combAsEqBands(comb)] : bands
+      const shaped = modulate ? liveEqBandsFromParams(bands, live.liveParams) : bands
+      const plotBands = comb ? [...shaped, ...combAsEqBands(comb)] : shaped
       const freqs = displayFrequencies(responseSampleCount(width), EQ_MIN_HZ, plotMax, 'log')
       const tone = eqTone(toneIndex, colors)
       const plot = { left: 0, right: width, top: 0, bottom: height }
@@ -179,6 +181,7 @@ export function EqCurve({
     onSelectBand?.(index)
     onInteract?.()
     event.currentTarget.setPointerCapture(event.pointerId)
+    setDragIndex(index)
     drag.current = {
       index,
       pointerId: event.pointerId,
@@ -193,6 +196,7 @@ export function EqCurve({
     if (!d || d.pointerId !== event.pointerId || !wrap) return
     if (!isPrimaryPointerHeld(event)) {
       drag.current = null
+      setDragIndex(null)
       return
     }
     const rect = wrap.getBoundingClientRect()
@@ -207,7 +211,10 @@ export function EqCurve({
   }
 
   const onNodePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (drag.current?.pointerId === event.pointerId) drag.current = null
+    if (drag.current?.pointerId === event.pointerId) {
+      drag.current = null
+      setDragIndex(null)
+    }
     try {
       event.currentTarget.releasePointerCapture(event.pointerId)
     } catch {
@@ -221,59 +228,47 @@ export function EqCurve({
       {bands.map((band, index) => {
         if (band.type === 'off') return null
         const plotMax = spectrumMaxHz(sr)
-        const xPct = freqToX(band.frequency, 1, plotMax) * 100
-        const yPct = dbToY(eqNodePlotDb(bands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
-        const selected = index === selectedBand
         const snap = engine.getSnapshot()
-        const guides = selected && modulate
-          ? eqModulationGuides(
-              snap.fxLfos,
-              index,
-              band,
-              eqModulationCenter(snap.automation, index, band, snap.transportSec, snap.playing),
-            )
-          : null
-        const freqGuide = guides?.frequency
-        const gainGuide = guides?.gain && bandUsesGain(band.type) ? guides.gain : null
+        const motion = eqNodeMotion({
+          band,
+          index,
+          lfos: snap.fxLfos,
+          automation: snap.automation,
+          live: snap.liveParams,
+          timeSec: snap.transportSec,
+          playing: snap.playing,
+          dragging: dragIndex === index,
+          modulate,
+        })
+        const liveBands = modulate ? liveEqBandsFromParams(bands, snap.liveParams) : bands
+        const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
+        const xPct = freqToX(motion.frequencyHz, 1, plotMax) * 100
+        const yPct = dbToY(eqNodePlotDb(anchor, motion.frequencyHz, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
+        const selected = index === selectedBand
         const colors = readThemeColors()
         const tone = eqTone(toneIndex, colors)
-        const freqX0 = freqGuide ? freqToX(freqGuide.minHz, 1, plotMax) * 100 : 0
-        const freqX1 = freqGuide ? freqToX(freqGuide.maxHz, 1, plotMax) * 100 : 0
-        const gainY0 = gainGuide ? dbToY(gainGuide.minDb, 1) * 100 : 0
-        const gainY1 = gainGuide ? dbToY(gainGuide.maxDb, 1) * 100 : 0
-        const ids = EQ_BAND_LFO_IDS[index]
-        const liveHz = ids ? snap.liveParams[ids.freq] : null
-        const liveDb = ids ? snap.liveParams[ids.gain] : null
-        const liveFreqX = freqGuide && liveHz != null && Number.isFinite(liveHz) ? freqToX(liveHz, 1, plotMax) * 100 : null
-        const liveGainY = gainGuide && liveDb != null && Number.isFinite(liveDb) ? dbToY(liveDb, 1) * 100 : null
+        const showCenter = motion.freqOffset || motion.gainOffset
+        const centerAnchor = showCenter
+          ? eqNodeAnchorBands(liveBands, index, motion.centerHz, motion.centerGainDb, motion.centerQ)
+          : null
+        const centerX = showCenter ? freqToX(motion.centerHz, 1, plotMax) * 100 : 0
+        const centerY = centerAnchor
+          ? dbToY(eqNodePlotDb(centerAnchor, motion.centerHz, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
+          : 0
         return (
           <Fragment key={eqStripKey('curve', band)}>
-          {freqGuide ? (
+          {showCenter ? (
             <span
-              className={styles.modH}
+              className={styles.modCenter}
+              data-eq-center=""
               aria-hidden="true"
-              style={{ left: `${Math.min(freqX0, freqX1)}%`, width: `${Math.abs(freqX1 - freqX0)}%`, top: `${yPct}%` }}
+              style={{ left: `${centerX}%`, top: `${centerY}%` }}
             />
-          ) : null}
-          {gainGuide ? (
-            <span
-              className={styles.modV}
-              aria-hidden="true"
-              style={{
-                left: `${xPct}%`,
-                top: `${Math.min(gainY0, gainY1)}%`,
-                height: `${Math.abs(gainY1 - gainY0)}%`,
-              }}
-            />
-          ) : null}
-          {liveFreqX != null ? (
-            <span className={styles.modLive} aria-hidden="true" style={{ left: `${liveFreqX}%`, top: `${yPct}%` }} />
-          ) : null}
-          {liveGainY != null ? (
-            <span className={styles.modLive} aria-hidden="true" style={{ left: `${xPct}%`, top: `${liveGainY}%` }} />
           ) : null}
           <button
             type="button"
+            data-eq-node=""
+            data-q-live={motion.qLive ? 'true' : 'false'}
             className={`${styles.node} ${touch ? styles.nodeTouch : ''} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
             style={{
               left: `${xPct}%`,

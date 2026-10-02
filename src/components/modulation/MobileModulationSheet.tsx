@@ -13,7 +13,7 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
 import { classifyGesture } from '../mobile/gestureIntent'
-import { connectParameterLfo, removeParameterLfo, setParameterLfoPrimary } from './modulationActions'
+import { connectParameterLfo, removeParameterLfo, setParameterLfoEnabled, setParameterLfoPrimary } from './modulationActions'
 import { formatModulationDepth, parameterModulationState } from './modulationModel'
 import styles from './Modulation.module.css'
 
@@ -99,6 +99,15 @@ export function MobileModulationSheet({ id, label, onClose }: Props) {
         </header>
         {connected && lfo ? (
           <div className={styles.sheetPrimary}>
+            <button
+              type="button"
+              className={styles.statusToggle}
+              aria-pressed={lfo.enabled !== false}
+              aria-label={lfo.enabled !== false ? t.modulation.activeAria : t.modulation.inactiveAria}
+              onClick={() => setParameterLfoEnabled(engine, id, lfo.enabled === false)}
+            >
+              {lfo.enabled !== false ? t.modulation.active : t.modulation.inactive}
+            </button>
             <SheetSlider
               label={t.modulation.rate}
               valueText={rateText}

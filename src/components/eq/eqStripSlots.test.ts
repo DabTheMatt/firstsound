@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EQ_FILTER_TYPES, type EqFilterType } from '../../audio/engine/eqBands'
-import { EQ_STRIP_SLOT_COUNT, eqStripParamSlots } from './eqStripSlots'
+import { EQ_STRIP_SLOT_COUNT, eqStripParamSlots, eqStripVisibleSlots } from './eqStripSlots'
 
 describe('eqStripParamSlots', () => {
   it('keeps three rows for every filter type', () => {
@@ -22,5 +22,12 @@ describe('eqStripParamSlots', () => {
     expectSlots('highshelf', 'gain', 'q')
     expectSlots('lowpass', 'slope', 'q')
     expectSlots('highpass', 'slope', 'q')
+  })
+
+  it('drops empty rows so fewer controls stay a compact group', () => {
+    expect(eqStripVisibleSlots('peaking')).toEqual(['freq', 'gain', 'q'])
+    expect(eqStripVisibleSlots('lowpass')).toEqual(['freq', 'slope', 'q'])
+    expect(eqStripVisibleSlots('notch')).toEqual(['freq', 'width'])
+    expect(eqStripVisibleSlots('bandpass')).toEqual(['freq', 'width'])
   })
 })

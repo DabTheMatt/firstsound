@@ -3,11 +3,12 @@ import { describe, expect, it, afterEach } from 'vitest'
 import { AudioEngine } from '../../audio/engine/AudioEngine'
 import { defaultAutomation, ensureAutomationLane } from '../../audio/automation/automation'
 import { defaultFxLfos, LFO_DEPTH_DEFAULT } from '../../audio/fx/lfo'
-import { PARAMS } from '../../audio/parameters/definitions'
+import { defaultParamValues, PARAMS } from '../../audio/parameters/definitions'
 import { toNormalized } from '../../audio/parameters/mapping'
 import {
   connectParameterLfo,
   removeParameterLfo,
+  setParameterLfoEnabled,
   setParameterLfoPrimary,
 } from './modulationActions'
 import {
@@ -26,6 +27,7 @@ import {
   eqFocusModulationParam,
   eqModulationCenter,
   eqModulationGuides,
+  eqNodeMotion,
   eqModulationParamId,
   liveControlNormalized,
   widthModulationRange,
@@ -336,5 +338,85 @@ describe('parameter modulation actions', () => {
     expect(engine.getSnapshot().fxLfos.filter[1]!.target).toBe('filterReso')
     expect(engine.getSnapshot().fxLfos.filter[1]!.depth).toBe(12)
     expect(engine.getSnapshot().automation.lanes).toEqual([])
+  })
+
+  it('bypasses an LFO without deleting its route and resumes the same slot', () => {
+    stubLfoClock()
+    const engine = new AudioEngine()
+    expect(connectParameterLfo(engine, 'eq1Gain')).toBe(true)
+    setParameterLfoPrimary(engine, 'eq1Gain', { rateHz: 0.8, depth: 22, shape: 'saw' })
+    setParameterLfoEnabled(engine, 'eq1Gain', false)
+    const parked = engine.getSnapshot().fxLfos.eq1.find((slot) => slot.target === 'eq1Gain')
+    expect(parked?.enabled).toBe(false)
+    expect(parked?.rateHz).toBe(0.8)
+    expect(parked?.depth).toBe(22)
+    expect(parked?.shape).toBe('saw')
+    expect(parked?.target).toBe('eq1Gain')
+    setParameterLfoEnabled(engine, 'eq1Gain', true)
+    const resumed = engine.getSnapshot().fxLfos.eq1.find((slot) => slot.target === 'eq1Gain')
+    expect(resumed?.enabled).not.toBe(false)
+    expect(resumed?.depth).toBe(22)
+    expect(resumed?.shape).toBe('saw')
+    removeParameterLfo(engine, 'eq1Gain')
+    expect(engine.getSnapshot().fxLfos.eq1.every((slot) => slot.target !== 'eq1Gain')).toBe(true)
+  })
+})
+
+describe('eq node motion', () => {
+  const band = { type: 'peaking' as const, frequency: 1000, gain: 4, q: 0.7 }
+  const base = {
+    band,
+    index: 0,
+    automation: defaultAutomation(),
+    timeSec: 0,
+    playing: false,
+    dragging: false,
+    modulate: true,
+  }
+
+  it('moves frequency and gain from the live DSP value and leaves Q off the node', () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { ...lfos.eq1[0]!, target: 'eq1Freq', depth: 30, enabled: true }
+    lfos.eq1[1] = { ...lfos.eq1[1]!, target: 'eq1Gain', depth: 30, enabled: true }
+    lfos.eq1[2] = { ...lfos.eq1[2]!, target: 'eq1Q', depth: 40, enabled: true }
+    const live = { ...defaultParamValues(), eq1Freq: 1480, eq1Gain: 6.5, eq1Q: 1.4 }
+    const motion = eqNodeMotion({ ...base, lfos, live })
+    expect(motion.frequencyHz).toBe(1480)
+    expect(motion.gainDb).toBe(6.5)
+    expect(motion.q).toBe(0.7)
+    expect(motion.heardQ).toBe(1.4)
+    expect(motion.freqOffset).toBe(true)
+    expect(motion.gainOffset).toBe(true)
+    expect(motion.qLive).toBe(true)
+    expect(motion.centerHz).toBe(1000)
+    expect(motion.centerGainDb).toBe(4)
+  })
+
+  it('stays on the center when the LFO is inactive or the node is being dragged', () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { ...lfos.eq1[0]!, target: 'eq1Freq', depth: 30, enabled: false }
+    const live = { ...defaultParamValues(), eq1Freq: 1800, eq1Gain: 4, eq1Q: 0.7 }
+    const inactive = eqNodeMotion({ ...base, lfos, live })
+    expect(inactive.frequencyHz).toBe(1000)
+    expect(inactive.freqOffset).toBe(false)
+    lfos.eq1[0]!.enabled = true
+    const dragging = eqNodeMotion({ ...base, lfos, live, dragging: true })
+    expect(dragging.frequencyHz).toBe(1000)
+    expect(dragging.freqOffset).toBe(false)
+  })
+
+  it('does not invent gain motion for a filter without gain', () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { ...lfos.eq1[0]!, target: 'eq1Gain', depth: 30, enabled: true }
+    const live = { ...defaultParamValues(), eq1Freq: 1000, eq1Gain: 9, eq1Q: 0.7 }
+    const motion = eqNodeMotion({
+      ...base,
+      band: { ...band, type: 'lowpass' },
+      lfos,
+      live,
+    })
+    expect(motion.gainDb).toBe(4)
+    expect(motion.gainOffset).toBe(false)
+    expect(motion.frequencyHz).toBe(1000)
   })
 })

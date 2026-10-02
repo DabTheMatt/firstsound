@@ -51,6 +51,7 @@ import {
   isFxLfoTarget,
   lfoShownFromMap,
   parseFxLfos,
+  stepTransportClock,
   type FxLfo,
   type FxLfoKind,
   type FxLfoMap,
@@ -569,6 +570,9 @@ export class AudioEngine {
   private lfoClockSec = 0
   private lastTransportSec = 0
   private lfoWallMs = 0
+  /** Filter ADS keeps the pre-existing free-running clock. FX LFOs do not. */
+  private filterClockSec = 0
+  private filterWallMs = 0
   private lfoShown: Record<FxLfoKind, number> = defaultLfoShown()
   private reverbIrKey = ''
   private reverbIrTimer = 0
@@ -983,9 +987,11 @@ export class AudioEngine {
     if (this.audioStatus === 'blocked') return
     this.stopVoices()
     this.playing = true
-    this.lfoWallMs = typeof performance !== 'undefined' ? performance.now() : 0
+    const started = typeof performance !== 'undefined' ? performance.now() : 0
+    this.lfoWallMs = started
+    this.filterWallMs = started
     this.syncLfoClock()
-    this.filterEnvOrigin = this.lfoClockSec
+    this.filterEnvOrigin = this.filterClockSec
     this.filterFollower = 0
     if (this.spaceLatched) this.spaceLatched = false
     if (this.noiseMuted) this.noiseMuted = false
@@ -1019,6 +1025,7 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.lfoWallMs = 0
+    this.filterWallMs = 0
     this.syncLfoClock()
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
@@ -1041,6 +1048,7 @@ export class AudioEngine {
     this.stopVoices()
     this.playing = false
     this.lfoWallMs = 0
+    this.filterWallMs = 0
     this.syncLfoClock()
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
     this.noiseMuted = true
@@ -2241,7 +2249,7 @@ export class AudioEngine {
     this.playOffset = head
     this.playCtxTime = this.ctx.currentTime
     this.stretchHead = head
-    this.filterEnvOrigin = this.lfoClockSec
+    this.filterEnvOrigin = this.filterClockSec
     this.stopVoices()
     this.startRegionPlayback(stretchSeed)
     this.startCompanionVoices()
@@ -2372,6 +2380,8 @@ export class AudioEngine {
     this.lfoShown = defaultLfoShown()
     this.lfoClockSec = 0
     this.lfoWallMs = 0
+    this.filterClockSec = 0
+    this.filterWallMs = 0
     this.reverbIrKey = ''
     this.eqById = new Map()
     this.eqBands = defaultEqBands()
@@ -4255,15 +4265,28 @@ export class AudioEngine {
     }
   }
 
-  private lfoTime(): number {
+  /**
+   * FX LFO phase follows transport: it advances only while playing.
+   * Pause parks the phase. Play continues. Stop does not zero it.
+   * Filter ADS uses its own clock so a paused LFO does not freeze that envelope.
+   */
+  private stepClocks(): { lfoSec: number; filterSec: number } {
     const now = typeof performance !== 'undefined' ? performance.now() : 0
-    if (anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params) || this.playing) {
-      if (this.lfoWallMs > 0) this.lfoClockSec += (now - this.lfoWallMs) / 1000
-      this.lfoWallMs = now
-    } else {
-      this.lfoWallMs = 0
-    }
-    return this.lfoClockSec
+    const lfo = stepTransportClock({ sec: this.lfoClockSec, wallMs: this.lfoWallMs }, now, this.playing)
+    this.lfoClockSec = lfo.sec
+    this.lfoWallMs = lfo.wallMs
+    const filter = stepTransportClock(
+      { sec: this.filterClockSec, wallMs: this.filterWallMs },
+      now,
+      this.playing || filterModNeedsClock(this.params),
+    )
+    this.filterClockSec = filter.sec
+    this.filterWallMs = filter.wallMs
+    return { lfoSec: lfo.sec, filterSec: filter.sec }
+  }
+
+  private lfoTime(): number {
+    return this.stepClocks().lfoSec
   }
 
   private liveParams(): Record<ParamId, number> {
@@ -4274,6 +4297,7 @@ export class AudioEngine {
     // Stored speed keeps this clock independent of the value automation writes.
     const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
     this.lastTransportSec = transport
+    const clocks = this.stepClocks()
     const primaryId = this.chain.find((mod) => mod.type === 'eq')?.instanceId
     const primaryBands = primaryId ? this.eqById.get(primaryId) : undefined
     const manual = primaryBands
@@ -4285,11 +4309,11 @@ export class AudioEngine {
       transport,
       this.playing,
       this.fxLfos,
-      this.lfoTime(),
+      clocks.lfoSec,
       this.lfoHold,
     )
     return applyFilterModulation(performed, {
-      timeSec: this.lfoTime(),
+      timeSec: clocks.filterSec,
       playing: this.playing,
       envOriginSec: this.filterEnvOrigin,
       follower01: this.filterFollower,
@@ -4314,15 +4338,17 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const modulators = anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)
+    const lfoRunning = this.playing && anyFxLfoActive(this.fxLfos)
+    const filterRunning = filterModNeedsClock(this.params)
     const automation = this.playing && automationHasNodes(this.automation)
-    const active = modulators || automation
+    const active = lfoRunning || filterRunning || automation
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.028)
         // Automation-only ticks stay off the React snapshot. The playhead is drawn
         // from getPlayheadSeconds on its own frame, not from an audio-rate emit.
-        if (anyFxLfoActive(this.fxLfos) || filterModNeedsClock(this.params)) this.emit()
+        // A paused transport does not keep the FX LFO interval alive.
+        if ((this.playing && anyFxLfoActive(this.fxLfos)) || filterModNeedsClock(this.params)) this.emit()
       }, 16)
     }
     if (!active && this.lfoTimer) {
@@ -4621,7 +4647,7 @@ export class AudioEngine {
         this.loop &&
         Math.abs(step.segment.offset - this.loopRegionStart) < 0.0001 &&
         this.voices.length > 0
-      if (loopRestart) this.filterEnvOrigin = this.lfoClockSec
+      if (loopRestart) this.filterEnvOrigin = this.filterClockSec
       const voice = this.spawnSegment(this.loopBuffer, this.voiceBus, step.segment, fromRel, this.loopSpan, this.loopPing)
       if (!voice) break
       this.voices.push(voice)

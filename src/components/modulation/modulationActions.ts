@@ -68,3 +68,13 @@ export function setParameterLfoPrimary(
   if (!binding) return
   host.setFxLfo(binding.kind, binding.slot, patch)
 }
+
+/**
+ * Bypass or resume the LFO already routed to this parameter.
+ * Rate, depth, shape, target, and phase stay where they are.
+ */
+export function setParameterLfoEnabled(host: ModulationHost, id: ParamId, enabled: boolean): void {
+  const binding = lfoBinding(host.getSnapshot().fxLfos, id)
+  if (!binding) return
+  host.setFxLfo(binding.kind, binding.slot, { enabled })
+}

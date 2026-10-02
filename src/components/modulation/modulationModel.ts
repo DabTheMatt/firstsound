@@ -313,3 +313,91 @@ export function liveWidthNormalized(frequency: number, liveQ: number | undefined
   if (liveQ == null || !Number.isFinite(liveQ)) return undefined
   return widthNorm(bandwidthHz(frequency, liveQ))
 }
+
+export type EqNodeMotion = {
+  /** Horizontal position. Logarithmic mapping stays with the graph. */
+  frequencyHz: number
+  /** Vertical gain used when the filter exposes gain. */
+  gainDb: number
+  /** Q used to place the node. Stays at the center so Q does not invent XY motion. */
+  q: number
+  /** Q the response should hear. */
+  heardQ: number
+  centerHz: number
+  centerGainDb: number
+  centerQ: number
+  freqOffset: boolean
+  gainOffset: boolean
+  qLive: boolean
+}
+
+const FREQ_OFFSET_RATIO = 0.002
+const GAIN_OFFSET_DB = 0.05
+const Q_OFFSET = 0.01
+
+function lfoAxisLive(lfos: FxLfoMap, id: ParamId | undefined, allow: boolean): boolean {
+  if (!allow || !id) return false
+  const binding = lfoBinding(lfos, id)
+  return Boolean(binding && fxLfoIsActive(binding.lfo))
+}
+
+function finiteOr(value: number | undefined, fallback: number): number {
+  return value != null && Number.isFinite(value) ? value : fallback
+}
+
+/**
+ * Where the colored EQ node sits.
+ * Frequency and gain come from the current DSP value. Q changes the response, not the node.
+ * A drag writes the center, so the node follows the pointer instead of fighting the LFO.
+ */
+export function eqNodeMotion(input: {
+  band: { type: EqFilterType; frequency: number; gain: number; q: number }
+  index: number
+  lfos: FxLfoMap
+  automation: AutomationDocument
+  live: Record<ParamId, number> | null
+  timeSec: number
+  playing: boolean
+  dragging: boolean
+  modulate: boolean
+}): EqNodeMotion {
+  const center = eqModulationCenter(input.automation, input.index, input.band, input.timeSec, input.playing)
+  const ids = EQ_BAND_LFO_IDS[input.index]
+  const allow = input.modulate && !input.dragging
+  const freqOn = lfoAxisLive(input.lfos, ids?.freq, allow)
+  const gainOn = lfoAxisLive(input.lfos, ids?.gain, allow) && bandUsesGain(input.band.type)
+  const qOn = lfoAxisLive(input.lfos, ids?.q, allow)
+  const frequencyHz = freqOn ? finiteOr(ids ? input.live?.[ids.freq] : undefined, center.frequency) : center.frequency
+  const gainDb = gainOn ? finiteOr(ids ? input.live?.[ids.gain] : undefined, center.gain) : center.gain
+  const heardQ = qOn ? finiteOr(ids ? input.live?.[ids.q] : undefined, input.band.q) : input.band.q
+  const freqOffset =
+    freqOn &&
+    center.frequency > 0 &&
+    frequencyHz > 0 &&
+    Math.abs(Math.log(frequencyHz) - Math.log(center.frequency)) > FREQ_OFFSET_RATIO
+  const gainOffset = gainOn && Math.abs(gainDb - center.gain) > GAIN_OFFSET_DB
+  const qLive = qOn && Math.abs(heardQ - input.band.q) > Q_OFFSET
+  return {
+    frequencyHz,
+    gainDb,
+    q: input.band.q,
+    heardQ,
+    centerHz: center.frequency,
+    centerGainDb: center.gain,
+    centerQ: input.band.q,
+    freqOffset,
+    gainOffset,
+    qLive,
+  }
+}
+
+/** Bands used to seat one node on the curve without letting its own Q slide it. */
+export function eqNodeAnchorBands<T extends { frequency: number; gain: number; q: number }>(
+  bands: readonly T[],
+  index: number,
+  frequency: number,
+  gain: number,
+  q: number,
+): T[] {
+  return bands.map((band, i) => (i === index ? { ...band, frequency, gain, q } : band))
+}

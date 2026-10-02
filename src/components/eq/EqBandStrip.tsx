@@ -27,8 +27,7 @@ import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import { eqStripAccentVars } from './eqBandStyle'
-import { eqStripParamSlots, type EqStripSlot } from './eqStripSlots'
-import knobStyles from '../controls/Knob.module.css'
+import { eqStripVisibleSlots, type EqStripSlot } from './eqStripSlots'
 import styles from './EqConsole.module.css'
 
 type Props = {
@@ -100,8 +99,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
         />
       </div>
       <div className={styles.params} data-eq-params="">
-        {eqStripParamSlots(band.type).map((slot, slotIndex) => (
-          <KnobSlotFrame key={`${slotIndex}-${slot}`} slot={slot}>
+        {eqStripVisibleSlots(band.type).map((slot) => (
+          <KnobSlotFrame key={slot} slot={slot}>
             {slot === 'freq' ? (
               <ParamSlot id={ids?.freq} afford={modulate}>
                 <ValueKnob
@@ -235,15 +234,7 @@ function PowerMark() {
 function KnobSlotFrame({ slot, children }: { slot: EqStripSlot; children?: ReactNode }) {
   return (
     <div className={styles.paramSlot} data-eq-slot={slot}>
-      <div className={styles.knobSpacer} aria-hidden="true">
-        <div className={`${knobStyles.knob} ${knobStyles.compact}`}>
-          <p className={knobStyles.label}>Q</p>
-          <div className={knobStyles.dial} />
-          <p className={knobStyles.baseValue}>0.00</p>
-          <p className={knobStyles.value}>0.00</p>
-        </div>
-      </div>
-      {children ? <div className={styles.paramControl}>{children}</div> : null}
+      {children}
     </div>
   )
 }

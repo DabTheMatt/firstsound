@@ -73,6 +73,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  align-self: flex-start;
   justify-content: flex-start;
   gap: 4px;
   flex: 0 0 116px;
@@ -252,9 +253,12 @@
 .params {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
   width: 100%;
-  flex: none;
+  flex: 0 0 auto;
+  height: auto;
 }
 
 .params > * {
@@ -263,30 +267,12 @@
 }
 
 .paramSlot {
-  display: grid;
-  align-items: start;
-  justify-items: stretch;
-  width: 100%;
-  min-width: 0;
-}
-
-.knobSpacer,
-.paramControl {
-  grid-area: 1 / 1;
-  width: 100%;
-  min-width: 0;
-}
-
-.knobSpacer {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.paramControl {
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  width: 100%;
   min-width: 0;
+  flex: 0 0 auto;
   height: auto;
 }
 

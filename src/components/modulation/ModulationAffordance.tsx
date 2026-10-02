@@ -30,6 +30,7 @@ import { lockModulationGesture, type ModulationPress } from '../mobile/gestureIn
 import {
   connectParameterLfo,
   removeParameterLfo,
+  setParameterLfoEnabled,
   setParameterLfoPrimary,
 } from './modulationActions'
 import {
@@ -163,7 +164,6 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
         kind={kind}
         snap={snap}
         lfo={lfo}
-        lfoActive={state.lfoActive}
         lfoConnected={state.isLfoConnected}
         automationActive={state.automationActive}
         onClose={closeEditor}
@@ -206,7 +206,6 @@ function ModulationEditorSession({
   kind,
   snap,
   lfo,
-  lfoActive,
   lfoConnected,
   automationActive,
   onClose,
@@ -217,7 +216,6 @@ function ModulationEditorSession({
   kind: FxLfoKind | null
   snap: EngineSnapshot
   lfo: FxLfo | null
-  lfoActive: boolean
   lfoConnected: boolean
   automationActive: boolean
   onClose: () => void
@@ -282,7 +280,6 @@ function ModulationEditorSession({
       top={box.top}
       left={box.left}
       shownSource={shownSource}
-      lfoActive={lfoActive}
       lfoConnected={lfoConnected}
       automationActive={automationActive}
       lfo={lfo}
@@ -300,6 +297,7 @@ function ModulationEditorSession({
       onRate={(hz) => setParameterLfoPrimary(engine, id, { rateHz: hz })}
       onDepth={(depth) => setParameterLfoPrimary(engine, id, { depth })}
       onShape={(shape) => setParameterLfoPrimary(engine, id, { shape })}
+      onToggleEnabled={() => setParameterLfoEnabled(engine, id, lfo?.enabled === false)}
       advanced={advanced}
       onToggleAdvanced={() => setAdvanced((value) => !value)}
       onRemove={() => removeParameterLfo(engine, id)}
@@ -315,7 +313,6 @@ function ModulatePanel({
   top,
   left,
   shownSource,
-  lfoActive,
   lfoConnected,
   automationActive,
   lfo,
@@ -327,6 +324,7 @@ function ModulatePanel({
   onRate,
   onDepth,
   onShape,
+  onToggleEnabled,
   advanced,
   onToggleAdvanced,
   onRemove,
@@ -337,7 +335,6 @@ function ModulatePanel({
   top: number
   left: number
   shownSource: ModulationSourceId | null
-  lfoActive: boolean
   lfoConnected: boolean
   automationActive: boolean
   lfo: FxLfo | null
@@ -349,13 +346,16 @@ function ModulatePanel({
   onRate: (hz: number) => void
   onDepth: (depth: number) => void
   onShape: (shape: LfoShape) => void
+  onToggleEnabled: () => void
   advanced: boolean
   onToggleAdvanced: () => void
   onRemove: () => void
 }) {
+  const { t } = useI18n()
   const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
   const depth = lfo?.depth ?? 0
   const rateText = `${rateHz < 10 ? rateHz.toFixed(2) : rateHz.toFixed(1)} Hz`
+  const lfoEnabled = lfoConnected && lfo?.enabled !== false
   return (
     <div
       ref={panelRef}
@@ -370,16 +370,28 @@ function ModulatePanel({
         Modulate {label}
       </h2>
       <div className={styles.sources}>
-        <button
-          type="button"
-          className={styles.source}
-          aria-pressed={shownSource === 'lfo'}
-          aria-label={lfoActive ? 'LFO, active' : lfoConnected ? 'LFO, connected' : 'LFO'}
-          onClick={onChooseLfo}
-        >
-          <span>LFO</span>
-          {lfoActive ? <span className={styles.status}>Active</span> : null}
-        </button>
+        <div className={styles.source} data-selected={shownSource === 'lfo' ? 'true' : 'false'}>
+          <button
+            type="button"
+            className={styles.sourcePick}
+            aria-pressed={shownSource === 'lfo'}
+            aria-label={lfoConnected ? 'LFO, connected' : 'LFO'}
+            onClick={onChooseLfo}
+          >
+            LFO
+          </button>
+          {lfoConnected ? (
+            <button
+              type="button"
+              className={styles.statusToggle}
+              aria-pressed={lfoEnabled}
+              aria-label={lfoEnabled ? t.modulation.activeAria : t.modulation.inactiveAria}
+              onClick={onToggleEnabled}
+            >
+              {lfoEnabled ? t.modulation.active : t.modulation.inactive}
+            </button>
+          ) : null}
+        </div>
         <button
           type="button"
           className={styles.source}
