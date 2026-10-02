@@ -1,5 +1,5 @@
-import { laneFor, type AutomationDocument } from '../../audio/automation/automation'
-import { bandUsesGain, type EqFilterType } from '../../audio/engine/eqBands'
+import { envelopeToParam, laneFor, sampleEnvelope, type AutomationDocument } from '../../audio/automation/automation'
+import { bandUsesGain, bandwidthHz, type EqFilterType } from '../../audio/engine/eqBands'
 import {
   EQ_BAND_LFO_IDS,
   eqBandLfoIds,
@@ -223,18 +223,93 @@ export type EqModulationGuides = {
   gain: { minDb: number; maxDb: number } | null
 }
 
+/**
+ * Automation replaces the manual center only while transport is running.
+ * Stopped playback keeps the stored value, matching resolvePerformanceParams.
+ */
+export function automatedParamValue(
+  automation: AutomationDocument,
+  id: ParamId,
+  manual: number,
+  timeSec: number,
+  playing: boolean,
+): number {
+  if (!playing) return manual
+  const lane = laneFor(automation, id)
+  if (!lane || lane.nodes.length === 0) return manual
+  const normalized = sampleEnvelope(lane.nodes, timeSec)
+  if (normalized == null) return manual
+  return envelopeToParam(id, normalized)
+}
+
+/** EQ guide center: stored band, or the automated value while playing. */
+export function eqModulationCenter(
+  automation: AutomationDocument,
+  index: number,
+  band: { frequency: number; gain: number },
+  timeSec: number,
+  playing: boolean,
+): { frequency: number; gain: number } {
+  const pair = EQ_BAND_LFO_IDS[index]
+  if (!pair) return { frequency: band.frequency, gain: band.gain }
+  return {
+    frequency: automatedParamValue(automation, pair.freq, band.frequency, timeSec, playing),
+    gain: automatedParamValue(automation, pair.gain, band.gain, timeSec, playing),
+  }
+}
+
 /** Selected-node guides. Frequency is horizontal, gain is vertical. Q stays off the graph. */
 export function eqModulationGuides(
   lfos: FxLfoMap,
   index: number,
   band: { frequency: number; gain: number },
+  center?: { frequency: number; gain: number },
 ): EqModulationGuides {
   const pair = EQ_BAND_LFO_IDS[index]
   if (!pair) return { frequency: null, gain: null }
-  const frequency = activeLfoSpan(lfos, pair.freq, band.frequency)
-  const gain = activeLfoSpan(lfos, pair.gain, band.gain)
+  const frequency = activeLfoSpan(lfos, pair.freq, center?.frequency ?? band.frequency)
+  const gain = activeLfoSpan(lfos, pair.gain, center?.gain ?? band.gain)
   return {
     frequency: frequency ? { minHz: frequency.min, maxHz: frequency.max } : null,
     gain: gain ? { minDb: gain.min, maxDb: gain.max } : null,
   }
+}
+
+/** Normalized live position for a knob or slider. Omitted unless the LFO is actually moving DSP. */
+export function liveControlNormalized(live: number | undefined, id: ParamId, active: boolean): number | undefined {
+  if (!active || live == null || !Number.isFinite(live)) return undefined
+  return toNormalized(live, PARAMS[id])
+}
+
+const WIDTH_MIN_HZ = 10
+const WIDTH_MAX_HZ = 10000
+
+/** Bandwidth knob space. Matches the EQ width dial (10 Hz … 10 kHz, logarithmic). */
+export function widthNorm(hz: number): number {
+  const min = Math.log(WIDTH_MIN_HZ)
+  const max = Math.log(WIDTH_MAX_HZ)
+  const clamped = Math.min(WIDTH_MAX_HZ, Math.max(WIDTH_MIN_HZ, hz))
+  return (Math.log(clamped) - min) / (max - min)
+}
+
+/**
+ * Q modulation drawn in width-knob space.
+ * The arc ends are the DSP Q extremes converted through bandwidth, not a Q-normalized arc pasted onto the width dial.
+ */
+export function widthModulationRange(
+  lfos: FxLfoMap,
+  id: ParamId,
+  frequency: number,
+  q: number,
+): { min: number; max: number } | undefined {
+  const span = activeLfoSpan(lfos, id, q)
+  if (!span) return undefined
+  const low = widthNorm(bandwidthHz(frequency, span.max))
+  const high = widthNorm(bandwidthHz(frequency, span.min))
+  return { min: Math.min(low, high), max: Math.max(low, high) }
+}
+
+export function liveWidthNormalized(frequency: number, liveQ: number | undefined): number | undefined {
+  if (liveQ == null || !Number.isFinite(liveQ)) return undefined
+  return widthNorm(bandwidthHz(frequency, liveQ))
 }

@@ -24,8 +24,11 @@ import {
   automationFocusLfoCue,
   eqFocusModulationFrame,
   eqFocusModulationParam,
+  eqModulationCenter,
   eqModulationGuides,
   eqModulationParamId,
+  liveControlNormalized,
+  widthModulationRange,
   formatModulationDepth,
   modulationAffordanceModel,
   parameterModulationState,
@@ -204,6 +207,29 @@ describe('parameter modulation state', () => {
     expect(guides.frequency!.minHz).toBeLessThan(1000)
     expect(guides.frequency!.maxHz).toBeGreaterThan(1000)
     expect(guides.gain).toBeNull()
+  })
+
+  it('draws width modulation in bandwidth space and hides a live tick when the LFO is idle', () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { ...lfos.eq1[0]!, target: 'eq1Q', depth: 40, shape: 'sine' }
+    const range = widthModulationRange(lfos, 'eq1Q', 1000, 2)
+    expect(range).toBeTruthy()
+    expect(range!.min).toBeLessThan(range!.max)
+    expect(range!.min).toBeGreaterThanOrEqual(0)
+    expect(range!.max).toBeLessThanOrEqual(1)
+    expect(liveControlNormalized(1400, 'eq1Freq', false)).toBeUndefined()
+    expect(liveControlNormalized(1400, 'eq1Freq', true)).toBeGreaterThan(0)
+  })
+
+  it('places the EQ guide on the automated center while playing', () => {
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = { ...lfos.eq1[0]!, target: 'eq1Freq', depth: 20, shape: 'sine' }
+    const automation = ensureAutomationLane(defaultAutomation(), 'eq1Freq', toNormalized(4000, PARAMS.eq1Freq), 4)
+    const center = eqModulationCenter(automation, 0, { frequency: 200, gain: 0 }, 1, true)
+    expect(center.frequency).toBeCloseTo(4000, 0)
+    const guides = eqModulationGuides(lfos, 0, { frequency: 200, gain: 0 }, center)
+    expect(guides.frequency!.minHz).toBeGreaterThan(200)
+    expect(guides.frequency!.maxHz).toBeGreaterThan(guides.frequency!.minHz)
   })
 })
 

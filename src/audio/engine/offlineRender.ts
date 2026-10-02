@@ -10,7 +10,7 @@ import {
 } from '../samplePrep/types'
 import { dbToGain } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
-import { anyFxLfoActive, defaultLfoHold, liveEqBandsFromParams, type FxLfoMap } from '../fx/lfo'
+import { anyFxLfoActive, defaultLfoHold, type FxLfoMap } from '../fx/lfo'
 import { applyFilterModulation, filterModNeedsClock, followerEnvelope } from '../fx/filter'
 import { applyDelayGraph, applyReverbGraph, buildReverbBuffer, reverbImpulseKey } from '../fx/graphs'
 import { convolverHasBuffer, setConvolverPairBuffer } from './convolverCrossfade'
@@ -34,13 +34,13 @@ import {
   type ExportScope,
 } from './exportTail'
 import {
-  eqBandsForChannel,
   ensureBandStages,
   writeCombCoefficients,
   writeEqBandCoefficients,
   type EqChannelMode,
   type EqLane,
 } from './eqGraph'
+import { eqHeardBandLists, modulatedEqBands, type EqModClock } from './eqPerformance'
 import { applyStereoStage, forceStereoUpmix } from './stereoStage'
 import { applyDistortionGraph } from '../fx/distortionGraph'
 import { applyFilterGraph } from '../fx/filterGraph'
@@ -193,28 +193,36 @@ function scheduleEq(
   ctx: BaseAudioContext,
   slots: readonly ChainSlot[],
   state: ProcessingSnapshot,
-  params: Record<ParamId, number>,
   now: number,
+  clock: EqModClock,
 ): void {
   const nyquist = ctx.sampleRate / 2
   for (const slot of slots) {
     if (slot.type !== 'eq' || !slot.eq) continue
     const st = eqStateFor(state, slot.instanceId)
     const overlay = slot.instanceId === state.primaryEqId
-    const shared = overlay ? liveEqBandsFromParams(st.bands, params) : st.bands
+    const heard = eqHeardBandLists(state.eqChannelMode, st.bands, st.bandsL, st.bandsR)
+    const left = overlay
+      ? modulatedEqBands(heard.left, state.params, state.automation, clock, state.fxLfos)
+      : { bands: heard.left, live: state.params }
+    const right =
+      heard.left === heard.right
+        ? left
+        : overlay
+          ? modulatedEqBands(heard.right, state.params, state.automation, clock, state.fxLfos)
+          : { bands: heard.right, live: state.params }
+    const combLive = left.live
     const comb = overlay
       ? {
           ...st.comb,
-          teeth: params.eqcfTeeth ?? st.comb.teeth,
-          gain: params.eqcfGain ?? st.comb.gain,
-          spacing: params.eqcfSpacing ?? st.comb.spacing,
-          frequency: params.eqcfFreq ?? st.comb.frequency,
+          teeth: combLive.eqcfTeeth ?? st.comb.teeth,
+          gain: combLive.eqcfGain ?? st.comb.gain,
+          spacing: combLive.eqcfSpacing ?? st.comb.spacing,
+          frequency: combLive.eqcfFreq ?? st.comb.frequency,
         }
       : st.comb
-    const left = eqBandsForChannel(state.eqChannelMode, 'left', shared, st.bandsL, st.bandsR)
-    const right = eqBandsForChannel(state.eqChannelMode, 'right', shared, st.bandsL, st.bandsR)
-    scheduleEqLane(ctx, slot.eq.left, left, comb, now, nyquist)
-    scheduleEqLane(ctx, slot.eq.right, right, comb, now, nyquist)
+    scheduleEqLane(ctx, slot.eq.left, left.bands, comb, now, nyquist)
+    scheduleEqLane(ctx, slot.eq.right, right.bands, comb, now, nyquist)
   }
 }
 
@@ -229,6 +237,7 @@ function scheduleChain(
   smoothing: number,
   irKey: { current: string },
   commitStatic: boolean,
+  clock: EqModClock,
 ): void {
   const gainSlot = slots.find((slot) => slot.type === 'gain')
   const outSlot = slots.find((slot) => slot.type === 'output')
@@ -251,7 +260,7 @@ function scheduleChain(
     setAudibleGain(gainSlot.output.gain, dbToGain(params.gain), now)
   }
   if (outSlot) setAudibleGain(outSlot.output.gain, dbToGain(params.outputGain), now)
-  scheduleEq(ctx, slots, state, params, now)
+  scheduleEq(ctx, slots, state, now, clock)
   for (const slot of slots) {
     if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate, commitStatic)
     if (slot.midSideFx) applyMidSideGraph(slot.midSideFx, params, now, smoothing)
@@ -464,6 +473,13 @@ export async function renderProcessedPcm(
       smoothing,
       irKey,
       commitStatic,
+      {
+        transportSec: timelineStart + elapsed,
+        lfoTimeSec: elapsed,
+        playing: true,
+        hold,
+        rand,
+      },
     )
     scheduled += 1
     if (scheduled % 40 === 0) await yieldToMain()

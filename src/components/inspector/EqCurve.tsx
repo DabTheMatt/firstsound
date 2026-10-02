@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, type PointerEvent as ReactPointerEvent } f
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
 import { EQ_MIN_HZ, bandUsesGain, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
+import { EQ_BAND_LFO_IDS } from '../../audio/fx/lfo'
 import {
   dbToY,
   eqBandDragPatch,
@@ -19,7 +20,7 @@ import {
   yToDb,
 } from '../../audio/engine/eqPlot'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
-import { eqModulationGuides } from '../modulation/modulationModel'
+import { eqModulationCenter, eqModulationGuides } from '../modulation/modulationModel'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
@@ -223,7 +224,15 @@ export function EqCurve({
         const xPct = freqToX(band.frequency, 1, plotMax) * 100
         const yPct = dbToY(eqNodePlotDb(bands, band.frequency, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
         const selected = index === selectedBand
-        const guides = selected && modulate ? eqModulationGuides(engine.getSnapshot().fxLfos, index, band) : null
+        const snap = engine.getSnapshot()
+        const guides = selected && modulate
+          ? eqModulationGuides(
+              snap.fxLfos,
+              index,
+              band,
+              eqModulationCenter(snap.automation, index, band, snap.transportSec, snap.playing),
+            )
+          : null
         const freqGuide = guides?.frequency
         const gainGuide = guides?.gain && bandUsesGain(band.type) ? guides.gain : null
         const colors = readThemeColors()
@@ -232,6 +241,11 @@ export function EqCurve({
         const freqX1 = freqGuide ? freqToX(freqGuide.maxHz, 1, plotMax) * 100 : 0
         const gainY0 = gainGuide ? dbToY(gainGuide.minDb, 1) * 100 : 0
         const gainY1 = gainGuide ? dbToY(gainGuide.maxDb, 1) * 100 : 0
+        const ids = EQ_BAND_LFO_IDS[index]
+        const liveHz = ids ? snap.liveParams[ids.freq] : null
+        const liveDb = ids ? snap.liveParams[ids.gain] : null
+        const liveFreqX = freqGuide && liveHz != null && Number.isFinite(liveHz) ? freqToX(liveHz, 1, plotMax) * 100 : null
+        const liveGainY = gainGuide && liveDb != null && Number.isFinite(liveDb) ? dbToY(liveDb, 1) * 100 : null
         return (
           <Fragment key={eqStripKey('curve', band)}>
           {freqGuide ? (
@@ -251,6 +265,12 @@ export function EqCurve({
                 height: `${Math.abs(gainY1 - gainY0)}%`,
               }}
             />
+          ) : null}
+          {liveFreqX != null ? (
+            <span className={styles.modLive} aria-hidden="true" style={{ left: `${liveFreqX}%`, top: `${yPct}%` }} />
+          ) : null}
+          {liveGainY != null ? (
+            <span className={styles.modLive} aria-hidden="true" style={{ left: `${xPct}%`, top: `${liveGainY}%` }} />
           ) : null}
           <button
             type="button"

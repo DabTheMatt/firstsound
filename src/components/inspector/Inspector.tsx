@@ -36,6 +36,7 @@ import { parseTypedRange } from '../../audio/parameters/mapping'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { engine } from '../../hooks/useEngine'
 import { PresetMenu } from '../controls/PresetMenu'
 import { LfoParamShell } from '../controls/LfoParamShell'
@@ -860,6 +861,8 @@ function EqEditor({
     if (!binding || !fxLfoIsActive(binding.lfo)) return undefined
     return lfoRangeNormalized(baseN, binding.lfo.depth)
   }
+  const eqLive = (id: ParamId | undefined) =>
+    id ? liveControlNormalized(snap.liveParams[id], id, Boolean(eqKnobLfo(id, 0))) : undefined
   return (
     <div className={styles.eq}>
       {pane === 'main' ? (
@@ -958,6 +961,7 @@ function EqEditor({
                   valueText={formatHz(band.frequency)}
                   normalized={freqToN(band.frequency)}
                   lfoRange={eqKnobLfo(eqBandLfoIds(index)?.freq, freqToN(band.frequency))}
+                  liveNormalized={eqLive(eqBandLfoIds(index)?.freq)}
                   min={EQ_MIN_HZ}
                   max={EQ_MAX_HZ}
                   now={band.frequency}
@@ -995,6 +999,7 @@ function EqEditor({
                     valueText={`${band.gain.toFixed(1)} dB`}
                     normalized={(band.gain + 18) / 36}
                     lfoRange={eqKnobLfo(eqBandLfoIds(index)?.gain, (band.gain + 18) / 36)}
+                    liveNormalized={eqLive(eqBandLfoIds(index)?.gain)}
                     min={-18}
                     max={18}
                     now={band.gain}
@@ -1014,7 +1019,16 @@ function EqEditor({
                     label="Width"
                     valueText={formatHz(bandwidthHz(band.frequency, band.q))}
                     normalized={widthToN(bandwidthHz(band.frequency, band.q))}
-                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.q, widthToN(bandwidthHz(band.frequency, band.q)))}
+                    lfoRange={
+                      modulate && eqBandLfoIds(index)?.q
+                        ? widthModulationRange(snap.fxLfos, eqBandLfoIds(index)!.q, band.frequency, band.q)
+                        : undefined
+                    }
+                    liveNormalized={
+                      modulate && eqBandLfoIds(index)?.q && widthModulationRange(snap.fxLfos, eqBandLfoIds(index)!.q, band.frequency, band.q)
+                        ? liveWidthNormalized(band.frequency, snap.liveParams[eqBandLfoIds(index)!.q])
+                        : undefined
+                    }
                     min={10}
                     max={10000}
                     now={bandwidthHz(band.frequency, band.q)}
@@ -1036,6 +1050,7 @@ function EqEditor({
                     valueText={band.q.toFixed(2)}
                     normalized={qToN(band.q)}
                     lfoRange={eqKnobLfo(eqBandLfoIds(index)?.q, qToN(band.q))}
+                    liveNormalized={eqLive(eqBandLfoIds(index)?.q)}
                     min={0.1}
                     max={20}
                     now={band.q}
@@ -1185,6 +1200,7 @@ function EqEditor({
               valueText={`${Math.round(comb.teeth)}`}
               normalized={(comb.teeth - 2) / 14}
               lfoRange={eqKnobLfo('eqcfTeeth', (comb.teeth - 2) / 14)}
+              liveNormalized={eqLive('eqcfTeeth')}
               min={2}
               max={16}
               now={comb.teeth}
@@ -1203,6 +1219,7 @@ function EqEditor({
               valueText={`${comb.gain.toFixed(1)} dB`}
               normalized={(comb.gain + 18) / 36}
               lfoRange={eqKnobLfo('eqcfGain', (comb.gain + 18) / 36)}
+              liveNormalized={eqLive('eqcfGain')}
               min={-18}
               max={18}
               now={comb.gain}
@@ -1221,6 +1238,7 @@ function EqEditor({
               valueText={formatHz(comb.frequency)}
               normalized={freqToN(comb.frequency)}
               lfoRange={eqKnobLfo('eqcfFreq', freqToN(comb.frequency))}
+              liveNormalized={eqLive('eqcfFreq')}
               min={EQ_MIN_HZ}
               max={EQ_MAX_HZ}
               now={comb.frequency}
