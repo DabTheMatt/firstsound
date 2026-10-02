@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -32,9 +33,9 @@ import {
   setParameterLfoPrimary,
 } from './modulationActions'
 import {
-  modulationPortalOwnedBy,
+  modulationEditorView,
+  modulationPortalOwner,
   preferModulationPortal,
-  readModulationEditor,
   releaseModulationPortal,
   setModulationEditorOpen,
   subscribeModulationEditor,
@@ -64,11 +65,14 @@ type Props = {
 export function ModulationAffordance({ id, compact = false, touch = false }: Props) {
   const snap = useEngine()
   const { paramLabel, t } = useI18n()
-  const editorOpen = useSyncExternalStore(
+  const portalToken = useId()
+  const editorView = useSyncExternalStore(
     subscribeModulationEditor,
-    () => readModulationEditor(id),
-    () => false,
+    () => modulationEditorView(id),
+    () => '0:',
   )
+  const editorOpen = editorView.startsWith('1')
+  const ownsPortal = editorView.slice(2) === portalToken
   const def = PARAMS[id]
   const state = parameterModulationState({
     lfos: snap.fxLfos,
@@ -78,13 +82,22 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
     editorOpen,
   })
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const portalToken = useId()
   const press = useRef<{ x: number; y: number; id: number; role: ModulationPress } | null>(null)
-  const toggleEditor = () => {
-    if (editorOpen) releaseModulationPortal(id, portalToken)
-    else preferModulationPortal(id, portalToken)
-    setModulationEditorOpen(id, !editorOpen)
+  const closeEditor = () => {
+    releaseModulationPortal(id, portalToken)
+    setModulationEditorOpen(id, false)
   }
+  const toggleEditor = () => {
+    if (editorOpen) closeEditor()
+    else {
+      preferModulationPortal(id, portalToken)
+      setModulationEditorOpen(id, true)
+    }
+  }
+  useEffect(() => {
+    if (!editorOpen || ownsPortal || modulationPortalOwner(id) != null) return
+    preferModulationPortal(id, portalToken)
+  }, [editorOpen, id, ownsPortal, portalToken])
   useEffect(() => () => releaseModulationPortal(id, portalToken), [id, portalToken])
   const label = paramLabel(id)
   const kind = fxLfoKindForParam(id)
@@ -132,8 +145,8 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
           {face.depthLabel ? <span className={styles.depth}>{face.depthLabel}</span> : null}
           {face.automationMark ? <span className={styles.autoDot} aria-hidden="true" /> : null}
         </button>
-        {editorOpen && modulationPortalOwnedBy(id, portalToken) && typeof document !== 'undefined' ? (
-          <MobileModulationSheet id={id} label={label} onClose={() => setModulationEditorOpen(id, false)} />
+        {editorOpen && ownsPortal && typeof document !== 'undefined' ? (
+          <MobileModulationSheet id={id} label={label} onClose={closeEditor} />
         ) : null}
       </>
     )
@@ -142,7 +155,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
   const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
   const tip = `Modulate ${label}`
   const panel =
-    editorOpen && modulationPortalOwnedBy(id, portalToken) && typeof document !== 'undefined' ? (
+    editorOpen && ownsPortal && typeof document !== 'undefined' ? (
       <ModulationEditorSession
         buttonRef={buttonRef}
         id={id}
@@ -153,6 +166,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
         lfoActive={state.lfoActive}
         lfoConnected={state.isLfoConnected}
         automationActive={state.automationActive}
+        onClose={closeEditor}
       />
     ) : null
 
@@ -195,6 +209,7 @@ function ModulationEditorSession({
   lfoActive,
   lfoConnected,
   automationActive,
+  onClose,
 }: {
   buttonRef: RefObject<HTMLButtonElement | null>
   id: ParamId
@@ -205,6 +220,7 @@ function ModulationEditorSession({
   lfoActive: boolean
   lfoConnected: boolean
   automationActive: boolean
+  onClose: () => void
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -212,6 +228,7 @@ function ModulationEditorSession({
   const [advanced, setAdvanced] = useState(false)
   const [box, setBox] = useState<{ top: number; left: number } | null>(null)
   const shownSource = source ?? (lfoConnected ? 'lfo' : null)
+  const close = useEffectEvent(() => onClose())
 
   useEffect(() => {
     const place = () => {
@@ -230,12 +247,12 @@ function ModulationEditorSession({
       const target = event.target
       if (!(target instanceof Node)) return
       if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return
-      setModulationEditorOpen(id, false)
+      close()
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       event.preventDefault()
-      setModulationEditorOpen(id, false)
+      close()
       buttonRef.current?.focus()
     }
     window.addEventListener('resize', place)

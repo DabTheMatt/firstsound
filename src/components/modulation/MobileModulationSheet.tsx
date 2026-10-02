@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useEffectEvent, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   LFO_RATE_DEFAULT,
@@ -53,16 +53,17 @@ export function MobileModulationSheet({ id, label, onClose }: Props) {
   const lfo = modulation.binding ? snap.fxLfos[modulation.binding.kind][modulation.binding.slot] ?? null : null
   const connected = modulation.isLfoConnected && lfo != null
 
+  const close = useEffectEvent(() => onClose())
   useEffect(() => {
     panelRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       event.preventDefault()
-      onClose()
+      close()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [])
 
   const rateHz = lfo?.rateHz ?? LFO_RATE_DEFAULT
   const depth = lfo?.depth ?? 0

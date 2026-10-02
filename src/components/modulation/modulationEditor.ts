@@ -24,14 +24,29 @@ export function subscribeModulationEditor(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+function notify(): void {
+  for (const listener of listeners) listener()
+}
+
 /**
  * Several controls can offer the same parameter. Only the one that was
  * opened may portal the shared editor.
  */
 const portalOwner = new Map<ParamId, string>()
 
+/** Snapshot for React. Includes the portal owner so a hand-off re-renders. */
+export function modulationEditorView(id: ParamId): string {
+  return `${open.has(id) ? 1 : 0}:${portalOwner.get(id) ?? ''}`
+}
+
+export function modulationPortalOwner(id: ParamId): string | null {
+  return portalOwner.get(id) ?? null
+}
+
 export function preferModulationPortal(id: ParamId, token: string): void {
+  if (portalOwner.get(id) === token) return
   portalOwner.set(id, token)
+  notify()
 }
 
 export function modulationPortalOwnedBy(id: ParamId, token: string): boolean {
@@ -44,7 +59,9 @@ export function modulationPortalOwnedBy(id: ParamId, token: string): boolean {
 }
 
 export function releaseModulationPortal(id: ParamId, token: string): void {
-  if (portalOwner.get(id) === token) portalOwner.delete(id)
+  if (portalOwner.get(id) !== token) return
+  portalOwner.delete(id)
+  notify()
 }
 
 /** Test helper. */

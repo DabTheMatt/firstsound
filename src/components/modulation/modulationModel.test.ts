@@ -11,12 +11,14 @@ import {
   setParameterLfoPrimary,
 } from './modulationActions'
 import {
+  modulationEditorView,
   modulationPortalOwnedBy,
   preferModulationPortal,
   readModulationEditor,
   releaseModulationPortal,
   resetModulationEditors,
   setModulationEditorOpen,
+  subscribeModulationEditor,
 } from './modulationEditor'
 import {
   automationFocusLfoCue,
@@ -62,6 +64,25 @@ describe('shared modulation editor portal', () => {
     expect(modulationPortalOwnedBy('eq1Freq', 'focus')).toBe(true)
     releaseModulationPortal('eq1Freq', 'focus')
     expect(modulationPortalOwnedBy('eq1Freq', 'inspector')).toBe(true)
+  })
+
+  it('keeps the editor open and tells the next control when its owner leaves', () => {
+    preferModulationPortal('eq1Freq', 'inspector')
+    setModulationEditorOpen('eq1Freq', true)
+    expect(modulationEditorView('eq1Freq')).toBe('1:inspector')
+    let paints = 0
+    const stop = subscribeModulationEditor(() => {
+      paints += 1
+    })
+    releaseModulationPortal('eq1Freq', 'inspector')
+    expect(paints).toBe(1)
+    expect(readModulationEditor('eq1Freq')).toBe(true)
+    expect(modulationEditorView('eq1Freq')).toBe('1:')
+    expect(modulationPortalOwnedBy('eq1Freq', 'focus')).toBe(true)
+    expect(modulationEditorView('eq1Freq')).toBe('1:focus')
+    preferModulationPortal('eq1Freq', 'focus')
+    expect(paints).toBe(1)
+    stop()
   })
 })
 
