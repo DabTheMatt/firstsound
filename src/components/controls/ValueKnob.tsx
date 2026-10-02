@@ -13,7 +13,7 @@ import {
 } from './knobGeom'
 import { presentParamLabel } from './paramLabelFit'
 import { useModulationParamId } from './LfoParamShell'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ParamActionPair } from '../random/ParamActionPair'
 import styles from './Knob.module.css'
 
 type Props = {
@@ -418,7 +418,7 @@ export function ValueKnob({
         </svg>
       </div>
       <span className={styles.modSlot}>
-        {paramId ? <ModulationAffordance id={paramId} compact /> : null}
+        {paramId ? <ParamActionPair id={paramId} compact /> : null}
       </span>
       </div>
       {editing ? (

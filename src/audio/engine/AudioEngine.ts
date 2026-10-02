@@ -66,7 +66,10 @@ import {
   relocateAutomationNode,
   removeAutomationLane,
   removeAutomationNode,
+  envelopeToParam,
+  laneFor,
   resolvePerformanceParams,
+  sampleEnvelope,
   selectAutomationParam,
   setAutomationLaneColor,
   updateAutomationCurve,
@@ -74,6 +77,21 @@ import {
   type AutomationCurve,
   type AutomationDocument,
 } from '../automation/automation'
+import { isRandomizable, randomParamValue } from '../random/distributions'
+import { eqRandomPatch, eqShadowField, moduleRandomKind, participatingTargets } from '../random/groups'
+import { applyRandomOffset, offsetForTarget } from '../random/ownership'
+import { loadRandomDocument, parseRandomDocument, saveRandomDocument } from '../random/persist'
+import { hasAutoRandom, stepRandom } from '../random/schedule'
+import {
+  cloneRandomDocument,
+  defaultParamRandom,
+  defaultRandomDocument,
+  defaultRandomRuntime,
+  nearestFreeRate,
+  type ParamRandom,
+  type RandomDocument,
+  type RandomRuntime,
+} from '../random/types'
 import {
   combAsEqBands,
   defaultCombFilter,
@@ -375,6 +393,14 @@ export type EngineSnapshot = {
   distortionNoiseKind: DistortionNoiseKind
   noiseMuted: boolean
   fxLfos: FxLfoMap
+  random: {
+    chaos: boolean
+    warned: boolean
+    prompt: boolean
+    budgetLimited: boolean
+    generators: RandomDocument['generators']
+    participation: RandomDocument['participation']
+  }
   lfoShown: Record<FxLfoKind, number>
   spacePresetId: string | null
   hasSource: boolean
@@ -564,6 +590,17 @@ export class AudioEngine {
   private filterFollowStamp = 0
   private fxLfos = defaultFxLfos()
   private automation: AutomationDocument = defaultAutomation()
+  private randomDoc: RandomDocument = loadRandomDocument()
+  private randomOffsets: Partial<Record<ParamId, number>> = {}
+  private randomRuntime: RandomRuntime = defaultRandomRuntime()
+  private randomWarned = false
+  private randomPrompt = false
+  private randomPendingId: ParamId | null = null
+  private randomBudgetLimited = false
+  private randomDirty = false
+  private randomUiAt = 0
+  /** One-shot wins over an auto event in the same audio tick. */
+  private randomHold: ParamId | null = null
   private lfoHold = defaultLfoHold()
   private lfoTimer = 0
   private exportBusy = false
@@ -658,6 +695,7 @@ export class AudioEngine {
   private tempoWrite: 'engine' | 'ui' = 'ui'
 
   constructor() {
+    if (this.randomDoc.chaos) this.randomWarned = true
     this.snapshot = this.buildSnapshot()
   }
 
@@ -1182,6 +1220,7 @@ export class AudioEngine {
       const turningStereoOn = id === 'delayStereo' && value > 0.5 && this.params.delayStereo <= 0.5
       const turningReverbStereoOn = id === 'reverbStereo' && value > 0.5 && this.params.reverbStereo <= 0.5
       const previous = this.params[id]
+      this.forgetRandomOffset(id)
       this.params[id] = applyParamValue(value, PARAMS[id])
       if (id === 'distortionNoise' && this.noiseMuted) this.noiseMuted = false
       if (turningStereoOn) this.copyDelayLeftToRight()
@@ -1229,6 +1268,7 @@ export class AudioEngine {
     for (const key of Object.keys(patch) as ParamId[]) {
       const value = patch[key]
       if (typeof value !== 'number') continue
+      this.forgetRandomOffset(key)
       this.params[key] = applyParamValue(value, PARAMS[key])
       keys.push(key)
     }
@@ -1242,6 +1282,285 @@ export class AudioEngine {
     if (FILTER_PARAM_IDS.some((id) => id in patch)) this.engageFilter()
     if (MS_PARAM_IDS.some((id) => id in patch)) this.engageMidSide()
     this.emit()
+  }
+
+  randomizeParam(id: ParamId): boolean {
+    if (!isRandomizable(id)) return false
+    const gen = this.randomDoc.generators[id] ?? defaultParamRandom()
+    const next = randomParamValue({
+      id,
+      current: this.randomCenter(id),
+      intensity: gen.intensity,
+      chaos: this.randomDoc.chaos,
+      bpm: this.params.bpm,
+    })
+    if (this.randomOwns(id)) {
+      this.randomHold = id
+      this.randomOffsets[id] = offsetForTarget(this.automatedCenter(id), next, id)
+      delete this.randomRuntime.glides[id]
+      if (this.ctx) this.applyLiveAudio(0.02)
+      this.randomHold = null
+      this.emit()
+      return true
+    }
+    const shadow = eqShadowField(id)
+    if (shadow) {
+      this.forgetRandomOffset(id)
+      this.setEqBand(shadow.index, { [shadow.field]: next })
+      return true
+    }
+    this.setParam(id, next)
+    return true
+  }
+
+  setParamRandom(id: ParamId, patch: Partial<ParamRandom>): void {
+    if (!isRandomizable(id)) return
+    const prev = this.randomDoc.generators[id] ?? defaultParamRandom()
+    const next: ParamRandom = { ...prev, ...patch }
+    if (patch.rateHz != null) next.rateHz = nearestFreeRate(patch.rateHz)
+    next.intensity = Math.min(1, Math.max(0, next.intensity))
+    if (next.auto && !this.randomDoc.chaos) next.auto = prev.auto && this.randomDoc.chaos
+    if (!next.auto) {
+      delete this.randomRuntime.lastSec[id]
+      delete this.randomRuntime.glides[id]
+    }
+    this.randomDoc = {
+      ...this.randomDoc,
+      generators: { ...this.randomDoc.generators, [id]: next },
+    }
+    this.persistRandom()
+    this.syncLfoClock()
+    this.emit()
+  }
+
+  setChaos(enabled: boolean): void {
+    if (this.randomDoc.chaos === enabled) return
+    this.randomDoc = { ...this.randomDoc, chaos: enabled }
+    if (!enabled) this.randomRuntime = defaultRandomRuntime()
+    this.persistRandom()
+    this.syncLfoClock()
+    this.emit()
+  }
+
+  /** First enable in this session opens the warning. Later enables apply immediately. */
+  requestChaos(pendingId?: ParamId): void {
+    if (this.randomDoc.chaos) {
+      if (pendingId) {
+        this.setParamRandom(pendingId, { auto: true })
+        return
+      }
+      this.setChaos(false)
+      return
+    }
+    if (this.randomWarned) {
+      this.setChaos(true)
+      if (pendingId) this.setParamRandom(pendingId, { auto: true })
+      return
+    }
+    this.randomPendingId = pendingId ?? null
+    this.randomPrompt = true
+    this.emit()
+  }
+
+  confirmChaos(): void {
+    this.randomWarned = true
+    this.randomPrompt = false
+    const pending = this.randomPendingId
+    this.randomPendingId = null
+    this.setChaos(true)
+    if (pending) this.setParamRandom(pending, { auto: true })
+  }
+
+  cancelChaos(): void {
+    this.randomPrompt = false
+    this.randomPendingId = null
+    this.emit()
+  }
+
+  setRandomParticipation(kind: string, ids: readonly ParamId[]): void {
+    this.randomDoc = {
+      ...this.randomDoc,
+      participation: { ...this.randomDoc.participation, [kind]: ids.filter((id) => isRandomizable(id)) },
+    }
+    this.persistRandom()
+    this.emit()
+  }
+
+  /** Arm or disarm Auto Random on the effect's participating parameters together. */
+  setEffectAuto(kind: FxLfoKind, auto: boolean): void {
+    if (auto && !this.randomDoc.chaos) return
+    const selected = new Set(participatingTargets(this.randomDoc, kind))
+    const generators = { ...this.randomDoc.generators }
+    for (const id of participatingTargets({ ...this.randomDoc, participation: {} }, kind)) {
+      const prev = generators[id] ?? defaultParamRandom()
+      const next = { ...prev, auto: auto && selected.has(id) }
+      generators[id] = next
+      if (!next.auto) {
+        delete this.randomRuntime.lastSec[id]
+        delete this.randomRuntime.glides[id]
+      }
+    }
+    this.randomDoc = { ...this.randomDoc, generators }
+    this.persistRandom()
+    this.syncLfoClock()
+    this.emit()
+  }
+
+  randomizeEffect(kind: FxLfoKind): boolean {
+    if (!this.randomDoc.chaos) return false
+    const bandIndex = EQ_BAND_LFO_KINDS.indexOf(kind)
+    if (bandIndex >= 0) return this.randomizeEqBand(bandIndex)
+    const ids = participatingTargets(this.randomDoc, kind)
+    const patch: Partial<Record<ParamId, number>> = {}
+    let changed = false
+    for (const id of ids) {
+      const gen = this.randomDoc.generators[id] ?? defaultParamRandom()
+      const next = randomParamValue({
+        id,
+        current: this.randomCenter(id),
+        intensity: gen.intensity,
+        chaos: true,
+        bpm: this.params.bpm,
+      })
+      if (this.randomOwns(id)) {
+        this.randomOffsets[id] = offsetForTarget(this.automatedCenter(id), next, id)
+        delete this.randomRuntime.glides[id]
+        changed = true
+        continue
+      }
+      const shadow = eqShadowField(id)
+      if (shadow) {
+        this.writeEqBandQuiet(shadow.index, { [shadow.field]: next })
+        changed = true
+        continue
+      }
+      patch[id] = next
+    }
+    if (Object.keys(patch).length > 0) {
+      this.setParams(patch)
+      return true
+    }
+    if (changed) {
+      if (this.ctx) this.applyLiveAudio(0.03)
+      this.emit()
+    }
+    return changed
+  }
+
+  randomizeModule(type: ModuleType): boolean {
+    const kind = moduleRandomKind(type)
+    if (!kind) return false
+    return this.randomizeEffect(kind)
+  }
+
+  randomizeEqBand(index: number, includeType = true): boolean {
+    if (!this.randomDoc.chaos) return false
+    const id = this.primaryEqId()
+    const bands = this.eqEditBands(this.eqState(id))
+    const band = bands[index]
+    if (!band || band.type === 'off') return false
+    const patch = eqRandomPatch(band, 0.75, true, Math.random, includeType)
+    const base: Partial<EqBand> = {}
+    if (patch.type) base.type = patch.type
+    if (patch.slope != null) base.slope = patch.slope
+    const ids = EQ_BAND_LFO_IDS[index]
+    const assign = (field: 'frequency' | 'gain' | 'q', param: ParamId | undefined, value: number | undefined) => {
+      if (value == null || !param) return
+      if (this.randomOwns(param)) {
+        this.randomOffsets[param] = offsetForTarget(this.automatedCenter(param), value, param)
+        delete this.randomRuntime.glides[param]
+        return
+      }
+      base[field] = value
+    }
+    assign('frequency', ids?.freq, patch.frequency)
+    assign('gain', ids?.gain, patch.gain)
+    assign('q', ids?.q, patch.q)
+    if (!ids) {
+      if (patch.frequency != null) base.frequency = patch.frequency
+      if (patch.gain != null) base.gain = patch.gain
+      if (patch.q != null) base.q = patch.q
+    }
+    this.setEqBand(index, base, id)
+    return true
+  }
+
+  private randomOwns(id: ParamId): boolean {
+    if (!this.playing) return false
+    return (laneFor(this.automation, id)?.nodes.length ?? 0) > 0
+  }
+
+  private automatedCenter(id: ParamId): number {
+    const lane = laneFor(this.automation, id)
+    if (!lane || lane.nodes.length === 0) return this.params[id]
+    const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
+    return envelopeToParam(id, sampleEnvelope(lane.nodes, transport) ?? 0)
+  }
+
+  private randomCenter(id: ParamId): number {
+    if (!this.randomOwns(id)) return this.params[id]
+    return applyRandomOffset(this.automatedCenter(id), id, this.randomOffsets[id] ?? 0)
+  }
+
+  private forgetRandomOffset(id: ParamId): void {
+    delete this.randomOffsets[id]
+    delete this.randomRuntime.glides[id]
+  }
+
+  private persistRandom(): void {
+    saveRandomDocument(this.randomDoc)
+  }
+
+  private advanceRandom(): void {
+    const step = stepRandom({
+      doc: this.randomDoc,
+      runtime: this.randomRuntime,
+      offsets: this.randomOffsets,
+      params: this.params,
+      automation: this.automation,
+      playing: this.playing,
+      clockSec: this.lfoClockSec,
+      transportSec: this.lastTransportSec,
+      bpm: this.params.bpm,
+    })
+    if (this.randomHold) {
+      const held = this.randomOffsets[this.randomHold]
+      if (held != null) step.offsets[this.randomHold] = held
+      step.writes = step.writes.filter((write) => write.id !== this.randomHold)
+      delete step.runtime.glides[this.randomHold]
+    }
+    this.randomRuntime = step.runtime
+    this.randomOffsets = step.offsets
+    this.randomBudgetLimited = step.budgetLimited
+    if (step.writes.length === 0) return
+    this.randomDirty = true
+    for (const write of step.writes) this.writeRandomBase(write.id, write.value)
+  }
+
+  private writeRandomBase(id: ParamId, value: number): void {
+    delete this.randomOffsets[id]
+    const shadow = eqShadowField(id)
+    if (shadow) {
+      this.writeEqBandQuiet(shadow.index, { [shadow.field]: value })
+      return
+    }
+    const previous = this.params[id]
+    this.params[id] = applyParamValue(value, PARAMS[id])
+    commitParamEdit(this.params, id, previous)
+  }
+
+  private writeEqBandQuiet(index: number, patch: Partial<EqBand>): void {
+    const id = this.primaryEqId()
+    const st = this.eqState(id)
+    const current = this.eqEditBands(st)
+    const band = current[index]
+    if (!band) return
+    const nextBand = { ...band, ...patch }
+    const next = current.map((item, i) => (i === index ? nextBand : item))
+    this.writeEqEditBands(st, next)
+    this.eqById.set(id, st)
+    this.syncPrimaryEq()
+    this.syncEqLfoParams(id)
   }
 
   private engageReverbFromMix(): void {
@@ -2202,6 +2521,7 @@ export class AudioEngine {
       masterGain: outputMixGain(this.masterMix),
       noiseMuted: this.noiseMuted,
       noiseFadeTau: this.noiseFadeTau,
+      randomOffsets: { ...this.randomOffsets },
     }
   }
 
@@ -2395,6 +2715,11 @@ export class AudioEngine {
     this.distortionNoiseKind = 'white'
     this.fxLfos = defaultFxLfos()
     this.automation = defaultAutomation()
+    this.randomDoc = defaultRandomDocument()
+    this.randomOffsets = {}
+    this.randomRuntime = defaultRandomRuntime()
+    this.randomBudgetLimited = false
+    this.persistRandom()
     this.lfoHold = defaultLfoHold()
     this.lfoShown = defaultLfoShown()
     this.lfoClockSec = 0
@@ -2558,6 +2883,12 @@ export class AudioEngine {
   }
 
   setEqBand(index: number, patch: Partial<EqBand>, instanceId?: string): void {
+    const ids = EQ_BAND_LFO_IDS[index]
+    if (ids) {
+      if (patch.frequency != null) this.forgetRandomOffset(ids.freq)
+      if (patch.gain != null) this.forgetRandomOffset(ids.gain)
+      if (patch.q != null) this.forgetRandomOffset(ids.q)
+    }
     const id = instanceId ?? this.primaryEqId()
     const st = this.eqState(id)
     const current = this.eqEditBands(st)
@@ -2794,6 +3125,7 @@ export class AudioEngine {
       distortionNoiseKind: this.distortionNoiseKind,
       fxLfos: cloneFxLfos(this.fxLfos),
       automation: cloneAutomation(this.automation),
+      random: cloneRandomDocument(this.randomDoc),
       tracks: cloneTracks(this.tracks),
       masterMix: this.masterMix,
     }
@@ -2813,6 +3145,12 @@ export class AudioEngine {
     this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.fxLfos = parseFxLfos(preset.fxLfos)
     this.automation = parseAutomation(preset.automation)
+    this.randomDoc = parseRandomDocument(preset.random)
+    this.randomOffsets = {}
+    this.randomRuntime = defaultRandomRuntime()
+    this.randomBudgetLimited = false
+    if (this.randomDoc.chaos) this.randomWarned = true
+    this.persistRandom()
     this.lfoHold = defaultLfoHold()
     this.lfoShown = lfoShownFromMap(this.fxLfos)
     this.reverbIrKey = ''
@@ -3996,6 +4334,7 @@ export class AudioEngine {
       lfoTimeSec: this.lfoTime(),
       playing: this.playing,
       hold: this.lfoHold,
+      randomOffsets: this.randomOffsets,
     }
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
@@ -4333,6 +4672,8 @@ export class AudioEngine {
       this.fxLfos,
       clocks.lfoSec,
       this.lfoHold,
+      undefined,
+      this.randomOffsets,
     )
     return applyFilterModulation(performed, {
       timeSec: clocks.filterSec,
@@ -4363,14 +4704,26 @@ export class AudioEngine {
     const lfoRunning = this.playing && anyFxLfoActive(this.fxLfos)
     const filterRunning = filterModNeedsClock(this.params)
     const automation = this.playing && automationHasNodes(this.automation)
-    const active = lfoRunning || filterRunning || automation
+    const randomRunning = this.playing && hasAutoRandom(this.randomDoc)
+    const active = lfoRunning || filterRunning || automation || randomRunning
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
         this.applyLiveAudio(0.028)
         // Automation-only ticks stay off the React snapshot. The playhead is drawn
         // from getPlayheadSeconds on its own frame, not from an audio-rate emit.
         // A paused transport does not keep the FX LFO interval alive.
-        if ((this.playing && anyFxLfoActive(this.fxLfos)) || filterModNeedsClock(this.params)) this.emit()
+        // Auto Random refreshes the UI at control rate, not once per event.
+        if ((this.playing && anyFxLfoActive(this.fxLfos)) || filterModNeedsClock(this.params)) {
+          this.randomDirty = false
+          this.emit()
+        } else if (this.randomDirty) {
+          const nowMs = typeof performance !== 'undefined' ? performance.now() : 0
+          if (nowMs - this.randomUiAt >= 100) {
+            this.randomUiAt = nowMs
+            this.randomDirty = false
+            this.emit()
+          }
+        }
       }, 16)
     }
     if (!active && this.lfoTimer) {
@@ -4438,6 +4791,7 @@ export class AudioEngine {
 
   private applyLiveAudio(smoothing = 0.03): void {
     if (!this.ctx) return
+    this.advanceRandom()
     const now = this.ctx.currentTime
     const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
     const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
@@ -5327,6 +5681,14 @@ export class AudioEngine {
       noiseMuted: this.noiseMuted,
       fxLfos: cloneFxLfos(this.fxLfos),
       automation: cloneAutomation(this.automation),
+      random: {
+        chaos: this.randomDoc.chaos,
+        warned: this.randomWarned,
+        prompt: this.randomPrompt,
+        budgetLimited: this.randomBudgetLimited,
+        generators: cloneRandomDocument(this.randomDoc).generators,
+        participation: cloneRandomDocument(this.randomDoc).participation,
+      },
       lfoShown: { ...this.lfoShown },
       spacePresetId: this.spacePresetId,
       hasSource: Boolean(this.sourceBuffer) && this.sourceBuffer !== this.buffer,

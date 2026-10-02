@@ -72,6 +72,8 @@ export type ProcessingSnapshot = {
   masterGain: number
   noiseMuted: boolean
   noiseFadeTau: number
+  /** Normalized Random offsets. Applied only while automation owns the center. */
+  randomOffsets?: Partial<Record<ParamId, number>>
 }
 
 export type OfflineContextFactory = (
@@ -453,6 +455,7 @@ export async function renderProcessedPcm(
       elapsed,
       hold,
       rand,
+      state.randomOffsets,
     )
     const live = applyFilterModulation(performed, {
       timeSec: elapsed,
@@ -479,6 +482,7 @@ export async function renderProcessedPcm(
         playing: true,
         hold,
         rand,
+        randomOffsets: state.randomOffsets,
       },
     )
     scheduled += 1

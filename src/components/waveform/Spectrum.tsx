@@ -80,7 +80,7 @@ import { colorWithAlpha, eqBandTone, eqTone, readThemeColors } from '../../theme
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, subscribeFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import { liveEqBandsFromParams } from '../../audio/fx/lfo'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ParamActionPair } from '../random/ParamActionPair'
 import {
   eqFocusModulationParam,
   eqNodeAnchorBands,
@@ -1519,7 +1519,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     data-param-id={paramId ?? undefined}
                   >
                     <span>{part.text}</span>
-                    {paramId ? <ModulationAffordance id={paramId} compact={!phoneEq} touch={phoneEq} /> : null}
+                    {paramId ? <ParamActionPair id={paramId} compact={!phoneEq} touch={phoneEq} /> : null}
                   </span>
                 )
               })}

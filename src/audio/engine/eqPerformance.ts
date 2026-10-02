@@ -22,6 +22,8 @@ export type EqModClock = {
   playing: boolean
   hold: LfoHoldState
   rand?: () => number
+  /** Normalized Random offsets applied only while automation owns the center. */
+  randomOffsets?: Partial<Record<ParamId, number>>
 }
 
 type EqCenterBand = { frequency: number; gain: number; q: number }
@@ -53,7 +55,7 @@ export function withEqBandCenters(
 }
 
 /**
- * BASE (band) → automation center while playing → relative LFO → mapped value.
+ * BASE (band) → automation center while playing → Random offset → relative LFO.
  * Bands past the shared registry are returned unchanged.
  */
 export function modulatedEqBands<T extends EqCenterBand>(
@@ -73,6 +75,7 @@ export function modulatedEqBands<T extends EqCenterBand>(
     clock.lfoTimeSec,
     clock.hold,
     clock.rand,
+    clock.randomOffsets,
   )
   return { bands: liveEqBandsFromParams(bands, live), live }
 }
