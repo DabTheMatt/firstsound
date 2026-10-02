@@ -652,11 +652,11 @@ export function applyFxLfos(
 
 /** Overlay live (LFO-modulated) freq/gain/Q onto stored EQ bands for plots. */
 export function liveEqBandsFromParams<T extends { frequency: number; gain: number; q: number }>(
-  bands: T[],
+  bands: readonly T[],
   live: Record<ParamId, number>,
   overlay = true,
 ): T[] {
-  if (!overlay) return bands
+  if (!overlay) return bands.slice()
   return bands.map((band, index) => {
     const ids = EQ_BAND_LFO_IDS[index]
     if (!ids) return band

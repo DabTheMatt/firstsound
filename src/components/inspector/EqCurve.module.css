@@ -84,6 +84,17 @@
   transform: translateX(-50%);
 }
 
+.modLive {
+  position: absolute;
+  z-index: 2;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: var(--accent-primary);
+  transform: translate(-50%, -50%);
+}
+
 .fill {
   flex: 1 1 auto;
   height: 100%;
