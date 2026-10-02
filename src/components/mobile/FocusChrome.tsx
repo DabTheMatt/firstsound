@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
+import { isTypingTarget } from '../../a11y/keyboard'
 import {
   EMPTY_AUTOMATION_FOCUS,
   automatedLanes,
@@ -12,8 +13,6 @@ import {
   segmentIdForNode,
   type AutomationEditFocus,
 } from '../../audio/automation/automation'
-import { EQ_FILTER_TYPES, EQ_MAX_BANDS, planEqBandInsert, type EqFilterType } from '../../audio/engine/eqBands'
-import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
@@ -28,6 +27,8 @@ import { automationFocusLfoCue, parameterModulationState } from '../modulation/m
 import { automationEffectLabel, automationLaneTitle } from '../waveform/automationLabels'
 import { formatAutomationNodeValue } from '../waveform/automationValue'
 import { SegmentCurveControl } from '../waveform/SegmentCurveControl'
+import { EqFocusCluster } from './EqFocusCluster'
+import { FftFocusTools } from './FftFocusTools'
 import styles from './FocusChrome.module.css'
 
 export type WaveFocusActions = {
@@ -93,13 +94,26 @@ export function FocusChrome({
   const title =
     workspace === 'eq' ? t.focus.eq : workspace === 'auto' ? t.focus.auto : workspace === 'fft' ? t.focus.fft : t.focus.wave
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (isTypingTarget(event.target) || event.target instanceof HTMLSelectElement) return
+      if (document.querySelector('[data-focus-popover]')) return
+      onExit()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onExit])
+
   return (
     <div className={styles.chrome} data-focus-chrome={workspace}>
       <div className={styles.top}>
-        {onViz ? null : <span className={styles.title}>{title}</span>}
-        {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} /> : null}
-        <div className={styles.tools}>
-          {workspace === 'eq' ? <EqTools onSelectModule={onSelectModule} /> : null}
+        <div className={styles.identity} data-focus-zone="identity">
+          {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} /> : <span className={styles.title}>{title}</span>}
+        </div>
+        <div className={styles.workspace} data-focus-zone="workspace">
+          {workspace === 'eq' ? <EqFocusCluster onSelectModule={onSelectModule} /> : null}
+          {workspace === 'fft' ? <FftFocusTools /> : null}
           {workspace === 'auto' ? (
             <AutoTools
               autoFocus={autoFocus}
@@ -111,6 +125,8 @@ export function FocusChrome({
             />
           ) : null}
           {workspace === 'wave' ? <WaveTools edit={edit} /> : null}
+        </div>
+        <div className={styles.actions} data-focus-zone="actions">
           <button
             type="button"
             className={styles.hit}
@@ -122,8 +138,15 @@ export function FocusChrome({
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button type="button" className={styles.restore} onClick={onExit}>
-            {t.focus.restore}
+          <button
+            type="button"
+            className={styles.hit}
+            data-focus-exit=""
+            aria-label={t.focus.exit}
+            title={t.focus.exit}
+            onClick={onExit}
+          >
+            <ExitFocusIcon />
           </button>
         </div>
       </div>
@@ -153,70 +176,6 @@ function WorkspaceSwitch({ workspace, onViz }: { workspace: FocusWorkspace; onVi
           {item.label}
         </button>
       ))}
-    </div>
-  )
-}
-
-function EqTools({ onSelectModule }: { onSelectModule: (instanceId: string) => void }) {
-  const { t } = useI18n()
-  const snap = useEngine()
-  const [selected, setSelected] = useState<EqBandSelection | null>(null)
-  useEffect(() => subscribeEqBandSelection(setSelected), [])
-  const eq =
-    snap.chain.find((mod) => mod.instanceId === selected?.instanceId && mod.type === 'eq') ??
-    snap.chain.find((mod) => mod.type === 'eq')
-  const bands = eq ? (snap.eqById[eq.instanceId]?.bands ?? []) : []
-  const index = eq && selected?.instanceId === eq.instanceId ? selected.index : -1
-  const band = index >= 0 ? bands[index] : undefined
-  const active = band && band.type !== 'off' ? band : null
-  const canAdd = !eq || (bands.length < EQ_MAX_BANDS && planEqBandInsert(bands) != null)
-
-  const addBand = () => {
-    const live = engine.getSnapshot()
-    let id = live.chain.find((mod) => mod.type === 'eq')?.instanceId ?? null
-    if (!id) id = engine.insertModule('eq', Math.max(0, live.chain.length - 2))
-    if (!id) return
-    const created = engine.createEqStrip('peaking', id)
-    if (created == null) return
-    selectEqBand({ instanceId: id, index: created })
-    onSelectModule(id)
-  }
-
-  return (
-    <div className={styles.cluster} data-eq-focus="">
-      <button type="button" className={styles.hit} aria-label={t.mobile.addBand} title={t.mobile.addBand} disabled={!canAdd} onClick={addBand}>
-        +
-      </button>
-      {eq && active ? (
-        <select
-          className={styles.lane}
-          aria-label={t.mobile.type}
-          value={active.type}
-          onChange={(event) => {
-            engine.setEqBand(index, { type: event.target.value as EqFilterType }, eq.instanceId)
-          }}
-        >
-          {EQ_FILTER_TYPES.filter((item) => item.value !== 'off').map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.short}
-            </option>
-          ))}
-        </select>
-      ) : null}
-      {eq && active ? (
-        <button
-          type="button"
-          className={styles.hit}
-          aria-label={t.focus.deleteNode}
-          title={t.focus.deleteNode}
-          onClick={() => {
-            engine.setEqBand(index, { type: 'off' }, eq.instanceId)
-            selectEqBand(null)
-          }}
-        >
-          <TrashIcon />
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -284,7 +243,9 @@ function AutoTools({
       setAddOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setAddOpen(false)
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setAddOpen(false)
     }
     document.addEventListener('pointerdown', onPointer)
     window.addEventListener('keydown', onKey)
@@ -345,6 +306,7 @@ function AutoTools({
         {addOpen ? (
           <form
             className={styles.popover}
+            data-focus-popover=""
             onSubmit={(event) => {
               event.preventDefault()
               addParameter()
@@ -455,7 +417,9 @@ function WaveTools({ edit }: { edit: WaveFocusActions }) {
       setMore(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMore(false)
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setMore(false)
     }
     document.addEventListener('pointerdown', onPointer)
     window.addEventListener('keydown', onKey)
@@ -508,7 +472,7 @@ function WaveTools({ edit }: { edit: WaveFocusActions }) {
           ···
         </Icon>
         {more ? (
-          <div className={styles.menu} id={menuId} role="menu">
+          <div className={styles.menu} id={menuId} role="menu" data-focus-popover="">
             <button type="button" role="menuitem" onClick={() => { edit.onTrim(); setMore(false) }}>
               {t.waveform.trimTitle}
             </button>
@@ -565,6 +529,21 @@ function PlayIcon() {
   return (
     <Svg>
       <path d="M5 3.5v9l7-4.5-7-4.5z" fill="currentColor" />
+    </Svg>
+  )
+}
+
+function ExitFocusIcon() {
+  return (
+    <Svg>
+      <path
+        d="M6 3v3H3M10 3v3h3M13 10h-3v3M3 10h3v3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   )
 }

@@ -153,11 +153,14 @@ export type Messages = {
     freq: string
     gain: string
     q: string
+    slope: string
     context: string
   }
   focus: {
-    restore: string
     enter: string
+    exit: string
+    caption: string
+    band: (index: number, type: string) => string
     addNode: string
     deleteNode: string
     addAutomation: string
@@ -697,8 +700,8 @@ export const EN: Messages = {
     analyzer: 'Analyzer',
     expandWorkspace: 'Expand workspace',
     collapseWorkspace: 'Exit full workspace',
-    enterFocus: 'Enter focused editing',
-    exitFocus: 'Exit focused editing',
+    enterFocus: 'Enter Focus Mode',
+    exitFocus: 'Exit Focus Mode',
     deleteBand: 'Delete band',
     expandContext: 'Show parameters',
     collapseContext: 'Hide parameters',
@@ -710,11 +713,14 @@ export const EN: Messages = {
     freq: 'Freq',
     gain: 'Gain',
     q: 'Q',
+    slope: 'Slope',
     context: 'Effect parameters',
   },
   focus: {
-    restore: 'Restore',
-    enter: 'Focus',
+    enter: 'Enter Focus Mode',
+    exit: 'Exit Focus Mode',
+    caption: 'Focus',
+    band: (index, type) => `Band ${index} · ${type}`,
     addNode: 'Add node',
     deleteNode: 'Delete node',
     addAutomation: 'Add automation',
@@ -1346,8 +1352,8 @@ export const PL: Messages = {
     analyzer: 'Analizator',
     expandWorkspace: 'Powiększ przestrzeń',
     collapseWorkspace: 'Zamknij pełny widok',
-    enterFocus: 'Wejdź w skupioną edycję',
-    exitFocus: 'Wyjdź ze skupionej edycji',
+    enterFocus: 'Wejdź w tryb Focus',
+    exitFocus: 'Wyjdź z trybu Focus',
     deleteBand: 'Usuń pasmo',
     expandContext: 'Pokaż parametry',
     collapseContext: 'Ukryj parametry',
@@ -1359,11 +1365,14 @@ export const PL: Messages = {
     freq: 'Częst.',
     gain: 'Gain',
     q: 'Q',
+    slope: 'Slope',
     context: 'Parametry efektu',
   },
   focus: {
-    restore: 'Przywróć',
-    enter: 'Fokus',
+    enter: 'Wejdź w tryb Focus',
+    exit: 'Wyjdź z trybu Focus',
+    caption: 'Fokus',
+    band: (index, type) => `Pasmo ${index} · ${type}`,
     addNode: 'Dodaj węzeł',
     deleteNode: 'Usuń węzeł',
     addAutomation: 'Dodaj automatyzację',

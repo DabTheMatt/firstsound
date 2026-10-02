@@ -118,6 +118,8 @@ type Props = {
   phoneEq?: boolean
   /** Focused EQ editing. Presentation only: same canvas, tighter plot, no analyzer chrome. */
   phoneFocus?: boolean
+  /** FFT Focus owns the analyzer controls in the shared header. */
+  suppressAnalyzerChrome?: boolean
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
@@ -196,7 +198,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -890,7 +892,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   useEffect(() => {
     if (!bandMenu) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setBandMenu(null)
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setBandMenu(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -932,6 +936,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       role="region"
       aria-label="Spectrum analyzer"
     >
+      {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
       >
@@ -1270,6 +1275,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
         </div>
       </div>
+      )}
       <div className={styles.stage}>
         <VizBackground inset="fill" />
         {prefs.legendOpen && (!compact || analyzerOpen) ? (
@@ -1573,6 +1579,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         {phoneFocus && bandMenu && menuBand && menuBand.type !== 'off' ? (
           <div
             className={styles.focusMenu}
+            data-focus-popover=""
             role="menu"
             aria-label={t.mobile.type}
             onPointerDown={(event) => event.stopPropagation()}

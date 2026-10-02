@@ -1,21 +1,75 @@
 .chrome {
-  position: absolute;
-  inset: 0;
+  container: focus / inline-size;
+  position: relative;
   z-index: 14;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   pointer-events: none;
   animation: focusIn 160ms ease;
 }
 
 .top {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'identity workspace actions';
+  align-items: start;
+  gap: 6px;
+  width: 100%;
   min-width: 0;
-  padding: 0 max(0px, env(safe-area-inset-right, 0px)) 0 max(4px, env(safe-area-inset-left, 0px));
+  padding: 2px max(4px, env(safe-area-inset-right, 0px)) 4px max(4px, env(safe-area-inset-left, 0px));
   pointer-events: none;
+}
+
+.identity,
+.workspace,
+.actions {
+  min-width: 0;
+  pointer-events: none;
+}
+
+.identity {
+  grid-area: identity;
+  justify-self: start;
+}
+
+.workspace {
+  grid-area: workspace;
+  justify-self: center;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.actions {
+  grid-area: actions;
+  justify-self: end;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.identity > *,
+.workspace > * {
+  pointer-events: auto;
+}
+
+@container focus (max-width: 760px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'identity actions'
+      'workspace workspace';
+  }
+
+  .workspace {
+    justify-self: stretch;
+  }
 }
 
 .title {
@@ -32,33 +86,25 @@
   pointer-events: none;
 }
 
-.tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  margin-left: auto;
-  min-width: 0;
-  pointer-events: none;
-}
-
-.tools > *,
 .cluster,
 .switcher {
   pointer-events: auto;
 }
 
 .cluster,
-.switcher {
+.switcher,
+.fftTools,
+.eqCluster {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2px;
   min-width: 0;
+  max-width: 100%;
   padding: 2px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--bg-panel) 84%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-panel) 62%, transparent);
+  backdrop-filter: blur(10px);
 }
 
 .switch {
@@ -114,16 +160,149 @@
   color: var(--text-primary);
 }
 
-.restore {
-  min-height: 36px;
-  padding: 0 10px;
+.eqCluster {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 2px 8px 4px;
+  background: color-mix(in srgb, var(--bg-panel) 48%, transparent);
+}
+
+.eqHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  max-width: 100%;
+}
+
+.eqName {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.eqKnobs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0 2px;
+  max-width: 100%;
+}
+
+.eqKnob {
+  width: 72px;
+  flex: 0 0 72px;
+  min-width: 0;
+}
+
+.typeField {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+  flex: 0 0 72px;
+  gap: 1px;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.typeField span {
+  height: 14px;
+  line-height: 14px;
+}
+
+.typeField select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  margin-top: 4px;
+  padding: 0 18px 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
+  appearance: none;
+  background-color: color-mix(in srgb, var(--bg-app) 72%, transparent);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 1px), calc(100% - 9px) calc(50% - 1px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: none;
+}
+
+.fftTools {
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+
+.fftField {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fftField select {
+  max-width: 7.5rem;
+  border: 0;
   background: transparent;
   color: var(--text-primary);
   font: inherit;
   font-size: 12px;
   font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.fftIcons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.fftNote {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 6px;
+}
+
+@container focus (max-width: 640px) {
+  .eqKnob {
+    width: 31%;
+    flex: 1 1 31%;
+    max-width: 88px;
+  }
+
+  .typeField {
+    flex: 1 1 100%;
+    width: auto;
+    max-width: 112px;
+  }
 }
 
 .lane {
@@ -294,9 +473,10 @@
 
   .hit,
   .lane,
-  .restore,
   .switch,
   .field select,
+  .typeField select,
+  .fftField select,
   .formActions button,
   .menu button {
     min-width: 44px;

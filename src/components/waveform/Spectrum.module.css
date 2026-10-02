@@ -451,7 +451,8 @@
 .phoneEq .chrome,
 .phoneEq .legendDock,
 .eqFocus .chrome,
-.eqFocus .legendDock {
+.eqFocus .legendDock,
+.eqFocus .focusReadout {
   display: none;
 }
 

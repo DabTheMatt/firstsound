@@ -403,7 +403,7 @@ export function WaveformToolbar({
           <AutomationIcon />
         </IconButton>
         {onToggleWorkspace ? (
-          <IconButton label={t.focus.enter} caption={t.focus.enter} onClick={onToggleWorkspace}>
+          <IconButton label={t.focus.enter} caption={t.focus.caption} onClick={onToggleWorkspace}>
             <FocusIcon />
           </IconButton>
         ) : null}
