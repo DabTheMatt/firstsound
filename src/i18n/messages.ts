@@ -513,6 +513,32 @@ export type Messages = {
     addAutomation: string
     affordance: (name: string, depth: string | null, automation: boolean) => string
   }
+  random: {
+    chaos: string
+    title: (name: string) => string
+    onceFor: (name: string) => string
+    autoFor: (name: string) => string
+    now: string
+    auto: string
+    on: string
+    off: string
+    free: string
+    sync: string
+    rate: string
+    division: string
+    intensity: string
+    transition: string
+    step: string
+    smooth: string
+    randomizeEffect: string
+    randomizeBand: string
+    effectMenu: (name: string) => string
+    chaosHint: string
+    budget: string
+    warning: string
+    cancel: string
+    enable: string
+  }
   a11y: {
     title: string
     theme: string
@@ -1169,6 +1195,33 @@ export const EN: Messages = {
         ? `Modulate ${name}, LFO ${depth}${automation ? ', automation active' : ''}`
         : `Modulate ${name}`,
   },
+  random: {
+    chaos: 'Chaos',
+    title: (name) => `Random ${name}`,
+    onceFor: (name) => `Randomize ${name}`,
+    autoFor: (name) => `Auto Random ${name}`,
+    now: 'Randomize now',
+    auto: 'Auto Random',
+    on: 'On',
+    off: 'Off',
+    free: 'Free',
+    sync: 'Sync',
+    rate: 'Rate',
+    division: 'Division',
+    intensity: 'Intensity',
+    transition: 'Transition',
+    step: 'Step',
+    smooth: 'Smooth',
+    randomizeEffect: 'Randomize effect',
+    randomizeBand: 'Randomize band',
+    effectMenu: (name) => `Random ${name}`,
+    chaosHint: 'Auto Random and effect randomization need Chaos.',
+    budget: 'Event rate is capped so the instrument stays responsive.',
+    warning:
+      'Chaos enables automatic and multi-parameter random generation. It can create extreme sound changes, sudden level changes, higher CPU use, and feedback or resonance extremes inside protected limits.',
+    cancel: 'Cancel',
+    enable: 'Enable Chaos',
+  },
   a11y: {
     title: 'Accessibility',
     theme: 'High Contrast / Low Vision Theme',
@@ -1824,6 +1877,33 @@ export const PL: Messages = {
       depth
         ? `Moduluj ${name}, LFO ${depth}${automation ? ', automatyzacja aktywna' : ''}`
         : `Moduluj ${name}`,
+  },
+  random: {
+    chaos: 'Chaos',
+    title: (name) => `Random ${name}`,
+    onceFor: (name) => `Losuj ${name}`,
+    autoFor: (name) => `Auto Random ${name}`,
+    now: 'Losuj teraz',
+    auto: 'Auto Random',
+    on: 'Włączone',
+    off: 'Wyłączone',
+    free: 'Free',
+    sync: 'Sync',
+    rate: 'Tempo',
+    division: 'Podział',
+    intensity: 'Intensywność',
+    transition: 'Przejście',
+    step: 'Step',
+    smooth: 'Smooth',
+    randomizeEffect: 'Losuj efekt',
+    randomizeBand: 'Losuj pasmo',
+    effectMenu: (name) => `Random ${name}`,
+    chaosHint: 'Auto Random i losowanie efektu wymagają trybu Chaos.',
+    budget: 'Częstotliwość zdarzeń jest ograniczona, żeby instrument został responsywny.',
+    warning:
+      'Chaos włącza automatyczne i wieloparametrowe losowanie. Może powodować skrajne zmiany brzmienia, nagłe zmiany poziomu, wyższe użycie CPU oraz skrajne sprzężenie lub rezonans w granicach ochrony.',
+    cancel: 'Anuluj',
+    enable: 'Włącz Chaos',
   },
   a11y: {
     title: 'Dostępność',

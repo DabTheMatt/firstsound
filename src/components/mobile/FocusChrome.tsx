@@ -22,7 +22,7 @@ import type { FocusWorkspace } from '../../app/phoneWorkspace'
 import { toNormalized } from '../../audio/parameters/mapping'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ParamActionPair } from '../random/ParamActionPair'
 import { automationFocusLfoCue, parameterModulationState } from '../modulation/modulationModel'
 import { automationEffectLabel, automationLaneTitle } from '../waveform/automationLabels'
 import { formatAutomationNodeValue } from '../waveform/automationValue'
@@ -391,7 +391,7 @@ function AutoTools({
       ) : null}
       {lfoCue.visible ? (
         <span className={styles.lfoCue} data-auto-lfo="" data-focus-mod="">
-          <ModulationAffordance id={selected} compact={!touch} touch={touch} />
+          <ParamActionPair id={selected} compact={!touch} touch={touch} />
           {touch || !lfoCue.depthLabel ? null : <span className={styles.lfoDepth}>{lfoCue.depthLabel}</span>}
         </span>
       ) : null}

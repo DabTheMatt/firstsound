@@ -59,7 +59,8 @@ import { eqBandAccentVars } from '../eq/eqBandStyle'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { EffectRandomMenu } from '../random/EffectRandomMenu'
+import { ParamActionPair } from '../random/ParamActionPair'
 import styles from './Inspector.module.css'
 
 function lfoBankResting(bank: readonly { target: string | null }[] | undefined): boolean {
@@ -495,6 +496,7 @@ function ModuleInspector({
               onToggle={() => engine.toggleModuleBypass(instanceId)}
             />
           ) : null}
+          <EffectRandomMenu type={type} />
           {mod && !isFixedType(mod.type) ? (
             <button
               type="button"
@@ -846,6 +848,7 @@ function EqEditor({
   pane: 'main' | 'advanced'
 }) {
   const [openBand, setOpenBand] = useState(0)
+  const { t } = useI18n()
   const st = snap.eqById[instanceId] ?? { bands: snap.eqBands, comb: snap.comb }
   const bands = st.bands
   const comb = st.comb
@@ -939,6 +942,11 @@ function EqEditor({
               onToggle={() => setBand(index, { bypassed: !band.bypassed })}
             />
           </summary>
+          {snap.random.chaos && openBand === index && band.type !== 'off' ? (
+            <button type="button" className={styles.ghost} onClick={() => engine.randomizeEqBand(index, true)}>
+              {t.random.randomizeBand}
+            </button>
+          ) : null}
           <Segmented
             label={`Band ${index + 1} type`}
             value={band.type}
@@ -1070,7 +1078,7 @@ function EqEditor({
               <label className={styles.field} data-param-id={eqBandLfoIds(index)?.freq}>
                 <span className={styles.fieldHead}>
                   Frequency
-                  {modulate && eqBandLfoIds(index)?.freq ? <ModulationAffordance id={eqBandLfoIds(index)!.freq} /> : null}
+                  {modulate && eqBandLfoIds(index)?.freq ? <ParamActionPair id={eqBandLfoIds(index)!.freq} /> : null}
                 </span>
                 <input
                   type="range"
@@ -1103,7 +1111,7 @@ function EqEditor({
                 <label className={styles.field} data-param-id={eqBandLfoIds(index)?.gain}>
                   <span className={styles.fieldHead}>
                     Gain
-                    {modulate && eqBandLfoIds(index)?.gain ? <ModulationAffordance id={eqBandLfoIds(index)!.gain} /> : null}
+                    {modulate && eqBandLfoIds(index)?.gain ? <ParamActionPair id={eqBandLfoIds(index)!.gain} /> : null}
                   </span>
                   <input
                     type="range"
@@ -1120,7 +1128,7 @@ function EqEditor({
                 <label className={styles.field} data-param-id={eqBandLfoIds(index)?.q}>
                   <span className={styles.fieldHead}>
                     Width
-                    {modulate && eqBandLfoIds(index)?.q ? <ModulationAffordance id={eqBandLfoIds(index)!.q} /> : null}
+                    {modulate && eqBandLfoIds(index)?.q ? <ParamActionPair id={eqBandLfoIds(index)!.q} /> : null}
                   </span>
                   <input
                     type="range"
@@ -1140,7 +1148,7 @@ function EqEditor({
                 <label className={styles.field} data-param-id={eqBandLfoIds(index)?.q}>
                   <span className={styles.fieldHead}>
                     Q
-                    {modulate && eqBandLfoIds(index)?.q ? <ModulationAffordance id={eqBandLfoIds(index)!.q} /> : null}
+                    {modulate && eqBandLfoIds(index)?.q ? <ParamActionPair id={eqBandLfoIds(index)!.q} /> : null}
                   </span>
                   <input
                     type="range"

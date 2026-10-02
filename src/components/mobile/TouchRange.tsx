@@ -3,7 +3,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { useEngine } from '../../hooks/useEngine'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ParamActionPair } from '../random/ParamActionPair'
 import { ModulationMarks } from '../modulation/ModulationMarks'
 import { parameterModulationState } from '../modulation/modulationModel'
 import { classifyGesture } from './gestureIntent'
@@ -89,7 +89,7 @@ export function TouchRange({ label, valueText, normalized, min, max, now, onChan
         <span className={styles.value}>{valueText}</span>
         {paramId ? (
           <span className={styles.modSlot}>
-            <ModulationAffordance id={paramId} touch />
+            <ParamActionPair id={paramId} touch />
           </span>
         ) : null}
       </div>

@@ -9,16 +9,22 @@ import {
   type LfoHoldState,
 } from '../fx/lfo'
 import { PARAMS } from '../parameters/definitions'
+import { applyRandomOffset, automationOwnsCenter } from '../random/ownership'
 import { applyParamLinks } from '../parameters/links'
 import { applyParamValue, clamp, fromNormalized } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
 
 /**
  * Playback pipeline for a parameter:
- * stored manual value → automation envelope (transport running) → LFO → clamp.
- * The envelope replaces the manual value only while playing, so a knob edit
- * cannot erase nodes. LFO depth is measured around the automated value, not
- * against a second writer racing the same AudioParam.
+ * stored manual value
+ * → automation envelope, while transport is running (absolute center)
+ * → Random offset, only while that automation center is active
+ * → LFO around the post-random center
+ * → clamp.
+ *
+ * Random does not edit the automation curve and does not own an AudioParam.
+ * With no active lane, Random has already written the manual base, so the
+ * offset layer stays at zero. LFO depth is measured around that center.
  *
  * Every lane with nodes runs during playback. `selectedParamId` is the lane
  * being edited, not a solo.
@@ -445,6 +451,27 @@ export function applyAutomation(
   return next ?? params
 }
 
+function withRandomOffsets(
+  center: Record<ParamId, number>,
+  automation: AutomationDocument,
+  playing: boolean,
+  offsets: Partial<Record<ParamId, number>> | undefined,
+): Record<ParamId, number> {
+  if (!offsets) return center
+  let next: Record<ParamId, number> | null = null
+  for (const id of Object.keys(offsets) as ParamId[]) {
+    const offset = offsets[id]
+    if (!offset) continue
+    const nodes = laneFor(automation, id)?.nodes.length ?? 0
+    if (!automationOwnsCenter(nodes, playing)) continue
+    const value = applyRandomOffset(center[id], id, offset)
+    if (value === center[id]) continue
+    if (!next) next = { ...center }
+    next[id] = value
+  }
+  return next ?? center
+}
+
 export function resolvePerformanceParams(
   manual: Record<ParamId, number>,
   automation: AutomationDocument,
@@ -454,8 +481,10 @@ export function resolvePerformanceParams(
   lfoTimeSec: number,
   hold: LfoHoldState,
   rand?: () => number,
+  randomOffsets?: Partial<Record<ParamId, number>>,
 ): Record<ParamId, number> {
-  const base = playing ? applyAutomation(manual, automation, timeSec) : manual
+  const automated = playing ? applyAutomation(manual, automation, timeSec) : manual
+  const base = withRandomOffsets(automated, automation, playing, randomOffsets)
   const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold, rand) : base
   // Linked pairs (delay correlate, L/R link) follow the automated or modulated
   // value. Skip when the result is still the stored object so a stopped

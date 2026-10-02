@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
 import { StableLabel } from './StableLabel'
+import { ChaosControl } from '../random/ChaosControl'
 import { ThemePicker } from './ThemePicker'
 import { Wordmark } from './Wordmark'
 import styles from './AppHeader.module.css'
@@ -107,6 +108,7 @@ export function AppHeader({
         <div className={styles.runtime}>
           <RuntimeStatus />
         </div>
+        <ChaosControl />
         {!minimal ? (
           <p className={styles.meta}>
             <span>{rate}</span>

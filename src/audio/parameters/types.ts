@@ -274,4 +274,6 @@ export type PresetV1 = {
   masterMix?: number
   /** Optional so presets saved before automation existed still load. */
   automation?: unknown
+  /** Optional Random / Chaos configuration. Events do not start until transport plays. */
+  random?: unknown
 }

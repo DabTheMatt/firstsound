@@ -5,7 +5,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import { applySliderKey, formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { ModulationAffordance } from '../modulation/ModulationAffordance'
+import { ParamActionPair } from '../random/ParamActionPair'
 import { ModulationMarks } from '../modulation/ModulationMarks'
 import { parameterModulationState } from '../modulation/modulationModel'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
@@ -259,7 +259,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
           </span>
         </div>
         <span className={styles.modSlot}>
-          <ModulationAffordance id={id} compact={!gestureSafe} touch={gestureSafe} />
+          <ParamActionPair id={id} compact={!gestureSafe} touch={gestureSafe} />
         </span>
       </div>
       <p id={descId} className="sr-only">
