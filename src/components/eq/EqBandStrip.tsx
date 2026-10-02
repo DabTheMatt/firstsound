@@ -118,7 +118,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
               </ParamSlot>
             ) : null}
             {slot === 'slope' ? (
-              <div className={styles.knobSlot}>
+              <ParamSlot afford={false}>
                 <ValueKnob
                   compact
                   label="Slope"
@@ -135,7 +135,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
                     return true
                   }}
                 />
-              </div>
+              </ParamSlot>
             ) : null}
             {slot === 'gain' ? (
               <ParamSlot id={ids?.gain} afford={modulate}>
