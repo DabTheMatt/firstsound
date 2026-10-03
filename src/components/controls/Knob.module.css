@@ -239,6 +239,13 @@
   color: var(--text-primary);
 }
 
+.dragReadoutFloat {
+  position: fixed;
+  bottom: auto;
+  z-index: 80;
+  transform: translate(-50%, calc(-100% - 6px));
+}
+
 .value {
   margin: 0;
   width: 100%;

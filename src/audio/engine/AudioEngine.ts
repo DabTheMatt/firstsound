@@ -1500,7 +1500,11 @@ export class AudioEngine {
       rack.noiseFadeTau = NOISE_CUT_TAU_SEC
     })
     this.applyLiveAudio()
-    const linearProject = loaded > 1 && this.engineMode === 'playback'
+    // One loaded lane still uses the selection player. An empty selection, a
+    // second sample, or a track loop shares one project clock so every loaded
+    // playhead starts together and the loop region is what is heard.
+    const trackLoops = this.tracks.some((track) => track.loop && this.trackBuffers.has(track.id))
+    const linearProject = this.engineMode === 'playback' && (loaded > 1 || !hasLead || trackLoops)
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
@@ -3758,7 +3762,9 @@ export class AudioEngine {
       })
     }
     this.applyLiveAudio(0.02)
-    if (
+    if (this.playing && this.engineMode === 'playback' && patch.loop === true && !this.usingProjectTransport) {
+      this.handoffToProjectTransport()
+    } else if (
       this.usingProjectTransport &&
       this.playing &&
       (patch.loop != null || patch.direction != null)
@@ -3774,7 +3780,9 @@ export class AudioEngine {
    */
   setTrackLoop(id: string, loopStart: number, loopEnd: number, commit: boolean): void {
     this.setTrack(id, { loopStart, loopEnd })
-    if (commit) this.rescheduleTrack(id)
+    if (!commit || !this.playing || this.engineMode !== 'playback') return
+    if (!this.usingProjectTransport) this.handoffToProjectTransport()
+    else this.rescheduleTrack(id)
   }
 
   selectTrack(id: string): void {
@@ -6798,6 +6806,30 @@ export class AudioEngine {
       const stretch = customPing || sourceNeedsStretch(rack.params.speed, rack.params.pitch, this.trackRateIsLive(track.id))
       if (stretch !== this.stretchCursors.has(track.id)) this.rescheduleTrack(track.id)
     }
+  }
+
+  /**
+   * Leave the single-region player and start every loaded track on the
+   * project clock. Used when the selected lane is empty or a loop region
+   * has to become the thing that is heard.
+   */
+  private handoffToProjectTransport(): void {
+    if (!this.ctx || !this.playing || this.engineMode !== 'playback' || this.usingProjectTransport) return
+    const head = this.getPlayheadSeconds()
+    this.stopVoices()
+    this.playing = true
+    this.usingProjectTransport = true
+    const project = this.projectDuration()
+    let origin = Number.isFinite(head) ? Math.max(0, head) : 0
+    if (!(project > 0) || origin >= project - 0.001) origin = 0
+    this.playOffset = origin
+    this.applyTrackMix(0.01)
+    this.startProjectVoices(this.ctx.currentTime, origin, true)
+    if (this.projectVoices.length === 0 && this.stretchCursors.size === 0 && origin > 0.001) {
+      this.playOffset = 0
+      this.startProjectVoices(this.ctx.currentTime, 0, true)
+    }
+    this.emit()
   }
 
   /** Replace one track's source. Every other track's nodes stay connected. */

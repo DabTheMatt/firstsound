@@ -14,6 +14,7 @@ import {
 import {
   anyTrackSoloed,
   trackColorVar,
+  trackLevelGain,
   type MixTrack,
   type TrackColorId,
 } from '../../audio/mix/tracks'
@@ -88,6 +89,7 @@ function paintWave(
   color: string,
   clock: TrackClock,
   gainDb: number,
+  level = 1,
 ) {
   const rect = canvas.getBoundingClientRect()
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -101,12 +103,14 @@ function paintWave(
   if (!ctx) return
   ctx.clearRect(0, 0, width, height)
   if (!buffer || !(projectDuration > 0)) return
-  const gain = waveformVisualGain(gainDb)
+  const gain = waveformVisualGain(gainDb) * (Number.isFinite(level) ? Math.max(0, level) : 1)
   const mid = height / 2
   const half = height * 0.46
   ctx.fillStyle = color
   const tiles = waveformTiles(clock, projectDuration)
   for (const tile of tiles) {
+    const repeat = clock.loop && tile.projectStart > 0.001
+    ctx.globalAlpha = repeat ? 0.34 : 1
     const x0 = Math.max(0, Math.round((tile.projectStart / projectDuration) * width))
     const x1 = Math.min(width, Math.round((tile.projectEnd / projectDuration) * width))
     const buckets = Math.max(1, x1 - x0)
@@ -122,19 +126,8 @@ function paintWave(
       ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
     }
   }
-  if (clock.loop) {
-    ctx.fillStyle = color
-    const seam = Math.max(1, Math.round(dpr))
-    for (const tile of tiles) {
-      const x0 = Math.max(0, Math.round((tile.projectStart / projectDuration) * width))
-      const x1 = Math.min(width, Math.round((tile.projectEnd / projectDuration) * width))
-      ctx.globalAlpha = 0.95
-      ctx.fillRect(x0, 0, seam, height)
-      ctx.fillRect(Math.max(0, x1 - seam), 0, seam, height)
-    }
-    ctx.globalAlpha = 1
-    return
-  }
+  ctx.globalAlpha = 1
+  if (clock.loop) return
   const endX = Math.round(sourceEndProjectRatio(clock, projectDuration) * width)
   ctx.fillStyle = 'rgba(255,255,255,0.28)'
   ctx.fillRect(endX, 0, 1, height)
@@ -780,6 +773,7 @@ function LaneCanvas({
           loopEnd: track.loopEnd,
         },
         gainDb,
+        trackLevelGain(track.mix),
       )
     }
     draw()
@@ -790,7 +784,7 @@ function LaneCanvas({
       unsub()
       ro.disconnect()
     }
-  }, [track.id, track.color, track.loop, track.loopStart, track.loopEnd, track.direction, channel, projectDuration, contentRev, speed, gainDb])
+  }, [track.id, track.color, track.loop, track.loopStart, track.loopEnd, track.direction, track.mix, channel, projectDuration, contentRev, speed, gainDb])
 
   const beginDrag = (event: ReactPointerEvent<HTMLElement>, mode: 'start' | 'end' | 'body') => {
     if (!track.loop || event.button !== 0) return
@@ -848,7 +842,30 @@ function LaneCanvas({
                 className={styles.loopPass}
                 style={{ left: `${left}%`, width: `${Math.max(0, width)}%` }}
                 data-loop-pass={index}
-              />
+              >
+                {index > 0 ? (
+                  <span className={styles.loopMark} aria-hidden>
+                    <svg viewBox="0 0 16 16" width="12" height="12">
+                      <path
+                        d="M3.2 8.2a4.6 4.6 0 0 1 7.8-3.3L12.6 6.4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        strokeLinecap="round"
+                      />
+                      <path d="M12.7 3.4v3.2H9.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M12.8 7.8a4.6 4.6 0 0 1-7.8 3.3L3.4 9.6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        strokeLinecap="round"
+                      />
+                      <path d="M3.3 12.6V9.4H6.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                ) : null}
+              </div>
             )
           })
         : null}

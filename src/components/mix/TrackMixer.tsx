@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { createPortal } from 'react-dom'
 import { dbToMeterPct } from '../../app/editorState'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { timeDomainPeakDb } from '../../audio/engine/timePeak'
-import { formatMixerDb, formatPan } from '../../audio/mix/mixerParams'
+import { formatPan } from '../../audio/mix/mixerParams'
 import { TRACK_MIX_MAX, anyTrackSoloed, mixToDbLabel, trackColorVar, type MixTrack } from '../../audio/mix/tracks'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
@@ -143,15 +142,6 @@ export function TrackVolumeFader({ track, orientation = 'vertical' }: { track: M
   }
   return (
     <div className={orientation === 'vertical' ? styles.faderCol : styles.faderRow}>
-      {orientation === 'vertical' ? (
-        <div className={styles.dbScale} aria-hidden>
-          {FADER_DB.map((db) => (
-            <span key={db} style={{ bottom: `${faderRatio(mixFromDb(db)) * 100}%` }}>
-              {db === 0 ? '0' : db}
-            </span>
-          ))}
-        </div>
-      ) : null}
       <div
         className={orientation === 'vertical' ? styles.fader : styles.faderH}
         role="slider"
@@ -178,11 +168,40 @@ export function TrackVolumeFader({ track, orientation = 'vertical' }: { track: M
           engine.setTrack(track.id, { mix: 100 })
         }}
       >
-        <span className={styles.faderFill} style={orientation === 'vertical' ? { height: `${ratio * 100}%` } : { width: `${ratio * 100}%` }} />
+        <span className={styles.faderSlot} />
+        <span className={styles.faderTicks} aria-hidden>
+          {FADER_DB.map((db) => (
+            <span key={db} style={orientation === 'vertical' ? { bottom: `${faderRatio(mixFromDb(db)) * 100}%` } : { left: `${faderRatio(mixFromDb(db)) * 100}%` }}>
+              <i />
+              {db === 0 ? <em>0</em> : null}
+            </span>
+          ))}
+        </span>
         <span
           className={styles.faderCap}
           style={orientation === 'vertical' ? { bottom: `${ratio * 100}%` } : { left: `${ratio * 100}%` }}
         />
+      </div>
+    </div>
+  )
+}
+
+function MeterScale() {
+  return (
+    <div className={styles.meterScaleCol} aria-hidden>
+      <span className={styles.meterScaleGap} />
+      <div className={styles.meterScale}>
+        {FADER_DB.map((db) => (
+          <span
+            key={db}
+            style={{
+              bottom: `${dbToMeterPct(db, METER_FLOOR_DB)}%`,
+              transform: db === 0 ? 'translateY(100%)' : undefined,
+            }}
+          >
+            {db === 0 ? '0' : db}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -254,80 +273,9 @@ export function TrackMuteSolo({ track }: { track: MixTrack }) {
   )
 }
 
-function MsPopover({ track, anchor, onClose }: { track: MixTrack; anchor: HTMLElement; onClose: () => void }) {
-  const { t } = useI18n()
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const place = () => {
-      const rect = anchor.getBoundingClientRect()
-      const width = 180
-      let left = rect.left
-      if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - width - 8)
-      let top = rect.top - 72
-      if (top < 8) top = rect.bottom + 6
-      setPos({ top, left })
-    }
-    place()
-    window.addEventListener('resize', place)
-    window.addEventListener('scroll', place, true)
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    const onPointer = (event: PointerEvent) => {
-      const node = event.target as Node | null
-      if (node && (anchor.contains(node) || menuRef.current?.contains(node))) return
-      onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('pointerdown', onPointer)
-    return () => {
-      window.removeEventListener('resize', place)
-      window.removeEventListener('scroll', place, true)
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onPointer)
-    }
-  }, [anchor, onClose])
-  if (!pos) return null
-  return createPortal(
-    <div ref={menuRef} className={styles.msPop} style={{ top: pos.top, left: pos.left }} role="dialog" aria-label={t.mix.midSide}>
-      <label>
-        <span>{t.mix.mid}</span>
-        <input
-          type="range"
-          min={-60}
-          max={12}
-          step={0.1}
-          value={track.midDb}
-          aria-label={t.mix.midTrack(track.name)}
-          onChange={(event) => engine.setTrack(track.id, { midDb: Number(event.target.value) })}
-        />
-        <em>{formatMixerDb(track.midDb)}</em>
-      </label>
-      <label>
-        <span>{t.mix.side}</span>
-        <input
-          type="range"
-          min={-60}
-          max={12}
-          step={0.1}
-          value={track.sideDb}
-          aria-label={t.mix.sideTrack(track.name)}
-          onChange={(event) => engine.setTrack(track.id, { sideDb: Number(event.target.value) })}
-        />
-        <em>{formatMixerDb(track.sideDb)}</em>
-      </label>
-    </div>,
-    document.body,
-  )
-}
-
 /** Lane strip and the waveform mixer bar. Both edit the same MixTrack. */
 export function TrackMixer({ track, tracks, phone = false, variant = 'lane', selected = false }: Props) {
-  const { t } = useI18n()
-  const stereo = track.channelCount >= 2
   const dimmed = anyTrackSoloed(tracks) && !track.solo
-  const [msAnchor, setMsAnchor] = useState<HTMLElement | null>(null)
   const horizontal = variant === 'bar'
   const pan = <TrackPanKnob track={track} />
   const fader = <TrackVolumeFader track={track} orientation={horizontal ? 'horizontal' : 'vertical'} />
@@ -352,23 +300,12 @@ export function TrackMixer({ track, tracks, phone = false, variant = 'lane', sel
       {selected ? <LfoParamShell id="mixPan">{pan}</LfoParamShell> : pan}
       <div className={styles.faderMeter}>
         {volume}
+        {horizontal ? null : <MeterScale />}
         <TrackLevelMeter track={track} />
       </div>
       <div className={styles.bottom}>
         <TrackMuteSolo track={track} />
-        {stereo ? (
-          <button
-            type="button"
-            className={`${styles.flag} ${msAnchor ? styles.msOn : ''}`}
-            aria-expanded={Boolean(msAnchor)}
-            aria-label={t.mix.midSideTrack(track.name)}
-            onClick={(event) => setMsAnchor((cur) => (cur ? null : event.currentTarget))}
-          >
-            MS
-          </button>
-        ) : null}
       </div>
-      {msAnchor ? <MsPopover track={track} anchor={msAnchor} onClose={() => setMsAnchor(null)} /> : null}
     </div>
   )
 }

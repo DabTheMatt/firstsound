@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { createCoarseGestureSession, fineDragSpan, isCoarsePointer } from './gestureIntent'
@@ -48,6 +49,33 @@ type Props = {
 }
 
 const DRAG_PX = 140
+
+function DragReadout({ anchorRef, label, text }: { anchorRef: RefObject<HTMLElement | null>; label: string; text: string }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  useEffect(() => {
+    const anchor = anchorRef.current
+    if (!anchor) return
+    const place = () => {
+      const rect = anchor.getBoundingClientRect()
+      setPos({ top: rect.top, left: rect.left + rect.width / 2 })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [anchorRef, text])
+  if (!pos || typeof document === 'undefined') return null
+  return createPortal(
+    <span className={`${styles.dragReadout} ${styles.dragReadoutFloat}`} role="status" style={{ top: pos.top, left: pos.left }}>
+      <span>{label}</span>
+      <strong>{text}</strong>
+    </span>,
+    document.body,
+  )
+}
 
 export function ValueKnob({
   label,
@@ -296,12 +324,7 @@ export function ValueKnob({
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
       >
-      {adjusting ? (
-        <span className={styles.dragReadout} role="status">
-          <span>{label}</span>
-          <strong>{shownText}</strong>
-        </span>
-      ) : null}
+      {adjusting ? <DragReadout anchorRef={rootRef} label={label} text={shownText} /> : null}
       <p className={captionClass ? `${styles.label} ${captionClass}` : styles.label} id={labelId} title={label}>
         {caption.text}
       </p>

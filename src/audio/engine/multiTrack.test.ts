@@ -257,4 +257,54 @@ describe('multi-track foundation', () => {
     expect(engine.trackVoiceAlive(b!.id)).toBe(true)
     expect(engine.getSnapshot().tracks.find((track) => track.id === a!.id)?.mix).toBe(80)
   })
+
+  it('plays every loaded track when the selected lane is empty', async () => {
+    const engine = new AudioEngine()
+    const rate = 8000
+    const host = window as Window & { setInterval?: typeof setInterval; clearInterval?: typeof clearInterval }
+    if (typeof host.setInterval !== 'function') {
+      host.setInterval = ((fn: TimerHandler, ms?: number) => setInterval(fn, ms)) as typeof setInterval
+      host.clearInterval = ((id: number) => clearInterval(id)) as typeof clearInterval
+    }
+    engine.useOfflineGraph(new OfflineAudioContext(2, rate * 2, rate))
+    const [empty, loaded] = engine.getSnapshot().tracks
+    engine.loadTrackPcm(loaded!.id, tone(1, rate, 1, 0.3), rate, 'lane.wav')
+    engine.selectTrack(empty!.id)
+    expect(engine.getSnapshot().sampleLoaded).toBe(false)
+    expect(engine.getSnapshot().projectAudible).toBe(true)
+    await engine.play()
+    expect(engine.getSnapshot().playing).toBe(true)
+    expect(engine.trackVoiceAlive(loaded!.id)).toBe(true)
+    expect(engine.trackVoiceAlive(empty!.id)).toBe(false)
+  })
+
+  it('hears a new loop region on a single loaded track', async () => {
+    const engine = new AudioEngine()
+    const rate = 8000
+    const host = window as Window & {
+      setInterval?: typeof setInterval
+      clearInterval?: typeof clearInterval
+      setTimeout?: typeof setTimeout
+      clearTimeout?: typeof clearTimeout
+    }
+    if (typeof host.setInterval !== 'function') {
+      host.setInterval = ((fn: TimerHandler, ms?: number) => setInterval(fn, ms)) as typeof setInterval
+      host.clearInterval = ((id: number) => clearInterval(id)) as typeof clearInterval
+    }
+    if (typeof host.setTimeout !== 'function') {
+      host.setTimeout = ((fn: TimerHandler, ms?: number) => setTimeout(fn, ms)) as typeof setTimeout
+      host.clearTimeout = ((id: number) => clearTimeout(id)) as typeof clearTimeout
+    }
+    engine.useOfflineGraph(new OfflineAudioContext(2, rate * 2, rate))
+    const track = engine.getSnapshot().tracks[0]!
+    engine.loadTrackPcm(track.id, tone(1, rate, 1, 0.25), rate, 'loop.wav')
+    await engine.play()
+    expect(engine.trackVoiceNode(track.id)).toBeNull()
+    engine.setTrack(track.id, { loop: true })
+    engine.setTrackLoop(track.id, 0.2, 0.55, true)
+    const voice = engine.trackVoiceNode(track.id)
+    expect(voice?.loop).toBe(true)
+    expect(voice?.loopStart).toBeCloseTo(0.2, 2)
+    expect(voice?.loopEnd).toBeCloseTo(0.55, 2)
+  })
 })

@@ -229,18 +229,27 @@
   bottom: 0;
   pointer-events: none;
   z-index: 1;
-  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 16%, transparent);
-  box-shadow:
-    inset 3px 0 0 var(--lane, var(--accent-primary)),
-    inset -3px 0 0 var(--lane, var(--accent-primary));
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 10%, transparent);
+}
+
+.loopPass:not([data-loop-pass='0']) {
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 4%, transparent);
+  border-left: 1px dashed rgba(255, 255, 255, 0.88);
+}
+
+.loopMark {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .loopHandle {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 18px;
-  margin-left: -9px;
+  width: 16px;
+  margin-left: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -249,16 +258,23 @@
   z-index: 3;
 }
 
+.loopEnd {
+  margin-left: -16px;
+}
+
 .loopHandle::after {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 7px;
-  width: 4px;
-  border-radius: 2px;
-  background: var(--text-primary);
-  box-shadow: 0 0 0 1px var(--lane, var(--accent-primary));
+  left: 0;
+  width: 1px;
+  background: #fff;
+}
+
+.loopEnd::after {
+  left: auto;
+  right: 0;
 }
 
 .loopReadout {
