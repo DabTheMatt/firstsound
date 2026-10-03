@@ -8,7 +8,7 @@ import { formatAccessibleValue, paramDescription } from '../../a11y'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { ValueKnob } from '../controls/ValueKnob'
-import { TrackLevelMeter, TrackMuteSolo, TrackPanKnob, TrackVolumeFader } from './TrackMixer'
+import { MeterScale, TrackLevelMeter, TrackMuteSolo, TrackPanKnob, TrackVolumeFader } from './TrackMixer'
 import { LfoParamShell } from '../controls/LfoParamShell'
 import styles from './MixerView.module.css'
 
@@ -60,6 +60,7 @@ export function MixerView({ tracks, selectedId, onSelectTrack, onInspectEffect }
               ) : (
                 <TrackVolumeFader track={track} />
               )}
+              <MeterScale />
               <TrackLevelMeter track={track} />
             </div>
             <TrackMuteSolo track={track} />

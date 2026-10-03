@@ -186,7 +186,7 @@ export function TrackVolumeFader({ track, orientation = 'vertical' }: { track: M
   )
 }
 
-function MeterScale() {
+export function MeterScale() {
   return (
     <div className={styles.meterScaleCol} aria-hidden>
       <span className={styles.meterScaleGap} />

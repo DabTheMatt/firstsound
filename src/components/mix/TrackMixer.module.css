@@ -4,7 +4,7 @@
   align-items: center;
   gap: 4px;
   flex: none;
-  width: 104px;
+  width: 112px;
   min-height: 0;
   padding: 4px 6px 6px;
   border-left: 1px solid var(--border-subtle);
@@ -90,7 +90,7 @@
 }
 
 .fader {
-  width: 28px;
+  width: 36px;
   flex: none;
   align-self: stretch;
   min-height: 120px;
@@ -108,7 +108,7 @@
 
 .faderSlot {
   position: absolute;
-  left: 50%;
+  left: 24px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -136,8 +136,8 @@
 
 .faderTicks > span {
   position: absolute;
-  right: 12px;
-  width: 8px;
+  left: 0;
+  width: 18px;
   height: 0;
 }
 
@@ -153,12 +153,12 @@
 .faderTicks em {
   position: absolute;
   top: 0;
-  right: 7px;
+  left: 0;
   transform: translateY(-50%);
   font-style: normal;
-  font-size: 7px;
+  font-size: 8px;
   line-height: 1;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -187,7 +187,7 @@
 
 .faderCap {
   position: absolute;
-  left: 50%;
+  left: 24px;
   width: 16px;
   height: 18px;
   margin-left: -8px;
