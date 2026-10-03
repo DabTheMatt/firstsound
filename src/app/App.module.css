@@ -192,10 +192,68 @@
   overflow: hidden;
 }
 
-/* The dock continues through the transport row so the panel is taller than the wave. */
-.dock-right .inspector {
-  height: calc(100% + 56px);
+/* Inspector spans the wave and the transport so the dock is taller than the lanes. */
+.dock-right:not([data-workspace='focus']) .stageMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(268px, var(--inspector-col, 324px)) var(--meter-col);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+  row-gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dock-right.inspectorHidden:not([data-workspace='focus']) .stageMain {
+  grid-template-columns: minmax(0, 1fr) var(--inspector-toggle) var(--meter-col);
+}
+
+.dock-right:not([data-workspace='focus']) .chrome {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.dock-right:not([data-workspace='focus']) .work {
+  display: contents;
+}
+
+.dock-right:not([data-workspace='focus']) .waveCol {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+
+.dock-right:not([data-workspace='focus']) .inspector {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+  height: auto;
+  min-height: 0;
   z-index: 3;
+}
+
+.dock-right:not([data-workspace='focus']) .inspectorReveal {
+  grid-column: 2;
+  grid-row: 2;
+  height: auto;
+}
+
+.dock-right:not([data-workspace='focus']) .meterDock {
+  grid-column: 3;
+  grid-row: 2;
+  min-height: 0;
+  height: 100%;
+}
+
+.dock-right:not([data-workspace='focus']) .editRow {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  z-index: 4;
+}
+
+.dock-right:not([data-workspace='focus']) .transportWrap {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  margin-top: 8px;
 }
 
 .bottom {

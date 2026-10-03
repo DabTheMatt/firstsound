@@ -1101,12 +1101,12 @@ export default function App() {
         />
         <div className={styles.stage}>
           <div className={styles.stageMain}>
+        <div id="main-controls" className={styles.chrome}>
         {snap.audioStatus === 'blocked' ? (
           <p className={styles.banner}>{t.banner.audioBlocked}</p>
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
-        <div id="main-controls" className={styles.chrome}>
         <section className={styles.chainBand} aria-label={t.chain.aria}>
           <div className={styles.trackContext}>
             <span className={styles.trackKicker}>{t.mix.track}</span>
@@ -1363,6 +1363,7 @@ export default function App() {
           ) : null}
           {isPhoneLayout || activeFocus ? null : (
           <MeterStrip
+            className={styles.meterDock}
             channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
             range={meterRange}
             onRange={setMeterRange}
@@ -1399,6 +1400,7 @@ export default function App() {
         ) : null}
 
         {editMode && snap.sampleLoaded ? (
+          <div className={styles.editRow}>
           <EditBar
             snap={snap}
             viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
@@ -1411,6 +1413,7 @@ export default function App() {
               setExportOpen(false)
             }}
           />
+          </div>
         ) : null}
 
         <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`} data-transport="">

@@ -132,7 +132,7 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
   }
 
   return (
-    <div className={styles.strip} role="region" aria-label={t.meters.strip}>
+    <div className={`${styles.strip} ${className ?? ''}`} role="region" aria-label={t.meters.strip}>
       <div className={styles.clipRow}>
         <button
           type="button"
