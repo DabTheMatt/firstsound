@@ -34,13 +34,13 @@ describe('multi-track foundation', () => {
     expect(engine.getSnapshot().tracks[1]?.mix).toBe(40)
     expect(engine.getSnapshot().tracks[0]?.mix).toBe(100)
 
-    engine.setTrack(ids[2]!, { name: 'birds', color: 'warm' })
+    engine.setTrack(ids[2]!, { name: 'birds', color: 'magenta' })
     const beforeMove = engine.getTrackBuffer(ids[2]!)
     engine.reorderTracks(2, 0)
     const moved = engine.getSnapshot().tracks[0]
     expect(moved?.id).toBe(ids[2])
     expect(moved?.name).toBe('birds')
-    expect(moved?.color).toBe('warm')
+    expect(moved?.color).toBe('magenta')
     expect(engine.getTrackBuffer(ids[2]!)).toBe(beforeMove)
     expect(engine.getSnapshot().tracks.map((track) => track.id)).toEqual([ids[2], ids[0], ids[1], ids[3]])
 
@@ -87,7 +87,7 @@ describe('multi-track foundation', () => {
     const [a, b] = engine.getSnapshot().tracks
     engine.loadTrackPcm(a!.id, tone(1, 44100, 3, 0.2), 44100, 'short.wav')
     engine.loadTrackPcm(b!.id, tone(1, 44100, 11, 0.2), 44100, 'long.wav')
-    engine.setTrack(a!.id, { loop: true, color: 'cool' })
+    engine.setTrack(a!.id, { loop: true, color: 'blue' })
     engine.selectTrack(a!.id)
     engine.setParam('gain', -3)
     engine.setParam('speed', 0.75)
@@ -111,7 +111,7 @@ describe('multi-track foundation', () => {
     expect(back.params.pitch).toBe(-5)
     expect(back.tracks.find((track) => track.id === a!.id)?.direction).toBe('reverse')
     expect(back.tracks.find((track) => track.id === a!.id)?.loop).toBe(true)
-    expect(back.tracks.find((track) => track.id === a!.id)?.color).toBe('cool')
+    expect(back.tracks.find((track) => track.id === a!.id)?.color).toBe('blue')
 
     engine.reorderTracks(0, 1)
     engine.selectTrack(a!.id)

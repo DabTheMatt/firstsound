@@ -1109,11 +1109,15 @@ export default function App() {
         <div id="main-controls" className={styles.chrome}>
         <section className={styles.chainBand} aria-label={t.chain.aria}>
           <div className={styles.trackContext}>
-            <span className={styles.trackKicker}>{t.mix.track}</span>
-            <span className={styles.trackNow} style={{ color: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'accent') }}>
+            <span
+              className={styles.trackSwatch}
+              style={{ background: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber') }}
+            />
+            <span className={styles.trackNow} title={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name}>
               {snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name}
             </span>
-            {snap.tracks.length > 1 && !isPhoneLayout ? (
+          </div>
+          {snap.tracks.length > 1 && !isPhoneLayout ? (
               <div className={styles.trackChips} role="tablist" aria-label={t.mix.tracks}>
                 {snap.tracks.map((track, index) => {
                   const on = track.id === snap.selectedTrackId
@@ -1134,7 +1138,6 @@ export default function App() {
                 })}
               </div>
             ) : null}
-          </div>
           <SignalChain
             chain={snap.chain}
             selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
@@ -1338,6 +1341,13 @@ export default function App() {
               arrangement={arrangement}
               onSelectTrack={followTrack}
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
+              onInspectEffect={(trackId, instanceId) => {
+                if (engine.getSnapshot().selectedTrackId !== trackId) {
+                  intentRef.current = trackId
+                  engine.selectTrack(trackId)
+                }
+                selectModule(instanceId)
+              }}
             />
           </div>
           {dockRight && inspectorOpen && !activeFocus ? (

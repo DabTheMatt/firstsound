@@ -7,6 +7,31 @@
   gap: 4px;
 }
 
+.workspace {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  padding: 0 2px;
+}
+
+.workspaceBtn,
+.workspaceOn {
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspaceOn {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .list {
   position: relative;
   display: flex;
@@ -17,14 +42,69 @@
   overflow: auto;
 }
 
-.wave::after {
+.list[hidden] {
+  display: none;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--source-playhead, 0%);
+  width: 1px;
+  background: var(--playhead);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sourceEnd {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--text-muted) 70%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.loopRegion {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 16%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.loopHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  z-index: 3;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.loopHandle::after {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  left: var(--project-playhead, 0%);
+  left: 3px;
+  width: 2px;
+  background: var(--lane, var(--accent-primary));
+}
+
+.fileInput {
+  position: absolute;
   width: 1px;
-  background: var(--playhead);
+  height: 1px;
+  opacity: 0;
   pointer-events: none;
 }
 

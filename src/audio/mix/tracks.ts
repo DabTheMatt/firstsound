@@ -18,8 +18,18 @@ export const MAX_TRACKS = 4
 export const TRACK_MIX_MIN = 0
 export const TRACK_MIX_MAX = 150
 
-export const TRACK_COLOR_IDS = ['accent', 'secondary', 'warm', 'cool', 'eq', 'spectrum'] as const
+export const TRACK_COLOR_IDS = ['amber', 'blue', 'teal', 'violet', 'red', 'magenta', 'green', 'neutral'] as const
 export type TrackColorId = (typeof TRACK_COLOR_IDS)[number]
+
+/** Older projects stored theme-token ids. They migrate on read. */
+const LEGACY_TRACK_COLORS: Record<string, TrackColorId> = {
+  accent: 'amber',
+  secondary: 'red',
+  warm: 'magenta',
+  cool: 'blue',
+  eq: 'teal',
+  spectrum: 'neutral',
+}
 export type StereoDisplay = 'combined' | 'split'
 
 export type MixTrack = {
@@ -45,12 +55,22 @@ export type MixTrack = {
   stereoDisplay: StereoDisplay
   /** Repeats the source until the shared project ends. Does not lengthen it. */
   loop: boolean
+  /** Source seconds. The first pass still starts at 0; later passes use this. */
+  loopStart: number
+  /** Source seconds. 0 means the full file until a buffer provides a duration. */
+  loopEnd: number
   /** Source direction. Independent of every other track. */
   direction: PlaybackDirection
 }
 
 export function isTrackColorId(value: unknown): value is TrackColorId {
   return typeof value === 'string' && (TRACK_COLOR_IDS as readonly string[]).includes(value)
+}
+
+export function coerceTrackColor(value: unknown, index: number): TrackColorId {
+  if (isTrackColorId(value)) return value
+  if (typeof value === 'string' && LEGACY_TRACK_COLORS[value]) return LEGACY_TRACK_COLORS[value]
+  return trackColorForIndex(index)
 }
 
 export function trackColorForIndex(index: number): TrackColorId {
@@ -61,18 +81,22 @@ export function trackColorForIndex(index: number): TrackColorId {
 /** Theme token. Canvas code resolves the variable; the lane must not bake a hex. */
 export function trackColorVar(id: TrackColorId): string {
   switch (id) {
-    case 'accent':
-      return 'var(--accent-primary)'
-    case 'secondary':
-      return 'var(--accent-secondary)'
-    case 'warm':
-      return 'var(--ridge-warm)'
-    case 'cool':
-      return 'var(--ridge-cool)'
-    case 'eq':
-      return 'var(--eq-curve)'
-    case 'spectrum':
-      return 'var(--spectrum-line)'
+    case 'amber':
+      return 'var(--track-amber)'
+    case 'blue':
+      return 'var(--track-blue)'
+    case 'teal':
+      return 'var(--track-teal)'
+    case 'violet':
+      return 'var(--track-violet)'
+    case 'red':
+      return 'var(--track-red)'
+    case 'magenta':
+      return 'var(--track-magenta)'
+    case 'green':
+      return 'var(--track-green)'
+    case 'neutral':
+      return 'var(--track-neutral)'
   }
 }
 
@@ -84,6 +108,35 @@ export function sourceTrackName(fileName: string): string {
 export function trackNameAfterLoad(track: MixTrack, fileName: string): { name: string; nameLocked: boolean } {
   if (track.nameLocked) return { name: track.name, nameLocked: true }
   return { name: sourceTrackName(fileName), nameLocked: false }
+}
+
+/** Compact fader floor. 0 dB stays at mix 100, the same unity the DSP uses. */
+export const TRACK_FADER_MIN_DB = -48
+
+export function trackFaderMaxDb(): number {
+  return 20 * Math.log10(TRACK_MIX_MAX / 100)
+}
+
+export function mixToFaderDb(mix: number): number {
+  if (!(mix > 0.0001)) return TRACK_FADER_MIN_DB
+  return Math.max(TRACK_FADER_MIN_DB, 20 * Math.log10(clampMix(mix) / 100))
+}
+
+export function faderDbToMix(db: number): number {
+  if (!Number.isFinite(db) || db <= TRACK_FADER_MIN_DB + 0.01) return 0
+  return clampMix(100 * 10 ** (db / 20))
+}
+
+export function faderNormalized(mix: number): number {
+  const span = trackFaderMaxDb() - TRACK_FADER_MIN_DB
+  if (!(span > 0)) return 0
+  return (mixToFaderDb(mix) - TRACK_FADER_MIN_DB) / span
+}
+
+export function mixFromFaderNormalized(normalized: number): number {
+  const n = Number.isFinite(normalized) ? Math.min(1, Math.max(0, normalized)) : 0
+  const db = TRACK_FADER_MIN_DB + n * (trackFaderMaxDb() - TRACK_FADER_MIN_DB)
+  return faderDbToMix(db)
 }
 
 export function mixToDbLabel(mix: number): string {
@@ -113,6 +166,8 @@ export function createTrack(n: number, start = 0, end = 0, name?: string): MixTr
     channelCount: 0,
     stereoDisplay: 'combined',
     loop: false,
+    loopStart: 0,
+    loopEnd: 0,
     direction: 'forward',
   }
 }
@@ -263,6 +318,8 @@ export function clearTrackAudio(tracks: readonly MixTrack[], id: string): MixTra
     next.muted = false
     next.solo = false
     next.loop = false
+    next.loopStart = 0
+    next.loopEnd = 0
     next.direction = 'forward'
     if (!next.nameLocked) next.name = `Track ${index + 1}`
     return next
@@ -316,6 +373,12 @@ export function patchTrack(
       next.stereoDisplay = patch.stereoDisplay
     }
     if (typeof patch.loop === 'boolean') next.loop = patch.loop
+    if (typeof patch.loopStart === 'number' && Number.isFinite(patch.loopStart)) {
+      next.loopStart = Math.max(0, patch.loopStart)
+    }
+    if (typeof patch.loopEnd === 'number' && Number.isFinite(patch.loopEnd)) {
+      next.loopEnd = Math.max(0, patch.loopEnd)
+    }
     if (patch.direction === 'forward' || patch.direction === 'reverse' || patch.direction === 'pingpong') {
       next.direction = patch.direction
     }
@@ -353,7 +416,7 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
       id: rec.id,
       name,
       nameLocked,
-      color: isTrackColorId(rec.color) ? rec.color : trackColorForIndex(parsed.length),
+      color: coerceTrackColor(rec.color, parsed.length),
       mix: clampMix(typeof rec.mix === 'number' ? rec.mix : 100),
       muted: Boolean(rec.muted),
       solo: Boolean(rec.solo),
@@ -369,6 +432,8 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
           : 0,
       stereoDisplay: rec.stereoDisplay === 'split' ? 'split' : 'combined',
       loop: rec.loop === true,
+      loopStart: typeof rec.loopStart === 'number' && Number.isFinite(rec.loopStart) ? Math.max(0, rec.loopStart) : 0,
+      loopEnd: typeof rec.loopEnd === 'number' && Number.isFinite(rec.loopEnd) ? Math.max(0, rec.loopEnd) : 0,
       direction: rec.direction === 'reverse' || rec.direction === 'pingpong' ? rec.direction : 'forward',
     })
   }
@@ -407,6 +472,8 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       track.channelCount === other.channelCount &&
       track.stereoDisplay === other.stereoDisplay &&
       track.loop === other.loop &&
+      track.loopStart === other.loopStart &&
+      track.loopEnd === other.loopEnd &&
       track.direction === other.direction
     )
   })

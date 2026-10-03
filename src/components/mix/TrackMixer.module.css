@@ -135,13 +135,122 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
-  width: 78px;
+  width: 92px;
   flex: none;
   min-height: 0;
-  padding: 4px;
+  padding: 6px 6px 4px;
   border-left: 1px solid var(--border-subtle);
   --lane: var(--accent-primary);
+}
+
+.stripTall {
+  width: 108px;
+  min-height: 280px;
+  border: 1px solid var(--border-subtle);
+  border-top: 2px solid var(--lane, var(--accent-primary));
+  border-radius: 8px;
+  background: var(--bg-panel);
+}
+
+.panKnob {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, var(--bg-control-hover), var(--bg-control) 68%);
+  box-shadow:
+    inset 0 0 0 4px color-mix(in srgb, var(--lane, var(--accent-primary)) 55%, transparent),
+    0 0 0 1px var(--bg-panel);
+}
+
+.panSvg {
+  display: block;
+  width: 42px;
+  height: 42px;
+}
+
+.panTrack {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.panValue {
+  fill: none;
+  stroke: var(--lane, var(--accent-primary));
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.panNeedle {
+  stroke: var(--text-primary);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.panRead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.faderRow {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 96px;
+}
+
+.stripTall .faderRow {
+  height: 160px;
+}
+
+.fader {
+  position: relative;
+  width: 18px;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--bg-control);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  touch-action: none;
+}
+
+.faderUnity {
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  height: 1px;
+  background: var(--text-secondary);
+  pointer-events: none;
+}
+
+.faderCap {
+  position: absolute;
+  left: 2px;
+  width: 14px;
+  height: 8px;
+  margin-bottom: -4px;
+  border-radius: 2px;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lane, var(--accent-primary)) 70%, transparent);
+  pointer-events: none;
+}
+
+.meterGroup {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 100%;
 }
 
 .flags {

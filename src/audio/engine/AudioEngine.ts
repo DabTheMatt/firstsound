@@ -292,6 +292,13 @@ import { findModulePreset } from '../fx/modulePresets'
 import { planProjectStart, projectDurationOf, type TrackSpan } from '../mix/schedule'
 import { bufferCues, sourceNeedsStretch, type BufferCue } from '../mix/trackVoice'
 import {
+  correctSourceHead,
+  initialSourceHead,
+  resolveLoop,
+  sourcePositionAt,
+  type SourceClock,
+} from '../mix/sourcePosition'
+import {
   clampMix,
   clearTrackAudio,
   cloneTracks,
@@ -568,6 +575,8 @@ type TrackStretchCursor = {
   direction: PlaybackDirection
   budget: number
   consumed: number
+  intro: boolean
+  loopStart: number
 }
 
 
@@ -1063,6 +1072,54 @@ export class AudioEngine {
   /** Post-mixer, pre-master tap. Null until the audio graph exists. */
   getTrackAnalyser(id: string): AnalyserNode | null {
     return this.trackStrips.get(id)?.meter ?? null
+  }
+
+  /**
+   * Post-track, pre-master level taps.
+   * Mono reads the single downmix tap. Stereo reads independent L/R taps
+   * of the same node. Mixer and lanes share these nodes.
+   */
+  getTrackMeters(id: string): { channels: 1 | 2; left: AnalyserNode | null; right: AnalyserNode | null } {
+    const strip = this.trackStrips.get(id) ?? null
+    const channels = (this.tracks.find((track) => track.id === id)?.channelCount ?? 0) >= 2 ? 2 : 1
+    if (!strip) return { channels, left: null, right: null }
+    if (channels < 2) return { channels: 1, left: strip.meter, right: null }
+    return { channels: 2, left: strip.meterL, right: strip.meterR }
+  }
+
+  /** Effect chain stored on the track. Does not change selection. */
+  trackChain(id: string): readonly { instanceId: string; type: string; bypassed?: boolean }[] {
+    if (id === this.selectedTrackId) return this.chain
+    return this.ensureRack(id).chain
+  }
+
+  trackSourceClock(id: string): SourceClock {
+    const track = this.tracks.find((item) => item.id === id)
+    const buffer = this.trackBuffers.get(id)
+    const duration = buffer?.duration ?? 0
+    const speed = id === this.selectedTrackId ? this.params.speed : this.ensureRack(id).params.speed
+    return {
+      sourceDuration: duration,
+      speed,
+      direction: track?.direction ?? 'forward',
+      loop: track?.loop ?? false,
+      loopStart: track?.loopStart ?? 0,
+      loopEnd: track?.loopEnd && track.loopEnd > 0 ? track.loopEnd : duration,
+    }
+  }
+
+  /**
+   * Source position for one track at a project time.
+   * While that track is stretching, the live cursor wins so a speed edit
+   * changes velocity without jumping the head back to project time.
+   */
+  getTrackSourcePosition(id: string, projectTime?: number): number {
+    if (projectTime == null) {
+      const cursor = this.stretchCursors.get(id)
+      if (cursor && this.playing && this.usingProjectTransport) return cursor.head
+      return sourcePositionAt(this.getPlayheadSeconds(), this.trackSourceClock(id))
+    }
+    return sourcePositionAt(projectTime, this.trackSourceClock(id))
   }
 
   /** Test and diagnostics. View changes and mixer edits leave this still. */
@@ -3545,6 +3602,8 @@ export class AudioEngine {
       end: source.end,
       stereoDisplay: 'combined',
       loop: source.loop,
+      loopStart: source.loopStart,
+      loopEnd: source.loopEnd,
       direction: source.direction,
       pan: source.pan,
       midDb: source.midDb,
@@ -3618,7 +3677,23 @@ export class AudioEngine {
   }
 
   setTrack(id: string, patch: Partial<Omit<MixTrack, 'id'>>): void {
-    const next = patchTrack(this.tracks, id, patch)
+    let applied = patch
+    if (patch.loopStart != null || patch.loopEnd != null) {
+      const current = this.tracks.find((item) => item.id === id)
+      const dur = this.trackBuffers.get(id)?.duration ?? 0
+      if (current && dur > 0) {
+        const bounds = resolveLoop({
+          sourceDuration: dur,
+          speed: 1,
+          direction: current.direction,
+          loop: true,
+          loopStart: patch.loopStart ?? current.loopStart,
+          loopEnd: patch.loopEnd != null && patch.loopEnd > 0 ? patch.loopEnd : current.loopEnd > 0 ? current.loopEnd : dur,
+        })
+        applied = { ...patch, loopStart: bounds.loopStart, loopEnd: bounds.loopEnd }
+      }
+    }
+    const next = patchTrack(this.tracks, id, applied)
     if (tracksEqual(next, this.tracks)) return
     this.tracks = next
     const track = this.tracks.find((item) => item.id === id)
@@ -3654,7 +3729,7 @@ export class AudioEngine {
     if (
       this.usingProjectTransport &&
       this.playing &&
-      (patch.loop != null || patch.direction != null)
+      (patch.loop != null || patch.direction != null || patch.loopStart != null || patch.loopEnd != null)
     ) {
       this.rescheduleProject()
     }
@@ -4468,6 +4543,7 @@ export class AudioEngine {
       end,
       fileName,
       channelCount: buffer.numberOfChannels,
+      ...(asSource ? { loopStart: 0, loopEnd: buffer.duration } : {}),
       ...(sampleName ? { stereoDisplay: 'combined' as const } : {}),
       ...(named ? { name: named.name, nameLocked: named.nameLocked } : {}),
     })
@@ -6780,29 +6856,41 @@ export class AudioEngine {
     const pitch = rack.params.pitch
     const end = buffer.duration
     const originClamped = Math.max(0, origin)
-    let head = Math.min(originClamped, Math.max(0, end - 0.0001))
-    let dir = 1
-    if (track.direction === 'reverse') {
-      head = Math.max(0, end - originClamped)
-      dir = -1
-    }
+    const bounds = resolveLoop({
+      sourceDuration: end,
+      speed,
+      direction: track.direction,
+      loop: track.loop,
+      loopStart: track.loopStart,
+      loopEnd: track.loopEnd > 0 ? track.loopEnd : end,
+    })
+    const seeded = initialSourceHead(originClamped, {
+      sourceDuration: end,
+      speed,
+      direction: track.direction,
+      loop: track.loop,
+      loopStart: bounds.loopStart,
+      loopEnd: bounds.loopEnd,
+    })
     const cycle = track.direction === 'pingpong' ? end * 2 : end
     const budget = track.loop ? Number.POSITIVE_INFINITY : Math.max(0, cycle - originClamped)
     this.stretchCursors.set(track.id, {
-      head,
-      dir,
+      head: seeded.head,
+      dir: seeded.dir,
       speed,
       pitch,
       windowSpeed: speed,
       windowPitch: pitch,
       next: t0,
       stopAt: t0 + Math.max(0.001, projectDuration - originClamped),
-      start: 0,
-      end,
+      start: track.loop ? bounds.loopStart : 0,
+      end: track.loop ? bounds.loopEnd : end,
       loop: track.loop,
       direction: track.direction,
       budget,
       consumed: 0,
+      intro: seeded.intro,
+      loopStart: bounds.loopStart,
     })
   }
 
@@ -6817,7 +6905,18 @@ export class AudioEngine {
     const input = this.trackStrips.get(track.id)?.input
     if (!buffer || !input || !(buffer.duration > 0)) return
     const rack = this.ensureRack(track.id)
-    if (sourceNeedsStretch(rack.params.speed, rack.params.pitch, this.trackRateIsLive(track.id))) {
+    const bounds = resolveLoop({
+      sourceDuration: buffer.duration,
+      speed: rack.params.speed,
+      direction: track.direction,
+      loop: track.loop,
+      loopStart: track.loopStart,
+      loopEnd: track.loopEnd > 0 ? track.loopEnd : buffer.duration,
+    })
+    const customLoop =
+      track.loop &&
+      (bounds.loopStart > 0.0005 || bounds.loopEnd < buffer.duration - 0.0005)
+    if (customLoop || sourceNeedsStretch(rack.params.speed, rack.params.pitch, this.trackRateIsLive(track.id))) {
       this.armTrackStretch(track, buffer, t0, origin, projectDuration)
       return
     }
@@ -6935,31 +7034,21 @@ export class AudioEngine {
     }
   }
 
-  private wrapStretchCursor(cursor: TrackStretchCursor): number | null {
-    const span = Math.max(cursor.end - cursor.start, 0.001)
-    if (cursor.direction === 'pingpong') {
-      let head = cursor.head
-      for (let i = 0; i < 8; i++) {
-        if (head > cursor.end) {
-          head = cursor.end - (head - cursor.end)
-          cursor.dir = -1
-        } else if (head < cursor.start) {
-          head = cursor.start + (cursor.start - head)
-          cursor.dir = 1
-        } else break
-      }
-      return Math.min(cursor.end, Math.max(cursor.start, head))
-    }
-    if (cursor.loop) {
-      if (cursor.head >= cursor.end) return cursor.start + ((cursor.head - cursor.start) % span)
-      if (cursor.head < cursor.start) {
-        const back = (cursor.start - cursor.head) % span
-        return cursor.end - (back === 0 ? span : back)
-      }
+  private wrapStretchCursor(id: string, cursor: TrackStretchCursor): number | null {
+    const clock = this.trackSourceClock(id)
+    if (!(clock.sourceDuration > 0)) {
+      if (cursor.head >= cursor.end || cursor.head < cursor.start) return cursor.loop ? cursor.start : null
       return cursor.head
     }
-    if (cursor.head >= cursor.end || cursor.head < cursor.start) return null
-    return cursor.head
+    const corrected = correctSourceHead(
+      { head: cursor.head, dir: cursor.dir < 0 ? -1 : 1, intro: cursor.intro },
+      { ...clock, speed: cursor.speed, loop: cursor.loop, direction: cursor.direction },
+    )
+    if (!corrected) return null
+    cursor.dir = corrected.dir
+    cursor.intro = corrected.intro
+    cursor.head = corrected.head
+    return corrected.head
   }
 
   /** Shared transport timer. One pump schedules stretch grains for every track that needs them. */
@@ -6996,7 +7085,7 @@ export class AudioEngine {
         const late = now - cursor.next
         cursor.head += late * Math.max(cursor.speed, PARAMS.speed.min) * cursor.dir
         cursor.consumed += late * Math.max(cursor.speed, PARAMS.speed.min)
-        const caught = this.wrapStretchCursor(cursor)
+        const caught = this.wrapStretchCursor(id, cursor)
         if (caught == null || cursor.consumed >= cursor.budget) {
           this.stretchCursors.delete(id)
           continue
@@ -7019,7 +7108,7 @@ export class AudioEngine {
         cursor.pitch = step.pitch
         cursor.windowSpeed = step.windowSpeed
         cursor.windowPitch = step.windowPitch
-        const wrapped = this.wrapStretchCursor(cursor)
+        const wrapped = this.wrapStretchCursor(id, cursor)
         if (wrapped == null || cursor.consumed >= cursor.budget) {
           this.stretchCursors.delete(id)
           break

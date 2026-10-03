@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { computeMinMax } from '../../audio/engine/peaks'
+import {
+  caretFraction,
+  markerFraction,
+  sampleAtLaneFraction,
+  sourceTimeAtFraction,
+  type SourceClock,
+} from '../../audio/mix/sourcePosition'
 import {
   anyTrackSoloed,
   TRACK_COLOR_IDS,
@@ -8,8 +15,9 @@ import {
   type TrackColorId,
 } from '../../audio/mix/tracks'
 import { TrackMixer, TrackStrip } from './TrackMixer'
-import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
-import { beginTrackLoad, isLatestTrackLoad } from '../../features/sample/loadQueue'
+import { MixerView } from './MixerView'
+import { AUDIO_FILE_ACCEPT } from '../../features/sample/files'
+import { loadAudioFileIntoTrack, releaseFileInput } from '../../features/sample/loadTrack'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { subscribeThemeChange } from '../../theme'
@@ -62,6 +70,7 @@ function paintWave(
   channel: number,
   projectDuration: number,
   color: string,
+  clock: SourceClock,
 ) {
   const rect = canvas.getBoundingClientRect()
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -74,16 +83,17 @@ function paintWave(
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.clearRect(0, 0, width, height)
-  if (!buffer || !(projectDuration > 0)) return
-  const span = Math.min(1, buffer.duration / projectDuration)
-  const buckets = Math.max(1, Math.round(width * span))
+  if (!buffer || !(buffer.duration > 0)) return
+  const buckets = Math.max(64, Math.min(2048, width))
   const { min, max } = envelope(buffer, channel, buckets)
   const mid = height / 2
   const half = height * 0.42
   ctx.fillStyle = color
-  const drawWidth = Math.max(1, Math.round(width * span))
-  for (let x = 0; x < drawWidth; x++) {
-    const i = Math.min(buckets - 1, Math.floor((x / drawWidth) * buckets))
+  const project = projectDuration > 0 ? projectDuration : buffer.duration
+  for (let x = 0; x < width; x++) {
+    const sample = sampleAtLaneFraction(x / width, clock, project)
+    if (!Number.isFinite(sample)) continue
+    const i = Math.min(buckets - 1, Math.max(0, Math.floor((sample / buffer.duration) * buckets)))
     const hi = Math.max(-1, Math.min(1, max[i] ?? 0))
     const lo = Math.max(-1, Math.min(1, min[i] ?? 0))
     ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
@@ -103,10 +113,12 @@ export function MultiTrackView({
   phone = false,
   onSelectTrack,
   onEditTrack,
+  onInspectEffect,
 }: {
   phone?: boolean
   onSelectTrack?: (trackId: string) => void
   onEditTrack?: (trackId: string) => void
+  onInspectEffect?: (trackId: string, instanceId: string) => void
 }) {
   const { t } = useI18n()
   const snap = useEngine()
@@ -114,6 +126,7 @@ export function MultiTrackView({
   const [paletteFor, setPaletteFor] = useState<string | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
+  const [workspace, setWorkspace] = useState<'tracks' | 'mixer'>('tracks')
   const selectTrack = (id: string) => {
     if (onSelectTrack) onSelectTrack(id)
     else engine.selectTrack(id)
@@ -121,18 +134,27 @@ export function MultiTrackView({
 
   useEffect(() => {
     const node = listRef.current
-    if (!node) return
+    if (!node || workspace !== 'tracks') return
     let frame = 0
     const tick = () => {
       const dur = engine.getProjectDuration()
       const time = engine.getPlayheadSeconds()
-      const pct = dur > 0 ? Math.min(100, Math.max(0, (time / dur) * 100)) : 0
-      node.style.setProperty('--project-playhead', `${pct}%`)
+      const lanes = node.querySelectorAll<HTMLElement>('[data-track-lane]')
+      lanes.forEach((lane) => {
+        const id = lane.dataset.trackId
+        if (!id) return
+        const clock = engine.trackSourceClock(id)
+        const source = engine.getTrackSourcePosition(id)
+        const frac = caretFraction(time, source, clock, dur)
+        lane.style.setProperty('--source-playhead', `${frac * 100}%`)
+        const head = lane.querySelector<HTMLElement>('[data-track-playhead]')
+        if (head) head.dataset.sourceSeconds = source.toFixed(3)
+      })
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [workspace])
 
   const seekAt = (clientX: number, target: HTMLElement) => {
     const rect = target.getBoundingClientRect()
@@ -142,16 +164,41 @@ export function MultiTrackView({
     engine.seekSeconds(ratio * dur, 'sample')
   }
 
-  const loadFile = async (id: string, file: File) => {
-    const token = beginTrackLoad(id)
-    const data = await readAudioFile(file)
-    if (!isLatestTrackLoad(id, token)) return
-    await engine.loadTrackArrayBuffer(id, data, file.name)
-  }
+  const loadFile = (id: string, file: File) => loadAudioFileIntoTrack(id, file)
 
   return (
     <div className={`${styles.desk} ${phone ? styles.phone : ''}`} data-arrangement="multi">
-      <div ref={listRef} className={styles.list} role="list">
+      <div className={styles.workspace} role="tablist" aria-label={t.mix.tracks}>
+        <button
+          type="button"
+          role="tab"
+          data-workspace="tracks"
+          aria-selected={workspace === 'tracks'}
+          className={workspace === 'tracks' ? styles.workspaceOn : styles.workspaceBtn}
+          onClick={() => setWorkspace('tracks')}
+        >
+          {t.mix.tracksView}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-workspace="mixer"
+          aria-selected={workspace === 'mixer'}
+          className={workspace === 'mixer' ? styles.workspaceOn : styles.workspaceBtn}
+          onClick={() => setWorkspace('mixer')}
+        >
+          {t.mix.mixerView}
+        </button>
+      </div>
+      {workspace === 'mixer' ? (
+        <MixerView
+          tracks={snap.tracks}
+          selectedId={snap.selectedTrackId}
+          onSelectTrack={selectTrack}
+          onInspectEffect={onInspectEffect ?? ((trackId) => selectTrack(trackId))}
+        />
+      ) : null}
+      <div ref={listRef} className={styles.list} role="list" hidden={workspace !== 'tracks'}>
         {snap.tracks.map((track, index) => (
           <TrackLane
             key={track.id}
@@ -511,25 +558,20 @@ function TrackLane({
         ) : null}
         <input
           ref={inputRef}
+          className={styles.fileInput}
           type="file"
           accept={AUDIO_FILE_ACCEPT}
-          hidden
+          data-load-track={track.id}
+          tabIndex={-1}
           onChange={(event) => {
             const input = event.currentTarget
             const file = input.files?.[0]
-            if (!file) return
-            // Start the read before clearing the input. Chromium detaches the
-            // File if value is reset first, so the first pick decodes empty
-            // and only a second selection sticks. Same filename still fires
-            // once the value is cleared after the bytes are copied.
-            const token = beginTrackLoad(track.id)
-            void file.arrayBuffer().then(async (data) => {
-              input.value = ''
-              if (!isLatestTrackLoad(track.id, token)) return
-              await engine.loadTrackArrayBuffer(track.id, data, file.name)
-            }).catch(() => {
-              input.value = ''
-            })
+            const trackId = input.dataset.loadTrack || track.id
+            if (!file || !trackId) return
+            // Copy the file before clearing the input. The target id is the
+            // one stamped on this input when it was rendered, not the track
+            // that happens to be selected after the picker closes.
+            void loadAudioFileIntoTrack(trackId, file).finally(() => releaseFileInput(input))
           }}
         />
       </header>
@@ -553,30 +595,27 @@ function TrackLane({
         <div className={styles.channels}>
           <span className={styles.channelLabel}>{track.name} · {copy.left}</span>
           <LaneCanvas
-            trackId={track.id}
+            track={track}
             channel={0}
             projectDuration={projectDuration}
             contentRev={contentRev}
-            colorId={track.color}
             onSeek={onSeek}
           />
           <span className={styles.channelLabel}>{track.name} · {copy.right}</span>
           <LaneCanvas
-            trackId={track.id}
+            track={track}
             channel={1}
             projectDuration={projectDuration}
             contentRev={contentRev}
-            colorId={track.color}
             onSeek={onSeek}
           />
         </div>
       ) : loaded ? (
         <LaneCanvas
-          trackId={track.id}
+          track={track}
           channel={-1}
           projectDuration={projectDuration}
           contentRev={contentRev}
-          colorId={track.color}
           onSeek={onSeek}
         />
       ) : (
@@ -610,26 +649,44 @@ function TrackLane({
   )
 }
 
+function laneClock(track: MixTrack): SourceClock {
+  const buffer = engine.getTrackBuffer(track.id)
+  const duration = buffer?.duration ?? 0
+  const speed = engine.trackSourceClock(track.id).speed
+  return {
+    sourceDuration: duration,
+    speed,
+    direction: track.direction,
+    loop: track.loop,
+    loopStart: track.loopStart,
+    loopEnd: track.loopEnd > 0 ? track.loopEnd : duration,
+  }
+}
+
 function LaneCanvas({
-  trackId,
+  track,
   channel,
   projectDuration,
   contentRev,
-  colorId,
   onSeek,
 }: {
-  trackId: string
+  track: MixTrack
   channel: number
   projectDuration: number
   contentRev: number
-  colorId: TrackColorId
   onSeek: (clientX: number, target: HTMLElement) => void
 }) {
+  const { t } = useI18n()
   const ref = useRef<HTMLCanvasElement>(null)
+  const clock = laneClock(track)
+  const clockKey = `${clock.speed}:${clock.loop}:${clock.loopStart}:${clock.loopEnd}:${clock.direction}:${clock.sourceDuration}`
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
-    const draw = () => paintWave(canvas, engine.getTrackBuffer(trackId), channel, projectDuration, resolveColor(colorId))
+    const draw = () => {
+      const live = laneClock(track)
+      paintWave(canvas, engine.getTrackBuffer(track.id), channel, projectDuration, resolveColor(track.color), live)
+    }
     draw()
     const unsub = subscribeThemeChange(draw)
     const ro = new ResizeObserver(draw)
@@ -638,16 +695,66 @@ function LaneCanvas({
       unsub()
       ro.disconnect()
     }
-  }, [trackId, channel, projectDuration, contentRev, colorId])
+  }, [track, channel, projectDuration, contentRev, clockKey])
+  const project = projectDuration > 0 ? projectDuration : clock.sourceDuration
+  const endAt = markerFraction(clock.sourceDuration, clock, project)
+  const loopA = markerFraction(clock.loopStart, clock, project)
+  const loopB = markerFraction(clock.loopEnd > 0 ? clock.loopEnd : clock.sourceDuration, clock, project)
+  const dragHandle = (edge: 'start' | 'end') => (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    event.preventDefault()
+    const wave = event.currentTarget.parentElement
+    if (!wave) return
+    const apply = (clientX: number) => {
+      const rect = wave.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const fraction = (clientX - rect.left) / rect.width
+      const seconds = sourceTimeAtFraction(fraction, laneClock(track), project)
+      engine.setTrack(track.id, edge === 'start' ? { loopStart: seconds } : { loopEnd: seconds })
+    }
+    apply(event.clientX)
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const move = (ev: PointerEvent) => apply(ev.clientX)
+    const up = () => {
+      target.removeEventListener('pointermove', move)
+      target.removeEventListener('pointerup', up)
+    }
+    target.addEventListener('pointermove', move)
+    target.addEventListener('pointerup', up)
+  }
   return (
     <div
       className={styles.wave}
       onPointerDown={(event) => {
         if (event.button !== 0) return
+        const target = event.target
+        if (target instanceof Element && target.closest('button')) return
         onSeek(event.clientX, event.currentTarget)
       }}
     >
       <canvas ref={ref} aria-hidden />
+      {clock.loop && loopB > loopA ? (
+        <span className={styles.loopRegion} style={{ left: `${loopA * 100}%`, width: `${(loopB - loopA) * 100}%` }} />
+      ) : null}
+      <span className={styles.sourceEnd} data-source-end="" style={{ left: `${endAt * 100}%` }} title={t.mix.sourceEnd} />
+      <button
+        type="button"
+        className={styles.loopHandle}
+        data-loop-start=""
+        aria-label={t.mix.loopStart}
+        style={{ left: `${loopA * 100}%` }}
+        onPointerDown={dragHandle('start')}
+      />
+      <button
+        type="button"
+        className={styles.loopHandle}
+        data-loop-end=""
+        aria-label={t.mix.loopEnd}
+        style={{ left: `${loopB * 100}%` }}
+        onPointerDown={dragHandle('end')}
+      />
+      <span className={styles.playhead} data-track-playhead="" />
     </div>
   )
 }

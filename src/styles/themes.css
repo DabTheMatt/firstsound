@@ -62,6 +62,15 @@
   --ridge-warm: #e6ad48;
   --ridge-mid: #e8e6df;
   --ridge-cool: #aeb5b6;
+
+  --track-amber: #e6ad48;
+  --track-blue: #3aa0d8;
+  --track-teal: #2fbfa0;
+  --track-violet: #b06ad8;
+  --track-red: #e06a4f;
+  --track-magenta: #d45d9a;
+  --track-green: #7cb85a;
+  --track-neutral: #c8c6be;
 }
 
 [data-theme='midnight-blue'] {

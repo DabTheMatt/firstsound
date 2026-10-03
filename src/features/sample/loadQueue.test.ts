@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { beginTrackLoad, isLatestTrackLoad, resetTrackLoadQueue } from './loadQueue'
+import { releaseFileInput } from './loadTrack'
 
 describe('track load queue', () => {
   it('keeps only the latest selection for a track', () => {
@@ -16,5 +17,12 @@ describe('track load queue', () => {
     const b = beginTrackLoad('track-3')
     expect(isLatestTrackLoad('track-1', a)).toBe(true)
     expect(isLatestTrackLoad('track-3', b)).toBe(true)
+  })
+
+  it('clears the file input after a read so the same file can load again', () => {
+    const input = { value: 'C:\\samples\\rain.wav' } as HTMLInputElement
+    releaseFileInput(input)
+    expect(input.value).toBe('')
+    releaseFileInput(null)
   })
 })

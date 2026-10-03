@@ -136,6 +136,7 @@ type Props = {
   arrangement?: 'single' | 'multi'
   onSelectTrack?: (trackId: string) => void
   onEditTrack?: (trackId: string) => void
+  onInspectEffect?: (trackId: string, instanceId: string) => void
 }
 
 export type WaveformHandle = {
@@ -249,6 +250,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     arrangement = 'single',
     onSelectTrack,
     onEditTrack,
+    onInspectEffect,
   },
   ref,
 ) {
@@ -1619,7 +1621,14 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           ) : null}
         </div>
-        {showArrangement ? <MultiTrackView phone={phone} onSelectTrack={onSelectTrack} onEditTrack={onEditTrack} /> : null}
+        {showArrangement ? (
+          <MultiTrackView
+            phone={phone}
+            onSelectTrack={onSelectTrack}
+            onEditTrack={onEditTrack}
+            onInspectEffect={onInspectEffect}
+          />
+        ) : null}
         {viz === 'split' && showWave && showSpec ? (
           <button
             type="button"
