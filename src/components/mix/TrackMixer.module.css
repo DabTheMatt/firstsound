@@ -151,30 +151,36 @@
 }
 
 .faders {
-  flex: 1 1 auto;
   display: flex;
-  align-items: stretch;
+  align-items: flex-end;
   justify-content: center;
   gap: 4px;
-  min-height: 48px;
   width: 100%;
+  height: 68px;
+  flex: none;
+}
+
+.faders > * {
+  width: auto;
+  max-width: 28px;
+  flex: none;
 }
 
 .vSlider {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
   margin: 0;
-  min-height: 0;
-  flex: 1 1 auto;
+  height: 68px;
+  flex: none;
 }
 
 .vSlider input,
 .fader {
-  width: 16px;
-  height: 100%;
-  min-height: 40px;
+  width: 14px;
+  height: 52px;
   margin: 0;
   accent-color: var(--lane, var(--accent-primary));
   writing-mode: vertical-lr;
@@ -184,9 +190,7 @@
 .meterY {
   flex: none;
   width: 8px;
-  height: auto;
-  align-self: stretch;
-  min-height: 40px;
+  height: 52px;
   border-radius: 99px;
   background: color-mix(in srgb, var(--lane, var(--accent-primary)) 18%, transparent);
   overflow: hidden;

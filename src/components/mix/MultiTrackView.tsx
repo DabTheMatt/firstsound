@@ -18,6 +18,12 @@ import styles from './MultiTrackView.module.css'
 
 const peakCache = new WeakMap<AudioBuffer, Map<string, { min: Float32Array; max: Float32Array }>>()
 
+/**
+ * The waveform editor remounts when the selected file changes. Track Input
+ * must survive that, because opening it selects the track.
+ */
+let retainedInputId: string | null = null
+
 function isAudioFile(file: File): boolean {
   if (file.type.startsWith('audio/')) return true
   return /\.(wav|aif|aiff|mp3|m4a|aac|caf|mp4|ogg|flac|webm)$/i.test(file.name)
@@ -113,7 +119,14 @@ export function MultiTrackView({
   const [paletteFor, setPaletteFor] = useState<string | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
-  const [inputFor, setInputFor] = useState<string | null>(null)
+  const [inputFor, setInputForState] = useState<string | null>(retainedInputId)
+  const setInputFor = (value: string | null | ((current: string | null) => string | null)) => {
+    setInputForState((current) => {
+      const next = typeof value === 'function' ? value(current) : value
+      retainedInputId = next
+      return next
+    })
+  }
 
   useEffect(() => {
     const node = listRef.current
@@ -325,7 +338,11 @@ function TrackLane({
       data-track-id={track.id}
       data-track-index={index}
       role="listitem"
-      onClick={onSelect}
+      onClick={(event) => {
+        const target = event.target
+        if (target instanceof Element && target.closest('button, input, label, a')) return
+        onSelect()
+      }}
       onDragOver={(event) => {
         if (![...event.dataTransfer.types].includes('Files')) return
         event.preventDefault()
