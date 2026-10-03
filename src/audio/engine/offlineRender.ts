@@ -70,6 +70,21 @@ export type ProcessingSnapshot = {
   reverbType: ReverbType
   voiceGain: number
   masterGain: number
+  /**
+   * Serializable per-track mixer for a future offline mix. The single-buffer
+   * export still uses voiceGain. Rebuild `trackMixer.ts` from these fields;
+   * nothing here is browser-only UI state.
+   */
+  trackMix?: readonly {
+    id: string
+    mix: number
+    pan: number
+    midDb: number
+    sideDb: number
+    muted: boolean
+    solo: boolean
+    channels: number
+  }[]
   noiseMuted: boolean
   noiseFadeTau: number
   /** Normalized Random offsets. Applied only while automation owns the center. */

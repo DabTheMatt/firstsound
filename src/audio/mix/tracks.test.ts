@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { trackMixerParamId } from './mixerParams'
 import {
   addTrack,
   clearTrackAudio,
@@ -15,6 +16,7 @@ import {
   patchTrack,
   removeTrack,
   sourceTrackName,
+  trackAudible,
   trackMixGain,
   trackNameAfterLoad,
 } from './tracks'
@@ -149,6 +151,75 @@ describe('mix tracks', () => {
     expect(outputMixGain(50)).toBe(0.5)
     expect(outputMixGain(150)).toBe(1.5)
     expect(outputMixGain(Number.NaN)).toBe(1)
+  })
+
+  it('lets a muted solo still hide the other tracks', () => {
+    let tracks = defaultTracks()
+    tracks = patchTrack(tracks, 'track-1', { solo: true, muted: true, mix: 100 })
+    tracks = patchTrack(tracks, 'track-2', { mix: 80 })
+    expect(trackAudible(tracks[0]!, tracks)).toBe(false)
+    expect(trackAudible(tracks[1]!, tracks)).toBe(false)
+    expect(trackMixGain(tracks[1]!, tracks)).toBe(0)
+    tracks = patchTrack(tracks, 'track-1', { solo: false })
+    expect(trackAudible(tracks[1]!, tracks)).toBe(true)
+    expect(trackMixGain(tracks[1]!, tracks)).toBeCloseTo(0.8)
+  })
+
+  it('keeps mixer values on the track id when the lane moves', () => {
+    let tracks = defaultTracks()
+    tracks = patchTrack(tracks, 'track-3', {
+      name: 'birds',
+      mix: 50,
+      pan: -40,
+      midDb: -6,
+      sideDb: 3,
+      muted: true,
+      solo: true,
+      channelCount: 2,
+    })
+    const moved = moveTrack(tracks, 2, 0)
+    const track = moved[0]!
+    expect(track.id).toBe('track-3')
+    expect(track.mix).toBe(50)
+    expect(track.pan).toBe(-40)
+    expect(track.midDb).toBe(-6)
+    expect(track.sideDb).toBe(3)
+    expect(track.muted).toBe(true)
+    expect(track.solo).toBe(true)
+    expect(trackMixerParamId(track.id, 'pan')).toBe('track:track-3:pan')
+    expect(trackMixerParamId(moved[2]!.id, 'pan')).not.toBe(trackMixerParamId(track.id, 'pan'))
+  })
+
+  it('resets mixer state when the slot is cleared and keeps it across a file replace', () => {
+    let tracks = patchTrack(defaultTracks(), 'track-2', {
+      mix: 40,
+      pan: 25,
+      midDb: -3,
+      sideDb: 6,
+      muted: true,
+      solo: true,
+      fileName: 'wind.wav',
+      channelCount: 2,
+      name: 'wind',
+      nameLocked: true,
+    })
+    const replaced = patchTrack(tracks, 'track-2', { fileName: 'room.wav', channelCount: 1 })
+    expect(replaced[1]?.mix).toBe(40)
+    expect(replaced[1]?.pan).toBe(25)
+    expect(replaced[1]?.midDb).toBe(-3)
+    expect(replaced[1]?.sideDb).toBe(6)
+    expect(replaced[1]?.muted).toBe(true)
+    expect(replaced[1]?.solo).toBe(true)
+    expect(replaced[1]?.name).toBe('wind')
+    const cleared = clearTrackAudio(tracks, 'track-2')
+    expect(cleared[1]?.fileName).toBeNull()
+    expect(cleared[1]?.mix).toBe(100)
+    expect(cleared[1]?.pan).toBe(0)
+    expect(cleared[1]?.midDb).toBe(0)
+    expect(cleared[1]?.sideDb).toBe(0)
+    expect(cleared[1]?.muted).toBe(false)
+    expect(cleared[1]?.solo).toBe(false)
+    expect(cleared[1]?.name).toBe('wind')
   })
 
   it('lists audible companions besides the selected track', () => {

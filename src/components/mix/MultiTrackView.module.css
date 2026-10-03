@@ -44,6 +44,12 @@
   border-color: color-mix(in srgb, var(--lane, var(--accent-primary)) 55%, var(--border-subtle));
 }
 
+.laneDim .wave,
+.laneDim .channels,
+.laneDim .empty {
+  opacity: 0.45;
+}
+
 .head {
   display: flex;
   flex-wrap: wrap;
@@ -138,27 +144,6 @@
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.fader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  width: 118px;
-}
-
-.fader input {
-  width: 72px;
-  accent-color: var(--lane, var(--accent-primary));
-}
-
-.db {
-  width: 40px;
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  text-align: right;
 }
 
 .wave {

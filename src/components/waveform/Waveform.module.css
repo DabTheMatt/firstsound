@@ -240,6 +240,10 @@
   min-width: 0;
 }
 
+.waveDim {
+  opacity: 0.62;
+}
+
 .wavePane {
   position: relative;
   isolation: isolate;

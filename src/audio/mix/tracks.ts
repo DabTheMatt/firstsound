@@ -2,12 +2,15 @@
  * Project tracks. Audio buffers live beside this model (keyed by id).
  * Reordering moves these objects; it does not copy state between ids.
  *
- * DSP insertion (not built in this pass):
- *   source → future per-track FX → track gain → future pan / mid-side → master sum
- * The selected track still enters the single project effect chain. That chain
- * is not cloned onto every slot. Mute and solo already fold into trackMixGain
- * so a later strip can drive them without a second mixer engine.
+ * The audible strip is built in `trackMixer.ts`:
+ *   source → fxInsert → mid/side (stereo) → pan → level → mute/solo gate → master
+ * `mix` is the only track volume. Mute and solo are a separate gate, folded
+ * into `trackMixGain` for anything that still wants the combined linear gain.
+ * The selected track still enters the single project effect chain after its
+ * mixer. That chain is not cloned onto every slot.
  */
+
+import { clampMsDb, clampPan } from './mixerParams'
 
 export const MAX_TRACKS = 4
 export const TRACK_MIX_MIN = 0
@@ -23,10 +26,16 @@ export type MixTrack = {
   /** Set when the user renames the track. File replacement keeps that name. */
   nameLocked: boolean
   color: TrackColorId
-  /** 100 = unity (0 dB). Volume belongs to the track, not the file. */
+  /** 100 = unity (0 dB). The only track volume. Not a second fader. */
   mix: number
   muted: boolean
   solo: boolean
+  /** -100 left, 0 center, +100 right. Not the project Gain-module pan. */
+  pan: number
+  /** Mid component in dB. 0 dB with sideDb 0 reconstructs the stereo source. */
+  midDb: number
+  /** Side component in dB. Lower narrows the image; the floor is mid-only. */
+  sideDb: number
   start: number
   end: number
   fileName: string | null
@@ -89,6 +98,9 @@ export function createTrack(n: number, start = 0, end = 0, name?: string): MixTr
     mix: 100,
     muted: false,
     solo: false,
+    pan: 0,
+    midDb: 0,
+    sideDb: 0,
     start,
     end,
     fileName: null,
@@ -123,6 +135,25 @@ export function outputMixGain(mix: number): number {
   return clampMix(mix) / 100
 }
 
+/** Linear track level. 1 is 0 dB. Independent of mute and solo. */
+export function trackLevelGain(mix: number): number {
+  return clampMix(mix) / 100
+}
+
+/** True when any strip is soloed, including a solo that is also muted. */
+export function anyTrackSoloed(tracks: readonly MixTrack[]): boolean {
+  return tracks.some((track) => track.solo)
+}
+
+/**
+ * Central audibility. A soloed track can still be muted.
+ * trackIsAudible = !muted && (nobody soloed || this track is soloed).
+ */
+export function trackAudible(track: MixTrack, tracks: readonly MixTrack[]): boolean {
+  if (track.muted) return false
+  return !anyTrackSoloed(tracks) || track.solo
+}
+
 export function nextTrackId(tracks: readonly MixTrack[]): string {
   const used = new Set(tracks.map((track) => track.id))
   let n = 1
@@ -143,11 +174,10 @@ export function nextTrackName(tracks: readonly MixTrack[], base = 'Track'): stri
   return `${base} ${n}`
 }
 
+/** Combined linear gain: level, then the mute/solo gate. */
 export function trackMixGain(track: MixTrack, tracks: readonly MixTrack[]): number {
-  if (track.muted) return 0
-  const anySolo = tracks.some((item) => item.solo && !item.muted)
-  if (anySolo && !track.solo) return 0
-  return clampMix(track.mix) / 100
+  if (!trackAudible(track, tracks)) return 0
+  return trackLevelGain(track.mix)
 }
 
 /** Fader for the engine lead voice (the selected strip), including mute/solo. */
@@ -218,6 +248,12 @@ export function clearTrackAudio(tracks: readonly MixTrack[], id: string): MixTra
     next.stereoDisplay = 'combined'
     next.start = 0
     next.end = 0
+    next.mix = 100
+    next.pan = 0
+    next.midDb = 0
+    next.sideDb = 0
+    next.muted = false
+    next.solo = false
     if (!next.nameLocked) next.name = `Track ${index + 1}`
     return next
   })
@@ -256,6 +292,9 @@ export function patchTrack(
     if (typeof patch.mix === 'number') next.mix = clampMix(patch.mix)
     if (typeof patch.muted === 'boolean') next.muted = patch.muted
     if (typeof patch.solo === 'boolean') next.solo = patch.solo
+    if (typeof patch.pan === 'number') next.pan = clampPan(patch.pan)
+    if (typeof patch.midDb === 'number') next.midDb = clampMsDb(patch.midDb)
+    if (typeof patch.sideDb === 'number') next.sideDb = clampMsDb(patch.sideDb)
     if (typeof patch.start === 'number' && Number.isFinite(patch.start)) next.start = patch.start
     if (typeof patch.end === 'number' && Number.isFinite(patch.end)) next.end = patch.end
     if (patch.fileName === null) next.fileName = null
@@ -304,6 +343,9 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
       mix: clampMix(typeof rec.mix === 'number' ? rec.mix : 100),
       muted: Boolean(rec.muted),
       solo: Boolean(rec.solo),
+      pan: clampPan(typeof rec.pan === 'number' ? rec.pan : 0),
+      midDb: clampMsDb(typeof rec.midDb === 'number' ? rec.midDb : 0),
+      sideDb: clampMsDb(typeof rec.sideDb === 'number' ? rec.sideDb : 0),
       start: typeof rec.start === 'number' && Number.isFinite(rec.start) ? rec.start : 0,
       end: typeof rec.end === 'number' && Number.isFinite(rec.end) ? rec.end : 0,
       fileName,
@@ -317,7 +359,10 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
   return parsed.length ? parsed : null
 }
 
-/** Tracks that should sound in parallel with the selected (engine) track. */
+/**
+ * Audible companions. Playback still runs muted and unsoloed sources;
+ * this list is the mix, not a reason to stop a buffer.
+ */
 export function companionTrackIds(tracks: readonly MixTrack[], selectedId: string | null): string[] {
   return tracks
     .filter((track) => track.id !== selectedId && trackMixGain(track, tracks) > 0)
@@ -337,6 +382,9 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       track.mix === other.mix &&
       track.muted === other.muted &&
       track.solo === other.solo &&
+      track.pan === other.pan &&
+      track.midDb === other.midDb &&
+      track.sideDb === other.sideDb &&
       track.start === other.start &&
       track.end === other.end &&
       track.fileName === other.fileName &&
