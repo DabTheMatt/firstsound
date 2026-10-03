@@ -270,6 +270,8 @@ export type PresetV1 = {
   fxLfos?: unknown
   tracks?: MixTrack[]
   selectedTrackId?: string
+  /** Per-track effect racks. Absent on presets saved before track FX. */
+  trackRacks?: unknown
   /** Legacy parallel mix-layer snapshots; parsed as tracks. */
   mixLayers?: unknown
   masterMix?: number

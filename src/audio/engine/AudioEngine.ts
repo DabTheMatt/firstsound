@@ -60,6 +60,7 @@ import {
   type FxLfo,
   type FxLfoKind,
   type FxLfoMap,
+  type LfoHoldState,
 } from '../fx/lfo'
 import {
   automationHasNodes,
@@ -308,6 +309,17 @@ import {
   type MixTrack,
 } from '../mix/tracks'
 import {
+  cloneTrackRack,
+  copySharedParams,
+  createTrackRack,
+  isSharedParam,
+  parseTrackRacks,
+  serializeTrackRack,
+  trackFxCount,
+  type RackEqState,
+  type TrackRack,
+} from '../mix/trackRack'
+import {
   pingPongFadeCurve,
   pingPongFadeCurveFrom,
   regionFadeCurveFrom,
@@ -364,12 +376,7 @@ import {
 } from './stretch'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
-export type EqModuleState = {
-  bands: EqBand[]
-  bandsL: EqBand[]
-  bandsR: EqBand[]
-  comb: CombFilterState
-}
+export type EqModuleState = RackEqState
 
 export type AudioStatus = 'idle' | 'blocked' | 'running'
 
@@ -453,6 +460,10 @@ export type EngineSnapshot = {
   variations: { id: string; name: string }[]
   tracks: MixTrack[]
   selectedTrackId: string
+  /** Inserted effects on each track. Input and Output are not counted. */
+  trackFxCounts: Record<string, number>
+  /** Live DSP slots per track. Zero until the audio context exists. */
+  trackSlotCounts: Record<string, number>
   /** True when any slot holds audio, including a slot that is not selected. */
   projectAudible: boolean
   projectDuration: number
@@ -541,8 +552,6 @@ export class AudioEngine {
   private ctx: AudioContext | null = null
   /** Buffer factory when the output device is not open yet. */
   private scratchCtx: BaseAudioContext | null = null
-  private voiceBus: GainNode | null = null
-  private mixBus: GainNode | null = null
   /** Post-chain sum. Every track reaches the limiter through this node. */
   private sumBus: GainNode | null = null
   private tracks: MixTrack[] = defaultTracks()
@@ -550,8 +559,6 @@ export class AudioEngine {
   private masterMix = 100
   private trackBuffers = new Map<string, AudioBuffer>()
   private trackGains = new Map<string, GainNode>()
-  /** Invalidated when the gain graph must be reconnected. Fader moves do not. */
-  private gainRouteKey = ''
   private companionSources: AudioBufferSourceNode[] = []
   private projectVoices: { id: string; src: AudioBufferSourceNode }[] = []
   private projectWhen = 0
@@ -566,16 +573,29 @@ export class AudioEngine {
   private analyserEq: AnalyserNode | null = null
   /** Zero-gain pull so spectrum taps stay in the graph without reaching the speakers. */
   private analyserSink: GainNode | null = null
+  /** Second silent pull for track-local before/after taps. */
+  private analyserPull: GainNode | null = null
   private analyserLimiterPre: AnalyserNode | null = null
   private analyserLimiterPost: AnalyserNode | null = null
   private analyserCompressorPre: AnalyserNode | null = null
   private analyserCompressorPost: AnalyserNode | null = null
   private analyserL: AnalyserNode | null = null
   private analyserR: AnalyserNode | null = null
-  private spaceLatched = false
-  private noiseMuted = false
-  private noiseFadeTau = NOISE_CUT_TAU_SEC
-  private spacePresetId: string | null = null
+  /** Per-track chain, parameters, EQ, and modulation. Not AudioNodes. */
+  private racks = new Map<string, TrackRack>()
+  /** While set, rack getters follow this track instead of the editing selection. */
+  private editingTrackId: string | null = null
+  private seededRandom = false
+  /** Suppresses transport-clock advances while several racks are applied in one tick. */
+  private suppressClock = false
+  private trackInputs = new Map<string, GainNode>()
+  private trackSlots = new Map<string, Map<string, Slot>>()
+  /** Single master output gain. Track Output slots stay at unity. */
+  private masterOutput: GainNode | null = null
+  /** Inspector module whose input/output the track analysers follow. */
+  private analyserFocusId: string | null = null
+  /** False while Multi view hides the detailed editor. Master meters stay up. */
+  private monitorTaps = true
   private regionFade: {
     fadeIn: number
     fadeOut: number
@@ -602,7 +622,6 @@ export class AudioEngine {
   private loopFromRelBase = 0
   private loopSpan = 0
   private loopPing = false
-  private slots = new Map<string, Slot>()
   private buffer: AudioBuffer | null = null
   private sourceBuffer: AudioBuffer | null = null
   private reversed: AudioBuffer | null = null
@@ -612,26 +631,12 @@ export class AudioEngine {
   private loop = true
   private engineMode: EngineMode = 'playback'
   private direction: PlaybackDirection = 'forward'
-  private filterType: FilterType = 'off'
   private audioStatus: AudioStatus = 'idle'
   private scrubMode: ScrubMode = 'region'
   private muted = false
-  private delayType: DelayType = 'digital'
-  private reverbType: ReverbType = 'hall'
-  private distortionType: DistortionType = 'saturation'
-  private distortionNoiseKind: DistortionNoiseKind = 'white'
-  private filterFollower = 0
-  private filterEnvOrigin = 0
-  private filterSnh = { index: -1, value: 0 }
   private filterFollowBuf = new Uint8Array(1024)
-  private filterFollowStamp = 0
-  private fxLfos = defaultFxLfos()
-  private automation: AutomationDocument = defaultAutomation()
-  private randomDoc: RandomDocument = loadRandomDocument()
   private eqPick: { index: number; token: number } | null = null
   private eqPickToken = 0
-  private randomOffsets: Partial<Record<ParamId, number>> = {}
-  private randomRuntime: RandomRuntime = defaultRandomRuntime()
   private randomWarned = false
   private randomPrompt = false
   private randomPendingId: ParamId | null = null
@@ -642,7 +647,6 @@ export class AudioEngine {
   private randomUiAt = 0
   /** One-shot wins over an auto event in the same audio tick. */
   private randomHold: ParamId | null = null
-  private lfoHold = defaultLfoHold()
   private lfoTimer = 0
   private exportBusy = false
   private lfoClockSec = 0
@@ -651,16 +655,6 @@ export class AudioEngine {
   /** Filter ADS keeps the pre-existing free-running clock. FX LFOs do not. */
   private filterClockSec = 0
   private filterWallMs = 0
-  private lfoShown: Record<FxLfoKind, number> = defaultLfoShown()
-  private reverbIrKey = ''
-  private reverbIrTimer = 0
-  private params: Record<ParamId, number> = defaultParamValues()
-  private chain: ChainModule[] = defaultChain()
-  private eqById = new Map<string, EqModuleState>()
-  private eqBands: EqBand[] = defaultEqBands()
-  private comb: CombFilterState = defaultCombFilter()
-  private eqListen: EqListenMode = 'sample'
-  private eqChannelMode: EqChannelMode = 'shared'
   private channelLayout: ChannelLayoutMode = 'original'
   private clipboard: AudioClipboard | null = null
   private noiseGain: GainNode | null = null
@@ -738,6 +732,269 @@ export class AudioEngine {
   constructor() {
     if (this.randomDoc.chaos) this.randomWarned = true
     this.snapshot = this.buildSnapshot()
+  }
+
+  private activeTrackId(): string {
+    return this.editingTrackId ?? this.selectedTrackId
+  }
+
+  private ensureRack(id: string): TrackRack {
+    const existing = this.racks.get(id)
+    if (existing) return existing
+    const randomDoc = !this.seededRandom ? loadRandomDocument() : defaultRandomDocument()
+    this.seededRandom = true
+    const rack = createTrackRack(randomDoc)
+    const sibling = this.racks.values().next().value as TrackRack | undefined
+    if (sibling) copySharedParams(sibling.params, rack.params)
+    this.racks.set(id, rack)
+    return rack
+  }
+
+  private rack(): TrackRack {
+    return this.ensureRack(this.activeTrackId())
+  }
+
+  private withEditing(id: string, fn: () => void): void {
+    const prev = this.editingTrackId
+    this.editingTrackId = id
+    try {
+      fn()
+    } finally {
+      this.editingTrackId = prev
+    }
+  }
+
+  private touchRacks(fn: (rack: TrackRack) => void): void {
+    for (const track of this.tracks) fn(this.ensureRack(track.id))
+  }
+
+  /** Clearing a slot drops its inserts. Shared transport params stay. */
+  private resetTrackRack(id: string): void {
+    const previous = this.racks.get(id)
+    if (previous?.reverbIrTimer) window.clearTimeout(previous.reverbIrTimer)
+    const fresh = createTrackRack(defaultRandomDocument())
+    const sibling = [...this.racks.values()].find((rack) => rack !== previous)
+    if (sibling) copySharedParams(sibling.params, fresh.params)
+    else if (previous) copySharedParams(previous.params, fresh.params)
+    this.racks.set(id, fresh)
+  }
+
+  private broadcastShared(source: Record<ParamId, number> = this.params): void {
+    for (const rack of this.racks.values()) copySharedParams(source, rack.params)
+  }
+
+  private get chain(): ChainModule[] {
+    return this.rack().chain
+  }
+  private set chain(value: ChainModule[]) {
+    this.rack().chain = value
+  }
+
+  private get params(): Record<ParamId, number> {
+    return this.rack().params
+  }
+  private set params(value: Record<ParamId, number>) {
+    this.rack().params = value
+    this.broadcastShared(value)
+  }
+
+  private get slots(): Map<string, Slot> {
+    return this.trackSlotMap(this.activeTrackId())
+  }
+
+  private trackSlotMap(id: string): Map<string, Slot> {
+    let slots = this.trackSlots.get(id)
+    if (!slots) {
+      slots = new Map()
+      this.trackSlots.set(id, slots)
+    }
+    return slots
+  }
+
+  private get eqById(): Map<string, EqModuleState> {
+    return this.rack().eqById
+  }
+  private set eqById(value: Map<string, EqModuleState>) {
+    this.rack().eqById = value
+  }
+
+  private get eqBands(): EqBand[] {
+    return this.rack().eqBands
+  }
+  private set eqBands(value: EqBand[]) {
+    this.rack().eqBands = value
+  }
+
+  private get comb(): CombFilterState {
+    return this.rack().comb
+  }
+  private set comb(value: CombFilterState) {
+    this.rack().comb = value
+  }
+
+  private get eqListen(): EqListenMode {
+    return this.rack().eqListen
+  }
+  private set eqListen(value: EqListenMode) {
+    this.rack().eqListen = value
+  }
+
+  private get eqChannelMode(): EqChannelMode {
+    return this.rack().eqChannelMode
+  }
+  private set eqChannelMode(value: EqChannelMode) {
+    this.rack().eqChannelMode = value
+  }
+
+  private get filterType(): FilterType {
+    return this.rack().filterType
+  }
+  private set filterType(value: FilterType) {
+    this.rack().filterType = value
+  }
+
+  private get delayType(): DelayType {
+    return this.rack().delayType
+  }
+  private set delayType(value: DelayType) {
+    this.rack().delayType = value
+  }
+
+  private get reverbType(): ReverbType {
+    return this.rack().reverbType
+  }
+  private set reverbType(value: ReverbType) {
+    this.rack().reverbType = value
+  }
+
+  private get distortionType(): DistortionType {
+    return this.rack().distortionType
+  }
+  private set distortionType(value: DistortionType) {
+    this.rack().distortionType = value
+  }
+
+  private get distortionNoiseKind(): DistortionNoiseKind {
+    return this.rack().distortionNoiseKind
+  }
+  private set distortionNoiseKind(value: DistortionNoiseKind) {
+    this.rack().distortionNoiseKind = value
+  }
+
+  private get fxLfos(): FxLfoMap {
+    return this.rack().fxLfos
+  }
+  private set fxLfos(value: FxLfoMap) {
+    this.rack().fxLfos = value
+  }
+
+  private get automation(): AutomationDocument {
+    return this.rack().automation
+  }
+  private set automation(value: AutomationDocument) {
+    this.rack().automation = value
+  }
+
+  private get randomDoc(): RandomDocument {
+    return this.rack().randomDoc
+  }
+  private set randomDoc(value: RandomDocument) {
+    this.rack().randomDoc = value
+  }
+
+  private get randomOffsets(): Partial<Record<ParamId, number>> {
+    return this.rack().randomOffsets
+  }
+  private set randomOffsets(value: Partial<Record<ParamId, number>>) {
+    this.rack().randomOffsets = value
+  }
+
+  private get randomRuntime(): RandomRuntime {
+    return this.rack().randomRuntime
+  }
+  private set randomRuntime(value: RandomRuntime) {
+    this.rack().randomRuntime = value
+  }
+
+  private get lfoHold(): LfoHoldState {
+    return this.rack().lfoHold
+  }
+  private set lfoHold(value: LfoHoldState) {
+    this.rack().lfoHold = value
+  }
+
+  private get lfoShown(): Record<FxLfoKind, number> {
+    return this.rack().lfoShown
+  }
+  private set lfoShown(value: Record<FxLfoKind, number>) {
+    this.rack().lfoShown = value
+  }
+
+  private get spaceLatched(): boolean {
+    return this.rack().spaceLatched
+  }
+  private set spaceLatched(value: boolean) {
+    this.rack().spaceLatched = value
+  }
+
+  private get spacePresetId(): string | null {
+    return this.rack().spacePresetId
+  }
+  private set spacePresetId(value: string | null) {
+    this.rack().spacePresetId = value
+  }
+
+  private get noiseMuted(): boolean {
+    return this.rack().noiseMuted
+  }
+  private set noiseMuted(value: boolean) {
+    this.rack().noiseMuted = value
+  }
+
+  private get noiseFadeTau(): number {
+    return this.rack().noiseFadeTau
+  }
+  private set noiseFadeTau(value: number) {
+    this.rack().noiseFadeTau = value
+  }
+
+  private get reverbIrKey(): string {
+    return this.rack().reverbIrKey
+  }
+  private set reverbIrKey(value: string) {
+    this.rack().reverbIrKey = value
+  }
+
+  private get reverbIrTimer(): number {
+    return this.rack().reverbIrTimer
+  }
+  private set reverbIrTimer(value: number) {
+    this.rack().reverbIrTimer = value
+  }
+
+  private get filterFollower(): number {
+    return this.rack().filterFollower
+  }
+  private set filterFollower(value: number) {
+    this.rack().filterFollower = value
+  }
+
+  private get filterEnvOrigin(): number {
+    return this.rack().filterEnvOrigin
+  }
+  private set filterEnvOrigin(value: number) {
+    this.rack().filterEnvOrigin = value
+  }
+
+  private get filterSnh(): { index: number; value: number } {
+    return this.rack().filterSnh
+  }
+
+  private get filterFollowStamp(): number {
+    return this.rack().filterFollowStamp
+  }
+  private set filterFollowStamp(value: number) {
+    this.rack().filterFollowStamp = value
   }
 
   subscribe = (listener: Listener): (() => void) => {
@@ -909,10 +1166,14 @@ export class AudioEngine {
   getAnalyser(
     tap: 'pre' | 'post' | 'eq' | 'limiterPre' | 'limiterPost' | 'compressorPre' | 'compressorPost' = 'post',
   ): AnalyserNode | null {
-    if (tap === 'pre') return this.analyserPre ?? this.analyser
-    // 'eq' used to be the last tone-module output. Spectrum After is the heard
-    // signal, so this tap is the same output analyser as 'post'.
-    if (tap === 'eq') return this.analyser ?? this.analyserEq
+    if (tap === 'pre') return this.monitorTaps ? this.analyserPre ?? this.analyser : this.analyser
+    // Track EQ output. Null unless the detailed editor is showing that EQ.
+    if (tap === 'eq') {
+      const focused = this.analyserFocusId
+        ? this.ensureRack(this.selectedTrackId).chain.find((mod) => mod.instanceId === this.analyserFocusId)
+        : undefined
+      return this.monitorTaps && focused?.type === 'eq' ? this.analyserEq : null
+    }
     if (tap === 'limiterPre') return this.analyserLimiterPre
     if (tap === 'limiterPost') return this.analyserLimiterPost
     if (tap === 'compressorPre') return this.analyserCompressorPre ?? this.analyserLimiterPre
@@ -1094,11 +1355,13 @@ export class AudioEngine {
     this.lfoWallMs = started
     this.filterWallMs = started
     this.syncLfoClock()
-    this.filterEnvOrigin = this.filterClockSec
-    this.filterFollower = 0
-    if (this.spaceLatched) this.spaceLatched = false
-    if (this.noiseMuted) this.noiseMuted = false
-    this.noiseFadeTau = NOISE_CUT_TAU_SEC
+    this.touchRacks((rack) => {
+      rack.filterEnvOrigin = this.filterClockSec
+      rack.filterFollower = 0
+      rack.spaceLatched = false
+      rack.noiseMuted = false
+      rack.noiseFadeTau = NOISE_CUT_TAU_SEC
+    })
     this.applyLiveAudio()
     const live = this.liveParams()
     const linearProject =
@@ -1152,8 +1415,10 @@ export class AudioEngine {
     if (this.engineMode === 'grain') {
       this.params.position = applyParamValue(this.direction === 'reverse' ? 100 : 0, PARAMS.position)
     }
-    this.noiseMuted = true
-    this.noiseFadeTau = NOISE_CUT_TAU_SEC
+    this.touchRacks((rack) => {
+      rack.noiseMuted = true
+      rack.noiseFadeTau = NOISE_CUT_TAU_SEC
+    })
     this.killFx('all')
     this.playFullSample = false
     this.applyLiveAudio()
@@ -1170,8 +1435,10 @@ export class AudioEngine {
     this.filterWallMs = 0
     this.syncLfoClock()
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
-    this.noiseMuted = true
-    this.noiseFadeTau = NOISE_PAUSE_FADE_TAU_SEC
+    this.touchRacks((rack) => {
+      rack.noiseMuted = true
+      rack.noiseFadeTau = NOISE_PAUSE_FADE_TAU_SEC
+    })
     this.applyLiveAudio(NOISE_PAUSE_FADE_TAU_SEC)
     this.emit()
   }
@@ -1315,6 +1582,7 @@ export class AudioEngine {
       if (turningStereoOn) this.copyDelayLeftToRight()
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       commitParamEdit(this.params, id, previous)
+      if (isSharedParam(id)) this.broadcastShared()
       const clicky =
         id === 'speed' ||
         id === 'pitch' ||
@@ -1362,6 +1630,7 @@ export class AudioEngine {
       keys.push(key)
     }
     commitParamPatch(this.params, keys, previous)
+    if (keys.some((id) => isSharedParam(id))) this.broadcastShared()
     if ('distortionNoise' in patch && this.noiseMuted) this.noiseMuted = false
     this.applyLiveAudio()
     this.syncLfoClock()
@@ -1769,6 +2038,7 @@ export class AudioEngine {
   }
 
   private revealEqBand(instanceId: string, index: number): void {
+    if (this.activeTrackId() !== this.selectedTrackId) return
     this.eqPickToken += 1
     this.eqPick = { index, token: this.eqPickToken }
     selectEqBand({ instanceId, index })
@@ -2322,11 +2592,15 @@ export class AudioEngine {
   /** Cut delay/reverb recirculation and rebuild empty buffers. */
   killFx(which: 'delay' | 'reverb' | 'all' = 'all'): void {
     const keepLive = this.playing
+    const ids = keepLive ? [this.selectedTrackId] : this.tracks.map((track) => track.id)
+    for (const id of ids) this.withEditing(id, () => this.killRackFx(which, keepLive))
+    if (keepLive) this.applyLiveAudio()
+    this.emit()
+  }
+
+  private killRackFx(which: 'delay' | 'reverb' | 'all', keepLive: boolean): void {
     this.spaceLatched = !keepLive
-    if (!this.ctx) {
-      this.emit()
-      return
-    }
+    if (!this.ctx) return
     const now = this.ctx.currentTime
     const kinds = which === 'all' ? (['delay', 'reverb'] as const) : ([which] as const)
     for (const slot of this.slots.values()) {
@@ -2335,14 +2609,12 @@ export class AudioEngine {
       if (slot.reverbFx) silenceReverbGraph(slot.reverbFx, now)
     }
     this.rebuildSpaceGraphs(kinds)
-    if (keepLive) this.applyLiveAudio()
-    else {
+    if (!keepLive) {
       for (const slot of this.slots.values()) {
         if (!kinds.includes(slot.type as 'delay' | 'reverb')) continue
         setSmoothedAudioParam(slot.wet.gain, 0, now, 'gain')
       }
     }
-    this.emit()
   }
 
   setRegion(start: number, end: number): void {
@@ -2887,6 +3159,7 @@ export class AudioEngine {
       noiseMuted: this.noiseMuted,
       noiseFadeTau: this.noiseFadeTau,
       randomOffsets: { ...this.randomOffsets },
+      trackRacks: this.serializedRacks(),
     }
   }
 
@@ -3072,8 +3345,15 @@ export class AudioEngine {
 
   resetAll(): void {
     const duration = this.buffer?.duration ?? 0
-    this.params = defaultParamValues()
+    for (const rack of this.racks.values()) {
+      if (rack.reverbIrTimer) window.clearTimeout(rack.reverbIrTimer)
+    }
+    this.racks.clear()
+    this.seededRandom = true
     const region = defaultPlayRegion(duration, MIN_REGION)
+    this.tracks = defaultTracks(region.start, region.end)
+    this.selectedTrackId = this.tracks[0]!.id
+    this.params = defaultParamValues()
     this.params.start = region.start
     this.params.end = region.end
     this.engineMode = 'playback'
@@ -3105,15 +3385,13 @@ export class AudioEngine {
     this.noiseMuted = false
     this.noiseFadeTau = NOISE_CUT_TAU_SEC
     this.chain = defaultChain()
-    this.tracks = defaultTracks(region.start, region.end)
-    this.selectedTrackId = this.tracks[0]!.id
     this.masterMix = 100
     this.trackBuffers.clear()
     this.clearTrackGains()
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
-    void this.rebuildGraph()
+    this.rebuildAllGraphs()
     this.applyLiveAudio()
     this.emit()
   }
@@ -3162,6 +3440,13 @@ export class AudioEngine {
     if (!source || !empty) return null
     const shared = this.trackBuffers.get(id) ?? (id === this.selectedTrackId ? this.buffer : null)
     if (shared) this.trackBuffers.set(empty.id, shared)
+    this.racks.set(empty.id, cloneTrackRack(this.ensureRack(id)))
+    if (this.ctx) {
+      this.withEditing(empty.id, () => this.syncTrackSlots())
+      this.ensureTrackInput(empty.id)
+      this.ensureTrackGains(true)
+      this.connectTrack(empty.id)
+    }
     this.tracks = patchTrack(this.tracks, empty.id, {
       name: source.nameLocked ? `${source.name}`.slice(0, 24) : source.name,
       nameLocked: false,
@@ -3183,6 +3468,16 @@ export class AudioEngine {
 
   clearTrack(id: string): void {
     if (!this.tracks.some((track) => track.id === id)) return
+    this.resetTrackRack(id)
+    if (this.ctx) {
+      this.withEditing(id, () => {
+        for (const slot of this.slots.values()) this.releaseSlot(slot)
+        this.slots.clear()
+        this.syncTrackSlots()
+      })
+      this.connectTrack(id)
+      if (id === this.selectedTrackId) this.retargetMonitorTaps()
+    }
     const wasPlaying = this.playing
     const playhead = wasPlaying ? this.getPlayheadSeconds() : this.playOffset
     this.trackBuffers.delete(id)
@@ -3256,6 +3551,7 @@ export class AudioEngine {
     }
     this.playOffset = playhead
     this.fileName = track.fileName ?? ''
+    if (this.ctx) this.retargetMonitorTaps()
     this.emit()
   }
 
@@ -3376,6 +3672,7 @@ export class AudioEngine {
     this.eqListen = mode
     void this.ensureContext().then(() => {
       this.syncEqListen()
+      this.retargetMonitorTaps()
       this.applyBypassRamps(0.02)
       this.emit()
     })
@@ -3534,10 +3831,37 @@ export class AudioEngine {
       tracks: cloneTracks(this.tracks),
       selectedTrackId: this.selectedTrackId,
       masterMix: this.masterMix,
+      trackRacks: this.serializedRacks(),
     }
   }
 
+  private serializedRacks(): Record<string, ReturnType<typeof serializeTrackRack>> {
+    const out: Record<string, ReturnType<typeof serializeTrackRack>> = {}
+    for (const track of this.tracks) out[track.id] = serializeTrackRack(this.ensureRack(track.id))
+    return out
+  }
+
+  private adoptPresetRacks(preset: PresetV1, legacyHost: string): void {
+    const parsed = parseTrackRacks(preset.trackRacks)
+    for (const rack of this.racks.values()) {
+      if (rack.reverbIrTimer) window.clearTimeout(rack.reverbIrTimer)
+    }
+    if (parsed) {
+      this.racks.clear()
+      this.seededRandom = true
+      for (const [id, rack] of Object.entries(parsed)) this.racks.set(id, rack)
+    } else {
+      const host = this.ensureRack(legacyHost)
+      this.racks.clear()
+      this.seededRandom = true
+      this.racks.set(this.selectedTrackId, host)
+    }
+    for (const track of this.tracks) this.ensureRack(track.id)
+    this.broadcastShared(this.ensureRack(this.selectedTrackId).params)
+  }
+
   applyPreset(preset: PresetV1): void {
+    const legacyHost = this.selectedTrackId
     this.loop = preset.loop
     this.engineMode = preset.engineMode
     this.direction = preset.direction ?? (preset.reverse ? 'reverse' : 'forward')
@@ -3614,7 +3938,7 @@ export class AudioEngine {
     this.hydrateTrackRegions(region.start, region.end)
     const wanted = typeof preset.selectedTrackId === 'string' ? preset.selectedTrackId : this.tracks[0]!.id
     this.selectedTrackId = this.tracks.some((track) => track.id === wanted) ? wanted : this.tracks[0]!.id
-    this.gainRouteKey = ''
+    this.adoptPresetRacks(preset, legacyHost)
     if (typeof preset.masterMix === 'number') this.masterMix = clampMix(preset.masterMix)
     const selected = selectedTrack(this.tracks, this.selectedTrackId)
     if (selected && selected.end > selected.start) {
@@ -3622,10 +3946,8 @@ export class AudioEngine {
       this.params.start = trackRegion.start
       this.params.end = trackRegion.end
     }
-    void this.rebuildGraph().then(() => {
-      if (this.playing) void this.play()
-      else this.emit()
-    })
+    this.rebuildAllGraphs()
+    if (this.playing) void this.play()
   }
 
   /** Bake the current edit into the working buffer and load it as the instrument sample. */
@@ -4290,9 +4612,6 @@ export class AudioEngine {
   private buildSlots(): void {
     if (!this.ctx) return
     const ctx = this.ctx
-    this.voiceBus = ctx.createGain()
-    this.voiceBus.gain.value = 1
-    forceStereoUpmix(this.voiceBus)
     this.safetyGain = ctx.createGain()
     this.safetyGain.gain.value = this.playbackSafetyGain()
     this.limiter = ctx.createDynamicsCompressor()
@@ -4332,15 +4651,24 @@ export class AudioEngine {
     this.previewGain.gain.value = 1
     this.noiseGain = ctx.createGain()
     this.noiseGain.gain.value = 0
-    this.mixBus = ctx.createGain()
-    this.mixBus.gain.value = 1
-    forceStereoUpmix(this.mixBus)
     this.sumBus = ctx.createGain()
     this.sumBus.gain.value = 1
     forceStereoUpmix(this.sumBus)
+    this.masterOutput = ctx.createGain()
+    this.masterOutput.gain.value = 1
+    forceStereoUpmix(this.masterOutput)
+    this.analyserPull = ctx.createGain()
+    this.analyserPull.gain.value = 0
+    this.analyserPull.connect(ctx.destination)
 
-    for (const mod of normalizeChain(this.chain)) {
-      this.slots.set(mod.instanceId, this.createSlot(mod))
+    this.ensureTrackGains(true)
+    for (const track of this.tracks) {
+      this.ensureTrackInput(track.id)
+      this.withEditing(track.id, () => {
+        for (const mod of normalizeChain(this.chain)) {
+          if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
+        }
+      })
     }
     this.applyLiveAudio()
     this.applyBypassRamps(0)
@@ -4351,26 +4679,23 @@ export class AudioEngine {
     const bands =
       mod.type === 'eq' ? Math.max(EQ_POOL_BANDS, this.eqEditBands(this.eqState(mod.instanceId)).length) : EQ_POOL_BANDS
     const slot = createChainSlot(ctx, mod, bands)
-    if (slot.compressorFx) this.analyserCompressorPost = slot.compressorFx.analyserPost
-    if (slot.limiterFx) this.analyserLimiterPost = slot.limiterFx.analyserPost
+    if (this.activeTrackId() === this.selectedTrackId) {
+      if (slot.compressorFx) this.analyserCompressorPost = slot.compressorFx.analyserPost
+      if (slot.limiterFx) this.analyserLimiterPost = slot.limiterFx.analyserPost
+    }
     return slot
   }
 
   private applyTrackMix(smoothing: number): void {
-    if (!this.ctx || !this.mixBus) return
+    if (!this.ctx || !this.sumBus) return
     this.ensureTrackGains(false)
     const now = this.ctx.currentTime
-    if (this.voiceBus) {
-      const lead = this.usingProjectTransport ? 1 : leadVoiceMixGain(this.tracks, this.selectedTrackId)
-      rampGainExact(this.voiceBus.gain, lead, now, smoothing)
-    }
     for (const track of this.tracks) {
       const node = this.trackGains.get(track.id)
       if (!node) continue
       rampGainExact(node.gain, trackMixGain(track, this.tracks), now, smoothing)
     }
-    rampGainExact(this.mixBus.gain, 1, now, smoothing)
-    if (this.sumBus) rampGainExact(this.sumBus.gain, outputMixGain(this.masterMix), now, smoothing)
+    rampGainExact(this.sumBus.gain, outputMixGain(this.masterMix), now, smoothing)
   }
 
   private syncSelectedTrackRegion(): void {
@@ -4405,101 +4730,205 @@ export class AudioEngine {
   }
 
   private connectSlots(): void {
-    if (!this.ctx || !this.voiceBus || !this.safetyGain || !this.limiter || !this.analyser) return
-    const ordered = this.chain
-      .map((m) => this.slots.get(m.instanceId))
-      .filter((s): s is Slot => Boolean(s))
-    if (ordered.length === 0) return
-    if (this.mixBus) {
-      this.ensureTrackGains(true)
-      this.voiceBus.connect(this.mixBus)
-      this.mixBus.connect(ordered[0]!.input)
-    } else {
-      this.voiceBus.connect(ordered[0]!.input)
+    if (!this.ctx || !this.safetyGain || !this.limiter || !this.analyser || !this.sumBus || !this.masterOutput) return
+    this.ensureTrackGains(true)
+    for (const track of this.tracks) {
+      this.ensureTrackInput(track.id)
+      this.connectTrack(track.id)
     }
-    // BEFORE: audio entering the effect chain. Not the raw buffer and not a filter curve.
-    this.disconnectSpectrumTaps()
-    if (this.analyserPre) ordered[0]!.input.connect(this.analyserPre)
-    const firstTone = ordered.find((s) => s.type === 'eq' || s.type === 'filter')
-    if (firstTone && this.noiseGain) this.noiseGain.connect(firstTone.input)
-    for (let i = 0; i < ordered.length - 1; i++) {
-      ordered[i]!.output.connect(ordered[i + 1]!.input)
+    this.connectMaster()
+    this.retargetMonitorTaps()
+  }
+
+  /** Master sum → output gain → safety limiter → meters. One limiter for the mix. */
+  private connectMaster(): void {
+    if (!this.ctx || !this.sumBus || !this.masterOutput || !this.limiter || !this.safetyGain || !this.analyser) return
+    try {
+      this.sumBus.disconnect()
+    } catch {
+      /* first wire */
     }
-    const last = ordered.at(-1)!
-    const limSlot = ordered.find((s) => s.type === 'limiter')
-    if (limSlot && this.analyserLimiterPre) {
-      limSlot.input.connect(this.analyserLimiterPre)
-      const silent = this.ctx.createGain()
-      silent.gain.value = 0
-      this.analyserLimiterPre.connect(silent)
-      silent.connect(this.ctx.destination)
+    try {
+      this.masterOutput.disconnect()
+    } catch {
+      /* first wire */
     }
-    const compSlot = ordered.find((s) => s.type === 'compressor')
-    if (compSlot && this.analyserCompressorPre) {
-      compSlot.input.connect(this.analyserCompressorPre)
-      const silent = this.ctx.createGain()
-      silent.gain.value = 0
-      this.analyserCompressorPre.connect(silent)
-      silent.connect(this.ctx.destination)
+    try {
+      this.limiter.disconnect()
+    } catch {
+      /* first wire */
     }
-    if (this.sumBus) {
-      last.output.connect(this.sumBus)
-      this.sumBus.connect(this.limiter)
-    } else {
-      last.output.connect(this.limiter)
+    try {
+      this.safetyGain.disconnect()
+    } catch {
+      /* first wire */
     }
+    this.sumBus.connect(this.masterOutput)
+    this.masterOutput.connect(this.limiter)
     forceStereoUpmix(this.limiter)
     forceStereoUpmix(this.safetyGain)
     this.limiter.connect(this.safetyGain)
     this.safetyGain.connect(this.ctx.destination)
-    // AFTER: post-chain audio at the safety limiter, the same node the output meters split.
     this.limiter.connect(this.analyser)
     this.pullAnalyser(this.analyser)
-    this.pullAnalyser(this.analyserPre)
-    if (this.previewGain) this.previewGain.connect(this.limiter)
+    if (this.previewGain) {
+      try {
+        this.previewGain.disconnect()
+      } catch {
+        /* not yet connected */
+      }
+      this.previewGain.connect(this.limiter)
+    }
     const split = this.ctx.createChannelSplitter(2)
     this.limiter.connect(split)
     if (this.analyserL) split.connect(this.analyserL, 0)
     if (this.analyserR) split.connect(this.analyserR, 1)
   }
 
+  private orderedSlots(id: string): Slot[] {
+    return this.ensureRack(id)
+      .chain.map((mod) => this.trackSlotMap(id).get(mod.instanceId))
+      .filter((slot): slot is Slot => Boolean(slot))
+  }
+
+  /**
+   * source → track input → inserts → track fader → master sum.
+   * Disconnects outputs only, so a playing source stays attached to the input.
+   */
+  private connectTrack(id: string): void {
+    const input = this.trackInputs.get(id)
+    const gain = this.trackGains.get(id)
+    const ordered = this.orderedSlots(id)
+    if (!input || !gain || !this.sumBus || ordered.length === 0) return
+    try {
+      input.disconnect()
+    } catch {
+      /* not connected yet */
+    }
+    for (const slot of ordered) {
+      try {
+        slot.output.disconnect()
+      } catch {
+        /* not connected yet */
+      }
+    }
+    try {
+      gain.disconnect()
+    } catch {
+      /* not connected yet */
+    }
+    input.connect(ordered[0]!.input)
+    for (let i = 0; i < ordered.length - 1; i++) ordered[i]!.output.connect(ordered[i + 1]!.input)
+    ordered.at(-1)!.output.connect(gain)
+    gain.connect(this.sumBus)
+  }
+
+  private ensureTrackInput(id: string): GainNode | null {
+    if (!this.ctx) return null
+    let node = this.trackInputs.get(id)
+    if (!node) {
+      node = this.ctx.createGain()
+      node.gain.value = 1
+      forceStereoUpmix(node)
+      this.trackInputs.set(id, node)
+    }
+    return node
+  }
+
+  private leadInput(): GainNode | null {
+    return this.ensureTrackInput(this.selectedTrackId)
+  }
+
   /** Drop side-chain taps so a graph rebuild cannot sum stale connections into the FFT. */
   private disconnectSpectrumTaps(): void {
     const pre = this.analyserPre
-    if (pre) {
-      try {
-        this.voiceBus?.disconnect(pre)
-      } catch {
-        /* not connected */
-      }
-      try {
-        this.mixBus?.disconnect(pre)
-      } catch {
-        /* not connected */
-      }
-      for (const slot of this.slots.values()) {
-        try {
-          slot.input.disconnect(pre)
-        } catch {
-          /* not connected */
+    const eq = this.analyserEq
+    const pulls = [pre, eq, this.analyserLimiterPre, this.analyserCompressorPre]
+    for (const slots of this.trackSlots.values()) {
+      for (const slot of slots.values()) {
+        for (const tap of pulls) {
+          if (!tap) continue
+          try {
+            slot.input.disconnect(tap)
+          } catch {
+            /* not connected */
+          }
+          try {
+            slot.output.disconnect(tap)
+          } catch {
+            /* not connected */
+          }
         }
       }
     }
-    const eq = this.analyserEq
-    if (eq) {
-      for (const slot of this.slots.values()) {
-        try {
-          slot.output.disconnect(eq)
-        } catch {
-          /* not connected */
-        }
+    try {
+      this.noiseGain?.disconnect()
+    } catch {
+      /* not connected */
+    }
+  }
+
+  /**
+   * One before-tap and one after-tap for the selected track.
+   * Multi view disconnects them so hidden editors do not run FFTs.
+   * The master meter tap stays on the safety limiter.
+   */
+  setMonitorTaps(enabled: boolean, focusId: string | null = this.analyserFocusId): void {
+    this.monitorTaps = enabled
+    this.analyserFocusId = focusId
+    if (this.ctx) this.retargetMonitorTaps()
+  }
+
+  private retargetMonitorTaps(): void {
+    if (!this.ctx) return
+    this.disconnectSpectrumTaps()
+    const pull = this.analyserPull
+    const release = (node: AnalyserNode | null) => {
+      if (!node || !pull) return
+      try {
+        node.disconnect(pull)
+      } catch {
+        /* not pulled */
       }
+    }
+    release(this.analyserPre)
+    release(this.analyserEq)
+    release(this.analyserLimiterPre)
+    release(this.analyserCompressorPre)
+    if (!this.monitorTaps) return
+    const id = this.selectedTrackId
+    const ordered = this.orderedSlots(id)
+    if (!ordered.length) return
+    const focus = this.analyserFocusId ? ordered.find((slot) => slot.instanceId === this.analyserFocusId) : undefined
+    const before = focus?.input ?? ordered[0]!.input
+    if (this.analyserPre) {
+      before.connect(this.analyserPre)
+      this.pullAnalyser(this.analyserPre, pull)
+    }
+    if (focus?.type === 'eq' && this.analyserEq) {
+      focus.output.connect(this.analyserEq)
+      this.pullAnalyser(this.analyserEq, pull)
+    }
+    const lim = ordered.find((slot) => slot.type === 'limiter')
+    if (lim && this.analyserLimiterPre) {
+      lim.input.connect(this.analyserLimiterPre)
+      this.pullAnalyser(this.analyserLimiterPre, pull)
+      if (lim.limiterFx) this.analyserLimiterPost = lim.limiterFx.analyserPost
+    }
+    const comp = ordered.find((slot) => slot.type === 'compressor')
+    if (comp && this.analyserCompressorPre) {
+      comp.input.connect(this.analyserCompressorPre)
+      this.pullAnalyser(this.analyserCompressorPre, pull)
+      if (comp.compressorFx) this.analyserCompressorPost = comp.compressorFx.analyserPost
+    }
+    const tone = focus?.type === 'eq' || focus?.type === 'filter' ? focus : ordered.find((slot) => slot.type === 'eq' || slot.type === 'filter')
+    if (tone && this.noiseGain && this.eqListen === 'filters' && this.activeTrackId() === this.selectedTrackId) {
+      this.noiseGain.connect(tone.input)
     }
   }
 
   /** Keep a tap processing. Sink gain is 0, so this does not reach the speakers. */
-  private pullAnalyser(node: AnalyserNode | null): void {
-    const sink = this.analyserSink
+  private pullAnalyser(node: AnalyserNode | null, sink: GainNode | null = this.analyserSink): void {
     if (!node || !sink) return
     try {
       node.disconnect(sink)
@@ -4507,60 +4936,6 @@ export class AudioEngine {
       /* not yet pulled */
     }
     node.connect(sink)
-  }
-
-  private disconnectSlots(): void {
-    this.disconnectSpectrumTaps()
-    for (const slot of this.slots.values()) {
-      try {
-        slot.output.disconnect()
-      } catch {
-        /* already disconnected */
-      }
-    }
-    try {
-      this.voiceBus?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      this.mixBus?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      this.sumBus?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    this.gainRouteKey = ''
-    for (const gain of this.trackGains.values()) {
-      try {
-        gain.disconnect()
-      } catch {
-        /* already disconnected */
-      }
-    }
-    try {
-      this.limiter?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      this.safetyGain?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      this.analyserLimiterPre?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    try {
-      this.analyserCompressorPre?.disconnect()
-    } catch {
-      /* already disconnected */
-    }
   }
 
   /**
@@ -4571,7 +4946,7 @@ export class AudioEngine {
    */
   private mountAddedSlots(added: ChainModule[]): void {
     if (!added.length) return
-    if (!this.ctx || !this.voiceBus || this.slots.size === 0 || this.reconnecting) {
+    if (!this.ctx || !this.sumBus || this.reconnecting) {
       void this.rebuildGraph()
       return
     }
@@ -4589,23 +4964,51 @@ export class AudioEngine {
       this.graphRebuildQueued = true
       return
     }
-    try {
-      this.noiseGain?.disconnect()
-    } catch {
-      /* not connected */
-    }
-    try {
-      this.previewGain?.disconnect()
-    } catch {
-      /* not connected */
-    }
-    this.disconnectSlots()
-    this.connectSlots()
+    this.connectTrack(this.activeTrackId())
+    this.retargetMonitorTaps()
   }
 
   private graphRebuildQueued = false
 
+  private releaseSlot(slot: Slot | undefined): void {
+    if (!slot) return
+    if (slot.distortionFx) stopDistortionGraph(slot.distortionFx)
+    if (slot.delayFx) stopDelayGraph(slot.delayFx)
+    if (slot.reverbFx) stopReverbGraph(slot.reverbFx)
+    try {
+      slot.input.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      slot.output.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  /** Create or drop slots for the active track only. */
+  private syncTrackSlots(): void {
+    const live = new Set(this.chain.map((mod) => mod.instanceId))
+    for (const id of [...this.slots.keys()]) {
+      if (!live.has(id)) {
+        this.releaseSlot(this.slots.get(id))
+        this.slots.delete(id)
+      }
+    }
+    for (const mod of normalizeChain(this.chain)) {
+      const existing = this.slots.get(mod.instanceId)
+      if (existing && existing.type !== mod.type) {
+        this.releaseSlot(existing)
+        this.slots.delete(mod.instanceId)
+      }
+      if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
+      if (mod.type === 'eq') this.eqState(mod.instanceId)
+    }
+  }
+
   private async rebuildGraph(): Promise<void> {
+    const trackId = this.activeTrackId()
     if (!this.ctx) {
       this.emit()
       return
@@ -4616,41 +5019,45 @@ export class AudioEngine {
       return
     }
     this.reconnecting = true
-    this.rampSafety(0.0001)
-    await waitMs(28)
+    const gain = this.trackGains.get(trackId)
+    if (gain) rampGainExact(gain.gain, 0, this.ctx.currentTime, 0.012)
+    await waitMs(16)
     if (!this.ctx) {
       this.reconnecting = false
       return
     }
-    this.disconnectSlots()
-    const live = new Set(this.chain.map((m) => m.instanceId))
-    for (const id of [...this.slots.keys()]) {
-      if (!live.has(id)) {
-        const gone = this.slots.get(id)
-        if (gone?.distortionFx) stopDistortionGraph(gone.distortionFx)
-        this.slots.delete(id)
-      }
-    }
-    for (const mod of this.chain) {
-      const existing = this.slots.get(mod.instanceId)
-      if (existing && existing.type !== mod.type) {
-        if (existing.distortionFx) stopDistortionGraph(existing.distortionFx)
-        this.slots.delete(mod.instanceId)
-      }
-      if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
-      if (mod.type === 'eq') this.eqState(mod.instanceId)
-    }
-    this.connectSlots()
+    this.withEditing(trackId, () => this.syncTrackSlots())
+    this.ensureTrackInput(trackId)
+    this.ensureTrackGains(false)
+    this.connectTrack(trackId)
+    this.retargetMonitorTaps()
     this.applyLiveAudio()
-    this.applyBypassRamps(0.01)
-    this.syncEqListen()
-    this.rampSafety(this.playbackSafetyGain())
     this.reconnecting = false
     if (this.graphRebuildQueued) {
       this.graphRebuildQueued = false
       void this.rebuildGraph()
       return
     }
+    this.emit()
+  }
+
+  /** Project load and reset. Playback is already stopped. */
+  private rebuildAllGraphs(): void {
+    if (!this.ctx) {
+      this.emit()
+      return
+    }
+    for (const slots of this.trackSlots.values()) {
+      for (const slot of slots.values()) this.releaseSlot(slot)
+    }
+    this.trackSlots.clear()
+    this.ensureTrackGains(true)
+    for (const track of this.tracks) {
+      this.ensureTrackInput(track.id)
+      this.withEditing(track.id, () => this.syncTrackSlots())
+    }
+    this.connectSlots()
+    this.applyLiveAudio()
     this.emit()
   }
 
@@ -5021,14 +5428,15 @@ export class AudioEngine {
   }
 
   private syncEqListen(): void {
-    if (!this.ctx || !this.voiceBus || !this.noiseGain) return
+    if (!this.ctx || !this.noiseGain) return
+    const input = this.trackInputs.get(this.selectedTrackId)
     const now = this.ctx.currentTime
     if (this.eqListen === 'filters') {
-      setSmoothedAudioParam(this.voiceBus.gain, 0.0001, now, 'gain')
+      if (input) setSmoothedAudioParam(input.gain, 0.0001, now, 'gain')
       setSmoothedAudioParam(this.noiseGain.gain, 0.35, now, 'gain')
       this.startNoise()
     } else {
-      setSmoothedAudioParam(this.voiceBus.gain, 1, now, 'gain')
+      if (input) setSmoothedAudioParam(input.gain, 1, now, 'gain')
       setSmoothedAudioParam(this.noiseGain.gain, 0, now, 'gain')
       this.stopNoise()
     }
@@ -5066,6 +5474,7 @@ export class AudioEngine {
    * Filter ADS uses its own clock so a paused LFO does not freeze that envelope.
    */
   private stepClocks(): { lfoSec: number; filterSec: number } {
+    if (this.suppressClock) return { lfoSec: this.lfoClockSec, filterSec: this.filterClockSec }
     const now = typeof performance !== 'undefined' ? performance.now() : 0
     const lfo = stepTransportClock({ sec: this.lfoClockSec, wallMs: this.lfoWallMs }, now, this.playing)
     this.lfoClockSec = lfo.sec
@@ -5135,10 +5544,10 @@ export class AudioEngine {
   }
 
   private syncLfoClock(): void {
-    const lfoRunning = this.playing && anyFxLfoActive(this.fxLfos)
-    const filterRunning = filterModNeedsClock(this.params)
-    const automation = this.playing && automationHasNodes(this.automation)
-    const randomRunning = this.playing && hasAutoRandom(this.randomDoc)
+    const lfoRunning = this.playing && this.tracks.some((track) => anyFxLfoActive(this.ensureRack(track.id).fxLfos))
+    const filterRunning = this.tracks.some((track) => filterModNeedsClock(this.ensureRack(track.id).params))
+    const automation = this.playing && this.tracks.some((track) => automationHasNodes(this.ensureRack(track.id).automation))
+    const randomRunning = this.playing && this.tracks.some((track) => hasAutoRandom(this.ensureRack(track.id).randomDoc))
     const active = lfoRunning || filterRunning || automation || randomRunning
     if (active && !this.lfoTimer) {
       this.lfoTimer = window.setInterval(() => {
@@ -5203,19 +5612,24 @@ export class AudioEngine {
         else applyReverbGraph(fx, params, this.reverbType, bpm, now, smoothing)
         const key = reverbImpulseKey(params, this.reverbType)
         if (key !== this.reverbIrKey || !convolverHasBuffer(fx.conv)) {
+          const trackId = this.activeTrackId()
           this.reverbIrKey = key
           if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
           if (!convolverHasBuffer(fx.conv)) {
             setConvolverPairBuffer(fx.conv, buildReverbBuffer(this.ctx, params, this.reverbType), now)
           } else {
             this.reverbIrTimer = window.setTimeout(() => {
-              this.reverbIrTimer = 0
+              const owner = this.racks.get(trackId)
+              if (owner) owner.reverbIrTimer = 0
               if (!this.ctx || !fx) return
-              setConvolverPairBuffer(
-                fx.conv,
-                buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType),
-                this.ctx.currentTime,
-              )
+              this.withEditing(trackId, () => {
+                if (!this.ctx) return
+                setConvolverPairBuffer(
+                  fx.conv,
+                  buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType),
+                  this.ctx.currentTime,
+                )
+              })
             }, 40)
           }
         }
@@ -5225,36 +5639,27 @@ export class AudioEngine {
 
   private applyLiveAudio(smoothing = 0.03): void {
     if (!this.ctx) return
-    this.advanceRandom()
-    const now = this.ctx.currentTime
-    const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
-    const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
-    const live = this.liveParams()
-    if (gainSlot?.stereo) {
-      applyStereoStage(
-        gainSlot.stereo,
-        {
-          gainDb: live.gain,
-          pan: live.pan,
-          leftDb: live.channelGainL,
-          rightDb: live.channelGainR,
-          mono: live.makeMono > 0.5,
-          invert: live.invertPhase > 0.5,
-          sourceChannels: this.activeBuffer()?.numberOfChannels ?? this.buffer?.numberOfChannels ?? 2,
-        },
-        now,
-        smoothing,
-      )
-    } else if (gainSlot) {
-      setSmoothedAudioParam(gainSlot.output.gain, dbToGain(live.gain), now, 'gain')
+    this.stepClocks()
+    this.suppressClock = true
+    const selected = this.selectedTrackId
+    try {
+      const order = this.tracks.map((track) => track.id).filter((id) => id !== selected)
+      order.push(selected)
+      for (const id of order) {
+        this.withEditing(id, () => {
+          this.advanceRandom()
+          this.applyRackDsp(smoothing)
+        })
+      }
+    } finally {
+      this.suppressClock = false
     }
-    if (outSlot) setSmoothedAudioParam(outSlot.output.gain, dbToGain(live.outputGain), now, 'gain')
-    this.applyEq(smoothing)
+    this.applyMasterOutput(smoothing)
     this.applyTrackMix(smoothing)
-    this.applyFxParams(smoothing)
-    this.applyBypassRamps(smoothing)
     this.syncEqListen()
     if (this.playing && this.engineMode === 'playback') {
+      const live = this.liveParams()
+      const now = this.ctx.currentTime
       if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
         this.handoffToStretch(now)
       } else if (this.source && !this.schedulerId && this.loopScheduling) {
@@ -5265,6 +5670,43 @@ export class AudioEngine {
         }
       }
     }
+  }
+
+  /** Input and inserts for the rack currently being edited. Output gain stays on the master. */
+  private applyRackDsp(smoothing: number): void {
+    if (!this.ctx) return
+    const now = this.ctx.currentTime
+    const gainSlot = [...this.slots.values()].find((s) => s.type === 'gain')
+    const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
+    const live = this.liveParams()
+    const channels = this.trackBuffers.get(this.activeTrackId())?.numberOfChannels ?? this.buffer?.numberOfChannels ?? 2
+    if (gainSlot?.stereo) {
+      applyStereoStage(
+        gainSlot.stereo,
+        {
+          gainDb: live.gain,
+          pan: live.pan,
+          leftDb: live.channelGainL,
+          rightDb: live.channelGainR,
+          mono: live.makeMono > 0.5,
+          invert: live.invertPhase > 0.5,
+          sourceChannels: channels,
+        },
+        now,
+        smoothing,
+      )
+    } else if (gainSlot) {
+      setSmoothedAudioParam(gainSlot.output.gain, dbToGain(live.gain), now, 'gain')
+    }
+    if (outSlot) setSmoothedAudioParam(outSlot.output.gain, 1, now, 'gain')
+    this.applyEq(smoothing)
+    this.applyFxParams(smoothing)
+    this.applyBypassRamps(smoothing)
+  }
+
+  private applyMasterOutput(_smoothing: number): void {
+    if (!this.ctx || !this.masterOutput) return
+    setSmoothedAudioParam(this.masterOutput.gain, dbToGain(this.params.outputGain), this.ctx.currentTime, 'gain')
   }
 
   /** Soft-fade the buffer voice before starting grain stretch (avoids clicks on speed/pitch). */
@@ -5373,7 +5815,8 @@ export class AudioEngine {
    */
   private startBufferLoop(): void {
     const ctx = this.ctx
-    if (!ctx || !this.voiceBus) return
+    const lead = this.leadInput()
+    if (!ctx || !lead) return
     const ping = this.direction === 'pingpong'
     if (ping) {
       if (!this.buffer) return
@@ -5439,6 +5882,8 @@ export class AudioEngine {
 
   private pumpLead(now: number): void {
     if (!this.loopScheduling || !this.loopBuffer) return
+    const lead = this.leadInput()
+    if (!lead) return
     const horizon = now + 0.14
     let guard = 0
     while (this.loopCursorWhen < horizon && guard++ < 6 && this.voices.length < 8) {
@@ -5458,7 +5903,7 @@ export class AudioEngine {
         Math.abs(step.segment.offset - this.loopRegionStart) < 0.0001 &&
         this.voices.length > 0
       if (loopRestart) this.filterEnvOrigin = this.filterClockSec
-      const voice = this.spawnSegment(this.loopBuffer, this.voiceBus, step.segment, fromRel, this.loopSpan, this.loopPing)
+      const voice = this.spawnSegment(this.loopBuffer, lead, step.segment, fromRel, this.loopSpan, this.loopPing)
       if (!voice) break
       this.voices.push(voice)
       this.rememberVoice(voice)
@@ -5722,7 +6167,7 @@ export class AudioEngine {
 
   private scheduleStretch(): void {
     const buffer = this.buffer
-    if (!this.playing || this.engineMode !== 'playback' || !this.ctx || !buffer || !this.voiceBus) {
+    if (!this.playing || this.engineMode !== 'playback' || !this.ctx || !buffer || !this.leadInput()) {
       return
     }
     const ctx = this.ctx
@@ -5820,7 +6265,9 @@ export class AudioEngine {
       )
       const src = ctx.createBufferSource()
       src.buffer = grainBuf
-      src.connect(this.voiceBus)
+      const lead = this.leadInput()
+      if (!lead) return
+      src.connect(lead)
       src.start(t, 0, grainDur)
       src.stop(t + grainDur + 0.02)
       this.stretchHead += step.sourceAdvance * this.stretchDir
@@ -5830,7 +6277,7 @@ export class AudioEngine {
 
   private scheduleGrains(): void {
     const buffer = this.activeBuffer()
-    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.voiceBus) {
+    if (!this.playing || this.engineMode !== 'grain' || !this.ctx || !buffer || !this.leadInput()) {
       return
     }
     const ctx = this.ctx
@@ -5895,12 +6342,16 @@ export class AudioEngine {
         this.fillResampledGrain(grainBuf, buffer, grainOffset, count, rate, algo, 1, false, 'realtime')
         src.buffer = grainBuf
         src.connect(gain)
-        gain.connect(this.voiceBus)
+        const lead = this.leadInput()
+        if (!lead) return
+        gain.connect(lead)
         src.start(t, 0, dur)
       } else {
         src.buffer = buffer
         src.connect(gain)
-        gain.connect(this.voiceBus)
+        const lead = this.leadInput()
+        if (!lead) return
+        gain.connect(lead)
         src.start(t, grainOffset, dur)
       }
       src.stop(t + dur + 0.02)
@@ -5940,8 +6391,8 @@ export class AudioEngine {
     }
   }
 
-  private ensureTrackGains(force: boolean): void {
-    if (!this.ctx || !this.sumBus || !this.voiceBus) return
+  private ensureTrackGains(_force: boolean): void {
+    if (!this.ctx || !this.sumBus) return
     const live = new Set(this.tracks.map((track) => track.id))
     for (const id of [...this.trackGains.keys()]) {
       if (!live.has(id)) this.dropTrackGain(id)
@@ -5951,29 +6402,7 @@ export class AudioEngine {
       const gain = this.ctx.createGain()
       gain.gain.value = trackMixGain(track, this.tracks)
       this.trackGains.set(track.id, gain)
-      this.gainRouteKey = ''
-    }
-    const key = `${this.tracks.map((track) => track.id).join('|')}>${this.selectedTrackId}`
-    if (!force && key === this.gainRouteKey) return
-    this.routeTrackGains()
-    this.gainRouteKey = key
-  }
-
-  /**
-   * Selected track enters the project effect chain. Other tracks sum after it.
-   * Reconnecting is skipped while a fader only changes the GainNode value.
-   * Pan / mid-side insert on the gain output; per-track FX insert before it.
-   */
-  private routeTrackGains(): void {
-    if (!this.voiceBus || !this.sumBus) return
-    for (const [id, gain] of this.trackGains) {
-      try {
-        gain.disconnect()
-      } catch {
-        /* not connected yet */
-      }
-      if (id === this.selectedTrackId) gain.connect(this.voiceBus)
-      else gain.connect(this.sumBus)
+      if (this.trackSlots.has(track.id)) this.connectTrack(track.id)
     }
   }
 
@@ -6034,7 +6463,7 @@ export class AudioEngine {
 
   /**
    * One-shot sources for every loaded track, all started at the same `when`.
-   * The selected track's gain feeds the effect chain; the others sum after it.
+   * Each source enters that track's effect chain. The fader sits after the chain.
    */
   private startProjectVoices(when: number, origin: number, replace: boolean): void {
     const ctx = this.ctx
@@ -6051,11 +6480,11 @@ export class AudioEngine {
     this.ensureTrackGains(true)
     for (const voice of plan.voices) {
       const buffer = this.trackBuffers.get(voice.id)
-      const gain = this.trackGains.get(voice.id)
-      if (!buffer || !gain) continue
+      const input = this.ensureTrackInput(voice.id)
+      if (!buffer || !input) continue
       const src = ctx.createBufferSource()
       src.buffer = buffer
-      src.connect(gain)
+      src.connect(input)
       const offset = Math.min(voice.offset, Math.max(0, buffer.duration - 0.001))
       try {
         src.start(t0, offset)
@@ -6118,11 +6547,11 @@ export class AudioEngine {
     this.ensureTrackGains(true)
     for (const voice of plan.voices) {
       const buffer = this.trackBuffers.get(voice.id)
-      const gain = this.trackGains.get(voice.id)
-      if (!buffer || !gain) continue
+      const input = this.ensureTrackInput(voice.id)
+      if (!buffer || !input) continue
       const src = ctx.createBufferSource()
       src.buffer = buffer
-      src.connect(gain)
+      src.connect(input)
       const offset = Math.min(voice.offset, Math.max(0, buffer.duration - 0.001))
       try {
         src.start(plan.when, offset)
@@ -6268,6 +6697,10 @@ export class AudioEngine {
       variations: this.variations.map((v) => ({ id: v.id, name: v.name })),
       tracks: cloneTracks(this.tracks),
       selectedTrackId: this.selectedTrackId,
+      trackFxCounts: Object.fromEntries(this.tracks.map((track) => [track.id, trackFxCount(this.ensureRack(track.id).chain)])),
+      trackSlotCounts: Object.fromEntries(
+        this.tracks.map((track) => [track.id, this.trackSlots.get(track.id)?.size ?? 0]),
+      ),
       masterMix: this.masterMix,
       transients: this.transients.slice(),
       showTransients: this.showTransients,

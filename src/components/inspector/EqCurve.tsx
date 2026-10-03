@@ -99,6 +99,7 @@ export function EqCurve({
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
       const analyser = engine.getAnalyser('pre') ?? engine.getAnalyser('post')
+      const after = engine.getAnalyser('eq')
       if (analyser) {
         const fftSize = analyser.fftSize
         const binCount = SPECTRUM_ANALYSIS_FFT >> 1
@@ -121,6 +122,25 @@ export function EqCurve({
           const y = zeroY + t * (height - zeroY)
           const bandW = Math.max(1, x1 - x0)
           ctx.fillRect(x0 + gap / 2, y, Math.max(1, bandW - gap), height - y)
+        }
+        if (after && after !== analyser) {
+          if (time.buf.length !== after.fftSize) time.buf = new Float32Array(after.fftSize)
+          after.getFloatTimeDomainData(time.buf as Float32Array<ArrayBuffer>)
+          measureSpectrumDb(time.buf, bins.buf, fft)
+          const afterPeaks = bandPeakDb(bins.buf, fftSr, EQ_MINI_BAND_COUNT, EQ_MIN_HZ, plotMax)
+          ctx.strokeStyle = colorWithAlpha(colors.spectrumLine, 0.9)
+          ctx.lineWidth = 1.25
+          ctx.beginPath()
+          for (let i = 0; i < EQ_MINI_BAND_COUNT; i++) {
+            const x0 = freqToX(edges[i] ?? EQ_MIN_HZ, width, plotMax)
+            const x1 = freqToX(edges[i + 1] ?? plotMax, width, plotMax)
+            const mag = afterPeaks[i] ?? -100
+            const y = zeroY + Math.min(1, Math.max(0, (0 - mag) / 90)) * (height - zeroY)
+            const x = (x0 + x1) / 2
+            if (i === 0) ctx.moveTo(x, y)
+            else ctx.lineTo(x, y)
+          }
+          ctx.stroke()
         }
       }
       const zeroY = dbToY(0, height)

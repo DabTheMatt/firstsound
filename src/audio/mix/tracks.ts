@@ -2,11 +2,12 @@
  * Project tracks. Audio buffers live beside this model (keyed by id).
  * Reordering moves these objects; it does not copy state between ids.
  *
- * DSP insertion (not built in this pass):
- *   source → future per-track FX → track gain → future pan / mid-side → master sum
- * The selected track still enters the single project effect chain. That chain
- * is not cloned onto every slot. Mute and solo already fold into trackMixGain
- * so a later strip can drive them without a second mixer engine.
+ * Each track owns its insert chain. The audible order is:
+ *   source → track input (gain / pan / balance) → track inserts
+ *   → unity track output → track volume × mute/solo → master sum
+ *   → master output gain → safety limiter.
+ * Input pan stays in front of the inserts. Mute and solo fold into trackMixGain
+ * after the inserts, so a mute silences the effect output without deleting it.
  */
 
 export const MAX_TRACKS = 4

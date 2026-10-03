@@ -97,7 +97,13 @@ function resolveColor(id: TrackColorId): string {
   return color || trackColorVar(id)
 }
 
-export function MultiTrackView({ phone = false }: { phone?: boolean }) {
+export function MultiTrackView({
+  phone = false,
+  onOpenFx,
+}: {
+  phone?: boolean
+  onOpenFx?: (trackId: string) => void
+}) {
   const { t } = useI18n()
   const snap = useEngine()
   const listRef = useRef<HTMLDivElement>(null)
@@ -173,6 +179,8 @@ export function MultiTrackView({ phone = false }: { phone?: boolean }) {
             }
             onReorder={(to) => engine.reorderTracks(index, to)}
             laneCount={snap.tracks.length}
+            fxCount={snap.trackFxCounts[track.id] ?? 0}
+            onOpenFx={() => onOpenFx?.(track.id)}
             copy={t.mix}
           />
         ))}
@@ -204,6 +212,8 @@ function TrackLane({
   onToggleStereo,
   onReorder,
   laneCount,
+  fxCount,
+  onOpenFx,
   copy,
 }: {
   track: MixTrack
@@ -228,6 +238,8 @@ function TrackLane({
   onToggleStereo: () => void
   onReorder: (to: number) => void
   laneCount: number
+  fxCount: number
+  onOpenFx: () => void
   copy: {
     loadAudio: string
     replaceAudio: string
@@ -247,6 +259,9 @@ function TrackLane({
     right: string
     reorder: string
     trackName: string
+    openFx: string
+    fx: string
+    fxCount: (count: number) => string
   }
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -390,6 +405,17 @@ function TrackLane({
           }}
         >
           {loaded ? '↻' : '+'}
+        </button>
+        <button
+          type="button"
+          className={`${styles.icon} ${fxCount > 0 ? styles.fxOn : ''}`}
+          aria-label={copy.openFx}
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenFx()
+          }}
+        >
+          {fxCount > 0 ? copy.fxCount(fxCount) : copy.fx}
         </button>
         {loaded ? (
           <button

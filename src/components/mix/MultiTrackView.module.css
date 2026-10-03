@@ -140,6 +140,11 @@
   text-transform: uppercase;
 }
 
+.fxOn {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
 .fader {
   display: flex;
   align-items: center;

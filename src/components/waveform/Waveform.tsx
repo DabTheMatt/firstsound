@@ -132,6 +132,7 @@ type Props = {
   phoneEqId?: string
   /** Presentation only. Does not change transport or project audio. */
   arrangement?: 'single' | 'multi'
+  onOpenTrackFx?: (trackId: string) => void
 }
 
 export type WaveformHandle = {
@@ -243,6 +244,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onAnalyzerClose,
     phoneEqId,
     arrangement = 'single',
+    onOpenTrackFx,
   },
   ref,
 ) {
@@ -1608,7 +1610,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           ) : null}
         </div>
-        {showArrangement ? <MultiTrackView phone={phone} /> : null}
+        {showArrangement ? <MultiTrackView phone={phone} onOpenFx={onOpenTrackFx} /> : null}
         {viz === 'split' && showWave && showSpec ? (
           <button
             type="button"

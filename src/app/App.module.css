@@ -100,6 +100,51 @@
   min-width: 0;
 }
 
+.trackContext {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  min-width: 0;
+  max-width: 42%;
+}
+
+.trackKicker {
+  color: var(--text-disabled);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.trackNow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.trackChips {
+  display: flex;
+  gap: 3px;
+}
+
+.trackChip {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+
+.trackChipOn {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+}
+
 .modeCluster {
   display: flex;
   align-items: center;

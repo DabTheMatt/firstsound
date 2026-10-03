@@ -478,6 +478,10 @@ export type Messages = {
     monitor: string
     monitorHint: string
     masterHint: string
+    track: string
+    openFx: string
+    fx: string
+    fxCount: (count: number) => string
     single: string
     multi: string
     singleTitle: string
@@ -1223,7 +1227,11 @@ export const EN: Messages = {
     out: 'Out',
     monitor: 'Monitor',
     monitorHint: 'Mic level in the speakers while recording. Keep at 0 without headphones to avoid feedback.',
-    masterHint: 'Sums every audible track into the effect chain.',
+    masterHint: 'Sums every track after its own effect chain.',
+    track: 'Track',
+    openFx: 'Edit track effects',
+    fx: 'FX',
+    fxCount: (count) => `FX ${count}`,
     single: 'Single',
     multi: 'Multi',
     singleTitle: 'Single track view',
@@ -1973,7 +1981,11 @@ export const PL: Messages = {
     out: 'Out',
     monitor: 'Monitor',
     monitorHint: 'Poziom mikrofonu w głośnikach podczas nagrania. Bez słuchawek zostaw 0, żeby uniknąć sprzężenia.',
-    masterHint: 'Sumuje każdy słyszalny ślad do łańcucha efektów.',
+    masterHint: 'Sumuje ślady po ich własnych łańcuchach efektów.',
+    track: 'Ślad',
+    openFx: 'Edytuj efekty śladu',
+    fx: 'FX',
+    fxCount: (count) => `FX ${count}`,
     single: 'Jeden',
     multi: 'Wiele',
     singleTitle: 'Widok jednego śladu',

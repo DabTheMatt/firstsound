@@ -74,6 +74,11 @@ export type ProcessingSnapshot = {
   noiseFadeTau: number
   /** Normalized Random offsets. Applied only while automation owns the center. */
   randomOffsets?: Partial<Record<ParamId, number>>
+  /**
+   * Serializable per-track racks for a later multi-track offline render.
+   * The live render still uses the selected track's chain above.
+   */
+  trackRacks?: Record<string, unknown>
 }
 
 export type OfflineContextFactory = (

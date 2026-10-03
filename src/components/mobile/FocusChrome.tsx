@@ -14,6 +14,7 @@ import {
   type AutomationEditFocus,
 } from '../../audio/automation/automation'
 import { formatTimecode } from '../../audio/engine/formatTime'
+import { trackColorVar } from '../../audio/mix/tracks'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
@@ -91,6 +92,8 @@ export function FocusChrome({
   touch = false,
 }: Props) {
   const { t } = useI18n()
+  const snap = useEngine()
+  const track = snap.tracks.find((item) => item.id === snap.selectedTrackId)
   const title =
     workspace === 'eq' ? t.focus.eq : workspace === 'auto' ? t.focus.auto : workspace === 'fft' ? t.focus.fft : t.focus.wave
 
@@ -108,8 +111,13 @@ export function FocusChrome({
   return (
     <div className={styles.chrome} data-focus-chrome={workspace}>
       <div className={styles.top}>
-        <div className={styles.identity} data-focus-zone="identity">
+        <div className={styles.identity} data-focus-zone="identity" data-focus-track={track?.id}>
           {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} /> : <span className={styles.title}>{title}</span>}
+          {track ? (
+            <span className={styles.trackCue} style={{ color: trackColorVar(track.color) }}>
+              {track.name}
+            </span>
+          ) : null}
         </div>
         <div className={styles.workspace} data-focus-zone="workspace">
           {workspace === 'eq' ? <EqFocusCluster onSelectModule={onSelectModule} /> : null}

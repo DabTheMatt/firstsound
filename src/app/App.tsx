@@ -15,6 +15,8 @@ import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
+import { isFixedType } from '../audio/chain/chain'
+import { trackColorVar } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
 import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
@@ -512,6 +514,14 @@ export default function App() {
     }
   }
 
+  const openTrackFx = (trackId: string) => {
+    engine.selectTrack(trackId)
+    setArrangement('single')
+    const chain = engine.getSnapshot().chain
+    const fx = chain.find((mod) => !isFixedType(mod.type))
+    if (fx) selectModule(fx.instanceId)
+  }
+
   const hideInspector = () => {
     const routed = routeCollapse(focus)
     setFocus(routed.focus)
@@ -554,6 +564,11 @@ export default function App() {
   }
 
   const activeFocus = focusWorkspace
+  const monitorFocus = resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : null
+  const chainKey = snap.chain.map((mod) => `${mod.instanceId}:${mod.type}`).join('|')
+  useEffect(() => {
+    engine.setMonitorTaps(arrangement === 'single' || activeFocus != null, monitorFocus)
+  }, [arrangement, activeFocus, monitorFocus, chainKey, snap.selectedTrackId])
 
   const enterFocus = () => {
     setMenuOpen(false)
@@ -1009,6 +1024,33 @@ export default function App() {
 
         <div id="main-controls" className={styles.chrome}>
         <section className={styles.chainBand} aria-label={t.chain.aria}>
+          <div className={styles.trackContext}>
+            <span className={styles.trackKicker}>{t.mix.track}</span>
+            <span className={styles.trackNow} style={{ color: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'accent') }}>
+              {snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name}
+            </span>
+            {snap.tracks.length > 1 && !isPhoneLayout ? (
+              <div className={styles.trackChips} role="tablist" aria-label={t.mix.tracks}>
+                {snap.tracks.map((track, index) => {
+                  const on = track.id === snap.selectedTrackId
+                  return (
+                    <button
+                      key={track.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      title={track.name}
+                      className={`${styles.trackChip} ${on ? styles.trackChipOn : ''}`}
+                      style={{ borderColor: trackColorVar(track.color) }}
+                      onClick={() => engine.selectTrack(track.id)}
+                    >
+                      {index + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+          </div>
           <SignalChain
             chain={snap.chain}
             selectedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
@@ -1210,6 +1252,7 @@ export default function App() {
               onAnalyzerClose={() => setAnalyzerOpen(false)}
               phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
               arrangement={arrangement}
+              onOpenTrackFx={openTrackFx}
             />
           </div>
           {dockRight && inspectorOpen && !activeFocus ? (
