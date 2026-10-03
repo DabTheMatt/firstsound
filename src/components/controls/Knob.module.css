@@ -346,6 +346,23 @@ html[data-a11y-tips='off'] .tip {
   font-size: 9px;
 }
 
+.dialOnly {
+  max-width: 44px;
+  gap: 0;
+  padding: 0;
+}
+
+.dialOnly .label,
+.dialOnly .value,
+.dialOnly .baseValue,
+.dialOnly .modSlot {
+  display: none;
+}
+
+.dialOnly .dialWrap {
+  width: 48px;
+}
+
 .valueInput {
   margin: 0;
   width: 100%;

@@ -17,23 +17,12 @@
   overflow: auto;
 }
 
-.wave::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--project-playhead, 0%);
-  width: 1px;
-  background: var(--playhead);
-  pointer-events: none;
-}
-
 .lane {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  flex: 1 1 88px;
-  min-height: 78px;
+  flex: 1 1 120px;
+  min-height: 112px;
   border: 1px solid var(--border-subtle);
   border-left-width: 2px;
   border-radius: 8px;
@@ -101,20 +90,6 @@
   border: 1px solid var(--border-default);
   border-radius: 99px;
   background: var(--lane, var(--accent-primary));
-}
-
-.palette {
-  display: flex;
-  gap: 4px;
-  padding: 2px 0;
-}
-
-.chip {
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 99px;
 }
 
 .name {
@@ -195,8 +170,79 @@
 .wave {
   position: relative;
   flex: 1 1 auto;
-  min-height: 46px;
+  min-height: 64px;
   margin: 2px 6px 4px;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--track-playhead, 0%);
+  width: 1px;
+  background: var(--playhead);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.loopRegion {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 16%, transparent);
+  border-block: 1px solid color-mix(in srgb, var(--lane, var(--accent-primary)) 55%, transparent);
+  cursor: grab;
+  touch-action: none;
+  z-index: 1;
+}
+
+.loopHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  margin-left: -7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 3;
+}
+
+.loopHandle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 2px;
+  background: var(--lane, var(--accent-primary));
+}
+
+.loopReadout {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
+  color: var(--text-secondary);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.loopReadout strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
 }
 
 .wave canvas {

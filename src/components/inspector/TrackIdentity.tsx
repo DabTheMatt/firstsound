@@ -15,7 +15,7 @@ export function inspectorAccentStyle(snap: EngineSnapshot): CSSProperties | unde
   const accent = trackColorVar(track.color)
   return {
     ['--inspector-accent' as string]: accent,
-    ...(track.color === 'accent' ? {} : { ['--accent-primary' as string]: accent }),
+    ['--accent-primary' as string]: accent,
   }
 }
 

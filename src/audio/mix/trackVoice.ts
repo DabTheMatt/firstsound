@@ -15,6 +15,7 @@
 
 import { playbackNeedsStretch } from '../parameters/mapping'
 import type { PlaybackDirection } from '../parameters/types'
+import { loopBounds, resolveTrackPlayback, type TrackClock } from './playback'
 
 const EPS = 0.0005
 
@@ -27,6 +28,9 @@ export type BufferCue = {
   duration: number
   at: number
   loop: boolean
+  /** Loop points in the cue buffer (reversed or ping-pong coordinates when needed). */
+  loopStart: number
+  loopEnd: number
 }
 
 export function sourceNeedsStretch(speed: number, pitch: number, rateIsLive: boolean): boolean {
@@ -44,31 +48,56 @@ export function bufferCues(input: {
   projectDuration: number
   loop: boolean
   direction: PlaybackDirection
+  speed?: number
+  loopStart?: number
+  loopEnd?: number
 }): BufferCue[] {
   const source = input.sourceDuration
   const origin = Number.isFinite(input.origin) ? Math.max(0, input.origin) : 0
   const project = Number.isFinite(input.projectDuration) ? Math.max(0, input.projectDuration) : 0
   if (!(source > EPS) || !(project > EPS) || origin >= project - EPS) return []
-  const remain = project - origin
-  if (input.direction === 'pingpong') {
-    const cycle = source * 2
-    if (!input.loop && origin >= cycle - EPS) return []
-    const offset = input.loop ? origin % cycle : origin
-    const duration = input.loop ? remain : Math.min(remain, cycle - origin)
-    if (!(duration > EPS)) return []
-    return [{ buffer: 'pingpong', offset, duration, at: 0, loop: input.loop }]
+  const clock: TrackClock = {
+    sourceDuration: source,
+    speed: input.speed ?? 1,
+    direction: input.direction,
+    loop: input.loop,
+    loopStart: input.loopStart ?? 0,
+    loopEnd: input.loopEnd ?? 0,
   }
-  if (!input.loop && origin >= source - EPS) return []
-  const offset = input.loop ? origin % source : origin
-  const duration = input.loop ? remain : Math.min(remain, source - origin)
+  const resolved = resolveTrackPlayback(clock, origin)
+  if (resolved.ended || resolved.sourceTime == null) return []
+  const remain = project - origin
+  const duration = input.loop ? remain : Math.min(remain, Math.max(0, resolved.contentProjectDuration - origin))
   if (!(duration > EPS)) return []
+  const region = loopBounds(source, input.loop ? clock.loopStart : 0, input.loop ? clock.loopEnd : 0)
+  if (input.direction === 'pingpong') {
+    const cycle = (region.end - region.start) * 2
+    const into = resolved.playDirection < 0 ? region.end - resolved.sourceTime + (region.end - region.start) : resolved.sourceTime - region.start
+    return [{ buffer: 'pingpong', offset: into, duration, at: 0, loop: input.loop, loopStart: 0, loopEnd: cycle }]
+  }
+  if (input.direction === 'reverse') {
+    const offset = source - resolved.sourceTime
+    return [
+      {
+        buffer: 'reverse',
+        offset,
+        duration,
+        at: 0,
+        loop: input.loop,
+        loopStart: source - region.end,
+        loopEnd: source - region.start,
+      },
+    ]
+  }
   return [
     {
-      buffer: input.direction === 'reverse' ? 'reverse' : 'forward',
-      offset,
+      buffer: 'forward',
+      offset: resolved.sourceTime,
       duration,
       at: 0,
       loop: input.loop,
+      loopStart: region.start,
+      loopEnd: region.end,
     },
   ]
 }

@@ -74,8 +74,11 @@ export type TrackMixerStrip = {
   panner: StereoPannerNode
   level: GainNode
   gate: GainNode
-  /** Post-mixer tap. Not in the audible series path. */
+  /** Post-mixer tap. Not in the audible series path. Downmixes to one channel. */
   meter: AnalyserNode
+  /** Real left/right taps. Mono sources still feed both; the UI shows one meter. */
+  meterL: AnalyserNode
+  meterR: AnalyserNode
   output: GainNode
   stereo: boolean
   ms: MidSideNodes | null
@@ -107,9 +110,15 @@ export function createTrackMixerStrip(ctx: BaseAudioContext): TrackMixerStrip {
   const level = ctx.createGain()
   const gate = ctx.createGain()
   const meter = ctx.createAnalyser()
+  const meterL = ctx.createAnalyser()
+  const meterR = ctx.createAnalyser()
   const output = ctx.createGain()
   meter.fftSize = 32
   meter.smoothingTimeConstant = 0
+  meterL.fftSize = 256
+  meterR.fftSize = 256
+  meterL.smoothingTimeConstant = 0
+  meterR.smoothingTimeConstant = 0
   input.gain.value = 1
   fxInsert.gain.value = 1
   postFx.gain.value = 1
@@ -124,7 +133,11 @@ export function createTrackMixerStrip(ctx: BaseAudioContext): TrackMixerStrip {
   level.connect(gate)
   gate.connect(output)
   gate.connect(meter)
-  return { input, fxInsert, postFx, panner, level, gate, meter, output, stereo: false, ms: null }
+  const meterSplit = ctx.createChannelSplitter(2)
+  gate.connect(meterSplit)
+  meterSplit.connect(meterL, 0)
+  meterSplit.connect(meterR, 1)
+  return { input, fxInsert, postFx, panner, level, gate, meter, meterL, meterR, output, stereo: false, ms: null }
 }
 
 /**
@@ -204,7 +217,7 @@ export function disableTrackMidSide(strip: TrackMixerStrip): void {
 
 export function disconnectTrackMixerStrip(strip: TrackMixerStrip): void {
   disableTrackMidSide(strip)
-  for (const node of [strip.input, strip.fxInsert, strip.postFx, strip.panner, strip.level, strip.gate, strip.meter, strip.output]) {
+  for (const node of [strip.input, strip.fxInsert, strip.postFx, strip.panner, strip.level, strip.gate, strip.meter, strip.meterL, strip.meterR, strip.output]) {
     silentCatch(() => node.disconnect())
   }
 }

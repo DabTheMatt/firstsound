@@ -18,9 +18,31 @@ export const MAX_TRACKS = 4
 export const TRACK_MIX_MIN = 0
 export const TRACK_MIX_MAX = 150
 
-export const TRACK_COLOR_IDS = ['accent', 'secondary', 'warm', 'cool', 'eq', 'spectrum'] as const
+/**
+ * Strongly separated families. Defaults for the four slots are amber, cyan,
+ * green, violet so lanes read apart without labels.
+ */
+export const TRACK_COLOR_IDS = [
+  'amber',
+  'cyan',
+  'green',
+  'violet',
+  'orange',
+  'magenta',
+  'blue',
+  'neutral',
+] as const
 export type TrackColorId = (typeof TRACK_COLOR_IDS)[number]
 export type StereoDisplay = 'combined' | 'split'
+
+const LEGACY_TRACK_COLORS: Record<string, TrackColorId> = {
+  accent: 'amber',
+  secondary: 'orange',
+  warm: 'magenta',
+  cool: 'cyan',
+  eq: 'green',
+  spectrum: 'neutral',
+}
 
 export type MixTrack = {
   id: string
@@ -43,14 +65,24 @@ export type MixTrack = {
   fileName: string | null
   channelCount: number
   stereoDisplay: StereoDisplay
-  /** Repeats the source until the shared project ends. Does not lengthen it. */
+  /** Repeats `loopStart`–`loopEnd` until the shared project ends. Does not lengthen it. */
   loop: boolean
+  /** Source seconds. With `loopEnd` <= `loopStart`, the loop is the whole source. */
+  loopStart: number
+  /** Source seconds. Not the destructive waveform selection (`start`/`end`). */
+  loopEnd: number
   /** Source direction. Independent of every other track. */
   direction: PlaybackDirection
 }
 
 export function isTrackColorId(value: unknown): value is TrackColorId {
   return typeof value === 'string' && (TRACK_COLOR_IDS as readonly string[]).includes(value)
+}
+
+export function coerceTrackColor(value: unknown, index: number): TrackColorId {
+  if (isTrackColorId(value)) return value
+  if (typeof value === 'string' && LEGACY_TRACK_COLORS[value]) return LEGACY_TRACK_COLORS[value]
+  return trackColorForIndex(index)
 }
 
 export function trackColorForIndex(index: number): TrackColorId {
@@ -61,18 +93,22 @@ export function trackColorForIndex(index: number): TrackColorId {
 /** Theme token. Canvas code resolves the variable; the lane must not bake a hex. */
 export function trackColorVar(id: TrackColorId): string {
   switch (id) {
-    case 'accent':
-      return 'var(--accent-primary)'
-    case 'secondary':
-      return 'var(--accent-secondary)'
-    case 'warm':
-      return 'var(--ridge-warm)'
-    case 'cool':
-      return 'var(--ridge-cool)'
-    case 'eq':
-      return 'var(--eq-curve)'
-    case 'spectrum':
-      return 'var(--spectrum-line)'
+    case 'amber':
+      return 'var(--track-amber)'
+    case 'orange':
+      return 'var(--track-orange)'
+    case 'magenta':
+      return 'var(--track-magenta)'
+    case 'violet':
+      return 'var(--track-violet)'
+    case 'blue':
+      return 'var(--track-blue)'
+    case 'cyan':
+      return 'var(--track-cyan)'
+    case 'green':
+      return 'var(--track-green)'
+    case 'neutral':
+      return 'var(--track-neutral)'
   }
 }
 
@@ -113,6 +149,8 @@ export function createTrack(n: number, start = 0, end = 0, name?: string): MixTr
     channelCount: 0,
     stereoDisplay: 'combined',
     loop: false,
+    loopStart: 0,
+    loopEnd: 0,
     direction: 'forward',
   }
 }
@@ -263,6 +301,8 @@ export function clearTrackAudio(tracks: readonly MixTrack[], id: string): MixTra
     next.muted = false
     next.solo = false
     next.loop = false
+    next.loopStart = 0
+    next.loopEnd = 0
     next.direction = 'forward'
     if (!next.nameLocked) next.name = `Track ${index + 1}`
     return next
@@ -316,6 +356,13 @@ export function patchTrack(
       next.stereoDisplay = patch.stereoDisplay
     }
     if (typeof patch.loop === 'boolean') next.loop = patch.loop
+    if (typeof patch.loopStart === 'number' && Number.isFinite(patch.loopStart)) next.loopStart = Math.max(0, patch.loopStart)
+    if (typeof patch.loopEnd === 'number' && Number.isFinite(patch.loopEnd)) next.loopEnd = Math.max(0, patch.loopEnd)
+    if (next.loopEnd > 0 && next.loopEnd < next.loopStart) {
+      const swap = next.loopStart
+      next.loopStart = next.loopEnd
+      next.loopEnd = swap
+    }
     if (patch.direction === 'forward' || patch.direction === 'reverse' || patch.direction === 'pingpong') {
       next.direction = patch.direction
     }
@@ -353,7 +400,7 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
       id: rec.id,
       name,
       nameLocked,
-      color: isTrackColorId(rec.color) ? rec.color : trackColorForIndex(parsed.length),
+      color: coerceTrackColor(rec.color, parsed.length),
       mix: clampMix(typeof rec.mix === 'number' ? rec.mix : 100),
       muted: Boolean(rec.muted),
       solo: Boolean(rec.solo),
@@ -369,6 +416,8 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
           : 0,
       stereoDisplay: rec.stereoDisplay === 'split' ? 'split' : 'combined',
       loop: rec.loop === true,
+      loopStart: typeof rec.loopStart === 'number' && Number.isFinite(rec.loopStart) ? Math.max(0, rec.loopStart) : 0,
+      loopEnd: typeof rec.loopEnd === 'number' && Number.isFinite(rec.loopEnd) ? Math.max(0, rec.loopEnd) : 0,
       direction: rec.direction === 'reverse' || rec.direction === 'pingpong' ? rec.direction : 'forward',
     })
   }
@@ -407,6 +456,8 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       track.channelCount === other.channelCount &&
       track.stereoDisplay === other.stereoDisplay &&
       track.loop === other.loop &&
+      track.loopStart === other.loopStart &&
+      track.loopEnd === other.loopEnd &&
       track.direction === other.direction
     )
   })

@@ -16,7 +16,7 @@ describe('per-track loop plan', () => {
       loop: true,
       direction: 'forward',
     })
-    expect(cues).toEqual([{ buffer: 'forward', offset: 0, duration: 11, at: 0, loop: true }])
+    expect(cues).toEqual([{ buffer: 'forward', offset: 0, duration: 11, at: 0, loop: true, loopStart: 0, loopEnd: 3 }])
   })
 
   it('seeks into the current loop cycle and stops at the project end', () => {
@@ -27,7 +27,7 @@ describe('per-track loop plan', () => {
       loop: true,
       direction: 'forward',
     })
-    expect(cues).toEqual([{ buffer: 'forward', offset: 1, duration: 1, at: 0, loop: true }])
+    expect(cues).toEqual([{ buffer: 'forward', offset: 1, duration: 1, at: 0, loop: true, loopStart: 0, loopEnd: 3 }])
   })
 
   it('lets an unlooped track fall silent after its own source', () => {
@@ -39,7 +39,7 @@ describe('per-track loop plan', () => {
         loop: false,
         direction: 'forward',
       }),
-    ).toEqual([{ buffer: 'forward', offset: 0, duration: 3, at: 0, loop: false }])
+    ).toEqual([{ buffer: 'forward', offset: 0, duration: 3, at: 0, loop: false, loopStart: 0, loopEnd: 3 }])
     expect(
       bufferCues({
         sourceDuration: 3,
@@ -77,7 +77,7 @@ describe('per-track loop plan', () => {
         loop: false,
         direction: 'reverse',
       }),
-    ).toEqual([{ buffer: 'reverse', offset: 1, duration: 2, at: 0, loop: false }])
+    ).toEqual([{ buffer: 'reverse', offset: 1, duration: 2, at: 0, loop: false, loopStart: 0, loopEnd: 3 }])
     expect(
       bufferCues({
         sourceDuration: 3,
@@ -86,7 +86,7 @@ describe('per-track loop plan', () => {
         loop: false,
         direction: 'pingpong',
       }),
-    ).toEqual([{ buffer: 'pingpong', offset: 0, duration: 6, at: 0, loop: false }])
+    ).toEqual([{ buffer: 'pingpong', offset: 0, duration: 6, at: 0, loop: false, loopStart: 0, loopEnd: 6 }])
     expect(
       bufferCues({
         sourceDuration: 3,

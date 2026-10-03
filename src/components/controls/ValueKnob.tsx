@@ -43,6 +43,8 @@ type Props = {
   bipolar?: boolean
   /** Tick on the value arc, e.g. Width 100%. */
   markerNormalized?: number
+  /** Dial only. Mixer strips use this so the caption does not stack layout. */
+  dialOnly?: boolean
 }
 
 const DRAG_PX = 140
@@ -69,6 +71,7 @@ export function ValueKnob({
   now,
   bipolar = false,
   markerNormalized,
+  dialOnly = false,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const dialRef = useRef<HTMLDivElement>(null)
@@ -288,7 +291,7 @@ export function ValueKnob({
   return (
       <div
         ref={rootRef}
-        className={`${styles.knob} ${mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
+        className={`${styles.knob} ${dialOnly ? styles.dialOnly : mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
         title={description}
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
@@ -364,7 +367,7 @@ export function ValueKnob({
               className={styles.valueArc}
               d={fill}
               fill="none"
-              stroke="var(--accent-primary)"
+              stroke="var(--knob-arc, var(--accent-primary))"
               strokeWidth="3"
               strokeLinecap="round"
             />

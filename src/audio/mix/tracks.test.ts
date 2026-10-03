@@ -93,7 +93,7 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, 'track-3', {
       name: 'birds',
       nameLocked: true,
-      color: 'warm',
+      color: 'magenta',
       mix: 80,
       fileName: 'birds.wav',
       channelCount: 1,
@@ -101,7 +101,7 @@ describe('mix tracks', () => {
     const moved = moveTrack(tracks, 2, 0)
     expect(moved[0]?.id).toBe('track-3')
     expect(moved[0]?.name).toBe('birds')
-    expect(moved[0]?.color).toBe('warm')
+    expect(moved[0]?.color).toBe('magenta')
     expect(moved[0]?.mix).toBe(80)
     expect(moved[0]?.fileName).toBe('birds.wav')
     expect(moved[1]?.id).toBe('track-1')
@@ -131,7 +131,7 @@ describe('mix tracks', () => {
     tracks = patchTrack(tracks, 'track-2', {
       name: 'wind',
       nameLocked: true,
-      color: 'cool',
+      color: 'cyan',
       stereoDisplay: 'split',
       channelCount: 2,
       fileName: 'wind.wav',

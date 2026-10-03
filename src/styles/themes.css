@@ -62,6 +62,16 @@
   --ridge-warm: #e6ad48;
   --ridge-mid: #e8e6df;
   --ridge-cool: #aeb5b6;
+
+  /* Multitrack identity. Kept apart on purpose; themes do not collapse them. */
+  --track-amber: #e6a23c;
+  --track-orange: #e25a2a;
+  --track-magenta: #e23b8c;
+  --track-violet: #8d62f0;
+  --track-blue: #3c7dff;
+  --track-cyan: #2bb8d6;
+  --track-green: #3cbe6e;
+  --track-neutral: #d5d8d6;
 }
 
 [data-theme='midnight-blue'] {

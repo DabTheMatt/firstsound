@@ -490,6 +490,9 @@ export type Messages = {
     loadSample: string
     loop: string
     loopTrack: string
+    setLoop: string
+    loopStart: string
+    loopEnd: string
     direction: string
     input: string
     trackInput: string
@@ -1261,6 +1264,9 @@ export const EN: Messages = {
     loadSample: 'Load sample',
     loop: 'Loop',
     loopTrack: 'Loop track',
+    setLoop: 'Set loop',
+    loopStart: 'Loop start',
+    loopEnd: 'Loop end',
     direction: 'Direction',
     input: 'Input',
     trackInput: 'Track input',
@@ -2036,6 +2042,9 @@ export const PL: Messages = {
     loadSample: 'Wczytaj sample',
     loop: 'Pętla',
     loopTrack: 'Pętla śladu',
+    setLoop: 'Ustaw pętlę',
+    loopStart: 'Początek pętli',
+    loopEnd: 'Koniec pętli',
     direction: 'Kierunek',
     input: 'Wejście',
     trackInput: 'Wejście śladu',

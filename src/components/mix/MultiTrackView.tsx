@@ -1,12 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { computeMinMax } from '../../audio/engine/peaks'
 import {
+  dragLoopRegion,
+  formatLoopReadout,
+  loopBounds,
+  playheadProjectRatio,
+  selectionAsLoop,
+  sourceEndProjectRatio,
+  waveformTiles,
+  waveformVisualGain,
+  type TrackClock,
+} from '../../audio/mix/playback'
+import {
   anyTrackSoloed,
-  TRACK_COLOR_IDS,
   trackColorVar,
   type MixTrack,
   type TrackColorId,
 } from '../../audio/mix/tracks'
+import { TrackColorPicker } from './TrackColorPicker'
 import { TrackMixer, TrackStrip } from './TrackMixer'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { beginTrackLoad, isLatestTrackLoad } from '../../features/sample/loadQueue'
@@ -22,8 +33,14 @@ function isAudioFile(file: File): boolean {
   return /\.(wav|aif|aiff|mp3|m4a|aac|caf|mp4|ogg|flac|webm)$/i.test(file.name)
 }
 
-function envelope(buffer: AudioBuffer, channel: number, buckets: number): { min: Float32Array; max: Float32Array } {
-  const key = `${channel}:${buckets}`
+function envelope(
+  buffer: AudioBuffer,
+  channel: number,
+  buckets: number,
+  sourceStart = 0,
+  sourceEnd = buffer.duration,
+): { min: Float32Array; max: Float32Array } {
+  const key = `${channel}:${buckets}:${sourceStart.toFixed(4)}:${sourceEnd.toFixed(4)}`
   let store = peakCache.get(buffer)
   if (!store) {
     store = new Map()
@@ -31,7 +48,13 @@ function envelope(buffer: AudioBuffer, channel: number, buckets: number): { min:
   }
   const cached = store.get(key)
   if (cached) return cached
-  const draw = (index: number) => computeMinMax(buffer.getChannelData(index), 0, buffer.length, buckets)
+  const sample = (index: number) => {
+    const data = buffer.getChannelData(index)
+    const start = Math.max(0, Math.floor(sourceStart * buffer.sampleRate))
+    const end = Math.max(start + 1, Math.min(data.length, Math.ceil(sourceEnd * buffer.sampleRate)))
+    return computeMinMax(data, start, end, buckets)
+  }
+  const draw = sample
   if (channel >= 0) {
     const one = draw(Math.min(channel, buffer.numberOfChannels - 1))
     const next = { min: one.min, max: one.max }
@@ -62,6 +85,8 @@ function paintWave(
   channel: number,
   projectDuration: number,
   color: string,
+  clock: TrackClock,
+  gainDb: number,
 ) {
   const rect = canvas.getBoundingClientRect()
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -75,19 +100,29 @@ function paintWave(
   if (!ctx) return
   ctx.clearRect(0, 0, width, height)
   if (!buffer || !(projectDuration > 0)) return
-  const span = Math.min(1, buffer.duration / projectDuration)
-  const buckets = Math.max(1, Math.round(width * span))
-  const { min, max } = envelope(buffer, channel, buckets)
+  const gain = waveformVisualGain(gainDb)
   const mid = height / 2
-  const half = height * 0.42
+  const half = height * 0.46
   ctx.fillStyle = color
-  const drawWidth = Math.max(1, Math.round(width * span))
-  for (let x = 0; x < drawWidth; x++) {
-    const i = Math.min(buckets - 1, Math.floor((x / drawWidth) * buckets))
-    const hi = Math.max(-1, Math.min(1, max[i] ?? 0))
-    const lo = Math.max(-1, Math.min(1, min[i] ?? 0))
-    ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
+  for (const tile of waveformTiles(clock, projectDuration)) {
+    const x0 = Math.max(0, Math.round((tile.projectStart / projectDuration) * width))
+    const x1 = Math.min(width, Math.round((tile.projectEnd / projectDuration) * width))
+    const buckets = Math.max(1, x1 - x0)
+    const sourceStart = Math.min(tile.sourceStart, tile.sourceEnd)
+    const sourceEnd = Math.max(tile.sourceStart, tile.sourceEnd)
+    const { min, max } = envelope(buffer, channel, buckets, sourceStart, sourceEnd)
+    for (let x = x0; x < x1; x++) {
+      const local = (x - x0) / Math.max(1, x1 - x0)
+      const sampleAt = tile.reverse ? 1 - local : local
+      const i = Math.min(buckets - 1, Math.floor(sampleAt * buckets))
+      const hi = Math.max(-1, Math.min(1, (max[i] ?? 0) * gain))
+      const lo = Math.max(-1, Math.min(1, (min[i] ?? 0) * gain))
+      ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
+    }
   }
+  const endX = Math.round(sourceEndProjectRatio(clock, projectDuration) * width)
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'
+  ctx.fillRect(endX, 0, 1, height)
 }
 
 function resolveColor(id: TrackColorId): string {
@@ -111,7 +146,7 @@ export function MultiTrackView({
   const { t } = useI18n()
   const snap = useEngine()
   const listRef = useRef<HTMLDivElement>(null)
-  const [paletteFor, setPaletteFor] = useState<string | null>(null)
+  const [paletteFor, setPaletteFor] = useState<{ id: string; anchor: HTMLElement } | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
   const selectTrack = (id: string) => {
@@ -124,10 +159,32 @@ export function MultiTrackView({
     if (!node) return
     let frame = 0
     const tick = () => {
-      const dur = engine.getProjectDuration()
+      const snapNow = engine.getSnapshot()
+      const dur = snapNow.projectDuration
       const time = engine.getPlayheadSeconds()
-      const pct = dur > 0 ? Math.min(100, Math.max(0, (time / dur) * 100)) : 0
-      node.style.setProperty('--project-playhead', `${pct}%`)
+      for (const lane of node.querySelectorAll<HTMLElement>('[data-track-lane]')) {
+        const id = lane.dataset.trackId
+        const track = id ? snapNow.tracks.find((item) => item.id === id) : undefined
+        const timing = id ? snapNow.trackClocks[id] : undefined
+        const buffer = id ? engine.getTrackBuffer(id) : null
+        if (!track || !timing || !buffer || !(dur > 0)) {
+          lane.style.setProperty('--track-playhead', '0%')
+          continue
+        }
+        const ratio = playheadProjectRatio(
+          {
+            sourceDuration: buffer.duration,
+            speed: timing.speed,
+            direction: track.direction,
+            loop: track.loop,
+            loopStart: track.loopStart,
+            loopEnd: track.loopEnd,
+          },
+          time,
+          dur,
+        )
+        lane.style.setProperty('--track-playhead', `${ratio * 100}%`)
+      }
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
@@ -160,16 +217,14 @@ export function MultiTrackView({
             selected={track.id === snap.selectedTrackId}
             projectDuration={snap.projectDuration}
             contentRev={snap.bufferRev}
-            paletteOpen={paletteFor === track.id}
+            speed={snap.trackClocks[track.id]?.speed ?? 1}
+            gainDb={snap.trackClocks[track.id]?.gainDb ?? 0}
+            paletteOpen={paletteFor?.id === track.id}
             renaming={renameId === track.id}
             pending={pending?.id === track.id ? pending.file : null}
             onSelect={() => selectTrack(track.id)}
             onSeek={seekAt}
-            onPalette={() => setPaletteFor((cur) => (cur === track.id ? null : track.id))}
-            onColor={(color) => {
-              engine.setTrack(track.id, { color })
-              setPaletteFor(null)
-            }}
+            onPalette={(anchor) => setPaletteFor((cur) => (cur?.id === track.id ? null : { id: track.id, anchor }))}
             onRenameStart={() => setRenameId(track.id)}
             onRename={(name) => {
               engine.setTrack(track.id, { name })
@@ -201,6 +256,18 @@ export function MultiTrackView({
           />
         ))}
       </div>
+      {paletteFor ? (
+        <TrackColorPicker
+          anchor={paletteFor.anchor}
+          value={snap.tracks.find((track) => track.id === paletteFor.id)?.color ?? 'amber'}
+          label={t.mix.color}
+          onPick={(color) => {
+            engine.setTrack(paletteFor.id, { color })
+            setPaletteFor(null)
+          }}
+          onClose={() => setPaletteFor(null)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -211,13 +278,14 @@ function TrackLane({
   selected,
   projectDuration,
   contentRev,
+  speed,
+  gainDb,
   paletteOpen,
   renaming,
   pending,
   onSelect,
   onSeek,
   onPalette,
-  onColor,
   onRenameStart,
   onRename,
   onLoad,
@@ -239,13 +307,14 @@ function TrackLane({
   selected: boolean
   projectDuration: number
   contentRev: number
+  speed: number
+  gainDb: number
   paletteOpen: boolean
   renaming: boolean
   pending: File | null
   onSelect: () => void
   onSeek: (clientX: number, target: HTMLElement) => void
-  onPalette: () => void
-  onColor: (color: TrackColorId) => void
+  onPalette: (anchor: HTMLElement) => void
   onRenameStart: () => void
   onRename: (name: string) => void
   onLoad: (file: File) => void
@@ -381,9 +450,10 @@ function TrackLane({
           type="button"
           className={styles.swatch}
           aria-label={copy.color}
+          aria-expanded={paletteOpen}
           onClick={(event) => {
             event.stopPropagation()
-            onPalette()
+            onPalette(event.currentTarget)
           }}
         />
         {renaming ? (
@@ -449,6 +519,20 @@ function TrackLane({
             }}
           >
             {track.stereoDisplay === 'split' ? '1' : 'L/R'}
+          </button>
+        ) : null}
+        {loaded && selectionAsLoop(track.start, track.end, buffer?.duration ?? 0) ? (
+          <button
+            type="button"
+            className={styles.icon}
+            onClick={(event) => {
+              event.stopPropagation()
+              const region = selectionAsLoop(track.start, track.end, buffer?.duration ?? 0)
+              if (!region) return
+              engine.setTrack(track.id, { loop: true, loopStart: region.loopStart, loopEnd: region.loopEnd })
+            }}
+          >
+            {t.mix.setLoop}
           </button>
         ) : null}
         {loaded ? (
@@ -533,50 +617,38 @@ function TrackLane({
           }}
         />
       </header>
-      {paletteOpen ? (
-        <div className={styles.palette} onClick={(event) => event.stopPropagation()}>
-          {TRACK_COLOR_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={styles.chip}
-              style={{ background: trackColorVar(id) }}
-              aria-label={id}
-              aria-pressed={track.color === id}
-              onClick={() => onColor(id)}
-            />
-          ))}
-        </div>
-      ) : null}
       {phone && loaded && mixOpen ? <TrackMixer track={track} tracks={tracks} phone={phone} /> : null}
       {loaded && track.stereoDisplay === 'split' && stereo ? (
         <div className={styles.channels}>
           <span className={styles.channelLabel}>{track.name} · {copy.left}</span>
           <LaneCanvas
-            trackId={track.id}
+            track={track}
             channel={0}
             projectDuration={projectDuration}
             contentRev={contentRev}
-            colorId={track.color}
+            speed={speed}
+            gainDb={gainDb}
             onSeek={onSeek}
           />
           <span className={styles.channelLabel}>{track.name} · {copy.right}</span>
           <LaneCanvas
-            trackId={track.id}
+            track={track}
             channel={1}
             projectDuration={projectDuration}
             contentRev={contentRev}
-            colorId={track.color}
+            speed={speed}
+            gainDb={gainDb}
             onSeek={onSeek}
           />
         </div>
       ) : loaded ? (
         <LaneCanvas
-          trackId={track.id}
+          track={track}
           channel={-1}
           projectDuration={projectDuration}
           contentRev={contentRev}
-          colorId={track.color}
+          speed={speed}
+          gainDb={gainDb}
           onSeek={onSeek}
         />
       ) : (
@@ -611,25 +683,63 @@ function TrackLane({
 }
 
 function LaneCanvas({
-  trackId,
+  track,
   channel,
   projectDuration,
   contentRev,
-  colorId,
+  speed,
+  gainDb,
   onSeek,
 }: {
-  trackId: string
+  track: MixTrack
   channel: number
   projectDuration: number
   contentRev: number
-  colorId: TrackColorId
+  speed: number
+  gainDb: number
   onSeek: (clientX: number, target: HTMLElement) => void
 }) {
+  const { t } = useI18n()
   const ref = useRef<HTMLCanvasElement>(null)
+  const [drag, setDrag] = useState<{ mode: 'start' | 'end' | 'body'; start: number; end: number } | null>(null)
+  const buffer = engine.getTrackBuffer(track.id)
+  const duration = buffer?.duration ?? 0
+  const clock: TrackClock = {
+    sourceDuration: duration,
+    speed,
+    direction: track.direction,
+    loop: track.loop,
+    loopStart: track.loopStart,
+    loopEnd: track.loopEnd,
+  }
+  const region = loopBounds(duration, track.loopStart, track.loopEnd)
+  const tiles = track.loop ? waveformTiles(clock, projectDuration) : []
+  const first = tiles[0]
+  const loopLeft = first && projectDuration > 0 ? (first.projectStart / projectDuration) * 100 : 0
+  const loopWidth = first && projectDuration > 0 ? ((first.projectEnd - first.projectStart) / projectDuration) * 100 : 0
+
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
-    const draw = () => paintWave(canvas, engine.getTrackBuffer(trackId), channel, projectDuration, resolveColor(colorId))
+    const draw = () => {
+      const source = engine.getTrackBuffer(track.id)
+      paintWave(
+        canvas,
+        source,
+        channel,
+        projectDuration,
+        resolveColor(track.color),
+        {
+          sourceDuration: source?.duration ?? 0,
+          speed,
+          direction: track.direction,
+          loop: track.loop,
+          loopStart: track.loopStart,
+          loopEnd: track.loopEnd,
+        },
+        gainDb,
+      )
+    }
     draw()
     const unsub = subscribeThemeChange(draw)
     const ro = new ResizeObserver(draw)
@@ -638,16 +748,70 @@ function LaneCanvas({
       unsub()
       ro.disconnect()
     }
-  }, [trackId, channel, projectDuration, contentRev, colorId])
+  }, [track.id, track.color, track.loop, track.loopStart, track.loopEnd, track.direction, channel, projectDuration, contentRev, speed, gainDb])
+
+  const beginDrag = (event: ReactPointerEvent<HTMLElement>, mode: 'start' | 'end' | 'body') => {
+    if (!track.loop || event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const host = event.currentTarget.closest(`.${styles.wave}`) as HTMLElement | null
+    const pointer = event.currentTarget
+    pointer.setPointerCapture(event.pointerId)
+    const originX = event.clientX
+    const origin = loopBounds(duration, track.loopStart, track.loopEnd)
+    setDrag({ mode, start: origin.start, end: origin.end })
+    const move = (ev: PointerEvent) => {
+      const width = host?.getBoundingClientRect().width ?? 1
+      const deltaSource = ((ev.clientX - originX) / Math.max(1, width)) * projectDuration * Math.max(0.05, speed)
+      const next = dragLoopRegion({
+        mode,
+        originStart: origin.start,
+        originEnd: origin.end,
+        deltaSource: track.direction === 'reverse' ? -deltaSource : deltaSource,
+        sourceDuration: duration,
+      })
+      engine.setTrackLoop(track.id, next.loopStart, next.loopEnd, false)
+      setDrag({ mode, start: next.loopStart, end: next.loopEnd })
+    }
+    const up = () => {
+      pointer.removeEventListener('pointermove', move)
+      pointer.removeEventListener('pointerup', up)
+      const latest = engine.getSnapshot().tracks.find((item) => item.id === track.id)
+      engine.setTrackLoop(track.id, latest?.loopStart ?? origin.start, latest?.loopEnd ?? origin.end, true)
+      setDrag(null)
+    }
+    pointer.addEventListener('pointermove', move)
+    pointer.addEventListener('pointerup', up)
+  }
+
   return (
     <div
       className={styles.wave}
       onPointerDown={(event) => {
         if (event.button !== 0) return
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-loop-handle]')) return
         onSeek(event.clientX, event.currentTarget)
       }}
     >
       <canvas ref={ref} aria-hidden />
+      <div className={styles.playhead} />
+      {track.loop && first ? (
+        <>
+          <div className={styles.loopRegion} style={{ left: `${loopLeft}%`, width: `${loopWidth}%` }} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'body')} />
+          <button type="button" className={`${styles.loopHandle} ${styles.loopStart}`} style={{ left: `${loopLeft}%` }} aria-label={t.mix.loopStart} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'start')} />
+          <button type="button" className={`${styles.loopHandle} ${styles.loopEnd}`} style={{ left: `${loopLeft + loopWidth}%` }} aria-label={t.mix.loopEnd} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'end')} />
+        </>
+      ) : null}
+      {drag ? (
+        <div className={styles.loopReadout}>
+          <span>{t.mix.loopStart}</span>
+          <strong>{formatLoopReadout(drag.start)}</strong>
+          <span>{t.mix.loopEnd}</span>
+          <strong>{formatLoopReadout(drag.end)}</strong>
+        </div>
+      ) : null}
+      <span className="sr-only">{region.start.toFixed(3)}</span>
     </div>
   )
 }

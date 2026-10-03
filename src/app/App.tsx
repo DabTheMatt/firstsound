@@ -1110,7 +1110,7 @@ export default function App() {
         <section className={styles.chainBand} aria-label={t.chain.aria}>
           <div className={styles.trackContext}>
             <span className={styles.trackKicker}>{t.mix.track}</span>
-            <span className={styles.trackNow} style={{ color: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'accent') }}>
+            <span className={styles.trackNow} style={{ color: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber') }}>
               {snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name}
             </span>
             {snap.tracks.length > 1 && !isPhoneLayout ? (
