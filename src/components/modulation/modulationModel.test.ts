@@ -27,6 +27,7 @@ import {
   eqFocusModulationParam,
   eqModulationCenter,
   eqModulationGuides,
+  eqCurveBands,
   eqNodeMotion,
   eqModulationParamId,
   liveControlNormalized,
@@ -384,6 +385,10 @@ describe('eq node motion', () => {
     const motion = eqNodeMotion({ ...base, lfos, live })
     expect(motion.frequencyHz).toBe(1480)
     expect(motion.gainDb).toBe(6.5)
+    const curve = eqCurveBands([band], { ...base, lfos, live })
+    expect(curve[0]?.frequency).toBe(motion.frequencyHz)
+    expect(curve[0]?.gain).toBe(motion.gainDb)
+    expect(curve[0]?.q).toBe(motion.heardQ)
     expect(motion.q).toBe(0.7)
     expect(motion.heardQ).toBe(1.4)
     expect(motion.freqOffset).toBe(true)

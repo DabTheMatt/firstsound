@@ -7,8 +7,8 @@ export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 18, bottom: 40 }
  */
 export const SPECTRUM_PLOT_PAD_COMPACT = { left: 4, right: 4, top: 6, bottom: 4 }
 
-/** Focused EQ editing. Labels are drawn inside the plot, so the curve uses the canvas. */
-export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 4, bottom: 4 }
+/** Focused EQ. The plot starts at the top of the screen; controls float over the fade. */
+export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 0, bottom: 4 }
 
 /**
  * Phone EQ. The dB scale sits in a narrow gutter so the curve can use the

@@ -408,7 +408,8 @@
 
 .graphMenuPanel {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--border-default);
@@ -418,6 +419,12 @@
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.graphMenuRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .graphMenuPanel button {
@@ -501,6 +508,10 @@
 .eqFocus .chrome,
 .eqFocus .legendDock {
   display: none;
+}
+
+.eqFocus .graphMenu {
+  top: 46px;
 }
 
 .wrap:not(.phoneEq):not(.eqFocus) .focusReadout {

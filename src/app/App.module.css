@@ -199,6 +199,15 @@
   min-height: 0;
 }
 
+.waveCol[data-focus-workspace='eq'] {
+  padding-top: 0;
+}
+
+.waveCol[data-focus-workspace='eq'] > [data-focus-chrome] {
+  bottom: 0;
+  height: 100%;
+}
+
 .inspector {
   min-width: 0;
   min-height: 0;

@@ -73,8 +73,17 @@ export function visibleAxisLabelIndices(labels: readonly AxisLabelBox[], gapPx =
 }
 
 export function formatFreqTick(hz: number): string {
-  if (hz >= 1000) return `${hz / 1000}k`
-  return String(Math.round(hz))
+  if (!Number.isFinite(hz)) return '—'
+  const rounded = Math.round(hz)
+  if (rounded >= 1000) {
+    if (rounded % 1000 === 0) return `${rounded / 1000}k`
+    if (rounded % 100 === 0) {
+      const k = rounded / 1000
+      return `${Number.isInteger(k) ? k : k.toFixed(1)}k`
+    }
+    return String(rounded)
+  }
+  return String(rounded)
 }
 
 /** Inverse of a log frequency axis mapped onto [0, 1]. */
@@ -93,9 +102,9 @@ export function formatPointerHz(hz: number): string {
   return `${Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)} Hz`
 }
 
-/** Pointer readout: note first, then the same frequency the graph mapped. */
+/** Pointer readout: frequency first, then the note, from the graph's own mapping. */
 export function formatHoverFreq(hz: number): string {
   if (!(hz > 0) || !Number.isFinite(hz)) return '—'
-  return `${hzToNoteName(hz)} · ${formatPointerHz(hz)}`
+  return `${formatPointerHz(hz)} · ${hzToNoteName(hz)}`
 }
 

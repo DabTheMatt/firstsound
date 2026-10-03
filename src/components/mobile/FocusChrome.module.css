@@ -175,24 +175,27 @@
 
 .eqCluster {
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 0;
-  width: min(100%, 720px);
-  padding: 2px 8px 4px;
-  background: color-mix(in srgb, var(--bg-panel) 48%, transparent);
+  width: auto;
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
 }
 
 .eqLayout {
-  display: grid;
-  grid-template-columns: minmax(148px, 190px) minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
+  display: flex;
+  justify-content: center;
   width: 100%;
 }
 
 .filterColumn {
-  min-width: 0;
-  position: relative;
+  position: absolute;
+  z-index: 4;
+  top: 42px;
+  left: max(10px, env(safe-area-inset-left, 0px));
+  width: min(220px, 36vw);
+  pointer-events: auto;
 }
 
 .filterBar {
@@ -221,10 +224,13 @@
   flex-direction: column;
   gap: 2px;
   margin: 0;
-  padding: 0;
+  padding: 6px 8px;
   list-style: none;
-  max-height: 148px;
+  max-height: min(320px, 52vh);
   overflow: auto;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-app) 22%, transparent);
+  backdrop-filter: blur(8px);
 }
 
 .filterHead {
@@ -268,11 +274,11 @@
 }
 
 .eqWell {
-  min-height: 148px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .eqHead {
@@ -307,11 +313,19 @@
   width: 92px;
   flex: 0 0 92px;
   min-width: 0;
+  filter: drop-shadow(0 10px 16px color-mix(in srgb, black 42%, transparent));
 }
 
 @container focus (max-width: 760px) {
+  .filterColumn {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+  }
+
   .eqLayout {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .filterBar {

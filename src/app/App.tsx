@@ -667,8 +667,9 @@ export default function App() {
   useLayoutEffect(() => {
     const col = waveColRef.current
     if (!col) return
-    if (!activeFocus) {
-      col.style.removeProperty('--focus-toolbar-height')
+    if (!activeFocus || activeFocus === 'eq') {
+      col.style.setProperty('--focus-toolbar-height', '0px')
+      if (!activeFocus) col.style.removeProperty('--focus-toolbar-height')
       return
     }
     const node = col.querySelector<HTMLElement>('[data-focus-chrome]')
@@ -1270,7 +1271,7 @@ export default function App() {
         </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
-          <div ref={waveColRef} className={styles.waveCol} data-focus-inset={activeFocus ? '' : undefined}>
+          <div ref={waveColRef} className={styles.waveCol} data-focus-inset={activeFocus ? '' : undefined} data-focus-workspace={activeFocus ?? undefined}>
             {activeFocus ? (
               <FocusChrome
                 workspace={activeFocus}

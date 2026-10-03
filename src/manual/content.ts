@@ -116,8 +116,8 @@ const en: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Each EQ instance has its own bands. Focus lists every active band: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The control well stays reserved, so the graph does not jump when the filter type changes.',
-      'Moving the pointer over the graph shows the note and frequency from the same logarithmic scale, for example A4 · 440 Hz. Grid density 6, 12, or 24 is in the graph menu and only changes the guides.',
+      'Each EQ instance has its own bands. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered over the grid when the filter type changes.',
+      'Focus lists the filters on the left of the graph. The knobs sit in the center and float over the grid. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24 and the axis scale Lin, Log, or Mel. Guides use the usual round frequencies and sit on a logarithmic axis unless Lin is selected.',
     ],
   },
   {
@@ -365,8 +365,8 @@ const pl: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Każda instancja EQ ma własne pasma. Focus pokazuje listę aktywnych filtrów: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Strefa kontrolek jest zarezerwowana, więc wykres nie skacze przy zmianie typu.',
-      'Wskaźnik nad wykresem pokazuje nutę i częstotliwość z tej samej skali logarytmicznej, na przykład A4 · 440 Hz. Gęstość siatki 6, 12 albo 24 jest w menu wykresu i zmienia tylko prowadnice.',
+      'Każda instancja EQ ma własne pasma. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku siatki przy zmianie typu.',
+      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku i unoszą się nad siatką. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24 oraz skalę Lin, Log albo Mel. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin.',
     ],
   },
   {

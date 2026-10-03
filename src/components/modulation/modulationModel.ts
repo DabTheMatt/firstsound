@@ -391,6 +391,25 @@ export function eqNodeMotion(input: {
   }
 }
 
+type EqMotionContext = Omit<Parameters<typeof eqNodeMotion>[0], 'band' | 'index' | 'dragging'>
+
+/**
+ * Bands the response curve should draw.
+ * Frequency, gain, and Q are the same effective values the node uses,
+ * so an LFO moves the peak on the graph instead of sliding the node off it.
+ */
+export function eqCurveBands<T extends { type: EqFilterType; frequency: number; gain: number; q: number }>(
+  bands: readonly T[],
+  input: EqMotionContext,
+  draggingIndex: number | null = null,
+): T[] {
+  return bands.map((band, index) => {
+    if (band.type === 'off') return band
+    const motion = eqNodeMotion({ ...input, band, index, dragging: draggingIndex === index })
+    return { ...band, frequency: motion.frequencyHz, gain: motion.gainDb, q: motion.heardQ }
+  })
+}
+
 /** Bands used to seat one node on the curve without letting its own Q slide it. */
 export function eqNodeAnchorBands<T extends { frequency: number; gain: number; q: number }>(
   bands: readonly T[],
