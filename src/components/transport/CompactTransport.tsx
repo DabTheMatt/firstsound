@@ -56,7 +56,7 @@ export function CompactTransport({
   useEffect(() => {
     let frame = 0
     const tick = () => {
-      if (playheadRef.current) playheadRef.current.textContent = formatTimecode(engine.getPlayheadSeconds())
+      if (playheadRef.current) playheadRef.current.textContent = formatTimecode(engine.getSourcePlayheadSeconds())
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)

@@ -97,7 +97,7 @@ export function MobileModeBar({
         {onArrangement ? (
           <button
             type="button"
-            className={arrangement === 'multi' ? styles.modeOn : styles.mode}
+            className={`${arrangement === 'multi' ? styles.modeOn : styles.mode} ${styles.arrangement}`}
             aria-pressed={arrangement === 'multi'}
             onClick={() => onArrangement(arrangement === 'multi' ? 'single' : 'multi')}
           >

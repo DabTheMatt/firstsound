@@ -300,7 +300,7 @@ import {
 import { findEqPreset } from '../fx/eqPresets'
 import { findModulePreset } from '../fx/modulePresets'
 import { planProjectStart, projectDurationOf, type TrackSpan } from '../mix/schedule'
-import { loopBounds, resolveTrackPlayback, type TrackClock } from '../mix/playback'
+import { loopBounds, resolveTrackPlayback, sourcePlayheadSeconds, type TrackClock } from '../mix/playback'
 import { bufferCues, sourceNeedsStretch, type BufferCue } from '../mix/trackVoice'
 import {
   clampMix,
@@ -1415,6 +1415,33 @@ export class AudioEngine {
     return this.transportSeconds(Math.max(0.01, this.liveParams().speed))
   }
 
+  /**
+   * Where the selected sample's playhead is drawn.
+   * Project transport keeps `getPlayheadSeconds` on the arrangement clock.
+   * The single waveform follows the source position inside the loop.
+   */
+  getSourcePlayheadSeconds(): number {
+    const shown = this.getPlayheadSeconds()
+    const track = this.tracks.find((item) => item.id === this.selectedTrackId)
+    const buffer = track ? this.getTrackBuffer(track.id) : null
+    if (!track || !buffer || !(buffer.duration > 0)) return shown
+    const rack = this.ensureRack(track.id)
+    const clock: TrackClock = {
+      sourceDuration: buffer.duration,
+      speed: rack.params.speed,
+      direction: track.direction,
+      loop: track.loop,
+      loopStart: track.loopStart,
+      loopEnd: track.loopEnd,
+    }
+    const onProject = this.usingProjectTransport && this.playing && Boolean(this.ctx)
+    if (onProject) return sourcePlayheadSeconds(clock, this.projectPlayhead())
+    if (!track.loop) return shown
+    const bounds = loopBounds(buffer.duration, track.loopStart, track.loopEnd)
+    if (shown >= bounds.start - 0.001 && shown <= bounds.end + 0.001) return shown
+    return sourcePlayheadSeconds(clock, shown)
+  }
+
   getProjectDuration(): number {
     return this.projectDuration()
   }
@@ -1623,6 +1650,28 @@ export class AudioEngine {
 
   setLoop(loop: boolean): void {
     this.loop = loop
+    const id = this.selectedTrackId
+    const track = this.tracks.find((item) => item.id === id)
+    if (track && track.loop !== loop) {
+      if (loop) {
+        const duration = this.trackBuffers.get(id)?.duration ?? this.buffer?.duration ?? 0
+        const region =
+          duration > 0
+            ? clampRegion(this.params.start, this.params.end, duration, MIN_REGION)
+            : { start: this.params.start, end: this.params.end }
+        this.params.start = region.start
+        this.params.end = region.end
+        this.tracks = patchTrack(this.tracks, id, {
+          loop: true,
+          start: region.start,
+          end: region.end,
+          loopStart: region.start,
+          loopEnd: region.end,
+        })
+      } else {
+        this.tracks = patchTrack(this.tracks, id, { loop: false })
+      }
+    }
     if (this.playing) void this.play()
     else this.emit()
   }
@@ -3990,6 +4039,7 @@ export class AudioEngine {
       }
     }
     if (id === this.selectedTrackId && patch.direction) this.direction = patch.direction
+    if (id === this.selectedTrackId && patch.loop != null) this.loop = patch.loop
     if (track && (patch.mix != null || patch.pan != null || patch.midDb != null || patch.sideDb != null)) {
       this.withEditing(id, () => {
         if (patch.mix != null) {

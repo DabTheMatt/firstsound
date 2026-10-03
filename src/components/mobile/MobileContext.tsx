@@ -16,7 +16,7 @@ import { PARAMS, PLAYBACK_DIRECTIONS, STRETCH_INTERP_ALGOS } from '../../audio/p
 import type { ParamId } from '../../audio/parameters/types'
 import type { InspectorFocus } from '../../app/editorState'
 import { inspectorContextId } from '../../app/inspectorRoute'
-import { inspectorAccentStyle, TrackIdentity } from '../inspector/TrackIdentity'
+import { inspectorAccentStyle } from '../inspector/TrackIdentity'
 import { mobilePriority, primarySummary } from '../../app/mobilePriority'
 import { engine } from '../../hooks/useEngine'
 import { eqModulationParamId } from '../modulation/modulationModel'
@@ -118,7 +118,6 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
       data-inspector-track={snap.selectedTrackId}
       aria-label={t.mobile.context}
     >
-      <TrackIdentity snap={snap} layout="phone" />
       <header className={styles.head}>
         <button
           type="button"

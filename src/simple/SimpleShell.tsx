@@ -126,7 +126,7 @@ export function SimpleShell({
   useEffect(() => {
     let frame = 0
     const tick = () => {
-      setNow(engine.getPlayheadSeconds())
+      setNow(engine.getSourcePlayheadSeconds())
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
@@ -178,7 +178,7 @@ export function SimpleShell({
   }
 
   const setEdgeFromPlayhead = (edge: 'start' | 'end') => {
-    const head = engine.getPlayheadSeconds()
+    const head = engine.getSourcePlayheadSeconds()
     if (edge === 'start') engine.setParam('start', Math.min(head, snap.params.end - 0.01))
     else engine.setParam('end', Math.max(head, snap.params.start + 0.01))
     onRegionCommit()

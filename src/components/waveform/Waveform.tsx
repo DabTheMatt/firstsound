@@ -268,6 +268,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const playheadRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
+  const [fittedRev, setFittedRev] = useState(contentRev)
   const [panning, setPanning] = useState(false)
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
   const [fadeDrag, setFadeDrag] = useState<'in' | 'out' | null>(null)
@@ -305,6 +306,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const eqStripHeightRef = useRef(eqStripHeight)
   const splitDrag = useRef<{ y: number; share?: number; height?: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
+  if (fittedRev !== contentRev) {
+    setFittedRev(contentRev)
+    setViewState(fitView(duration || 1))
+  }
+  useLayoutEffect(() => {
+    viewRef.current = view
+  }, [view])
   const stateRef = useRef({ start, end, duration, normalizeView, tool, autoSnap })
   const handlePx = useRef(28)
 
@@ -415,7 +423,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const tick = (now: number) => {
       if (now - last > 50 && engine.getSnapshot().playing && duration > 0) {
         last = now
-        const t = engine.getPlayheadSeconds()
+        const t = engine.getSourcePlayheadSeconds()
         setViewState((prev) => {
           const span = prev.end - prev.start
           const next = clampView({ start: t - span / 2, end: t + span / 2 }, duration)
@@ -640,7 +648,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       }
       const el = playheadRef.current
       if (el) {
-        const frac = timeToFrac(engine.getPlayheadSeconds(), viewRef.current)
+        const frac = timeToFrac(engine.getSourcePlayheadSeconds(), viewRef.current)
         if (frac >= 0 && frac <= 1) {
           el.style.display = ''
           el.style.left = `${frac * 100}%`
@@ -747,7 +755,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     engine.nudgePlayhead(delta, 'sample')
     const el = playheadRef.current
     if (!el) return
-    const frac = timeToFrac(engine.getPlayheadSeconds(), viewRef.current)
+    const frac = timeToFrac(engine.getSourcePlayheadSeconds(), viewRef.current)
     if (frac >= 0 && frac <= 1) {
       el.style.display = ''
       el.style.left = `${frac * 100}%`
@@ -1184,7 +1192,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onFadesCommit?.()
   }
   const addAutomationNodeAtPlayhead = () => {
-    const time = automationInsertTime(engine.getPlayheadSeconds(), view.start, view.end)
+    const time = automationInsertTime(engine.getSourcePlayheadSeconds(), view.start, view.end)
     const doc = engine.getSnapshot().automation
     const lane = doc.lanes.find((item) => item.paramId === doc.selectedParamId)
     const nodes = [...(lane?.nodes ?? [])].sort((a, b) => a.time - b.time || a.id.localeCompare(b.id))

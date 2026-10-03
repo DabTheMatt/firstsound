@@ -229,7 +229,7 @@ function AutoTools({
   }
   const title = lane ? titleFor(selected) : t.focus.lane
   const def = PARAMS[selected]
-  const playhead = engine.getPlayheadSeconds()
+  const playhead = engine.getSourcePlayheadSeconds()
   const valueSource = selectedNode?.value ?? (nodes.length > 0 ? sampleEnvelope(nodes, playhead) : null)
   const valueLabel = def && valueSource != null ? formatAutomationNodeValue(envelopeToParam(selected, valueSource), def) : ''
   const color = automationColor(colorIndexForParam(snap.automation, selected))

@@ -34,6 +34,13 @@
   color: var(--accent-primary);
 }
 
+.arrangement {
+  width: 84px;
+  min-width: 84px;
+  flex: none;
+  text-align: center;
+}
+
 .tools {
   display: flex;
   align-items: center;

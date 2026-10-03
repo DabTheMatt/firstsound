@@ -129,19 +129,22 @@
 }
 
 .trackChip {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  border: 1px solid var(--chip, var(--border-subtle));
+  border-radius: 4px;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 9px;
+  color: var(--chip, var(--text-secondary));
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .trackChipOn {
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+  border-color: transparent;
+  background: var(--chip, var(--accent-primary));
+  color: #fff;
 }
 
 .modeCluster {

@@ -6,6 +6,7 @@ import {
   resolveTrackPlayback,
   dragLoopRegion,
   selectionAsLoop,
+  sourcePlayheadSeconds,
   waveformTiles,
   waveformVisualGain,
   type TrackClock,
@@ -115,6 +116,15 @@ describe('track playback resolver', () => {
     const slid = dragLoopRegion({ mode: 'body', originStart: 2, originEnd: 5, deltaSource: 4, sourceDuration: 10 })
     expect(slid.loopEnd - slid.loopStart).toBeCloseTo(3)
     expect(slid.loopStart).toBeCloseTo(6)
+  })
+
+  it('walks the loop fragment instead of the whole file', () => {
+    const looping = clock({ loop: true, loopStart: 2, loopEnd: 5 })
+    expect(sourcePlayheadSeconds(looping, 0)).toBeCloseTo(2)
+    expect(sourcePlayheadSeconds(looping, 1.5)).toBeCloseTo(3.5)
+    expect(sourcePlayheadSeconds(looping, 3)).toBeCloseTo(2)
+    expect(sourcePlayheadSeconds(looping, 4)).toBeCloseTo(3)
+    expect(sourcePlayheadSeconds(clock(), 4)).toBeCloseTo(4)
   })
 
   it('copies a selection into a loop once', () => {

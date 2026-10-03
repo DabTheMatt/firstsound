@@ -343,6 +343,7 @@ export function WaveformToolbar({
             label={arrangement === 'multi' ? t.mix.singleTitle : t.mix.multiTitle}
             caption={arrangement === 'multi' ? t.mix.single : t.mix.multi}
             pressed={arrangement === 'multi'}
+            className={styles.arrangement}
             onClick={() => onArrangement(arrangement === 'multi' ? 'single' : 'multi')}
           >
             <MultiWaveIcon />
@@ -417,6 +418,7 @@ function IconButton({
   pressed,
   disabled = false,
   command,
+  className,
   onClick,
   children,
 }: {
@@ -425,6 +427,7 @@ function IconButton({
   pressed?: boolean
   disabled?: boolean
   command?: string
+  className?: string
   onClick: () => void
   children: ReactNode
 }) {
@@ -432,7 +435,7 @@ function IconButton({
   return (
     <button
       type="button"
-      className={`${styles.iconBtn} ${pressed ? styles.active : ''}`}
+      className={`${styles.iconBtn} ${pressed ? styles.active : ''} ${className ?? ''}`}
       aria-label={label}
       title={label}
       aria-pressed={pressed}
