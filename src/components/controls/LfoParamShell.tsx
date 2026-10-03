@@ -9,6 +9,8 @@ type Props = {
   id: ParamId
   /** When false, keep connect-picking but hide the parameter modulation affordance. */
   afford?: boolean
+  /** Stretch with a parent fader column instead of shrinking to the knob size. */
+  fill?: boolean
   children: ReactNode
 }
 
@@ -18,7 +20,7 @@ export function useModulationParamId(): ParamId | null {
   return useContext(ModulationParamContext)
 }
 
-export function LfoParamShell({ id, afford = true, children }: Props) {
+export function LfoParamShell({ id, afford = true, fill = false, children }: Props) {
   const snap = useEngine()
   const { armed, setArmed } = useFxLfoConnect()
   const kind = fxLfoKindForParam(id)
@@ -32,7 +34,7 @@ export function LfoParamShell({ id, afford = true, children }: Props) {
     engine.setFxLfoTarget(kind, armed.slot, id)
     setArmed(null)
   }
-  const className = [styles.wrap, pickable ? styles.pickable : '', active ? styles.mapped : '']
+  const className = [styles.wrap, fill ? styles.fill : '', pickable ? styles.pickable : '', active ? styles.mapped : '']
     .filter(Boolean)
     .join(' ')
   return (

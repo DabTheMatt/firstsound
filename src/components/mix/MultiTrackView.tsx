@@ -105,7 +105,8 @@ function paintWave(
   const mid = height / 2
   const half = height * 0.46
   ctx.fillStyle = color
-  for (const tile of waveformTiles(clock, projectDuration)) {
+  const tiles = waveformTiles(clock, projectDuration)
+  for (const tile of tiles) {
     const x0 = Math.max(0, Math.round((tile.projectStart / projectDuration) * width))
     const x1 = Math.min(width, Math.round((tile.projectEnd / projectDuration) * width))
     const buckets = Math.max(1, x1 - x0)
@@ -120,6 +121,19 @@ function paintWave(
       const lo = Math.max(-1, Math.min(1, (min[i] ?? 0) * gain))
       ctx.fillRect(x, mid - hi * half, 1, Math.max(1, (hi - lo) * half))
     }
+  }
+  if (clock.loop) {
+    ctx.fillStyle = color
+    const seam = Math.max(1, Math.round(dpr))
+    for (const tile of tiles) {
+      const x0 = Math.max(0, Math.round((tile.projectStart / projectDuration) * width))
+      const x1 = Math.min(width, Math.round((tile.projectEnd / projectDuration) * width))
+      ctx.globalAlpha = 0.95
+      ctx.fillRect(x0, 0, seam, height)
+      ctx.fillRect(Math.max(0, x1 - seam), 0, seam, height)
+    }
+    ctx.globalAlpha = 1
+    return
   }
   const endX = Math.round(sourceEndProjectRatio(clock, projectDuration) * width)
   ctx.fillStyle = 'rgba(255,255,255,0.28)'
@@ -236,8 +250,8 @@ export function MultiTrackView({
           onSelectTrack={selectTrack}
           onInspectEffect={onInspectEffect ?? ((trackId) => selectTrack(trackId))}
         />
-      ) : null}
-      <div ref={listRef} className={styles.list} role="list" hidden={workspace !== 'tracks'}>
+      ) : (
+      <div ref={listRef} className={styles.list} role="list">
         {snap.tracks.map((track, index) => (
           <TrackLane
             key={track.id}
@@ -285,6 +299,7 @@ export function MultiTrackView({
           />
         ))}
       </div>
+      )}
       {paletteFor ? (
         <TrackColorPicker
           anchor={paletteFor.anchor}
@@ -629,6 +644,7 @@ function TrackLane({
           accept={AUDIO_FILE_ACCEPT}
           data-load-track={track.id}
           tabIndex={-1}
+          aria-hidden="true"
           onChange={(event) => {
             const input = event.currentTarget
             const file = input.files?.[0]
@@ -641,7 +657,9 @@ function TrackLane({
           }}
         />
       </header>
-      {phone && loaded && mixOpen ? <TrackMixer track={track} tracks={tracks} phone={phone} /> : null}
+      {phone && loaded && mixOpen ? (
+        <TrackMixer track={track} tracks={tracks} phone={phone} variant="bar" selected={selected} />
+      ) : null}
       {loaded && track.stereoDisplay === 'split' && stereo ? (
         <div className={styles.channels}>
           <span className={styles.channelLabel}>{track.name} · {copy.left}</span>
@@ -820,20 +838,51 @@ function LaneCanvas({
     >
       <canvas ref={ref} aria-hidden />
       <div className={styles.playhead} />
+      {track.loop
+        ? tiles.map((tile, index) => {
+            const left = projectDuration > 0 ? (tile.projectStart / projectDuration) * 100 : 0
+            const width = projectDuration > 0 ? ((tile.projectEnd - tile.projectStart) / projectDuration) * 100 : 0
+            return (
+              <div
+                key={`${tile.projectStart}:${tile.projectEnd}:${index}`}
+                className={styles.loopPass}
+                style={{ left: `${left}%`, width: `${Math.max(0, width)}%` }}
+                data-loop-pass={index}
+              />
+            )
+          })
+        : null}
       {track.loop && first ? (
         <>
-          <div className={styles.loopRegion} style={{ left: `${loopLeft}%`, width: `${loopWidth}%` }} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'body')} />
-          <button type="button" className={`${styles.loopHandle} ${styles.loopStart}`} style={{ left: `${loopLeft}%` }} aria-label={t.mix.loopStart} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'start')} />
-          <button type="button" className={`${styles.loopHandle} ${styles.loopEnd}`} style={{ left: `${loopLeft + loopWidth}%` }} aria-label={t.mix.loopEnd} data-loop-handle="" onPointerDown={(event) => beginDrag(event, 'end')} />
+          <div
+            className={styles.loopRegion}
+            style={{ left: `${loopLeft}%`, width: `${loopWidth}%` }}
+            data-loop-handle=""
+            onPointerDown={(event) => beginDrag(event, 'body')}
+          />
+          <button
+            type="button"
+            className={`${styles.loopHandle} ${styles.loopStart}`}
+            style={{ left: `${loopLeft}%` }}
+            aria-label={t.mix.loopStart}
+            data-loop-handle=""
+            onPointerDown={(event) => beginDrag(event, 'start')}
+          />
+          <button
+            type="button"
+            className={`${styles.loopHandle} ${styles.loopEnd}`}
+            style={{ left: `${loopLeft + loopWidth}%` }}
+            aria-label={t.mix.loopEnd}
+            data-loop-handle=""
+            onPointerDown={(event) => beginDrag(event, 'end')}
+          />
+          <div className={styles.loopReadout}>
+            <span>{t.mix.loopStart}</span>
+            <strong>{formatLoopReadout(drag?.start ?? region.start)}</strong>
+            <span>{t.mix.loopEnd}</span>
+            <strong>{formatLoopReadout(drag?.end ?? region.end)}</strong>
+          </div>
         </>
-      ) : null}
-      {drag ? (
-        <div className={styles.loopReadout}>
-          <span>{t.mix.loopStart}</span>
-          <strong>{formatLoopReadout(drag.start)}</strong>
-          <span>{t.mix.loopEnd}</span>
-          <strong>{formatLoopReadout(drag.end)}</strong>
-        </div>
       ) : null}
       <span className="sr-only">{region.start.toFixed(3)}</span>
     </div>

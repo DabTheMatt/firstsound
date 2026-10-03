@@ -47,7 +47,6 @@ import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
 import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
 import { MultiTrackView } from '../mix/MultiTrackView'
-import { TrackMixer } from '../mix/TrackMixer'
 import {
   clampView,
   fitView,
@@ -1283,9 +1282,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onKeyDown={onEditorKeyDown}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
-          {!sensory && !simple && arrangement !== 'multi' && mixTrack ? (
-            <TrackMixer track={mixTrack} tracks={snap.tracks} phone={phone} variant="bar" />
-          ) : null}
           <div className={`${styles.wavePane} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
             {!sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (

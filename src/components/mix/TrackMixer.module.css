@@ -58,7 +58,7 @@
   align-items: stretch;
   gap: 4px;
   flex: 1 1 auto;
-  min-height: 72px;
+  min-height: 120px;
   width: 100%;
 }
 
@@ -73,13 +73,16 @@
 .faderRow {
   display: flex;
   align-items: stretch;
-  min-height: 0;
+  min-height: 120px;
+  height: 100%;
   flex: 1 1 auto;
 }
 
 .faderRow {
   align-items: center;
   min-width: 88px;
+  min-height: 0;
+  height: auto;
 }
 
 .dbScale {
@@ -112,11 +115,19 @@
 }
 
 .fader {
+  width: 18px;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 120px;
   margin: 6px 0;
 }
 
 .faderH {
-  height: 10px;
+  width: auto;
+  height: 14px;
+  min-height: 14px;
+  min-width: 96px;
+  margin: 0;
   cursor: ew-resize;
 }
 

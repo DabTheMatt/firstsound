@@ -117,8 +117,10 @@ export function TrackVolumeFader({ track, orientation = 'vertical' }: { track: M
   const ratio = faderRatio(track.mix)
   const setFromClient = (client: number, rect: DOMRect) => {
     const span = orientation === 'vertical' ? rect.height : rect.width
+    // A collapsed track used to map every click to silence. Ignore it.
+    if (!(span >= 24)) return
     const local = orientation === 'vertical' ? rect.bottom - client : client - rect.left
-    const next = Math.round(Math.min(1, Math.max(0, local / Math.max(1, span))) * TRACK_MIX_MAX)
+    const next = Math.round(Math.min(1, Math.max(0, local / span)) * TRACK_MIX_MAX)
     engine.setTrack(track.id, { mix: next })
   }
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -326,8 +328,16 @@ export function TrackMixer({ track, tracks, phone = false, variant = 'lane', sel
   const stereo = track.channelCount >= 2
   const dimmed = anyTrackSoloed(tracks) && !track.solo
   const [msAnchor, setMsAnchor] = useState<HTMLElement | null>(null)
+  const horizontal = variant === 'bar'
   const pan = <TrackPanKnob track={track} />
-  const fader = <TrackVolumeFader track={track} orientation={variant === 'bar' && !phone ? 'horizontal' : 'vertical'} />
+  const fader = <TrackVolumeFader track={track} orientation={horizontal ? 'horizontal' : 'vertical'} />
+  const volume = selected ? (
+    <LfoParamShell id="mixVolume" fill={!horizontal}>
+      {fader}
+    </LfoParamShell>
+  ) : (
+    fader
+  )
   return (
     <div
       className={`${styles.strip} ${variant === 'bar' ? styles.bar : ''} ${phone ? styles.phone : ''}`}
@@ -341,7 +351,7 @@ export function TrackMixer({ track, tracks, phone = false, variant = 'lane', sel
       {variant === 'bar' ? <span className={styles.kicker}>{track.name}</span> : null}
       {selected ? <LfoParamShell id="mixPan">{pan}</LfoParamShell> : pan}
       <div className={styles.faderMeter}>
-        {selected ? <LfoParamShell id="mixVolume">{fader}</LfoParamShell> : fader}
+        {volume}
         <TrackLevelMeter track={track} />
       </div>
       <div className={styles.bottom}>

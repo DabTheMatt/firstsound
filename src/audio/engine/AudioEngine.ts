@@ -1506,7 +1506,14 @@ export class AudioEngine {
     this.playCtxTime = this.ctx.currentTime
     if (linearProject) {
       const project = this.projectDuration()
-      if (this.playFullSample || this.playOffset < 0 || this.playOffset >= project - 0.001) this.playOffset = 0
+      if (
+        this.playFullSample ||
+        !Number.isFinite(this.playOffset) ||
+        this.playOffset < 0 ||
+        this.playOffset >= project - 0.001
+      ) {
+        this.playOffset = 0
+      }
     } else if (this.playFullSample) {
       this.playOffset = 0
     } else {
@@ -1519,6 +1526,12 @@ export class AudioEngine {
       this.usingProjectTransport = true
       this.applyTrackMix(0.01)
       this.startProjectVoices(this.ctx.currentTime, this.playOffset, true)
+      // A parked offset past every cue used to resume in silence, with the
+      // meters sitting on a closed gate. Start the arrangement again.
+      if (this.projectVoices.length === 0 && this.stretchCursors.size === 0 && this.playOffset > 0.001) {
+        this.playOffset = 0
+        this.startProjectVoices(this.ctx.currentTime, 0, true)
+      }
       this.emit()
       return
     }
@@ -1543,7 +1556,10 @@ export class AudioEngine {
     this.syncLfoClock()
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.region(duration)
-    this.playOffset = parkPlayheadOnStop(start, end, this.direction === 'reverse')
+    // Multi stop returns to the arrangement start. The sample selection is a
+    // single-track park point and was resuming inside a silent tail.
+    this.playOffset =
+      this.loadedTrackCount() > 1 ? 0 : parkPlayheadOnStop(start, end, this.direction === 'reverse')
     if (this.engineMode === 'grain') {
       this.params.position = applyParamValue(this.direction === 'reverse' ? 100 : 0, PARAMS.position)
     }

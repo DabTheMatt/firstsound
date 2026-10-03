@@ -54,7 +54,7 @@ export function MixerView({ tracks, selectedId, onSelectTrack, onInspectEffect }
             )}
             <div className={styles.faderRow}>
               {selected ? (
-                <LfoParamShell id="mixVolume">
+                <LfoParamShell id="mixVolume" fill>
                   <TrackVolumeFader track={track} />
                 </LfoParamShell>
               ) : (

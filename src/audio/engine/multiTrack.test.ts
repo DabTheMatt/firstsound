@@ -222,4 +222,39 @@ describe('multi-track foundation', () => {
     for (let i = Math.floor(rate * 0.08); i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] ?? 0))
     expect(peak).toBeGreaterThan(0.15)
   })
+
+  it('restarts every track after stop and after pause', async () => {
+    const engine = new AudioEngine()
+    const rate = 8000
+    const host = window as Window & { setInterval?: typeof setInterval; clearInterval?: typeof clearInterval }
+    if (typeof host.setInterval !== 'function') {
+      host.setInterval = ((fn: TimerHandler, ms?: number) => setInterval(fn, ms)) as typeof setInterval
+      host.clearInterval = ((id: number) => clearInterval(id)) as typeof clearInterval
+    }
+    engine.useOfflineGraph(new OfflineAudioContext(2, rate * 2, rate))
+    const [a, b] = engine.getSnapshot().tracks
+    engine.loadTrackPcm(a!.id, tone(1, rate, 1, 0.2), rate, 'a.wav')
+    engine.loadTrackPcm(b!.id, tone(1, rate, 1, 0.2), rate, 'b.wav')
+    engine.setTrack(a!.id, { mix: 80 })
+    await engine.play()
+    expect(engine.trackVoiceAlive(a!.id)).toBe(true)
+    expect(engine.trackVoiceAlive(b!.id)).toBe(true)
+
+    engine.seekSeconds(0.35, 'sample')
+    engine.pause()
+    expect(engine.getSnapshot().playing).toBe(false)
+    expect(engine.getPlayheadSeconds()).toBeCloseTo(0.35, 2)
+    await engine.play()
+    expect(engine.getSnapshot().playing).toBe(true)
+    expect(engine.trackVoiceAlive(a!.id)).toBe(true)
+    expect(engine.trackVoiceAlive(b!.id)).toBe(true)
+    expect(engine.getSnapshot().tracks.find((track) => track.id === a!.id)?.mix).toBe(80)
+
+    engine.stop()
+    expect(engine.getPlayheadSeconds()).toBe(0)
+    await engine.play()
+    expect(engine.trackVoiceAlive(a!.id)).toBe(true)
+    expect(engine.trackVoiceAlive(b!.id)).toBe(true)
+    expect(engine.getSnapshot().tracks.find((track) => track.id === a!.id)?.mix).toBe(80)
+  })
 })
