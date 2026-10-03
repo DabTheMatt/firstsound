@@ -3,17 +3,14 @@
  *
  * Signal path (one shared transport, one master output):
  *   source
- *   → track input (gain / pan / balance / mono / phase)
- *   → track insert chain (EQ, filter, distortion, delay, reverb, compressor,
- *     limiter, mid/side, grain flag)
- *   → track output passthrough (unity — not the master output gain)
- *   → track volume × mute/solo
- *   → master sum
- *   → master output gain
- *   → safety limiter, meters, destination
+ *   → mixer input
+ *   → track effect chain (Input gain / pan / balance / mono / phase, then
+ *     EQ, filter, distortion, delay, reverb, compressor, limiter, mid/side, grain)
+ *   → mixer mid/side (stereo) → mixer pan → volume → mute/solo gate
+ *   → master sum → master output gain → safety limiter, meters, destination
  *
- * Input pan stays in front of the inserts because that is the existing FIELD
- * Input module. Mixer volume, mute, and solo stay after the inserts.
+ * The chain Input module is not the mixer pan. Mixer volume, mute, and solo
+ * stay after the inserts. The chain output slot stays at unity.
  * The Output module in the chain UI still edits the single master output gain.
  * The safety limiter is not copied onto tracks.
  *

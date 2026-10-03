@@ -302,12 +302,21 @@ import {
   parseTracks,
   patchTrack,
   selectedTrack,
-  trackMixGain,
+  trackAudible,
+  trackLevelGain,
   trackNameAfterLoad,
   tracksEqual,
   writeTrackRegion,
   type MixTrack,
 } from '../mix/tracks'
+import {
+  applyTrackMixerParams,
+  createTrackMixerStrip,
+  disableTrackMidSide,
+  disconnectTrackMixerStrip,
+  enableTrackMidSide,
+  type TrackMixerStrip,
+} from '../mix/trackMixer'
 import {
   cloneTrackRack,
   copySharedParams,
@@ -558,7 +567,13 @@ export class AudioEngine {
   private selectedTrackId = this.tracks[0]!.id
   private masterMix = 100
   private trackBuffers = new Map<string, AudioBuffer>()
-  private trackGains = new Map<string, GainNode>()
+  /** Stable per-track mixer. Parameter edits do not replace these nodes. */
+  private trackStrips = new Map<string, TrackMixerStrip>()
+  /**
+   * Bumps when a strip is created, removed, or its Mid/Side matrix is
+   * inserted or removed. Volume, pan, mute, solo, mid, and side do not.
+   */
+  private mixerStructure = 0
   private companionSources: AudioBufferSourceNode[] = []
   private projectVoices: { id: string; src: AudioBufferSourceNode }[] = []
   private projectWhen = 0
@@ -588,7 +603,6 @@ export class AudioEngine {
   private seededRandom = false
   /** Suppresses transport-clock advances while several racks are applied in one tick. */
   private suppressClock = false
-  private trackInputs = new Map<string, GainNode>()
   private trackSlots = new Map<string, Map<string, Slot>>()
   /** Single master output gain. Track Output slots stay at unity. */
   private masterOutput: GainNode | null = null
@@ -1018,6 +1032,16 @@ export class AudioEngine {
 
   getTrackBuffer(id: string): AudioBuffer | null {
     return this.trackBuffers.get(id) ?? (id === this.selectedTrackId ? this.buffer : null)
+  }
+
+  /** Post-mixer, pre-master tap. Null until the audio graph exists. */
+  getTrackAnalyser(id: string): AnalyserNode | null {
+    return this.trackStrips.get(id)?.meter ?? null
+  }
+
+  /** Test and diagnostics. View changes and mixer edits leave this still. */
+  mixerStructureGeneration(): number {
+    return this.mixerStructure
   }
 
   getMono(): Float32Array | null {
@@ -3156,6 +3180,16 @@ export class AudioEngine {
       reverbType: this.reverbType,
       voiceGain: leadVoiceMixGain(this.tracks, this.selectedTrackId),
       masterGain: outputMixGain(this.masterMix),
+      trackMix: this.tracks.map((track) => ({
+        id: track.id,
+        mix: track.mix,
+        pan: track.pan,
+        midDb: track.midDb,
+        sideDb: track.sideDb,
+        muted: track.muted,
+        solo: track.solo,
+        channels: track.channelCount,
+      })),
       noiseMuted: this.noiseMuted,
       noiseFadeTau: this.noiseFadeTau,
       randomOffsets: { ...this.randomOffsets },
@@ -3387,7 +3421,7 @@ export class AudioEngine {
     this.chain = defaultChain()
     this.masterMix = 100
     this.trackBuffers.clear()
-    this.clearTrackGains()
+    this.clearTrackStrips()
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
@@ -3441,12 +3475,6 @@ export class AudioEngine {
     const shared = this.trackBuffers.get(id) ?? (id === this.selectedTrackId ? this.buffer : null)
     if (shared) this.trackBuffers.set(empty.id, shared)
     this.racks.set(empty.id, cloneTrackRack(this.ensureRack(id)))
-    if (this.ctx) {
-      this.withEditing(empty.id, () => this.syncTrackSlots())
-      this.ensureTrackInput(empty.id)
-      this.ensureTrackGains(true)
-      this.connectTrack(empty.id)
-    }
     this.tracks = patchTrack(this.tracks, empty.id, {
       name: source.nameLocked ? `${source.name}`.slice(0, 24) : source.name,
       nameLocked: false,
@@ -3457,6 +3485,11 @@ export class AudioEngine {
       end: source.end,
       stereoDisplay: 'combined',
     })
+    if (this.ctx) {
+      this.withEditing(empty.id, () => this.syncTrackSlots())
+      this.ensureTrackStrips(false)
+      this.connectTrack(empty.id)
+    }
     this.bufferRev++
     this.emit()
     return empty.id
@@ -4661,9 +4694,8 @@ export class AudioEngine {
     this.analyserPull.gain.value = 0
     this.analyserPull.connect(ctx.destination)
 
-    this.ensureTrackGains(true)
+    this.ensureTrackStrips(false)
     for (const track of this.tracks) {
-      this.ensureTrackInput(track.id)
       this.withEditing(track.id, () => {
         for (const mod of normalizeChain(this.chain)) {
           if (!this.slots.has(mod.instanceId)) this.slots.set(mod.instanceId, this.createSlot(mod))
@@ -4688,12 +4720,22 @@ export class AudioEngine {
 
   private applyTrackMix(smoothing: number): void {
     if (!this.ctx || !this.sumBus) return
-    this.ensureTrackGains(false)
+    this.ensureTrackStrips(false)
     const now = this.ctx.currentTime
     for (const track of this.tracks) {
-      const node = this.trackGains.get(track.id)
-      if (!node) continue
-      rampGainExact(node.gain, trackMixGain(track, this.tracks), now, smoothing)
+      const strip = this.trackStrips.get(track.id)
+      if (!strip) continue
+      applyTrackMixerParams(
+        strip,
+        {
+          pan: track.pan,
+          level: trackLevelGain(track.mix),
+          gate: trackAudible(track, this.tracks) ? 1 : 0,
+          midDb: track.midDb,
+          sideDb: track.sideDb,
+        },
+        now,
+      )
     }
     rampGainExact(this.sumBus.gain, outputMixGain(this.masterMix), now, smoothing)
   }
@@ -4731,11 +4773,8 @@ export class AudioEngine {
 
   private connectSlots(): void {
     if (!this.ctx || !this.safetyGain || !this.limiter || !this.analyser || !this.sumBus || !this.masterOutput) return
-    this.ensureTrackGains(true)
-    for (const track of this.tracks) {
-      this.ensureTrackInput(track.id)
-      this.connectTrack(track.id)
-    }
+    this.ensureTrackStrips(true)
+    for (const track of this.tracks) this.connectTrack(track.id)
     this.connectMaster()
     this.retargetMonitorTaps()
   }
@@ -4792,16 +4831,15 @@ export class AudioEngine {
   }
 
   /**
-   * source → track input → inserts → track fader → master sum.
-   * Disconnects outputs only, so a playing source stays attached to the input.
+   * source → mixer input → effect chain → postFx → mid/side → pan → level → gate → sum.
+   * Disconnects the insert send and slot outputs only, so a playing source stays on the strip input.
    */
   private connectTrack(id: string): void {
-    const input = this.trackInputs.get(id)
-    const gain = this.trackGains.get(id)
+    const strip = this.trackStrips.get(id)
     const ordered = this.orderedSlots(id)
-    if (!input || !gain || !this.sumBus || ordered.length === 0) return
+    if (!strip || !this.sumBus) return
     try {
-      input.disconnect()
+      strip.fxInsert.disconnect()
     } catch {
       /* not connected yet */
     }
@@ -4813,30 +4851,22 @@ export class AudioEngine {
       }
     }
     try {
-      gain.disconnect()
+      strip.output.disconnect()
     } catch {
       /* not connected yet */
     }
-    input.connect(ordered[0]!.input)
-    for (let i = 0; i < ordered.length - 1; i++) ordered[i]!.output.connect(ordered[i + 1]!.input)
-    ordered.at(-1)!.output.connect(gain)
-    gain.connect(this.sumBus)
-  }
-
-  private ensureTrackInput(id: string): GainNode | null {
-    if (!this.ctx) return null
-    let node = this.trackInputs.get(id)
-    if (!node) {
-      node = this.ctx.createGain()
-      node.gain.value = 1
-      forceStereoUpmix(node)
-      this.trackInputs.set(id, node)
+    if (ordered.length === 0) strip.fxInsert.connect(strip.postFx)
+    else {
+      strip.fxInsert.connect(ordered[0]!.input)
+      for (let i = 0; i < ordered.length - 1; i++) ordered[i]!.output.connect(ordered[i + 1]!.input)
+      ordered.at(-1)!.output.connect(strip.postFx)
     }
-    return node
+    strip.output.connect(this.sumBus)
   }
 
   private leadInput(): GainNode | null {
-    return this.ensureTrackInput(this.selectedTrackId)
+    this.ensureTrackStrips(false)
+    return this.trackStrips.get(this.selectedTrackId)?.input ?? null
   }
 
   /** Drop side-chain taps so a graph rebuild cannot sum stale connections into the FFT. */
@@ -5019,16 +5049,15 @@ export class AudioEngine {
       return
     }
     this.reconnecting = true
-    const gain = this.trackGains.get(trackId)
-    if (gain) rampGainExact(gain.gain, 0, this.ctx.currentTime, 0.012)
+    const strip = this.trackStrips.get(trackId)
+    if (strip) rampGainExact(strip.level.gain, 0, this.ctx.currentTime, 0.012)
     await waitMs(16)
     if (!this.ctx) {
       this.reconnecting = false
       return
     }
     this.withEditing(trackId, () => this.syncTrackSlots())
-    this.ensureTrackInput(trackId)
-    this.ensureTrackGains(false)
+    this.ensureTrackStrips(false)
     this.connectTrack(trackId)
     this.retargetMonitorTaps()
     this.applyLiveAudio()
@@ -5051,9 +5080,8 @@ export class AudioEngine {
       for (const slot of slots.values()) this.releaseSlot(slot)
     }
     this.trackSlots.clear()
-    this.ensureTrackGains(true)
+    this.ensureTrackStrips(false)
     for (const track of this.tracks) {
-      this.ensureTrackInput(track.id)
       this.withEditing(track.id, () => this.syncTrackSlots())
     }
     this.connectSlots()
@@ -5429,14 +5457,16 @@ export class AudioEngine {
 
   private syncEqListen(): void {
     if (!this.ctx || !this.noiseGain) return
-    const input = this.trackInputs.get(this.selectedTrackId)
     const now = this.ctx.currentTime
-    if (this.eqListen === 'filters') {
-      if (input) setSmoothedAudioParam(input.gain, 0.0001, now, 'gain')
+    const filters = this.eqListen === 'filters'
+    for (const [id, strip] of this.trackStrips) {
+      const duck = filters && id === this.selectedTrackId
+      setSmoothedAudioParam(strip.input.gain, duck ? 0.0001 : 1, now, 'gain')
+    }
+    if (filters) {
       setSmoothedAudioParam(this.noiseGain.gain, 0.35, now, 'gain')
       this.startNoise()
     } else {
-      if (input) setSmoothedAudioParam(input.gain, 1, now, 'gain')
       setSmoothedAudioParam(this.noiseGain.gain, 0, now, 'gain')
       this.stopNoise()
     }
@@ -6391,34 +6421,54 @@ export class AudioEngine {
     }
   }
 
-  private ensureTrackGains(_force: boolean): void {
+  private trackIsStereo(track: MixTrack): boolean {
+    const channels = this.trackBuffers.get(track.id)?.numberOfChannels ?? track.channelCount
+    return channels >= 2
+  }
+
+  /**
+   * Create missing strips and open or close Mid/Side when the channel count
+   * changes. Volume, pan, mute, solo, mid, and side never change this topology.
+   * `force` rewires every track chain. A structure change rewires only that track.
+   */
+  private ensureTrackStrips(force: boolean): void {
     if (!this.ctx || !this.sumBus) return
     const live = new Set(this.tracks.map((track) => track.id))
-    for (const id of [...this.trackGains.keys()]) {
-      if (!live.has(id)) this.dropTrackGain(id)
+    for (const id of [...this.trackStrips.keys()]) {
+      if (!live.has(id)) this.dropTrackStrip(id)
     }
     for (const track of this.tracks) {
-      if (this.trackGains.has(track.id)) continue
-      const gain = this.ctx.createGain()
-      gain.gain.value = trackMixGain(track, this.tracks)
-      this.trackGains.set(track.id, gain)
-      if (this.trackSlots.has(track.id)) this.connectTrack(track.id)
+      let strip = this.trackStrips.get(track.id)
+      let structure = false
+      if (!strip) {
+        strip = createTrackMixerStrip(this.ctx)
+        this.trackStrips.set(track.id, strip)
+        this.pullAnalyser(strip.meter)
+        structure = true
+      }
+      const stereo = this.trackIsStereo(track)
+      if (stereo && !strip.stereo) {
+        enableTrackMidSide(this.ctx, strip)
+        structure = true
+      } else if (!stereo && strip.stereo) {
+        disableTrackMidSide(strip)
+        structure = true
+      }
+      if (structure) this.mixerStructure += 1
+      if (structure || force) this.connectTrack(track.id)
     }
   }
 
-  private dropTrackGain(id: string): void {
-    const gain = this.trackGains.get(id)
-    if (!gain) return
-    try {
-      gain.disconnect()
-    } catch {
-      /* already disconnected */
-    }
-    this.trackGains.delete(id)
+  private dropTrackStrip(id: string): void {
+    const strip = this.trackStrips.get(id)
+    if (!strip) return
+    disconnectTrackMixerStrip(strip)
+    this.trackStrips.delete(id)
+    this.mixerStructure += 1
   }
 
-  private clearTrackGains(): void {
-    for (const id of [...this.trackGains.keys()]) this.dropTrackGain(id)
+  private clearTrackStrips(): void {
+    for (const id of [...this.trackStrips.keys()]) this.dropTrackStrip(id)
   }
 
   private loadedTrackCount(): number {
@@ -6463,7 +6513,7 @@ export class AudioEngine {
 
   /**
    * One-shot sources for every loaded track, all started at the same `when`.
-   * Each source enters that track's effect chain. The fader sits after the chain.
+   * Each source enters that track's mixer input. The effect chain and mute gate sit downstream.
    */
   private startProjectVoices(when: number, origin: number, replace: boolean): void {
     const ctx = this.ctx
@@ -6477,10 +6527,10 @@ export class AudioEngine {
       this.projectWhen = t0
       this.projectOrigin = plan.origin
     }
-    this.ensureTrackGains(true)
+    this.ensureTrackStrips(false)
     for (const voice of plan.voices) {
       const buffer = this.trackBuffers.get(voice.id)
-      const input = this.ensureTrackInput(voice.id)
+      const input = this.trackStrips.get(voice.id)?.input
       if (!buffer || !input) continue
       const src = ctx.createBufferSource()
       src.buffer = buffer
@@ -6544,10 +6594,10 @@ export class AudioEngine {
     if (!ctx || !this.playing) return
     const spans = this.trackSpans().filter((span) => span.id !== this.selectedTrackId)
     const plan = planProjectStart(spans, origin, when, 0.02)
-    this.ensureTrackGains(true)
+    this.ensureTrackStrips(false)
     for (const voice of plan.voices) {
       const buffer = this.trackBuffers.get(voice.id)
-      const input = this.ensureTrackInput(voice.id)
+      const input = this.trackStrips.get(voice.id)?.input
       if (!buffer || !input) continue
       const src = ctx.createBufferSource()
       src.buffer = buffer

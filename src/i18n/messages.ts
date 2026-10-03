@@ -490,6 +490,18 @@ export type Messages = {
     replaceAudio: string
     clearTrack: string
     volume: string
+    pan: string
+    mid: string
+    side: string
+    midSide: string
+    trackMix: string
+    muteTrack: (name: string) => string
+    soloTrack: (name: string) => string
+    volumeTrack: (name: string) => string
+    panTrack: (name: string) => string
+    midTrack: (name: string) => string
+    sideTrack: (name: string) => string
+    midSideTrack: (name: string) => string
     mono: string
     stereo: string
     expandStereo: string
@@ -1240,6 +1252,18 @@ export const EN: Messages = {
     replaceAudio: 'Replace',
     clearTrack: 'Clear',
     volume: 'Volume',
+    pan: 'Pan',
+    mid: 'Mid',
+    side: 'Side',
+    midSide: 'Mid/Side',
+    trackMix: 'Track mix',
+    muteTrack: (name) => `Mute ${name} track`,
+    soloTrack: (name) => `Solo ${name} track`,
+    volumeTrack: (name) => `Volume ${name} track`,
+    panTrack: (name) => `Pan ${name} track`,
+    midTrack: (name) => `Mid level ${name} track`,
+    sideTrack: (name) => `Side level ${name} track`,
+    midSideTrack: (name) => `Mid/Side ${name} track`,
     mono: 'Mono',
     stereo: 'Stereo',
     expandStereo: 'Expand channels',
@@ -1994,6 +2018,18 @@ export const PL: Messages = {
     replaceAudio: 'Podmień',
     clearTrack: 'Wyczyść',
     volume: 'Głośność',
+    pan: 'Pan',
+    mid: 'Mid',
+    side: 'Side',
+    midSide: 'Mid/Side',
+    trackMix: 'Mix śladu',
+    muteTrack: (name) => `Wycisz ślad ${name}`,
+    soloTrack: (name) => `Solo śladu ${name}`,
+    volumeTrack: (name) => `Głośność śladu ${name}`,
+    panTrack: (name) => `Panorama śladu ${name}`,
+    midTrack: (name) => `Poziom Mid śladu ${name}`,
+    sideTrack: (name) => `Poziom Side śladu ${name}`,
+    midSideTrack: (name) => `Mid/Side śladu ${name}`,
     mono: 'Mono',
     stereo: 'Stereo',
     expandStereo: 'Rozwiń kanały',

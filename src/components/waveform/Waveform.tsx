@@ -45,8 +45,9 @@ import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
-import { trackHasAudio } from '../../audio/mix/tracks'
+import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
 import { MultiTrackView } from '../mix/MultiTrackView'
+import { TrackMixer } from '../mix/TrackMixer'
 import {
   clampView,
   fitView,
@@ -1246,6 +1247,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       )
     : []
   const showArrangement = arrangement === 'multi' && !sensory && !simple && phoneFocus == null
+  const mixTrack = snap.tracks.find((item) => item.id === snap.selectedTrackId) ?? snap.tracks[0] ?? null
+  const mixDim = Boolean(mixTrack && anyTrackSoloed(snap.tracks) && !mixTrack.solo)
   const shownViz = phone ? phoneDisplayViz(viz) : viz
   const phoneEq = phone && shownViz === 'eq-split'
   const showSpec =
@@ -1275,7 +1278,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onKeyDown={onEditorKeyDown}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
-          <div className={styles.wavePane}>
+          {!sensory && !simple && arrangement !== 'multi' && mixTrack ? (
+            <TrackMixer track={mixTrack} tracks={snap.tracks} phone={phone} variant="bar" />
+          ) : null}
+          <div className={`${styles.wavePane} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
             {!sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>

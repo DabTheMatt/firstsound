@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { computeMinMax } from '../../audio/engine/peaks'
 import {
-  mixToDbLabel,
+  anyTrackSoloed,
   TRACK_COLOR_IDS,
   trackColorVar,
   type MixTrack,
   type TrackColorId,
 } from '../../audio/mix/tracks'
+import { TrackMixer } from './TrackMixer'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -181,6 +182,9 @@ export function MultiTrackView({
             laneCount={snap.tracks.length}
             fxCount={snap.trackFxCounts[track.id] ?? 0}
             onOpenFx={() => onOpenFx?.(track.id)}
+            dimmed={anyTrackSoloed(snap.tracks) && !track.solo}
+            tracks={snap.tracks}
+            phone={phone}
             copy={t.mix}
           />
         ))}
@@ -214,6 +218,9 @@ function TrackLane({
   laneCount,
   fxCount,
   onOpenFx,
+  dimmed,
+  tracks,
+  phone,
   copy,
 }: {
   track: MixTrack
@@ -240,6 +247,9 @@ function TrackLane({
   laneCount: number
   fxCount: number
   onOpenFx: () => void
+  dimmed: boolean
+  tracks: readonly MixTrack[]
+  phone: boolean
   copy: {
     loadAudio: string
     replaceAudio: string
@@ -284,7 +294,7 @@ function TrackLane({
 
   return (
     <article
-      className={`${styles.lane} ${selected ? styles.laneOn : ''}`}
+      className={`${styles.lane} ${selected ? styles.laneOn : ''} ${dimmed ? styles.laneDim : ''}`}
       style={{ ['--lane' as string]: color }}
       data-track-lane=""
       data-track-id={track.id}
@@ -430,18 +440,6 @@ function TrackLane({
             ×
           </button>
         ) : null}
-        <label className={styles.fader} onClick={(event) => event.stopPropagation()}>
-          <span className={styles.db}>{mixToDbLabel(track.mix)}</span>
-          <input
-            type="range"
-            min={0}
-            max={150}
-            step={1}
-            value={track.mix}
-            aria-label={`${track.name} ${copy.volume}`}
-            onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
-          />
-        </label>
         <input
           ref={inputRef}
           type="file"
@@ -470,6 +468,7 @@ function TrackLane({
           ))}
         </div>
       ) : null}
+      <TrackMixer track={track} tracks={tracks} phone={phone} />
       {loaded && track.stereoDisplay === 'split' && stereo ? (
         <div className={styles.channels}>
           <span className={styles.channelLabel}>{track.name} · {copy.left}</span>
