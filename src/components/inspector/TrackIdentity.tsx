@@ -20,7 +20,7 @@ export function inspectorAccentStyle(snap: EngineSnapshot): CSSProperties | unde
 }
 
 /** Track color, name, and source for every track-related inspector. */
-export function TrackIdentity({ snap }: { snap: EngineSnapshot }) {
+export function TrackIdentity({ snap, layout = 'dock' }: { snap: EngineSnapshot; layout?: 'dock' | 'phone' }) {
   const { t } = useI18n()
   const track = inspectorTrack(snap)
   if (!track) return null
@@ -29,7 +29,7 @@ export function TrackIdentity({ snap }: { snap: EngineSnapshot }) {
   const source = track.fileName?.trim() ?? ''
   const showName = track.name.trim().toLowerCase() !== kicker.toLowerCase()
   return (
-    <div className={styles.identity} data-inspector-track={track.id} data-inspector-name={track.name} data-inspector-source={source}>
+    <div className={layout === 'phone' ? styles.identityPhone : styles.identity} data-inspector-track={track.id} data-inspector-name={track.name} data-inspector-source={source}>
       <span className={styles.identitySwatch} style={{ background: trackColorVar(track.color) }} aria-hidden />
       <div className={styles.identityCopy}>
         <p className={styles.identityKicker}>{kicker}</p>

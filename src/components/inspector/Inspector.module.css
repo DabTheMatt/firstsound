@@ -52,6 +52,15 @@
   background: var(--inspector-accent, var(--accent-primary));
 }
 
+.identityPhone {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: none;
+  min-width: 0;
+  padding: 2px 2px 0;
+}
+
 .identityCopy {
   min-width: 0;
 }

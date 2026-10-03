@@ -6,6 +6,7 @@ import {
   SPECTRUM_PLOT_PAD,
   SPECTRUM_PLOT_PAD_COMPACT,
   SPECTRUM_PLOT_PAD_FOCUS,
+  SPECTRUM_PLOT_PAD_PHONE_EQ,
   phoneFrequencyTicks,
   spectrumPlotBox,
   spectrumPlotPad,
@@ -44,6 +45,10 @@ describe('phone spectrum scale', () => {
     expect(SPECTRUM_PLOT_PAD_FOCUS.bottom).toBeLessThan(SPECTRUM_PLOT_PAD.bottom)
     expect(spectrumPlotPad({ focus: true })).toBe(SPECTRUM_PLOT_PAD_FOCUS)
     expect(spectrumPlotPad({ compact: true })).toBe(SPECTRUM_PLOT_PAD_COMPACT)
+    expect(spectrumPlotPad({ phoneEq: true })).toBe(SPECTRUM_PLOT_PAD_PHONE_EQ)
+    expect(spectrumPlotPad({ phoneEq: true, focus: true })).toBe(SPECTRUM_PLOT_PAD_FOCUS)
+    expect(SPECTRUM_PLOT_PAD_PHONE_EQ.left).toBeLessThan(SPECTRUM_PLOT_PAD.left)
+    expect(SPECTRUM_PLOT_PAD_PHONE_EQ.left).toBeGreaterThan(12)
     expect(spectrumPlotPad({})).toBe(SPECTRUM_PLOT_PAD)
     expect(phoneFrequencyTicks(390)).toContain(1000)
     expect(phoneFrequencyTicks(430).length).toBeGreaterThan(phoneFrequencyTicks(320).length)

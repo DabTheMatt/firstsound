@@ -348,7 +348,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const sr = live.sampleRate || 44100
         const maxHz = spectrumMaxHz(sr, SPECTRUM_AXIS_MAX_HZ)
         const minHz = SPECTRUM_AXIS_MIN_HZ
-        const plotPad = spectrumPlotPad({ compact: compactRef.current, focus: focusPlot })
+        const phoneScale = phoneEqRef.current && !focusPlot
+        const plotPad = spectrumPlotPad({ compact: compactRef.current, focus: focusPlot, phoneEq: phoneScale })
         const padL = plotPad.left * dpr
         const padR = plotPad.right * dpr
         const padT = plotPad.top * dpr
@@ -366,7 +367,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
         ctx.fillStyle = colors.textMuted
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
-        ctx.textAlign = tight ? 'left' : 'right'
+        ctx.textAlign = tight || phoneScale ? 'left' : 'right'
         ctx.textBaseline = 'middle'
         for (const db of dbMarks) {
           const y = dbToY(db, top, bottom, dbFloor)
@@ -377,9 +378,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           ctx.lineTo(right, y)
           ctx.stroke()
           ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.55 : 1)
-          ctx.fillText(`${db}`, tight ? left + 4 * dpr : left - 5 * dpr, y)
+          ctx.fillText(`${db}`, tight ? left + 4 * dpr : phoneScale ? 2 * dpr : left - 5 * dpr, y)
         }
-        if (!tight) {
+        if (!tight && !phoneScale) {
           ctx.textAlign = 'left'
           ctx.textBaseline = 'bottom'
           ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
@@ -389,7 +390,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        const hzSource = tight ? phoneFrequencyTicks(width / dpr) : FREQ_SCALE_HZ
+        const hzSource = tight || phoneScale ? phoneFrequencyTicks(width / dpr) : FREQ_SCALE_HZ
         const hzTicks = hzSource.filter((hz) => hz >= minHz - 1 && hz <= maxHz + 1).map((hz) => {
           const major = freqTickIsMajor(hz)
           ctx.font = `${(major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
@@ -869,7 +870,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     const rect = canvas.getBoundingClientRect()
     const x = clientX - rect.left
     const y = clientY - rect.top
-    const pad = spectrumPlotPad({ compact, focus: phoneFocusRef.current })
+    const pad = spectrumPlotPad({ compact, focus: phoneFocusRef.current, phoneEq: phoneEqRef.current && !phoneFocusRef.current })
     const left = pad.left
     const right = rect.width - pad.right
     const top = pad.top
@@ -913,7 +914,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   )
 
   if (!active) return null
-  const plotPad = spectrumPlotPad({ compact, focus: phoneFocus })
+  const plotPad = spectrumPlotPad({ compact, focus: phoneFocus, phoneEq: phoneEq && !phoneFocus })
   const selectedStored = selectedBand
     ? (snap.eqById[selectedBand.instanceId]?.bands ?? [])[selectedBand.index]
     : undefined

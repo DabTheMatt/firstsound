@@ -118,7 +118,7 @@ export function MobileContext({ snap, focus, collapseToken }: Props) {
       data-inspector-track={snap.selectedTrackId}
       aria-label={t.mobile.context}
     >
-      <TrackIdentity snap={snap} />
+      <TrackIdentity snap={snap} layout="phone" />
       <header className={styles.head}>
         <button
           type="button"

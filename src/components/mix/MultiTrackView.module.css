@@ -213,6 +213,16 @@
   z-index: 2;
 }
 
+.selectionMark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, white 14%, transparent);
+  box-shadow: inset 1px 0 0 #fff, inset -1px 0 0 #fff;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .loopRegion {
   position: absolute;
   top: 0;

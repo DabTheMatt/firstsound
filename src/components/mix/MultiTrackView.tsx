@@ -748,6 +748,22 @@ function LaneCanvas({
     loopEnd: track.loopEnd,
   }
   const region = loopBounds(duration, track.loopStart, track.loopEnd)
+  const selection = track.loop ? null : selectionAsLoop(track.start, track.end, duration)
+  const selectionRate = Math.max(0.05, speed)
+  const selectionStart =
+    selection == null
+      ? 0
+      : track.direction === 'reverse'
+        ? (duration - selection.loopEnd) / selectionRate
+        : selection.loopStart / selectionRate
+  const selectionEnd =
+    selection == null
+      ? 0
+      : track.direction === 'reverse'
+        ? (duration - selection.loopStart) / selectionRate
+        : selection.loopEnd / selectionRate
+  const selectionLeft = selection && projectDuration > 0 ? (selectionStart / projectDuration) * 100 : 0
+  const selectionWidth = selection && projectDuration > 0 ? ((selectionEnd - selectionStart) / projectDuration) * 100 : 0
   const tiles = track.loop ? waveformTiles(clock, projectDuration) : []
   const first = tiles[0]
   const loopLeft = first && projectDuration > 0 ? (first.projectStart / projectDuration) * 100 : 0
@@ -831,6 +847,13 @@ function LaneCanvas({
       }}
     >
       <canvas ref={ref} aria-hidden />
+      {selection ? (
+        <div
+          className={styles.selectionMark}
+          style={{ left: `${selectionLeft}%`, width: `${Math.max(0, selectionWidth)}%` }}
+          data-region-mark=""
+        />
+      ) : null}
       <div className={styles.playhead} />
       {track.loop
         ? tiles.map((tile, index) => {

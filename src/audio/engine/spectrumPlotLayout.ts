@@ -10,13 +10,20 @@ export const SPECTRUM_PLOT_PAD_COMPACT = { left: 4, right: 4, top: 6, bottom: 4 
 /** Focused EQ editing. Labels are drawn inside the plot, so the curve uses the canvas. */
 export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 4, bottom: 4 }
 
-export function spectrumPlotPad(input: { compact?: boolean; focus?: boolean }): {
+/**
+ * Phone EQ. The dB scale sits in a narrow gutter so the curve can use the
+ * width that the desktop 44px inset was leaving empty.
+ */
+export const SPECTRUM_PLOT_PAD_PHONE_EQ = { left: 22, right: 8, top: 10, bottom: 26 }
+
+export function spectrumPlotPad(input: { compact?: boolean; focus?: boolean; phoneEq?: boolean }): {
   left: number
   right: number
   top: number
   bottom: number
 } {
   if (input.focus) return SPECTRUM_PLOT_PAD_FOCUS
+  if (input.phoneEq) return SPECTRUM_PLOT_PAD_PHONE_EQ
   if (input.compact) return SPECTRUM_PLOT_PAD_COMPACT
   return SPECTRUM_PLOT_PAD
 }

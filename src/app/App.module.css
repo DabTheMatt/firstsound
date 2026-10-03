@@ -57,7 +57,7 @@
 }
 
 .dock-right {
-  --editor-grid: minmax(0, 1fr) minmax(304px, var(--inspector-col, 368px)) var(--meter-col);
+  --editor-grid: minmax(0, 1fr) minmax(268px, var(--inspector-col, 324px)) var(--meter-col);
 }
 
 .inspectorHidden.dock-right {
@@ -192,6 +192,12 @@
   overflow: hidden;
 }
 
+/* The dock continues through the transport row so the panel is taller than the wave. */
+.dock-right .inspector {
+  height: calc(100% + 56px);
+  z-index: 3;
+}
+
 .bottom {
   flex: none;
   background: var(--bg-panel);
@@ -264,11 +270,13 @@
 .phoneContext {
   flex: 0 1 auto;
   min-height: 0;
-  max-height: 38%;
+  min-width: 0;
+  max-height: 42%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
 }
 
 .shell[data-workspace='focus'] {
@@ -413,22 +421,24 @@
 .phoneShell .transportPinned {
   margin-left: -8px;
   margin-right: -8px;
+  margin-top: 0;
   margin-bottom: 0;
 }
 
 .phoneWork {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   min-width: 0;
   gap: 4px;
+  overflow: hidden;
 }
 
 .phoneShell[data-phone-viz='eq-split']:not([data-orient='landscape']) .phoneWork {
   flex: 1 1 0;
   min-height: 0;
-  max-height: 40dvh;
+  max-height: none;
 }
 
 .phoneShell[data-focus][data-orient='landscape'] .stageMain,
@@ -451,11 +461,6 @@
   background: transparent;
   padding: 0;
   min-height: 48px;
-}
-
-.phoneContext {
-  flex: none;
-  min-width: 0;
 }
 
 .phoneSheet {
@@ -648,13 +653,13 @@
 }
 
 .phoneWork .waveCol {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   height: auto;
   min-height: 0;
 }
 
 .phoneWork .waveCol > * {
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 
@@ -664,7 +669,7 @@
 }
 
 .phoneShell .waveCol > :last-child {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   height: auto;
   min-height: 0;
 }

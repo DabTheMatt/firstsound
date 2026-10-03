@@ -1299,7 +1299,7 @@ export default function App() {
             ) : null}
             <Waveform
               ref={waveRef}
-              key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}`}
+              key={`buffer:${snap.bufferRev}`}
               duration={snap.duration}
               start={snap.params.start}
               end={snap.params.end}

@@ -1746,6 +1746,7 @@ export class AudioEngine {
       commitParamEdit(this.params, id, previous)
       if (isSharedParam(id)) this.broadcastShared()
       this.mirrorMixerParam(id)
+      if (id === 'pan' || id === 'mixPan') this.couplePan(id === 'pan' ? 'input' : 'mixer')
       if (
         id === 'speed' ||
         id === 'pitch' ||
@@ -1803,6 +1804,8 @@ export class AudioEngine {
     }
     commitParamPatch(this.params, keys, previous)
     if (keys.some((id) => isSharedParam(id))) this.broadcastShared()
+    if (keys.includes('pan') || keys.includes('mixPan')) this.couplePan(keys.includes('pan') ? 'input' : 'mixer')
+    if (keys.includes('start') || keys.includes('end')) this.syncSelectedTrackRegion()
     if ('distortionNoise' in patch && this.noiseMuted) this.noiseMuted = false
     this.applyLiveAudio()
     this.syncLfoClock()
@@ -3419,7 +3422,9 @@ export class AudioEngine {
     this.filterEnvOrigin = this.filterClockSec
     if (this.usingProjectTransport) {
       this.playOffset = shown
-      this.applyLiveAudio()
+      const selected = this.tracks.find((item) => item.id === this.selectedTrackId)
+      if (selected?.loop) this.rescheduleTrack(selected.id)
+      else this.applyLiveAudio()
       return
     }
     this.stopVoices()
@@ -3717,22 +3722,38 @@ export class AudioEngine {
 
   setTrack(id: string, patch: Partial<Omit<MixTrack, 'id'>>): void {
     let applied = patch
-    if (patch.loopStart != null || patch.loopEnd != null) {
-      const current = this.tracks.find((item) => item.id === id)
-      const dur = this.trackBuffers.get(id)?.duration ?? 0
-      if (current && dur > 0) {
-        const bounds = loopBounds(
-          dur,
-          patch.loopStart ?? current.loopStart,
-          patch.loopEnd != null ? patch.loopEnd : current.loopEnd,
-        )
-        applied = { ...patch, loopStart: bounds.start, loopEnd: bounds.end }
-      }
+    let regionSync: { start: number; end: number } | null = null
+    const current = this.tracks.find((item) => item.id === id)
+    const dur = this.trackBuffers.get(id)?.duration ?? 0
+    if (current && (patch.loopStart != null || patch.loopEnd != null)) {
+      const bounds =
+        dur > 0
+          ? loopBounds(
+              dur,
+              patch.loopStart ?? current.loopStart,
+              patch.loopEnd != null ? patch.loopEnd : current.loopEnd,
+            )
+          : {
+              start: patch.loopStart ?? current.loopStart,
+              end: patch.loopEnd != null ? patch.loopEnd : current.loopEnd,
+            }
+      applied = { ...patch, loopStart: bounds.start, loopEnd: bounds.end, start: bounds.start, end: bounds.end }
+      regionSync = bounds
+    } else if (current && (patch.start != null || patch.end != null)) {
+      const start = patch.start ?? current.start
+      const end = patch.end ?? current.end
+      const region = dur > 0 ? clampRegion(start, end, dur, MIN_REGION) : { start, end }
+      applied = { ...patch, start: region.start, end: region.end, loopStart: region.start, loopEnd: region.end }
+      regionSync = region
     }
     const next = patchTrack(this.tracks, id, applied)
     if (tracksEqual(next, this.tracks)) return
     this.tracks = next
     const track = this.tracks.find((item) => item.id === id)
+    if (regionSync && id === this.selectedTrackId && patch.start == null && patch.end == null) {
+      this.params.start = regionSync.start
+      this.params.end = regionSync.end
+    }
     if (id === this.selectedTrackId && (patch.start != null || patch.end != null)) {
       if (track && !this.usingProjectTransport) this.applyTrackRegion(track)
       else if (track) {
@@ -3749,7 +3770,9 @@ export class AudioEngine {
         }
         if (patch.pan != null) {
           this.forgetRandomOffset('mixPan')
+          this.forgetRandomOffset('pan')
           this.params.mixPan = track.pan
+          this.params.pan = track.pan
         }
         if (patch.midDb != null) {
           this.forgetRandomOffset('mixMid')
@@ -3795,10 +3818,25 @@ export class AudioEngine {
     this.bindWorkingFromTrack(track.id)
     const duration = this.trackBuffers.get(track.id)?.duration ?? 0
     if (duration > 0) {
-      const region = clampRegion(track.start, track.end, duration, MIN_REGION)
+      const region = track.loop
+        ? loopBounds(duration, track.loopStart, track.loopEnd)
+        : clampRegion(track.start, track.end, duration, MIN_REGION)
       this.params.start = region.start
       this.params.end = region.end
-      this.tracks = writeTrackRegion(this.tracks, track.id, region.start, region.end)
+      this.tracks = patchTrack(this.tracks, track.id, {
+        start: region.start,
+        end: region.end,
+        loopStart: region.start,
+        loopEnd: region.end,
+      })
+    }
+    const pan = track.pan === 0 && this.params.pan !== 0 ? this.params.pan : track.pan
+    if (this.params.pan !== pan || this.params.mixPan !== pan || track.pan !== pan) {
+      this.forgetRandomOffset('pan')
+      this.forgetRandomOffset('mixPan')
+      this.params.pan = pan
+      this.params.mixPan = pan
+      this.tracks = patchTrack(this.tracks, track.id, { pan })
     }
     this.playOffset = playhead
     this.fileName = track.fileName ?? ''
@@ -4983,7 +5021,25 @@ export class AudioEngine {
   private syncSelectedTrackRegion(): void {
     const id = this.selectedTrackId
     if (!this.tracks.some((track) => track.id === id)) return
-    this.tracks = writeTrackRegion(this.tracks, id, this.params.start, this.params.end)
+    this.tracks = patchTrack(this.tracks, id, {
+      start: this.params.start,
+      end: this.params.end,
+      loopStart: this.params.start,
+      loopEnd: this.params.end,
+    })
+  }
+
+  /** The input PAN knob and the track-strip pan edit one stored value. */
+  private couplePan(source: 'input' | 'mixer'): void {
+    const value = source === 'input' ? this.params.pan : this.params.mixPan
+    if (source === 'input') {
+      this.forgetRandomOffset('mixPan')
+      this.params.mixPan = value
+    } else {
+      this.forgetRandomOffset('pan')
+      this.params.pan = value
+    }
+    this.tracks = patchTrack(this.tracks, this.activeTrackId(), { pan: value })
   }
 
   private hydrateTrackRegions(start: number, end: number): void {
@@ -5970,7 +6026,7 @@ export class AudioEngine {
         gainSlot.stereo,
         {
           gainDb: live.gain,
-          pan: live.pan,
+          pan: 0,
           leftDb: live.channelGainL,
           rightDb: live.channelGainR,
           mono: live.makeMono > 0.5,

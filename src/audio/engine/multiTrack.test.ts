@@ -306,5 +306,53 @@ describe('multi-track foundation', () => {
     expect(voice?.loop).toBe(true)
     expect(voice?.loopStart).toBeCloseTo(0.2, 2)
     expect(voice?.loopEnd).toBeCloseTo(0.55, 2)
+    expect(engine.getSnapshot().params.start).toBeCloseTo(0.2, 2)
+    expect(engine.getSnapshot().params.end).toBeCloseTo(0.55, 2)
+  })
+
+  it('keeps the input pan knob and the track pan on one value', () => {
+    const engine = new AudioEngine()
+    const id = engine.getSnapshot().tracks[0]!.id
+    engine.setParam('pan', 40)
+    let snap = engine.getSnapshot()
+    expect(snap.params.pan).toBe(40)
+    expect(snap.params.mixPan).toBe(40)
+    expect(snap.tracks[0]?.pan).toBe(40)
+
+    engine.setTrack(id, { pan: -20 })
+    snap = engine.getSnapshot()
+    expect(snap.params.pan).toBe(-20)
+    expect(snap.params.mixPan).toBe(-20)
+    expect(snap.tracks[0]?.pan).toBe(-20)
+
+    engine.setParam('mixPan', 15)
+    snap = engine.getSnapshot()
+    expect(snap.params.pan).toBe(15)
+    expect(snap.params.mixPan).toBe(15)
+    expect(snap.tracks[0]?.pan).toBe(15)
+  })
+
+  it('shares one region between the wave selection and the track loop', () => {
+    const engine = new AudioEngine()
+    const id = engine.getSnapshot().tracks[0]!.id
+    engine.loadTrackPcm(id, tone(1, 44100, 1, 0.2), 44100, 'a.wav')
+    engine.setParam('start', 0.2)
+    engine.setParam('end', 0.6)
+    let track = engine.getSnapshot().tracks.find((item) => item.id === id)
+    expect(track?.start).toBeCloseTo(0.2)
+    expect(track?.end).toBeCloseTo(0.6)
+    expect(track?.loopStart).toBeCloseTo(0.2)
+    expect(track?.loopEnd).toBeCloseTo(0.6)
+    expect(engine.getSnapshot().params.start).toBeCloseTo(0.2)
+    expect(engine.getSnapshot().params.end).toBeCloseTo(0.6)
+
+    engine.setTrackLoop(id, 0.3, 0.7, true)
+    track = engine.getSnapshot().tracks.find((item) => item.id === id)
+    expect(track?.start).toBeCloseTo(0.3)
+    expect(track?.end).toBeCloseTo(0.7)
+    expect(track?.loopStart).toBeCloseTo(0.3)
+    expect(track?.loopEnd).toBeCloseTo(0.7)
+    expect(engine.getSnapshot().params.start).toBeCloseTo(0.3)
+    expect(engine.getSnapshot().params.end).toBeCloseTo(0.7)
   })
 })
