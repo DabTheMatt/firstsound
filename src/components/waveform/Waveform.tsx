@@ -75,6 +75,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
 import { rulerMarks, rulerMinFracGap } from './rulerTicks'
 import { PhoneEqGraph } from '../mobile/PhoneEqGraph'
@@ -133,7 +134,8 @@ type Props = {
   phoneEqId?: string
   /** Presentation only. Does not change transport or project audio. */
   arrangement?: 'single' | 'multi'
-  onOpenTrackFx?: (trackId: string) => void
+  onSelectTrack?: (trackId: string) => void
+  onEditTrack?: (trackId: string) => void
 }
 
 export type WaveformHandle = {
@@ -245,7 +247,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onAnalyzerClose,
     phoneEqId,
     arrangement = 'single',
-    onOpenTrackFx,
+    onSelectTrack,
+    onEditTrack,
   },
   ref,
 ) {
@@ -464,7 +467,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const selA = Math.min(start, end)
       const selB = Math.max(start, end)
       const bandLanes =
-        appearance === 'studio' && (viz === 'waveform' || viz === 'split') ? engine.spectralLaneSamples() : null
+        spectralBandsEnabled && appearance === 'studio' && (viz === 'waveform' || viz === 'split') ? engine.spectralLaneSamples() : null
       if (bandLanes && bandLanes.length > 0) {
         const laneCount = bandLanes.length
         for (let lane = 0; lane < laneCount; lane++) {
@@ -1295,7 +1298,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       aria-selected={on}
                       title={track.fileName || track.name}
                       className={`${styles.trackTab} ${on ? styles.trackTabOn : ''}`}
-                      onClick={() => engine.selectTrack(track.id)}
+                      onClick={() => (onSelectTrack ? onSelectTrack(track.id) : engine.selectTrack(track.id))}
                     >
                       <span>{track.name}</span>
                       {track.fileName ? <span className={styles.trackTabFile}>{track.fileName}</span> : null}
@@ -1305,7 +1308,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
-            {snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
+            {spectralBandsEnabled && snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">
                 {snap.spectral.bands.map((band) => (
                   <span key={band.id}>{spectralBandCopy(band.id, t.waveform.spectral)}</span>
@@ -1616,7 +1619,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           ) : null}
         </div>
-        {showArrangement ? <MultiTrackView phone={phone} onOpenFx={onOpenTrackFx} /> : null}
+        {showArrangement ? <MultiTrackView phone={phone} onSelectTrack={onSelectTrack} onEditTrack={onEditTrack} /> : null}
         {viz === 'split' && showWave && showSpec ? (
           <button
             type="button"
@@ -1721,7 +1724,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onScrub={setView}
         />
       ) : null}
-      {!sensory && !simple && !phone && !phoneFocus ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
+      {spectralBandsEnabled && !sensory && !simple && !phone && !phoneFocus ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
     </div>
   )
 })

@@ -5,6 +5,7 @@
   flex: 1;
   min-height: 0;
   height: 100%;
+  box-shadow: inset 2px 0 0 var(--inspector-accent, transparent);
   container-type: inline-size;
   container-name: inspector;
   overflow-x: hidden;
@@ -23,6 +24,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   position: sticky;
   top: -12px;
@@ -31,6 +33,64 @@
   padding: 12px 12px 8px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 0 100%;
+  min-width: 0;
+}
+
+.identitySwatch {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 99px;
+  flex: none;
+  background: var(--inspector-accent, var(--accent-primary));
+}
+
+.identityCopy {
+  min-width: 0;
+}
+
+.identityKicker,
+.identityName,
+.identitySource {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identityKicker {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--inspector-accent, var(--accent-primary));
+}
+
+.identityName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.identitySource {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.editOps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.editOps .ghost {
+  flex: 1 1 auto;
 }
 
 .headActions {

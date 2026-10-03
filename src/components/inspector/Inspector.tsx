@@ -52,6 +52,7 @@ import paramWrap from '../controls/ParamControl.module.css'
 import { useI18n } from '../../i18n'
 import { DISTORTION_NOISE_KINDS, DISTORTION_TYPES, parseDistortionType, type DistortionType } from '../../audio/fx/types'
 import type { EditState, PanelInspectorFocus } from '../../app/editorState'
+import { inspectorContextId } from '../../app/inspectorRoute'
 import { EqCurve } from './EqCurve'
 import { FilterInspector } from './FilterInspector'
 import { MidSideInspector } from './MidSideInspector'
@@ -62,7 +63,25 @@ import { SpaceInspector } from './SpaceInspector'
 import { EffectRandomMenu } from '../random/EffectRandomMenu'
 import { selectEqBand, subscribeEqBandSelection } from '../../audio/engine/eqBandSelection'
 import { ParamActionPair } from '../random/ParamActionPair'
+import { inspectorAccentStyle, TrackIdentity } from './TrackIdentity'
 import styles from './Inspector.module.css'
+
+export type EditActions = {
+  canCopy: boolean
+  canCut: boolean
+  canPaste: boolean
+  canDelete: boolean
+  canMute: boolean
+  canClear: boolean
+  canInsert: boolean
+  onCopy: () => void
+  onCut: () => void
+  onPaste: () => void
+  onDelete: () => void
+  onMute: () => void
+  onClear: () => void
+  onInsert: () => void
+}
 
 function lfoBankResting(bank: readonly { target: string | null }[] | undefined): boolean {
   return !bank?.some((slot) => slot.target)
@@ -82,6 +101,7 @@ type Props = {
   /** Phone sheet: essentials only until the sheet is expanded. */
   detail?: 'essential' | 'full'
   onHideInspector?: () => void
+  edits?: EditActions
 }
 
 const GAIN_IDS: ParamId[] = ['gain', 'speed', 'pitch', 'stretchInterp']
@@ -156,10 +176,17 @@ export function Inspector({
   compact = false,
   detail = 'full',
   onHideInspector,
+  edits,
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
+  const track = snap.tracks.find((item) => item.id === snap.selectedTrackId) ?? snap.tracks[0]
   return (
-    <div className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''} ${detail === 'essential' ? styles.essential : ''}`}>
+    <div
+      className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''} ${detail === 'essential' ? styles.essential : ''}`}
+      style={inspectorAccentStyle(snap)}
+      data-inspector-context={inspectorContextId(focus)}
+      data-inspector-track={track?.id ?? ''}
+    >
       {focus.kind === 'tool' ? (
         <ToolInspector
           snap={snap}
@@ -170,6 +197,7 @@ export function Inspector({
           onTrim={onTrim}
           knobs={knobs}
           onHideInspector={onHideInspector}
+          edits={edits}
         />
       ) : (
         <ModuleInspector
@@ -195,6 +223,7 @@ function ToolInspector({
   onTrim,
   knobs,
   onHideInspector,
+  edits,
 }: {
   snap: EngineSnapshot
   edit: EditState
@@ -204,6 +233,7 @@ function ToolInspector({
   onTrim?: () => void
   knobs: boolean
   onHideInspector?: () => void
+  edits?: EditActions
 }) {
   const { t } = useI18n()
   const length = Math.max(0, snap.params.end - snap.params.start)
@@ -211,9 +241,21 @@ function ToolInspector({
   const maxMs = Math.round(fadeMaxSec * 1000)
   const shapeBend = edit.fadeFocus === 'out' ? edit.fadeOutBend : edit.fadeInBend
   const shapeQ = fadeQFromBend(shapeBend)
+  const editOps = edits
+    ? [
+        { id: 'copy', label: t.waveform.copyCaption, title: t.waveform.copySelection, enabled: edits.canCopy, run: edits.onCopy },
+        { id: 'cut', label: t.waveform.cutCaption, title: t.waveform.cutSelection, enabled: edits.canCut, run: edits.onCut },
+        { id: 'paste', label: t.waveform.pasteCaption, title: t.waveform.pastePlayhead, enabled: edits.canPaste, run: edits.onPaste },
+        { id: 'gap', label: t.waveform.insertSilenceCaption, title: t.waveform.insertSilence, enabled: edits.canInsert, run: edits.onInsert },
+        { id: 'delete', label: t.waveform.deleteSelectionCaption, title: t.waveform.deleteSelection, enabled: edits.canDelete, run: edits.onDelete },
+        { id: 'mute', label: t.waveform.muteSelectionCaption, title: t.waveform.muteSelection, enabled: edits.canMute, run: edits.onMute },
+        { id: 'clear', label: t.waveform.clearSelectionCaption, title: t.waveform.clearSelection, enabled: edits.canClear, run: edits.onClear },
+      ]
+    : []
   return (
     <>
       <div className={styles.head}>
+        <TrackIdentity snap={snap} />
         <h2 className={styles.title}>{t.inspector.edit}</h2>
         {onHideInspector ? (
           <div className={styles.headActions}>
@@ -224,6 +266,15 @@ function ToolInspector({
       <Readout label={t.inspector.start} value={formatTimecode(snap.params.start)} />
       <Readout label={t.inspector.end} value={formatTimecode(snap.params.end)} />
       <Readout label={t.inspector.length} value={formatTimecode(length)} />
+      {editOps.length ? (
+        <div className={styles.editOps} role="group" aria-label={t.inspector.edit}>
+          {editOps.map((item) => (
+            <button key={item.id} type="button" className={styles.ghost} title={item.title} disabled={!item.enabled} onClick={item.run}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className={styles.fine}>
         <button type="button" onClick={() => onFine('start', -0.001)}>
           −1 ms
@@ -485,6 +536,7 @@ function ModuleInspector({
   return (
     <section className={styles.module} aria-labelledby={`module-${instanceId}-title`}>
       <div className={styles.head}>
+        <TrackIdentity snap={snap} />
         <h2 className={styles.title} id={`module-${instanceId}-title`}>
           {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
         </h2>

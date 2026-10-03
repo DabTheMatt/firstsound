@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { InspectorFocus } from './editorState'
 import {
+  contextFromFocus,
+  focusFromContext,
+  inspectorContextId,
   inspectorKey,
   inspectorPanel,
   routeCollapse,
   routeModule,
   routeReveal,
+  routeTrackClick,
+  routeTrackEdit,
   routeViz,
 } from './inspectorRoute'
 
@@ -81,5 +86,56 @@ describe('inspector routing', () => {
       type: 'filter',
       pane: 'advanced',
     })
+  })
+
+  it('opens Track Input when a different track has no remembered context', () => {
+    const chain = [
+      { instanceId: 'gain-1', type: 'gain' as const },
+      { instanceId: 'delay-1', type: 'delay' as const },
+    ]
+    const routed = routeTrackClick('track-2', 'track-1', delay, {})
+    expect(routed.context).toEqual({ kind: 'trackInput' })
+    expect(routed.memory['track-1']).toEqual({ kind: 'effect', instanceId: 'delay-1', type: 'delay' })
+    expect(focusFromContext(routed.context, chain)).toEqual({
+      kind: 'module',
+      instanceId: 'gain-1',
+      type: 'gain',
+    })
+    expect(inspectorContextId(focusFromContext(routed.context, chain))).toBe('input')
+  })
+
+  it('keeps an explicit effect when the same track is selected again', () => {
+    const routed = routeTrackClick('track-2', 'track-2', delay, {})
+    expect(routed.context).toEqual(contextFromFocus(delay))
+    expect(inspectorContextId(delay)).toBe('delay')
+  })
+
+  it('restores the effect remembered for that track and never another track', () => {
+    const chain = [
+      { instanceId: 'gain-1', type: 'gain' as const },
+      { instanceId: 'delay-1', type: 'delay' as const },
+    ]
+    const left = routeTrackClick('track-3', 'track-2', delay, {})
+    const back = routeTrackClick('track-2', 'track-3', { kind: 'tool', tool: 'select' }, left.memory)
+    expect(back.context).toEqual({ kind: 'effect', instanceId: 'delay-1', type: 'delay' })
+    const restored = focusFromContext(back.context, chain)
+    expect(restored).toEqual({ kind: 'module', instanceId: 'delay-1', type: 'delay' })
+    expect(back.memory['track-3']).toEqual({ kind: 'edit' })
+    expect(focusFromContext({ kind: 'effect', instanceId: 'missing', type: 'reverb' }, chain)).toEqual({
+      kind: 'module',
+      instanceId: 'gain-1',
+      type: 'gain',
+    })
+  })
+
+  it('routes EDIT to the wave editor for the clicked track', () => {
+    const routed = routeTrackEdit('track-3', 'track-1', delay, {})
+    expect(routed.trackId).toBe('track-3')
+    expect(routed.viz).toBe('waveform')
+    expect(routed.focus).toEqual({ kind: 'tool', tool: 'select' })
+    expect(routed.inspectorOpen).toBe(true)
+    expect(routed.memory['track-3']).toEqual({ kind: 'edit' })
+    expect(routed.memory['track-1']).toEqual(contextFromFocus(delay))
+    expect(inspectorContextId(routed.focus)).toBe('edit')
   })
 })

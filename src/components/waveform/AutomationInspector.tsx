@@ -15,7 +15,9 @@ import type { FxLfoKind } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { inspectorContextId } from '../../app/inspectorRoute'
 import { InspectorEye } from '../inspector/InspectorEye'
+import { inspectorAccentStyle, TrackIdentity } from '../inspector/TrackIdentity'
 import inspectorStyles from '../inspector/Inspector.module.css'
 import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
@@ -139,9 +141,13 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
     <div
       ref={panelRef}
       className={`${inspectorStyles.panel} ${sheet ? inspectorStyles.sheet : ''} ${compact ? inspectorStyles.compact : ''}`}
+      style={inspectorAccentStyle(snap)}
       data-automation-inspector="true"
+      data-inspector-context={inspectorContextId({ kind: 'automation' })}
+      data-inspector-track={snap.selectedTrackId}
     >
       <div className={inspectorStyles.head}>
+        <TrackIdentity snap={snap} />
         <h2 className={inspectorStyles.title}>{t.waveform.automationTitle}</h2>
         {onHideInspector ? (
           <div className={inspectorStyles.headActions}>

@@ -58,7 +58,9 @@
 }
 
 .laneOn {
-  border-color: color-mix(in srgb, var(--lane, var(--accent-primary)) 55%, var(--border-subtle));
+  border-color: color-mix(in srgb, var(--lane, var(--accent-primary)) 72%, var(--border-subtle));
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--lane, var(--accent-primary));
 }
 
 .laneDim .wave,

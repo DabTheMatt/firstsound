@@ -27,6 +27,7 @@ import {
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { spectrumListenId } from '../../audio/spectral/bands'
+import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './FocusChrome.module.css'
@@ -51,7 +52,7 @@ export function FftFocusTools() {
 
   return (
     <div className={styles.fftTools} data-fft-focus="">
-      {listenBand ? (
+      {spectralBandsEnabled && listenBand ? (
         <span className={styles.fftNote}>
           {t.waveform.spectral.analyseBand}
         </span>

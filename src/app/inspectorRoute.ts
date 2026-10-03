@@ -2,11 +2,109 @@ import type { ModuleType } from '../audio/chain/chain'
 import type { InspectorFocus, VizMode } from './editorState'
 
 /**
+ * One inspector context for the selected track.
+ * Track Input, an effect, Edit, and Automation share this slot.
+ */
+export type InspectorContext =
+  | { kind: 'trackInput' }
+  | { kind: 'effect'; instanceId: string; type: ModuleType; pane?: 'main' | 'advanced' }
+  | { kind: 'edit' }
+  | { kind: 'automation' }
+
+export type TrackInspectorMemory = Record<string, InspectorContext>
+
+export type ChainSlot = { instanceId: string; type: ModuleType }
+
+/**
  * The open inspector and the editor view are separate.
  * Automation playback can stay active while a different inspector is visible.
  */
 export function inspectorPanel(focus: InspectorFocus): 'automation' | 'editor' {
   return focus.kind === 'automation' ? 'automation' : 'editor'
+}
+
+/** Map the open inspector onto the single per-track context. */
+export function contextFromFocus(focus: InspectorFocus): InspectorContext {
+  if (focus.kind === 'automation') return { kind: 'automation' }
+  if (focus.kind === 'tool') return { kind: 'edit' }
+  if (focus.type === 'gain') return { kind: 'trackInput' }
+  return focus.pane
+    ? { kind: 'effect', instanceId: focus.instanceId, type: focus.type, pane: focus.pane }
+    : { kind: 'effect', instanceId: focus.instanceId, type: focus.type }
+}
+
+/** Stable id for the inspector header: input, edit, automation, or the effect type. */
+export function inspectorContextId(focus: InspectorFocus): string {
+  const context = contextFromFocus(focus)
+  if (context.kind === 'trackInput') return 'input'
+  if (context.kind === 'effect') return context.type
+  return context.kind
+}
+
+/** Resolve a stored context against the selected track's chain. Missing effects fall back to Input. */
+export function focusFromContext(context: InspectorContext, chain: readonly ChainSlot[]): InspectorFocus {
+  if (context.kind === 'automation') return { kind: 'automation' }
+  if (context.kind === 'edit') return { kind: 'tool', tool: 'select' }
+  if (context.kind === 'effect') {
+    const mod = chain.find((item) => item.instanceId === context.instanceId && item.type === context.type)
+    if (mod && mod.type !== 'gain') {
+      return context.pane
+        ? { kind: 'module', instanceId: mod.instanceId, type: mod.type, pane: context.pane }
+        : { kind: 'module', instanceId: mod.instanceId, type: mod.type }
+    }
+  }
+  const gain = chain.find((item) => item.type === 'gain') ?? chain[0]
+  return {
+    kind: 'module',
+    instanceId: gain?.instanceId ?? 'gain-1',
+    type: gain?.type ?? 'gain',
+  }
+}
+
+/**
+ * Clicking a track keeps an explicit context on that same track.
+ * A different track restores its remembered context, or Track Input.
+ */
+export function routeTrackClick(
+  nextTrackId: string,
+  currentTrackId: string,
+  focus: InspectorFocus,
+  memory: TrackInspectorMemory,
+): { trackId: string; context: InspectorContext; memory: TrackInspectorMemory; inspectorOpen: true } {
+  const saved: TrackInspectorMemory = { ...memory, [currentTrackId]: contextFromFocus(focus) }
+  const context = nextTrackId === currentTrackId ? contextFromFocus(focus) : (saved[nextTrackId] ?? { kind: 'trackInput' })
+  return {
+    trackId: nextTrackId,
+    context,
+    memory: { ...saved, [nextTrackId]: context },
+    inspectorOpen: true,
+  }
+}
+
+/** EDIT selects the track, opens the wave editor, and shows the Edit inspector. */
+export function routeTrackEdit(
+  trackId: string,
+  currentTrackId: string,
+  focus: InspectorFocus,
+  memory: TrackInspectorMemory,
+): {
+  trackId: string
+  context: InspectorContext
+  memory: TrackInspectorMemory
+  focus: InspectorFocus
+  viz: 'waveform'
+  inspectorOpen: true
+} {
+  const clicked = routeTrackClick(trackId, currentTrackId, focus, memory)
+  const context: InspectorContext = { kind: 'edit' }
+  return {
+    trackId,
+    context,
+    memory: { ...clicked.memory, [trackId]: context },
+    focus: { kind: 'tool', tool: 'select' },
+    viz: 'waveform',
+    inspectorOpen: true,
+  }
 }
 
 export function inspectorKey(focus: InspectorFocus): string {

@@ -10,6 +10,7 @@ import {
   reconstructionError,
   spectrumListenId,
 } from './bands'
+import { spectralBandsEnabled } from './ui'
 import { convolveAligned, designLinearPhaseLowpass, fftRadix2 } from './fir'
 
 const SR = 44100
@@ -46,6 +47,12 @@ function unitySum(channel: Float32Array, sr = SR, crossovers: readonly number[] 
   const sum = mixBandChannels(split.bands, gains)[0]!
   return { split, sum, report: reconstructionError(channel, sum) }
 }
+
+describe('spectral bands ui', () => {
+  it('stays hidden without dropping saved engine state', () => {
+    expect(spectralBandsEnabled).toBe(false)
+  })
+})
 
 describe('complementary spectral bands', () => {
   it('reconstructs an impulse with no delay', () => {

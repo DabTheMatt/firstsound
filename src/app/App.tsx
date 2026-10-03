@@ -5,7 +5,18 @@ import { deleteUserPreset, loadUserPresets, mergeUserPresets, parseUserPresetPac
 import { engine, useEngine } from '../hooks/useEngine'
 import type { FadeCurve } from '../audio/engine/fades'
 import { DEFAULT_EDIT, type EditState, type InspectorFocus, type MeterRange, type VizMode, type WaveTool } from './editorState'
-import { inspectorKey, routeCollapse, routeModule, routeReveal, routeViz } from './inspectorRoute'
+import {
+  contextFromFocus,
+  focusFromContext,
+  inspectorKey,
+  routeCollapse,
+  routeModule,
+  routeReveal,
+  routeTrackClick,
+  routeTrackEdit,
+  routeViz,
+  type TrackInspectorMemory,
+} from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
@@ -15,7 +26,6 @@ import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
-import { isFixedType } from '../audio/chain/chain'
 import { trackColorVar } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
@@ -171,6 +181,15 @@ export default function App() {
     instanceId: 'gain-1',
     type: 'gain',
   })
+  const [inspectorMemory, setInspectorMemory] = useState<TrackInspectorMemory>({})
+  const focusRef = useRef(focus)
+  const memoryRef = useRef(inspectorMemory)
+  const seenTrackRef = useRef(engine.getSnapshot().selectedTrackId)
+  const intentRef = useRef<string | null>(null)
+  useEffect(() => {
+    focusRef.current = focus
+    memoryRef.current = inspectorMemory
+  }, [focus, inspectorMemory])
   const [history, setHistory] = useState(() =>
     createHistory(
       histKey(0, 1, [], DEFAULT_EDIT, engine.getSnapshot().automation, {
@@ -496,25 +515,70 @@ export default function App() {
     setUiMode(mode)
   }
 
+  const rememberFocus = (next: InspectorFocus, trackId = engine.getSnapshot().selectedTrackId) => {
+    const memory = { ...memoryRef.current, [trackId]: contextFromFocus(next) }
+    memoryRef.current = memory
+    focusRef.current = next
+    setInspectorMemory(memory)
+    setFocus(next)
+  }
+
+  const followTrack = (trackId: string, mode?: 'edit') => {
+    const current = engine.getSnapshot()
+    const routed =
+      mode === 'edit'
+        ? routeTrackEdit(trackId, current.selectedTrackId, focusRef.current, memoryRef.current)
+        : routeTrackClick(trackId, current.selectedTrackId, focusRef.current, memoryRef.current)
+    const known = current.tracks.some((track) => track.id === trackId)
+    if (known && current.selectedTrackId !== trackId) {
+      intentRef.current = trackId
+      engine.selectTrack(trackId)
+    }
+    const nextFocus: InspectorFocus =
+      mode === 'edit'
+        ? { kind: 'tool', tool: 'select' }
+        : focusFromContext(routed.context, engine.getSnapshot().chain)
+    memoryRef.current = routed.memory
+    focusRef.current = nextFocus
+    setInspectorMemory(routed.memory)
+    setFocus(nextFocus)
+    setInspectorOpen(true)
+    if (mode === 'edit') {
+      setTool('select')
+      setViz('waveform')
+      setArrangement('single')
+      setFocusWorkspace(null)
+    }
+  }
+
+  useEffect(() => {
+    if (snap.selectedTrackId === seenTrackRef.current) return
+    const previous = seenTrackRef.current
+    seenTrackRef.current = snap.selectedTrackId
+    if (intentRef.current === snap.selectedTrackId) {
+      intentRef.current = null
+      return
+    }
+    const routed = routeTrackClick(snap.selectedTrackId, previous, focusRef.current, memoryRef.current)
+    const nextFocus = focusFromContext(routed.context, engine.getSnapshot().chain)
+    memoryRef.current = routed.memory
+    focusRef.current = nextFocus
+    setInspectorMemory(routed.memory)
+    setFocus(nextFocus)
+    setInspectorOpen(true)
+  }, [snap.selectedTrackId])
+
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
     const live = engine.getSnapshot().chain
     const mod = live.find((m) => m.instanceId === instanceId)
     if (!mod) return
     const routed = routeModule(instanceId, mod.type, pane)
-    setFocus(routed.focus)
+    rememberFocus(routed.focus)
     setInspectorOpen(routed.inspectorOpen)
     if (mode === 'sheet') {
       setSheetLevel('medium')
       if (mod.type === 'eq') setViz('eq-split')
     }
-  }
-
-  const openTrackFx = (trackId: string) => {
-    engine.selectTrack(trackId)
-    setArrangement('single')
-    const chain = engine.getSnapshot().chain
-    const fx = chain.find((mod) => !isFixedType(mod.type))
-    if (fx) selectModule(fx.instanceId)
   }
 
   const hideInspector = () => {
@@ -549,7 +613,7 @@ export default function App() {
 
   const selectTool = (next: WaveTool) => {
     setTool(next)
-    setFocus({ kind: 'tool', tool: next })
+    rememberFocus({ kind: 'tool', tool: next })
     if (mode === 'sheet') setSheetLevel('medium')
   }
 
@@ -579,7 +643,7 @@ export default function App() {
     }
     const routed = routeViz(next, focus, inspectorOpen)
     setViz(routed.viz)
-    setFocus(routed.focus)
+    rememberFocus(routed.focus)
     setInspectorOpen(routed.inspectorOpen)
     if (focusWorkspace) {
       const shown = isPhoneLayout ? phoneDisplayViz(routed.viz) : routed.viz
@@ -625,6 +689,22 @@ export default function App() {
       compact={isPhoneLayout}
       onHideInspector={dockRight ? hideInspector : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
+      edits={{
+        canCopy: snap.canCopySelection,
+        canCut: snap.canCutSelection,
+        canPaste: snap.canPaste,
+        canDelete: snap.canDeleteSelection,
+        canMute: snap.canMuteSelection,
+        canClear: snap.canClearSelection,
+        canInsert: snap.canInsertSilence,
+        onCopy: copySelection,
+        onCut: cutSelection,
+        onPaste: pasteAtPlayhead,
+        onDelete: deleteSelection,
+        onMute: muteSelection,
+        onClear: clearSelection,
+        onInsert: insertSilence,
+      }}
     />
     )
   ) : null
@@ -1046,7 +1126,7 @@ export default function App() {
                       title={track.name}
                       className={`${styles.trackChip} ${on ? styles.trackChipOn : ''}`}
                       style={{ borderColor: trackColorVar(track.color) }}
-                      onClick={() => engine.selectTrack(track.id)}
+                      onClick={() => followTrack(track.id)}
                     >
                       {index + 1}
                     </button>
@@ -1072,7 +1152,7 @@ export default function App() {
           onViz={(next) => {
             const routed = routeViz(next, focus, inspectorOpen)
             setViz(routed.viz)
-            setFocus(routed.focus)
+            rememberFocus(routed.focus)
             setInspectorOpen(routed.inspectorOpen)
           }}
           zoomLabel={zoomLabel}
@@ -1188,7 +1268,7 @@ export default function App() {
                   }
                   const routed = routeViz(next, focus, inspectorOpen)
                   setViz(routed.viz)
-                  setFocus(routed.focus)
+                  rememberFocus(routed.focus)
                   setInspectorOpen(routed.inspectorOpen)
                 }}
                 onEnterFocus={enterFocus}
@@ -1256,7 +1336,8 @@ export default function App() {
               onAnalyzerClose={() => setAnalyzerOpen(false)}
               phoneEqId={resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq' ? resolvedFocus.instanceId : undefined}
               arrangement={arrangement}
-              onOpenTrackFx={openTrackFx}
+              onSelectTrack={followTrack}
+              onEditTrack={(trackId) => followTrack(trackId, 'edit')}
             />
           </div>
           {dockRight && inspectorOpen && !activeFocus ? (

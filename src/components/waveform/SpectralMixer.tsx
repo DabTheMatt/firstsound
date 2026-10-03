@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SpectralBand } from '../../audio/spectral/bands'
+import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import type { Messages } from '../../i18n/messages'
@@ -30,7 +31,12 @@ type Props = {
   layout?: 'studio' | 'phone'
 }
 
-export function SpectralMixer({ onCommit, layout = 'studio' }: Props) {
+export function SpectralMixer(props: Props) {
+  if (!spectralBandsEnabled) return null
+  return <SpectralMixerPanel {...props} />
+}
+
+function SpectralMixerPanel({ onCommit, layout = 'studio' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const spectral = snap.spectral

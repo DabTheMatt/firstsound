@@ -67,6 +67,7 @@ import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectru
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { measureSpectrumDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { frameAround, spectrumListenId } from '../../audio/spectral/bands'
+import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import {
   ANALYSER_FFT_IDLE,
   clampSpectrumResolution,
@@ -980,7 +981,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ×
             </button>
           ) : null}
-          {listenBand ? (
+          {spectralBandsEnabled && listenBand ? (
             <span className={styles.bands}>
               {t.waveform.spectral.analyseBand}: {t.waveform.spectral[listenBand === 'sub-bass' ? 'subBass' : listenBand === 'low-mid' ? 'lowMid' : listenBand === 'high-mid' ? 'highMid' : listenBand === 'high' ? 'high' : 'analyseSum']}
             </span>

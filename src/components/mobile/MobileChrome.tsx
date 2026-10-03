@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { PHONE_VIZ_ORDER, type PhoneViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from '../waveform/BackgroundControl'
+import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import styles from './MobileChrome.module.css'
 
 type VizProps = {
@@ -151,7 +152,9 @@ export function MobileContextBar(props: EditProps) {
               <MenuButton label={t.waveform.trim} disabled={false} onClick={() => { props.onTrim(); setMoreOpen(false) }} />
               <MenuButton label={t.waveform.clearSelection} disabled={!props.canClear} onClick={() => { props.onClear(); setMoreOpen(false) }} />
               <MenuButton label={t.waveform.autoFade} disabled={false} onClick={() => { props.onAutoFade(); setMoreOpen(false) }} />
-              <MenuButton label={t.waveform.spectral.title} disabled={false} onClick={() => { props.onBands(); setMoreOpen(false) }} />
+              {spectralBandsEnabled ? (
+                <MenuButton label={t.waveform.spectral.title} disabled={false} onClick={() => { props.onBands(); setMoreOpen(false) }} />
+              ) : null}
               <MenuButton label={t.transport.export} disabled={false} onClick={() => { props.onExport(); setMoreOpen(false) }} />
             </div>
           ) : null}

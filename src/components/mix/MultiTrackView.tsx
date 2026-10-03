@@ -8,7 +8,6 @@ import {
   type TrackColorId,
 } from '../../audio/mix/tracks'
 import { TrackMixer, TrackStrip } from './TrackMixer'
-import { TrackInputPanel } from './TrackInputPanel'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
 import { beginTrackLoad, isLatestTrackLoad } from '../../features/sample/loadQueue'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -17,12 +16,6 @@ import { subscribeThemeChange } from '../../theme'
 import styles from './MultiTrackView.module.css'
 
 const peakCache = new WeakMap<AudioBuffer, Map<string, { min: Float32Array; max: Float32Array }>>()
-
-/**
- * The waveform editor remounts when the selected file changes. Track Input
- * must survive that, because opening it selects the track.
- */
-let retainedInputId: string | null = null
 
 function isAudioFile(file: File): boolean {
   if (file.type.startsWith('audio/')) return true
@@ -108,10 +101,12 @@ function resolveColor(id: TrackColorId): string {
 
 export function MultiTrackView({
   phone = false,
-  onOpenFx,
+  onSelectTrack,
+  onEditTrack,
 }: {
   phone?: boolean
-  onOpenFx?: (trackId: string) => void
+  onSelectTrack?: (trackId: string) => void
+  onEditTrack?: (trackId: string) => void
 }) {
   const { t } = useI18n()
   const snap = useEngine()
@@ -119,13 +114,9 @@ export function MultiTrackView({
   const [paletteFor, setPaletteFor] = useState<string | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
-  const [inputFor, setInputForState] = useState<string | null>(retainedInputId)
-  const setInputFor = (value: string | null | ((current: string | null) => string | null)) => {
-    setInputForState((current) => {
-      const next = typeof value === 'function' ? value(current) : value
-      retainedInputId = next
-      return next
-    })
+  const selectTrack = (id: string) => {
+    if (onSelectTrack) onSelectTrack(id)
+    else engine.selectTrack(id)
   }
 
   useEffect(() => {
@@ -160,7 +151,6 @@ export function MultiTrackView({
 
   return (
     <div className={`${styles.desk} ${phone ? styles.phone : ''}`} data-arrangement="multi">
-      {inputFor ? <TrackInputPanel trackId={inputFor} onClose={() => setInputFor(null)} /> : null}
       <div ref={listRef} className={styles.list} role="list">
         {snap.tracks.map((track, index) => (
           <TrackLane
@@ -173,10 +163,7 @@ export function MultiTrackView({
             paletteOpen={paletteFor === track.id}
             renaming={renameId === track.id}
             pending={pending?.id === track.id ? pending.file : null}
-            onSelect={() => {
-              engine.selectTrack(track.id)
-              setInputFor((current) => (current ? track.id : null))
-            }}
+            onSelect={() => selectTrack(track.id)}
             onSeek={seekAt}
             onPalette={() => setPaletteFor((cur) => (cur === track.id ? null : track.id))}
             onColor={(color) => {
@@ -188,10 +175,9 @@ export function MultiTrackView({
               engine.setTrack(track.id, { name })
               setRenameId(null)
             }}
-            onLoad={(file) => loadFile(track.id, file)}
-            onOpenInput={() => {
-              engine.selectTrack(track.id)
-              setInputFor(track.id)
+            onLoad={(file) => {
+              selectTrack(track.id)
+              void loadFile(track.id, file)
             }}
             onAskReplace={(file) => setPending({ id: track.id, file })}
             onConfirmReplace={() => {
@@ -207,8 +193,7 @@ export function MultiTrackView({
             }
             onReorder={(to) => engine.reorderTracks(index, to)}
             laneCount={snap.tracks.length}
-            fxCount={snap.trackFxCounts[track.id] ?? 0}
-            onOpenFx={() => onOpenFx?.(track.id)}
+            onEdit={() => onEditTrack?.(track.id)}
             dimmed={anyTrackSoloed(snap.tracks) && !track.solo}
             tracks={snap.tracks}
             phone={phone}
@@ -236,7 +221,6 @@ function TrackLane({
   onRenameStart,
   onRename,
   onLoad,
-  onOpenInput,
   onAskReplace,
   onConfirmReplace,
   onCancelReplace,
@@ -244,8 +228,7 @@ function TrackLane({
   onToggleStereo,
   onReorder,
   laneCount,
-  fxCount,
-  onOpenFx,
+  onEdit,
   dimmed,
   tracks,
   phone,
@@ -266,7 +249,6 @@ function TrackLane({
   onRenameStart: () => void
   onRename: (name: string) => void
   onLoad: (file: File) => void
-  onOpenInput: () => void
   onAskReplace: (file: File) => void
   onConfirmReplace: () => void
   onCancelReplace: () => void
@@ -274,8 +256,7 @@ function TrackLane({
   onToggleStereo: () => void
   onReorder: (to: number) => void
   laneCount: number
-  fxCount: number
-  onOpenFx: () => void
+  onEdit: () => void
   dimmed: boolean
   tracks: readonly MixTrack[]
   phone: boolean
@@ -297,7 +278,6 @@ function TrackLane({
     loadSample: string
     loop: string
     loopTrack: string
-    input: string
     dropAudio: string
     replaceDrop: string
     mixMore: string
@@ -305,11 +285,9 @@ function TrackLane({
     right: string
     reorder: string
     trackName: string
-    openFx: string
-    fx: string
-    fxCount: (count: number) => string
   }
 }) {
+  const { t } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -337,6 +315,8 @@ function TrackLane({
       data-track-lane=""
       data-track-id={track.id}
       data-track-index={index}
+      data-selected={selected ? 'true' : 'false'}
+      aria-current={selected ? 'true' : undefined}
       role="listitem"
       onClick={(event) => {
         const target = event.target
@@ -426,7 +406,10 @@ function TrackLane({
           <button
             type="button"
             className={styles.name}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              onSelect()
+            }}
             onDoubleClick={(event) => {
               event.stopPropagation()
               onRenameStart()
@@ -441,6 +424,7 @@ function TrackLane({
           aria-label={loaded ? copy.replaceAudio : copy.loadSample}
           onClick={(event) => {
             event.stopPropagation()
+            onSelect()
             inputRef.current?.click()
           }}
         >
@@ -476,34 +460,28 @@ function TrackLane({
             title={copy.loopTrack}
             onClick={(event) => {
               event.stopPropagation()
+              onSelect()
               engine.setTrack(track.id, { loop: !track.loop })
             }}
           >
             {copy.loop}
           </button>
         ) : null}
-        <button
-          type="button"
-          className={`${styles.icon} ${styles.inputBtn}`}
-          aria-label={copy.input}
-          onClick={(event) => {
-            event.stopPropagation()
-            onOpenInput()
-          }}
-        >
-          {copy.input}
-        </button>
-        <button
-          type="button"
-          className={`${styles.icon} ${fxCount > 0 ? styles.fxOn : ''}`}
-          aria-label={copy.openFx}
-          onClick={(event) => {
-            event.stopPropagation()
-            onOpenFx()
-          }}
-        >
-          {fxCount > 0 ? copy.fxCount(fxCount) : copy.fx}
-        </button>
+        {loaded ? (
+          <button
+            type="button"
+            className={styles.icon}
+            data-track-edit=""
+            aria-label={`${t.waveform.edit} ${track.name}`}
+            title={`${t.waveform.edit} ${track.name}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit()
+            }}
+          >
+            {t.waveform.edit}
+          </button>
+        ) : null}
         {loaded ? (
           <button
             type="button"
@@ -607,6 +585,7 @@ function TrackLane({
           className={styles.empty}
           onClick={(event) => {
             event.stopPropagation()
+            onSelect()
             inputRef.current?.click()
           }}
         >
