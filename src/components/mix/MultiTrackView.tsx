@@ -19,8 +19,9 @@ import {
 } from '../../audio/mix/tracks'
 import { TrackColorPicker } from './TrackColorPicker'
 import { TrackMixer, TrackStrip } from './TrackMixer'
-import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
-import { beginTrackLoad, isLatestTrackLoad } from '../../features/sample/loadQueue'
+import { MixerView } from './MixerView'
+import { AUDIO_FILE_ACCEPT } from '../../features/sample/files'
+import { loadAudioFileIntoTrack, releaseFileInput } from '../../features/sample/loadTrack'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { subscribeThemeChange } from '../../theme'
@@ -138,10 +139,12 @@ export function MultiTrackView({
   phone = false,
   onSelectTrack,
   onEditTrack,
+  onInspectEffect,
 }: {
   phone?: boolean
   onSelectTrack?: (trackId: string) => void
   onEditTrack?: (trackId: string) => void
+  onInspectEffect?: (trackId: string, instanceId: string) => void
 }) {
   const { t } = useI18n()
   const snap = useEngine()
@@ -149,6 +152,7 @@ export function MultiTrackView({
   const [paletteFor, setPaletteFor] = useState<{ id: string; anchor: HTMLElement } | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
+  const [workspace, setWorkspace] = useState<'tracks' | 'mixer'>('tracks')
   const selectTrack = (id: string) => {
     if (onSelectTrack) onSelectTrack(id)
     else engine.selectTrack(id)
@@ -156,7 +160,7 @@ export function MultiTrackView({
 
   useEffect(() => {
     const node = listRef.current
-    if (!node) return
+    if (!node || workspace !== 'tracks') return
     let frame = 0
     const tick = () => {
       const snapNow = engine.getSnapshot()
@@ -189,7 +193,7 @@ export function MultiTrackView({
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [])
+  }, [workspace])
 
   const seekAt = (clientX: number, target: HTMLElement) => {
     const rect = target.getBoundingClientRect()
@@ -199,16 +203,41 @@ export function MultiTrackView({
     engine.seekSeconds(ratio * dur, 'sample')
   }
 
-  const loadFile = async (id: string, file: File) => {
-    const token = beginTrackLoad(id)
-    const data = await readAudioFile(file)
-    if (!isLatestTrackLoad(id, token)) return
-    await engine.loadTrackArrayBuffer(id, data, file.name)
-  }
+  const loadFile = (id: string, file: File) => loadAudioFileIntoTrack(id, file)
 
   return (
     <div className={`${styles.desk} ${phone ? styles.phone : ''}`} data-arrangement="multi">
-      <div ref={listRef} className={styles.list} role="list">
+      <div className={styles.workspace} role="tablist" aria-label={t.mix.tracks}>
+        <button
+          type="button"
+          role="tab"
+          data-workspace="tracks"
+          aria-selected={workspace === 'tracks'}
+          className={workspace === 'tracks' ? styles.workspaceOn : styles.workspaceBtn}
+          onClick={() => setWorkspace('tracks')}
+        >
+          {t.mix.tracksView}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-workspace="mixer"
+          aria-selected={workspace === 'mixer'}
+          className={workspace === 'mixer' ? styles.workspaceOn : styles.workspaceBtn}
+          onClick={() => setWorkspace('mixer')}
+        >
+          {t.mix.mixerView}
+        </button>
+      </div>
+      {workspace === 'mixer' ? (
+        <MixerView
+          tracks={snap.tracks}
+          selectedId={snap.selectedTrackId}
+          onSelectTrack={selectTrack}
+          onInspectEffect={onInspectEffect ?? ((trackId) => selectTrack(trackId))}
+        />
+      ) : null}
+      <div ref={listRef} className={styles.list} role="list" hidden={workspace !== 'tracks'}>
         {snap.tracks.map((track, index) => (
           <TrackLane
             key={track.id}
@@ -595,25 +624,20 @@ function TrackLane({
         ) : null}
         <input
           ref={inputRef}
+          className={styles.fileInput}
           type="file"
           accept={AUDIO_FILE_ACCEPT}
-          hidden
+          data-load-track={track.id}
+          tabIndex={-1}
           onChange={(event) => {
             const input = event.currentTarget
             const file = input.files?.[0]
-            if (!file) return
-            // Start the read before clearing the input. Chromium detaches the
-            // File if value is reset first, so the first pick decodes empty
-            // and only a second selection sticks. Same filename still fires
-            // once the value is cleared after the bytes are copied.
-            const token = beginTrackLoad(track.id)
-            void file.arrayBuffer().then(async (data) => {
-              input.value = ''
-              if (!isLatestTrackLoad(track.id, token)) return
-              await engine.loadTrackArrayBuffer(track.id, data, file.name)
-            }).catch(() => {
-              input.value = ''
-            })
+            const trackId = input.dataset.loadTrack || track.id
+            if (!file || !trackId) return
+            // Copy the file before clearing the input. The target id is the
+            // one stamped on this input when it was rendered, not the track
+            // that happens to be selected after the picker closes.
+            void loadAudioFileIntoTrack(trackId, file).finally(() => releaseFileInput(input))
           }}
         />
       </header>

@@ -7,6 +7,31 @@
   gap: 4px;
 }
 
+.workspace {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  padding: 0 2px;
+}
+
+.workspaceBtn,
+.workspaceOn {
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspaceOn {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .list {
   position: relative;
   display: flex;

@@ -574,6 +574,8 @@ type TrackStretchCursor = {
   direction: PlaybackDirection
   budget: number
   consumed: number
+  intro: boolean
+  loopStart: number
 }
 
 
@@ -1103,6 +1105,24 @@ export class AudioEngine {
     this.connectSlots()
     this.audioStatus = 'running'
     this.unlocked = true
+  }
+
+  /**
+   * Post-track, pre-master level taps.
+   * Mono reads the single downmix tap. Stereo reads independent L/R taps
+   * of the same node. Mixer and lanes share these nodes.
+   */
+  getTrackMeters(id: string): { channels: 1 | 2; left: AnalyserNode | null; right: AnalyserNode | null } {
+    const strip = this.trackStrips.get(id) ?? null
+    const channels = (this.tracks.find((track) => track.id === id)?.channelCount ?? 0) >= 2 ? 2 : 1
+    if (!strip) return { channels, left: null, right: null }
+    if (channels < 2) return { channels: 1, left: strip.meter, right: null }
+    return { channels: 2, left: strip.meterL, right: strip.meterR }
+  }
+
+  /** Effect chain stored on the track. Does not change selection. */
+  trackChain(id: string): readonly { instanceId: string; type: string; bypassed?: boolean }[] {
+    return this.ensureRack(id).chain
   }
 
   /** Test and diagnostics. View changes and mixer edits leave this still. */
@@ -3601,6 +3621,8 @@ export class AudioEngine {
       end: source.end,
       stereoDisplay: 'combined',
       loop: source.loop,
+      loopStart: source.loopStart,
+      loopEnd: source.loopEnd,
       direction: source.direction,
       pan: source.pan,
       midDb: source.midDb,
@@ -3674,7 +3696,20 @@ export class AudioEngine {
   }
 
   setTrack(id: string, patch: Partial<Omit<MixTrack, 'id'>>): void {
-    const next = patchTrack(this.tracks, id, patch)
+    let applied = patch
+    if (patch.loopStart != null || patch.loopEnd != null) {
+      const current = this.tracks.find((item) => item.id === id)
+      const dur = this.trackBuffers.get(id)?.duration ?? 0
+      if (current && dur > 0) {
+        const bounds = loopBounds(
+          dur,
+          patch.loopStart ?? current.loopStart,
+          patch.loopEnd != null ? patch.loopEnd : current.loopEnd,
+        )
+        applied = { ...patch, loopStart: bounds.start, loopEnd: bounds.end }
+      }
+    }
+    const next = patchTrack(this.tracks, id, applied)
     if (tracksEqual(next, this.tracks)) return
     this.tracks = next
     const track = this.tracks.find((item) => item.id === id)
@@ -4533,6 +4568,7 @@ export class AudioEngine {
       end,
       fileName,
       channelCount: buffer.numberOfChannels,
+      ...(asSource ? { loopStart: 0, loopEnd: buffer.duration } : {}),
       ...(sampleName ? { stereoDisplay: 'combined' as const } : {}),
       ...(named ? { name: named.name, nameLocked: named.nameLocked } : {}),
     })
@@ -6931,6 +6967,8 @@ export class AudioEngine {
       direction: track.direction,
       budget,
       consumed: 0,
+      intro: false,
+      loopStart: resolved.regionStart,
     })
   }
 
@@ -7069,30 +7107,41 @@ export class AudioEngine {
     }
   }
 
-  private wrapStretchCursor(cursor: TrackStretchCursor): number | null {
-    const span = Math.max(cursor.end - cursor.start, 0.001)
-    if (cursor.direction === 'pingpong') {
-      let head = cursor.head
-      for (let i = 0; i < 8; i++) {
-        if (head > cursor.end) {
-          head = cursor.end - (head - cursor.end)
-          cursor.dir = -1
-        } else if (head < cursor.start) {
-          head = cursor.start + (cursor.start - head)
-          cursor.dir = 1
-        } else break
-      }
-      return Math.min(cursor.end, Math.max(cursor.start, head))
-    }
-    if (cursor.loop) {
-      if (cursor.head >= cursor.end) return cursor.start + ((cursor.head - cursor.start) % span)
-      if (cursor.head < cursor.start) {
-        const back = (cursor.start - cursor.head) % span
-        return cursor.end - (back === 0 ? span : back)
-      }
+  /**
+   * Keep a stretch head inside the region from `resolveTrackPlayback`.
+   * Looping repeats that region. It does not play an intro and then jump.
+   */
+  private wrapStretchCursor(_id: string, cursor: TrackStretchCursor): number | null {
+    const start = cursor.start
+    const end = cursor.end
+    const span = end - start
+    if (!(span > 0.0005)) return null
+    let head = cursor.head
+    if (!cursor.loop) {
+      if (cursor.dir < 0 && head <= start + 0.0005) return null
+      if (cursor.dir > 0 && head >= end - 0.0005) return null
+      cursor.head = Math.min(end, Math.max(start, head))
+      cursor.intro = false
       return cursor.head
     }
-    if (cursor.head >= cursor.end || cursor.head < cursor.start) return null
+    if (cursor.direction === 'pingpong') {
+      let guard = 0
+      while ((head < start || head > end) && guard++ < 8) {
+        if (head > end) {
+          head = end - (head - end)
+          cursor.dir = -1
+        } else {
+          head = start + (start - head)
+          cursor.dir = 1
+        }
+      }
+    } else if (cursor.dir < 0) {
+      while (head < start) head += span
+    } else {
+      while (head >= end) head -= span
+    }
+    cursor.head = Math.min(end, Math.max(start, head))
+    cursor.intro = false
     return cursor.head
   }
 
@@ -7130,7 +7179,7 @@ export class AudioEngine {
         const late = now - cursor.next
         cursor.head += late * Math.max(cursor.speed, PARAMS.speed.min) * cursor.dir
         cursor.consumed += late * Math.max(cursor.speed, PARAMS.speed.min)
-        const caught = this.wrapStretchCursor(cursor)
+        const caught = this.wrapStretchCursor(id, cursor)
         if (caught == null || cursor.consumed >= cursor.budget) {
           this.stretchCursors.delete(id)
           continue
@@ -7153,7 +7202,7 @@ export class AudioEngine {
         cursor.pitch = step.pitch
         cursor.windowSpeed = step.windowSpeed
         cursor.windowPitch = step.windowPitch
-        const wrapped = this.wrapStretchCursor(cursor)
+        const wrapped = this.wrapStretchCursor(id, cursor)
         if (wrapped == null || cursor.consumed >= cursor.budget) {
           this.stretchCursors.delete(id)
           break

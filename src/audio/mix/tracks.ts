@@ -33,8 +33,8 @@ export const TRACK_COLOR_IDS = [
   'neutral',
 ] as const
 export type TrackColorId = (typeof TRACK_COLOR_IDS)[number]
-export type StereoDisplay = 'combined' | 'split'
 
+/** Older projects stored theme-token ids. They migrate on read. */
 const LEGACY_TRACK_COLORS: Record<string, TrackColorId> = {
   accent: 'amber',
   secondary: 'orange',
@@ -42,7 +42,10 @@ const LEGACY_TRACK_COLORS: Record<string, TrackColorId> = {
   cool: 'cyan',
   eq: 'green',
   spectrum: 'neutral',
+  teal: 'cyan',
+  red: 'orange',
 }
+export type StereoDisplay = 'combined' | 'split'
 
 export type MixTrack = {
   id: string
@@ -120,6 +123,35 @@ export function sourceTrackName(fileName: string): string {
 export function trackNameAfterLoad(track: MixTrack, fileName: string): { name: string; nameLocked: boolean } {
   if (track.nameLocked) return { name: track.name, nameLocked: true }
   return { name: sourceTrackName(fileName), nameLocked: false }
+}
+
+/** Compact fader floor. 0 dB stays at mix 100, the same unity the DSP uses. */
+export const TRACK_FADER_MIN_DB = -48
+
+export function trackFaderMaxDb(): number {
+  return 20 * Math.log10(TRACK_MIX_MAX / 100)
+}
+
+export function mixToFaderDb(mix: number): number {
+  if (!(mix > 0.0001)) return TRACK_FADER_MIN_DB
+  return Math.max(TRACK_FADER_MIN_DB, 20 * Math.log10(clampMix(mix) / 100))
+}
+
+export function faderDbToMix(db: number): number {
+  if (!Number.isFinite(db) || db <= TRACK_FADER_MIN_DB + 0.01) return 0
+  return clampMix(100 * 10 ** (db / 20))
+}
+
+export function faderNormalized(mix: number): number {
+  const span = trackFaderMaxDb() - TRACK_FADER_MIN_DB
+  if (!(span > 0)) return 0
+  return (mixToFaderDb(mix) - TRACK_FADER_MIN_DB) / span
+}
+
+export function mixFromFaderNormalized(normalized: number): number {
+  const n = Number.isFinite(normalized) ? Math.min(1, Math.max(0, normalized)) : 0
+  const db = TRACK_FADER_MIN_DB + n * (trackFaderMaxDb() - TRACK_FADER_MIN_DB)
+  return faderDbToMix(db)
 }
 
 export function mixToDbLabel(mix: number): string {

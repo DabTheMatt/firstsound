@@ -493,6 +493,9 @@ export type Messages = {
     setLoop: string
     loopStart: string
     loopEnd: string
+    sourceEnd: string
+    tracksView: string
+    mixerView: string
     direction: string
     input: string
     trackInput: string
@@ -1267,6 +1270,9 @@ export const EN: Messages = {
     setLoop: 'Set loop',
     loopStart: 'Loop start',
     loopEnd: 'Loop end',
+    sourceEnd: 'Source end',
+    tracksView: 'Tracks',
+    mixerView: 'Mixer',
     direction: 'Direction',
     input: 'Input',
     trackInput: 'Track input',
@@ -2045,6 +2051,9 @@ export const PL: Messages = {
     setLoop: 'Ustaw pętlę',
     loopStart: 'Początek pętli',
     loopEnd: 'Koniec pętli',
+    sourceEnd: 'Koniec źródła',
+    tracksView: 'Ślady',
+    mixerView: 'Mikser',
     direction: 'Kierunek',
     input: 'Wejście',
     trackInput: 'Wejście śladu',

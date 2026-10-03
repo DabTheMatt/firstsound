@@ -27,6 +27,7 @@ describe('mix tracks', () => {
     expect(tracks).toHaveLength(MAX_TRACKS)
     expect(new Set(tracks.map((track) => track.id)).size).toBe(MAX_TRACKS)
     expect(new Set(tracks.map((track) => track.color)).size).toBe(MAX_TRACKS)
+    expect(tracks.map((track) => track.color).slice(0, 4)).toEqual(['amber', 'cyan', 'green', 'violet'])
     expect(tracks[0]?.name).toBe('Track 1')
     expect(tracks[0]?.mix).toBe(100)
     expect(tracks[0]?.nameLocked).toBe(false)
