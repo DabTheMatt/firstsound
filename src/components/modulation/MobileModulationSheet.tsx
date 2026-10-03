@@ -12,6 +12,7 @@ import type { ParamDef, ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
+import { useModulationScope } from '../controls/LfoParamShell'
 import { classifyGesture } from '../mobile/gestureIntent'
 import { connectParameterLfo, removeParameterLfo, setParameterLfoEnabled, setParameterLfoPrimary } from './modulationActions'
 import { formatModulationDepth, parameterModulationState } from './modulationModel'
@@ -39,6 +40,7 @@ type Props = {
  * Mounting it only reads the shared LFO bank. Close does not clear the route.
  */
 export function MobileModulationSheet({ id, label, onClose }: Props) {
+  const scope = useModulationScope()
   const snap = useEngine()
   const { t } = useI18n()
   const titleId = useId()
@@ -138,7 +140,7 @@ export function MobileModulationSheet({ id, label, onClose }: Props) {
             </div>
           </div>
         ) : (
-          <button type="button" className={styles.lfoChoose} onClick={() => connectParameterLfo(engine, id)}>
+          <button type="button" className={styles.lfoChoose} onClick={() => connectParameterLfo(engine, id, scope)}>
             {t.modulation.lfo}
           </button>
         )}

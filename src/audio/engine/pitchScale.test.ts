@@ -68,7 +68,8 @@ describe('pitchScale', () => {
   })
 
   it('formats a cursor readout with note name', () => {
-    expect(formatHoverFreq(440)).toBe('440 Hz · A4')
+    expect(formatHoverFreq(440)).toBe('A4 · 440 Hz')
+    expect(formatHoverFreq(261.6255653005986)).toBe('C4 · 261.6 Hz')
     expect(formatHoverFreq(2000)).toMatch(/2\.00 kHz/)
   })
 })

@@ -1,10 +1,10 @@
-import { fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { fxLfoIsActive, lfoBinding, lfoDrivesInstance, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import { useEngine } from '../../hooks/useEngine'
 import { Knob } from './Knob'
-import { LfoParamShell } from './LfoParamShell'
+import { LfoParamShell, useModulationScope } from './LfoParamShell'
 import { ParamSlider } from './ParamSlider'
 
 type Props = {
@@ -15,20 +15,32 @@ type Props = {
 
 export function ParamControl({ id, value, variant }: Props) {
   const snap = useEngine()
+  const scope = useModulationScope()
   const binding = lfoBinding(snap.fxLfos, id)
-  const active = Boolean(binding && fxLfoIsActive(binding.lfo))
+  const drives = Boolean(
+    binding &&
+      fxLfoIsActive(binding.lfo) &&
+      lfoDrivesInstance(binding.lfo, scope.instanceId, scope.includeUnscoped !== false),
+  )
+  const lane = snap.automation.lanes.find((item) => item.paramId === id)
+  const automated = Boolean(snap.playing && lane && lane.nodes.length > 0)
+  const record =
+    scope.instanceId && snap.liveByInstance[scope.instanceId]
+      ? snap.liveByInstance[scope.instanceId]
+      : snap.liveParams
+  const live = drives || automated ? record[id] : undefined
   const range =
-    active && binding ? lfoRangeNormalized(toNormalized(value, PARAMS[id]), binding.lfo.depth) : undefined
+    drives && binding ? lfoRangeNormalized(toNormalized(value, PARAMS[id]), binding.lfo.depth) : undefined
   return (
     <LfoParamShell id={id}>
       {variant === 'slider' ? (
-        <ParamSlider id={id} value={value} modulationRange={range} />
+        <ParamSlider id={id} value={value} liveValue={live} modulationRange={range} />
       ) : (
         <Knob
           id={id}
           value={value}
-          liveValue={active ? snap.liveParams[id] : undefined}
-          lfoDepth={active ? binding?.lfo.depth : undefined}
+          liveValue={live}
+          lfoDepth={drives ? binding?.lfo.depth : undefined}
         />
       )}
     </LfoParamShell>

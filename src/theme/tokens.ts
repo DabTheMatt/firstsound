@@ -8,6 +8,8 @@ export const THEME_IDS = [
   'light-studio',
   'oled',
   'dusk',
+  'soft-slate',
+  'warm-paper',
   'custom',
 ] as const
 
@@ -59,8 +61,19 @@ export const THEME_OPTIONS: {
   { id: 'forest', label: 'Forest', preview: { bg: '#101512', surface: '#1C2520', accent: '#72B98A' } },
   { id: 'light-studio', label: 'Light Studio', preview: { bg: '#E7E7E3', surface: '#F8F8F5', accent: '#A96E13' } },
   { id: 'oled', label: 'OLED', preview: { bg: '#050606', surface: '#0E1111', accent: '#DFAF55' } },
-  { id: 'dusk', label: 'Dusk', preview: { bg: '#1b1815', surface: '#2a2621', accent: '#E07A42' } },
+  { id: 'dusk', label: 'Dusk', preview: { bg: '#241e28', surface: '#383040', accent: '#b7a4c4' } },
+  { id: 'soft-slate', label: 'Soft Slate', preview: { bg: '#1a2128', surface: '#2c3540', accent: '#7eb0c0' } },
+  { id: 'warm-paper', label: 'Warm Paper', preview: { bg: '#f4efe6', surface: '#e4d9c8', accent: '#8d6b2f' } },
   { id: 'custom', label: 'Custom', preview: { bg: '#151616', surface: '#202222', accent: '#E6AD48' } },
+]
+
+export type ThemeCategoryId = 'monochromatic' | 'color' | 'light' | 'eyes'
+
+export const THEME_CATEGORIES: { id: ThemeCategoryId; themeIds: ThemeId[] }[] = [
+  { id: 'monochromatic', themeIds: ['studio-dark', 'oled'] },
+  { id: 'color', themeIds: ['midnight-blue', 'oxide', 'forest'] },
+  { id: 'light', themeIds: ['light-studio'] },
+  { id: 'eyes', themeIds: ['soft-slate', 'warm-paper', 'dusk'] },
 ]
 
 const THEME_SET = new Set<string>(THEME_IDS)

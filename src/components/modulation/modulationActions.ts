@@ -24,11 +24,24 @@ export type ModulationHost = {
  * An existing route is reused. This does not allocate a second oscillator
  * or touch automation / the stored parameter value.
  */
-export function connectParameterLfo(host: ModulationHost, id: ParamId): boolean {
+export function connectParameterLfo(
+  host: ModulationHost,
+  id: ParamId,
+  scope?: { instanceId?: string; bandId?: string },
+): boolean {
   const kind = fxLfoKindForParam(id)
   if (!kind) return false
+  const trackLevel = kind === 'input' || kind === 'mixer'
+  const instanceId = trackLevel ? undefined : scope?.instanceId
+  const bandId = trackLevel ? undefined : scope?.bandId
   const existing = lfoBinding(host.getSnapshot().fxLfos, id)
-  if (existing) return true
+  if (existing) {
+    host.setFxLfo(existing.kind, existing.slot, {
+      instanceId,
+      bandId,
+    })
+    return true
+  }
   const snap = host.getSnapshot()
   let slot = nextFreeLfoSlot(snap.fxLfos[kind])
   if (slot == null) return false
@@ -44,6 +57,8 @@ export function connectParameterLfo(host: ModulationHost, id: ParamId): boolean 
     depth: current && current.depth > 0 ? current.depth : LFO_DEPTH_DEFAULT,
     rateHz: current?.rateHz || LFO_RATE_DEFAULT,
     shape: current?.shape ?? 'sine',
+    instanceId,
+    bandId,
   })
   return true
 }

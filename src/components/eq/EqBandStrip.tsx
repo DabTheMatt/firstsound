@@ -23,7 +23,7 @@ import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { engine } from '../../hooks/useEngine'
 import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { eqTone, readThemeColors } from '../../theme'
-import { LfoParamShell } from '../controls/LfoParamShell'
+import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import { eqStripAccentVars } from './eqBandStyle'
@@ -42,15 +42,21 @@ type Props = {
 export function EqBandStrip({ snap, instanceId, index, band, label, selected = false }: Props) {
   const ids = EQ_BAND_LFO_IDS[index]
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
-  const modulate = eqInstanceUsesSharedLfo(snap.chain, instanceId)
-  const freqLfo = modulate && ids ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
-  const gainLfo = modulate && ids ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
-  const qLfo = modulate && ids ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
-  const widthLfo = modulate && ids ? widthModulationRange(snap.fxLfos, ids.q, band.frequency, band.q) : undefined
-  const freqLive = ids ? liveControlNormalized(snap.liveParams[ids.freq], ids.freq, Boolean(freqLfo)) : undefined
-  const gainLive = ids ? liveControlNormalized(snap.liveParams[ids.gain], ids.gain, Boolean(gainLfo)) : undefined
-  const qLive = ids ? liveControlNormalized(snap.liveParams[ids.q], ids.q, Boolean(qLfo)) : undefined
-  const widthLive = widthLfo && ids ? liveWidthNormalized(band.frequency, snap.liveParams[ids.q]) : undefined
+  const includeUnscoped = eqInstanceUsesSharedLfo(snap.chain, instanceId)
+  const live = snap.liveByInstance[instanceId] ?? snap.liveParams
+  const drives = (id: ParamId | undefined) => {
+    if (!id) return false
+    const binding = lfoBinding(snap.fxLfos, id)
+    return Boolean(binding && fxLfoIsActive(binding.lfo) && (!binding.lfo.instanceId ? includeUnscoped : binding.lfo.instanceId === instanceId) && (!binding.lfo.bandId || binding.lfo.bandId === band.id))
+  }
+  const freqLfo = ids && drives(ids.freq) ? lfoRangeFor(snap, ids.freq, toNormalized(band.frequency, PARAMS.eq1Freq)) : undefined
+  const gainLfo = ids && drives(ids.gain) ? lfoRangeFor(snap, ids.gain, toNormalized(band.gain, PARAMS.eq1Gain)) : undefined
+  const qLfo = ids && drives(ids.q) ? lfoRangeFor(snap, ids.q, toNormalized(band.q, PARAMS.eq1Q)) : undefined
+  const widthLfo = ids && drives(ids.q) ? widthModulationRange(snap.fxLfos, ids.q, band.frequency, band.q) : undefined
+  const freqLive = ids ? liveControlNormalized(live[ids.freq], ids.freq, Boolean(freqLfo)) : undefined
+  const gainLive = ids ? liveControlNormalized(live[ids.gain], ids.gain, Boolean(gainLfo)) : undefined
+  const qLive = ids ? liveControlNormalized(live[ids.q], ids.q, Boolean(qLfo)) : undefined
+  const widthLive = widthLfo && ids ? liveWidthNormalized(band.frequency, live[ids.q]) : undefined
   const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
   useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
   const instanceCurve = eqTone(eqColorIndex(snap.chain, instanceId), readThemeColors()).curve
@@ -62,6 +68,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
 
   return (
+    <ModulationScopeProvider instanceId={instanceId} bandId={band.id} includeUnscoped={includeUnscoped}>
     <article
       className={`${styles.strip} ${selected ? styles.stripOn : ''} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
       style={accent}
@@ -102,11 +109,12 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
         {eqStripVisibleSlots(band.type).map((slot) => (
           <KnobSlotFrame key={slot} slot={slot}>
             {slot === 'freq' ? (
-              <ParamSlot id={ids?.freq} afford={modulate}>
+              <ParamSlot id={ids?.freq} afford>
                 <ValueKnob
                   compact
                   label="Freq"
-                  valueText={formatEqHz(band.frequency)}
+                  valueText={formatEqHz(freqLive != null ? fromNormalized(freqLive, PARAMS.eq1Freq) : band.frequency)}
+                  baseValueText={freqLive != null ? formatEqHz(band.frequency) : undefined}
                   normalized={toNormalized(band.frequency, PARAMS.eq1Freq)}
                   lfoRange={freqLfo}
                   liveNormalized={freqLive}
@@ -144,11 +152,12 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
               </ParamSlot>
             ) : null}
             {slot === 'gain' ? (
-              <ParamSlot id={ids?.gain} afford={modulate}>
+              <ParamSlot id={ids?.gain} afford>
                 <ValueKnob
                   compact
                   label="Gain"
-                  valueText={`${band.gain.toFixed(1)} dB`}
+                  valueText={`${(gainLive != null ? fromNormalized(gainLive, PARAMS.eq1Gain) : band.gain).toFixed(1)} dB`}
+                  baseValueText={gainLive != null ? `${band.gain.toFixed(1)} dB` : undefined}
                   normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
                   lfoRange={gainLfo}
                   liveNormalized={gainLive}
@@ -166,7 +175,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
               </ParamSlot>
             ) : null}
             {slot === 'width' ? (
-              <ParamSlot id={ids?.q} afford={modulate}>
+              <ParamSlot id={ids?.q} afford>
                 <ValueKnob
                   compact
                   label="Width"
@@ -188,11 +197,12 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
               </ParamSlot>
             ) : null}
             {slot === 'q' ? (
-              <ParamSlot id={ids?.q} afford={modulate}>
+              <ParamSlot id={ids?.q} afford>
                 <ValueKnob
                   compact
                   label="Q"
-                  valueText={band.q.toFixed(2)}
+                  valueText={(qLive != null ? fromNormalized(qLive, PARAMS.eq1Q) : band.q).toFixed(2)}
+                  baseValueText={qLive != null ? band.q.toFixed(2) : undefined}
                   normalized={toNormalized(band.q, PARAMS.eq1Q)}
                   lfoRange={qLfo}
                   liveNormalized={qLive}
@@ -213,6 +223,7 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
         ))}
       </div>
     </article>
+    </ModulationScopeProvider>
   )
 }
 

@@ -25,6 +25,7 @@ import { PARAMS } from '../../audio/parameters/definitions'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoShapePicker } from '../controls/LfoShapePicker'
+import { useModulationScope } from '../controls/LfoParamShell'
 import { FxLfoSection } from '../inspector/FxLfoSection'
 import { lockModulationGesture, type ModulationPress } from '../mobile/gestureIntent'
 import {
@@ -222,6 +223,7 @@ function ModulationEditorSession({
   onClose: () => void
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const scope = useModulationScope()
   const titleId = useId()
   const [source, setSource] = useState<ModulationSourceId | null>(lfoConnected ? 'lfo' : null)
   const [advanced, setAdvanced] = useState(false)
@@ -289,7 +291,7 @@ function ModulationEditorSession({
       paramId={id}
       onChooseLfo={() => {
         setSource('lfo')
-        if (!lfoConnected) connectParameterLfo(engine, id)
+        if (!lfoConnected) connectParameterLfo(engine, id, scope)
       }}
       onChooseAutomation={() => {
         setSource('automation')

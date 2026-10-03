@@ -12,6 +12,20 @@ import {
 import { customColorsFromComputed, eqBandTone, eqTone } from './theme'
 import { colorWithAlpha, mixCssColor, parseCssColor, toCssHex } from './cssColor'
 
+function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const n = hex.replace('#', '')
+    const channel = (i: number) => {
+      const v = parseInt(n.slice(i, i + 2), 16) / 255
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+    }
+    return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4)
+  }
+  const hi = Math.max(lum(a), lum(b))
+  const lo = Math.min(lum(a), lum(b))
+  return (hi + 0.05) / (lo + 0.05)
+}
+
 describe('theme tokens', () => {
   it('defaults unknown storage values to studio-dark', () => {
     expect(parseThemePreference(null)).toBe('studio-dark')
@@ -30,6 +44,23 @@ describe('theme tokens', () => {
     expect(parseThemePreference('low-vision')).toBe('studio-dark')
     expect(THEME_IDS).toContain('custom')
     expect(parseThemePreference('dusk')).toBe('dusk')
+    expect(parseThemePreference('soft-slate')).toBe('soft-slate')
+    expect(parseThemePreference('warm-paper')).toBe('warm-paper')
+    expect(THEME_IDS).toContain('soft-slate')
+    expect(THEME_IDS).toContain('warm-paper')
+  })
+
+  it('keeps eyes-friendly text and borders readable', () => {
+    const themes = [
+      { text: '#f3efe8', surface: '#232b34', border: '#8ea0b0', canvas: '#1a2128' },
+      { text: '#2a261f', surface: '#ebe4d8', border: '#5c5348', canvas: '#f4efe6' },
+      { text: '#ebe6e1', surface: '#2c2531', border: '#8b8194', canvas: '#241e28' },
+    ]
+    for (const theme of themes) {
+      expect(contrast(theme.text, theme.surface)).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(theme.text, theme.canvas)).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(theme.border, theme.canvas)).toBeGreaterThanOrEqual(3)
+    }
   })
 
   it('maps system preference to studio-dark or light-studio', () => {

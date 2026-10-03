@@ -141,16 +141,17 @@ describe('parameter modulation state', () => {
     expect(eqModulationParamId(8, 'q')).toBeNull()
   })
 
-  it('keeps the slider thumb on the stored center and the live mark separate', () => {
+  it('puts the slider thumb on the effective value and keeps the range secondary', () => {
     const marks = sliderModulationMarks({
       center: 0.4,
       range: { min: 0.22, max: 0.58 },
       live: 0.51,
     })
-    expect(marks.thumb).toBe(0.4)
+    expect(marks.thumb).toBe(0.51)
     expect(marks.range).toEqual({ left: 22, width: 36 })
-    expect(marks.live).toBe(0.51)
+    expect(marks.live).toBeNull()
     expect(sliderModulationMarks({ center: 0.4, range: null, live: 0.9 }).live).toBeNull()
+    expect(sliderModulationMarks({ center: 0.4, range: null, live: 0.9 }).thumb).toBe(0.4)
   })
 
   it('reports LFO and automation together without mixing their ranges', () => {

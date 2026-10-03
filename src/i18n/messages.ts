@@ -171,6 +171,7 @@ export type Messages = {
     fft: string
     more: string
     fadeMs: (label: string, ms: number) => string
+    filters: string
   }
   waveform: {
     empty: string
@@ -405,6 +406,12 @@ export type Messages = {
     deleteNamed: (name: string) => string
     colors: Record<string, string>
     names: Record<ThemeId, string>
+    categories: {
+      monochromatic: string
+      color: string
+      light: string
+      eyes: string
+    }
   }
   sensory: {
     strings: string
@@ -859,6 +866,7 @@ export const EN: Messages = {
     fft: 'FFT',
     more: 'More edit actions',
     fadeMs: (label, ms) => `${label}  ${ms} ms`,
+    filters: 'Filters',
   },
   waveform: {
     empty: 'Load a sample to begin',
@@ -1129,6 +1137,14 @@ export const EN: Messages = {
       oled: 'OLED',
       dusk: 'Dusk',
       custom: 'Custom',
+      'soft-slate': 'Soft Slate',
+      'warm-paper': 'Warm Paper',
+    },
+    categories: {
+      monochromatic: 'Monochromatic',
+      color: 'Color',
+      light: 'Light',
+      eyes: 'Eyes Friendly',
     },
   },
   sensory: {
@@ -1640,6 +1656,7 @@ export const PL: Messages = {
     fft: 'FFT',
     more: 'Więcej edycji',
     fadeMs: (label, ms) => `${label}  ${ms} ms`,
+    filters: 'Filtry',
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
@@ -1910,6 +1927,14 @@ export const PL: Messages = {
       oled: 'OLED',
       dusk: 'Dusk',
       custom: 'Custom',
+      'soft-slate': 'Soft Slate',
+      'warm-paper': 'Warm Paper',
+    },
+    categories: {
+      monochromatic: 'Monochromatyczne',
+      color: 'Kolor',
+      light: 'Jasne',
+      eyes: 'Przyjazne oczom',
     },
   },
   sensory: {

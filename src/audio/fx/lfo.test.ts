@@ -3,8 +3,11 @@ import { defaultParamValues, PARAMS } from '../parameters/definitions'
 import { toNormalized } from '../parameters/mapping'
 import {
   applyFxLfos,
+  defaultFxLfo,
   defaultFxLfos,
   defaultLfoHold,
+  lfoAppliesToScope,
+  lfoDrivesInstance,
   eqBandHasLfo,
   eqBandLfoIds,
   liveEqBandsFromParams,
@@ -376,6 +379,79 @@ describe('moduleTypeForLfoKind', () => {
     expect(moduleTypeForLfoKind('input')).toBe('gain')
     expect(moduleTypeForLfoKind('filter')).toBe('filter')
     expect(moduleTypeForLfoKind('midside')).toBe('midside')
+  })
+})
+
+describe('lfo instance scope', () => {
+  it('keeps a scoped route on one effect instance', () => {
+    const params = defaultParamValues()
+    params.delayFeedback = 40
+    const lfos = defaultFxLfos()
+    lfos.delay[0] = {
+      ...defaultFxLfo(),
+      target: 'delayFeedback',
+      depth: 80,
+      rateHz: 1,
+      shape: 'square',
+      instanceId: 'delay-b',
+    }
+    const hold = defaultLfoHold()
+    const a = applyFxLfos(params, lfos, 0.25, hold, () => 0, { instanceId: 'delay-a' })
+    const b = applyFxLfos(params, lfos, 0.25, hold, () => 0, { instanceId: 'delay-b' })
+    expect(a.delayFeedback).toBe(params.delayFeedback)
+    expect(b.delayFeedback).not.toBe(params.delayFeedback)
+    expect(lfoDrivesInstance(lfos.delay[0]!, 'delay-b', true)).toBe(true)
+    expect(lfoDrivesInstance(lfos.delay[0]!, 'delay-a', true)).toBe(false)
+  })
+
+  it('still modulates speed from the unscoped track resolve when the gain module id is stored', () => {
+    const params = defaultParamValues()
+    const lfos = defaultFxLfos()
+    lfos.input[0] = {
+      ...defaultFxLfo(),
+      target: 'speed',
+      depth: 80,
+      rateHz: 1,
+      shape: 'square',
+      instanceId: 'gain-1',
+    }
+    const heard = applyFxLfos(params, lfos, 0, defaultLfoHold())
+    expect(heard.speed).not.toBeCloseTo(params.speed)
+    expect(heard.speed).toBeGreaterThan(0)
+    const foreign = applyFxLfos(params, lfos, 0, defaultLfoHold(), () => 0, { instanceId: 'delay-b' })
+    expect(foreign.speed).toBeCloseTo(params.speed)
+  })
+
+  it('skips an EQ route whose band id is no longer at that index', () => {
+    const params = defaultParamValues()
+    params.eq1Freq = 400
+    const lfos = defaultFxLfos()
+    lfos.eq1[0] = {
+      ...defaultFxLfo(),
+      target: 'eq1Freq',
+      depth: 80,
+      rateHz: 1,
+      shape: 'square',
+      bandId: 'band-a',
+    }
+    const hold = defaultLfoHold()
+    const skipped = applyFxLfos(params, lfos, 0.25, hold, () => 0, {
+      instanceId: 'eq-1',
+      bands: [{ id: 'band-b' }],
+    })
+    expect(skipped.eq1Freq).toBe(400)
+    expect(lfoAppliesToScope(lfos.eq1[0]!, { instanceId: 'eq-1', bands: [{ id: 'band-a' }] })).toBe(true)
+  })
+
+  it('clamps speed modulation inside the supported playback range', () => {
+    const low = modulateParam(PARAMS.speed.min, 'speed', -1, 100)
+    const high = modulateParam(PARAMS.speed.max, 'speed', 1, 100)
+    const mid = modulateParam(1, 'speed', 1, 40)
+    expect(low).toBeGreaterThan(0)
+    expect(low).toBeGreaterThanOrEqual(PARAMS.speed.min)
+    expect(high).toBeLessThanOrEqual(PARAMS.speed.max)
+    expect(Number.isFinite(mid)).toBe(true)
+    expect(mid).toBeGreaterThan(0)
   })
 })
 

@@ -20,7 +20,7 @@ type Props = {
   /** Touch: vertical movement scrolls, horizontal movement edits, a tap focuses. */
   gestureSafe?: boolean
   onFocusRequest?: () => void
-  /** Normalized LFO swing around the stored center. The thumb stays on `value`. */
+  /** Normalized LFO swing around the stored center. The thumb follows `liveValue`. */
   modulationRange?: { min: number; max: number }
 }
 
@@ -48,7 +48,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
   const [adjusting, setAdjusting] = useState(false)
   const labelId = useId()
   const descId = useId()
-  const announced = touchRange ? value : shownValue
+  const announced = shownValue
   const spoken = formatAccessibleValue(announced, def, locale)
   const description = paramDescription(id, locale)
   const nRef = useRef(n)
@@ -208,7 +208,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
   }
 
   const range = gestureSafe ? touchRange : modulationRange
-  const fillN = range ? n : shown
+  const fillN = shown
   return (
     <div ref={rowRef} className={styles.row} data-param-id={id} data-touch={gestureSafe ? 'true' : 'false'}>
       <div className={styles.meta}>
@@ -249,7 +249,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
                 {formatParamValue(value, def)}
               </span>
             ) : null}
-            <span className={styles.value}>{formatParamValue(range ? value : shownValue, def)}</span>
+            <span className={styles.value}>{formatParamValue(shownValue, def)}</span>
             {adjusting ? (
               <span className={styles.dragReadout} role="status">
                 <span>{paramLabel(id)}</span>
@@ -286,21 +286,14 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
       >
         {gestureSafe && range ? <ModulationMarks center={n} range={range} live={touchLive} /> : null}
         {!gestureSafe && modulationRange ? (
-          <>
-            <span
-              className={styles.modRange}
-              aria-hidden="true"
-              style={{
-                left: `${modulationRange.min * 100}%`,
-                width: `${Math.max(0, (modulationRange.max - modulationRange.min) * 100)}%`,
-              }}
-            />
-            <span
-              className={styles.modLive}
-              aria-hidden="true"
-              style={{ left: `${toNormalized(snap.liveParams[id], def) * 100}%` }}
-            />
-          </>
+          <span
+            className={styles.modRange}
+            aria-hidden="true"
+            style={{
+              left: `${modulationRange.min * 100}%`,
+              width: `${Math.max(0, (modulationRange.max - modulationRange.min) * 100)}%`,
+            }}
+          />
         ) : null}
         {gestureSafe && range ? null : <span className={styles.fill} style={{ width: `${fillN * 100}%` }} />}
       </div>

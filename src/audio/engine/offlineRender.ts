@@ -222,27 +222,22 @@ function scheduleEq(
   for (const slot of slots) {
     if (slot.type !== 'eq' || !slot.eq) continue
     const st = eqStateFor(state, slot.instanceId)
-    const overlay = slot.instanceId === state.primaryEqId
+    const primary = slot.instanceId === state.primaryEqId
+    const scope = { instanceId: slot.instanceId, includeUnscoped: primary }
     const heard = eqHeardBandLists(state.eqChannelMode, st.bands, st.bandsL, st.bandsR)
-    const left = overlay
-      ? modulatedEqBands(heard.left, state.params, state.automation, clock, state.fxLfos)
-      : { bands: heard.left, live: state.params }
+    const left = modulatedEqBands(heard.left, state.params, state.automation, clock, state.fxLfos, scope)
     const right =
       heard.left === heard.right
         ? left
-        : overlay
-          ? modulatedEqBands(heard.right, state.params, state.automation, clock, state.fxLfos)
-          : { bands: heard.right, live: state.params }
+        : modulatedEqBands(heard.right, state.params, state.automation, clock, state.fxLfos, scope)
     const combLive = left.live
-    const comb = overlay
-      ? {
-          ...st.comb,
-          teeth: combLive.eqcfTeeth ?? st.comb.teeth,
-          gain: combLive.eqcfGain ?? st.comb.gain,
-          spacing: combLive.eqcfSpacing ?? st.comb.spacing,
-          frequency: combLive.eqcfFreq ?? st.comb.frequency,
-        }
-      : st.comb
+    const comb = {
+      ...st.comb,
+      teeth: combLive.eqcfTeeth ?? st.comb.teeth,
+      gain: combLive.eqcfGain ?? st.comb.gain,
+      spacing: combLive.eqcfSpacing ?? st.comb.spacing,
+      frequency: combLive.eqcfFreq ?? st.comb.frequency,
+    }
     scheduleEqLane(ctx, slot.eq.left, left.bands, comb, now, nyquist)
     scheduleEqLane(ctx, slot.eq.right, right.bands, comb, now, nyquist)
   }

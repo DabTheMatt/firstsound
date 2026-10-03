@@ -39,7 +39,7 @@ import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../
 import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { engine } from '../../hooks/useEngine'
 import { PresetMenu } from '../controls/PresetMenu'
-import { LfoParamShell } from '../controls/LfoParamShell'
+import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
 import { combMatchesDefault, eqBandsMatchDefault, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
 import { EQ_BAND_LFO_KINDS } from '../../audio/fx/lfo'
 import { EQ_PRESET_CATEGORIES, EQ_PRESETS } from '../../audio/fx/eqPresets'
@@ -523,6 +523,8 @@ function ModuleInspector({
   const setPane = (next: 'main' | 'advanced') =>
     setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
   const hasAdvanced = type !== 'output'
+  const primaryEq = snap.chain.find((item) => item.type === 'eq')?.instanceId
+  const includeUnscoped = type !== 'eq' || instanceId === primaryEq
   const params = (ids: ParamId[]) =>
     variant === 'knob' ? (
       <div className={styles.knobs}>
@@ -534,6 +536,7 @@ function ModuleInspector({
       ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
     )
   return (
+    <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
     <section className={styles.module} aria-labelledby={`module-${instanceId}-title`}>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
@@ -789,6 +792,7 @@ function ModuleInspector({
         </>
       ) : null}
     </section>
+    </ModulationScopeProvider>
   )
 }
 
@@ -976,7 +980,8 @@ function EqEditor({
           selectedBand={openBand}
           comb={comb}
           toneIndex={toneIndex}
-          modulate={eqInstanceUsesSharedLfo(snap.chain, instanceId)}
+          live={snap.liveByInstance[instanceId]}
+          modulate={Boolean(snap.liveByInstance[instanceId]) || eqInstanceUsesSharedLfo(snap.chain, instanceId)}
           onSelectBand={chooseBand}
           onDragBand={(index, patch) => setBand(index, patch)}
         />

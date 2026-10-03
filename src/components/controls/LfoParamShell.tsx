@@ -1,4 +1,4 @@
-import { createContext, useContext, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { fxLfoIsActive, fxLfoKindForParam, isFxLfoTarget, lfoBinding } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -20,8 +20,35 @@ export function useModulationParamId(): ParamId | null {
   return useContext(ModulationParamContext)
 }
 
+export type ModulationScope = {
+  instanceId?: string
+  bandId?: string
+  /** Secondary EQ leaves this false so an unscoped route stays on the primary instance. */
+  includeUnscoped?: boolean
+}
+
+const ModulationScopeContext = createContext<ModulationScope>({})
+
+export function useModulationScope(): ModulationScope {
+  return useContext(ModulationScopeContext)
+}
+
+export function ModulationScopeProvider({
+  instanceId,
+  bandId,
+  includeUnscoped = true,
+  children,
+}: ModulationScope & { children: ReactNode }) {
+  const value = useMemo(
+    () => ({ instanceId, bandId, includeUnscoped }),
+    [instanceId, bandId, includeUnscoped],
+  )
+  return <ModulationScopeContext.Provider value={value}>{children}</ModulationScopeContext.Provider>
+}
+
 export function LfoParamShell({ id, afford = true, fill = false, children }: Props) {
   const snap = useEngine()
+  const scope = useModulationScope()
   const { armed, setArmed } = useFxLfoConnect()
   const kind = fxLfoKindForParam(id)
   const pickable = Boolean(armed && kind && armed.kind === kind && isFxLfoTarget(kind, id))
@@ -31,7 +58,11 @@ export function LfoParamShell({ id, afford = true, fill = false, children }: Pro
     if (!pickable || !kind || !armed) return
     event.preventDefault()
     event.stopPropagation()
-    engine.setFxLfoTarget(kind, armed.slot, id)
+    engine.setFxLfo(kind, armed.slot, {
+      target: id,
+      instanceId: scope.instanceId,
+      bandId: scope.bandId,
+    })
     setArmed(null)
   }
   const className = [styles.wrap, fill ? styles.fill : '', pickable ? styles.pickable : '', active ? styles.mapped : '']

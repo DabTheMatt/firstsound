@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   CUSTOM_COLOR_FIELDS,
+  THEME_CATEGORIES,
   THEME_OPTIONS,
   isUserThemePreference,
   nextSavedThemeName,
@@ -116,33 +117,45 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
           aria-label={t.theme.group}
           style={{ top: menuPos.top, left: menuPos.left, right: 'auto' }}
         >
-          {THEME_OPTIONS.map((opt) => {
-            const swatch =
-              opt.id === 'custom'
-                ? { bg: customColors.bgApp, surface: customColors.bgElevated, accent: customColors.accent }
-                : opt.preview
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                role="option"
-                className={styles.option}
-                aria-selected={preference === opt.id}
-                onClick={() => setPreference(opt.id as ThemePreference)}
-              >
-                <span className={styles.swatches} aria-hidden="true">
-                  <span className={styles.dot} style={{ background: swatch.bg }} />
-                  <span className={styles.dot} style={{ background: swatch.surface }} />
-                  <span className={styles.dot} style={{ background: swatch.accent }} />
-                </span>
-                {opt.id === 'system'
-                  ? t.theme.system
-                  : opt.id === 'custom'
-                    ? t.theme.custom
-                    : t.theme.names[opt.id as ThemeId] ?? opt.label}
-              </button>
-            )
-          })}
+          {THEME_OPTIONS.filter((opt) => opt.id === 'system').map((opt) => (
+            <ThemeOptionButton
+              key={opt.id}
+              opt={opt}
+              preference={preference}
+              customColors={customColors}
+              label={t.theme.system}
+              onSelect={setPreference}
+            />
+          ))}
+          {THEME_CATEGORIES.map((group) => (
+            <div key={group.id} className={styles.group}>
+              <p className={styles.customTitle}>{t.theme.categories[group.id]}</p>
+              {group.themeIds.map((id) => {
+                const opt = THEME_OPTIONS.find((item) => item.id === id)
+                if (!opt) return null
+                return (
+                  <ThemeOptionButton
+                    key={id}
+                    opt={opt}
+                    preference={preference}
+                    customColors={customColors}
+                    label={t.theme.names[id] ?? opt.label}
+                    onSelect={setPreference}
+                  />
+                )
+              })}
+            </div>
+          ))}
+          {THEME_OPTIONS.filter((opt) => opt.id === 'custom').map((opt) => (
+            <ThemeOptionButton
+              key={opt.id}
+              opt={opt}
+              preference={preference}
+              customColors={customColors}
+              label={t.theme.custom}
+              onSelect={setPreference}
+            />
+          ))}
           {savedThemes.length > 0 ? (
             <>
               <p className={styles.customTitle}>{t.theme.myThemes}</p>
@@ -219,6 +232,41 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         )
         : null}
     </div>
+  )
+}
+
+function ThemeOptionButton({
+  opt,
+  preference,
+  customColors,
+  label,
+  onSelect,
+}: {
+  opt: (typeof THEME_OPTIONS)[number]
+  preference: ThemePreference
+  customColors: { bgApp: string; bgElevated: string; accent: string }
+  label: string
+  onSelect: (id: ThemePreference) => void
+}) {
+  const swatch =
+    opt.id === 'custom'
+      ? { bg: customColors.bgApp, surface: customColors.bgElevated, accent: customColors.accent }
+      : opt.preview
+  return (
+    <button
+      type="button"
+      role="option"
+      className={styles.option}
+      aria-selected={preference === opt.id}
+      onClick={() => onSelect(opt.id)}
+    >
+      <span className={styles.swatches} aria-hidden="true">
+        <span className={styles.dot} style={{ background: swatch.bg }} />
+        <span className={styles.dot} style={{ background: swatch.surface }} />
+        <span className={styles.dot} style={{ background: swatch.accent }} />
+      </span>
+      {label}
+    </button>
   )
 }
 

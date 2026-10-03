@@ -372,6 +372,71 @@
   transform: translate(calc(-100% - 12px), -50%);
 }
 
+.cursorReadoutLow {
+  transform: translate(12px, 8px);
+}
+
+.cursorReadoutFlip.cursorReadoutLow {
+  transform: translate(calc(-100% - 12px), 8px);
+}
+
+.graphMenu {
+  position: absolute;
+  z-index: 5;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.graphMenuButton {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.graphMenuPanel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.graphMenuPanel button {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+}
+
+.graphMenuPanel button[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--bg-control);
+}
+
 .settingsBtn {
   min-width: 44px;
   min-height: 44px;

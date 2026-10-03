@@ -22,13 +22,19 @@ import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { bandIsActive, EQ_FILTER_TYPES, eqStripKey } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import {
-  FREQ_SCALE_HZ,
   formatFreqTick,
   formatHoverFreq,
   musicalScaleHz,
-  freqTickIsMajor,
   visibleAxisLabelIndices,
 } from '../../audio/engine/pitchScale'
+import {
+  frequencyGuideHz,
+  frequencyGuideLabelEvery,
+  loadFreqGridDensity,
+  persistFreqGridDensity,
+  subscribeFreqGridDensity,
+  type FreqGridDensity,
+} from '../../audio/engine/freqGrid'
 import {
   SPECTRUM_AXIS_MIN_HZ,
   SPECTRUM_BAND_CHOICES,
@@ -93,7 +99,6 @@ import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSp
 import {
   SPECTRUM_HZ_LABEL_OFFSET,
   compactDbMarks,
-  phoneFrequencyTicks,
   spectrumPlotPad,
 } from '../../audio/engine/spectrumPlotLayout'
 import {
@@ -214,10 +219,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const plotRef = useRef<HTMLDivElement>(null)
   const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const freqScaleRef = useRef(freqScale)
+  const [gridDensity, setGridDensity] = useState<FreqGridDensity>(() => loadFreqGridDensity())
+  const gridDensityRef = useRef(gridDensity)
+  const [gridOpen, setGridOpen] = useState(false)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
-  const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean } | null>(null)
+  const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean; low: boolean } | null>(null)
   const [selectedBand, setSelectedBand] = useState<EqBandSelection | null>(null)
   const [qArmed, setQArmed] = useState(false)
   const [liveGesture, setLiveGesture] = useState<FocusGesture>('idle')
@@ -250,6 +258,18 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     freqScaleRef.current = freqScale
     persistFreqScale(freqScale)
   }, [freqScale])
+
+  useEffect(() => {
+    gridDensityRef.current = gridDensity
+  }, [gridDensity])
+
+  useEffect(
+    () =>
+      subscribeFreqGridDensity((density) => {
+        setGridDensity((current) => (current === density ? current : density))
+      }),
+    [],
+  )
 
   useEffect(
     () =>
@@ -390,9 +410,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
-        const hzSource = tight || phoneScale ? phoneFrequencyTicks(width / dpr) : FREQ_SCALE_HZ
-        const hzTicks = hzSource.filter((hz) => hz >= minHz - 1 && hz <= maxHz + 1).map((hz) => {
-          const major = freqTickIsMajor(hz)
+        const density = gridDensityRef.current
+        const labelEvery = frequencyGuideLabelEvery(density)
+        const hzSource = frequencyGuideHz(minHz, maxHz, density)
+        const hzTicks = hzSource.map((hz, index) => {
+          const major = index % labelEvery === 0
           ctx.font = `${(major ? 8 : 7) * dpr}px ui-sans-serif, system-ui, sans-serif`
           const label = formatFreqTick(hz)
           return {
@@ -406,8 +428,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const hzLabelOn = visibleAxisLabelIndices(hzTicks, 6 * dpr)
         for (let i = 0; i < hzTicks.length; i++) {
           const tick = hzTicks[i]!
-          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, tick.major ? 0.85 : 0.4)
-          ctx.lineWidth = dpr * (tick.major ? 0.7 : 0.35)
+          ctx.strokeStyle = colorWithAlpha(colors.textMuted, tick.major ? 0.72 : 0.38)
+          ctx.lineWidth = dpr * (tick.major ? 1.05 : 0.7)
           ctx.beginPath()
           ctx.moveTo(tick.x, top)
           ctx.lineTo(tick.x, bottom)
@@ -742,8 +764,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ctx.textBaseline = tight ? 'bottom' : 'top'
         ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.62 : 1)
         for (let i = 0; i < hzTicks.length; i++) {
-          if (!hzLabelOn.has(i)) continue
           const tick = hzTicks[i]!
+          if (!tick.major || !hzLabelOn.has(i)) continue
           ctx.font = `${(tick.major ? 9 : 8) * dpr}px ui-sans-serif, system-ui, sans-serif`
           ctx.fillText(
             tick.label,
@@ -778,6 +800,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       drag.current = null
       setDragNode(null)
       setLiveGesture('idle')
+      if (event.pointerType !== 'mouse') setHover(null)
     }
     try {
       event.currentTarget.releasePointerCapture(event.pointerId)
@@ -854,6 +877,20 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     const y = event.clientY - rect.top
     const band = (snap.eqById[d.instanceId]?.bands ?? snap.eqBands)[d.index]
     if (!band) return
+    const canvas = canvasRef.current
+    if (canvas) {
+      const crect = canvas.getBoundingClientRect()
+      const hx = event.clientX - crect.left
+      const hy = event.clientY - crect.top
+      const pad = spectrumPlotPad({
+        compact: compactRef.current,
+        focus: phoneFocusRef.current,
+        phoneEq: phoneEqRef.current && !phoneFocusRef.current,
+      })
+      const plotMax = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
+      const hz = xToHz(hx, SPECTRUM_AXIS_MIN_HZ, plotMax, pad.left, crect.width - pad.right, freqScaleRef.current)
+      setHover({ x: hx, y: hy, label: formatHoverFreq(hz), flip: hx > crect.width * 0.68, low: hy < 28 })
+    }
     if (phoneFocusRef.current && d.mode === 'q') {
       engine.setEqBand(d.index, { q: qFromVertical(d.q0, d.y0 - event.clientY) }, d.instanceId)
       return
@@ -1350,6 +1387,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             graphDown.current = { id: event.pointerId, x: event.clientX, y: event.clientY, t: performance.now() }
           }}
           onPointerUp={(event) => {
+            if (event.pointerType !== 'mouse') setHover(null)
             const start = graphDown.current
             graphDown.current = null
             if (!phoneEq || !start || start.id !== event.pointerId || drag.current) return
@@ -1385,8 +1423,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               return
             }
             const hz = xToHz(x, SPECTRUM_AXIS_MIN_HZ, maxHz, left, right, freqScaleRef.current)
-            setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68 })
+            setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68, low: y < 28 })
           }}
+          onPointerCancel={() => setHover(null)}
           onPointerLeave={() => setHover(null)}
         />
         <div
@@ -1411,18 +1450,20 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const plotMaxHz = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
             const sr = snap.sampleRate || 44100
             const dragging = dragNode?.instanceId === mod.instanceId && dragNode.index === index
+            const instanceLive = snap.liveByInstance[mod.instanceId]
+            const motionLive = instanceLive ?? snap.liveParams
             const motion = eqNodeMotion({
               band,
               index,
               lfos: snap.fxLfos,
               automation: snap.automation,
-              live: snap.liveParams,
+              live: motionLive,
               timeSec: snap.transportSec,
               playing: snap.playing,
               dragging,
-              modulate,
+              modulate: Boolean(instanceLive) || modulate,
             })
-            const liveBands = modulate ? liveEqBandsFromParams(bands, snap.liveParams) : bands
+            const liveBands = instanceLive || modulate ? liveEqBandsFromParams(bands, motionLive) : bands
             const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
             const xPct = freqToX(motion.frequencyHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
             const yPct = spectrumEqOverlayY(eqNodePlotDb(anchor, motion.frequencyHz, sr), 0, 100)
@@ -1436,26 +1477,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const nodeColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.node
             const curveColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.curve
             const nodeY = Math.min(100, Math.max(0, yPct))
-            const showCenter = motion.freqOffset || motion.gainOffset
-            const centerAnchor = showCenter
-              ? eqNodeAnchorBands(liveBands, index, motion.centerHz, motion.centerGainDb, motion.centerQ)
-              : null
-            const centerX = showCenter
-              ? freqToX(motion.centerHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
-              : 0
-            const centerY = centerAnchor
-              ? spectrumEqOverlayY(eqNodePlotDb(centerAnchor, motion.centerHz, sr), 0, 100)
-              : 0
             return (
               <Fragment key={eqStripKey(mod.instanceId, band)}>
-              {showCenter ? (
-                <span
-                  className={styles.modCenter}
-                  data-eq-center=""
-                  aria-hidden="true"
-                  style={{ left: `${centerX}%`, top: `${Math.min(100, Math.max(0, centerY))}%` }}
-                />
-              ) : null}
               <button
                 type="button"
                 data-eq-node=""
@@ -1564,14 +1587,43 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             </button>
           </div>
         ) : null}
-        {hover && !phoneFocus ? (
+        {hover ? (
           <div
-            className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''}`}
+            className={`${styles.cursorReadout} ${hover.flip ? styles.cursorReadoutFlip : ''} ${hover.low ? styles.cursorReadoutLow : ''}`}
             style={{ left: hover.x, top: hover.y }}
           >
             {hover.label}
           </div>
         ) : null}
+        <div className={styles.graphMenu}>
+          <button
+            type="button"
+            className={styles.graphMenuButton}
+            aria-expanded={gridOpen}
+            aria-label="Graph settings"
+            onClick={() => setGridOpen((open) => !open)}
+          >
+            •••
+          </button>
+          {gridOpen ? (
+            <div className={styles.graphMenuPanel} role="group" aria-label="Grid">
+              <span>Grid</span>
+              {([6, 12, 24] as const).map((density) => (
+                <button
+                  key={density}
+                  type="button"
+                  aria-pressed={gridDensity === density}
+                  onClick={() => {
+                    setGridDensity(density)
+                    persistFreqGridDensity(density)
+                  }}
+                >
+                  {density}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )

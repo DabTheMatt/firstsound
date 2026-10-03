@@ -7,6 +7,7 @@ import {
   type FxLfoKind,
   type FxLfoMap,
   type LfoHoldState,
+  type LfoScope,
 } from '../fx/lfo'
 import { PARAMS } from '../parameters/definitions'
 import { applyRandomOffset, automationOwnsCenter } from '../random/ownership'
@@ -482,10 +483,11 @@ export function resolvePerformanceParams(
   hold: LfoHoldState,
   rand?: () => number,
   randomOffsets?: Partial<Record<ParamId, number>>,
+  scope?: LfoScope,
 ): Record<ParamId, number> {
   const automated = playing ? applyAutomation(manual, automation, timeSec) : manual
   const base = withRandomOffsets(automated, automation, playing, randomOffsets)
-  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold, rand) : base
+  const modulated = anyFxLfoActive(lfos) ? applyFxLfos(base, lfos, lfoTimeSec, hold, rand, scope) : base
   // Linked pairs (delay correlate, L/R link) follow the automated or modulated
   // value. Skip when the result is still the stored object so a stopped
   // transport cannot rewrite the manual knobs.

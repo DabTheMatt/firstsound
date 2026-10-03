@@ -73,27 +73,38 @@
   text-align: left;
 }
 
-.load {
+.load,
+.reset,
+.settings {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   flex: none;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 12px;
+  height: var(--toolbar-h);
+  min-height: var(--toolbar-h);
+  padding: 0 var(--toolbar-pad-x);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--toolbar-radius);
   background: transparent;
   color: var(--text-primary);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: var(--toolbar-font);
+  letter-spacing: var(--toolbar-tracking);
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
 }
 
-.load:hover {
+.resetArmed {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.load:hover,
+.reset:hover,
+.settings:focus-visible,
+.reset:focus-visible,
+.load:focus-visible {
   background: var(--bg-control-hover);
 }
 
@@ -104,8 +115,8 @@
   gap: 6px;
   box-sizing: border-box;
   flex: none;
-  height: 28px;
-  min-height: 28px;
+  height: var(--toolbar-h);
+  min-height: var(--toolbar-h);
   padding: 0 10px;
   border: 1px solid var(--danger);
   border-radius: 999px;
@@ -165,21 +176,11 @@
 }
 
 .settings {
-  flex: none;
-  min-height: 36px;
   min-width: 36px;
-  padding: 0 14px;
-  white-space: nowrap;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 
-.settings:hover {
+.settings:hover,
+.reset:hover {
   background: var(--bg-control-hover);
 }
 
@@ -188,11 +189,12 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  min-height: 28px;
+  height: var(--toolbar-h);
+  min-height: var(--toolbar-h);
   min-width: 28px;
   padding: 0 8px;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--toolbar-radius);
   background: transparent;
   color: var(--text-secondary);
 }
@@ -269,6 +271,19 @@
 }
 
 /* Sample rate and runtime yield space before Load Sample, Theme, or Record can clip. */
+@container app-header (max-width: 1180px) {
+  .tools,
+  .trailing {
+    gap: 4px;
+  }
+
+  .load,
+  .reset,
+  .settings {
+    padding: 0 8px;
+  }
+}
+
 @container app-header (max-width: 1180px) {
   .meta {
     display: none;

@@ -8,6 +8,12 @@
   --radius-pill: 999px;
   --font: 'Inter', system-ui, sans-serif;
   --theme-shift: 150ms ease;
+  --toolbar-h: 32px;
+  --toolbar-radius: 8px;
+  --toolbar-pad-x: 12px;
+  --toolbar-font: 10px;
+  --toolbar-tracking: 0.12em;
+  --field-stack-gap: 12px;
 }
 
 *,

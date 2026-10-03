@@ -61,6 +61,7 @@ import {
   type FxLfoKind,
   type FxLfoMap,
   type LfoHoldState,
+  type LfoScope,
 } from '../fx/lfo'
 import {
   automationHasNodes,
@@ -413,10 +414,12 @@ export type EngineSnapshot = {
   scrubMode: ScrubMode
   params: Record<ParamId, number>
   /**
-   * Parameter values after automation (while playing), LFO, and filter modulation.
-   * Same as `params` when transport is stopped and no modulator is running.
+   * Parameter values after automation (while playing), unscoped LFO, and filter modulation.
+   * Instance-scoped routes live in `liveByInstance` so one effect cannot overwrite another.
    */
   liveParams: Record<ParamId, number>
+  /** Effective parameters for effect instances that can carry their own LFO route. */
+  liveByInstance: Record<string, Record<ParamId, number>>
   /** Transport time used to build `liveParams`. Stopped playback stays at 0. */
   transportSec: number
   automation: AutomationDocument
@@ -2769,6 +2772,9 @@ export class AudioEngine {
           const other = this.fxLfos[kind][s]
           if (s !== i && other?.target === next.target) other.target = null
         }
+      } else {
+        next.instanceId = undefined
+        next.bandId = undefined
       }
     }
     this.fxLfos[kind][i] = next
@@ -5554,18 +5560,15 @@ export class AudioEngine {
     for (const slot of this.slots.values()) {
       if (slot.type !== 'eq' || !slot.eq) continue
       const st = this.eqState(slot.instanceId)
-      const overlay = slot.instanceId === this.primaryEqId()
+      const primary = slot.instanceId === this.primaryEqId()
+      const scope: LfoScope = { instanceId: slot.instanceId, includeUnscoped: primary }
       const heard = eqHeardBandLists(this.eqChannelMode, st.bands, st.bandsL, st.bandsR)
-      const left = overlay
-        ? modulatedEqBands(heard.left, this.params, this.automation, clock, this.fxLfos)
-        : { bands: heard.left, live: this.params }
+      const left = modulatedEqBands(heard.left, this.params, this.automation, clock, this.fxLfos, scope)
       const right =
         heard.left === heard.right
           ? left
-          : overlay
-            ? modulatedEqBands(heard.right, this.params, this.automation, clock, this.fxLfos)
-            : { bands: heard.right, live: this.params }
-      const comb = overlay ? this.liveComb(st.comb, left.live) : st.comb
+          : modulatedEqBands(heard.right, this.params, this.automation, clock, this.fxLfos, scope)
+      const comb = this.liveComb(st.comb, left.live)
       this.syncEqLane(slot.eq.left, left.bands, comb, now, smoothing, nyquist)
       this.syncEqLane(slot.eq.right, right.bands, comb, now, smoothing, nyquist)
     }
@@ -5876,8 +5879,8 @@ export class AudioEngine {
     return 0
   }
 
-  private liveParams(): Record<ParamId, number> {
-    if (!this.suppressClock) {
+  private liveParams(scope?: LfoScope): Record<ParamId, number> {
+    if (!this.suppressClock && !scope) {
       const now = typeof performance !== 'undefined' ? performance.now() : 0
       const stamp = this.filterFollowStamp
       this.followDt = stamp > 0 ? Math.min(0.05, (now - stamp) / 1000) : 0.016
@@ -5888,11 +5891,12 @@ export class AudioEngine {
     this.updateFilterFollower(this.followDt)
     const transport = this.lastTransportSec
     const clocks = { lfoSec: this.lfoClockSec, filterSec: this.filterClockSec }
-    const primaryId = this.chain.find((mod) => mod.type === 'eq')?.instanceId
-    const primaryBands = primaryId ? this.eqById.get(primaryId) : undefined
-    const manual = primaryBands
-      ? withEqBandCenters(this.params, this.eqEditBands(primaryBands))
-      : this.params
+    const scopedEq =
+      scope?.instanceId && this.chain.some((mod) => mod.instanceId === scope.instanceId && mod.type === 'eq')
+        ? scope.instanceId
+        : this.chain.find((mod) => mod.type === 'eq')?.instanceId
+    const eqBands = scopedEq ? this.eqById.get(scopedEq) : undefined
+    const manual = eqBands ? withEqBandCenters(this.params, this.eqEditBands(eqBands)) : this.params
     const performed = resolvePerformanceParams(
       manual,
       this.automation,
@@ -5903,6 +5907,7 @@ export class AudioEngine {
       this.lfoHold,
       undefined,
       this.randomOffsets,
+      scope ? { ...scope, bands: eqBands ? this.eqEditBands(eqBands) : undefined } : undefined,
     )
     return applyFilterModulation(performed, {
       timeSec: clocks.filterSec,
@@ -5911,6 +5916,21 @@ export class AudioEngine {
       follower01: this.filterFollower,
       snh: this.filterSnh,
     })
+  }
+
+  /** One effective parameter set per effect instance. Unscoped routes still reach the primary EQ only once. */
+  private instanceLiveParams(): Record<string, Record<ParamId, number>> {
+    if (!anyFxLfoActive(this.fxLfos) && !automationHasNodes(this.automation)) return {}
+    const primary = this.primaryEqId()
+    const out: Record<string, Record<ParamId, number>> = {}
+    for (const mod of this.chain) {
+      if (mod.type === 'gain' || mod.type === 'output') continue
+      out[mod.instanceId] = this.liveParams({
+        instanceId: mod.instanceId,
+        includeUnscoped: mod.type !== 'eq' || mod.instanceId === primary,
+      })
+    }
+    return out
   }
 
   private updateFilterFollower(dtSec: number): void {
@@ -5964,9 +5984,17 @@ export class AudioEngine {
   private applyFxParams(smoothing: number): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    const params = this.liveParams()
-    const bpm = params.bpm
+    const primary = this.primaryEqId()
+    const paramsFor = (instanceId: string) => {
+      const mod = this.chain.find((item) => item.instanceId === instanceId)
+      return this.liveParams({
+        instanceId,
+        includeUnscoped: !mod || mod.type !== 'eq' || instanceId === primary,
+      })
+    }
     for (const slot of this.slots.values()) {
+      const params = paramsFor(slot.instanceId)
+      const bpm = params.bpm
       if (slot.filterFx) {
         applyFilterGraph(slot.filterFx, params, now, smoothing, this.ctx.sampleRate)
       }
@@ -6049,15 +6077,22 @@ export class AudioEngine {
     this.applyTrackMix(smoothing)
     this.syncEqListen()
     if (this.playing && this.engineMode === 'playback' && !this.usingProjectTransport && this.loadedTrackCount() < 2) {
-      const live = this.liveParams()
       const now = this.ctx.currentTime
-      if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
+      const rateLive = this.trackRateIsLive(this.selectedTrackId)
+      // Speed and pitch LFOs stay on the grain clock. Forcing playbackRate to 1
+      // every tick left the buffer voice static while the knob marker moved.
+      if (!this.schedulerId && (rateLive || playbackNeedsStretch(this.params.speed, this.params.pitch))) {
         this.handoffToStretch(now)
-      } else if (this.source && !this.schedulerId && this.loopScheduling) {
-        try {
-          setSmoothedAudioParam(this.source.playbackRate, 1, now, 'pitch')
-        } catch {
-          /* voice already stopped */
+      } else if (this.source && !this.schedulerId && this.loopScheduling && !rateLive) {
+        const live = this.liveParams()
+        if (playbackNeedsStretch(live.speed, live.pitch)) {
+          this.handoffToStretch(this.ctx.currentTime)
+        } else {
+          try {
+            setSmoothedAudioParam(this.source.playbackRate, 1, now, 'pitch')
+          } catch {
+            /* voice already stopped */
+          }
         }
       }
     }
@@ -6071,12 +6106,16 @@ export class AudioEngine {
     const outSlot = [...this.slots.values()].find((s) => s.type === 'output')
     const live = this.liveParams()
     const channels = this.trackBuffers.get(this.activeTrackId())?.numberOfChannels ?? this.buffer?.numberOfChannels ?? 2
+    const panMoving = live.pan !== this.params.pan
+    const mixMoving = live.mixPan !== this.params.mixPan
+    const stagePan = panMoving ? live.pan : mixMoving ? live.mixPan : live.pan
+    const heardPan = mixMoving ? live.mixPan : panMoving ? live.pan : live.mixPan
     if (gainSlot?.stereo) {
       applyStereoStage(
         gainSlot.stereo,
         {
           gainDb: live.gain,
-          pan: 0,
+          pan: stagePan,
           leftDb: live.channelGainL,
           rightDb: live.channelGainR,
           mono: live.makeMono > 0.5,
@@ -6091,7 +6130,7 @@ export class AudioEngine {
     }
     if (outSlot) setSmoothedAudioParam(outSlot.output.gain, 1, now, 'gain')
     this.mixerHeard.set(this.activeTrackId(), {
-      pan: live.mixPan,
+      pan: heardPan,
       level: trackLevelGain(live.mixVolume),
       midDb: live.mixMid,
       sideDb: live.mixSide,
@@ -7402,6 +7441,8 @@ export class AudioEngine {
   }
 
   private buildSnapshot(): EngineSnapshot {
+    const liveParams = { ...this.liveParams() }
+    const liveByInstance = this.instanceLiveParams()
     return {
       fileName: this.fileName,
       duration: this.buffer?.duration ?? 0,
@@ -7454,7 +7495,8 @@ export class AudioEngine {
       audioStatus: this.audioStatus,
       scrubMode: this.scrubMode,
       params: { ...this.params },
-      liveParams: { ...this.liveParams() },
+      liveParams,
+      liveByInstance,
       transportSec: this.lastTransportSec,
       chain: this.chain.map((m) => ({ ...m })),
       eqBands: this.eqBands.map((b) => ({ ...b })),

@@ -7,6 +7,7 @@ import {
   liveEqBandsFromParams,
   type FxLfoMap,
   type LfoHoldState,
+  type LfoScope,
 } from '../fx/lfo'
 import type { ParamId } from '../parameters/types'
 import type { EqChannelMode } from './eqGraph'
@@ -64,6 +65,7 @@ export function modulatedEqBands<T extends EqCenterBand>(
   automation: AutomationDocument,
   clock: EqModClock,
   lfos: FxLfoMap,
+  scope?: LfoScope,
 ): { bands: T[]; live: Record<ParamId, number> } {
   const centered = withEqBandCenters(manual, bands)
   const live = resolvePerformanceParams(
@@ -76,6 +78,7 @@ export function modulatedEqBands<T extends EqCenterBand>(
     clock.hold,
     clock.rand,
     clock.randomOffsets,
+    { ...scope, bands: bands as readonly { id?: string }[] },
   )
   return { bands: liveEqBandsFromParams(bands, live), live }
 }

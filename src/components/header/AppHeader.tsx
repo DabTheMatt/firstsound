@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
+import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
@@ -37,6 +39,7 @@ export function AppHeader({
   modeSwitch,
 }: Props) {
   const { t } = useI18n()
+  const [confirmReset, setConfirmReset] = useState(false)
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
   const folded = snap.params.makeMono > 0.5
   const ch = folded
@@ -84,6 +87,17 @@ export function AppHeader({
             </span>
           </span>
         </button>
+        <div className={styles.runtime}>
+          <RuntimeStatus />
+        </div>
+        {!minimal ? (
+          <p className={styles.meta}>
+            <span>{rate}</span>
+            <span>{ch}</span>
+            <span>{snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}</span>
+          </p>
+        ) : null}
+        {minimal ? null : modeSwitch}
         <button
           type="button"
           className={`${styles.lfo} ${lfoCenterOpen ? styles.lfoOn : ''} ${anyFxLfoActive(snap.fxLfos) ? styles.lfoLive : ''}`}
@@ -105,18 +119,30 @@ export function AppHeader({
       </div>
       )}
       <div className={styles.trailing}>
-        <div className={styles.runtime}>
-          <RuntimeStatus />
-        </div>
-        <ChaosControl />
         {!minimal ? (
-          <p className={styles.meta}>
-            <span>{rate}</span>
-            <span>{ch}</span>
-            <span>{snap.sampleLoaded ? formatTimecode(snap.duration) : '00:00.000'}</span>
-          </p>
+          <button
+            type="button"
+            className={`${styles.reset} ${confirmReset ? styles.resetArmed : ''}`}
+            data-reset=""
+            aria-pressed={confirmReset}
+            onClick={() => {
+              if (!confirmReset) {
+                setConfirmReset(true)
+                return
+              }
+              engine.resetAll()
+              setConfirmReset(false)
+            }}
+          >
+            {confirmReset ? t.settings.resetAll : t.settings.resetAll}
+          </button>
         ) : null}
-        {minimal ? null : modeSwitch}
+        {confirmReset && !minimal ? (
+          <button type="button" className={styles.reset} onClick={() => setConfirmReset(false)}>
+            {t.random.cancel}
+          </button>
+        ) : null}
+        <ChaosControl />
         {minimal ? (
         <button
           type="button"

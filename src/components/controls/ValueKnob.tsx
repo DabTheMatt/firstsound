@@ -30,10 +30,12 @@ type Props = {
   compact?: boolean
   /** Smaller dial that stays visually secondary to a compact knob. */
   mini?: boolean
-  /** Thin outer ring showing LFO ±depth around the stored zero. */
+  /** Thin arc showing the real LFO range around the stored center. */
   lfoRange?: { min: number; max: number }
-  /** Current modulated position on the same normalized scale. The needle stays on the center. */
+  /** Current modulated position. The needle follows this when it is set. */
   liveNormalized?: number
+  /** Larger, quieter dial used in Focus Mode. */
+  focus?: boolean
   onChange: (normalized: number) => void
   onReset?: () => void
   onGestureEnd?: () => void
@@ -90,6 +92,7 @@ export function ValueKnob({
   mini = false,
   lfoRange,
   liveNormalized,
+  focus = false,
   onChange,
   onReset,
   onGestureEnd,
@@ -280,13 +283,19 @@ export function ValueKnob({
     else onChange(next.normalized)
   }
 
-  const shown = visualNormalized ?? normalized
+  const liveN =
+    liveNormalized != null && Number.isFinite(liveNormalized)
+      ? Math.min(1, Math.max(0, liveNormalized))
+      : null
+  const shown = visualNormalized ?? liveN ?? normalized
   const shownText = visualValueText ?? valueText
   const paramId = useModulationParamId()
   const cx = 42
   const cy = 42
   const r = 24
-  const rangeR = 36
+  const rangeR = r + 5
+  const trackWidth = focus ? 1.5 : 3
+  const valueWidth = focus ? 2 : 3
   const tipDeg = knobAngleDeg(shown)
   const needle = polar(cx, cy, r - 6, tipDeg)
   const track = arcPath(cx, cy, r, 135, 405)
@@ -295,15 +304,6 @@ export function ValueKnob({
   const rangeStartDeg = lfoRange ? knobAngleDeg(lfoRange.min) : 0
   const rangeEndDeg = lfoRange ? knobAngleDeg(lfoRange.max) : 0
   const rangeArc = lfoRange ? arcPath(cx, cy, rangeR, rangeStartDeg, rangeEndDeg) : ''
-  const rangeStart = lfoRange ? polar(cx, cy, rangeR, rangeStartDeg) : null
-  const rangeEnd = lfoRange ? polar(cx, cy, rangeR, rangeEndDeg) : null
-  const zeroTick = lfoRange ? polar(cx, cy, rangeR, knobAngleDeg(normalized)) : null
-  const liveDeg =
-    lfoRange && liveNormalized != null && Number.isFinite(liveNormalized)
-      ? knobAngleDeg(Math.min(1, Math.max(0, liveNormalized)))
-      : null
-  const liveTickInner = liveDeg == null ? null : polar(cx, cy, rangeR - 4, liveDeg)
-  const liveTickOuter = liveDeg == null ? null : polar(cx, cy, rangeR + 3.5, liveDeg)
   const marker =
     markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
   const caption = presentParamLabel(label)
@@ -319,7 +319,7 @@ export function ValueKnob({
   return (
       <div
         ref={rootRef}
-        className={`${styles.knob} ${dialOnly ? styles.dialOnly : mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
+        className={`${styles.knob} ${focus ? styles.focus : ''} ${dialOnly ? styles.dialOnly : mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
         title={description}
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
@@ -382,7 +382,7 @@ export function ValueKnob({
             d={track}
             fill="none"
             stroke="var(--border-strong)"
-            strokeWidth="3"
+            strokeWidth={trackWidth}
             strokeLinecap="round"
           />
           {fill ? (
@@ -391,16 +391,7 @@ export function ValueKnob({
               d={fill}
               fill="none"
               stroke="var(--knob-arc, var(--accent-primary))"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          ) : null}
-          {lfoRange ? (
-            <path
-              d={arcPath(cx, cy, rangeR, 135, 405)}
-              fill="none"
-              stroke="var(--border-default)"
-              strokeWidth="2"
+              strokeWidth={valueWidth}
               strokeLinecap="round"
             />
           ) : null}
@@ -408,25 +399,10 @@ export function ValueKnob({
             <path
               d={rangeArc}
               fill="none"
-              stroke="var(--accent-primary)"
-              strokeWidth="2"
+              stroke="var(--knob-arc, var(--accent-secondary))"
+              strokeWidth="1.15"
               strokeLinecap="round"
-            />
-          ) : null}
-          {rangeStart ? <circle cx={rangeStart.x} cy={rangeStart.y} r="2" fill="var(--accent-primary)" /> : null}
-          {rangeEnd ? <circle cx={rangeEnd.x} cy={rangeEnd.y} r="2" fill="var(--accent-primary)" /> : null}
-          {zeroTick ? (
-            <circle cx={zeroTick.x} cy={zeroTick.y} r="2.25" fill="var(--text-primary)" />
-          ) : null}
-          {liveTickInner && liveTickOuter ? (
-            <line
-              x1={liveTickInner.x}
-              y1={liveTickInner.y}
-              x2={liveTickOuter.x}
-              y2={liveTickOuter.y}
-              stroke="var(--accent-primary)"
-              strokeWidth="1.75"
-              strokeLinecap="round"
+              opacity="0.45"
             />
           ) : null}
           {marker ? (
@@ -442,6 +418,11 @@ export function ValueKnob({
             strokeLinecap="round"
           />
         </svg>
+        {lfoRange ? (
+          <span className={styles.lfoMark} aria-hidden="true">
+            〰
+          </span>
+        ) : null}
       </div>
       <span className={styles.modSlot}>
         {paramId ? <ParamActionPair id={paramId} compact /> : null}

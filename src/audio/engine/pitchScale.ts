@@ -84,10 +84,18 @@ export function hzFromLogAxis(frac: number, minHz: number, maxHz: number): numbe
   return minHz * (maxHz / minHz) ** t
 }
 
+export function formatPointerHz(hz: number): string {
+  if (hz >= 1000) {
+    const digits = hz >= 10000 ? 1 : 2
+    return `${(hz / 1000).toFixed(digits)} kHz`
+  }
+  const rounded = Math.round(hz * 10) / 10
+  return `${Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)} Hz`
+}
+
+/** Pointer readout: note first, then the same frequency the graph mapped. */
 export function formatHoverFreq(hz: number): string {
   if (!(hz > 0) || !Number.isFinite(hz)) return '—'
-  const freq =
-    hz >= 1000 ? `${hz >= 10000 ? (hz / 1000).toFixed(1) : (hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`
-  return `${freq} · ${hzToNoteName(hz)}`
+  return `${hzToNoteName(hz)} · ${formatPointerHz(hz)}`
 }
 

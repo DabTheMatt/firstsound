@@ -34,6 +34,7 @@ type Props = {
   selectedBand?: number
   comb?: CombFilterState
   toneIndex?: number
+  live?: Record<string, number> | null
   modulate?: boolean
   layout?: 'inset' | 'fill'
   touch?: boolean
@@ -52,6 +53,7 @@ export function EqCurve({
   selectedBand = 0,
   comb,
   toneIndex = 0,
+  live,
   modulate = true,
   layout = 'inset',
   touch = false,
@@ -254,37 +256,21 @@ export function EqCurve({
           index,
           lfos: snap.fxLfos,
           automation: snap.automation,
-          live: snap.liveParams,
+          live: (live ?? snap.liveParams) as typeof snap.liveParams,
           timeSec: snap.transportSec,
           playing: snap.playing,
           dragging: dragIndex === index,
           modulate,
         })
-        const liveBands = modulate ? liveEqBandsFromParams(bands, snap.liveParams) : bands
+        const liveBands = modulate ? liveEqBandsFromParams(bands, (live ?? snap.liveParams) as typeof snap.liveParams) : bands
         const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
         const xPct = freqToX(motion.frequencyHz, 1, plotMax) * 100
         const yPct = dbToY(eqNodePlotDb(anchor, motion.frequencyHz, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
         const selected = index === selectedBand
         const colors = readThemeColors()
         const tone = eqTone(toneIndex, colors)
-        const showCenter = motion.freqOffset || motion.gainOffset
-        const centerAnchor = showCenter
-          ? eqNodeAnchorBands(liveBands, index, motion.centerHz, motion.centerGainDb, motion.centerQ)
-          : null
-        const centerX = showCenter ? freqToX(motion.centerHz, 1, plotMax) * 100 : 0
-        const centerY = centerAnchor
-          ? dbToY(eqNodePlotDb(centerAnchor, motion.centerHz, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
-          : 0
         return (
           <Fragment key={eqStripKey('curve', band)}>
-          {showCenter ? (
-            <span
-              className={styles.modCenter}
-              data-eq-center=""
-              aria-hidden="true"
-              style={{ left: `${centerX}%`, top: `${centerY}%` }}
-            />
-          ) : null}
           <button
             type="button"
             data-eq-node=""

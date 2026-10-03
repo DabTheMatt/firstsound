@@ -175,10 +175,104 @@
 
 .eqCluster {
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
+  width: min(100%, 720px);
   padding: 2px 8px 4px;
   background: color-mix(in srgb, var(--bg-panel) 48%, transparent);
+}
+
+.eqLayout {
+  display: grid;
+  grid-template-columns: minmax(148px, 190px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  width: 100%;
+}
+
+.filterColumn {
+  min-width: 0;
+  position: relative;
+}
+
+.filterBar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.filterToggle {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filterList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 148px;
+  overflow: auto;
+}
+
+.filterHead {
+  margin: 0 0 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.filterRow,
+.filterOn {
+  display: grid;
+  grid-template-columns: 8px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+.filterOn {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
+}
+
+.filterRow i,
+.filterOn i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.eqWell {
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .eqHead {
@@ -210,9 +304,37 @@
 }
 
 .eqKnob {
-  width: 72px;
-  flex: 0 0 72px;
+  width: 92px;
+  flex: 0 0 92px;
   min-width: 0;
+}
+
+@container focus (max-width: 760px) {
+  .eqLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .filterBar {
+    display: flex;
+  }
+
+  .filterList {
+    display: none;
+  }
+
+  .filterList[data-open='true'] {
+    display: flex;
+    position: absolute;
+    z-index: 6;
+    top: 32px;
+    left: 0;
+    width: min(240px, 80vw);
+    max-height: 240px;
+    padding: 8px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    background: var(--bg-panel);
+  }
 }
 
 .typeField {

@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { EQ_FILTER_TYPES, EQ_MAX_BANDS, EQ_MAX_HZ, EQ_MIN_HZ, planEqBandInsert, slopeFromNormalized, slopeToNormalized, nearestFilterSlope, type EqFilterType } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
-import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoDrivesInstance, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { LfoParamShell } from '../controls/LfoParamShell'
+import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
+import { eqBandTone, readThemeColors } from '../../theme'
 import { ValueKnob } from '../controls/ValueKnob'
 import { focusEqTypePatch } from './eqFocusGesture'
 import { focusEqKnobs, focusEqTypeOptions, type FocusEqKnob } from './eqFocusControls'
@@ -25,6 +26,7 @@ export function EqFocusCluster({ onSelectModule }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const [selected, setSelected] = useState<EqBandSelection | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   useEffect(() => subscribeEqBandSelection(setSelected), [])
 
   const eq =
@@ -38,6 +40,9 @@ export function EqFocusCluster({ onSelectModule }: Props) {
   const shared = eq ? eqInstanceUsesSharedLfo(snap.chain, eq.instanceId) : false
   const ids = index >= 0 ? eqBandLfoIds(index) : null
   const knobs = active ? focusEqKnobs(active.type) : []
+  const live = eq && snap.liveByInstance[eq.instanceId] ? snap.liveByInstance[eq.instanceId] : snap.liveParams
+  const accent = index >= 0 ? eqBandTone(index, readThemeColors()).curve : undefined
+  const listed = bands.filter((item) => item.type !== 'off')
 
   const addBand = () => {
     const live = engine.getSnapshot()
@@ -55,8 +60,55 @@ export function EqFocusCluster({ onSelectModule }: Props) {
     engine.setEqBand(index, focusEqTypePatch(active, type), eq.instanceId)
   }
 
+  const selectRow = (row: number) => {
+    if (!eq) return
+    selectEqBand({ instanceId: eq.instanceId, index: row })
+    setFiltersOpen(false)
+  }
+
   return (
     <div className={styles.eqCluster} data-eq-focus-controls="">
+      <div className={styles.eqLayout}>
+        <div className={styles.filterColumn}>
+          <div className={styles.filterBar}>
+            <button
+              type="button"
+              className={styles.filterToggle}
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              {t.focus.filters}
+            </button>
+            {active ? (
+              <span className={styles.eqName}>
+                {t.focus.band(index + 1, focusEqTypeLabel(active.type))} · {formatFocusHz(active.frequency)}
+              </span>
+            ) : null}
+          </div>
+          <ul className={styles.filterList} data-open={filtersOpen ? 'true' : 'false'} aria-label={t.focus.filters}>
+            <li className={styles.filterHead}>{t.focus.filters}</li>
+            {listed.map((item) => {
+              const row = bands.indexOf(item)
+              const on = row === index
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={on ? styles.filterOn : styles.filterRow}
+                    aria-pressed={on}
+                    onClick={() => selectRow(row)}
+                  >
+                    <i style={{ background: eqBandTone(row, readThemeColors()).curve }} />
+                    <span>EQ {row + 1}</span>
+                    <span>{formatFocusHz(item.frequency)}</span>
+                    <span>{focusEqTypeLabel(item.type)}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+        <div className={styles.eqWell}>
       <div className={styles.eqHead}>
         <button
           type="button"
@@ -96,14 +148,20 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   key={field}
                   field={field}
                   label={t.mobile.freq}
-                  valueText={formatFocusHz(active.frequency)}
+                  valueText={formatFocusHz(liveHz(live, ids?.freq, active.frequency))}
+                  baseValueText={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? formatFocusHz(active.frequency) : undefined}
                   normalized={toNormalized(active.frequency, PARAMS.eq1Freq)}
-                  lfoRange={shared && ids ? lfoRangeFor(snap, ids.freq, toNormalized(active.frequency, PARAMS.eq1Freq)) : undefined}
+                  visualNormalized={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.freq] ?? active.frequency, PARAMS.eq1Freq) : undefined}
+                  lfoRange={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.freq, toNormalized(active.frequency, PARAMS.eq1Freq)) : undefined}
+                  accent={accent}
+                  instanceId={eq?.instanceId}
+                  bandId={active.id}
+                  includeUnscoped={shared}
                   min={EQ_MIN_HZ}
                   max={EQ_MAX_HZ}
                   now={active.frequency}
                   paramId={ids?.freq}
-                  afford={shared}
+                  afford
                   onChange={(n) => engine.setEqBand(index, { frequency: fromNormalized(n, PARAMS.eq1Freq) }, eq.instanceId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
@@ -120,14 +178,20 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   key={field}
                   field={field}
                   label={t.mobile.gain}
-                  valueText={formatFocusDb(active.gain)}
+                  valueText={formatFocusDb(liveNum(live, ids?.gain, active.gain))}
+                  baseValueText={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? formatFocusDb(active.gain) : undefined}
                   normalized={toNormalized(active.gain, PARAMS.eq1Gain)}
-                  lfoRange={shared && ids ? lfoRangeFor(snap, ids.gain, toNormalized(active.gain, PARAMS.eq1Gain)) : undefined}
+                  visualNormalized={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.gain] ?? active.gain, PARAMS.eq1Gain) : undefined}
+                  lfoRange={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.gain, toNormalized(active.gain, PARAMS.eq1Gain)) : undefined}
+                  accent={accent}
+                  instanceId={eq?.instanceId}
+                  bandId={active.id}
+                  includeUnscoped={shared}
                   min={PARAMS.eq1Gain.min}
                   max={PARAMS.eq1Gain.max}
                   now={active.gain}
                   paramId={ids?.gain}
-                  afford={shared}
+                  afford
                   onChange={(n) => engine.setEqBand(index, { gain: fromNormalized(n, PARAMS.eq1Gain) }, eq.instanceId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, PARAMS.eq1Gain.min, PARAMS.eq1Gain.max, 'dB')
@@ -144,14 +208,20 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   key={field}
                   field={field}
                   label={t.mobile.q}
-                  valueText={formatFocusQValue(active.q)}
+                  valueText={formatFocusQValue(liveNum(live, ids?.q, active.q))}
+                  baseValueText={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? formatFocusQValue(active.q) : undefined}
                   normalized={toNormalized(active.q, PARAMS.eq1Q)}
-                  lfoRange={shared && ids ? lfoRangeFor(snap, ids.q, toNormalized(active.q, PARAMS.eq1Q)) : undefined}
+                  visualNormalized={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.q] ?? active.q, PARAMS.eq1Q) : undefined}
+                  lfoRange={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.q, toNormalized(active.q, PARAMS.eq1Q)) : undefined}
+                  accent={accent}
+                  instanceId={eq?.instanceId}
+                  bandId={active.id}
+                  includeUnscoped={shared}
                   min={PARAMS.eq1Q.min}
                   max={PARAMS.eq1Q.max}
                   now={active.q}
                   paramId={ids?.q}
-                  afford={shared}
+                  afford
                   onChange={(n) => engine.setEqBand(index, { q: fromNormalized(n, PARAMS.eq1Q) }, eq.instanceId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, PARAMS.eq1Q.min, PARAMS.eq1Q.max)
@@ -199,6 +269,8 @@ export function EqFocusCluster({ onSelectModule }: Props) {
           </label>
         </div>
       ) : null}
+        </div>
+      </div>
     </div>
   )
 }
@@ -207,35 +279,50 @@ function EqKnob({
   field,
   label,
   valueText,
+  baseValueText,
   normalized,
+  visualNormalized,
   lfoRange,
   min,
   max,
   now,
   paramId,
   afford = false,
+  accent,
+  instanceId,
+  bandId,
+  includeUnscoped = true,
   onChange,
   onTypedValue,
 }: {
   field: FocusEqKnob
   label: string
   valueText: string
+  baseValueText?: string
   normalized: number
+  visualNormalized?: number
   lfoRange?: { min: number; max: number }
   min: number
   max: number
   now: number
   paramId?: ParamId
   afford?: boolean
+  accent?: string
+  instanceId?: string
+  bandId?: string
+  includeUnscoped?: boolean
   onChange: (normalized: number) => void
   onTypedValue: (text: string) => boolean
 }) {
   const knob = (
     <ValueKnob
       compact
+      focus
       label={label}
       valueText={valueText}
+      baseValueText={baseValueText}
       normalized={normalized}
+      visualNormalized={visualNormalized}
       lfoRange={lfoRange}
       min={min}
       max={max}
@@ -245,16 +332,41 @@ function EqKnob({
     />
   )
   return (
-    <div className={styles.eqKnob} data-eq-knob={field}>
+    <div className={styles.eqKnob} data-eq-knob={field} style={{ '--knob-arc': accent } as CSSProperties}>
       {paramId ? (
-        <LfoParamShell id={paramId} afford={afford}>
-          {knob}
-        </LfoParamShell>
+        <ModulationScopeProvider instanceId={instanceId} bandId={bandId} includeUnscoped={includeUnscoped}>
+          <LfoParamShell id={paramId} afford={afford}>
+            {knob}
+          </LfoParamShell>
+        </ModulationScopeProvider>
       ) : (
         knob
       )}
     </div>
   )
+}
+
+function drives(
+  snap: EngineSnapshot,
+  id: ParamId,
+  instanceId: string | undefined,
+  includeUnscoped: boolean,
+  bandId: string | undefined,
+): boolean {
+  const binding = lfoBinding(snap.fxLfos, id)
+  if (!binding || !fxLfoIsActive(binding.lfo)) return false
+  if (binding.lfo.bandId && binding.lfo.bandId !== bandId) return false
+  return lfoDrivesInstance(binding.lfo, instanceId, includeUnscoped)
+}
+
+function liveNum(live: Record<ParamId, number>, id: ParamId | undefined, fallback: number): number {
+  if (!id) return fallback
+  const value = live[id]
+  return value != null && Number.isFinite(value) ? value : fallback
+}
+
+function liveHz(live: Record<ParamId, number>, id: ParamId | undefined, fallback: number): number {
+  return liveNum(live, id, fallback)
 }
 
 function lfoRangeFor(snap: EngineSnapshot, id: ParamId, baseN: number) {

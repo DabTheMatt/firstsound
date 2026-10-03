@@ -507,6 +507,7 @@
   grid-template-columns: minmax(0, 1fr) 4.75rem minmax(0, 1fr);
   gap: 6px;
   align-items: stretch;
+  margin-top: var(--field-stack-gap);
 }
 
 .lrCol {

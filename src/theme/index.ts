@@ -20,6 +20,7 @@ export type { ThemeColors, CustomColorId, CustomThemeColors } from './theme'
 export {
   THEME_IDS,
   THEME_OPTIONS,
+  THEME_CATEGORIES,
   THEME_STORAGE_KEY,
   CUSTOM_COLOR_FIELDS,
   DEFAULT_CUSTOM_COLORS,
@@ -33,5 +34,5 @@ export {
   userThemeId,
   userThemePreference,
 } from './tokens'
-export type { ThemeId, ThemePreference, SavedTheme } from './tokens'
+export type { ThemeId, ThemePreference, SavedTheme, ThemeCategoryId } from './tokens'
 export { useTheme } from './useTheme'

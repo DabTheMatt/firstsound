@@ -170,10 +170,10 @@ export function automationFocusLfoCue(
 }
 
 export type SliderModulationMarks = {
-  /** Stored center. The thumb stays here. */
+  /** Current effective position. Falls back to the stored center. */
   thumb: number
   range: { left: number; width: number } | null
-  /** Current modulated position. Separate from the thumb. */
+  /** Kept empty so a second marker does not compete with the thumb. */
   live: number | null
 }
 
@@ -183,22 +183,22 @@ function clamp01(value: number): number {
 
 /**
  * Slider presentation for an active LFO.
- * `live` is omitted unless the range exists, so a closed editor cannot invent motion.
+ * The thumb is the effective value. The range band is secondary.
  */
 export function sliderModulationMarks(input: {
   center: number
   range: { min: number; max: number } | null
   live: number | null
 }): SliderModulationMarks {
-  const thumb = clamp01(input.center)
-  if (!input.range) return { thumb, range: null, live: null }
+  const centerN = clamp01(input.center)
+  if (!input.range) return { thumb: centerN, range: null, live: null }
   const min = clamp01(input.range.min)
   const max = clamp01(input.range.max)
   const live = input.live != null && Number.isFinite(input.live) ? clamp01(input.live) : null
   return {
-    thumb,
+    thumb: live ?? centerN,
     range: { left: min * 100, width: Math.max(0, (max - min) * 100) },
-    live,
+    live: null,
   }
 }
 

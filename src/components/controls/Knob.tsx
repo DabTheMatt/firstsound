@@ -33,23 +33,20 @@ export function Knob({ id, value, liveValue, lfoDepth }: Props) {
   const def = PARAMS[id]
   const live = liveValue ?? value
   const lfoMotion = lfoDepth != null && liveValue != null
-  const mapped = liveValue != null && lfoDepth == null
   const baseN = toNormalized(value, def)
   return (
     <ValueKnob
       label={paramLabel(id)}
-      valueText={formatParamValue(value, def)}
-      valueTextAccessible={formatAccessibleValue(lfoMotion ? value : live, def, locale)}
+      valueText={formatParamValue(live, def)}
+      valueTextAccessible={formatAccessibleValue(live, def, locale)}
       description={paramDescription(id, locale)}
-      visualValueText={mapped ? formatParamValue(live, def) : undefined}
-      baseValueText={mapped ? formatParamValue(value, def) : undefined}
+      baseValueText={lfoMotion ? formatParamValue(value, def) : undefined}
       normalized={baseN}
-      visualNormalized={mapped ? toNormalized(live, def) : undefined}
-      liveNormalized={lfoMotion ? toNormalized(live, def) : undefined}
+      visualNormalized={liveValue != null ? toNormalized(live, def) : undefined}
       lfoRange={lfoDepth != null ? lfoRangeNormalized(baseN, lfoDepth) : undefined}
       min={def.min}
       max={def.max}
-      now={Number((lfoDepth != null ? value : live).toFixed(3))}
+      now={Number(live.toFixed(3))}
       bipolar={BIPOLAR.has(id)}
       markerNormalized={id === 'msWidth' ? 0.5 : undefined}
       onChange={(n) => engine.setParam(id, fromNormalized(n, def))}

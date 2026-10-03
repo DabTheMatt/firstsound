@@ -40,6 +40,13 @@ export type FxLfo = {
   enabled?: boolean
   /** Subtracted from the shared LFO clock so a new connection starts at wave zero. */
   phaseOriginSec?: number
+  /**
+   * Effect instance this route owns (`delay-2`, `eq-3`).
+   * Omitted routes stay global for that kind. A set id reaches only that instance.
+   */
+  instanceId?: string
+  /** EQ band id. A route with this set does not follow a stale array index. */
+  bandId?: string
 }
 
 export type TransportClock = { sec: number; wallMs: number }
@@ -400,6 +407,8 @@ export function parseFxLfo(raw: unknown, kind: FxLfoKind): FxLfo {
   if (isLfoShape(rec.shape)) next.shape = rec.shape
   if (typeof rec.depth === 'number' && Number.isFinite(rec.depth)) next.depth = clampLfoDepth(rec.depth)
   if (rec.enabled === false) next.enabled = false
+  if (typeof rec.instanceId === 'string' && rec.instanceId) next.instanceId = rec.instanceId
+  if (typeof rec.bandId === 'string' && rec.bandId) next.bandId = rec.bandId
   const target = rec.target === 'delayFeedbackR' ? 'delayFeedback' : rec.target
   if (target == null) next.target = null
   else if (typeof target === 'string' && isFxLfoTarget(kind, target as ParamId)) {
@@ -645,12 +654,56 @@ export function lfoConnectCopy(connecting: boolean, targetLabel: string | null):
   return { label: 'Connect', detail: null, mode }
 }
 
+/**
+ * Which oscillator routes reach one DSP destination.
+ * Unscoped routes apply unless `includeUnscoped` is false (secondary EQ).
+ * A route with `instanceId` reaches only that effect instance.
+ */
+export type LfoScope = {
+  instanceId?: string
+  includeUnscoped?: boolean
+  /** Bands used to reject an EQ route whose band id no longer sits at that index. */
+  bands?: readonly { id?: string }[]
+}
+
+export function eqLfoBandIndex(target: ParamId): number | null {
+  const index = EQ_BAND_LFO_IDS.findIndex((ids) => ids.freq === target || ids.gain === target || ids.q === target)
+  return index < 0 ? null : index
+}
+
+export function lfoAppliesToScope(lfo: FxLfo, scope?: LfoScope): boolean {
+  if (lfo.bandId && lfo.target && scope?.bands) {
+    const index = eqLfoBandIndex(lfo.target)
+    if (index != null && scope.bands[index]?.id !== lfo.bandId) return false
+  }
+  const kind = lfo.target ? fxLfoKindForParam(lfo.target) : null
+  // Speed, gain, and pan live on the track rack. The DSP resolve is unscoped.
+  // The gain module's instance id must not hide those routes from it.
+  if (kind === 'input' || kind === 'mixer') {
+    return !scope?.instanceId && scope?.includeUnscoped !== false
+  }
+  if (!lfo.instanceId) return scope?.includeUnscoped !== false
+  if (!scope?.instanceId) return false
+  return lfo.instanceId === scope.instanceId
+}
+
+/**
+ * Whether a route should move this control.
+ * A scoped route reaches only its effect instance. An unscoped route reaches
+ * every instance of that kind except a secondary EQ (`includeUnscoped` false).
+ */
+export function lfoDrivesInstance(lfo: FxLfo, instanceId?: string, includeUnscoped = true): boolean {
+  if (lfo.instanceId) return instanceId != null && lfo.instanceId === instanceId
+  return includeUnscoped
+}
+
 export function applyFxLfos(
   params: Record<ParamId, number>,
   lfos: FxLfoMap,
   timeSec: number,
   hold: LfoHoldState,
   rand: () => number = Math.random,
+  scope?: LfoScope,
 ): Record<ParamId, number> {
   const next = { ...params }
   const claimed = new Set<ParamId>()
@@ -659,6 +712,7 @@ export function applyFxLfos(
       const lfo = lfos[kind][i]
       const target = lfo?.target
       if (!lfo || !target || !isFxLfoTarget(kind, target) || lfo.depth <= 0 || lfo.enabled === false) continue
+      if (!lfoAppliesToScope(lfo, scope)) continue
       if (claimed.has(target)) continue
       claimed.add(target)
       const slotHold = hold[kind][i] ?? emptyHold()

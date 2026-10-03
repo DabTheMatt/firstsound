@@ -358,16 +358,17 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  min-height: 28px;
-  padding: 0 8px;
+  height: var(--toolbar-h);
+  min-height: var(--toolbar-h);
+  padding: 0 var(--toolbar-pad-x);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--toolbar-radius);
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--toolbar-font);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--toolbar-tracking);
 }
 
 .chaos[data-on='true'] {
