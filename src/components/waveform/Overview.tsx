@@ -80,7 +80,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
       }
       const el = playheadRef.current
       if (el && duration > 0) {
-        el.style.left = `${(engine.getPlayheadSeconds() / duration) * 100}%`
+        el.style.left = `${(engine.getSourcePlayheadSeconds() / duration) * 100}%`
       }
       frame = requestAnimationFrame(tick)
     }

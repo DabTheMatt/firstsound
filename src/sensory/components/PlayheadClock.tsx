@@ -19,7 +19,7 @@ export function PlayheadClock({ duration, compact = false }: Props) {
       }
       if (ref.current) {
         const fmt = compact ? formatRangeClock : formatSensoryClock
-        const now = fmt(engine.getPlayheadSeconds())
+        const now = fmt(engine.getSourcePlayheadSeconds())
         const total = fmt(duration)
         ref.current.textContent = `${now}  /  ${total}`
       }

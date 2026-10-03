@@ -111,6 +111,19 @@
   text-overflow: ellipsis;
 }
 
+.arrangement {
+  width: 56px;
+  height: 40px;
+  min-width: 56px;
+  min-height: 40px;
+  flex: none;
+}
+
+.arrangement .caption {
+  width: 48px;
+  text-align: center;
+}
+
 .tool:hover,
 .icon:hover,
 .iconBtn:hover {

@@ -1109,7 +1109,6 @@ export default function App() {
 
         <section className={styles.chainBand} aria-label={t.chain.aria}>
           <div className={styles.trackContext}>
-            <span className={styles.trackKicker}>{t.mix.track}</span>
             <span
               className={styles.trackSwatch}
               style={{ background: trackColorVar(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber') }}
@@ -1130,7 +1129,7 @@ export default function App() {
                       aria-selected={on}
                       title={track.name}
                       className={`${styles.trackChip} ${on ? styles.trackChipOn : ''}`}
-                      style={{ borderColor: trackColorVar(track.color) }}
+                      style={{ ['--chip' as string]: trackColorVar(track.color), borderColor: trackColorVar(track.color) }}
                       onClick={() => followTrack(track.id)}
                     >
                       {index + 1}
@@ -1299,7 +1298,6 @@ export default function App() {
             ) : null}
             <Waveform
               ref={waveRef}
-              key={`buffer:${snap.bufferRev}`}
               duration={snap.duration}
               start={snap.params.start}
               end={snap.params.end}

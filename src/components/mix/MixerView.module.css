@@ -32,6 +32,11 @@
   border-top-color: var(--text-secondary);
 }
 
+.flagGhost {
+  width: 22px;
+  height: 18px;
+}
+
 .identity {
   display: grid;
   grid-template-columns: 8px auto minmax(0, 1fr);
@@ -92,6 +97,7 @@
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .fx {

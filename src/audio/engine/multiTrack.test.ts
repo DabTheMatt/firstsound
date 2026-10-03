@@ -355,4 +355,30 @@ describe('multi-track foundation', () => {
     expect(engine.getSnapshot().params.start).toBeCloseTo(0.3)
     expect(engine.getSnapshot().params.end).toBeCloseTo(0.7)
   })
+
+  it('shows a single-view loop on the selected track and the other way around', () => {
+    const engine = new AudioEngine()
+    const id = engine.getSnapshot().tracks[0]!.id
+    engine.loadTrackPcm(id, tone(1, 44100, 1, 0.2), 44100, 'a.wav')
+    engine.setParam('start', 0.2)
+    engine.setParam('end', 0.55)
+    engine.setLoop(true)
+    let snap = engine.getSnapshot()
+    let track = snap.tracks.find((item) => item.id === id)
+    expect(snap.loop).toBe(true)
+    expect(track?.loop).toBe(true)
+    expect(track?.loopStart).toBeCloseTo(0.2)
+    expect(track?.loopEnd).toBeCloseTo(0.55)
+
+    engine.setTrack(id, { loop: false })
+    snap = engine.getSnapshot()
+    expect(snap.loop).toBe(false)
+    expect(snap.tracks.find((item) => item.id === id)?.loop).toBe(false)
+
+    engine.setTrack(id, { loop: true, loopStart: 0.1, loopEnd: 0.4 })
+    snap = engine.getSnapshot()
+    expect(snap.loop).toBe(true)
+    expect(snap.params.start).toBeCloseTo(0.1)
+    expect(snap.params.end).toBeCloseTo(0.4)
+  })
 })

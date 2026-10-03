@@ -60,7 +60,7 @@ export function TransportDock({
       const el = tickRef.current
       const dur = stateRef.current.duration
       if (el) {
-        const frac = timeToFraction(engine.getPlayheadSeconds(), dur)
+        const frac = timeToFraction(engine.getSourcePlayheadSeconds(), dur)
         const angle = frac * 360
         el.setAttribute('transform', `rotate(${angle} ${CENTER} ${CENTER})`)
       }

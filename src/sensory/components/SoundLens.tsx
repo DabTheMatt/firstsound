@@ -81,7 +81,7 @@ export function SoundLens({
 
       if (buffer && duration > 0) {
         const data = buffer.getChannelData(0)
-        const now = engine.getPlayheadSeconds()
+        const now = engine.getSourcePlayheadSeconds()
         const span = Math.max(0.05, windowSec)
         const a = Math.max(0, now - span / 2)
         const b = Math.min(duration, now + span / 2)

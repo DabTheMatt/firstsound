@@ -231,6 +231,16 @@ export function waveformTiles(clock: TrackClock, projectDuration: number): WaveT
 }
 
 /**
+ * Source seconds the selected sample is reading at this project time.
+ * A loop walks the fragment again. An unlooped track parks at the end.
+ */
+export function sourcePlayheadSeconds(clock: TrackClock, projectTime: number): number {
+  const resolved = resolveTrackPlayback(clock, projectTime)
+  if (resolved.sourceTime != null && Number.isFinite(resolved.sourceTime)) return resolved.sourceTime
+  return clock.direction === 'reverse' ? resolved.regionStart : resolved.regionEnd
+}
+
+/**
  * Project-time fraction of the playhead on this lane.
  * A track that has already ended parks at the end of its own content
  * instead of tracking the global transport through silence.

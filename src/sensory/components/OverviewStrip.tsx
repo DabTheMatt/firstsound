@@ -123,7 +123,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
         const el = playheadRef.current
         const view = sourceTimes(duration)
         if (el && view.sourceDur > 0) {
-          const now = engine.getPlayheadSeconds() + view.windowStart
+          const now = engine.getSourcePlayheadSeconds() + view.windowStart
           el.style.left = `${(now / view.sourceDur) * 100}%`
         }
       }

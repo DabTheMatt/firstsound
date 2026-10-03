@@ -568,7 +568,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           const fftSize = engine.getAnalyser('post')?.fftSize ?? 2048
           if (mono) {
             const rate = engine.getSnapshot().sampleRate || sr
-            const frame = frameAround(mono, engine.getPlayheadSeconds() * rate, fftSize)
+            const frame = frameAround(mono, engine.getSourcePlayheadSeconds() * rate, fftSize)
             bandPeaks = readTimePeaks(frame, sr, bands, minHz, postScratch)
           }
         }

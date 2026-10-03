@@ -401,7 +401,7 @@ function TrackLane({
   const buffer = engine.getTrackBuffer(track.id)
   const channels = buffer?.numberOfChannels ?? track.channelCount
   const stereo = channels > 1
-  const loaded = Boolean(buffer)
+  const loaded = Boolean(buffer) || track.channelCount > 0 || Boolean(track.fileName)
   const color = trackColorVar(track.color)
 
   useEffect(() => {
@@ -643,10 +643,18 @@ function TrackLane({
             const file = input.files?.[0]
             const trackId = input.dataset.loadTrack || track.id
             if (!file || !trackId) return
-            // Copy the file before clearing the input. The target id is the
-            // one stamped on this input when it was rendered, not the track
-            // that happens to be selected after the picker closes.
-            void loadAudioFileIntoTrack(trackId, file).finally(() => releaseFileInput(input))
+            const name = file.name
+            const type = file.type
+            // Start the read before any later render can drop this input.
+            // Chromium detaches a File when its picker is removed, and the
+            // first selection then decodes empty.
+            void file.arrayBuffer().then(async (raw) => {
+              releaseFileInput(input)
+              if (raw.byteLength < 1) return
+              const bytes = raw.slice(0)
+              const stable = new File([bytes], name, { type })
+              await loadAudioFileIntoTrack(trackId, stable)
+            })
           }}
         />
       </header>
@@ -772,8 +780,17 @@ function LaneCanvas({
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
+    let frame = 0
+    let tries = 0
     const draw = () => {
       const source = engine.getTrackBuffer(track.id)
+      const rect = canvas.getBoundingClientRect()
+      if ((!source || rect.width < 2 || rect.height < 2) && tries < 8) {
+        tries += 1
+        frame = requestAnimationFrame(draw)
+        return
+      }
+      tries = 0
       paintWave(
         canvas,
         source,
@@ -794,9 +811,13 @@ function LaneCanvas({
     }
     draw()
     const unsub = subscribeThemeChange(draw)
-    const ro = new ResizeObserver(draw)
+    const ro = new ResizeObserver(() => {
+      tries = 0
+      draw()
+    })
     ro.observe(canvas)
     return () => {
+      cancelAnimationFrame(frame)
       unsub()
       ro.disconnect()
     }

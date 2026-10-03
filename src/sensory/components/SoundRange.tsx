@@ -95,7 +95,7 @@ function sourceView() {
   const snap = engine.getSnapshot()
   const regionStart = windowStart + snap.params.start
   const regionEnd = windowStart + snap.params.end
-  const head = engine.getPlayheadSeconds() + windowStart
+  const head = engine.getSourcePlayheadSeconds() + windowStart
   return { source, sourceDur, workDur, windowStart, windowEnd, regionStart, regionEnd, head }
 }
 

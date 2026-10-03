@@ -306,7 +306,7 @@ function drawWavePreview(
   const buffer = engine.getBuffer()
   const sampleRate = buffer?.sampleRate ?? (snap.sourceSampleRate || 48000)
   const duration = buffer?.duration ?? (mono ? mono.length / sampleRate : 0)
-  const playhead = engine.getPlayheadSeconds()
+  const playhead = engine.getSourcePlayheadSeconds()
   let startSec = Math.max(0, Math.floor(playhead * 30) / 30)
   if (duration > 0 && startSec >= duration - 0.01) {
     startSec = Math.max(0, duration - LIMITER_PREVIEW_SECONDS)
