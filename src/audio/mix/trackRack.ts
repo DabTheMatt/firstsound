@@ -51,6 +51,15 @@ import {
   type DistortionType,
   type ReverbType,
 } from '../fx/types'
+import {
+  cloneEffectMap,
+  createDefaultEffect,
+  isEffectInstanceType,
+  parseEffects,
+  serializeEffects,
+  type EffectInstanceState,
+  type EffectOwnerMap,
+} from '../fx/effectInstance'
 import { defaultParamValues } from '../parameters/definitions'
 import type { EqListenMode, FilterType, ParamId } from '../parameters/types'
 import { trackMixerParamId, type TrackMixerParamKey } from './mixerParams'
@@ -115,6 +124,11 @@ export type TrackRack = {
   noiseFadeTau: number
   reverbIrKey: string
   reverbIrTimer: number
+  /** Independent parameter state for every insert. Keyed by instance id. */
+  effects: Map<string, EffectInstanceState>
+  /** Instance whose values currently live in `params` for that effect type. */
+  effectOwner: EffectOwnerMap
+  focusedEffectId: string | null
   filterFollower: number
   filterEnvOrigin: number
   filterSnh: { index: number; value: number }
@@ -138,6 +152,9 @@ export type SerializedTrackRack = {
   automation: AutomationDocument
   random: RandomDocument
   spacePresetId: string | null
+  effects?: EffectInstanceState[]
+  effectOwner?: EffectOwnerMap
+  focusedEffectId?: string | null
 }
 
 export function isSharedParam(id: string): id is SharedParamId {
@@ -175,6 +192,9 @@ export function createTrackRack(randomDoc: RandomDocument = defaultRandomDocumen
     filterEnvOrigin: 0,
     filterSnh: { index: -1, value: 0 },
     filterFollowStamp: 0,
+    effects: new Map(),
+    effectOwner: {},
+    focusedEffectId: null,
   }
 }
 
@@ -207,6 +227,9 @@ export function cloneTrackRack(rack: TrackRack): TrackRack {
     filterSnh: { ...rack.filterSnh },
     reverbIrTimer: 0,
     reverbIrKey: '',
+    effects: cloneEffectMap(rack.effects),
+    effectOwner: { ...rack.effectOwner },
+    focusedEffectId: rack.focusedEffectId,
   }
 }
 
@@ -322,6 +345,9 @@ export function serializeTrackRack(rack: TrackRack): SerializedTrackRack {
     automation: cloneAutomation(rack.automation),
     random: cloneRandomDocument(rack.randomDoc),
     spacePresetId: rack.spacePresetId,
+    effects: serializeEffects(rack.effects),
+    effectOwner: { ...rack.effectOwner },
+    focusedEffectId: rack.focusedEffectId,
   }
 }
 
@@ -378,7 +404,64 @@ export function parseTrackRack(raw: unknown): TrackRack | null {
   if (rec.random) rack.randomDoc = parseRandomDocument(rec.random)
   rack.lfoShown = defaultLfoShown()
   rack.spacePresetId = typeof rec.spacePresetId === 'string' ? rec.spacePresetId : null
+  const parsedEffects = parseEffects(rec.effects)
+  if (parsedEffects.size > 0) {
+    rack.effects = parsedEffects
+    rack.effectOwner = parseEffectOwner(rec.effectOwner, rack.chain)
+  } else {
+    seedMissingEffects(rack)
+  }
+  if (typeof rec.focusedEffectId === 'string' && rack.effects.has(rec.focusedEffectId)) {
+    rack.focusedEffectId = rec.focusedEffectId
+  }
   return rack
+}
+
+function parseEffectOwner(raw: unknown, chain: readonly ChainModule[]): EffectOwnerMap {
+  const owner: EffectOwnerMap = {}
+  if (!raw || typeof raw !== 'object') return owner
+  for (const [type, id] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isEffectInstanceType(type) || typeof id !== 'string') continue
+    if (chain.some((mod) => mod.instanceId === id && mod.type === type)) owner[type] = id
+  }
+  return owner
+}
+
+/** First insert of a type keeps the saved shared parameters. Later inserts start clean. */
+export function seedMissingEffects(rack: TrackRack): void {
+  const seen = new Set<string>()
+  for (const mod of rack.chain) {
+    if (!isEffectInstanceType(mod.type) || rack.effects.has(mod.instanceId)) {
+      if (isEffectInstanceType(mod.type)) seen.add(mod.type)
+      continue
+    }
+    const first = !seen.has(mod.type)
+    seen.add(mod.type)
+    if (first) {
+      const state = createDefaultEffect(mod.type, mod.instanceId)
+      if (!state) continue
+      for (const id of Object.keys(state.params) as ParamId[]) state.params[id] = rack.params[id]
+      state.delayType = rack.delayType
+      state.reverbType = rack.reverbType
+      state.distortionType = rack.distortionType
+      state.distortionNoiseKind = rack.distortionNoiseKind
+      const kind = mod.type === 'eq' ? null : mod.type
+      if (kind) state.lfos = rack.fxLfos[kind].map((lfo) => ({ ...lfo }))
+      const owned = new Set(Object.keys(state.params))
+      state.lanes = rack.automation.lanes
+        .filter((lane) => owned.has(lane.paramId))
+        .map((lane) => ({
+          ...lane,
+          effectId: mod.instanceId,
+          nodes: lane.nodes.map((node) => ({ ...node })),
+        }))
+      rack.effects.set(mod.instanceId, state)
+      rack.effectOwner[mod.type] = mod.instanceId
+    } else {
+      const state = createDefaultEffect(mod.type, mod.instanceId)
+      if (state) rack.effects.set(mod.instanceId, state)
+    }
+  }
 }
 
 export function parseTrackRacks(raw: unknown): Record<string, TrackRack> | null {

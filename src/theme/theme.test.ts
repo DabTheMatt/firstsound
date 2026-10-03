@@ -16,7 +16,8 @@ describe('theme tokens', () => {
   it('defaults unknown storage values to studio-dark', () => {
     expect(parseThemePreference(null)).toBe('studio-dark')
     expect(parseThemePreference('')).toBe('studio-dark')
-    expect(parseThemePreference('neon')).toBe('studio-dark')
+    expect(parseThemePreference('not-a-theme')).toBe('studio-dark')
+    expect(parseThemePreference('neon')).toBe('neon')
   })
 
   it('accepts named themes and system', () => {

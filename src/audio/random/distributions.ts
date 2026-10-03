@@ -44,6 +44,14 @@ const DENY = new Set<ParamId>([
   'msFlipMid',
   'msFlipSide',
   'limiterAutoMakeup',
+  'limiterThreshold',
+  'limiterCeiling',
+  'limiterRelease',
+  'limiterAttack',
+  'limiterKnee',
+  'limiterRatio',
+  'limiterMakeup',
+  'limiterInput',
   'compressorAutoMakeup',
 ])
 

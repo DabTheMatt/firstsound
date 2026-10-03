@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { timeDomainToDb, type SpectrumFftScratch } from './spectrumFft'
-import { DEMO_SAMPLE_SECONDS, DEMO_SECTION_SECONDS, renderDemoSample } from './demoSample'
+import { demoDurationSeconds, demoSampleName, renderDemoSample } from './demoSample'
 
-function bandPower(channel: Float32Array, sr: number, section: number, loHz: number, hiHz: number): number {
+function bandEnergy(channel: Float32Array, sr: number, loHz: number, hiHz: number): number {
   const n = 4096
   const scratch: SpectrumFftScratch = { window: null, real: null, imag: null }
   const db = new Float32Array(n / 2)
-  const start = Math.floor((section * DEMO_SECTION_SECONDS + 0.12) * sr)
-  const end = Math.floor(((section + 1) * DEMO_SECTION_SECONDS - 0.12) * sr)
   let power = 0
   let frames = 0
-  for (let pos = start; pos + n <= end; pos += n) {
+  for (let pos = 0; pos + n <= channel.length; pos += n * 4) {
     timeDomainToDb(channel.subarray(pos, pos + n), db, scratch)
     let frame = 0
     for (let bin = 1; bin < db.length; bin++) {
@@ -25,62 +23,71 @@ function bandPower(channel: Float32Array, sr: number, section: number, loHz: num
   return power / Math.max(1, frames)
 }
 
-function db(power: number): number {
-  return 10 * Math.log10(Math.max(power, 1e-12))
+function windowRms(channel: Float32Array, start: number, end: number): number {
+  let sum = 0
+  let count = 0
+  for (let i = start; i < end; i += 8) {
+    const s = channel[i] ?? 0
+    sum += s * s
+    count++
+  }
+  return Math.sqrt(sum / Math.max(1, count))
+}
+
+function peakOf(demo: { left: Float32Array; right: Float32Array }): number {
+  let peak = 0
+  for (let i = 0; i < demo.left.length; i += 4) {
+    peak = Math.max(peak, Math.abs(demo.left[i] ?? 0), Math.abs(demo.right[i] ?? 0))
+  }
+  return peak
 }
 
 describe('renderDemoSample', () => {
-  const sr = 44100
-  const demo = renderDemoSample(sr)
+  const sr = 22050
 
-  it('is a short stereo clip with four equal sections', () => {
+  it('lasts between 12 and 24 seconds and names the buffer from the seed', () => {
+    const seed = 482
+    const demo = renderDemoSample(sr, seed)
+    const seconds = demo.left.length / sr
     expect(demo.sampleRate).toBe(sr)
-    expect(demo.left.length).toBe(Math.floor(DEMO_SAMPLE_SECONDS * sr))
     expect(demo.right.length).toBe(demo.left.length)
-    expect(DEMO_SAMPLE_SECONDS / DEMO_SECTION_SECONDS).toBe(4)
+    expect(seconds).toBeGreaterThanOrEqual(12)
+    expect(seconds).toBeLessThanOrEqual(24)
+    expect(demoDurationSeconds(seed)).toBeCloseTo(seconds, 2)
+    expect(demoSampleName(seed)).toBe('FIELD Texture 582')
   })
 
-  it('is deterministic and uses both channels', () => {
-    const again = renderDemoSample(sr)
-    expect(again.left[1000]).toBe(demo.left[1000])
-    expect(again.right[8000]).toBe(demo.right[8000])
+  it('is deterministic per seed and different across seeds', () => {
+    const a = renderDemoSample(sr, 11)
+    const b = renderDemoSample(sr, 11)
+    const c = renderDemoSample(sr, 99)
+    expect(b.left[4000]).toBe(a.left[4000])
+    expect(b.right[9000]).toBe(a.right[9000])
+    expect(c.left.length === a.left.length && c.left[4000] === a.left[4000]).toBe(false)
+    expect(demoSampleName(11)).not.toBe(demoSampleName(99))
+  })
+
+  it('is stereo, peaked near -6 dBFS, and not a flat noise block', () => {
+    const demo = renderDemoSample(sr, 2048)
     let diff = 0
     for (let i = 0; i < demo.left.length; i += 17) diff += Math.abs((demo.left[i] ?? 0) - (demo.right[i] ?? 0))
     expect(diff).toBeGreaterThan(1)
-  })
-
-  it('peaks in a musical range without clipping', () => {
-    let peak = 0
-    for (let i = 0; i < demo.left.length; i++) {
-      peak = Math.max(peak, Math.abs(demo.left[i] ?? 0), Math.abs(demo.right[i] ?? 0))
-    }
-    expect(peak).toBeGreaterThan(0.7)
-    expect(peak).toBeLessThanOrEqual(0.82 + 1e-4)
-  })
-
-  it('separates bass, mid, bright, and full-spectrum sections', () => {
+    const peak = peakOf(demo)
+    expect(peak).toBeGreaterThan(0.4)
+    expect(peak).toBeLessThan(0.62)
     const mono = new Float32Array(demo.left.length)
     for (let i = 0; i < mono.length; i++) mono[i] = ((demo.left[i] ?? 0) + (demo.right[i] ?? 0)) * 0.5
-    const bands = [0, 1, 2, 3].map((section) => ({
-      low: bandPower(mono, sr, section, 35, 180),
-      mid: bandPower(mono, sr, section, 250, 1400),
-      high: bandPower(mono, sr, section, 2000, 12000),
-    }))
-    const bass = bands[0]!
-    const mid = bands[1]!
-    const bright = bands[2]!
-    const full = bands[3]!
-
-    expect(db(bass.low) - db(bass.mid)).toBeGreaterThan(8)
-    expect(db(bass.low) - db(bass.high)).toBeGreaterThan(12)
-    expect(db(mid.mid) - db(mid.low)).toBeGreaterThan(8)
-    expect(db(mid.mid) - db(mid.high)).toBeGreaterThan(8)
-    expect(db(bright.high) - db(bright.low)).toBeGreaterThan(10)
-    expect(db(bright.high) - db(bright.mid)).toBeGreaterThan(6)
-
-    const fullPeak = Math.max(full.low, full.mid, full.high)
-    expect(db(fullPeak) - db(full.low)).toBeLessThan(14)
-    expect(db(fullPeak) - db(full.mid)).toBeLessThan(14)
-    expect(db(fullPeak) - db(full.high)).toBeLessThan(14)
+    expect(bandEnergy(mono, sr, 40, 180)).toBeGreaterThan(1e-6)
+    expect(bandEnergy(mono, sr, 250, 2000)).toBeGreaterThan(1e-6)
+    expect(bandEnergy(mono, sr, 2000, 10000)).toBeGreaterThan(1e-8)
+    const slice = Math.floor(mono.length / 8)
+    let quiet = Number.POSITIVE_INFINITY
+    let loud = 0
+    for (let w = 0; w < 8; w++) {
+      const rms = windowRms(mono, w * slice, (w + 1) * slice)
+      quiet = Math.min(quiet, rms)
+      loud = Math.max(loud, rms)
+    }
+    expect(loud).toBeGreaterThan(quiet * 3)
   })
 })

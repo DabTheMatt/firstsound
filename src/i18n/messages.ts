@@ -110,6 +110,11 @@ export type Messages = {
     rec: string
     lfoCenter: string
     settings: string
+    resetTitle: string
+    resetConfirm: string
+    resetCancel: string
+    resetAction: string
+    manual: string
     mono: string
     stereo: string
     channels: (n: number) => string
@@ -131,7 +136,7 @@ export type Messages = {
     undo: string
     redo: string
   }
-  runtime: { refresh: string; refreshing: string; refreshTitle: string }
+  runtime: { refresh: string; refreshing: string; refreshTitle: string; uiLoadTitle: string }
   banner: { audioBlocked: string; inspector: string }
   mobile: {
     more: string
@@ -302,6 +307,7 @@ export type Messages = {
     stop: string
     playFromStart: string
     playFromStartTitle: string
+    more: string
     killFx: string
     killFxTitle: string
     killNoise: string
@@ -536,6 +542,7 @@ export type Messages = {
     resetClipTitle: string
     clip: string
     range: string
+    rangeLabel: string
     strip: string
     peak: (channel: string) => string
     clipState: (state: string) => string
@@ -790,6 +797,11 @@ export const EN: Messages = {
     rec: 'Rec',
     lfoCenter: 'LFO control center',
     settings: 'Settings',
+    resetTitle: 'Reset application',
+    resetConfirm: 'Reset current FIELD session?',
+    resetCancel: 'Cancel',
+    resetAction: 'Reset',
+    manual: 'Manual',
     mono: 'Mono',
     stereo: 'Stereo',
     channels: (n) => `${n} ch`,
@@ -805,7 +817,7 @@ export const EN: Messages = {
     savePreset: 'Save preset',
     loadPreset: 'Load instrument preset',
     loadPresetHint: 'Opens a FIELD JSON file saved with Save preset. Restores the full engine, chain, and EQ.',
-    loadDemo: 'Load demo sample',
+    loadDemo: 'Generate demo sample',
     editSample: 'Edit sample',
     resetAll: 'Reset all',
     revertSource: 'Revert to source',
@@ -816,6 +828,7 @@ export const EN: Messages = {
     refresh: 'Refresh app',
     refreshing: 'Refreshing',
     refreshTitle: 'Reload the installed app and drop stale caches',
+    uiLoadTitle: 'Main-thread event-loop load. Not process CPU.',
   },
   banner: {
     audioBlocked: 'Audio is paused by the browser. Tap Play to resume.',
@@ -862,7 +875,7 @@ export const EN: Messages = {
   },
   waveform: {
     empty: 'Load a sample to begin',
-    loadDemo: 'Load demo sample',
+    loadDemo: 'Generate demo sample',
     edit: 'Edit',
     trim: 'Trim',
     trimTitle: 'Trim to selection',
@@ -990,6 +1003,7 @@ export const EN: Messages = {
     stop: 'Stop',
     playFromStart: 'Play from start of sample',
     playFromStartTitle: 'Play from the start of the sample, not the selection',
+    more: 'More',
     killFx: 'Kill FX',
     killFxTitle: 'Kill delay and reverb tails',
     killNoise: 'Kill noise',
@@ -1128,6 +1142,15 @@ export const EN: Messages = {
       'light-studio': 'Light Studio',
       oled: 'OLED',
       dusk: 'Dusk',
+      'pop-art': 'Pop Art',
+      classic: 'Classic',
+      energetic: 'Energetic',
+      'chaos-theory': 'Chaos Theory',
+      neon: 'Neon',
+      manga: 'Manga',
+      'black-white': 'Black & White',
+      noire: 'Noire',
+      oscilloscope: 'Oscilloscope',
       custom: 'Custom',
     },
   },
@@ -1139,7 +1162,7 @@ export const EN: Messages = {
     play: 'Play',
     pause: 'Pause',
     playPause: 'Play or pause',
-    loadDemo: 'Load demo sample',
+    loadDemo: 'Generate demo sample',
     rest: 'rest',
     restAll: 'Rest all sensory effects to the starting position',
     restLevel: 'rest',
@@ -1313,6 +1336,7 @@ export const EN: Messages = {
     resetClipTitle: 'Reset clip indicator',
     clip: 'Clip',
     range: 'Meter range',
+    rangeLabel: 'Range',
     strip: 'Output meters',
     peak: (channel) => `Peak meter ${channel}`,
     clipState: (state) => `Clip indicator, ${state}. Activate to reset.`,
@@ -1571,6 +1595,11 @@ export const PL: Messages = {
     rec: 'Rec',
     lfoCenter: 'Centrum LFO',
     settings: 'Ustawienia',
+    resetTitle: 'Reset aplikacji',
+    resetConfirm: 'Zresetować bieżącą sesję FIELD?',
+    resetCancel: 'Anuluj',
+    resetAction: 'Reset',
+    manual: 'Podręcznik',
     mono: 'Mono',
     stereo: 'Stereo',
     channels: (n) => `${n} kan.`,
@@ -1586,7 +1615,7 @@ export const PL: Messages = {
     savePreset: 'Zapisz preset',
     loadPreset: 'Wczytaj preset',
     loadPresetHint: 'Otwiera plik JSON FIELD zapisany przez Zapisz preset.',
-    loadDemo: 'Wczytaj sample demo',
+    loadDemo: 'Wygeneruj sample demo',
     editSample: 'Edytuj sample',
     resetAll: 'Reset wszystkiego',
     revertSource: 'Przywróć źródło',
@@ -1597,6 +1626,7 @@ export const PL: Messages = {
     refresh: 'Odśwież aplikację',
     refreshing: 'Odświeżanie',
     refreshTitle: 'Przeładuj zainstalowaną aplikację i wyczyść stare cache',
+    uiLoadTitle: 'Obciążenie pętli zdarzeń wątku głównego. To nie jest CPU procesu.',
   },
   banner: {
     audioBlocked: 'Przeglądarka wstrzymała dźwięk. Dotknij Odtwórz, aby wznowić.',
@@ -1643,7 +1673,7 @@ export const PL: Messages = {
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
-    loadDemo: 'Wczytaj sample demo',
+    loadDemo: 'Wygeneruj sample demo',
     edit: 'Edycja',
     trim: 'Przytnij',
     trimTitle: 'Przytnij do zaznaczenia',
@@ -1771,6 +1801,7 @@ export const PL: Messages = {
     stop: 'Stop',
     playFromStart: 'Odtwórz od początku sampla',
     playFromStartTitle: 'Odtwórz od początku sampla, nie od zaznaczenia',
+    more: 'Więcej',
     killFx: 'Kill FX',
     killFxTitle: 'Utnij ogony delay i pogłosu',
     killNoise: 'Kill noise',
@@ -1909,6 +1940,15 @@ export const PL: Messages = {
       'light-studio': 'Light Studio',
       oled: 'OLED',
       dusk: 'Dusk',
+      'pop-art': 'Pop Art',
+      classic: 'Classic',
+      energetic: 'Energetic',
+      'chaos-theory': 'Chaos Theory',
+      neon: 'Neon',
+      manga: 'Manga',
+      'black-white': 'Black & White',
+      noire: 'Noire',
+      oscilloscope: 'Oscilloscope',
       custom: 'Custom',
     },
   },
@@ -1920,7 +1960,7 @@ export const PL: Messages = {
     play: 'Odtwórz',
     pause: 'Pauza',
     playPause: 'Odtwórz lub pauza',
-    loadDemo: 'Wczytaj sample demo',
+    loadDemo: 'Wygeneruj sample demo',
     rest: 'spoczynek',
     restAll: 'Wyzeruj wszystkie efekty sensoryczne',
     restLevel: 'spoczynek',
@@ -2094,6 +2134,7 @@ export const PL: Messages = {
     resetClipTitle: 'Reset wskaźnika clip',
     clip: 'Clip',
     range: 'Zakres miernika',
+    rangeLabel: 'Zakres',
     strip: 'Metery wyjścia',
     peak: (channel) => `Metr szczytowy ${channel}`,
     clipState: (state) => `Wskaźnik przesterowania, ${state}. Aktywuj, aby wyzerować.`,

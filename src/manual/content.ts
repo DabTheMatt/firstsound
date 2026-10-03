@@ -1,0 +1,522 @@
+/**
+ * In-app FIELD manual.
+ *
+ * When a user-facing FIELD feature, control, workflow, or shortcut changes,
+ * update the corresponding Manual section in this file in the same task/commit.
+ */
+import type { Locale } from '../i18n/locale'
+
+export type ManualSection = {
+  id: string
+  title: string
+  body: string[]
+}
+
+export type ManualCopy = {
+  title: string
+  search: string
+  empty: string
+  close: string
+  sections: ManualSection[]
+}
+
+const en: ManualSection[] = [
+  {
+    id: 'overview',
+    title: 'FIELD overview',
+    body: [
+      'FIELD is a browser instrument for one loaded sample. You edit the waveform, run it through a serial audio chain, and shape it with automation, LFOs, and Random.',
+      'The engine owns playback and DSP. The screen only shows and edits that state. Switching theme, opening this manual, or moving a panel does not rebuild the audio graph.',
+    ],
+  },
+  {
+    id: 'start',
+    title: 'Getting started',
+    body: [
+      'Choose Technical, Simple, or Sensory when FIELD opens. Technical is the full editor. Simple and Sensory are thinner control surfaces over the same engine.',
+      'Grant audio when the browser asks. If the status says audio is blocked, interact with the page again so the AudioContext can start.',
+    ],
+  },
+  {
+    id: 'load',
+    title: 'Loading audio',
+    body: [
+      'Load sample is the primary action. It opens a file picker. You can also drop a file onto the editor.',
+      'Safari on iPhone and iPad decodes WAV, AIFF, MP3, M4A/AAC, and CAF. OGG and WebM usually fail there.',
+    ],
+  },
+  {
+    id: 'demo',
+    title: 'Generating demo audio',
+    body: [
+      'Generate demo sample synthesizes a new stereo buffer in the browser. It is not a downloaded file, and each press is different.',
+      'Length is between 12 and 24 seconds. The material mixes texture, pulses, tones, transients, and a quieter region so selection, fades, EQ, delay, reverb, and meters have something to work on. The peak sits near −6 dBFS.',
+    ],
+  },
+  {
+    id: 'transport',
+    title: 'Transport',
+    body: [
+      'Play/Pause, Stop, and Loop stay on the transport. Play from start jumps to the beginning of the sample rather than the selection.',
+      'On a narrow desktop the secondary actions compress, then move into More. They do not wrap onto a second row. The phone transport keeps large targets and does not force the full desktop labels.',
+    ],
+  },
+  {
+    id: 'wave',
+    title: 'Waveform editing',
+    body: [
+      'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed.',
+      'The overview under the wave shows the whole sample. Fit returns the view to the full duration.',
+    ],
+  },
+  {
+    id: 'selection',
+    title: 'Selection',
+    body: [
+      'Sel start and Sel end move the playhead to the selection edges. Copy, cut, paste, delete, mute, trim, and insert silence use the current selection.',
+      'Loop plays the selection when Loop is on.',
+    ],
+  },
+  {
+    id: 'fades',
+    title: 'Fade in / Fade out',
+    body: [
+      'With a selection, the top of each edge is the fade handle. Drag it to lengthen the fade. In WAVE Focus the handles sit below the focus toolbar so the toolbar does not cover them.',
+      'Fade curve and bend live with the sample edit controls.',
+    ],
+  },
+  {
+    id: 'loop',
+    title: 'Loop',
+    body: ['Loop repeats the current selection. Turn it off to play through the rest of the sample.'],
+  },
+  {
+    id: 'input',
+    title: 'Input controls',
+    body: [
+      'The start of the chain is the input gain. Make mono folds the sample to one channel. Record captures the microphone into the sample slot when the browser allows it.',
+    ],
+  },
+  {
+    id: 'chain',
+    title: 'Audio chain',
+    body: [
+      'Modules run in series from input to output. Add, remove, bypass, and reorder them from the chain. Each added effect is its own instance with its own settings, even when the type matches one already in the chain.',
+    ],
+  },
+  {
+    id: 'fx-edit',
+    title: 'Adding, removing, and reordering effects',
+    body: [
+      'Insert a module from the chain. Select it to edit that instance. A second Delay, EQ, Filter, Reverb, or Compressor starts from its own defaults and does not copy the first instance.',
+      'Presets apply to the instance you are editing.',
+    ],
+  },
+  {
+    id: 'eq',
+    title: 'EQ',
+    body: [
+      'Each EQ instance has its own bands. The EQ workspace draws the curve for the selected instance. Band frequency, gain, and Q can be automated.',
+    ],
+  },
+  {
+    id: 'filter',
+    title: 'Filter',
+    body: ['Filter is a separate module from EQ. Cutoff, resonance, drive, mix, and its LFO belong to that filter instance.'],
+  },
+  {
+    id: 'comp',
+    title: 'Compressor',
+    body: ['The compressor instance has its own threshold, ratio, attack, release, and makeup. It is not the master safety limiter.'],
+  },
+  {
+    id: 'delay',
+    title: 'Delay',
+    body: ['Time, feedback, and wet are per delay instance. Kill FX cuts delay and reverb tails without removing the modules.'],
+  },
+  {
+    id: 'reverb',
+    title: 'Reverb',
+    body: ['Each reverb instance keeps its own size, decay, and wet mix, and its own impulse response.'],
+  },
+  {
+    id: 'dist',
+    title: 'Distortion and other modules',
+    body: [
+      'Distortion, grain, and mid/side are separate module types. Kill noise mutes the distortion noise generator only. Mid/side edits width and the mid and side levels.',
+    ],
+  },
+  {
+    id: 'auto',
+    title: 'Automation',
+    body: [
+      'AUTO draws lanes over time. The lane title is the effect and parameter, for example EQ frequency. The track badge stays beside that name and does not cover it.',
+      'Drag to add or move points. Segment curves can be linear, smooth, or stepped. An automation lane stays attached to the effect instance that owned it.',
+    ],
+  },
+  {
+    id: 'lfo',
+    title: 'Modulation / LFO',
+    body: [
+      'The LFO control center and the per-module LFO slots modulate parameters of the instance in focus. Two delays do not share one LFO bank.',
+    ],
+  },
+  {
+    id: 'random',
+    title: 'Random',
+    body: ['Random offsets parameters inside their allowed ranges. The safety limiter is excluded so Random cannot push it into an unsafe setting.'],
+  },
+  {
+    id: 'chaos',
+    title: 'Chaos',
+    body: [
+      'Chaos is the button immediately left of Settings. Turning it on enables the chain safety limiter if that limiter was bypassed or missing. It does not add a second limiter, and it does not add makeup gain.',
+      'If you bypass the limiter while Chaos stays on, FIELD leaves that choice until you leave Chaos and enter it again.',
+    ],
+  },
+  {
+    id: 'views',
+    title: 'WAVE, FFT, EQ, and AUTO',
+    body: [
+      'WAVE shows the sample. FFT shows the spectrum of the playing audio. EQ opens the equalizer workspace. AUTO opens automation. These are views of the same project.',
+    ],
+  },
+  {
+    id: 'focus',
+    title: 'Focus mode',
+    body: [
+      'Focus mode fills the editor with one task: wave, FFT, EQ, or automation. Exit returns to the normal layout. In WAVE Focus, fade handles are inset below the toolbar.',
+    ],
+  },
+  {
+    id: 'meter',
+    title: 'Output meter',
+    body: [
+      'The output meter follows the master signal. Range, directly under the meter, selects −60, −100, or −120 dB. OUT and Monitor sit below that control.',
+    ],
+  },
+  {
+    id: 'out',
+    title: 'OUT / Monitor',
+    body: ['OUT is the master output gain. Monitor sets how loud the input is while recording. Neither control is the meter range.'],
+  },
+  {
+    id: 'export',
+    title: 'Export',
+    body: ['Export writes a WAV of the processed sample or the current selection, using the chain and automation that are in the project.'],
+  },
+  {
+    id: 'themes',
+    title: 'Themes',
+    body: [
+      'Themes are palettes for the interface: Studio Dark, Midnight Blue, Oxide, Forest, Light Studio, OLED, Dusk, Pop Art, Classic, Energetic, Chaos Theory, Neon, Manga, Black & White, Noire, Oscilloscope, and Custom.',
+      'The choice is stored with the other FIELD preferences. Changing it does not restart playback.',
+    ],
+  },
+  {
+    id: 'keys',
+    title: 'Keyboard shortcuts',
+    body: [
+      'Space plays or pauses, except while typing. Escape closes menus and dialogs.',
+      'Ctrl+Z or Cmd+Z undoes. Shift+Ctrl+Z or Shift+Cmd+Z redoes.',
+      'Tab moves between controls. Arrow keys change a focused knob or slider. Shift+Arrow is a finer step. Home and End jump to the ends. Page Up and Page Down take a larger step. Delete or Backspace resets the focused parameter.',
+      'Transport shortcuts can be turned off in Settings.',
+    ],
+  },
+  {
+    id: 'gestures',
+    title: 'Mobile gestures',
+    body: [
+      'Drag on the waveform to draw or resize a selection. Drag a fade handle at the top of a selection edge. Pinch to zoom. Drag the playhead to scrub.',
+      'The phone transport uses large hit targets. Focus mode uses a full-height toolbar above the wave, not on top of the fade handles.',
+    ],
+  },
+  {
+    id: 'a11y',
+    title: 'Accessibility',
+    body: [
+      'Settings includes larger interface, stronger focus, tooltips, reduced motion, and screen-reader optimizations. Controls keep names and keyboard access.',
+    ],
+  },
+  {
+    id: 'reset',
+    title: 'Reset',
+    body: [
+      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state.',
+      'If the session already has work, FIELD asks you to confirm. An empty session resets immediately.',
+    ],
+  },
+  {
+    id: 'perf',
+    title: 'Performance indicator',
+    body: [
+      'The header shows UI load, a smoothed estimate of main-thread event-loop delay. It is not the operating system’s process CPU percentage. Browsers do not expose that figure to a page.',
+      'Memory, when the browser provides it, is the JavaScript heap, not the whole machine.',
+    ],
+  },
+  {
+    id: 'trouble',
+    title: 'Troubleshooting',
+    body: [
+      'If you hear nothing, check that a sample is loaded, the chain is not fully bypassed, and OUT is up. If audio is blocked, click the page and press play again.',
+      'Kill FX clears delay and reverb tails. Reset application clears the session when the project itself is wedged. Refresh app in the installed view only reloads the installed shell and its caches.',
+    ],
+  },
+]
+
+const pl: ManualSection[] = [
+  {
+    id: 'overview',
+    title: 'Przegląd FIELD',
+    body: [
+      'FIELD to instrument w przeglądarce dla jednego wczytanego sampla. Edytujesz falę, przepuszczasz ją przez szeregowy łańcuch i kształtujesz automatyzacją, LFO i Random.',
+      'Silnik prowadzi odtwarzanie i DSP. Ekran tylko pokazuje i zmienia ten stan. Zmiana motywu, otwarcie podręcznika albo przesunięcie panelu nie przebudowuje grafu audio.',
+    ],
+  },
+  {
+    id: 'start',
+    title: 'Pierwsze kroki',
+    body: [
+      'Na starcie wybierz Technical, Simple albo Sensory. Technical to pełny edytor. Simple i Sensory to cieńsze powierzchnie tego samego silnika.',
+      'Zezwól na dźwięk, gdy przeglądarka zapyta. Jeśli status mówi, że audio jest zablokowane, kliknij stronę jeszcze raz, żeby AudioContext mógł wystartować.',
+    ],
+  },
+  {
+    id: 'load',
+    title: 'Wczytywanie audio',
+    body: [
+      'Wczytaj sample jest główną akcją. Otwiera wybór pliku. Plik można też upuścić na edytor.',
+      'Safari na iPhonie i iPadzie dekoduje WAV, AIFF, MP3, M4A/AAC i CAF. OGG i WebM zwykle tam nie działają.',
+    ],
+  },
+  {
+    id: 'demo',
+    title: 'Generowanie audio demo',
+    body: [
+      'Wygeneruj sample demo syntezuje nowy bufor stereo w przeglądarce. To nie jest pobierany plik i każde naciśnięcie daje inny materiał.',
+      'Długość wynosi od 12 do 24 sekund. Są w nim faktura, impulsy, tony, transjenty i cichszy odcinek, żeby dało się sprawdzić zaznaczenie, fade, EQ, delay, pogłos i mierniki. Szczyt leży około −6 dBFS.',
+    ],
+  },
+  {
+    id: 'transport',
+    title: 'Transport',
+    body: [
+      'Play/Pause, Stop i Loop zostają na transporcie. Play from start skacze na początek sampla, nie zaznaczenia.',
+      'Na węższym pulpicie akcje drugorzędne najpierw się zagęszczają, potem wchodzą do Więcej. Nie zawijają się do drugiego rzędu. Transport telefonu ma duże cele i nie wciska pełnych etykiet pulpitu.',
+    ],
+  },
+  {
+    id: 'wave',
+    title: 'Edycja fali',
+    body: [
+      'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony.',
+      'Pasek pod falą pokazuje cały sample. Fit wraca do pełnej długości.',
+    ],
+  },
+  {
+    id: 'selection',
+    title: 'Zaznaczenie',
+    body: [
+      'Sel start i Sel end stawiają głowicę na krawędziach zaznaczenia. Kopiuj, wytnij, wklej, usuń, wycisz, przytnij i wstaw ciszę używają bieżącego zaznaczenia.',
+      'Loop odtwarza zaznaczenie, gdy pętla jest włączona.',
+    ],
+  },
+  {
+    id: 'fades',
+    title: 'Fade in / Fade out',
+    body: [
+      'Przy zaznaczeniu góra każdej krawędzi jest uchwytem fade. Przeciągnij go, aby wydłużyć zanik. W trybie WAVE Focus uchwyty są pod paskiem Focus, więc pasek ich nie zasłania.',
+      'Krzywa i wygięcie fade są przy kontrolkach edycji sampla.',
+    ],
+  },
+  {
+    id: 'loop',
+    title: 'Pętla',
+    body: ['Loop powtarza bieżące zaznaczenie. Wyłączenie puszcza resztę sampla.'],
+  },
+  {
+    id: 'input',
+    title: 'Wejście',
+    body: [
+      'Początek łańcucha to wzmocnienie wejścia. Make mono składa sample do jednego kanału. Nagrywanie zapisuje mikrofon w slocie sampla, gdy przeglądarka na to pozwala.',
+    ],
+  },
+  {
+    id: 'chain',
+    title: 'Łańcuch audio',
+    body: [
+      'Moduły idą szeregowo od wejścia do wyjścia. Dodajesz, usuwasz, omijasz i zmieniasz ich kolejność w łańcuchu. Każdy dodany efekt jest osobną instancją, nawet gdy typ już jest w łańcuchu.',
+    ],
+  },
+  {
+    id: 'fx-edit',
+    title: 'Dodawanie, usuwanie i kolejność efektów',
+    body: [
+      'Wstaw moduł z łańcucha. Wybierz go, aby edytować tę instancję. Drugi Delay, EQ, Filter, Reverb albo Compressor startuje od własnych wartości domyślnych i nie kopiuje pierwszego.',
+      'Presety dotyczą instancji, którą edytujesz.',
+    ],
+  },
+  {
+    id: 'eq',
+    title: 'EQ',
+    body: ['Każda instancja EQ ma własne pasma. Widok EQ rysuje krzywą wybranej instancji. Częstotliwość, gain i Q pasma można automatyzować.'],
+  },
+  {
+    id: 'filter',
+    title: 'Filter',
+    body: ['Filter jest osobnym modułem, nie EQ. Cutoff, rezonans, drive, mix i jego LFO należą do tej instancji filtra.'],
+  },
+  {
+    id: 'comp',
+    title: 'Compressor',
+    body: ['Instancja kompresora ma własny próg, ratio, attack, release i makeup. To nie jest główny limiter bezpieczeństwa.'],
+  },
+  {
+    id: 'delay',
+    title: 'Delay',
+    body: ['Czas, feedback i wet są osobne dla każdej instancji delay. Kill FX ucina ogony delay i pogłosu bez usuwania modułów.'],
+  },
+  {
+    id: 'reverb',
+    title: 'Pogłos',
+    body: ['Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, wet i własną odpowiedź impulsową.'],
+  },
+  {
+    id: 'dist',
+    title: 'Distortion i inne moduły',
+    body: [
+      'Distortion, grain i mid/side to osobne typy. Kill noise wycisza tylko generator szumu w Distortion. Mid/side zmienia szerokość oraz poziomy mid i side.',
+    ],
+  },
+  {
+    id: 'auto',
+    title: 'Automatyzacja',
+    body: [
+      'AUTO rysuje linie w czasie. Tytuł linii to efekt i parametr, na przykład częstotliwość EQ. Znacznik ścieżki stoi obok tej nazwy i jej nie zasłania.',
+      'Przeciąganie dodaje albo przesuwa punkty. Odcinek może być liniowy, gładki albo schodkowy. Linia zostaje przy instancji efektu, do której należała.',
+    ],
+  },
+  {
+    id: 'lfo',
+    title: 'Modulacja / LFO',
+    body: ['Centrum LFO i sloty przy module modulują parametry instancji, która jest w fokusie. Dwa delaye nie dzielą jednego banku LFO.'],
+  },
+  {
+    id: 'random',
+    title: 'Random',
+    body: ['Random odchyla parametry w dozwolonych zakresach. Limiter bezpieczeństwa jest wyłączony z losowania, więc Random nie ustawi go niebezpiecznie.'],
+  },
+  {
+    id: 'chaos',
+    title: 'Chaos',
+    body: [
+      'Chaos jest przyciskiem bezpośrednio na lewo od Ustawień. Włączenie go uruchamia limiter bezpieczeństwa w łańcuchu, jeśli był ominięty albo go nie było. Nie dodaje drugiego limitera i nie podbija makeup.',
+      'Jeśli ominiesz limiter, gdy Chaos nadal jest włączony, FIELD zostawia ten wybór, dopóki nie wyjdziesz z Chaos i nie wejdziesz ponownie.',
+    ],
+  },
+  {
+    id: 'views',
+    title: 'WAVE, FFT, EQ i AUTO',
+    body: [
+      'WAVE pokazuje sample. FFT pokazuje widmo odtwarzanego audio. EQ otwiera warsztat korektora. AUTO otwiera automatyzację. To widoki tego samego projektu.',
+    ],
+  },
+  {
+    id: 'focus',
+    title: 'Tryb Focus',
+    body: [
+      'Focus wypełnia edytor jednym zadaniem: fala, FFT, EQ albo automatyzacja. Wyjście wraca do zwykłego układu. W WAVE Focus uchwyty fade są odsunięte pod pasek narzędzi.',
+    ],
+  },
+  {
+    id: 'meter',
+    title: 'Miernik wyjścia',
+    body: [
+      'Miernik wyjścia śledzi sygnał master. Zakres, bezpośrednio pod miernikiem, wybiera −60, −100 albo −120 dB. OUT i Monitor są pod tą kontrolką.',
+    ],
+  },
+  {
+    id: 'out',
+    title: 'OUT / Monitor',
+    body: ['OUT to wzmocnienie wyjścia master. Monitor ustawia głośność wejścia w trakcie nagrania. Żadna z tych gałek nie jest zakresem miernika.'],
+  },
+  {
+    id: 'export',
+    title: 'Eksport',
+    body: ['Eksport zapisuje WAV przetworzonego sampla albo bieżącego zaznaczenia, z łańcuchem i automatyzacją projektu.'],
+  },
+  {
+    id: 'themes',
+    title: 'Motywy',
+    body: [
+      'Motywy to palety interfejsu: Studio Dark, Midnight Blue, Oxide, Forest, Light Studio, OLED, Dusk, Pop Art, Classic, Energetic, Chaos Theory, Neon, Manga, Black & White, Noire, Oscilloscope i Custom.',
+      'Wybór jest pamiętany razem z innymi preferencjami FIELD. Zmiana nie restartuje odtwarzania.',
+    ],
+  },
+  {
+    id: 'keys',
+    title: 'Skróty klawiszowe',
+    body: [
+      'Spacja odtwarza albo pauzuje, poza pisaniem. Escape zamyka menu i okna.',
+      'Ctrl+Z albo Cmd+Z cofa. Shift+Ctrl+Z albo Shift+Cmd+Z ponawia.',
+      'Tab przechodzi między kontrolkami. Strzałki zmieniają gałkę albo suwak w fokusie. Shift+strzałka to mniejszy krok. Home i End skaczą na krańce. Page Up i Page Down robią większy krok. Delete albo Backspace resetuje parametr w fokusie.',
+      'Skróty transportu można wyłączyć w Ustawieniach.',
+    ],
+  },
+  {
+    id: 'gestures',
+    title: 'Gesty na telefonie',
+    body: [
+      'Przeciągnij po fali, aby narysować albo zmienić zaznaczenie. Przeciągnij uchwyt fade u góry krawędzi. Uszczypnięcie przybliża. Przeciągnięcie głowicy przewija.',
+      'Transport telefonu ma duże cele. Focus używa pełnej wysokości paska nad falą, nie na uchwytach fade.',
+    ],
+  },
+  {
+    id: 'a11y',
+    title: 'Dostępność',
+    body: [
+      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu i optymalizacje czytnika ekranu. Kontrolki zachowują nazwy i obsługę klawiaturą.',
+    ],
+  },
+  {
+    id: 'reset',
+    title: 'Reset',
+    body: [
+      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji.',
+      'Gdy w sesji jest już praca, FIELD prosi o potwierdzenie. Pusta sesja resetuje się od razu.',
+    ],
+  },
+  {
+    id: 'perf',
+    title: 'Wskaźnik wydajności',
+    body: [
+      'Nagłówek pokazuje obciążenie UI: wygładzone opóźnienie pętli zdarzeń wątku głównego. To nie jest procent CPU procesu w systemie. Przeglądarka nie udostępnia tej liczby stronie.',
+      'Pamięć, gdy przeglądarka ją podaje, to sterta JavaScript, nie cała maszyna.',
+    ],
+  },
+  {
+    id: 'trouble',
+    title: 'Rozwiązywanie problemów',
+    body: [
+      'Gdy nic nie słychać, sprawdź, czy sample jest wczytany, łańcuch nie jest cały ominięty i OUT jest podniesione. Gdy audio jest zablokowane, kliknij stronę i naciśnij play jeszcze raz.',
+      'Kill FX czyści ogony delay i pogłosu. Reset aplikacji czyści sesję, gdy projekt się zakleszczy. Odśwież aplikację w widoku zainstalowanym przeładowuje tylko zainstalowaną powłokę i jej cache.',
+    ],
+  },
+]
+
+export const MANUAL: Record<Locale, ManualCopy> = {
+  en: {
+    title: 'Manual',
+    search: 'Search manual',
+    empty: 'No matching section.',
+    close: 'Close manual',
+    sections: en,
+  },
+  pl: {
+    title: 'Podręcznik',
+    search: 'Szukaj w podręczniku',
+    empty: 'Brak pasującej sekcji.',
+    close: 'Zamknij podręcznik',
+    sections: pl,
+  },
+}

@@ -100,6 +100,7 @@ type Props = {
   onNormalizeView: (value: boolean) => void
   onZoomLabel: (label: string) => void
   onLoadDemo: () => void
+  onLoadSample?: () => void
   onRegionCommit: () => void
   onAutomationCommit?: () => void
   onDeleteSelection?: () => void
@@ -222,6 +223,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onNormalizeView,
     onZoomLabel,
     onLoadDemo,
+    onLoadSample,
     onRegionCommit,
     onAutomationCommit,
     onDeleteSelection,
@@ -1282,9 +1284,19 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           onKeyDown={onEditorKeyDown}
           style={viz === 'split' ? { flex: waveShare } : undefined}
         >
+          {automationView ? (
+            <div className={styles.autoBar}>
+              <span className={styles.autoTrack} title={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? ''}>
+                {`T${Math.max(1, snap.tracks.findIndex((track) => track.id === snap.selectedTrackId) + 1)}`}
+              </span>
+              <span className={styles.autoParam} title={activeTitle}>
+                {activeTitle}
+              </span>
+            </div>
+          ) : null}
           <div className={`${styles.wavePane} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
-            {!sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
+            {!automationView && !sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
                 {snap.tracks.map((track) => {
                   const on = track.id === snap.selectedTrackId
@@ -1582,6 +1594,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               ) : (
                 <div className={styles.empty}>
                   <span>{emptyLabel ?? t.waveform.empty}</span>
+                  {onLoadSample ? (
+                    <button type="button" className={`${styles.demo} ${styles.loadPrimary}`} onClick={onLoadSample}>
+                      {t.header.loadSample}
+                    </button>
+                  ) : null}
                   <button type="button" className={styles.demo} onClick={onLoadDemo}>
                     {t.waveform.loadDemo}
                   </button>

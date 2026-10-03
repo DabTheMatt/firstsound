@@ -356,6 +356,7 @@ describe('engine random', () => {
     const seen = new Set<number>()
     for (let i = 0; i < 6; i++) seen.add(engine.getSnapshot().params.gain)
     engine.setChaos(true)
+    const rebuildsAfterChaos = rebuilds
     for (let i = 0; i < 6; i++) {
       engine.randomizeParam('gain')
       seen.add(engine.getSnapshot().params.gain)
@@ -370,7 +371,9 @@ describe('engine random', () => {
     expect(slot.target).toBe('filterCutoff')
     expect(slot.rateHz).toBe(1.25)
     expect(slot.shape).toBe('sine')
-    expect(rebuilds).toBe(0)
+    expect(rebuildsAfterChaos).toBe(1)
+    expect(rebuilds).toBe(rebuildsAfterChaos)
+    expect(engine.getSnapshot().chain.filter((mod) => mod.type === 'limiter')).toHaveLength(1)
     expect(engine.getSnapshot().automation.lanes).toHaveLength(0)
   })
 

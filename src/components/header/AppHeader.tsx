@@ -7,6 +7,7 @@ import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
 import { StableLabel } from './StableLabel'
 import { ChaosControl } from '../random/ChaosControl'
+import { ResetSessionButton } from './ResetSessionButton'
 import { ThemePicker } from './ThemePicker'
 import { Wordmark } from './Wordmark'
 import styles from './AppHeader.module.css'
@@ -19,6 +20,7 @@ type Props = {
   onToggleLfoCenter: () => void
   onLoadSample: () => void
   onRecord: () => void
+  onReset: () => void
   compact: boolean
   minimal?: boolean
   modeSwitch?: ReactNode
@@ -32,6 +34,7 @@ export function AppHeader({
   onToggleLfoCenter,
   onLoadSample,
   onRecord,
+  onReset,
   compact,
   minimal = false,
   modeSwitch,
@@ -108,7 +111,6 @@ export function AppHeader({
         <div className={styles.runtime}>
           <RuntimeStatus />
         </div>
-        <ChaosControl />
         {!minimal ? (
           <p className={styles.meta}>
             <span>{rate}</span>
@@ -135,16 +137,20 @@ export function AppHeader({
           </span>
         </button>
         ) : null}
-        <button
-          type="button"
-          className={styles.settings}
+        <div className={styles.utilities}>
+          <ResetSessionButton onReset={onReset} />
+          <ChaosControl />
+          <button
+            type="button"
+            className={styles.settings}
           aria-label={t.header.settings}
           aria-expanded={settingsOpen}
           data-settings-toggle=""
           onClick={onToggleSettings}
         >
           {compact ? '☰' : t.header.settings}
-        </button>
+          </button>
+        </div>
       </div>
     </header>
   )

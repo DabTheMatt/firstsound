@@ -201,6 +201,7 @@ export function Inspector({
         />
       ) : (
         <ModuleInspector
+          key={focus.instanceId}
           snap={snap}
           type={focus.type}
           instanceId={focus.instanceId}

@@ -17,7 +17,7 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { inspectorContextId } from '../../app/inspectorRoute'
 import { InspectorEye } from '../inspector/InspectorEye'
-import { inspectorAccentStyle, TrackIdentity } from '../inspector/TrackIdentity'
+import { inspectorAccentStyle } from '../inspector/TrackIdentity'
 import inspectorStyles from '../inspector/Inspector.module.css'
 import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
@@ -146,9 +146,16 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
       data-inspector-context={inspectorContextId({ kind: 'automation' })}
       data-inspector-track={snap.selectedTrackId}
     >
-      <div className={inspectorStyles.head}>
-        <TrackIdentity snap={snap} />
-        <h2 className={inspectorStyles.title}>{t.waveform.automationTitle}</h2>
+      <div className={`${inspectorStyles.head} ${styles.laneHead}`}>
+        <span
+          className={styles.trackBadge}
+          title={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? t.waveform.automationTitle}
+        >
+          {`T${Math.max(1, snap.tracks.findIndex((track) => track.id === snap.selectedTrackId) + 1)}`}
+        </span>
+        <h2 className={styles.laneTitle} title={titleFor(selected)}>
+          {titleFor(selected)}
+        </h2>
         {onHideInspector ? (
           <div className={inspectorStyles.headActions}>
             <InspectorEye open onClick={onHideInspector} />

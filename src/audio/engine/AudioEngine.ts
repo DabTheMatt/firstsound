@@ -130,7 +130,17 @@ import { selectEqBand } from './eqBandSelection'
 import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
 import { SPECTRUM_FLOOR_DB } from './spectrumBands'
 import { createPinkNoiseBuffer } from './pinkNoise'
-import { DEMO_FILE_NAME, renderDemoSample } from './demoSample'
+import { demoSampleName, renderDemoSample } from './demoSample'
+import {
+  captureEffectParams,
+  createDefaultEffect,
+  isEffectInstanceType,
+  lfoKindForModule,
+  ownedParamIds,
+  writeEffectParams,
+  type EffectInstanceState,
+  type EffectInstanceType,
+} from '../fx/effectInstance'
 import { micAccessMessage } from './micAccess'
 import {
   applyDelayGraph,
@@ -699,6 +709,8 @@ export class AudioEngine {
   private eqPick: { index: number; token: number } | null = null
   private eqPickToken = 0
   private randomWarned = false
+  /** Per-instance reverb impulse cache. Two reverbs do not share one key. */
+  private slotReverbIr = new Map<string, { key: string; timer: number }>()
   private randomPrompt = false
   private randomPendingId: ParamId | null = null
   private randomPendingEq = false
@@ -1026,13 +1038,6 @@ export class AudioEngine {
   }
   private set reverbIrKey(value: string) {
     this.rack().reverbIrKey = value
-  }
-
-  private get reverbIrTimer(): number {
-    return this.rack().reverbIrTimer
-  }
-  private set reverbIrTimer(value: number) {
-    this.rack().reverbIrTimer = value
   }
 
   private get filterFollower(): number {
@@ -1421,13 +1426,14 @@ export class AudioEngine {
   async loadDemoTone(): Promise<void> {
     await this.ensureContext()
     if (!this.ctx) return
-    const rendered = renderDemoSample(this.ctx.sampleRate)
+    const seed = Math.floor(Math.random() * 0x7fffffff) || 1
+    const rendered = renderDemoSample(this.ctx.sampleRate, seed)
     const buffer = this.ctx.createBuffer(2, rendered.left.length, rendered.sampleRate)
     buffer.getChannelData(0).set(rendered.left)
     buffer.getChannelData(1).set(rendered.right)
     this.stopVoices()
     this.playing = false
-    this.fileName = DEMO_FILE_NAME
+    this.fileName = demoSampleName(seed)
     this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId)
   }
 
@@ -1870,11 +1876,189 @@ export class AudioEngine {
   setChaos(enabled: boolean): void {
     if (this.randomDoc.chaos === enabled) return
     this.randomDoc = { ...this.randomDoc, chaos: enabled }
+    if (enabled) this.armChaosLimiter()
     if (!enabled) this.randomRuntime = defaultRandomRuntime()
     this.persistRandom()
     this.syncLfoClock()
     this.syncRateVoices()
     this.emit()
+  }
+
+  /**
+   * Entering Chaos enables the existing chain limiter once.
+   * A later bypass during the same Chaos session is left alone.
+   * Toggling Chaos off and on is a new entry and enables it again.
+   * Makeup and ceiling are not raised.
+   */
+  private armChaosLimiter(): void {
+    const existing = this.chain.find((mod) => mod.type === 'limiter')
+    if (!existing) {
+      this.insertModule('limiter', Math.max(0, this.chain.length - 2))
+      return
+    }
+    if (existing.bypassed) this.setModuleBypass(existing.instanceId, false)
+  }
+
+  /** Point parameter edits at one effect instance. Presentation and DSP both follow it. */
+  focusEffect(instanceId: string | null): void {
+    if (!instanceId) {
+      this.rack().focusedEffectId = null
+      return
+    }
+    const mod = this.chain.find((item) => item.instanceId === instanceId)
+    if (!mod || !isEffectInstanceType(mod.type)) {
+      this.rack().focusedEffectId = instanceId
+      return
+    }
+    if (this.rack().focusedEffectId === instanceId && this.ownerId(mod.type) === instanceId) return
+    this.commitOwnedEffects()
+    this.rack().effectOwner[mod.type] = instanceId
+    this.rack().focusedEffectId = instanceId
+    this.loadEffect(instanceId)
+    this.applyLiveAudio(0.02)
+    this.emit()
+  }
+
+  private effectMap(): Map<string, EffectInstanceState> {
+    return this.rack().effects
+  }
+
+  private ownerId(type: EffectInstanceType): string | null {
+    const owned = this.rack().effectOwner[type]
+    if (owned && this.chain.some((mod) => mod.instanceId === owned && mod.type === type)) return owned
+    return this.chain.find((mod) => mod.type === type)?.instanceId ?? null
+  }
+
+  private commitEffect(id: string): void {
+    const state = this.effectMap().get(id)
+    if (!state) return
+    const next = captureEffectParams(
+      state.type,
+      state.id,
+      this.params,
+      {
+        delayType: this.delayType,
+        reverbType: this.reverbType,
+        distortionType: this.distortionType,
+        distortionNoiseKind: this.distortionNoiseKind,
+      },
+      lfoKindForModule(state.type) ? this.fxLfos[lfoKindForModule(state.type)!] : state.lfos,
+      this.automation.lanes,
+      this.randomOffsets,
+    )
+    state.params = next.params
+    state.delayType = next.delayType
+    state.reverbType = next.reverbType
+    state.distortionType = next.distortionType
+    state.distortionNoiseKind = next.distortionNoiseKind
+    state.lfos = next.lfos
+    state.lanes = next.lanes
+    state.randomOffsets = next.randomOffsets
+  }
+
+  private commitOwnedEffects(): void {
+    for (const type of ['grain', 'eq', 'filter', 'midside', 'distortion', 'delay', 'reverb', 'compressor', 'limiter'] as const) {
+      const id = this.ownerId(type)
+      if (id) this.commitEffect(id)
+    }
+  }
+
+  private loadEffect(id: string): void {
+    const state = this.effectMap().get(id)
+    if (!state) return
+    writeEffectParams(this.params, state)
+    if (state.type === 'delay') this.delayType = state.delayType
+    if (state.type === 'reverb') {
+      this.reverbType = state.reverbType
+      this.reverbIrKey = ''
+    }
+    if (state.type === 'distortion') {
+      this.distortionType = state.distortionType
+      this.distortionNoiseKind = state.distortionNoiseKind
+    }
+    const kind = lfoKindForModule(state.type)
+    if (kind) this.fxLfos[kind] = state.lfos.map((lfo) => ({ ...lfo }))
+    const owned = new Set(ownedParamIds(state.type))
+    const shared = this.automation.lanes.filter((lane) => !owned.has(lane.paramId))
+    this.automation = {
+      ...this.automation,
+      lanes: [
+        ...shared,
+        ...state.lanes.map((lane) => ({
+          ...lane,
+          effectId: state.id,
+          nodes: lane.nodes.map((node) => ({ ...node })),
+        })),
+      ],
+    }
+    for (const paramId of owned) delete this.randomOffsets[paramId]
+    Object.assign(this.randomOffsets, state.randomOffsets)
+  }
+
+  private registerInsertedEffect(added: ChainModule): void {
+    if (!isEffectInstanceType(added.type)) return
+    const others = this.chain.filter((mod) => mod.type === added.type && mod.instanceId !== added.instanceId)
+    if (others.length === 0) {
+      const state = captureEffectParams(
+        added.type,
+        added.instanceId,
+        this.params,
+        {
+          delayType: this.delayType,
+          reverbType: this.reverbType,
+          distortionType: this.distortionType,
+          distortionNoiseKind: this.distortionNoiseKind,
+        },
+        lfoKindForModule(added.type) ? this.fxLfos[lfoKindForModule(added.type)!] : [],
+        this.automation.lanes,
+        this.randomOffsets,
+      )
+      this.effectMap().set(added.instanceId, state)
+      this.rack().effectOwner[added.type] = added.instanceId
+      return
+    }
+    const owner = this.ownerId(added.type)
+    if (owner) this.commitEffect(owner)
+    const fresh = createDefaultEffect(added.type, added.instanceId)
+    if (fresh) this.effectMap().set(added.instanceId, fresh)
+  }
+
+  private resolvedSlotParams(state: EffectInstanceState): Record<ParamId, number> {
+    const manual = { ...this.params }
+    writeEffectParams(manual, state)
+    const owned = new Set(ownedParamIds(state.type))
+    const shared = this.automation.lanes.filter((lane) => !owned.has(lane.paramId) || lane.effectId === state.id)
+    const ownLanes = state.lanes.filter((lane) => !shared.some((item) => item.paramId === lane.paramId && item.effectId === state.id))
+    const automation = { ...this.automation, lanes: [...shared, ...ownLanes] }
+    const lfos = cloneFxLfos(this.fxLfos)
+    const kind = lfoKindForModule(state.type)
+    const owner = this.ownerId(state.type)
+    if (kind && owner !== state.id) lfos[kind] = state.lfos.map((lfo) => ({ ...lfo }))
+    const offsets: Partial<Record<ParamId, number>> = { ...this.randomOffsets }
+    if (owner !== state.id) {
+      for (const paramId of owned) delete offsets[paramId]
+      Object.assign(offsets, state.randomOffsets)
+    }
+    const clocks = { lfoSec: this.lfoClockSec, filterSec: this.filterClockSec }
+    const performed = resolvePerformanceParams(
+      manual,
+      automation,
+      this.lastTransportSec,
+      this.playing,
+      lfos,
+      clocks.lfoSec,
+      this.lfoHold,
+      undefined,
+      offsets,
+    )
+    if (state.type !== 'filter') return performed
+    return applyFilterModulation(performed, {
+      timeSec: clocks.filterSec,
+      playing: this.playing,
+      envOriginSec: this.filterEnvOrigin,
+      follower01: this.filterFollower,
+      snh: this.filterSnh,
+    })
   }
 
   /** First enable in this session opens the warning. Later enables apply immediately. */
@@ -2379,13 +2563,15 @@ export class AudioEngine {
 
   private engageReverbFromMix(): void {
     if (!reverbMixEngagesModule(this.params.reverbWet)) return
-    const reverb = this.chain.find((m) => m.type === 'reverb')
+    const id = this.ownerId('reverb')
+    const reverb = id ? this.chain.find((m) => m.instanceId === id) : this.chain.find((m) => m.type === 'reverb')
     if (reverb?.bypassed) this.setModuleBypass(reverb.instanceId, false)
   }
 
   private engageDelayFromMix(): void {
     if (this.params.delayWet < 1 && this.params.delayWetR < 1) return
-    const delay = this.chain.find((m) => m.type === 'delay')
+    const id = this.ownerId('delay')
+    const delay = id ? this.chain.find((m) => m.instanceId === id) : this.chain.find((m) => m.type === 'delay')
     if (delay?.bypassed) this.setModuleBypass(delay.instanceId, false)
   }
 
@@ -2410,7 +2596,8 @@ export class AudioEngine {
       p.distortionNoise,
     ).wet > 0
     if (!active) return
-    const mod = this.chain.find((m) => m.type === 'distortion')
+    const id = this.ownerId('distortion')
+    const mod = id ? this.chain.find((m) => m.instanceId === id) : this.chain.find((m) => m.type === 'distortion')
     if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
   }
 
@@ -2504,8 +2691,13 @@ export class AudioEngine {
     } else if (preset.kind === 'filter') {
       this.setFxLfo('filter', 0, { target: null, depth: 0 })
     }
-    const mod = this.chain.find((m) => m.type === preset.kind)
+    const kind = preset.kind === 'grain' ? 'grain' : preset.kind
+    const ownedId = isEffectInstanceType(kind) ? this.ownerId(kind) : null
+    const mod = ownedId
+      ? this.chain.find((item) => item.instanceId === ownedId)
+      : this.chain.find((item) => item.type === preset.kind)
     if (mod?.bypassed) this.setModuleBypass(mod.instanceId, false)
+    this.commitOwnedEffects()
   }
 
   private wireFilterPresetLfo(_id: FilterPresetId): void {
@@ -2584,6 +2776,7 @@ export class AudioEngine {
     for (const mod of added) {
       if (mod.type === 'eq') this.eqById.set(mod.instanceId, cloneEqState())
       if (mod.type === 'grain') this.engineMode = 'grain'
+      this.registerInsertedEffect(mod)
     }
     this.mountAddedSlots(added)
     this.emit()
@@ -3586,9 +3779,38 @@ export class AudioEngine {
     this.seedEqStates()
     this.muted = false
     this.syncLfoClock()
+    for (const row of this.slotReverbIr.values()) {
+      if (row.timer) window.clearTimeout(row.timer)
+    }
+    this.slotReverbIr.clear()
     this.rebuildAllGraphs()
     this.applyLiveAudio()
     this.emit()
+  }
+
+  /**
+   * Return the session to a clean initial project without creating a new
+   * AudioContext and without reloading the page.
+   */
+  resetSession(): void {
+    this.stop()
+    this.stopVoices()
+    this.trackBuffers.clear()
+    this.buffer = null
+    this.sourceBuffer = null
+    this.reversed = null
+    this.mono = null
+    this.fileName = ''
+    this.playOffset = 0
+    this.randomWarned = false
+    this.randomPrompt = false
+    this.randomPendingId = null
+    this.randomPendingEq = false
+    this.randomPendingLfo = null
+    this.spectralBandsPcm = null
+    this.spectralKey = ''
+    this.spectralMix = null
+    this.resetAll()
   }
 
   reorderModules(fromIndex: number, toIndex: number): void {
@@ -3605,6 +3827,7 @@ export class AudioEngine {
     this.chain = next
     if (added?.type === 'eq') this.eqById.set(added.instanceId, cloneEqState())
     if (added?.type === 'grain') this.engineMode = 'grain'
+    if (added) this.registerInsertedEffect(added)
     this.mountAddedSlots(added ? [added] : [])
     this.emit()
     return added?.instanceId ?? null
@@ -3615,6 +3838,11 @@ export class AudioEngine {
     if (modulesEqual(next, this.chain)) return
     this.chain = next
     this.eqById.delete(instanceId)
+    this.effectMap().delete(instanceId)
+    if (this.rack().focusedEffectId === instanceId) this.rack().focusedEffectId = null
+    for (const type of Object.keys(this.rack().effectOwner) as EffectInstanceType[]) {
+      if (this.rack().effectOwner[type] === instanceId) delete this.rack().effectOwner[type]
+    }
     if (!this.chain.some((m) => m.type === 'grain' && !m.bypassed)) this.engineMode = 'playback'
     this.syncPrimaryEq()
     if (this.playing && this.engineMode === 'grain') void this.play()
@@ -4126,7 +4354,10 @@ export class AudioEngine {
 
   private serializedRacks(): Record<string, ReturnType<typeof serializeTrackRack>> {
     const out: Record<string, ReturnType<typeof serializeTrackRack>> = {}
-    for (const track of this.tracks) out[track.id] = serializeTrackRack(this.ensureRack(track.id))
+    for (const track of this.tracks) {
+      this.withEditing(track.id, () => this.commitOwnedEffects())
+      out[track.id] = serializeTrackRack(this.ensureRack(track.id))
+    }
     return out
   }
 
@@ -5427,12 +5658,14 @@ export class AudioEngine {
   private applyBypassRamps(smoothing = 0.01): void {
     if (!this.ctx) return
     const now = this.ctx.currentTime
-    const params = this.liveParams()
     const flags = { eqListenFilters: this.eqListen === 'filters', spaceLatched: this.spaceLatched }
     for (const mod of this.chain) {
       const slot = this.slots.get(mod.instanceId)
       if (!slot) continue
-      const mix = moduleMixGains(mod, params, this.distortionType, flags)
+      const state = this.effectMap().get(mod.instanceId)
+      const params = state ? this.resolvedSlotParams(state) : this.liveParams()
+      const distortionType = state?.type === 'distortion' ? state.distortionType : this.distortionType
+      const mix = moduleMixGains(mod, params, distortionType, flags)
       rampGainExact(slot.dry.gain, mix.dry, now, smoothing)
       rampGainExact(slot.wet.gain, mix.wet, now, smoothing)
       if (mix.muteDelayChannels && slot.delayFx) {
@@ -5913,10 +6146,16 @@ export class AudioEngine {
 
   private applyFxParams(smoothing: number): void {
     if (!this.ctx) return
+    this.commitOwnedEffects()
     const now = this.ctx.currentTime
-    const params = this.liveParams()
-    const bpm = params.bpm
+    const bpm = this.params.bpm
     for (const slot of this.slots.values()) {
+      const state = this.effectMap().get(slot.instanceId)
+      const params = state ? this.resolvedSlotParams(state) : this.liveParams()
+      const delayType = state?.type === 'delay' ? state.delayType : this.delayType
+      const reverbType = state?.type === 'reverb' ? state.reverbType : this.reverbType
+      const distortionType = state?.type === 'distortion' ? state.distortionType : this.distortionType
+      const distortionNoiseKind = state?.type === 'distortion' ? state.distortionNoiseKind : this.distortionNoiseKind
       if (slot.filterFx) {
         applyFilterGraph(slot.filterFx, params, now, smoothing, this.ctx.sampleRate)
       }
@@ -5927,8 +6166,8 @@ export class AudioEngine {
         applyDistortionGraph(
           slot.distortionFx,
           params,
-          this.distortionType,
-          this.distortionNoiseKind,
+          distortionType,
+          distortionNoiseKind,
           now,
           smoothing,
           this.ctx.sampleRate,
@@ -5940,33 +6179,37 @@ export class AudioEngine {
       if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
       if (slot.delayFx) {
         if (this.spaceLatched) silenceDelayGraph(slot.delayFx, now)
-        else applyDelayGraph(slot.delayFx, params, this.delayType, bpm, now, smoothing, this.ctx)
+        else applyDelayGraph(slot.delayFx, params, delayType, bpm, now, smoothing, this.ctx)
       }
       if (slot.reverbFx) {
         const fx = slot.reverbFx
         if (this.spaceLatched) silenceReverbGraph(fx, now)
-        else applyReverbGraph(fx, params, this.reverbType, bpm, now, smoothing)
-        const key = reverbImpulseKey(params, this.reverbType)
-        if (key !== this.reverbIrKey || !convolverHasBuffer(fx.conv)) {
-          const trackId = this.activeTrackId()
-          this.reverbIrKey = key
-          if (this.reverbIrTimer) window.clearTimeout(this.reverbIrTimer)
+        else applyReverbGraph(fx, params, reverbType, bpm, now, smoothing)
+        const key = reverbImpulseKey(params, reverbType)
+        const cacheId = `${this.activeTrackId()}:${slot.instanceId}`
+        const cached = this.slotReverbIr.get(cacheId)
+        if (key !== cached?.key || !convolverHasBuffer(fx.conv)) {
+          if (state?.type === 'reverb' && this.ownerId('reverb') === state.id) this.reverbIrKey = key
+          if (cached?.timer) window.clearTimeout(cached.timer)
           if (!convolverHasBuffer(fx.conv)) {
-            setConvolverPairBuffer(fx.conv, buildReverbBuffer(this.ctx, params, this.reverbType), now)
+            this.slotReverbIr.set(cacheId, { key, timer: 0 })
+            setConvolverPairBuffer(fx.conv, buildReverbBuffer(this.ctx, params, reverbType), now)
           } else {
-            this.reverbIrTimer = window.setTimeout(() => {
-              const owner = this.racks.get(trackId)
-              if (owner) owner.reverbIrTimer = 0
+            const trackId = this.activeTrackId()
+            const instanceId = slot.instanceId
+            const timer = window.setTimeout(() => {
+              const row = this.slotReverbIr.get(`${trackId}:${instanceId}`)
+              if (row) row.timer = 0
               if (!this.ctx || !fx) return
               this.withEditing(trackId, () => {
                 if (!this.ctx) return
-                setConvolverPairBuffer(
-                  fx.conv,
-                  buildReverbBuffer(this.ctx, this.liveParams(), this.reverbType),
-                  this.ctx.currentTime,
-                )
+                const current = this.effectMap().get(instanceId)
+                const live = current ? this.resolvedSlotParams(current) : this.liveParams()
+                const model = current?.type === 'reverb' ? current.reverbType : this.reverbType
+                setConvolverPairBuffer(fx.conv, buildReverbBuffer(this.ctx, live, model), this.ctx.currentTime)
               })
             }, 40)
+            this.slotReverbIr.set(cacheId, { key, timer })
           }
         }
       }

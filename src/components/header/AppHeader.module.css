@@ -36,6 +36,18 @@
   margin-left: auto;
 }
 
+.utilities {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.minimal .utilities button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .brand {
   display: flex;
   align-items: center;

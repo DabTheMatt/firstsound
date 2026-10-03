@@ -1,14 +1,15 @@
 /**
- * Original FIELD demonstration sample.
- * Four equal bars (80 BPM) so each region loops in time and reads differently
- * on a waveform and an FFT: bass/percussion, mid melody, bright texture, full mix.
+ * Seeded FIELD demonstration sample.
+ * Each call builds a new 12–24 s stereo buffer meant to exercise editing,
+ * dynamics, filtering, space, and metering. Nothing keeps running after render.
+ *
+ * When this generator's musical contract changes, update the Manual section
+ * in src/manual/content.ts in the same task.
  */
 
-export const DEMO_SAMPLE_SECONDS = 12
-export const DEMO_SECTION_SECONDS = 3
-export const DEMO_FILE_NAME = 'field_demo.wav'
+export const DEMO_DURATION_MIN = 12
+export const DEMO_DURATION_MAX = 24
 
-const BEAT = 0.75
 const TWO_PI = Math.PI * 2
 
 export type DemoChannels = {
@@ -241,104 +242,153 @@ function chordStab(left: Float32Array, right: Float32Array, sr: number, t0: numb
   })
 }
 
-function renderVoices(left: Float32Array, right: Float32Array, sr: number): void {
-  const s1 = 0
-  const s2 = DEMO_SECTION_SECONDS
-  const s3 = DEMO_SECTION_SECONDS * 2
-  const s4 = DEMO_SECTION_SECONDS * 3
-  const end = DEMO_SAMPLE_SECONDS
+type Role = 'intro' | 'hit' | 'quiet' | 'bass' | 'dense' | 'stereo' | 'tail'
 
-  for (let beat = 0; beat < 4; beat++) addKick(left, right, sr, s1 + beat * BEAT, beat % 2 === 0 ? 0.72 : 0.5)
-  bass(left, right, sr, s1, 55, 0.34, s2)
-  bass(left, right, sr, s1 + 1 * BEAT, 55, 0.22, s2)
-  bass(left, right, sr, s1 + 2 * BEAT, 43.65, 0.32, s2)
-  bass(left, right, sr, s1 + 3 * BEAT, 49, 0.3, s2)
+function midiHz(note: number): number {
+  return 440 * 2 ** ((note - 69) / 12)
+}
 
-  const melody: Array<[number, number, number]> = [
-    [0, 220, -0.4],
-    [1, 261.63, 0.25],
-    [2, 329.63, -0.2],
-    [4, 392, 0.4],
-    [5, 329.63, -0.3],
-    [6, 293.66, 0.15],
-    [7, 261.63, -0.35],
-  ]
-  for (const [step, freq, pan] of melody) {
-    pluck(left, right, sr, s2 + step * (BEAT / 2), freq, 0.38, pan, s3)
+function shuffleRoles(random: Rng): Role[] {
+  const roles: Role[] = ['intro', 'hit', 'quiet', 'bass', 'dense', 'stereo', 'tail']
+  for (let i = roles.length - 1; i > 0; i--) {
+    const j = Math.floor(random.next() * (i + 1))
+    const swap = roles[i]!
+    roles[i] = roles[j]!
+    roles[j] = swap
   }
-  addTone(left, right, sr, {
-    t0: s2,
-    freq: 220,
-    amp: 0.07,
-    attack: 0.04,
-    decay: 0.22,
-    harmonics: [1, 0.2],
-    harmTilt: 1,
-    pan: -0.15,
-    until: s3,
-  })
-  addTone(left, right, sr, {
-    t0: s2,
-    freq: 329.63,
-    amp: 0.05,
-    attack: 0.05,
-    decay: 0.22,
-    harmonics: [1],
-    harmTilt: 0,
-    pan: 0.2,
-    detuneCents: 3,
-    until: s3,
-  })
+  return roles
+}
 
-  const bells: Array<[number, number, number]> = [
-    [0, 2093, -0.55],
-    [1, 2637, 0.5],
-    [2, 3135.96, -0.35],
-    [3, 2349.32, 0.6],
-  ]
-  for (const [beat, freq, pan] of bells) bell(left, right, sr, s3 + beat * BEAT, freq, 0.46, pan, s4)
-  for (let step = 0; step < 8; step++) {
-    const open = step % 2 === 1
-    addHat(left, right, sr, s3 + step * (BEAT / 2), open ? 0.24 : 0.15, open, 0x51f000 + step * 17)
+function paintRole(
+  role: Role,
+  left: Float32Array,
+  right: Float32Array,
+  sr: number,
+  t0: number,
+  t1: number,
+  random: Rng,
+  root: number,
+  seed: number,
+): void {
+  const span = Math.max(0.4, t1 - t0)
+  const pulse = 0.32 + random.next() * 0.28
+  if (role === 'intro') {
+    addAir(left, right, sr, t0, t1, 0.045 + random.next() * 0.03, seed ^ 0x11a)
+    addTone(left, right, sr, {
+      t0,
+      freq: midiHz(root + 12),
+      amp: 0.08,
+      attack: Math.min(0.4, span * 0.25),
+      decay: 0.6,
+      harmonics: [1, 0.2, 0.05],
+      harmTilt: 2,
+      pan: -0.35,
+      detuneCents: 6,
+      until: t1,
+    })
+    return
   }
-  addAir(left, right, sr, s3 + 0.02, s3 + DEMO_SECTION_SECONDS - 0.02, 0.07, 0xA11)
-
-  for (let beat = 0; beat < 4; beat++) {
-    const t = s4 + beat * BEAT
-    if (beat % 2 === 0) {
-      addKick(left, right, sr, t, 0.62)
-      bass(left, right, sr, t, beat === 0 ? 55 : 43.65, 0.28, end)
-      chordStab(left, right, sr, t, beat === 0 ? [220, 261.63, 329.63] : [174.61, 220, 261.63], 0.16, end)
-      bell(left, right, sr, t, beat === 0 ? 1760 : 2093, 0.1, beat === 0 ? -0.4 : 0.45, end)
-    } else {
-      addTone(left, right, sr, {
-        t0: t,
-        freq: 180,
-        amp: 0.22,
-        attack: 0.004,
-        decay: 9,
-        harmonics: [1, 0.4, 0.15],
-        harmTilt: 3,
-        pan: 0,
-        until: end,
-      })
-      addHat(left, right, sr, t, 0.2, true, 0x5a0000 + beat)
-      bell(left, right, sr, t + 0.02, beat === 1 ? 2637 : 3136, 0.12, beat === 1 ? 0.4 : -0.45, end)
+  if (role === 'quiet') {
+    pluck(left, right, sr, t0 + span * 0.35, midiHz(root + 24), 0.08, -0.2, t1)
+    pluck(left, right, sr, t0 + span * 0.7, midiHz(root + 19), 0.05, 0.45, t1)
+    return
+  }
+  if (role === 'bass') {
+    const notes = [0, 0, -5, 7]
+    for (let i = 0; i < notes.length; i++) {
+      const when = t0 + (span * i) / notes.length
+      bass(left, right, sr, when, midiHz(root + (notes[i] ?? 0) - 24), 0.28 + random.next() * 0.08, t1)
+      if (i % 2 === 0) addKick(left, right, sr, when, 0.42)
     }
-    addHat(left, right, sr, t + BEAT / 2, 0.08, false, 0x330000 + beat)
+    return
+  }
+  if (role === 'hit') {
+    const steps = Math.max(4, Math.floor(span / pulse))
+    for (let i = 0; i < steps; i++) {
+      const when = t0 + i * pulse
+      if (when >= t1) break
+      if (i % 4 === 0) addKick(left, right, sr, when, 0.55)
+      addHat(left, right, sr, when + pulse * 0.5, i % 2 ? 0.16 : 0.09, i % 3 === 2, seed + i * 19)
+    }
+    return
+  }
+  if (role === 'dense') {
+    chordStab(left, right, sr, t0, [midiHz(root), midiHz(root + 7), midiHz(root + 10)], 0.12, t1)
+    chordStab(left, right, sr, t0 + span * 0.5, [midiHz(root + 5), midiHz(root + 12), midiHz(root + 15)], 0.1, t1)
+    const steps = Math.max(3, Math.floor(span / (pulse * 0.5)))
+    for (let i = 0; i < steps; i++) {
+      const when = t0 + i * pulse * 0.5
+      if (when >= t1) break
+      addHat(left, right, sr, when, 0.08, i % 2 === 1, seed + 400 + i)
+      if (i % 4 === 0) addKick(left, right, sr, when, 0.36)
+    }
+    return
+  }
+  if (role === 'stereo') {
+    const highs = [24, 31, 36, 27]
+    highs.forEach((semi, i) => {
+      const pan = i % 2 === 0 ? -0.72 : 0.7
+      bell(left, right, sr, t0 + (span * i) / highs.length, midiHz(root + semi), 0.16, pan, t1)
+    })
+    addTone(left, right, sr, {
+      t0,
+      freq: midiHz(root + 12),
+      amp: 0.05,
+      attack: 0.05,
+      decay: 0.4,
+      harmonics: [1, 0.3],
+      harmTilt: 1,
+      pan: 0.55,
+      detuneCents: 8,
+      until: t1,
+    })
+    return
   }
   addTone(left, right, sr, {
-    t0: s4,
-    freq: 880,
-    amp: 0.05,
-    attack: 0.03,
-    decay: 0.35,
-    harmonics: [1, 0.3],
-    harmTilt: 1,
-    pan: 0.25,
-    detuneCents: 4,
-    until: end,
+    t0,
+    freq: midiHz(root),
+    amp: 0.1,
+    attack: 0.08,
+    decay: 1.2,
+    harmonics: [1, 0.25, 0.08],
+    harmTilt: 1.4,
+    pan: 0.15,
+    detuneCents: -5,
+    until: t1,
   })
+  addAir(left, right, sr, t0, t1, 0.03, seed ^ 0x77)
+  bell(left, right, sr, t0 + span * 0.2, midiHz(root + 36), 0.08, -0.4, t1)
+}
+
+function renderSeeded(left: Float32Array, right: Float32Array, sr: number, seed: number, seconds: number): void {
+  const random = rng(seed)
+  const roles = shuffleRoles(random)
+  const weights = roles.map(() => 0.55 + random.next())
+  const weightSum = weights.reduce((sum, value) => sum + value, 0)
+  const root = 48 + Math.floor(random.next() * 12)
+  let cursor = 0
+  roles.forEach((role, index) => {
+    const slice = (weights[index]! / weightSum) * seconds
+    const end = index === roles.length - 1 ? seconds : cursor + slice
+    paintRole(role, left, right, sr, cursor, end, random, root, seed + index * 97)
+    cursor = end
+  })
+}
+
+/** Display name for a generated buffer. Stable for a given seed. */
+export function demoSampleName(seed: number): string {
+  const n = (Math.abs(Math.floor(seed)) % 900) + 100
+  return `FIELD Texture ${n}`
+}
+
+/** Duration in seconds, uniformly inside 12–24 for this seed. */
+export function demoDurationSeconds(seed: number): number {
+  return DEMO_DURATION_MIN + rng(seed ^ 0x9e3779b9).next() * (DEMO_DURATION_MAX - DEMO_DURATION_MIN)
+}
+
+function peakTargetFor(seed: number): number {
+  const db = -7.2 + rng(seed ^ 0x51ed).next() * 2.4
+  return 10 ** (db / 20)
 }
 
 function applyEdgeFades(left: Float32Array, right: Float32Array, sr: number): void {
@@ -370,13 +420,15 @@ function normalize(left: Float32Array, right: Float32Array, peakTarget: number):
   }
 }
 
-export function renderDemoSample(sampleRate: number): DemoChannels {
+export function renderDemoSample(sampleRate: number, seed = 1): DemoChannels {
   const sr = Math.max(8000, Math.floor(sampleRate))
-  const length = Math.floor(DEMO_SAMPLE_SECONDS * sr)
+  const safeSeed = Math.floor(seed) || 1
+  const seconds = demoDurationSeconds(safeSeed)
+  const length = Math.max(1, Math.floor(seconds * sr))
   const left = new Float32Array(length)
   const right = new Float32Array(length)
-  renderVoices(left, right, sr)
+  renderSeeded(left, right, sr, safeSeed, seconds)
   applyEdgeFades(left, right, sr)
-  normalize(left, right, 0.82)
+  normalize(left, right, peakTargetFor(safeSeed))
   return { left, right, sampleRate: sr }
 }

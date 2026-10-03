@@ -28,17 +28,18 @@ describe('formatMemory', () => {
 })
 
 describe('formatCpu', () => {
-  it('rounds a measured load', () => {
-    expect(formatCpu({ percent: 18.4, source: 'lag' })).toBe('CPU 18%')
+  it('rounds a measured event-loop load', () => {
+    expect(formatCpu({ percent: 18.4, source: 'lag' })).toBe('UI 18%')
   })
 
-  it('is blank when nothing was sampled', () => {
-    expect(formatCpu({ percent: null, source: 'none' })).toBe('CPU —')
+  it('does not present Compute Pressure nominal as a CPU percentage', () => {
+    expect(formatCpu({ percent: cpuPercentFromPressure('nominal'), source: 'pressure' })).toBe('UI —')
+    expect(formatCpu({ percent: null, source: 'none' })).toBe('UI —')
   })
 })
 
 describe('cpuPercentFromPressure', () => {
-  it('maps Compute Pressure states to a stable percent', () => {
+  it('records the old nominal mapping that stuck the meter at 12%', () => {
     expect(cpuPercentFromPressure('nominal')).toBe(12)
     expect(cpuPercentFromPressure('critical')).toBe(94)
   })

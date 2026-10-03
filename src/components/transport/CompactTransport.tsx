@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { TransportButton } from '../controls/TransportButton'
+import { transportDensity, type TransportDensity } from './transportDensity'
 import styles from './CompactTransport.module.css'
 
 type Props = {
@@ -37,6 +38,21 @@ export function CompactTransport({
   const { t } = useI18n()
   const length = Math.max(0, end - start)
   const playheadRef = useRef<HTMLSpanElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const [density, setDensity] = useState<TransportDensity>(1)
+  const [moreOpen, setMoreOpen] = useState(false)
+  useLayoutEffect(() => {
+    const node = barRef.current
+    if (!node || minimal) return
+    const apply = () => setDensity(transportDensity(node.clientWidth))
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [minimal])
+  const iconLabels = !minimal && density >= 4
+  const collapseSecondary = !minimal && density >= 5
+  const actionLabel = (full: string, icon: string) => (iconLabels ? icon : full)
   useEffect(() => {
     let frame = 0
     const tick = () => {
@@ -47,9 +63,13 @@ export function CompactTransport({
     return () => cancelAnimationFrame(frame)
   }, [])
   return (
-    <div className={`${styles.bar} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
+    <div
+      ref={barRef}
+      className={`${styles.bar} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}
+      data-density={minimal ? undefined : density}
+    >
       <div className={styles.actions}>
-        {!minimal ? (
+        {!minimal && !collapseSecondary ? (
           <button
             type="button"
             className={styles.icon}
@@ -57,10 +77,10 @@ export function CompactTransport({
             title={t.transport.killFxTitle}
             onClick={() => engine.killFx('all')}
           >
-            {t.transport.killFx}
+            {actionLabel(t.transport.killFx, 'FX×')}
           </button>
         ) : null}
-        {!minimal ? (
+        {!minimal && !collapseSecondary ? (
           <button
             type="button"
             className={styles.icon}
@@ -68,10 +88,10 @@ export function CompactTransport({
             title={t.transport.killNoiseTitle}
             onClick={() => engine.killNoise()}
           >
-            {t.transport.killNoise}
+            {actionLabel(t.transport.killNoise, 'NZ×')}
           </button>
         ) : null}
-        {!minimal ? (
+        {!minimal && !collapseSecondary ? (
           <button
             type="button"
             className={styles.icon}
@@ -80,10 +100,10 @@ export function CompactTransport({
             aria-label={t.transport.selStart}
             onClick={() => engine.seekSeconds(start, 'region')}
           >
-            {t.transport.selStart}
+            {actionLabel(t.transport.selStart, '|←')}
           </button>
         ) : null}
-        {!minimal ? (
+        {!minimal && !collapseSecondary ? (
           <button
             type="button"
             className={styles.icon}
@@ -92,18 +112,42 @@ export function CompactTransport({
             aria-label={t.transport.selEnd}
             onClick={() => engine.seekSeconds(end, 'region')}
           >
-            {t.transport.selEnd}
+            {actionLabel(t.transport.selEnd, '→|')}
           </button>
         ) : null}
-        {!minimal ? (
-          <button type="button" className={styles.icon} disabled={!canUndo} aria-label={t.transport.undo} onClick={onUndo}>
-            {t.transport.undo}
+        {!minimal && !collapseSecondary ? (
+          <button type="button" className={styles.icon} disabled={!canUndo} aria-label={t.transport.undo} title={t.transport.undo} onClick={onUndo}>
+            {actionLabel(t.transport.undo, '↺')}
           </button>
         ) : null}
-        {!minimal ? (
-          <button type="button" className={styles.icon} disabled={!canRedo} aria-label={t.transport.redo} onClick={onRedo}>
-            {t.transport.redo}
+        {!minimal && !collapseSecondary ? (
+          <button type="button" className={styles.icon} disabled={!canRedo} aria-label={t.transport.redo} title={t.transport.redo} onClick={onRedo}>
+            {actionLabel(t.transport.redo, '↻')}
           </button>
+        ) : null}
+        {collapseSecondary ? (
+          <div className={styles.moreWrap}>
+            <button
+              type="button"
+              className={styles.icon}
+              aria-label={t.transport.more}
+              aria-expanded={moreOpen}
+              title={t.transport.more}
+              onClick={() => setMoreOpen((open) => !open)}
+            >
+              •••
+            </button>
+            {moreOpen ? (
+              <div className={styles.moreMenu} role="menu">
+                <button type="button" role="menuitem" onClick={() => { engine.killFx('all'); setMoreOpen(false) }}>{t.transport.killFx}</button>
+                <button type="button" role="menuitem" onClick={() => { engine.killNoise(); setMoreOpen(false) }}>{t.transport.killNoise}</button>
+                <button type="button" role="menuitem" disabled={disabled} onClick={() => { engine.seekSeconds(start, 'region'); setMoreOpen(false) }}>{t.transport.selStart}</button>
+                <button type="button" role="menuitem" disabled={disabled} onClick={() => { engine.seekSeconds(end, 'region'); setMoreOpen(false) }}>{t.transport.selEnd}</button>
+                <button type="button" role="menuitem" disabled={!canUndo} onClick={() => { onUndo(); setMoreOpen(false) }}>{t.transport.undo}</button>
+                <button type="button" role="menuitem" disabled={!canRedo} onClick={() => { onRedo(); setMoreOpen(false) }}>{t.transport.redo}</button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

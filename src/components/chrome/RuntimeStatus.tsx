@@ -31,7 +31,7 @@ export function RuntimeStatus({ variant = 'default' }: Props) {
     >
       <p className={styles.stats} aria-live="polite">
         <span>{memoryLabel}</span>
-        <span>{cpuLabel}</span>
+        <span title={t.runtime.uiLoadTitle}>{cpuLabel}</span>
       </p>
       {standalone ? (
         <button

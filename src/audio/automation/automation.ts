@@ -49,6 +49,8 @@ export type AutomationLane = {
   nodes: AutomationNode[]
   /** Index into AUTOMATION_PALETTE. Assigned once and persisted. */
   colorIndex?: number
+  /** Effect instance that owns this lane. Absent on shared or legacy lanes. */
+  effectId?: string
 }
 
 export type AutomationDocument = {
@@ -238,6 +240,7 @@ export function cloneAutomation(doc: AutomationDocument): AutomationDocument {
       .map((lane) => ({
         paramId: lane.paramId,
         colorIndex: resolveColorIndex(lane.paramId, lane.colorIndex, used),
+        ...(lane.effectId ? { effectId: lane.effectId } : {}),
         nodes: lane.nodes.map(copyNode),
       })),
   }
@@ -509,6 +512,7 @@ function withLane(doc: AutomationDocument, paramId: ParamId, nodes: AutomationNo
     lanes.push({
       paramId,
       colorIndex: resolveColorIndex(paramId, previous?.colorIndex, used),
+      ...(previous?.effectId ? { effectId: previous.effectId } : {}),
       nodes: sortNodes(nodes),
     })
   }
@@ -656,7 +660,7 @@ export function parseAutomation(raw: unknown): AutomationDocument {
   const usedColors = new Set<number>()
   for (const laneRaw of rec.lanes) {
     if (!laneRaw || typeof laneRaw !== 'object') continue
-    const lane = laneRaw as { paramId?: unknown; nodes?: unknown; colorIndex?: unknown }
+    const lane = laneRaw as { paramId?: unknown; nodes?: unknown; colorIndex?: unknown; effectId?: unknown }
     if (typeof lane.paramId !== 'string' || !isAutomatableParam(lane.paramId)) continue
     if (!Array.isArray(lane.nodes)) continue
     const nodes: AutomationNode[] = []
@@ -684,6 +688,7 @@ export function parseAutomation(raw: unknown): AutomationDocument {
     next.lanes.push({
       paramId: lane.paramId,
       colorIndex: resolveColorIndex(lane.paramId, stored, usedColors),
+      ...(typeof lane.effectId === 'string' && lane.effectId ? { effectId: lane.effectId } : {}),
       nodes: sortNodes(nodes),
     })
   }

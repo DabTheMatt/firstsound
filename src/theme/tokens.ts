@@ -8,6 +8,15 @@ export const THEME_IDS = [
   'light-studio',
   'oled',
   'dusk',
+  'pop-art',
+  'classic',
+  'energetic',
+  'chaos-theory',
+  'neon',
+  'manga',
+  'black-white',
+  'noire',
+  'oscilloscope',
   'custom',
 ] as const
 
@@ -60,6 +69,15 @@ export const THEME_OPTIONS: {
   { id: 'light-studio', label: 'Light Studio', preview: { bg: '#E7E7E3', surface: '#F8F8F5', accent: '#A96E13' } },
   { id: 'oled', label: 'OLED', preview: { bg: '#050606', surface: '#0E1111', accent: '#DFAF55' } },
   { id: 'dusk', label: 'Dusk', preview: { bg: '#1b1815', surface: '#2a2621', accent: '#E07A42' } },
+  { id: 'pop-art', label: 'Pop Art', preview: { bg: '#14110c', surface: '#262017', accent: '#ffe14a' } },
+  { id: 'classic', label: 'Classic', preview: { bg: '#1a1917', surface: '#2e2b28', accent: '#c4923a' } },
+  { id: 'energetic', label: 'Energetic', preview: { bg: '#10141c', surface: '#1e2634', accent: '#ff6a1a' } },
+  { id: 'chaos-theory', label: 'Chaos Theory', preview: { bg: '#0c0712', surface: '#1c1228', accent: '#b6ff3c' } },
+  { id: 'neon', label: 'Neon', preview: { bg: '#070b14', surface: '#141c2e', accent: '#2ee9ff' } },
+  { id: 'manga', label: 'Manga', preview: { bg: '#f4f1e8', surface: '#fffdf8', accent: '#d0121a' } },
+  { id: 'black-white', label: 'Black & White', preview: { bg: '#0e0e0e', surface: '#222222', accent: '#ffffff' } },
+  { id: 'noire', label: 'Noire', preview: { bg: '#100e0d', surface: '#24211e', accent: '#7a3040' } },
+  { id: 'oscilloscope', label: 'Oscilloscope', preview: { bg: '#06110a', surface: '#102218', accent: '#7cff6b' } },
   { id: 'custom', label: 'Custom', preview: { bg: '#151616', surface: '#202222', accent: '#E6AD48' } },
 ]
 
