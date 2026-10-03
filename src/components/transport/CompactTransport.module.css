@@ -175,88 +175,56 @@ button.export {
   }
 }
 
-/* Keep the playhead fully visible by stacking duration and tempo under it.
-   Secondary actions wrap inside the left column instead of covering transport. */
-@container transport (max-width: 1000px) {
-  .actions,
-  .transport,
-  .meta {
-    align-self: start;
-  }
-
-  .actions {
-    flex-wrap: wrap;
-    align-content: center;
-    overflow: visible;
-    row-gap: 4px;
-  }
-
-  .times {
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 2px;
-  }
-
-  .head {
-    height: auto;
-    min-height: 0;
-    font-size: 20px;
-  }
-
-  .details {
-    gap: 8px;
-    font-size: 12px;
-  }
+.bar[data-density='2'],
+.bar[data-density='3'] {
+  column-gap: 6px;
 }
 
-/* Narrow editor: stack every readout so the time cannot collide with transport. */
-@container transport (max-width: 700px) {
-  .head {
-    font-size: 18px;
-  }
-
-  .details {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    font-size: 11px;
-  }
-
-  .meta {
-    gap: 6px;
-  }
+.bar[data-density='2'] .icon,
+.bar[data-density='3'] .icon,
+.bar[data-density='4'] .icon {
+  padding-inline: 6px;
 }
 
-/* Phone-width editor: secondary actions and readouts use a second row.
-   Primary transport stays in the centered column. */
-@container transport (max-width: 560px) {
-  .bar {
-    grid-template-areas:
-      'actions transport .'
-      'meta meta meta';
-    row-gap: 4px;
-  }
+.bar[data-density='3'] .icon,
+.bar[data-density='4'] .icon {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
 
-  .meta {
-    justify-self: end;
-  }
+.bar[data-density='4'] .bpm,
+.bar[data-density='5'] .bpm,
+.bar[data-density='5'] .length {
+  display: none;
+}
 
-  .times {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-  }
+.moreWrap {
+  position: relative;
+  flex: none;
+}
 
-  .head {
-    font-size: 18px;
-  }
+.moreMenu {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-elevated, var(--bg-panel));
+}
 
-  .details {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-  }
+.moreMenu button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  white-space: nowrap;
 }
 
 .compact {

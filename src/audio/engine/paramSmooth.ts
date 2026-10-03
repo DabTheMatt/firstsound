@@ -190,6 +190,11 @@ function delaySeconds(previous: number | undefined, value: number): number {
  * offline render). Repeated calls for the same target leave the in-flight ramp
  * alone so automation, LFO, and knob ticks do not restart it.
  */
+/** Last target written for this AudioParam. Tests use it to see the DSP value. */
+export function scheduledAudioParamTarget(param: AudioParam): number | undefined {
+  return scheduled.get(param)?.target
+}
+
 export function setSmoothedAudioParam(
   param: AudioParam,
   target: number,

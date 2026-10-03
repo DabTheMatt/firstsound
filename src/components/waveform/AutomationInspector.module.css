@@ -1,3 +1,29 @@
+.laneHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.trackBadge {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.laneTitle {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .list {
   display: flex;
   flex-direction: column;

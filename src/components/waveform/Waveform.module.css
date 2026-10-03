@@ -838,6 +838,41 @@
   pointer-events: none;
 }
 
+.loadPrimary {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  min-height: 48px;
+  padding-inline: 22px;
+  font-size: 12px;
+}
+
+.autoBar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 28px;
+  padding: 2px 8px 4px;
+}
+
+.autoTrack {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.autoParam {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .demo {
   pointer-events: auto;
   min-height: 40px;

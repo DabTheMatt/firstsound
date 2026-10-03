@@ -1,0 +1,18 @@
+---
+description: FIELD application versioning for user-facing releases
+alwaysApply: true
+---
+
+# FIELD versioning
+
+`package.json` `version` is the only authoritative FIELD version. UI reads it through `src/version.ts`. Do not hard-code version strings in components.
+
+Every completed user-facing task that is committed and pushed to `main` must include an intentional version decision in the same change:
+
+- PATCH — bug fix or small UI fix.
+- MINOR — new backwards-compatible user-facing feature.
+- MAJOR — breaking architecture or product milestone.
+
+Do not add a git hook that increments the version on every push. README edits, retries, merge mechanics, and CI corrections are not releases.
+
+When a user-facing FIELD feature, control, workflow, or shortcut changes, update the matching Manual section in `src/manual/content.ts` in the same task.

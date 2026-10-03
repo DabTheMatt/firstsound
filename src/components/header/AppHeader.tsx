@@ -1,14 +1,13 @@
-import { useState } from 'react'
 import { anyFxLfoActive } from '../../audio/fx/lfo'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { ReactNode } from 'react'
-import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { RuntimeStatus } from '../chrome/RuntimeStatus'
 import { LOAD_SAMPLE_LABELS } from './loadSampleLabels'
 import { StableLabel } from './StableLabel'
 import { ChaosControl } from '../random/ChaosControl'
+import { ResetSessionButton } from './ResetSessionButton'
 import { ThemePicker } from './ThemePicker'
 import { Wordmark } from './Wordmark'
 import styles from './AppHeader.module.css'
@@ -21,6 +20,7 @@ type Props = {
   onToggleLfoCenter: () => void
   onLoadSample: () => void
   onRecord: () => void
+  onReset: () => void
   compact: boolean
   minimal?: boolean
   modeSwitch?: ReactNode
@@ -34,12 +34,12 @@ export function AppHeader({
   onToggleLfoCenter,
   onLoadSample,
   onRecord,
+  onReset,
   compact,
   minimal = false,
   modeSwitch,
 }: Props) {
   const { t } = useI18n()
-  const [confirmReset, setConfirmReset] = useState(false)
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
   const folded = snap.params.makeMono > 0.5
   const ch = folded
@@ -119,30 +119,11 @@ export function AppHeader({
       </div>
       )}
       <div className={styles.trailing}>
-        {!minimal ? (
-          <button
-            type="button"
-            className={`${styles.reset} ${confirmReset ? styles.resetArmed : ''}`}
-            data-reset=""
-            aria-pressed={confirmReset}
-            onClick={() => {
-              if (!confirmReset) {
-                setConfirmReset(true)
-                return
-              }
-              engine.resetAll()
-              setConfirmReset(false)
-            }}
-          >
-            {confirmReset ? t.settings.resetAll : t.settings.resetAll}
-          </button>
+        {minimal ? (
+          <div className={styles.runtime}>
+            <RuntimeStatus />
+          </div>
         ) : null}
-        {confirmReset && !minimal ? (
-          <button type="button" className={styles.reset} onClick={() => setConfirmReset(false)}>
-            {t.random.cancel}
-          </button>
-        ) : null}
-        <ChaosControl />
         {minimal ? (
         <button
           type="button"
@@ -161,16 +142,20 @@ export function AppHeader({
           </span>
         </button>
         ) : null}
-        <button
-          type="button"
-          className={styles.settings}
-          aria-label={t.header.settings}
-          aria-expanded={settingsOpen}
-          data-settings-toggle=""
-          onClick={onToggleSettings}
-        >
-          {compact ? '☰' : t.header.settings}
-        </button>
+        <div className={styles.utilities}>
+          <ResetSessionButton onReset={onReset} label={t.header.resetAction} toolbar />
+          <ChaosControl />
+          <button
+            type="button"
+            className={styles.settings}
+            aria-label={t.header.settings}
+            aria-expanded={settingsOpen}
+            data-settings-toggle=""
+            onClick={onToggleSettings}
+          >
+            {compact ? '☰' : t.header.settings}
+          </button>
+        </div>
       </div>
     </header>
   )

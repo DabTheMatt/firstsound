@@ -31,9 +31,13 @@ export function formatMemory(sample: MemorySample): string {
   return `Mem ${formatBytes(sample.usedBytes)}`
 }
 
+/**
+ * Main-thread event-loop load. This is not an operating-system process CPU meter.
+ * Compute Pressure states are not shown: `nominal` is a constant, not a measurement.
+ */
 export function formatCpu(sample: CpuSample): string {
-  if (sample.percent == null || sample.source === 'none') return 'CPU —'
-  return `CPU ${Math.round(clampPercent(sample.percent))}%`
+  if (sample.percent == null || sample.source !== 'lag') return 'UI —'
+  return `UI ${Math.round(clampPercent(sample.percent))}%`
 }
 
 export function cpuPercentFromPressure(state: string): number {

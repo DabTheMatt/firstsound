@@ -1,6 +1,8 @@
 import 'node-web-audio-api/polyfill.js'
 import { OfflineAudioContext } from 'node-web-audio-api'
 import { describe, expect, it } from 'vitest'
+import { delayLoopGain } from '../fx/delayLoop'
+import { scheduledAudioParamTarget } from './paramSmooth'
 import { AudioEngine } from './AudioEngine'
 
 function tone(seconds: number): Float32Array[] {
@@ -72,10 +74,17 @@ describe('LFO reaches the resolved performance value', () => {
     const resumed = engine.getSnapshot()
     expect(resumed.playing).toBe(true)
     expect(resumed.liveParams.speed).toBeCloseTo(frozen)
-    await new Promise((resolve) => setTimeout(resolve, 180))
-    const continued = engine.getSnapshot()
-    expect(continued.playing).toBe(true)
-    expect(continued.liveParams.speed).not.toBeCloseTo(frozen, 2)
+    let moved = false
+    for (let i = 0; i < 8; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 40))
+      const continued = engine.getSnapshot()
+      expect(continued.playing).toBe(true)
+      if (Math.abs(continued.liveParams.speed - frozen) > 0.05) {
+        moved = true
+        break
+      }
+    }
+    expect(moved).toBe(true)
   })
 
   it('modulates gain and pan through the same resolver', async () => {
@@ -106,6 +115,19 @@ describe('LFO reaches the resolved performance value', () => {
     const snap = engine.getSnapshot()
     expect(snap.liveByInstance[delayA!]?.delayFeedback).toBeCloseTo(25)
     expect(snap.liveByInstance[delayB!]?.delayFeedback).not.toBeCloseTo(25)
+
+    const slots = (
+      engine as unknown as {
+        slots: Map<string, { delayFx?: { fbL: { gain: AudioParam } } }>
+      }
+    ).slots
+    const gainA = slots.get(delayA!)?.delayFx?.fbL.gain
+    const gainB = slots.get(delayB!)?.delayFx?.fbL.gain
+    expect(gainA && gainB).toBeTruthy()
+    // Delay A owns the edit buffer at 25% and must stay there.
+    // Delay B keeps its own default and must hear the stamped LFO in the feedback gain.
+    expect(scheduledAudioParamTarget(gainA!)).toBeCloseTo(delayLoopGain(25))
+    expect(scheduledAudioParamTarget(gainB!)).not.toBeCloseTo(delayLoopGain(28))
   })
 
   it('moves eq frequency, gain, and Q for the addressed band', async () => {

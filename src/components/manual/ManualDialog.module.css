@@ -1,0 +1,135 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: var(--scrim);
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  height: min(720px, 100%);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.head h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.head button {
+  min-width: 36px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.search {
+  margin: 10px 14px 0;
+  min-height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  padding: 0 10px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  padding: 12px 14px 16px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.nav button {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.navOn {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.read {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.read h3 {
+  margin: 0 0 8px;
+}
+
+.read p {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .layer {
+    padding: 0;
+  }
+
+  .panel {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .nav button {
+    white-space: nowrap;
+  }
+}

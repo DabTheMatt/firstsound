@@ -1,0 +1,100 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.button:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.toolbar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: var(--toolbar-h, 32px);
+  min-height: var(--toolbar-h, 32px);
+  padding: 0 var(--toolbar-pad-x, 12px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius, 8px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--toolbar-font, 10px);
+  letter-spacing: var(--toolbar-tracking, 0.12em);
+  text-transform: uppercase;
+}
+
+.toolbar:hover,
+.toolbar:focus-visible {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.menu {
+  width: 100%;
+  text-align: left;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: var(--scrim);
+}
+
+.dialog {
+  position: relative;
+  z-index: 1;
+  width: min(360px, calc(100% - 32px));
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-panel-elevated, var(--bg-panel));
+  color: var(--text-primary);
+}
+
+.dialog p {
+  margin: 0 0 14px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}

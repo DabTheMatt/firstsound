@@ -196,6 +196,19 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
       <p className="sr-only" aria-live="off">
         {meterReadout}
       </p>
+      <label className={styles.range}>
+        <span>{t.meters.rangeLabel}</span>
+        <select
+          className={styles.select}
+          value={range}
+          aria-label={t.meters.range}
+          onChange={(e) => onRange(e.target.value as MeterRange)}
+        >
+          <option value="normal">−60</option>
+          <option value="field">−100</option>
+          <option value="full">−120</option>
+        </select>
+      </label>
       <div className={styles.outKnob}>
         <ValueKnob
           compact
@@ -212,16 +225,6 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
         />
       </div>
       <MonitorKnob value={snap.recMonitor} />
-      <select
-        className={styles.select}
-        value={range}
-        aria-label={t.meters.range}
-        onChange={(e) => onRange(e.target.value as MeterRange)}
-      >
-        <option value="normal">−60</option>
-        <option value="field">−100</option>
-        <option value="full">−120</option>
-      </select>
     </div>
   )
 }

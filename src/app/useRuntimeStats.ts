@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
   cpuPercentFromLagMs,
-  cpuPercentFromPressure,
   ema,
   formatCpu,
   formatMemory,
@@ -13,17 +12,6 @@ type HeapMemory = {
   usedJSHeapSize: number
   jsHeapSizeLimit: number
 }
-
-type PressureRecord = { source: string; state: string }
-
-type PressureObserverLike = {
-  observe: (source: string) => Promise<void> | void
-  disconnect: () => void
-}
-
-type PressureObserverCtor = new (
-  callback: (records: PressureRecord[]) => void,
-) => PressureObserverLike
 
 type RuntimeLabels = {
   memoryLabel: string
@@ -51,11 +39,6 @@ function sampleLoopLag(): Promise<number> {
   })
 }
 
-function pressureCtor(): PressureObserverCtor | null {
-  const ctor = (globalThis as { PressureObserver?: PressureObserverCtor }).PressureObserver
-  return ctor ?? null
-}
-
 export function useRuntimeStats(): RuntimeLabels {
   const [labels, setLabels] = useState<RuntimeLabels>({
     memoryLabel: formatMemory({ usedBytes: null, limitBytes: null }),
@@ -65,24 +48,6 @@ export function useRuntimeStats(): RuntimeLabels {
   useEffect(() => {
     let cancelled = false
     let lagEma: number | null = null
-    let pressurePct: number | null = null
-    let observer: PressureObserverLike | null = null
-
-    const Ctor = pressureCtor()
-    if (Ctor) {
-      try {
-        observer = new Ctor((records) => {
-          const last = records[records.length - 1]
-          if (last) pressurePct = cpuPercentFromPressure(last.state)
-        })
-        void Promise.resolve(observer.observe('cpu')).catch(() => {
-          observer?.disconnect()
-          observer = null
-        })
-      } catch {
-        observer = null
-      }
-    }
 
     const publish = async () => {
       try {
@@ -92,12 +57,7 @@ export function useRuntimeStats(): RuntimeLabels {
         /* MessageChannel can fail in opaque workers */
       }
       if (cancelled) return
-      const cpu: CpuSample =
-        pressurePct != null
-          ? { percent: pressurePct, source: 'pressure' }
-          : lagEma != null
-            ? { percent: lagEma, source: 'lag' }
-            : { percent: null, source: 'none' }
+      const cpu: CpuSample = lagEma != null ? { percent: lagEma, source: 'lag' } : { percent: null, source: 'none' }
       setLabels({
         memoryLabel: formatMemory(readMemory()),
         cpuLabel: formatCpu(cpu),
@@ -112,7 +72,6 @@ export function useRuntimeStats(): RuntimeLabels {
     return () => {
       cancelled = true
       window.clearInterval(id)
-      observer?.disconnect()
     }
   }, [])
 

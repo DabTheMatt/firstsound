@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { downloadJson, parsePreset, readAudioFile, AUDIO_FILE_ACCEPT } from '../features/sample/files'
 import { deleteUserPreset, loadUserPresets, mergeUserPresets, parseUserPresetPack, saveUserPreset } from '../audio/fx/userPresets'
@@ -26,6 +26,9 @@ import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
+import { ResetSessionButton } from '../components/header/ResetSessionButton'
+import { ManualDialog } from '../components/manual/ManualDialog'
+import { FIELD_VERSION } from '../version'
 import { trackColorVar } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
@@ -176,6 +179,7 @@ export default function App() {
   const [zoomLabel, setZoomLabel] = useState('100%')
   const [editMode, setEditMode] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
   const [focus, setFocus] = useState<InspectorFocus>({
     kind: 'module',
     instanceId: 'gain-1',
@@ -318,6 +322,7 @@ export default function App() {
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
   const waveRef = useRef<WaveformHandle>(null)
+  const waveColRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
 
   const loadSample = async (file: File) => {
@@ -569,6 +574,7 @@ export default function App() {
   }, [snap.selectedTrackId])
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
+    engine.focusEffect(instanceId)
     const live = engine.getSnapshot().chain
     const mod = live.find((m) => m.instanceId === instanceId)
     if (!mod) return
@@ -623,6 +629,56 @@ export default function App() {
   }
 
   const activeFocus = focusWorkspace
+  const resetSession = useCallback(() => {
+    engine.resetSession()
+    const dsp = captureDsp(engine)
+    appliedRef.current = cloneDsp(dsp)
+    sensoryBaseRef.current = cloneDsp(dsp)
+    setEdit(DEFAULT_EDIT)
+    setFocus({ kind: 'module', instanceId: 'gain-1', type: 'gain' })
+    setFocusWorkspace(null)
+    setViz('waveform')
+    setMenuOpen(false)
+    setLfoCenterOpen(false)
+    setExportOpen(false)
+    setManualOpen(false)
+    setEditMode(false)
+    setAutoFocus(EMPTY_AUTOMATION_FOCUS)
+    setInspectorMemory({})
+    setTool('select')
+    setNormalizeView(false)
+    setSensory(defaultSensoryValues())
+    sensoryRef.current = defaultSensoryValues()
+    setColorSound(NEUTRAL_COLOR_SOUND)
+    colorRef.current = NEUTRAL_COLOR_SOUND
+    setMoodLabel(null)
+    setHistory(
+      createHistory(
+        histKey(engine.getSnapshot().params.start, engine.getSnapshot().params.end, engine.getSnapshot().chain, DEFAULT_EDIT, engine.getSnapshot().automation, {
+          layer: 'region',
+          sensory: defaultSensoryValues(),
+          colorSound: NEUTRAL_COLOR_SOUND,
+          dsp,
+          sensoryBase: cloneDsp(dsp),
+        }, engine.getSnapshot().spectral),
+      ),
+    )
+  }, [])
+  useLayoutEffect(() => {
+    const col = waveColRef.current
+    if (!col) return
+    if (!activeFocus) {
+      col.style.removeProperty('--focus-toolbar-height')
+      return
+    }
+    const node = col.querySelector<HTMLElement>('[data-focus-chrome]')
+    if (!node) return
+    const apply = () => col.style.setProperty('--focus-toolbar-height', `${Math.ceil(node.getBoundingClientRect().height)}px`)
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [activeFocus])
   const monitorFocus = resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : null
   const chainKey = snap.chain.map((mod) => `${mod.instanceId}:${mod.type}`).join('|')
   useEffect(() => {
@@ -713,7 +769,7 @@ export default function App() {
     () => (
       <div className={styles.moreMenu}>
           <p className={styles.hint}>{t.settings.hint}</p>
-          <button type="button" onClick={() => sampleInput.current?.click()}>
+          <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
           </button>
         {isPhoneLayout ? (
@@ -840,6 +896,11 @@ export default function App() {
         <button type="button" onClick={() => engine.resetAll()}>
           {t.settings.resetAll}
         </button>
+        <ResetSessionButton label={t.header.resetTitle} onReset={resetSession} />
+        <button type="button" onClick={() => { setManualOpen(true); setMenuOpen(false) }}>
+          {t.header.manual}
+        </button>
+        <p className={styles.hint}>FIELD v{FIELD_VERSION}</p>
         {snap.hasSource ? (
           <button type="button" onClick={() => engine.revertToSource()}>
             {t.settings.revertSource}
@@ -859,7 +920,7 @@ export default function App() {
         <A11ySettings />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout],
+    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout, resetSession],
   )
 
   const fileInputs = (
@@ -929,6 +990,7 @@ export default function App() {
         <LiveAnnouncer />
         <ModeGate onChoose={chooseMode} />
         {fileInputs}
+        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </>
     )
   }
@@ -992,6 +1054,7 @@ export default function App() {
           onMode={chooseMode}
         />
         {fileInputs}
+        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </>
     )
   }
@@ -1037,6 +1100,7 @@ export default function App() {
           sampleInput={null}
         />
         {fileInputs}
+        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
         {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
       </>
     )
@@ -1085,6 +1149,7 @@ export default function App() {
             setMenuOpen(false)
           }}
           onLoadSample={() => sampleInput.current?.click()}
+          onReset={resetSession}
           onRecord={() => {
             if (engine.getSnapshot().recording) engine.stopMicRecord()
             else void engine.startMicRecord()
@@ -1205,7 +1270,7 @@ export default function App() {
         </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
-          <div className={styles.waveCol}>
+          <div ref={waveColRef} className={styles.waveCol} data-focus-inset={activeFocus ? '' : undefined}>
             {activeFocus ? (
               <FocusChrome
                 workspace={activeFocus}
@@ -1327,6 +1392,7 @@ export default function App() {
               autoFocus={autoFocus}
               onAutoFocus={setAutoFocus}
               fxMode={resolvedFocus.kind === 'module' && (resolvedFocus.type === 'delay' || resolvedFocus.type === 'reverb') ? resolvedFocus.type : null}
+              onLoadSample={() => sampleInput.current?.click()}
               onLoadDemo={() => {
                 void engine.unlock().then(() => engine.loadDemoTone())
               }}
@@ -1455,6 +1521,7 @@ export default function App() {
         </div>
 
         {fileInputs}
+        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
     </div>
