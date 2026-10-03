@@ -487,6 +487,15 @@ export type Messages = {
     singleTitle: string
     multiTitle: string
     loadAudio: string
+    loadSample: string
+    loop: string
+    loopTrack: string
+    direction: string
+    input: string
+    trackInput: string
+    dropAudio: string
+    replaceDrop: string
+    mixMore: string
     replaceAudio: string
     clearTrack: string
     volume: string
@@ -1249,6 +1258,15 @@ export const EN: Messages = {
     singleTitle: 'Single track view',
     multiTitle: 'Multi track view',
     loadAudio: 'Load audio',
+    loadSample: 'Load sample',
+    loop: 'Loop',
+    loopTrack: 'Loop track',
+    direction: 'Direction',
+    input: 'Input',
+    trackInput: 'Track input',
+    dropAudio: 'Drop audio here',
+    replaceDrop: 'Replace audio',
+    mixMore: 'Mix',
     replaceAudio: 'Replace',
     clearTrack: 'Clear',
     volume: 'Volume',
@@ -2015,6 +2033,15 @@ export const PL: Messages = {
     singleTitle: 'Widok jednego śladu',
     multiTitle: 'Widok wielu śladów',
     loadAudio: 'Wczytaj audio',
+    loadSample: 'Wczytaj sample',
+    loop: 'Pętla',
+    loopTrack: 'Pętla śladu',
+    direction: 'Kierunek',
+    input: 'Wejście',
+    trackInput: 'Wejście śladu',
+    dropAudio: 'Upuść audio',
+    replaceDrop: 'Podmień audio',
+    mixMore: 'Mix',
     replaceAudio: 'Podmień',
     clearTrack: 'Wyczyść',
     volume: 'Głośność',

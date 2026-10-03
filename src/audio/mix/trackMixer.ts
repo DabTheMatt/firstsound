@@ -108,7 +108,7 @@ export function createTrackMixerStrip(ctx: BaseAudioContext): TrackMixerStrip {
   const gate = ctx.createGain()
   const meter = ctx.createAnalyser()
   const output = ctx.createGain()
-  meter.fftSize = 256
+  meter.fftSize = 32
   meter.smoothingTimeConstant = 0
   input.gain.value = 1
   fxInsert.gain.value = 1

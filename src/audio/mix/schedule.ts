@@ -1,12 +1,15 @@
 /**
  * Shared project-transport plan.
  * Every voice uses the same AudioContext `when`. Offsets are project time,
- * not per-track clocks. A track that has already ended is omitted.
+ * not per-track clocks. A track that has already ended is omitted unless it
+ * loops. Looping never extends the project past the longest original source.
  */
 
 export type TrackSpan = {
   id: string
   duration: number
+  /** Repeats inside the project. Does not extend project duration. */
+  loop?: boolean
 }
 
 export type ScheduledVoice = {
@@ -41,8 +44,9 @@ export function planSyncedVoices(tracks: readonly TrackSpan[], origin: number): 
   const voices: ScheduledVoice[] = []
   for (const track of tracks) {
     if (!(track.duration > 0)) continue
-    if (start >= track.duration - 0.0005) continue
-    voices.push({ id: track.id, offset: start })
+    if (!track.loop && start >= track.duration - 0.0005) continue
+    const offset = track.loop ? start % track.duration : start
+    voices.push({ id: track.id, offset })
   }
   return voices
 }

@@ -83,6 +83,7 @@ export function randomFamily(id: ParamId): RandomFamily {
   if (PITCH_IDS.has(id)) return 'pitch'
   if (DELAY_IDS.has(id)) return 'delay'
   if (FEEDBACK_IDS.has(id)) return 'feedback'
+  if (id === 'mixVolume' || id === 'mixMid' || id === 'mixSide') return 'gain'
   if (id === 'pan' || id.endsWith('Pan') || id === 'msBalance' || id === 'msRotate') return 'pan'
   if (
     id.includes('Freq') ||

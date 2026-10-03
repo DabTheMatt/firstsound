@@ -181,6 +181,10 @@ const PL_OVERRIDES: Partial<Record<ParamId, string>> = {
   msMono: 'Mono',
   msFlipMid: 'Ø Mid',
   msFlipSide: 'Ø Side',
+  mixVolume: 'Głośność śladu',
+  mixPan: 'Panorama śladu',
+  mixMid: 'Mid śladu',
+  mixSide: 'Side śladu',
 }
 
 for (let i = 1; i <= 8; i++) {

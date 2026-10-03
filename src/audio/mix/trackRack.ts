@@ -14,9 +14,13 @@
  * The Output module in the chain UI still edits the single master output gain.
  * The safety limiter is not copied onto tracks.
  *
- * Parameter identity is track + effect instance (+ EQ band when the parameter
- * belongs to a band). Storage is this rack, not a selected-track lookup at
- * DSP time. Identical ParamIds on two tracks are different values.
+ * Parameter identity is track + owner + parameter. Storage is this rack, not a
+ * selected-track lookup at DSP time. Identical ParamIds on two tracks are
+ * different values. Speed, pitch, overlap, and direction belong to the track
+ * source (before this chain). Gain in the Input module is the next stage.
+ * Mixer volume, pan, mid, and side stay after the inserts.
+ *
+ *   source → track input → effect chain → mixer → master
  */
 
 import { parseAutomation, type AutomationDocument, defaultAutomation, cloneAutomation } from '../automation/automation'
@@ -49,6 +53,7 @@ import {
 } from '../fx/types'
 import { defaultParamValues } from '../parameters/definitions'
 import type { EqListenMode, FilterType, ParamId } from '../parameters/types'
+import { trackMixerParamId, type TrackMixerParamKey } from './mixerParams'
 import {
   cloneRandomDocument,
   defaultRandomDocument,
@@ -65,16 +70,11 @@ export type RackEqState = {
   comb: CombFilterState
 }
 
-/** Transport and master output. Written through to every rack. */
-export const SHARED_PARAM_IDS = [
-  'outputGain',
-  'bpm',
-  'speed',
-  'pitch',
-  'stretchInterp',
-  'stretchInterpOn',
-  'stretchInterpAlgo',
-] as const
+/**
+ * Transport tempo and the single master output. Speed, pitch, and grain
+ * overlap stay on the track that owns them.
+ */
+export const SHARED_PARAM_IDS = ['outputGain', 'bpm'] as const
 
 export type SharedParamId = (typeof SHARED_PARAM_IDS)[number]
 
@@ -220,8 +220,34 @@ export function trackParamKey(trackId: string, effectId: string, paramId: string
   return `track:${trackId}:effect:${effectId}:parameter:${paramId}`
 }
 
+const INPUT_PARAM_IDS = new Set<string>([
+  'gain',
+  'speed',
+  'pitch',
+  'stretchInterp',
+  'stretchInterpOn',
+  'stretchInterpAlgo',
+  'pan',
+  'channelGainL',
+  'channelGainR',
+  'makeMono',
+  'invertPhase',
+])
+
+const MIXER_PARAM_IDS: Partial<Record<ParamId, TrackMixerParamKey>> = {
+  mixVolume: 'volume',
+  mixPan: 'pan',
+  mixMid: 'midGain',
+  mixSide: 'sideGain',
+}
+
+/** Stable input identity. Not the gain-module instance, and not a track index. */
+export function trackInputParamId(trackId: string, paramId: string): string {
+  return `track:${trackId}:input:${paramId}`
+}
+
 function moduleTypeForKind(kind: FxLfoKind): ModuleType {
-  if (kind === 'input') return 'gain'
+  if (kind === 'input' || kind === 'mixer') return 'gain'
   if (
     kind === 'eq1' ||
     kind === 'eq2' ||
@@ -262,6 +288,9 @@ export function resolveTrackParamKey(
   paramId: ParamId,
   bands: readonly EqBand[] = [],
 ): string {
+  const mixer = MIXER_PARAM_IDS[paramId]
+  if (mixer) return trackMixerParamId(trackId, mixer)
+  if (INPUT_PARAM_IDS.has(paramId)) return trackInputParamId(trackId, paramId)
   return trackParamKey(trackId, effectInstanceId(chain, paramId), paramId, eqBandIdForParam(paramId, bands))
 }
 

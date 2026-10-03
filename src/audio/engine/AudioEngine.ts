@@ -290,6 +290,7 @@ import {
 import { findEqPreset } from '../fx/eqPresets'
 import { findModulePreset } from '../fx/modulePresets'
 import { planProjectStart, projectDurationOf, type TrackSpan } from '../mix/schedule'
+import { bufferCues, sourceNeedsStretch, type BufferCue } from '../mix/trackVoice'
 import {
   clampMix,
   clearTrackAudio,
@@ -490,7 +491,7 @@ type Listener = () => void
 const LOOKAHEAD = 0.08
 const SCHEDULER_MS = 20
 /** Long slow grains overlap many hops; the pool must outlive the longest window. */
-const STRETCH_GRAIN_POOL = 32
+const STRETCH_GRAIN_POOL = 128
 
 type StretchControlSeed = {
   speed: number
@@ -552,6 +553,23 @@ type ActiveVoice = {
 
 type Slot = ChainSlot
 
+type TrackStretchCursor = {
+  head: number
+  dir: number
+  speed: number
+  pitch: number
+  windowSpeed: number
+  windowPitch: number
+  next: number
+  stopAt: number
+  start: number
+  end: number
+  loop: boolean
+  direction: PlaybackDirection
+  budget: number
+  consumed: number
+}
+
 
 /**
  * Client-side sample instrument engine.
@@ -576,6 +594,12 @@ export class AudioEngine {
   private mixerStructure = 0
   private companionSources: AudioBufferSourceNode[] = []
   private projectVoices: { id: string; src: AudioBufferSourceNode }[] = []
+  private stretchCursors = new Map<string, TrackStretchCursor>()
+  private stretchSources: AudioBufferSourceNode[] = []
+  private reversedCache = new WeakMap<AudioBuffer, AudioBuffer>()
+  private pingpongCache = new WeakMap<AudioBuffer, AudioBuffer>()
+  private loadToken = new Map<string, number>()
+  private mixerHeard = new Map<string, { pan: number; level: number; midDb: number; sideDb: number }>()
   private projectWhen = 0
   private projectOrigin = 0
   private projectRestartAt = Number.POSITIVE_INFINITY
@@ -733,6 +757,8 @@ export class AudioEngine {
   private spectralReady = false
   private spectralComputing = false
   private spectralKey = ''
+  /** Shared envelope delta for every track's filter follower in one tick. */
+  private followDt = 0.016
   private spectralPendingKey = ''
   private spectralJob = 0
   private spectralBandsPcm: Float32Array[][] | null = null
@@ -1333,22 +1359,33 @@ export class AudioEngine {
     await this.loadTrackArrayBuffer(this.selectedTrackId, data, fileName)
   }
 
-  async loadTrackArrayBuffer(id: string, data: ArrayBuffer, fileName: string): Promise<void> {
+  async loadTrackArrayBuffer(id: string, data: ArrayBuffer, fileName: string): Promise<boolean> {
+    const token = (this.loadToken.get(id) ?? 0) + 1
+    this.loadToken.set(id, token)
     await this.ensureContext()
-    if (!this.ctx) return
+    if (this.loadToken.get(id) !== token) return false
+    if (!this.ctx) return false
     const track = this.tracks.find((item) => item.id === id) ?? null
-    if (!track) return
-    const copy = data.slice(0)
-    const decoded = await this.ctx.decodeAudioData(copy)
+    if (!track) return false
+    let decoded: AudioBuffer
+    try {
+      const copy = data.byteLength > 0 ? data.slice(0) : data
+      decoded = await this.ctx.decodeAudioData(copy)
+    } catch {
+      return false
+    }
+    if (this.loadToken.get(id) !== token) return false
+    if (!this.tracks.some((item) => item.id === id)) return false
     const wasPlaying = this.playing
     const playhead = wasPlaying ? this.getPlayheadSeconds() : this.playOffset
     this.stopVoices()
     this.playing = false
-    if (track.id === this.selectedTrackId) this.fileName = fileName
-    this.applyLoadedBuffer(decoded, true, 'inset', track.id, fileName)
+    if (id === this.selectedTrackId) this.fileName = fileName
+    this.applyLoadedBuffer(decoded, true, 'inset', id, fileName)
     if (this.loadedTrackCount() > 1) this.playOffset = playhead
-    if (track.id !== this.selectedTrackId) this.selectTrack(track.id)
+    if (id !== this.selectedTrackId) this.selectTrack(id)
     if (wasPlaying) void this.play()
+    return Boolean(this.trackBuffers.get(id))
   }
 
   /** Test and offline helper. Same ownership rules as loadTrackArrayBuffer. */
@@ -1387,12 +1424,7 @@ export class AudioEngine {
       rack.noiseFadeTau = NOISE_CUT_TAU_SEC
     })
     this.applyLiveAudio()
-    const live = this.liveParams()
-    const linearProject =
-      loaded > 1 &&
-      this.engineMode === 'playback' &&
-      this.direction === 'forward' &&
-      !playbackNeedsStretch(live.speed, live.pitch)
+    const linearProject = loaded > 1 && this.engineMode === 'playback'
     const duration = this.buffer?.duration ?? 0
     const { start, end } = this.playbackRegion(duration)
     this.playCtxTime = this.ctx.currentTime
@@ -1503,7 +1535,7 @@ export class AudioEngine {
       project > 0 && mode === 'sample' ? Math.min(duration, Math.max(0, time)) : clampScrubTime(time, mode, start, end, duration)
     this.playOffset = offset
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
-    if (this.usingProjectTransport && this.playing && this.ctx && this.engineMode === 'playback' && this.direction === 'forward') {
+    if (this.usingProjectTransport && this.playing && this.ctx && this.engineMode === 'playback') {
       this.startProjectVoices(this.ctx.currentTime, offset, true)
       this.emit()
       return
@@ -1564,9 +1596,19 @@ export class AudioEngine {
   }
 
   setDirection(direction: PlaybackDirection): void {
-    if (this.direction === direction) return
-    this.direction = direction
-    if (this.playing) void this.play()
+    const id = this.activeTrackId()
+    const track = this.tracks.find((item) => item.id === id)
+    if (!track || track.direction === direction) {
+      if (id === this.selectedTrackId && this.direction !== direction) {
+        this.direction = direction
+        this.emit()
+      }
+      return
+    }
+    this.tracks = patchTrack(this.tracks, id, { direction })
+    if (id === this.selectedTrackId) this.direction = direction
+    if (this.usingProjectTransport && this.playing) this.rescheduleProject()
+    else if (this.playing && id === this.selectedTrackId) void this.play()
     else this.emit()
   }
 
@@ -1607,6 +1649,16 @@ export class AudioEngine {
       if (turningReverbStereoOn && this.params.reverbWidth < 20) this.params.reverbWidth = 125
       commitParamEdit(this.params, id, previous)
       if (isSharedParam(id)) this.broadcastShared()
+      this.mirrorMixerParam(id)
+      if (
+        id === 'speed' ||
+        id === 'pitch' ||
+        id === 'stretchInterp' ||
+        id === 'stretchInterpOn' ||
+        id === 'stretchInterpAlgo'
+      ) {
+        this.syncRateVoices()
+      }
       const clicky =
         id === 'speed' ||
         id === 'pitch' ||
@@ -1712,6 +1764,7 @@ export class AudioEngine {
     }
     this.persistRandom()
     this.syncLfoClock()
+    if (id === 'speed' || id === 'pitch') this.syncRateVoices()
     this.emit()
   }
 
@@ -1721,6 +1774,7 @@ export class AudioEngine {
     if (!enabled) this.randomRuntime = defaultRandomRuntime()
     this.persistRandom()
     this.syncLfoClock()
+    this.syncRateVoices()
     this.emit()
   }
 
@@ -2046,7 +2100,8 @@ export class AudioEngine {
   private applyRandomSelect(id: EngineSelectId): void {
     if (id === 'playbackDirection') {
       const options = PLAYBACK_DIRECTIONS.map((item) => item.value)
-      this.setDirection(pickDifferent(options, this.direction, undefined, Math.random))
+      const current = this.tracks.find((track) => track.id === this.activeTrackId())?.direction ?? this.direction
+      this.setDirection(pickDifferent(options, current, undefined, Math.random))
       return
     }
     if (id === 'delayType') {
@@ -2205,6 +2260,8 @@ export class AudioEngine {
     const previous = this.params[id]
     this.params[id] = applyParamValue(value, PARAMS[id])
     commitParamEdit(this.params, id, previous)
+    this.mirrorMixerParam(id)
+    if (id === 'speed' || id === 'pitch') this.syncRateVoices()
   }
 
   private writeEqBandQuiet(index: number, patch: Partial<EqBand>): void {
@@ -2569,6 +2626,9 @@ export class AudioEngine {
     this.fxLfos[kind][i] = next
     this.syncLfoClock()
     this.applyLiveAudio(patch.target !== undefined ? 0.06 : 0.02)
+    if (cur.target === 'speed' || cur.target === 'pitch' || next.target === 'speed' || next.target === 'pitch') {
+      this.syncRateVoices()
+    }
     this.emit()
     if (anyFxLfoActive(this.fxLfos)) void this.ensureContext()
   }
@@ -3484,6 +3544,11 @@ export class AudioEngine {
       start: source.start,
       end: source.end,
       stereoDisplay: 'combined',
+      loop: source.loop,
+      direction: source.direction,
+      pan: source.pan,
+      midDb: source.midDb,
+      sideDb: source.sideDb,
     })
     if (this.ctx) {
       this.withEditing(empty.id, () => this.syncTrackSlots())
@@ -3556,15 +3621,43 @@ export class AudioEngine {
     const next = patchTrack(this.tracks, id, patch)
     if (tracksEqual(next, this.tracks)) return
     this.tracks = next
+    const track = this.tracks.find((item) => item.id === id)
     if (id === this.selectedTrackId && (patch.start != null || patch.end != null)) {
-      const track = this.tracks.find((item) => item.id === id)
       if (track && !this.usingProjectTransport) this.applyTrackRegion(track)
       else if (track) {
         this.params.start = track.start
         this.params.end = track.end
       }
     }
+    if (id === this.selectedTrackId && patch.direction) this.direction = patch.direction
+    if (track && (patch.mix != null || patch.pan != null || patch.midDb != null || patch.sideDb != null)) {
+      this.withEditing(id, () => {
+        if (patch.mix != null) {
+          this.forgetRandomOffset('mixVolume')
+          this.params.mixVolume = track.mix
+        }
+        if (patch.pan != null) {
+          this.forgetRandomOffset('mixPan')
+          this.params.mixPan = track.pan
+        }
+        if (patch.midDb != null) {
+          this.forgetRandomOffset('mixMid')
+          this.params.mixMid = track.midDb
+        }
+        if (patch.sideDb != null) {
+          this.forgetRandomOffset('mixSide')
+          this.params.mixSide = track.sideDb
+        }
+      })
+    }
     this.applyLiveAudio(0.02)
+    if (
+      this.usingProjectTransport &&
+      this.playing &&
+      (patch.loop != null || patch.direction != null)
+    ) {
+      this.rescheduleProject()
+    }
     this.emit()
   }
 
@@ -3574,6 +3667,7 @@ export class AudioEngine {
     this.syncSelectedTrackRegion()
     const playhead = this.playing ? this.getPlayheadSeconds() : this.playOffset
     this.selectedTrackId = track.id
+    this.direction = track.direction
     this.bindWorkingFromTrack(track.id)
     const duration = this.trackBuffers.get(track.id)?.duration ?? 0
     if (duration > 0) {
@@ -3874,6 +3968,17 @@ export class AudioEngine {
     return out
   }
 
+  /** Older projects stored mixer levels on the track only. */
+  private adoptMixerBases(): void {
+    for (const track of this.tracks) {
+      const rack = this.ensureRack(track.id)
+      rack.params.mixVolume = track.mix
+      rack.params.mixPan = track.pan
+      rack.params.mixMid = track.midDb
+      rack.params.mixSide = track.sideDb
+    }
+  }
+
   private adoptPresetRacks(preset: PresetV1, legacyHost: string): void {
     const parsed = parseTrackRacks(preset.trackRacks)
     for (const rack of this.racks.values()) {
@@ -3972,6 +4077,7 @@ export class AudioEngine {
     const wanted = typeof preset.selectedTrackId === 'string' ? preset.selectedTrackId : this.tracks[0]!.id
     this.selectedTrackId = this.tracks.some((track) => track.id === wanted) ? wanted : this.tracks[0]!.id
     this.adoptPresetRacks(preset, legacyHost)
+    this.adoptMixerBases()
     if (typeof preset.masterMix === 'number') this.masterMix = clampMix(preset.masterMix)
     const selected = selectedTrack(this.tracks, this.selectedTrackId)
     if (selected && selected.end > selected.start) {
@@ -4631,7 +4737,12 @@ export class AudioEngine {
       this.bindVisibility()
     }
     if (this.ctx.state === 'suspended' && !(this.ctx instanceof OfflineAudioContext)) {
-      await this.ctx.resume()
+      try {
+        await this.ctx.resume()
+      } catch {
+        // The file picker can end the user-gesture. Decode still works while
+        // the context is suspended; playback resumes on the next gesture.
+      }
     }
     if (!this.unlocked && this.ctx.state === 'running') {
       this.primeOutput()
@@ -4725,14 +4836,15 @@ export class AudioEngine {
     for (const track of this.tracks) {
       const strip = this.trackStrips.get(track.id)
       if (!strip) continue
+      const heard = this.mixerHeard.get(track.id)
       applyTrackMixerParams(
         strip,
         {
-          pan: track.pan,
-          level: trackLevelGain(track.mix),
+          pan: heard?.pan ?? track.pan,
+          level: heard?.level ?? trackLevelGain(track.mix),
           gate: trackAudible(track, this.tracks) ? 1 : 0,
-          midDb: track.midDb,
-          sideDb: track.sideDb,
+          midDb: heard?.midDb ?? track.midDb,
+          sideDb: heard?.sideDb ?? track.sideDb,
         },
         now,
       )
@@ -5523,15 +5635,25 @@ export class AudioEngine {
     return this.stepClocks().lfoSec
   }
 
+  /** One project playhead while several tracks are running. Otherwise this rack's speed. */
+  private transportForEditing(): number {
+    if (this.usingProjectTransport && this.playing) return this.projectPlayhead()
+    if (this.playing) return this.transportSeconds(Math.max(0.01, this.params.speed))
+    return 0
+  }
+
   private liveParams(): Record<ParamId, number> {
-    const now = typeof performance !== 'undefined' ? performance.now() : 0
-    const dt = this.filterFollowStamp > 0 ? Math.min(0.05, (now - this.filterFollowStamp) / 1000) : 0.016
-    this.filterFollowStamp = now
-    this.updateFilterFollower(dt)
-    // Stored speed keeps this clock independent of the value automation writes.
-    const transport = this.playing ? this.transportSeconds(Math.max(0.01, this.params.speed)) : 0
-    this.lastTransportSec = transport
-    const clocks = this.stepClocks()
+    if (!this.suppressClock) {
+      const now = typeof performance !== 'undefined' ? performance.now() : 0
+      const stamp = this.filterFollowStamp
+      this.followDt = stamp > 0 ? Math.min(0.05, (now - stamp) / 1000) : 0.016
+      this.filterFollowStamp = now
+      this.lastTransportSec = this.transportForEditing()
+      this.stepClocks()
+    }
+    this.updateFilterFollower(this.followDt)
+    const transport = this.lastTransportSec
+    const clocks = { lfoSec: this.lfoClockSec, filterSec: this.filterClockSec }
     const primaryId = this.chain.find((mod) => mod.type === 'eq')?.instanceId
     const primaryBands = primaryId ? this.eqById.get(primaryId) : undefined
     const manual = primaryBands
@@ -5669,6 +5791,9 @@ export class AudioEngine {
 
   private applyLiveAudio(smoothing = 0.03): void {
     if (!this.ctx) return
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : 0
+    const stamp = this.filterFollowStamp
+    this.followDt = stamp > 0 ? Math.min(0.05, (nowMs - stamp) / 1000) : 0.016
     this.stepClocks()
     this.suppressClock = true
     const selected = this.selectedTrackId
@@ -5677,6 +5802,8 @@ export class AudioEngine {
       order.push(selected)
       for (const id of order) {
         this.withEditing(id, () => {
+          this.filterFollowStamp = nowMs
+          this.lastTransportSec = this.transportForEditing()
           this.advanceRandom()
           this.applyRackDsp(smoothing)
         })
@@ -5687,7 +5814,7 @@ export class AudioEngine {
     this.applyMasterOutput(smoothing)
     this.applyTrackMix(smoothing)
     this.syncEqListen()
-    if (this.playing && this.engineMode === 'playback') {
+    if (this.playing && this.engineMode === 'playback' && !this.usingProjectTransport && this.loadedTrackCount() < 2) {
       const live = this.liveParams()
       const now = this.ctx.currentTime
       if (playbackNeedsStretch(live.speed, live.pitch) && !this.schedulerId) {
@@ -5729,6 +5856,12 @@ export class AudioEngine {
       setSmoothedAudioParam(gainSlot.output.gain, dbToGain(live.gain), now, 'gain')
     }
     if (outSlot) setSmoothedAudioParam(outSlot.output.gain, 1, now, 'gain')
+    this.mixerHeard.set(this.activeTrackId(), {
+      pan: live.mixPan,
+      level: trackLevelGain(live.mixVolume),
+      midDb: live.mixMid,
+      sideDb: live.mixSide,
+    })
     this.applyEq(smoothing)
     this.applyFxParams(smoothing)
     this.applyBypassRamps(smoothing)
@@ -5908,6 +6041,7 @@ export class AudioEngine {
     this.retireVoices(this.voices, now)
     if (this.loopScheduling) this.pumpLead(now)
     this.pumpProject(now)
+    if (this.stretchCursors.size) this.pumpTrackStretches(now)
   }
 
   private pumpLead(now: number): void {
@@ -6481,6 +6615,7 @@ export class AudioEngine {
     return this.tracks.map((track) => ({
       id: track.id,
       duration: this.trackBuffers.get(track.id)?.duration ?? 0,
+      loop: track.loop,
     }))
   }
 
@@ -6490,8 +6625,7 @@ export class AudioEngine {
 
   private projectPlayhead(): number {
     if (!this.ctx) return this.playOffset
-    const speed = Math.max(0.01, this.liveParams().speed)
-    const elapsed = Math.max(0, this.ctx.currentTime - this.projectWhen) * speed
+    const elapsed = Math.max(0, this.ctx.currentTime - this.projectWhen)
     const dur = this.projectDuration()
     let time = this.projectOrigin + elapsed
     if (this.loop && dur > 0.001) time = ((time % dur) + dur) % dur
@@ -6511,9 +6645,196 @@ export class AudioEngine {
     if (now >= this.projectEndAt) this.stop()
   }
 
+  private mirrorMixerParam(id: ParamId): void {
+    if (id !== 'mixVolume' && id !== 'mixPan' && id !== 'mixMid' && id !== 'mixSide') return
+    const trackId = this.activeTrackId()
+    const patch =
+      id === 'mixVolume'
+        ? { mix: this.params.mixVolume }
+        : id === 'mixPan'
+          ? { pan: this.params.mixPan }
+          : id === 'mixMid'
+            ? { midDb: this.params.mixMid }
+            : { sideDb: this.params.mixSide }
+    this.tracks = patchTrack(this.tracks, trackId, patch)
+  }
+
+  private rescheduleProject(): void {
+    if (!this.ctx || !this.playing || !this.usingProjectTransport) return
+    const head = this.projectPlayhead()
+    this.playOffset = head
+    this.startProjectVoices(this.ctx.currentTime, head, true)
+  }
+
   /**
-   * One-shot sources for every loaded track, all started at the same `when`.
-   * Each source enters that track's mixer input. The effect chain and mute gate sit downstream.
+   * Switch a track between a native buffer voice and the stretch cursor when
+   * speed or pitch starts or stops moving. An already-stretching voice keeps
+   * its cursor; the shared pump reads the new value. This does not restart
+   * every random tick.
+   */
+  private syncRateVoices(): void {
+    if (!this.usingProjectTransport || !this.playing) return
+    let mismatch = false
+    for (const track of this.tracks) {
+      if (!this.trackBuffers.has(track.id)) continue
+      const rack = this.ensureRack(track.id)
+      const stretch = sourceNeedsStretch(rack.params.speed, rack.params.pitch, this.trackRateIsLive(track.id))
+      if (stretch !== this.stretchCursors.has(track.id)) mismatch = true
+    }
+    if (mismatch) this.rescheduleProject()
+  }
+
+  private trackRateIsLive(id: string): boolean {
+    const rack = this.ensureRack(id)
+    const moving = (paramId: ParamId) =>
+      (laneFor(rack.automation, paramId)?.nodes.length ?? 0) > 0 ||
+      rack.fxLfos.input.some((lfo) => lfo.target === paramId && lfo.depth > 0 && lfo.enabled !== false) ||
+      Boolean(rack.randomDoc.chaos && rack.randomDoc.generators[paramId]?.auto)
+    return moving('speed') || moving('pitch')
+  }
+
+  private reversedOf(buffer: AudioBuffer): AudioBuffer | null {
+    const cached = this.reversedCache.get(buffer)
+    if (cached) return cached
+    const rev = this.buildReversed(buffer)
+    if (rev) this.reversedCache.set(buffer, rev)
+    return rev
+  }
+
+  private pingpongOf(buffer: AudioBuffer): AudioBuffer | null {
+    const cached = this.pingpongCache.get(buffer)
+    if (cached) return cached
+    const ctx = this.bufferFactory()
+    if (!ctx) return null
+    const frames = buffer.length
+    const pp = ctx.createBuffer(buffer.numberOfChannels, Math.max(2, frames * 2), buffer.sampleRate)
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      pp.getChannelData(ch).set(pingPongChannel(buffer.getChannelData(ch), 0, frames))
+    }
+    this.pingpongCache.set(buffer, pp)
+    return pp
+  }
+
+  private cueBuffer(buffer: AudioBuffer, cue: BufferCue): AudioBuffer | null {
+    if (cue.buffer === 'reverse') return this.reversedOf(buffer)
+    if (cue.buffer === 'pingpong') return this.pingpongOf(buffer)
+    return buffer
+  }
+
+  private startCue(
+    trackId: string,
+    buffer: AudioBuffer,
+    input: AudioNode,
+    cue: BufferCue,
+    t0: number,
+    bucket: 'project' | 'companion',
+  ): void {
+    const ctx = this.ctx
+    const playBuffer = this.cueBuffer(buffer, cue)
+    if (!ctx || !playBuffer) return
+    const src = ctx.createBufferSource()
+    src.buffer = playBuffer
+    src.loop = cue.loop
+    if (cue.loop) {
+      src.loopStart = 0
+      src.loopEnd = playBuffer.duration
+    }
+    src.connect(input)
+    const at = t0 + cue.at
+    const offset = Math.min(Math.max(0, cue.offset), Math.max(0, playBuffer.duration - 0.001))
+    try {
+      src.start(at, offset, Math.max(0.001, cue.duration))
+    } catch {
+      try {
+        src.disconnect()
+      } catch {
+        /* unscheduled */
+      }
+      return
+    }
+    if (bucket === 'project') {
+      src.onended = () => {
+        this.projectVoices = this.projectVoices.filter((item) => item.src !== src)
+        try {
+          src.disconnect()
+        } catch {
+          /* already released */
+        }
+      }
+      this.projectVoices.push({ id: trackId, src })
+    } else {
+      src.onended = () => {
+        try {
+          src.disconnect()
+        } catch {
+          /* already released */
+        }
+      }
+      this.companionSources.push(src)
+    }
+  }
+
+  private armTrackStretch(track: MixTrack, buffer: AudioBuffer, t0: number, origin: number, projectDuration: number): void {
+    const rack = this.ensureRack(track.id)
+    const speed = Math.max(PARAMS.speed.min, rack.params.speed)
+    const pitch = rack.params.pitch
+    const end = buffer.duration
+    const originClamped = Math.max(0, origin)
+    let head = Math.min(originClamped, Math.max(0, end - 0.0001))
+    let dir = 1
+    if (track.direction === 'reverse') {
+      head = Math.max(0, end - originClamped)
+      dir = -1
+    }
+    const cycle = track.direction === 'pingpong' ? end * 2 : end
+    const budget = track.loop ? Number.POSITIVE_INFINITY : Math.max(0, cycle - originClamped)
+    this.stretchCursors.set(track.id, {
+      head,
+      dir,
+      speed,
+      pitch,
+      windowSpeed: speed,
+      windowPitch: pitch,
+      next: t0,
+      stopAt: t0 + Math.max(0.001, projectDuration - originClamped),
+      start: 0,
+      end,
+      loop: track.loop,
+      direction: track.direction,
+      budget,
+      consumed: 0,
+    })
+  }
+
+  private scheduleTrackSource(
+    track: MixTrack,
+    t0: number,
+    origin: number,
+    projectDuration: number,
+    bucket: 'project' | 'companion',
+  ): void {
+    const buffer = this.trackBuffers.get(track.id)
+    const input = this.trackStrips.get(track.id)?.input
+    if (!buffer || !input || !(buffer.duration > 0)) return
+    const rack = this.ensureRack(track.id)
+    if (sourceNeedsStretch(rack.params.speed, rack.params.pitch, this.trackRateIsLive(track.id))) {
+      this.armTrackStretch(track, buffer, t0, origin, projectDuration)
+      return
+    }
+    const cues = bufferCues({
+      sourceDuration: buffer.duration,
+      origin,
+      projectDuration,
+      loop: track.loop,
+      direction: track.direction,
+    })
+    for (const cue of cues) this.startCue(track.id, buffer, input, cue, t0, bucket)
+  }
+
+  /**
+   * Every loaded track starts at one AudioContext time.
+   * Loop, direction, speed, and pitch belong to the track. The project end is
+   * the longest original source. Mute only closes the mixer gate.
    */
   private startProjectVoices(when: number, origin: number, replace: boolean): void {
     const ctx = this.ctx
@@ -6528,36 +6849,11 @@ export class AudioEngine {
       this.projectOrigin = plan.origin
     }
     this.ensureTrackStrips(false)
-    for (const voice of plan.voices) {
-      const buffer = this.trackBuffers.get(voice.id)
-      const input = this.trackStrips.get(voice.id)?.input
-      if (!buffer || !input) continue
-      const src = ctx.createBufferSource()
-      src.buffer = buffer
-      src.connect(input)
-      const offset = Math.min(voice.offset, Math.max(0, buffer.duration - 0.001))
-      try {
-        src.start(t0, offset)
-      } catch {
-        try {
-          src.disconnect()
-        } catch {
-          /* unscheduled */
-        }
-        continue
-      }
-      src.onended = () => {
-        this.projectVoices = this.projectVoices.filter((item) => item.src !== src)
-        try {
-          src.disconnect()
-        } catch {
-          /* already released */
-        }
-      }
-      this.projectVoices.push({ id: voice.id, src })
+    const project = projectDurationOf(spans)
+    for (const track of this.tracks) {
+      this.scheduleTrackSource(track, t0, plan.origin, project, 'project')
     }
-    const dur = projectDurationOf(spans)
-    const remain = Math.max(0.001, dur - plan.origin)
+    const remain = Math.max(0.001, project - plan.origin)
     if (this.loop) {
       this.projectRestartAt = t0 + remain
       this.projectEndAt = Number.POSITIVE_INFINITY
@@ -6566,6 +6862,24 @@ export class AudioEngine {
       this.projectEndAt = t0 + remain
     }
     this.ensureTransportTimer()
+  }
+
+  private stopStretchSources(): void {
+    const sources = this.stretchSources.splice(0, this.stretchSources.length)
+    for (const src of sources) {
+      try {
+        src.onended = null
+        src.stop()
+      } catch {
+        /* already stopped */
+      }
+      try {
+        src.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+    this.stretchCursors.clear()
   }
 
   private stopProjectVoices(): void {
@@ -6583,11 +6897,12 @@ export class AudioEngine {
         /* already disconnected */
       }
     }
+    this.stopStretchSources()
     this.projectRestartAt = Number.POSITIVE_INFINITY
     this.projectEndAt = Number.POSITIVE_INFINITY
   }
 
-  /** Grain / stretch / reverse: other tracks still share the start time, without their own clock. */
+  /** Grain / stretch on the lead: other tracks still share the start time. */
   private startSyncedCompanions(when: number, origin: number): void {
     this.stopCompanionVoices()
     const ctx = this.ctx
@@ -6595,33 +6910,12 @@ export class AudioEngine {
     const spans = this.trackSpans().filter((span) => span.id !== this.selectedTrackId)
     const plan = planProjectStart(spans, origin, when, 0.02)
     this.ensureTrackStrips(false)
-    for (const voice of plan.voices) {
-      const buffer = this.trackBuffers.get(voice.id)
-      const input = this.trackStrips.get(voice.id)?.input
-      if (!buffer || !input) continue
-      const src = ctx.createBufferSource()
-      src.buffer = buffer
-      src.connect(input)
-      const offset = Math.min(voice.offset, Math.max(0, buffer.duration - 0.001))
-      try {
-        src.start(plan.when, offset)
-      } catch {
-        try {
-          src.disconnect()
-        } catch {
-          /* unscheduled */
-        }
-        continue
-      }
-      src.onended = () => {
-        try {
-          src.disconnect()
-        } catch {
-          /* already released */
-        }
-      }
-      this.companionSources.push(src)
+    const project = Math.max(projectDurationOf(this.trackSpans()), plan.origin)
+    for (const track of this.tracks) {
+      if (track.id === this.selectedTrackId) continue
+      this.scheduleTrackSource(track, plan.when, plan.origin, project, 'companion')
     }
+    if (this.stretchCursors.size) this.ensureTransportTimer()
   }
 
   private stopCompanionVoices(): void {
@@ -6639,6 +6933,126 @@ export class AudioEngine {
         /* already disconnected */
       }
     }
+  }
+
+  private wrapStretchCursor(cursor: TrackStretchCursor): number | null {
+    const span = Math.max(cursor.end - cursor.start, 0.001)
+    if (cursor.direction === 'pingpong') {
+      let head = cursor.head
+      for (let i = 0; i < 8; i++) {
+        if (head > cursor.end) {
+          head = cursor.end - (head - cursor.end)
+          cursor.dir = -1
+        } else if (head < cursor.start) {
+          head = cursor.start + (cursor.start - head)
+          cursor.dir = 1
+        } else break
+      }
+      return Math.min(cursor.end, Math.max(cursor.start, head))
+    }
+    if (cursor.loop) {
+      if (cursor.head >= cursor.end) return cursor.start + ((cursor.head - cursor.start) % span)
+      if (cursor.head < cursor.start) {
+        const back = (cursor.start - cursor.head) % span
+        return cursor.end - (back === 0 ? span : back)
+      }
+      return cursor.head
+    }
+    if (cursor.head >= cursor.end || cursor.head < cursor.start) return null
+    return cursor.head
+  }
+
+  /** Shared transport timer. One pump schedules stretch grains for every track that needs them. */
+  private pumpTrackStretches(now: number): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    for (const [id, cursor] of this.stretchCursors) {
+      if (now >= cursor.stopAt) {
+        this.stretchCursors.delete(id)
+        continue
+      }
+      const buffer = this.trackBuffers.get(id)
+      const input = this.trackStrips.get(id)?.input
+      if (!buffer || !input) {
+        this.stretchCursors.delete(id)
+        continue
+      }
+      const rack = this.ensureRack(id)
+      const transport = this.usingProjectTransport && this.playing ? this.projectPlayhead() : this.lastTransportSec
+      const heard = resolvePerformanceParams(
+        rack.params,
+        rack.automation,
+        transport,
+        this.playing,
+        rack.fxLfos,
+        this.lfoClockSec,
+        rack.lfoHold,
+        undefined,
+        rack.randomOffsets,
+      )
+      const targetSpeed = Math.max(PARAMS.speed.min, heard.speed)
+      const horizon = Math.min(cursor.stopAt, now + stretchLookahead(stretchSchedule(heard.stretchInterp, cursor.windowSpeed, cursor.windowPitch, cursor.speed, targetSpeed, cursor.pitch, heard.pitch).hopSec))
+      if (cursor.next < now - 0.001) {
+        const late = now - cursor.next
+        cursor.head += late * Math.max(cursor.speed, PARAMS.speed.min) * cursor.dir
+        cursor.consumed += late * Math.max(cursor.speed, PARAMS.speed.min)
+        const caught = this.wrapStretchCursor(cursor)
+        if (caught == null || cursor.consumed >= cursor.budget) {
+          this.stretchCursors.delete(id)
+          continue
+        }
+        cursor.head = caught
+        cursor.next = now
+      }
+      const playBuffer = cursor.direction === 'reverse' ? (this.reversedOf(buffer) ?? buffer) : buffer
+      const algo = effectiveInterpAlgo(heard.stretchInterpOn, heard.stretchInterpAlgo)
+      let guard = 0
+      while (cursor.next < horizon && guard++ < 6) {
+        const t = Math.max(cursor.next, ctx.currentTime)
+        const step = advanceStretchControl(
+          { speed: cursor.speed, pitch: cursor.pitch, windowSpeed: cursor.windowSpeed, windowPitch: cursor.windowPitch },
+          targetSpeed,
+          heard.pitch,
+          heard.stretchInterp,
+        )
+        cursor.speed = step.speed
+        cursor.pitch = step.pitch
+        cursor.windowSpeed = step.windowSpeed
+        cursor.windowPitch = step.windowPitch
+        const wrapped = this.wrapStretchCursor(cursor)
+        if (wrapped == null || cursor.consumed >= cursor.budget) {
+          this.stretchCursors.delete(id)
+          break
+        }
+        cursor.head = wrapped
+        const mapped = cursor.direction === 'reverse' ? reverseTime(cursor.head, buffer.duration) : cursor.head
+        const offset = Math.min(Math.max(mapped, 0), Math.max(0, playBuffer.duration - 0.01))
+        const grainDur = step.grainSec
+        const count = Math.max(32, Math.ceil(grainDur * playBuffer.sampleRate))
+        const grainBuf = this.acquireResampleGrain(count, playBuffer.numberOfChannels, playBuffer.sampleRate)
+        if (!grainBuf) break
+        this.fillResampledGrain(grainBuf, playBuffer, offset, count, step.readPitch, algo, step.peak, true, 'realtime')
+        const src = ctx.createBufferSource()
+        src.buffer = grainBuf
+        src.connect(input)
+        try {
+          src.start(t, 0, grainDur)
+          src.stop(t + grainDur + 0.02)
+        } catch {
+          try {
+            src.disconnect()
+          } catch {
+            /* start rejected */
+          }
+          break
+        }
+        this.stretchSources.push(src)
+        cursor.head += step.sourceAdvance * cursor.dir
+        cursor.consumed += step.sourceAdvance
+        cursor.next += step.hopSec
+      }
+    }
+    if (this.stretchSources.length > 256) this.stretchSources.splice(0, this.stretchSources.length - 128)
   }
 
   private buildSnapshot(): EngineSnapshot {

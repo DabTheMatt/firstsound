@@ -30,7 +30,8 @@
 
 .lane {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   flex: 1 1 88px;
   min-height: 78px;
   border: 1px solid var(--border-subtle);
@@ -38,6 +39,22 @@
   border-radius: 8px;
   background: transparent;
   min-width: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.laneDrop {
+  border-color: var(--lane, var(--accent-primary));
+  background: color-mix(in srgb, var(--lane, var(--accent-primary)) 8%, transparent);
+}
+
+.phone .lane {
+  flex-direction: column;
 }
 
 .laneOn {
@@ -100,7 +117,8 @@
 
 .name {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  max-width: 42%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,6 +146,27 @@
 .meta {
   flex: none;
   font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.load {
+  flex: none;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dropHint {
+  margin: 0 6px 6px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);

@@ -30,6 +30,19 @@ describe('per-track effect racks', () => {
     expect(key).toContain('parameter:eq1Freq')
   })
 
+  it('routes input and mixer targets by track id', () => {
+    const chain = defaultChain()
+    expect(resolveTrackParamKey('track-2', chain, 'gain')).toBe('track:track-2:input:gain')
+    expect(resolveTrackParamKey('track-2', chain, 'speed')).toBe('track:track-2:input:speed')
+    expect(resolveTrackParamKey('track-2', chain, 'pitch')).toBe('track:track-2:input:pitch')
+    expect(resolveTrackParamKey('track-2', chain, 'stretchInterp')).toBe('track:track-2:input:stretchInterp')
+    expect(resolveTrackParamKey('track-2', chain, 'mixVolume')).toBe('track:track-2:volume')
+    expect(resolveTrackParamKey('track-2', chain, 'mixPan')).toBe('track:track-2:pan')
+    expect(resolveTrackParamKey('track-2', chain, 'mixMid')).toBe('track:track-2:midGain')
+    expect(resolveTrackParamKey('track-2', chain, 'mixSide')).toBe('track:track-2:sideGain')
+    expect(resolveTrackParamKey('track-1', chain, 'gain')).not.toBe(resolveTrackParamKey('track-2', chain, 'gain'))
+  })
+
   it('counts inserted effects and round-trips a rack', () => {
     const rack = createTrackRack()
     rack.chain = insertChainModule(insertChainModule(rack.chain, 'eq', 0), 'reverb', 1)

@@ -7,8 +7,10 @@ import {
   type MixTrack,
   type TrackColorId,
 } from '../../audio/mix/tracks'
-import { TrackMixer } from './TrackMixer'
+import { TrackMixer, TrackStrip } from './TrackMixer'
+import { TrackInputPanel } from './TrackInputPanel'
 import { AUDIO_FILE_ACCEPT, readAudioFile } from '../../features/sample/files'
+import { beginTrackLoad, isLatestTrackLoad } from '../../features/sample/loadQueue'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { subscribeThemeChange } from '../../theme'
@@ -111,6 +113,7 @@ export function MultiTrackView({
   const [paletteFor, setPaletteFor] = useState<string | null>(null)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ id: string; file: File } | null>(null)
+  const [inputFor, setInputFor] = useState<string | null>(null)
 
   useEffect(() => {
     const node = listRef.current
@@ -135,12 +138,16 @@ export function MultiTrackView({
     engine.seekSeconds(ratio * dur, 'sample')
   }
 
-  const loadFile = (id: string, file: File) => {
-    void readAudioFile(file).then((data) => engine.loadTrackArrayBuffer(id, data, file.name))
+  const loadFile = async (id: string, file: File) => {
+    const token = beginTrackLoad(id)
+    const data = await readAudioFile(file)
+    if (!isLatestTrackLoad(id, token)) return
+    await engine.loadTrackArrayBuffer(id, data, file.name)
   }
 
   return (
     <div className={`${styles.desk} ${phone ? styles.phone : ''}`} data-arrangement="multi">
+      {inputFor ? <TrackInputPanel trackId={inputFor} onClose={() => setInputFor(null)} /> : null}
       <div ref={listRef} className={styles.list} role="list">
         {snap.tracks.map((track, index) => (
           <TrackLane
@@ -153,7 +160,10 @@ export function MultiTrackView({
             paletteOpen={paletteFor === track.id}
             renaming={renameId === track.id}
             pending={pending?.id === track.id ? pending.file : null}
-            onSelect={() => engine.selectTrack(track.id)}
+            onSelect={() => {
+              engine.selectTrack(track.id)
+              setInputFor((current) => (current ? track.id : null))
+            }}
             onSeek={seekAt}
             onPalette={() => setPaletteFor((cur) => (cur === track.id ? null : track.id))}
             onColor={(color) => {
@@ -166,6 +176,10 @@ export function MultiTrackView({
               setRenameId(null)
             }}
             onLoad={(file) => loadFile(track.id, file)}
+            onOpenInput={() => {
+              engine.selectTrack(track.id)
+              setInputFor(track.id)
+            }}
             onAskReplace={(file) => setPending({ id: track.id, file })}
             onConfirmReplace={() => {
               if (pending?.id === track.id) loadFile(track.id, pending.file)
@@ -209,6 +223,7 @@ function TrackLane({
   onRenameStart,
   onRename,
   onLoad,
+  onOpenInput,
   onAskReplace,
   onConfirmReplace,
   onCancelReplace,
@@ -238,6 +253,7 @@ function TrackLane({
   onRenameStart: () => void
   onRename: (name: string) => void
   onLoad: (file: File) => void
+  onOpenInput: () => void
   onAskReplace: (file: File) => void
   onConfirmReplace: () => void
   onCancelReplace: () => void
@@ -265,6 +281,13 @@ function TrackLane({
     replaceAsk: string
     replaceYes: string
     replaceNo: string
+    loadSample: string
+    loop: string
+    loopTrack: string
+    input: string
+    dropAudio: string
+    replaceDrop: string
+    mixMore: string
     left: string
     right: string
     reorder: string
@@ -276,6 +299,8 @@ function TrackLane({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [mixOpen, setMixOpen] = useState(false)
   const buffer = engine.getTrackBuffer(track.id)
   const channels = buffer?.numberOfChannels ?? track.channelCount
   const stereo = channels > 1
@@ -294,7 +319,7 @@ function TrackLane({
 
   return (
     <article
-      className={`${styles.lane} ${selected ? styles.laneOn : ''} ${dimmed ? styles.laneDim : ''}`}
+      className={`${styles.lane} ${selected ? styles.laneOn : ''} ${dimmed ? styles.laneDim : ''} ${dragOver ? styles.laneDrop : ''}`}
       style={{ ['--lane' as string]: color }}
       data-track-lane=""
       data-track-id={track.id}
@@ -302,15 +327,24 @@ function TrackLane({
       role="listitem"
       onClick={onSelect}
       onDragOver={(event) => {
+        if (![...event.dataTransfer.types].includes('Files')) return
         event.preventDefault()
         event.stopPropagation()
+        event.dataTransfer.dropEffect = 'copy'
+        setDragOver(true)
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node)) return
+        setDragOver(false)
       }}
       onDrop={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        takeFile(event.dataTransfer.files[0], true)
+        setDragOver(false)
+        takeFile(event.dataTransfer.files[0], loaded)
       }}
     >
+      <div className={styles.main}>
       <header className={styles.head}>
         <button
           type="button"
@@ -384,6 +418,17 @@ function TrackLane({
             {track.name}
           </button>
         )}
+        <button
+          type="button"
+          className={styles.load}
+          aria-label={loaded ? copy.replaceAudio : copy.loadSample}
+          onClick={(event) => {
+            event.stopPropagation()
+            inputRef.current?.click()
+          }}
+        >
+          {loaded ? copy.loadSample : `+ ${copy.loadSample}`}
+        </button>
         <button type="button" className={styles.icon} aria-label={copy.rename} onClick={(event) => {
           event.stopPropagation()
           onRenameStart()
@@ -405,16 +450,31 @@ function TrackLane({
             {track.stereoDisplay === 'split' ? '1' : 'L/R'}
           </button>
         ) : null}
+        {loaded ? (
+          <button
+            type="button"
+            className={`${styles.icon} ${track.loop ? styles.fxOn : ''}`}
+            aria-pressed={track.loop}
+            aria-label={copy.loopTrack}
+            title={copy.loopTrack}
+            onClick={(event) => {
+              event.stopPropagation()
+              engine.setTrack(track.id, { loop: !track.loop })
+            }}
+          >
+            {copy.loop}
+          </button>
+        ) : null}
         <button
           type="button"
-          className={styles.icon}
-          aria-label={loaded ? copy.replaceAudio : copy.loadAudio}
+          className={`${styles.icon} ${styles.inputBtn}`}
+          aria-label={copy.input}
           onClick={(event) => {
             event.stopPropagation()
-            inputRef.current?.click()
+            onOpenInput()
           }}
         >
-          {loaded ? '↻' : '+'}
+          {copy.input}
         </button>
         <button
           type="button"
@@ -440,16 +500,41 @@ function TrackLane({
             ×
           </button>
         ) : null}
+        {phone && loaded ? (
+          <button
+            type="button"
+            className={`${styles.icon} ${mixOpen ? styles.fxOn : ''}`}
+            aria-expanded={mixOpen}
+            aria-label={copy.mixMore}
+            onClick={(event) => {
+              event.stopPropagation()
+              setMixOpen((open) => !open)
+            }}
+          >
+            {copy.mixMore}
+          </button>
+        ) : null}
         <input
           ref={inputRef}
           type="file"
           accept={AUDIO_FILE_ACCEPT}
           hidden
           onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ''
+            const input = event.currentTarget
+            const file = input.files?.[0]
             if (!file) return
-            onLoad(file)
+            // Start the read before clearing the input. Chromium detaches the
+            // File if value is reset first, so the first pick decodes empty
+            // and only a second selection sticks. Same filename still fires
+            // once the value is cleared after the bytes are copied.
+            const token = beginTrackLoad(track.id)
+            void file.arrayBuffer().then(async (data) => {
+              input.value = ''
+              if (!isLatestTrackLoad(track.id, token)) return
+              await engine.loadTrackArrayBuffer(track.id, data, file.name)
+            }).catch(() => {
+              input.value = ''
+            })
           }}
         />
       </header>
@@ -468,7 +553,7 @@ function TrackLane({
           ))}
         </div>
       ) : null}
-      <TrackMixer track={track} tracks={tracks} phone={phone} />
+      {phone && loaded && mixOpen ? <TrackMixer track={track} tracks={tracks} phone={phone} /> : null}
       {loaded && track.stereoDisplay === 'split' && stereo ? (
         <div className={styles.channels}>
           <span className={styles.channelLabel}>{track.name} · {copy.left}</span>
@@ -508,9 +593,10 @@ function TrackLane({
             inputRef.current?.click()
           }}
         >
-          + {copy.loadAudio}
+          {dragOver ? copy.dropAudio : `+ ${copy.loadSample}`}
         </button>
       )}
+      {dragOver && loaded ? <div className={styles.dropHint}>{copy.replaceDrop}</div> : null}
       {pending ? (
         <div className={styles.confirm}>
           <span>{copy.replaceAsk}</span>
@@ -522,6 +608,8 @@ function TrackLane({
           </button>
         </div>
       ) : null}
+      </div>
+      {loaded && !phone ? <TrackStrip track={track} tracks={tracks} selected={selected} /> : null}
     </article>
   )
 }

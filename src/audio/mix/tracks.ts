@@ -11,6 +11,7 @@
  * mixer pan. The safety limiter and master output gain stay global.
  */
 
+import type { PlaybackDirection } from '../parameters/types'
 import { clampMsDb, clampPan } from './mixerParams'
 
 export const MAX_TRACKS = 4
@@ -42,6 +43,10 @@ export type MixTrack = {
   fileName: string | null
   channelCount: number
   stereoDisplay: StereoDisplay
+  /** Repeats the source until the shared project ends. Does not lengthen it. */
+  loop: boolean
+  /** Source direction. Independent of every other track. */
+  direction: PlaybackDirection
 }
 
 export function isTrackColorId(value: unknown): value is TrackColorId {
@@ -107,6 +112,8 @@ export function createTrack(n: number, start = 0, end = 0, name?: string): MixTr
     fileName: null,
     channelCount: 0,
     stereoDisplay: 'combined',
+    loop: false,
+    direction: 'forward',
   }
 }
 
@@ -255,6 +262,8 @@ export function clearTrackAudio(tracks: readonly MixTrack[], id: string): MixTra
     next.sideDb = 0
     next.muted = false
     next.solo = false
+    next.loop = false
+    next.direction = 'forward'
     if (!next.nameLocked) next.name = `Track ${index + 1}`
     return next
   })
@@ -306,6 +315,10 @@ export function patchTrack(
     if (patch.stereoDisplay === 'combined' || patch.stereoDisplay === 'split') {
       next.stereoDisplay = patch.stereoDisplay
     }
+    if (typeof patch.loop === 'boolean') next.loop = patch.loop
+    if (patch.direction === 'forward' || patch.direction === 'reverse' || patch.direction === 'pingpong') {
+      next.direction = patch.direction
+    }
     return next
   })
 }
@@ -355,6 +368,8 @@ export function parseTracks(raw: unknown): MixTrack[] | null {
           ? Math.min(8, Math.round(rec.channelCount))
           : 0,
       stereoDisplay: rec.stereoDisplay === 'split' ? 'split' : 'combined',
+      loop: rec.loop === true,
+      direction: rec.direction === 'reverse' || rec.direction === 'pingpong' ? rec.direction : 'forward',
     })
   }
   return parsed.length ? parsed : null
@@ -390,7 +405,9 @@ export function tracksEqual(a: readonly MixTrack[], b: readonly MixTrack[]): boo
       track.end === other.end &&
       track.fileName === other.fileName &&
       track.channelCount === other.channelCount &&
-      track.stereoDisplay === other.stereoDisplay
+      track.stereoDisplay === other.stereoDisplay &&
+      track.loop === other.loop &&
+      track.direction === other.direction
     )
   })
 }

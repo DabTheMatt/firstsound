@@ -219,6 +219,10 @@ export const PARAM_DESCRIPTIONS: Record<ParamId, LocalizedText> = {
   msMono: d('Collapses the mid/side path to mono.', 'Zawęża tor mid/side do mono.'),
   msFlipMid: d('Inverts polarity of the mid signal.', 'Odwraca polaryzację sygnału mid.'),
   msFlipSide: d('Inverts polarity of the side signal.', 'Odwraca polaryzację sygnału side.'),
+  mixVolume: d('Sets this track volume before the master sum.', 'Ustawia głośność tego śladu przed sumą master.'),
+  mixPan: d('Moves this track left or right in the mix.', 'Przesuwa ten ślad w lewo lub w prawo w miksie.'),
+  mixMid: d('Sets the mid level of this track after its effects.', 'Ustawia poziom mid tego śladu po efektach.'),
+  mixSide: d('Sets the side level of this track after its effects.', 'Ustawia poziom side tego śladu po efektach.'),
 } as Record<ParamId, LocalizedText>
 
 export const SENSORY_DESCRIPTIONS: Record<SensoryAxisId, LocalizedText> = {

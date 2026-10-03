@@ -3,6 +3,7 @@ import type { Messages } from '../../i18n/messages'
 
 export function automationEffectLabel(kind: FxLfoKind, modules: Messages['modules'], comb: string): string {
   if (kind === 'input') return modules.gain
+  if (kind === 'mixer') return 'Mixer'
   if (kind === 'eqcf') return comb
   if (kind.startsWith('eq')) return `${modules.eq} ${kind.slice(2)}`
   return modules[kind as keyof Messages['modules']] ?? kind

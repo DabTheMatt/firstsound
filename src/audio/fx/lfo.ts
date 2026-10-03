@@ -26,6 +26,7 @@ export type FxLfoKind =
   | 'eq8'
   | 'eqcf'
   | 'input'
+  | 'mixer'
 
 export type FxLfo = {
   rateHz: number
@@ -83,6 +84,7 @@ export const FX_LFO_KINDS: FxLfoKind[] = [
   'eq8',
   'eqcf',
   'input',
+  'mixer',
 ]
 
 export const FX_LFO_SLOTS = 3
@@ -106,6 +108,7 @@ export const FX_LFO_KIND_LABELS: Record<FxLfoKind, string> = {
   eq8: 'EQ band 8',
   eqcf: 'EQ comb',
   input: 'Input',
+  mixer: 'Mixer',
 }
 
 export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
@@ -127,6 +130,7 @@ export const FX_LFO_SLOT_PREFIX: Record<FxLfoKind, string> = {
   eq8: 'eq8b',
   eqcf: 'eqcf',
   input: 'i',
+  mixer: 'mx',
 }
 
 export function fxLfoSlotName(kind: FxLfoKind, slot: number): string {
@@ -294,6 +298,8 @@ export function eqBandLfoIds(index: number): { freq: ParamId; gain: ParamId; q: 
 
 const EQCF_TARGETS: ParamId[] = ['eqcfTeeth', 'eqcfGain', 'eqcfSpacing', 'eqcfFreq']
 
+const MIXER_TARGETS: ParamId[] = ['mixVolume', 'mixPan', 'mixMid', 'mixSide']
+
 const INPUT_TARGETS: ParamId[] = [
   'gain',
   'speed',
@@ -323,6 +329,7 @@ export const FX_LFO_TARGETS: Record<FxLfoKind, readonly ParamId[]> = {
   eq8: [EQ_BAND_LFO_IDS[7]!.freq, EQ_BAND_LFO_IDS[7]!.gain, EQ_BAND_LFO_IDS[7]!.q],
   eqcf: EQCF_TARGETS,
   input: INPUT_TARGETS,
+  mixer: MIXER_TARGETS,
 }
 
 const TARGET_KIND = (() => {
@@ -552,6 +559,7 @@ export function moduleTypeForLfoKind(
 ): 'delay' | 'reverb' | 'compressor' | 'limiter' | 'distortion' | 'filter' | 'midside' | 'grain' | 'eq' | 'gain' {
   switch (kind) {
     case 'input':
+    case 'mixer':
       return 'gain'
     case 'eqcf':
     case 'eq1':

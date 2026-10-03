@@ -4,13 +4,14 @@ import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { timeDomainPeakDb } from '../../audio/engine/timePeak'
 import { formatMixerDb, formatPan } from '../../audio/mix/mixerParams'
 import { anyTrackSoloed, mixToDbLabel, trackColorVar, type MixTrack } from '../../audio/mix/tracks'
+import { LfoParamShell } from '../controls/LfoParamShell'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './TrackMixer.module.css'
 
 const METER_FLOOR_DB = -48
 
-type MeterBind = { id: string; el: HTMLElement; shown: number }
+type MeterBind = { id: string; el: HTMLElement; shown: number; axis: 'x' | 'y' }
 const meterBinds = new Set<MeterBind>()
 let meterFrame = 0
 let meterLast = 0
@@ -28,13 +29,14 @@ function paintMeters(now: number): void {
     const db = timeDomainPeakDb(engine.getTrackAnalyser(bind.id), meterScratch)
     const target = dbToMeterPct(db, METER_FLOOR_DB)
     bind.shown = target > bind.shown ? target : bind.shown * 0.82
-    bind.el.style.transform = `scaleX(${Math.max(0, bind.shown) / 100})`
+    const level = Math.max(0, bind.shown) / 100
+    bind.el.style.transform = bind.axis === 'y' ? `scaleY(${level})` : `scaleX(${level})`
   }
 }
 
-function bindTrackMeter(id: string, el: HTMLElement | null): () => void {
+function bindTrackMeter(id: string, el: HTMLElement | null, axis: 'x' | 'y' = 'x'): () => void {
   if (!el) return () => {}
-  const bind: MeterBind = { id, el, shown: 0 }
+  const bind: MeterBind = { id, el, shown: 0, axis }
   meterBinds.add(bind)
   if (!meterFrame) meterFrame = requestAnimationFrame(paintMeters)
   return () => {
@@ -60,7 +62,7 @@ export function TrackMixer({ track, tracks, phone = false, variant = 'lane' }: P
   const showMs = stereo && !phone && msOpen
   const showMore = phone && moreOpen
 
-  useEffect(() => bindTrackMeter(track.id, meterRef.current), [track.id])
+  useEffect(() => bindTrackMeter(track.id, meterRef.current, phone ? 'y' : 'x'), [track.id, phone])
 
   const stop = (event: { stopPropagation: () => void }) => event.stopPropagation()
 
@@ -130,8 +132,8 @@ export function TrackMixer({ track, tracks, phone = false, variant = 'lane' }: P
           <span className={`${styles.tick} ${styles.tickUnity}`} aria-hidden />
         </span>
       </label>
-      <span className={styles.meter} aria-hidden>
-        <span ref={meterRef} className={styles.meterFill} />
+      <span className={phone ? styles.meterY : styles.meter} aria-hidden>
+        <span ref={meterRef} className={phone ? styles.meterFillY : styles.meterFill} />
       </span>
       {stereo && !phone ? (
         <button
@@ -223,5 +225,93 @@ function MsSlider({
         <span className={`${styles.tick} ${styles.tickMs}`} aria-hidden />
       </span>
     </label>
+  )
+}
+
+/** Compact right-side mixer. One shared meter painter, time-domain level only. */
+export function TrackStrip({
+  track,
+  tracks,
+  selected,
+}: {
+  track: MixTrack
+  tracks: readonly MixTrack[]
+  selected: boolean
+}) {
+  const { t } = useI18n()
+  const meterRef = useRef<HTMLSpanElement>(null)
+  const dimmed = anyTrackSoloed(tracks) && !track.solo
+  useEffect(() => bindTrackMeter(track.id, meterRef.current, 'y'), [track.id])
+  const stop = (event: { stopPropagation: () => void }) => event.stopPropagation()
+  const pan = (
+    <label className={styles.vSlider}>
+      <span className={styles.caption}>{t.mix.pan}</span>
+      <input
+        type="range"
+        min={-100}
+        max={100}
+        step={1}
+        value={track.pan}
+        aria-label={t.mix.panTrack(track.name)}
+        aria-valuetext={formatPan(track.pan)}
+        onChange={(event) => engine.setTrack(track.id, { pan: Number(event.target.value) })}
+      />
+    </label>
+  )
+  const volume = (
+    <label className={styles.vSlider}>
+      <span className={styles.caption}>{t.mix.volume}</span>
+      <input
+        className={styles.fader}
+        type="range"
+        min={0}
+        max={150}
+        step={1}
+        value={track.mix}
+        aria-label={t.mix.volumeTrack(track.name)}
+        aria-valuetext={mixToDbLabel(track.mix)}
+        onChange={(event) => engine.setTrack(track.id, { mix: Number(event.target.value) })}
+      />
+    </label>
+  )
+  return (
+    <div
+      className={styles.strip}
+      data-track-strip={track.id}
+      data-audible={dimmed ? 'false' : 'true'}
+      style={{ ['--lane' as string]: trackColorVar(track.color) }}
+      onClick={stop}
+      onPointerDown={stop}
+    >
+      <div className={styles.flags}>
+        <button
+          type="button"
+          className={`${styles.flag} ${track.muted ? styles.muteOn : ''}`}
+          aria-pressed={track.muted}
+          aria-label={t.mix.muteTrack(track.name)}
+          title={t.mix.muteTrack(track.name)}
+          onClick={() => engine.setTrack(track.id, { muted: !track.muted })}
+        >
+          M
+        </button>
+        <button
+          type="button"
+          className={`${styles.flag} ${track.solo ? styles.soloOn : ''}`}
+          aria-pressed={track.solo}
+          aria-label={t.mix.soloTrack(track.name)}
+          title={t.mix.soloTrack(track.name)}
+          onClick={() => engine.setTrack(track.id, { solo: !track.solo })}
+        >
+          S
+        </button>
+      </div>
+      <div className={styles.faders}>
+        {selected ? <LfoParamShell id="mixPan">{pan}</LfoParamShell> : pan}
+        {selected ? <LfoParamShell id="mixVolume">{volume}</LfoParamShell> : volume}
+        <span className={styles.meterY} aria-hidden>
+          <span ref={meterRef} className={styles.meterFillY} />
+        </span>
+      </div>
+    </div>
   )
 }

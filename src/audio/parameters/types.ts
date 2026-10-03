@@ -204,6 +204,10 @@ export type ParamId =
   | 'msMono'
   | 'msFlipMid'
   | 'msFlipSide'
+  | 'mixVolume'
+  | 'mixPan'
+  | 'mixMid'
+  | 'mixSide'
 
 export type FilterType =
   | 'off'

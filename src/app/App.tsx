@@ -302,14 +302,9 @@ export default function App() {
   const settingsRef = useRef<HTMLDivElement>(null)
 
   const loadSample = async (file: File) => {
-    await engine.unlock()
     const data = await readAudioFile(file)
+    await engine.unlock()
     await engine.loadArrayBuffer(data, file.name)
-  }
-
-  const onFiles = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) void loadSample(file)
   }
 
   const commit = useCallback((layer: Hist['layer'] = 'region') => {
@@ -795,8 +790,17 @@ export default function App() {
         accept={AUDIO_FILE_ACCEPT}
         hidden
         onChange={(event) => {
-          onFiles(event.target.files)
-          event.target.value = ''
+          const input = event.currentTarget
+          const file = input.files?.[0]
+          if (!file) return
+          // Copy the bytes before clearing the input. Clearing first detaches the
+          // File in Chromium, so the first pick decodes as empty and only the
+          // second selection sticks.
+          void file.arrayBuffer().then(async (data) => {
+            input.value = ''
+            await engine.unlock()
+            await engine.loadArrayBuffer(data, file.name)
+          })
         }}
       />
       <input
