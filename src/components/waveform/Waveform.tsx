@@ -44,7 +44,8 @@ import { formatAutomationNodeValue } from './automationValue'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { HearingFocusStage } from '../../hearing/HearingFocusStage'
-import { HearingRevealMark, HearingTransientGuides, HearingWaveLegend, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { HearingRevealMark, HearingWaveLegend, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { useHearingSettings } from '../../hearing/useHearingSettings'
 import { LoudnessMeter } from '../../hearing/LoudnessMeter'
 import { bindWaveZoom, getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
 import { VizBackground } from './VizBackground'
@@ -1283,6 +1284,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     applyFadeRef.current = applyDefaultFade
   })
   const hearingFocus = phoneFocus === 'hearing'
+  const { settings: hearingSettings } = useHearingSettings()
+  const showWaveLegend = (hearingFocus || hearingSettings.enabled) && !sensory && !simple
   const showWave = hearingFocus || phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
   const automationLanes = automationView ? automatedLanes(snap.automation) : []
@@ -1377,7 +1380,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </span>
             </div>
           ) : null}
-          <div className={`${styles.wavePane} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
+          <div className={`${styles.wavePane} ${showWaveLegend ? styles.waveLegendPane : ''} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
             {!automationView && !sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
@@ -1402,8 +1405,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
             <HearingWaveOverlay viewStart={view.start} viewEnd={view.end} />
-            <HearingTransientGuides viewStart={view.start} viewEnd={view.end} showInputMarks={showTransients} />
-            {hearingFocus ? <HearingWaveLegend /> : null}
+            {showWaveLegend ? <HearingWaveLegend /> : null}
             <HearingRevealMark viewStart={view.start} viewEnd={view.end} />
             {spectralBandsEnabled && snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">

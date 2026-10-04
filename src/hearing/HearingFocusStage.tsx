@@ -11,6 +11,8 @@ import { requestWaveZoom, setHearingMapDemand, showTransientOnWave } from './rev
 import { getHearingView, subscribeHearingView } from './session'
 import { balanceLabel, nearestSpaceBucket } from './spaceLive'
 import { useHeardSpace } from './useHeardSpace'
+import { useImageDepth } from './useImageDepth'
+import { depthWord } from './reverbDepth'
 import { useHearingSettings } from './useHearingSettings'
 import styles from './HearingAccessLayer.module.css'
 
@@ -63,6 +65,7 @@ export function HearingFocusStage() {
   const columns = shiftSoundMap(analysis?.soundMap ?? null, pitch)
   const mono = analysis ? !analysis.stereo : false
   const heardBuckets = useHeardSpace(analysis)
+  const depth = useImageDepth()
   const liveBucket = nearestSpaceBucket(heardBuckets, hearing.playhead) ?? heardBuckets[0] ?? null
   const heardBalance = liveBucket?.balance ?? 0
   const marks = transientMarkers(hearing.events, analysis?.dynamics)
@@ -75,7 +78,7 @@ export function HearingFocusStage() {
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
           <InfoTip label="More about Hearing Access focus">
-            Squares on the T row are distinct attacks, one per hit. A thin line marks that time on the waveform, the same mark as Input → Mark transients. The strip under the wave is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The legend by the time scale names each symbol. Sensitivity changes how many onsets are marked. The loudness rail on the right uses the same peak reading as the main meter, with words from quiet to clipping. The head and the space field follow what you hear after pan, mid/side width, balance, and Haas, and delay — including a delay that replaces one channel. Spread is stereo width. A hollow mark is low correlation.
+            Squares on the T row are distinct attacks, one per hit. The waveform line is the same dashed mark as Input → Mark transients, and it stays hidden until that control is on. Sensitivity for it sits next to Mark transients. The legend under the time scale turns those lines and the strip symbols on or off. The strip is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The loudness rail on the right follows the output while audio plays. When playback is stopped the bars rest at silence, and the sample peak stays listed as a number. The head and the space field follow pan, mid/side, and delay. Depth is how far the image sits in front of you: near is close, far is further in front, and an engaged reverb’s wet, distance, size, and pre-delay move it. Spread is stereo width. A hollow mark is low correlation.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -106,12 +109,13 @@ export function HearingFocusStage() {
         <>
           {mono ? <p style={{ margin: 0, fontSize: 12 }}>This sample is mono. Pan still places that one image.</p> : null}
           <div className={styles.focusSpace}>
-            <HeadSpace balance={heardBalance} width={liveBucket.width} correlation={liveBucket.correlation} fill />
+            <HeadSpace balance={heardBalance} width={liveBucket.width} correlation={liveBucket.correlation} depth={depth} fill />
             <SpaceField
               buckets={heardBuckets}
               playhead={hearing.playhead}
               origin={analysis.originSec}
               duration={analysis.durationSec}
+              depth={depth}
               fill
             />
           </div>
@@ -119,6 +123,7 @@ export function HearingFocusStage() {
             <div><dt>Heard</dt><dd>{balanceLabel(heardBalance)}</dd></div>
             <div><dt>Width</dt><dd>{Math.round(liveBucket.width * 100)}%</dd></div>
             <div><dt>Correlation</dt><dd>{liveBucket.correlation.toFixed(2)}</dd></div>
+            <div><dt>Depth</dt><dd>{depthWord(depth)}</dd></div>
           </dl>
         </>
       ) : (

@@ -6,6 +6,8 @@ type Props = {
   balance: number
   width: number
   correlation: number
+  /** 0 is close in front of the listener. 1 is further in front. */
+  depth?: number
   /** Stretch into the leftover focus area. */
   fill?: boolean
 }
@@ -15,7 +17,7 @@ type Props = {
  * The marker is the heard image at the playhead.
  * Spread follows stereo width. A hollow marker is low correlation.
  */
-export function HeadSpace({ balance, width, correlation, fill = false }: Props) {
+export function HeadSpace({ balance, width, correlation, depth = 0, fill = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
   const box = useElementBox(ref)
 
@@ -65,8 +67,11 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
     ctx.fillText('L', cx - head * 1.35, cy)
     ctx.fillText('R', cx + head * 1.35, cy)
     const x = cx + Math.max(-1, Math.min(1, balance)) * head * 1.15
-    const y = cy - head * 1.35
-    const spread = Math.max(6, Math.min(size * 0.7, 8 + width * head * 2.2))
+    const nearY = cy - head * 0.72
+    const farY = oy + 22
+    const depth01 = Math.max(0, Math.min(1, depth))
+    const y = nearY + (farY - nearY) * depth01
+    const spread = Math.max(6, Math.min(size * 0.7, 8 + width * head * 2.2)) * (1 - depth01 * 0.35)
     const low = correlation < 0.2
     ctx.globalAlpha = 1
     ctx.strokeStyle = low ? warning : accent
@@ -80,7 +85,7 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
       ctx.lineTo(x + spread / 2, y)
       ctx.stroke()
       ctx.beginPath()
-      ctx.arc(x, y, 4, 0, Math.PI * 2)
+      ctx.arc(x, y, Math.max(2, 4.2 - depth01 * 2), 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalAlpha = 0.55
@@ -90,15 +95,16 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
     ctx.lineTo(x, y)
     ctx.stroke()
     ctx.globalAlpha = 1
-  }, [balance, width, correlation, box.width, box.height])
+  }, [balance, width, correlation, depth, box.width, box.height])
 
   const side = Math.abs(balance) < 0.03 ? 'center' : balance < 0 ? 'left' : 'right'
+  const depthWord = depth < 0.28 ? 'near' : depth < 0.62 ? 'mid' : 'far'
   return (
     <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
       <canvas
         ref={ref}
         role="img"
-        aria-label={`Head view. Heard image is ${side}. Front is up.`}
+        aria-label={`Head view. Heard image is ${side} and ${depthWord} in front. Front is up. Near is close to the head.`}
         style={
           fill
             ? undefined

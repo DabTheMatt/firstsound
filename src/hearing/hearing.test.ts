@@ -10,7 +10,8 @@ import { eqCompare, gainCompare, stereoCompare } from './compare'
 import { afterShares, compareTrackGeometry } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
-import { formatLoudnessDb, levelsFromTimeDomain, loudnessZone } from './loudness'
+import { formatLoudnessDb, levelsFromTimeDomain, liveMeterZone, loudnessZone } from './loudness'
+import { depthWord, reverbImageDepth } from './reverbDepth'
 import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
@@ -559,6 +560,16 @@ describe('hearing access analysis', () => {
     expect(loudnessZone(-10)).toBe('loud')
     expect(loudnessZone(-3)).toBe('very-loud')
     expect(loudnessZone(-0.2)).toBe('clipping')
+    expect(liveMeterZone(false, -2, true)).toBe('silent')
+    expect(liveMeterZone(true, -2, false)).toBe('very-loud')
+    expect(reverbImageDepth({ engaged: false, wet: 100, distance: 100, size: 100, predelayMs: 80 })).toBe(0)
+    const dryRoom = reverbImageDepth({ engaged: true, wet: 0, distance: 100, size: 100, predelayMs: 80 })
+    const close = reverbImageDepth({ engaged: true, wet: 100, distance: 0, size: 0, predelayMs: 1 })
+    const far = reverbImageDepth({ engaged: true, wet: 100, distance: 100, size: 100, predelayMs: 80 })
+    expect(dryRoom).toBe(0)
+    expect(far).toBeGreaterThan(close + 0.2)
+    expect(depthWord(0)).toBe('near')
+    expect(depthWord(far)).toBe('far')
     expect(loudnessZone(-30, true)).toBe('clipping')
     expect(formatLoudnessDb(-6.24)).toBe('-6.2 dBFS')
     const tone = levelsFromTimeDomain(Float32Array.from([0, 0.5, 0, -0.5]))
@@ -663,6 +674,8 @@ describe('hearing access analysis', () => {
     expect(parseHearingSettings({}).panelLeft).toBeNull()
     expect(parseHearingSettings({ panelLeft: 40, panelTop: 80 })).toMatchObject({ panelLeft: 40, panelTop: 80 })
     expect(parseHearingSettings({}).transientSensitivity).toBe(0.5)
+    expect(parseHearingSettings({}).showWaveSymbols).toBe(true)
+    expect(parseHearingSettings({ showWaveSymbols: false }).showWaveSymbols).toBe(false)
     expect(parseHearingSettings({ transientSensitivity: 2 }).transientSensitivity).toBe(1)
     expect(clampPanelPosition(-20)).toBe(0)
     expect(clampPanelPosition(9000)).toBe(8000)

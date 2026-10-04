@@ -7,7 +7,7 @@ import {
   LOUDNESS_ZONE_LABEL,
   formatLoudnessDb,
   levelsFromTimeDomain,
-  loudnessZone,
+  liveMeterZone,
   type LoudnessZone,
 } from './loudness'
 import styles from './HearingAccessLayer.module.css'
@@ -56,13 +56,11 @@ export function LoudnessMeter() {
   const [playing, setPlaying] = useState(false)
   const [samplePeak, setSamplePeak] = useState<number | null>(null)
   const [sampleRms, setSampleRms] = useState<number | null>(null)
-  const [sampleClip, setSampleClip] = useState(false)
 
   useEffect(() => subscribeHearingView(() => {
     const analysis = getHearingView().analysis
     setSamplePeak(analysis?.peakDbfs ?? null)
     setSampleRms(analysis?.rmsDbfs ?? null)
-    setSampleClip(analysis?.clipped === true)
   }), [])
 
   useEffect(() => {
@@ -92,17 +90,16 @@ export function LoudnessMeter() {
 
   const livePeak = live ? louder(live.left, live.right) : Number.NEGATIVE_INFINITY
   const usingLive = playing && live !== null && Number.isFinite(livePeak)
-  const shownDb = usingLive ? livePeak : samplePeak
-  const zone: LoudnessZone = loudnessZone(shownDb, sampleClip || (usingLive && livePeak >= -0.1))
+  const zone: LoudnessZone = liveMeterZone(usingLive, usingLive ? livePeak : null, usingLive && livePeak >= -0.1)
   const word = LOUDNESS_ZONE_LABEL[zone]
-  const nowText = formatLoudnessDb(shownDb)
-  const meterNow = shownDb !== null && Number.isFinite(shownDb) ? Math.round(shownDb) : LOUDNESS_FLOOR_DB
+  const nowText = formatLoudnessDb(usingLive ? livePeak : null)
+  const meterNow = usingLive ? Math.round(livePeak) : LOUDNESS_FLOOR_DB
   const lanes = usingLive && live?.stereo
     ? [
         { id: 'L', db: live.left },
         { id: 'R', db: live.right },
       ]
-    : [{ id: usingLive ? 'OUT' : 'PEAK', db: shownDb ?? Number.NEGATIVE_INFINITY }]
+    : [{ id: usingLive ? 'OUT' : '—', db: usingLive ? livePeak : Number.NEGATIVE_INFINITY }]
 
   return (
     <aside
@@ -112,7 +109,7 @@ export function LoudnessMeter() {
       aria-valuemin={LOUDNESS_FLOOR_DB}
       aria-valuemax={0}
       aria-valuenow={meterNow}
-      aria-valuetext={`${word}. ${usingLive ? 'Now' : 'Sample'} ${nowText}. Sample peak ${formatLoudnessDb(samplePeak)}. RMS ${formatLoudnessDb(sampleRms)}.`}
+      aria-valuetext={`${word}. ${usingLive ? `Now ${nowText}` : 'Playback is stopped.'} Sample peak ${formatLoudnessDb(samplePeak)}. RMS ${formatLoudnessDb(usingLive && live ? live.rms : sampleRms)}.`}
       aria-label="Loudness"
     >
       <strong>{word}</strong>
@@ -130,7 +127,8 @@ export function LoudnessMeter() {
           ))}
         </div>
       </div>
-      <p>{usingLive ? 'now' : 'sample'} {nowText}</p>
+      <p>{usingLive ? `now ${nowText}` : 'stopped'}</p>
+      <p>peak {formatLoudnessDb(samplePeak)}</p>
       <p>RMS {formatLoudnessDb(usingLive && live ? live.rms : sampleRms)}</p>
     </aside>
   )

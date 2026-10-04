@@ -102,13 +102,16 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       ctx.strokeStyle = ink
       ctx.fillStyle = accent
       ctx.lineWidth = 0.6
-      ctx.fillRect(x - 5, 3, 10, 10)
-      ctx.strokeRect(x - 5, 3, 10, 10)
-      ctx.globalAlpha = 0.55
+      ctx.fillRect(x - 3, 4, 6, 6)
+      ctx.strokeRect(x - 3, 4, 6, 6)
+      ctx.globalAlpha = 0.7
+      ctx.lineWidth = 0.5
+      ctx.setLineDash([2, 3])
       ctx.beginPath()
       ctx.moveTo(x, lane)
       ctx.lineTo(x, height - 2)
       ctx.stroke()
+      ctx.setLineDash([])
       ctx.globalAlpha = 1
     })
     if (playhead !== null && duration > 0) {

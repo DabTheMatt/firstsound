@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { engine, useEngine } from '../hooks/useEngine'
 import { getHearingReveal, subscribeHearingReveal, type HearingReveal } from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
+import styles from './HearingAccessLayer.module.css'
 
 type Props = {
   viewStart: number
@@ -28,7 +29,7 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
     const paint = () => {
       const canvas = ref.current
       if (!canvas) return
-      const show = settings.enabled && (settings.layers.dynamicsMap || settings.layers.events)
+      const show = settings.enabled && settings.showWaveSymbols && (settings.layers.dynamicsMap || settings.layers.events)
       canvas.hidden = !show
       if (!show) return
       const width = canvas.clientWidth || 300
@@ -69,7 +70,7 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
     }
     paint()
     return subscribeHearingView(paint)
-  }, [viewStart, viewEnd, settings.enabled, settings.layers.dynamicsMap, settings.layers.events])
+  }, [viewStart, viewEnd, settings.enabled, settings.showWaveSymbols, settings.layers.dynamicsMap, settings.layers.events])
 
   if (!settings.enabled) return null
 
@@ -82,7 +83,7 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: 22,
+          bottom: 'calc(22px + var(--wave-legend, 0px))',
           height: 18,
           width: '100%',
           pointerEvents: 'none',
@@ -94,100 +95,33 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
   )
 }
 
-const guideColor = 'color-mix(in srgb, var(--transient, var(--spectrum-line)) 88%, transparent)'
-
-/** Same thin onset lines as Input → Mark transients, when those handles are hidden. */
-export function HearingTransientGuides({
-  viewStart,
-  viewEnd,
-  showInputMarks,
-}: Props & { showInputMarks: boolean }) {
-  const { settings } = useHearingSettings()
-  const snap = useEngine()
-  const bufferRev = snap.bufferRev
-  const times = useMemo(() => {
-    if (!settings.enabled || showInputMarks || !snap.sampleLoaded || bufferRev < 0) return []
-    return engine.detectSampleTransients(settings.transientSensitivity)
-  }, [settings.enabled, settings.transientSensitivity, showInputMarks, snap.sampleLoaded, bufferRev])
-  if (times.length === 0) return null
-  const span = Math.max(0.0001, viewEnd - viewStart)
-  return (
-    <>
-      {times.map((time) => {
-        const left = ((time - viewStart) / span) * 100
-        if (left < -1 || left > 101) return null
-        return (
-          <span
-            key={time.toFixed(4)}
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 28,
-              left: `${left}%`,
-              width: 1,
-              background: guideColor,
-              pointerEvents: 'none',
-              zIndex: 4,
-            }}
-          />
-        )
-      })}
-    </>
-  )
-}
-
-/** Names the marks that sit on the waveform, and sets onset sensitivity. */
+/** Names the waveform marks and turns the shared transient lines and the strip symbols on or off. */
 export function HearingWaveLegend() {
   const { settings, patch } = useHearingSettings()
-  if (!settings.enabled) return null
+  const snap = useEngine()
+  const toggleTransients = () => {
+    engine.setShowTransients(!snap.showTransients, settings.transientSensitivity)
+  }
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 8,
-        right: 8,
-        bottom: 44,
-        zIndex: 6,
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '4px 10px',
-        alignItems: 'center',
-        padding: '4px 8px',
-        borderRadius: 8,
-        border: '1px solid var(--border-subtle)',
-        background: 'color-mix(in srgb, var(--bg-panel) 94%, transparent)',
-        color: 'var(--text-primary)',
-        fontSize: 11,
-        letterSpacing: '0.04em',
-      }}
-    >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <i style={{ width: 1, height: 12, background: guideColor }} />
-        transient
-      </span>
-      <span>▲ short attack</span>
-      <span>! full-scale clip</span>
-      <span>bar height = slice level</span>
+    <div className={styles.waveLegend}>
+      <span className={styles.waveLegendTransient}>transient</span>
+      <span>▲ attack</span>
+      <span>! clip</span>
+      <span>bar = level</span>
       <span>▭ silence</span>
       <span>● loud</span>
       <span>♩ tone</span>
-      <span>◆ possible click</span>
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)' }}>
-        Sensitivity
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(settings.transientSensitivity * 100)}
-          aria-label="Transient detection sensitivity"
-          onChange={(event) => {
-            const transientSensitivity = Number(event.target.value) / 100
-            patch({ transientSensitivity })
-            if (engine.getSnapshot().showTransients) engine.markSampleTransients(transientSensitivity)
-          }}
-        />
-      </label>
+      <span>◆ click</span>
+      <button type="button" aria-pressed={snap.showTransients} onClick={toggleTransients}>
+        Transients
+      </button>
+      <button
+        type="button"
+        aria-pressed={settings.showWaveSymbols}
+        onClick={() => patch({ showWaveSymbols: !settings.showWaveSymbols })}
+      >
+        Symbols
+      </button>
     </div>
   )
 }

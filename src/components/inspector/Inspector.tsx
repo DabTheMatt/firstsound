@@ -40,6 +40,7 @@ import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../
 import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { engine } from '../../hooks/useEngine'
 import { readStoredHearingSettings } from '../../hearing/settings'
+import { useHearingSettings } from '../../hearing/useHearingSettings'
 import { PresetMenu } from '../controls/PresetMenu'
 import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
 import { combMatchesDefault, eqBandsMatchDefault, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
@@ -1372,6 +1373,7 @@ function EqEditor({
 
 function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' | 'slider' }) {
   const { t } = useI18n()
+  const { settings, patch } = useHearingSettings()
   const source =
     snap.tempoSource === 'detected'
       ? 'detected'
@@ -1412,6 +1414,21 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
         >
           Mark transients
         </button>
+        <label className={styles.readout}>
+          <span>Sensitivity</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(settings.transientSensitivity * 100)}
+            aria-label="Transient detection sensitivity"
+            onChange={(event) => {
+              const transientSensitivity = Number(event.target.value) / 100
+              patch({ transientSensitivity })
+              if (engine.getSnapshot().showTransients) engine.markSampleTransients(transientSensitivity)
+            }}
+          />
+        </label>
         <button
           type="button"
           className={styles.ghost}

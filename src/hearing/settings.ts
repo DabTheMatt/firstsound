@@ -67,6 +67,8 @@ export type HearingAccessSettings = {
   panelTop: number | null
   /** 0 marks only strong onsets. 1 also marks quieter ones. Shared with Mark transients. */
   transientSensitivity: number
+  /** Triangles, clip marks, and event glyphs on the waveform strip. */
+  showWaveSymbols: boolean
 }
 
 export const PROFILE_LAYERS: Record<HearingProfile, HearingLayers> = {
@@ -130,6 +132,7 @@ export const DEFAULT_HEARING_SETTINGS: HearingAccessSettings = {
   panelLeft: null,
   panelTop: null,
   transientSensitivity: 0.5,
+  showWaveSymbols: true,
 }
 
 export const PANEL_WIDTH_MIN = 320
@@ -209,6 +212,7 @@ export function parseHearingSettings(raw: unknown): HearingAccessSettings {
   next.panelLeft = clampPanelPosition(rec.panelLeft)
   next.panelTop = clampPanelPosition(rec.panelTop)
   next.transientSensitivity = clampSensitivity(rec.transientSensitivity)
+  if (typeof rec.showWaveSymbols === 'boolean') next.showWaveSymbols = rec.showWaveSymbols
   if (rec.layers && typeof rec.layers === 'object') {
     const layers = rec.layers as Record<string, unknown>
     for (const key of Object.keys(next.layers) as (keyof HearingLayers)[]) {
