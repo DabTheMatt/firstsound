@@ -116,7 +116,7 @@ const en: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Each EQ instance has its own bands. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered over the grid when the filter type changes.',
+      'Each EQ instance has its own bands. Band and comb gain run from −24 dB to +24 dB. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered over the grid when the filter type changes.',
       'Focus lists the filters on the left of the graph. The knobs sit on the center of the screen and float over the grid. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, and the spectrum layer Before, After, or Both. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
     ],
   },
@@ -365,7 +365,7 @@ const pl: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Każda instancja EQ ma własne pasma. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku siatki przy zmianie typu.',
+      'Każda instancja EQ ma własne pasma. Gain pasma i grzebienia sięga od −24 dB do +24 dB. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku siatki przy zmianie typu.',
       'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku ekranu i unoszą się nad siatką. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel oraz warstwę widma Before, After albo Both. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
     ],
   },

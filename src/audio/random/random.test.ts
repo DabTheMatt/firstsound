@@ -506,7 +506,7 @@ describe('generative EQ', () => {
         if (band.type === 'lowpass' || band.type === 'highpass' || band.type === 'notch' || band.type === 'bandpass') {
           expect(band.gain).toBe(0)
         } else {
-          expect(Math.abs(band.gain)).toBeLessThanOrEqual(18)
+          expect(Math.abs(band.gain)).toBeLessThanOrEqual(PARAMS.eq1Gain.max)
         }
       }
     }

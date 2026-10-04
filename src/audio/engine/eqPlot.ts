@@ -70,12 +70,12 @@ export function strokeEqMagnitude(
 export const EQ_MINI_BAND_COUNT = 48
 
 /** Inspector EQ plot vertical range (dB). Same as the spectrum overlay so 0 dB sits mid-plot. */
-export const EQ_PLOT_MIN_DB = -18
-export const EQ_PLOT_MAX_DB = 18
+export const EQ_PLOT_MIN_DB = -24
+export const EQ_PLOT_MAX_DB = 24
 
-/** Large spectrum EQ curve / node vertical range (dB). */
-export const SPECTRUM_EQ_MIN_DB = -18
-export const SPECTRUM_EQ_MAX_DB = 18
+/** Large spectrum EQ curve / node vertical range (dB). Matches the EQ gain knobs. */
+export const SPECTRUM_EQ_MIN_DB = -24
+export const SPECTRUM_EQ_MAX_DB = 24
 
 export function clampEqOverlayDb(
   db: number,

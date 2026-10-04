@@ -13,6 +13,7 @@ import {
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PARAMS, PLAYBACK_DIRECTIONS, STRETCH_INTERP_ALGOS } from '../../audio/parameters/definitions'
+import { fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
 import type { InspectorFocus } from '../../app/editorState'
 import { inspectorContextId } from '../../app/inspectorRoute'
@@ -410,7 +411,10 @@ function EqStrip({
   const canAdd = planEqBandInsert(bands) != null && bands.length < EQ_MAX_BANDS
 
   const freqN = freqToN(band.frequency)
-  const gainN = (Math.min(18, Math.max(-18, band.gain)) + 18) / 36
+  const gainN = toNormalized(
+    Math.min(PARAMS.eq1Gain.max, Math.max(PARAMS.eq1Gain.min, band.gain)),
+    PARAMS.eq1Gain,
+  )
   const qN = qToN(band.q)
 
   return (
@@ -490,11 +494,11 @@ function EqStrip({
           label={t.mobile.gain}
           valueText={`${band.gain.toFixed(1)} dB`}
           normalized={gainN}
-          min={-18}
-          max={18}
+          min={PARAMS.eq1Gain.min}
+          max={PARAMS.eq1Gain.max}
           now={band.gain}
           paramId={eqModulationParamId(selected, 'gain') ?? undefined}
-          onChange={(n) => set({ gain: n * 36 - 18 })}
+          onChange={(n) => set({ gain: fromNormalized(n, PARAMS.eq1Gain) })}
         />
       ) : null}
       {activeField === 'q' ? (

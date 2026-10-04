@@ -28,11 +28,12 @@ import {
   LIMITER_ADV_KNOBS,
   LIMITER_MAIN_KNOBS,
   MOTION_KNOBS,
+  PARAMS,
   PLAYBACK_DIRECTIONS,
   STRETCH_INTERP_ALGOS,
 } from '../../audio/parameters/definitions'
 import { fadeBendFromQ, fadeQFromBend } from '../../audio/engine/fades'
-import { parseTypedRange } from '../../audio/parameters/mapping'
+import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/parameters/mapping'
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
@@ -1068,15 +1069,15 @@ function EqEditor({
                   <ValueKnob
                     label="Gain"
                     valueText={`${band.gain.toFixed(1)} dB`}
-                    normalized={(band.gain + 18) / 36}
-                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.gain, (band.gain + 18) / 36)}
+                    normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
+                    lfoRange={eqKnobLfo(eqBandLfoIds(index)?.gain, toNormalized(band.gain, PARAMS.eq1Gain))}
                     liveNormalized={eqLive(eqBandLfoIds(index)?.gain)}
-                    min={-18}
-                    max={18}
+                    min={PARAMS.eq1Gain.min}
+                    max={PARAMS.eq1Gain.max}
                     now={band.gain}
-                    onChange={(n) => setBand(index, { gain: n * 36 - 18 })}
+                    onChange={(n) => setBand(index, { gain: fromNormalized(n, PARAMS.eq1Gain) })}
                     onTypedValue={(text) => {
-                      const next = parseTypedRange(text, -18, 18, 'dB')
+                      const next = parseTypedRange(text, PARAMS.eq1Gain.min, PARAMS.eq1Gain.max, 'dB')
                       if (next == null) return false
                       setBand(index, { gain: next })
                       return true
@@ -1288,15 +1289,15 @@ function EqEditor({
             <ValueKnob
               label="Gain"
               valueText={`${comb.gain.toFixed(1)} dB`}
-              normalized={(comb.gain + 18) / 36}
-              lfoRange={eqKnobLfo('eqcfGain', (comb.gain + 18) / 36)}
+              normalized={toNormalized(comb.gain, PARAMS.eqcfGain)}
+              lfoRange={eqKnobLfo('eqcfGain', toNormalized(comb.gain, PARAMS.eqcfGain))}
               liveNormalized={eqLive('eqcfGain')}
-              min={-18}
-              max={18}
+              min={PARAMS.eqcfGain.min}
+              max={PARAMS.eqcfGain.max}
               now={comb.gain}
-              onChange={(n) => setComb({ gain: n * 36 - 18 })}
+              onChange={(n) => setComb({ gain: fromNormalized(n, PARAMS.eqcfGain) })}
               onTypedValue={(text) => {
-                const next = parseTypedRange(text, -18, 18, 'dB')
+                const next = parseTypedRange(text, PARAMS.eqcfGain.min, PARAMS.eqcfGain.max, 'dB')
                 if (next == null) return false
                 setComb({ gain: next })
                 return true

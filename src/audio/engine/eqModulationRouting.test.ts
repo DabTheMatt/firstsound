@@ -264,7 +264,7 @@ describe('EQ modulation evaluation', () => {
     const cases: { id: ParamId; low: number; high: number }[] = [
       { id: 'eq1Freq', low: 10, high: 25000 },
       { id: 'filterCutoff', low: 20, high: 20000 },
-      { id: 'eq1Gain', low: -18, high: 18 },
+      { id: 'eq1Gain', low: -24, high: 24 },
       { id: 'eq1Q', low: 0.1, high: 20 },
       { id: 'delayWet', low: 0, high: 100 },
       { id: 'pan', low: -100, high: 100 },
