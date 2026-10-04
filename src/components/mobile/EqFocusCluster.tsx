@@ -258,7 +258,10 @@ export function EqFocusCluster({ onSelectModule }: Props) {
               data-eq-type=""
               aria-label={t.mobile.type}
               value={active.type}
-              onChange={(event) => setType(event.target.value as EqFilterType)}
+              onChange={(event) => {
+                setType(event.target.value as EqFilterType)
+                event.currentTarget.blur()
+              }}
             >
               {focusEqTypeOptions().map((value) => (
                 <option key={value} value={value}>

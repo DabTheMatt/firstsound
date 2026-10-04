@@ -7,8 +7,14 @@ export const SPECTRUM_PLOT_PAD = { left: 44, right: 12, top: 18, bottom: 40 }
  */
 export const SPECTRUM_PLOT_PAD_COMPACT = { left: 4, right: 4, top: 6, bottom: 4 }
 
-/** Focused EQ. The plot starts at the top of the screen; controls float over the fade. */
-export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 0, bottom: 4 }
+/**
+ * Focused EQ. The plot starts at the top of the screen.
+ * The bottom band holds frequency labels under the axis line.
+ */
+export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 0, bottom: 22 }
+
+/** Gap from the focus axis line down to the top of the Hz labels. */
+export const SPECTRUM_FOCUS_HZ_LABEL_OFFSET = 4
 
 /**
  * Phone EQ. The dB scale sits in a narrow gutter so the curve can use the

@@ -406,6 +406,11 @@
   line-height: 1;
 }
 
+.graphMenuButton:focus,
+.graphMenuButton:focus-visible {
+  outline: none;
+}
+
 .graphMenuPanel {
   display: flex;
   flex-direction: column;
@@ -437,6 +442,11 @@
   color: var(--text-secondary);
   font: inherit;
   font-size: 10px;
+}
+
+.graphMenuPanel button:focus,
+.graphMenuPanel button:focus-visible {
+  outline: none;
 }
 
 .graphMenuPanel button[aria-pressed='true'] {

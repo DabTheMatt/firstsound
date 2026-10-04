@@ -281,6 +281,15 @@
   justify-content: flex-start;
 }
 
+/* The top bar's middle column is not the screen center: the view switch is wider than the transport. */
+.chrome[data-focus-chrome='eq'] .eqWell {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+
 .eqHead {
   display: flex;
   align-items: center;
@@ -317,6 +326,13 @@
 }
 
 @container focus (max-width: 760px) {
+  .chrome[data-focus-chrome='eq'] .eqWell {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+  }
+
   .filterColumn {
     position: relative;
     top: auto;
@@ -391,6 +407,12 @@
   letter-spacing: 0.02em;
   text-align: center;
   text-transform: none;
+}
+
+.typeField select:focus,
+.typeField select:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .fftTools {

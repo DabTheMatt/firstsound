@@ -94,6 +94,7 @@ import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import {
+  SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_HZ_LABEL_OFFSET,
   compactDbMarks,
   spectrumPlotPad,
@@ -350,7 +351,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const colors = readThemeColors()
         const prefsNow = prefsRef.current
         const focusPlot = phoneFocusRef.current
-        const layer = focusPlot ? 'post' : prefsNow.layer
+        const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
         const regionColors = focusPlot ? false : prefsNow.regionColors
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
@@ -444,6 +445,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           ctx.beginPath()
           ctx.moveTo(tick.x, top)
           ctx.lineTo(tick.x, bottom)
+          ctx.stroke()
+        }
+        if (focusPlot) {
+          ctx.strokeStyle = colorWithAlpha(colors.textMuted, 0.72)
+          ctx.lineWidth = dpr
+          ctx.beginPath()
+          ctx.moveTo(left, bottom)
+          ctx.lineTo(right, bottom)
           ctx.stroke()
         }
 
@@ -786,16 +795,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           }
         }
         ctx.textAlign = 'center'
-        ctx.textBaseline = tight ? 'bottom' : 'top'
-        ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.62 : 1)
+        ctx.textBaseline = tight && !focusPlot ? 'bottom' : 'top'
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.9 : 1)
           for (let i = 0; i < hzTicks.length; i++) {
           const tick = hzTicks[i]!
           ctx.font = `${(tick.major ? 9 : 8) * dpr}px ui-sans-serif, system-ui, sans-serif`
-          ctx.fillText(
-            tick.label,
-            tick.x,
-            tight ? bottom - 4 * dpr : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr,
-          )
+          const labelY = focusPlot
+            ? bottom + SPECTRUM_FOCUS_HZ_LABEL_OFFSET * dpr
+            : tight
+              ? bottom - 4 * dpr
+              : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr
+          ctx.fillText(tick.label, tick.x, labelY)
         }
       }
       frame = requestAnimationFrame(tick)
@@ -1547,7 +1557,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             className={styles.graphMenuButton}
             aria-expanded={gridOpen}
             aria-label="Graph settings"
-            onClick={() => setGridOpen((open) => !open)}
+            onClick={(event) => {
+              setGridOpen((open) => !open)
+              event.currentTarget.blur()
+            }}
           >
             •••
           </button>
@@ -1560,15 +1573,38 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     key={density}
                     type="button"
                     aria-pressed={gridDensity === density}
-                    onClick={() => {
+                    onClick={(event) => {
                       setGridDensity(density)
                       persistFreqGridDensity(density)
+                      event.currentTarget.blur()
                     }}
                   >
                     {density}
                   </button>
                 ))}
               </div>
+              {phoneFocus ? (
+                <div className={styles.graphMenuRow}>
+                  <span>Layer</span>
+                  {([
+                    ['pre', 'Before'],
+                    ['post', 'After'],
+                    ['both', 'Both'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={prefs.layer === value}
+                      onClick={(event) => {
+                        setPrefs((current) => ({ ...current, layer: value }))
+                        event.currentTarget.blur()
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className={styles.graphMenuRow}>
                 <span>Scale</span>
                 {FREQ_SCALE_OPTIONS.map((opt) => (
@@ -1577,7 +1613,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     type="button"
                     aria-pressed={freqScale === opt.value}
                     title={opt.title}
-                    onClick={() => setFreqScale(opt.value)}
+                    onClick={(event) => {
+                      setFreqScale(opt.value)
+                      event.currentTarget.blur()
+                    }}
                   >
                     {opt.label}
                   </button>

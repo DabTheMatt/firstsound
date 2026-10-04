@@ -76,7 +76,7 @@ describe('automation parameter mapping', () => {
     expect(envelopeToParam('filterCutoff', 0.5)).toBeCloseTo(fromNormalized(0.5, PARAMS.filterCutoff))
     expect(envelopeToParam('filterCutoff', 0.5)).toBeGreaterThan(100)
     expect(envelopeToParam('filterCutoff', 0.5)).toBeLessThan(2000)
-    expect(envelopeToParam('eq1Gain', 0.25)).toBeCloseTo(-9)
+    expect(envelopeToParam('eq1Gain', 0.25)).toBeCloseTo(-12)
     expect(envelopeToParam('delayWet', 0.8)).toBeCloseTo(80)
 
     const cutoff = applyAutomation(manual, lane('filterCutoff', 0), 0)

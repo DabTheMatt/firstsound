@@ -5,6 +5,7 @@ import {
   SPECTRUM_HZ_LABEL_OFFSET,
   SPECTRUM_PLOT_PAD,
   SPECTRUM_PLOT_PAD_COMPACT,
+  SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_PLOT_PAD_FOCUS,
   SPECTRUM_PLOT_PAD_PHONE_EQ,
   phoneFrequencyTicks,
@@ -42,6 +43,8 @@ describe('phone spectrum scale', () => {
     expect(SPECTRUM_PLOT_PAD_COMPACT.bottom).toBeLessThan(12)
     expect(phoneFrequencyTicks(320).length).toBeLessThanOrEqual(4)
     expect(SPECTRUM_PLOT_PAD_FOCUS.left).toBeLessThan(SPECTRUM_PLOT_PAD.left)
+    expect(SPECTRUM_PLOT_PAD_FOCUS.top).toBe(0)
+    expect(SPECTRUM_PLOT_PAD_FOCUS.bottom).toBeGreaterThanOrEqual(SPECTRUM_FOCUS_HZ_LABEL_OFFSET + 12)
     expect(SPECTRUM_PLOT_PAD_FOCUS.bottom).toBeLessThan(SPECTRUM_PLOT_PAD.bottom)
     expect(spectrumPlotPad({ focus: true })).toBe(SPECTRUM_PLOT_PAD_FOCUS)
     expect(spectrumPlotPad({ compact: true })).toBe(SPECTRUM_PLOT_PAD_COMPACT)

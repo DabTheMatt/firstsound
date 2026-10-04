@@ -45,12 +45,12 @@ describe('eq plot mapping', () => {
   it('round-trips dB across the plot height', () => {
     const height = 200
     expect(yToDb(dbToY(6, height), height)).toBeCloseTo(6, 5)
-    expect(yToDb(dbToY(-18, height), height)).toBeCloseTo(-18, 5)
+    expect(yToDb(dbToY(EQ_PLOT_MIN_DB, height), height)).toBeCloseTo(EQ_PLOT_MIN_DB, 5)
   })
 
   it('centers 0 dB on the inspector plot so HP/LP sit mid-height', () => {
-    expect(EQ_PLOT_MIN_DB).toBe(-18)
-    expect(EQ_PLOT_MAX_DB).toBe(18)
+    expect(EQ_PLOT_MIN_DB).toBe(-24)
+    expect(EQ_PLOT_MAX_DB).toBe(24)
     expect(dbToY(0, 100)).toBeCloseTo(50)
   })
 
@@ -82,7 +82,7 @@ describe('eq plot mapping', () => {
     expect(patch.q).toBeUndefined()
   })
 
-  it('clamps spectrum gain to ±18 dB', () => {
+  it('clamps spectrum gain to ±24 dB', () => {
     expect(eqBandDragPatch(peak(), 1000, 40, 1, 0).gain).toBe(SPECTRUM_EQ_MAX_DB)
     expect(eqBandDragPatch(peak(), 1000, -40, 1, 0).gain).toBe(SPECTRUM_EQ_MIN_DB)
   })
@@ -103,10 +103,10 @@ describe('eq plot mapping', () => {
     )
     const high = bellFromPlotPoint(width + 80, -40, width, height, 20000, 20, 'log')
     expect(high.frequency).toBeLessThanOrEqual(25000)
-    expect(high.gain).toBe(18)
+    expect(high.gain).toBe(24)
     const low = bellFromPlotPoint(-20, height + 40, width, height, 20000, 20, 'mel')
     expect(low.frequency).toBeGreaterThanOrEqual(10)
-    expect(low.gain).toBe(-18)
+    expect(low.gain).toBe(-24)
   })
 
   it('uses 48 bands on the mini FFT', () => {
