@@ -45,12 +45,13 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, width, height)
     const gutter = 72
+    const lane = 16
     const rows = HEARING_BANDS.length
-    const rowH = (height - 8) / rows
+    const rowH = (height - lane - 6) / rows
     ctx.font = '10px sans-serif'
     ctx.textBaseline = 'middle'
     HEARING_BANDS.forEach((band, index) => {
-      const y = 4 + (rows - 1 - index) * rowH
+      const y = lane + (rows - 1 - index) * rowH
       const tone = computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink
       ctx.fillStyle = ink
       ctx.globalAlpha = 0.9
@@ -74,7 +75,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       const cellW = Math.max(1, plotW / columns.length - 0.5)
       column.power.forEach((power, index) => {
         const band = HEARING_BANDS[index]
-        const y = 4 + (rows - 1 - index) * rowH
+        const y = lane + (rows - 1 - index) * rowH
         const tone = band ? computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink : ink
         const norm = Math.max(0, Math.min(1, Math.log10(1 + power) / Math.log10(1 + max)))
         ctx.globalAlpha = 0.12 + norm * 0.88
@@ -90,16 +91,24 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     })
     ctx.globalAlpha = 1
     const span = Math.max(0.0001, duration)
+    ctx.fillStyle = ink
+    ctx.globalAlpha = 0.7
+    ctx.fillText('T', 4, lane / 2)
+    ctx.globalAlpha = 1
     transients.forEach((mark) => {
       const t = (mark.time - origin) / span
       if (t < 0 || t > 1) return
       const x = gutter + t * plotW
-      ctx.strokeStyle = accent
+      ctx.strokeStyle = ink
       ctx.fillStyle = accent
       ctx.lineWidth = 1.25
-      ctx.strokeRect(x - 4, 3, 8, 8)
-      ctx.globalAlpha = 0.35
-      ctx.fillRect(x - 3, 4, 6, 6)
+      ctx.fillRect(x - 5, 3, 10, 10)
+      ctx.strokeRect(x - 5, 3, 10, 10)
+      ctx.globalAlpha = 0.55
+      ctx.beginPath()
+      ctx.moveTo(x, lane)
+      ctx.lineTo(x, height - 2)
+      ctx.stroke()
       ctx.globalAlpha = 1
     })
     if (playhead !== null && duration > 0) {
@@ -125,7 +134,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     const plotW = Math.max(1, rect.width - gutter - 4)
     const x = clientX - rect.left
     let best: TransientMark | null = null
-    let bestDx = 14
+    let bestDx = 22
     for (const mark of transients) {
       const markX = gutter + ((mark.time - origin) / duration) * plotW
       const dx = Math.abs(markX - x)
@@ -144,7 +153,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       role="img"
       aria-label="Sound map. Rows are labeled frequency regions. Color follows the theme and is paired with the label. Squares along the top are transients. Choose a square to frame it on the waveform."
       onClick={(event) => pickTransient(event.clientX)}
-      style={{ width: '100%', height: 168, color: 'var(--text-primary)', background: 'var(--bg-app)', cursor: onTransient ? 'pointer' : undefined }}
+      style={{ width: '100%', height: 184, color: 'var(--text-primary)', background: 'var(--bg-app)', cursor: onTransient && transients.length ? 'pointer' : undefined }}
     />
   )
 }

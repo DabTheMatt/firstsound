@@ -254,14 +254,21 @@ export function filterEvents(events: readonly HearingEvent[], enabled: Partial<R
 
 export type TransientMark = { time: number; label: string }
 
-/** Prefer measured transient events. Fall back to dynamics-map onsets. */
+/** Measured transient events, plus dynamics-map onsets that are not already marked. */
 export function transientMarkers(
   events: readonly HearingEvent[],
   dynamics: readonly { time: number; transient: boolean }[] | null | undefined,
 ): TransientMark[] {
-  const marked = events.filter((event) => event.kind === 'transient')
-  if (marked.length) return marked.map((event) => ({ time: event.time, label: event.label }))
-  return (dynamics ?? []).filter((bucket) => bucket.transient).map((bucket) => ({ time: bucket.time, label: 'TRANSIENT' }))
+  const marks: TransientMark[] = events
+    .filter((event) => event.kind === 'transient')
+    .map((event) => ({ time: event.time, label: event.label }))
+  for (const bucket of dynamics ?? []) {
+    if (!bucket.transient) continue
+    if (marks.some((mark) => Math.abs(mark.time - bucket.time) < 0.08)) continue
+    marks.push({ time: bucket.time, label: 'TRANSIENT' })
+  }
+  marks.sort((a, b) => a.time - b.time)
+  return marks.slice(0, 40)
 }
 
 export function scopeLabel(scope: AnalysisScope): string {

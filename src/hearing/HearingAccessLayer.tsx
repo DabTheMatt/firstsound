@@ -481,7 +481,11 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
                 className={styles.corner}
                 data-corner={corner}
                 aria-label={`Resize from the ${corner} corner`}
-                onPointerDown={(event) => startCornerResize(event, corner)}
+                title="Drag to resize"
+                onPointerDown={(event) => {
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  startCornerResize(event, corner)
+                }}
                 onKeyDown={(event) => nudgeCorner(event, corner)}
               />
             ))

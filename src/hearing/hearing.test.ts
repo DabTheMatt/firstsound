@@ -360,10 +360,29 @@ describe('hearing access analysis', () => {
         ],
         [{ time: 4, transient: true }],
       ),
-    ).toEqual([{ time: 1.25, label: 'TRANSIENT' }])
+    ).toEqual([
+      { time: 1.25, label: 'TRANSIENT' },
+      { time: 4, label: 'TRANSIENT' },
+    ])
     expect(transientMarkers([], [{ time: 0.4, transient: true }, { time: 0.8, transient: false }])).toEqual([
       { time: 0.4, label: 'TRANSIENT' },
     ])
+    expect(
+      transientMarkers(
+        [
+          {
+            id: 't',
+            kind: 'transient',
+            time: 0.4,
+            duration: 0.01,
+            label: 'TRANSIENT',
+            detail: '',
+            confidence: 'measured',
+          },
+        ],
+        [{ time: 0.42, transient: true }],
+      ),
+    ).toEqual([{ time: 0.4, label: 'TRANSIENT' }])
   })
 
   it('keeps descriptor labels stable across a brief dip', () => {
