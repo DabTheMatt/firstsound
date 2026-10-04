@@ -20,7 +20,7 @@ import {
   stereoCompare,
 } from './compare'
 import { emptyDescriptorMemory, simpleSummary, updateDescriptors, type Descriptor } from './descriptors'
-import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
+import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
 import { AfterEqChart, LevelTrack } from './AfterEqChart'
 import { EnterFocusButton } from '../components/focus/EnterFocusButton'
@@ -34,6 +34,7 @@ import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingV
 import { useHearingSettings } from './useHearingSettings'
 import { HEARING_SECTIONS, HAPTIC_INTENSITIES, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection, type HapticIntensity } from './settings'
 import { balanceLabel, nearestSpaceBucket } from './spaceLive'
+import { useHeardSpace } from './useHeardSpace'
 import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
@@ -571,15 +572,7 @@ export function HearingAccessLayer({
               />
             ) : null}
             {settings.section === 'events' ? <EventsSection hearing={hearing} /> : null}
-            {settings.section === 'space' ? (
-              <SpaceSection
-                analysis={analysis}
-                playhead={hearing.playhead}
-                pan={snap.params.pan}
-                leftDb={snap.params.channelGainL}
-                rightDb={snap.params.channelGainR}
-              />
-            ) : null}
+            {settings.section === 'space' ? <SpaceSection analysis={analysis} playhead={hearing.playhead} /> : null}
             {settings.section === 'dynamics' ? <DynamicsSection analysis={analysis} /> : null}
             {settings.section === 'compare' ? <CompareSection analysis={analysis} snap={snap} /> : null}
             {settings.section === 'haptics' ? (
@@ -907,16 +900,11 @@ function EventsSection({ hearing }: { hearing: HearingView }) {
 function SpaceSection({
   analysis,
   playhead,
-  pan,
-  leftDb,
-  rightDb,
 }: {
   analysis: BufferAnalysis | null
   playhead: number | null
-  pan: number
-  leftDb: number
-  rightDb: number
 }) {
+  const buckets = useHeardSpace(analysis)
   if (!analysis) {
     return (
       <div>
@@ -929,18 +917,14 @@ function SpaceSection({
     )
   }
   const stereo = analysis.stereo
-  const buckets =
-    analysis.spaceTimeline.length > 0
-      ? analysis.spaceTimeline
-      : [{ time: analysis.originSec, balance: stereo?.balance ?? 0, width: stereo?.width ?? 0, correlation: stereo?.correlation ?? 1 }]
   const live = nearestSpaceBucket(buckets, playhead) ?? buckets[0]
-  const heard = applyPanToBalance(live?.balance ?? 0, pan, leftDb, rightDb)
+  const heard = live?.balance ?? 0
   return (
     <div>
       <div className={styles.sectionTitle}>
         <h3>Space</h3>
         <InfoTip label="More about space">
-          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. Pan and the channel gains move the heard image. The field under the head runs in time from top to bottom.
+          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side width, balance, and Haas, and delay, including a delay that replaces one channel. Time runs from top to bottom.
         </InfoTip>
       </div>
       <div className={styles.spaceStack}>
@@ -950,9 +934,6 @@ function SpaceSection({
           playhead={playhead}
           origin={analysis.originSec}
           duration={analysis.durationSec}
-          panPct={pan}
-          leftDb={leftDb}
-          rightDb={rightDb}
         />
       </div>
       {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it.</p> : null}

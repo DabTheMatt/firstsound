@@ -101,7 +101,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       const x = gutter + t * plotW
       ctx.strokeStyle = ink
       ctx.fillStyle = accent
-      ctx.lineWidth = 1.25
+      ctx.lineWidth = 0.6
       ctx.fillRect(x - 5, 3, 10, 10)
       ctx.strokeRect(x - 5, 3, 10, 10)
       ctx.globalAlpha = 0.55

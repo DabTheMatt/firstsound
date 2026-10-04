@@ -39,6 +39,7 @@ import type { ParamId } from '../../audio/parameters/types'
 import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { engine } from '../../hooks/useEngine'
+import { readStoredHearingSettings } from '../../hearing/settings'
 import { PresetMenu } from '../controls/PresetMenu'
 import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
 import { combMatchesDefault, eqBandsMatchDefault, paramsMatchDefaults } from '../../audio/fx/effectDefaults'
@@ -1407,7 +1408,7 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
           className={`${styles.ghost} ${snap.showTransients ? styles.ghostOn : ''}`}
           disabled={!snap.sampleLoaded}
           aria-pressed={snap.showTransients}
-          onClick={() => engine.setShowTransients(!snap.showTransients)}
+          onClick={() => engine.setShowTransients(!snap.showTransients, readStoredHearingSettings().transientSensitivity)}
         >
           Mark transients
         </button>

@@ -44,7 +44,8 @@ import { formatAutomationNodeValue } from './automationValue'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { HearingFocusStage } from '../../hearing/HearingFocusStage'
-import { HearingRevealMark, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { HearingRevealMark, HearingTransientGuides, HearingWaveLegend, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { LoudnessMeter } from '../../hearing/LoudnessMeter'
 import { bindWaveZoom, getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
@@ -1346,7 +1347,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
 
     return (
     <div
-      className={`${styles.editor} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
+      className={`${styles.editor} ${hearingFocus ? styles.hearingEditor : ''} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
@@ -1401,6 +1402,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
             <HearingWaveOverlay viewStart={view.start} viewEnd={view.end} />
+            <HearingTransientGuides viewStart={view.start} viewEnd={view.end} showInputMarks={showTransients} />
+            {hearingFocus ? <HearingWaveLegend /> : null}
             <HearingRevealMark viewStart={view.start} viewEnd={view.end} />
             {spectralBandsEnabled && snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">
@@ -1884,6 +1887,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         />
       ) : null}
       {spectralBandsEnabled && !sensory && !simple && !phone && !phoneFocus ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
+      {hearingFocus ? <LoudnessMeter /> : null}
     </div>
   )
 })

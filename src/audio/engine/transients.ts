@@ -13,17 +13,24 @@ export type TempoGuess = {
   transients: number[]
 }
 
+/** 0 is strict, 1 marks quieter onsets. 0.5 keeps the original threshold. */
+export function transientThresholdScale(sensitivity: number): number {
+  const s = Math.min(1, Math.max(0, Number.isFinite(sensitivity) ? sensitivity : 0.5))
+  return 2.6 ** ((0.5 - s) / 0.5)
+}
+
 export function detectTransients(
   samples: Float32Array,
   sampleRate: number,
   offsetSec = 0,
+  sensitivity = 0.5,
 ): number[] {
   const flux = spectralFlux(samples, sampleRate)
   if (!flux) return []
   const { values, hopSec } = flux
   const times: number[] = []
   const minGap = Math.max(1, Math.round(MIN_ONSET_GAP_SEC / hopSec))
-  const thresh = adaptiveThreshold(values)
+  const thresh = adaptiveThreshold(values) * transientThresholdScale(sensitivity)
   let last = -minGap
   for (let i = 1; i < values.length - 1; i++) {
     const v = values[i] ?? 0

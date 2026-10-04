@@ -670,125 +670,128 @@
   border-bottom: 0;
 }
 
-.loudness {
+.loudnessRail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: min(440px, 100%);
-  padding: 8px 10px;
+  align-items: stretch;
+  gap: 6px;
+  width: 168px;
+  flex: none;
+  min-height: 0;
+  margin: 8px 8px 8px 0;
+  padding: 8px 8px 10px;
   border: 1px solid var(--border-default);
   border-radius: 10px;
   background: var(--bg-panel);
 }
 
-.loudnessHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+.loudnessRail strong {
   font-size: 12px;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-align: center;
 }
 
-.loudnessHead strong {
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
-
-.loudness[data-zone='silent'] strong,
-.loudness[data-zone='quiet'] strong {
+.loudnessRail[data-zone='silent'] strong,
+.loudnessRail[data-zone='quiet'] strong {
   color: var(--text-muted);
 }
 
-.loudness[data-zone='medium'] strong {
-  color: var(--text-primary);
-}
-
-.loudness[data-zone='loud'] strong,
-.loudness[data-zone='very-loud'] strong {
+.loudnessRail[data-zone='loud'] strong,
+.loudnessRail[data-zone='very-loud'] strong {
   color: var(--warning);
 }
 
-.loudness[data-zone='clipping'] {
+.loudnessRail[data-zone='clipping'] {
   border-color: var(--playhead);
 }
 
-.loudness[data-zone='clipping'] strong {
+.loudnessRail[data-zone='clipping'] strong {
   color: var(--playhead);
 }
 
-.loudnessRow {
-  display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr);
-  gap: 6px;
-  align-items: center;
+.loudnessRail p {
+  margin: 0;
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text-muted);
 }
 
-.loudnessTrack {
+.loudnessBody {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 180px;
+}
+
+.loudnessWords {
   position: relative;
-  height: 14px;
+}
+
+.loudnessWords span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.loudnessLanes {
+  display: flex;
+  gap: 4px;
+  min-height: 0;
+}
+
+.loudnessLane {
+  position: relative;
+  flex: 1 1 0;
   border-radius: 7px;
   overflow: hidden;
   background:
     repeating-linear-gradient(
       -45deg,
       transparent,
-      transparent 4px,
-      color-mix(in srgb, var(--text-primary) 12%, transparent) 4px,
-      color-mix(in srgb, var(--text-primary) 12%, transparent) 5px
+      transparent 5px,
+      color-mix(in srgb, var(--text-primary) 14%, transparent) 5px,
+      color-mix(in srgb, var(--text-primary) 14%, transparent) 6px
     ),
     linear-gradient(
-      90deg,
+      to top,
       color-mix(in srgb, var(--text-muted) 35%, transparent) 0 33%,
-      color-mix(in srgb, var(--text-primary) 18%, transparent) 33% 70%,
-      color-mix(in srgb, var(--warning) 35%, transparent) 70% 87%,
-      color-mix(in srgb, var(--playhead) 45%, transparent) 87% 100%
+      color-mix(in srgb, var(--text-primary) 16%, transparent) 33% 70%,
+      color-mix(in srgb, var(--warning) 32%, transparent) 70% 88%,
+      color-mix(in srgb, var(--playhead) 42%, transparent) 88% 100%
     );
 }
 
+.loudnessLane span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
 .loudnessFill {
-  height: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--text-primary);
 }
 
-.loudness[data-zone='loud'] .loudnessFill,
-.loudness[data-zone='very-loud'] .loudnessFill {
+.loudnessRail[data-zone='loud'] .loudnessFill,
+.loudnessRail[data-zone='very-loud'] .loudnessFill {
   background: var(--warning);
 }
 
-.loudness[data-zone='clipping'] .loudnessFill {
+.loudnessRail[data-zone='clipping'] .loudnessFill {
   background: var(--playhead);
-}
-
-.loudnessTicks {
-  position: relative;
-  height: 14px;
-  margin-left: calc(2.6rem + 6px);
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.loudnessTicks span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-.loudnessTicks span:first-child {
-  transform: none;
-}
-
-.loudnessTicks span:last-child {
-  transform: translateX(-100%);
-}
-
-.loudnessNote {
-  margin: 0;
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .focusSpace {

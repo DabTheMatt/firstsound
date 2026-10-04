@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEngine } from '../hooks/useEngine'
 import { emptyDescriptorMemory, updateDescriptors, type Descriptor } from './descriptors'
-import { applyPanToBalance } from './effectViz'
 import { scopeLabel, transientMarkers } from './events'
 import { shiftSoundMap } from './eqAssist'
 import { HeadSpace } from './HeadSpace'
 import { InfoTip } from './InfoTip'
-import { LoudnessMeter } from './LoudnessMeter'
 import { SoundMap } from './SoundMap'
 import { SpaceField } from './SpaceField'
 import { requestWaveZoom, setHearingMapDemand, showTransientOnWave } from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
 import { balanceLabel, nearestSpaceBucket } from './spaceLive'
+import { useHeardSpace } from './useHeardSpace'
 import { useHearingSettings } from './useHearingSettings'
 import styles from './HearingAccessLayer.module.css'
 
@@ -63,14 +62,9 @@ export function HearingFocusStage() {
   const pitched = Math.abs(pitch) >= 0.05
   const columns = shiftSoundMap(analysis?.soundMap ?? null, pitch)
   const mono = analysis ? !analysis.stereo : false
-  const buckets =
-    analysis && analysis.spaceTimeline.length > 0
-      ? analysis.spaceTimeline
-      : analysis
-        ? [{ time: analysis.originSec, balance: analysis.stereo?.balance ?? 0, width: analysis.stereo?.width ?? 0, correlation: analysis.stereo?.correlation ?? 1 }]
-        : []
-  const liveBucket = nearestSpaceBucket(buckets, hearing.playhead) ?? buckets[0] ?? null
-  const heardBalance = applyPanToBalance(liveBucket?.balance ?? 0, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR)
+  const heardBuckets = useHeardSpace(analysis)
+  const liveBucket = nearestSpaceBucket(heardBuckets, hearing.playhead) ?? heardBuckets[0] ?? null
+  const heardBalance = liveBucket?.balance ?? 0
   const marks = transientMarkers(hearing.events, analysis?.dynamics)
   return (
     <section aria-label="Hearing Access focus" className={`${styles.palette} ${styles.focusStage}`}>
@@ -81,7 +75,7 @@ export function HearingFocusStage() {
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
           <InfoTip label="More about Hearing Access focus">
-            Squares on the T row are distinct attacks, one per hit. A line drops through the bands at that time. The strip under the wave is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. One hit can light several triangles, so the wave shows more marks than the T row. A click on a square draws a line on the waveform and moves the playhead. The zoom stays put. The loudness meter uses words and a scale from −60 dBFS to 0. Quiet is under −40, medium is under −18, loud is under −8, and 0 is clipping. The head follows the playhead. Spread is stereo width. A hollow mark is low correlation.
+            Squares on the T row are distinct attacks, one per hit. A thin line marks that time on the waveform, the same mark as Input → Mark transients. The strip under the wave is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The legend by the time scale names each symbol. Sensitivity changes how many onsets are marked. The loudness rail on the right uses the same peak reading as the main meter, with words from quiet to clipping. The head and the space field follow what you hear after pan, mid/side width, balance, and Haas, and delay — including a delay that replaces one channel. Spread is stereo width. A hollow mark is low correlation.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -100,11 +94,6 @@ export function HearingFocusStage() {
         </div>
       </div>
       <TagRow tags={shownTags} />
-      <LoudnessMeter
-        samplePeakDb={analysis?.peakDbfs ?? null}
-        sampleRmsDb={analysis?.rmsDbfs ?? null}
-        clipped={analysis?.clipped === true}
-      />
       <SoundMap
         columns={columns}
         playhead={hearing.playhead}
@@ -119,13 +108,10 @@ export function HearingFocusStage() {
           <div className={styles.focusSpace}>
             <HeadSpace balance={heardBalance} width={liveBucket.width} correlation={liveBucket.correlation} fill />
             <SpaceField
-              buckets={buckets}
+              buckets={heardBuckets}
               playhead={hearing.playhead}
               origin={analysis.originSec}
               duration={analysis.durationSec}
-              panPct={snap.params.pan}
-              leftDb={snap.params.channelGainL}
-              rightDb={snap.params.channelGainR}
               fill
             />
           </div>

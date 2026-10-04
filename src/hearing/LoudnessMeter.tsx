@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { dbToMeterPct } from '../app/editorState'
 import { engine } from '../hooks/useEngine'
+import { getHearingView, subscribeHearingView } from './session'
 import {
   LOUDNESS_FLOOR_DB,
-  LOUDNESS_TICKS,
   LOUDNESS_ZONE_LABEL,
   formatLoudnessDb,
   levelsFromTimeDomain,
@@ -12,11 +12,13 @@ import {
 } from './loudness'
 import styles from './HearingAccessLayer.module.css'
 
-type Props = {
-  samplePeakDb: number | null
-  sampleRmsDb: number | null
-  clipped: boolean
-}
+const SCALE_WORDS: { db: number; label: string }[] = [
+  { db: -0.5, label: 'CLIP' },
+  { db: -4, label: 'VERY LOUD' },
+  { db: -12, label: 'LOUD' },
+  { db: -28, label: 'MEDIUM' },
+  { db: -50, label: 'QUIET' },
+]
 
 type LiveLevels = {
   left: number
@@ -38,10 +40,30 @@ function louder(a: number, b: number): number {
   return a > b ? a : b
 }
 
-/** Live output level with a word scale. Falls back to the measured sample when playback is stopped. */
-export function LoudnessMeter({ samplePeakDb, sampleRmsDb, clipped }: Props) {
+function Lane({ db, label }: { db: number; label: string }) {
+  const pct = dbToMeterPct(db, LOUDNESS_FLOOR_DB)
+  return (
+    <div className={styles.loudnessLane}>
+      <div className={styles.loudnessFill} style={{ height: `${pct}%` }} />
+      <span>{label}</span>
+    </div>
+  )
+}
+
+/** Vertical loudness rail. Same peak reading as the main meter, with a word scale. */
+export function LoudnessMeter() {
   const [live, setLive] = useState<LiveLevels | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [samplePeak, setSamplePeak] = useState<number | null>(null)
+  const [sampleRms, setSampleRms] = useState<number | null>(null)
+  const [sampleClip, setSampleClip] = useState(false)
+
+  useEffect(() => subscribeHearingView(() => {
+    const analysis = getHearingView().analysis
+    setSamplePeak(analysis?.peakDbfs ?? null)
+    setSampleRms(analysis?.rmsDbfs ?? null)
+    setSampleClip(analysis?.clipped === true)
+  }), [])
 
   useEffect(() => {
     let frame = 0
@@ -51,7 +73,7 @@ export function LoudnessMeter({ samplePeakDb, sampleRmsDb, clipped }: Props) {
     const tick = (now: number) => {
       frame = requestAnimationFrame(tick)
       const on = engine.getSnapshot().playing
-      setPlaying(on)
+      setPlaying((prev) => (prev === on ? prev : on))
       if (!on || now - last < 90) return
       last = now
       const { left, right } = engine.getChannelAnalysers()
@@ -69,60 +91,47 @@ export function LoudnessMeter({ samplePeakDb, sampleRmsDb, clipped }: Props) {
   }, [])
 
   const livePeak = live ? louder(live.left, live.right) : Number.NEGATIVE_INFINITY
-  const usingLive = playing && Number.isFinite(livePeak)
-  const shownDb = usingLive ? livePeak : samplePeakDb
-  const zone: LoudnessZone = loudnessZone(shownDb, clipped || (usingLive && livePeak >= -0.1))
+  const usingLive = playing && live !== null && Number.isFinite(livePeak)
+  const shownDb = usingLive ? livePeak : samplePeak
+  const zone: LoudnessZone = loudnessZone(shownDb, sampleClip || (usingLive && livePeak >= -0.1))
   const word = LOUDNESS_ZONE_LABEL[zone]
   const nowText = formatLoudnessDb(shownDb)
   const meterNow = shownDb !== null && Number.isFinite(shownDb) ? Math.round(shownDb) : LOUDNESS_FLOOR_DB
-  const sampleLine = `Sample peak ${formatLoudnessDb(samplePeakDb)} · RMS ${formatLoudnessDb(sampleRmsDb)}`
-  const liveLine =
-    usingLive && live
-      ? live.stereo
-        ? `Now L ${formatLoudnessDb(live.left)} · R ${formatLoudnessDb(live.right)} · RMS ${formatLoudnessDb(live.rms)}`
-        : `Now peak ${formatLoudnessDb(livePeak)} · RMS ${formatLoudnessDb(live.rms)}`
-      : 'Playback is stopped. The bar shows the sample peak.'
-
-  const bars = usingLive && live?.stereo
+  const lanes = usingLive && live?.stereo
     ? [
         { id: 'L', db: live.left },
         { id: 'R', db: live.right },
       ]
-    : [{ id: usingLive ? 'NOW' : 'PEAK', db: shownDb ?? Number.NEGATIVE_INFINITY }]
+    : [{ id: usingLive ? 'OUT' : 'PEAK', db: shownDb ?? Number.NEGATIVE_INFINITY }]
 
   return (
-    <div
-      className={styles.loudness}
+    <aside
+      className={styles.loudnessRail}
       data-zone={zone}
       role="meter"
       aria-valuemin={LOUDNESS_FLOOR_DB}
       aria-valuemax={0}
       aria-valuenow={meterNow}
-      aria-valuetext={`${word}. ${usingLive ? 'Now' : 'Sample'} ${nowText}. ${sampleLine}`}
+      aria-valuetext={`${word}. ${usingLive ? 'Now' : 'Sample'} ${nowText}. Sample peak ${formatLoudnessDb(samplePeak)}. RMS ${formatLoudnessDb(sampleRms)}.`}
       aria-label="Loudness"
     >
-      <div className={styles.loudnessHead}>
-        <span>Loudness</span>
-        <strong>{word}</strong>
-        <span>{usingLive ? 'now' : 'sample'} {nowText}</span>
-      </div>
-      {bars.map((bar) => (
-        <div key={bar.id} className={styles.loudnessRow}>
-          <span>{bar.id}</span>
-          <div className={styles.loudnessTrack}>
-            <div className={styles.loudnessFill} style={{ width: `${dbToMeterPct(bar.db, LOUDNESS_FLOOR_DB)}%` }} />
-          </div>
+      <strong>{word}</strong>
+      <div className={styles.loudnessBody}>
+        <div className={styles.loudnessWords} aria-hidden="true">
+          {SCALE_WORDS.map((mark) => (
+            <span key={mark.label} style={{ bottom: `${dbToMeterPct(mark.db, LOUDNESS_FLOOR_DB)}%` }}>
+              {mark.label}
+            </span>
+          ))}
         </div>
-      ))}
-      <div className={styles.loudnessTicks} aria-hidden="true">
-        {LOUDNESS_TICKS.map((db) => (
-          <span key={db} style={{ left: `${dbToMeterPct(db, LOUDNESS_FLOOR_DB)}%` }}>
-            {db === 0 ? '0 clip' : db}
-          </span>
-        ))}
+        <div className={styles.loudnessLanes}>
+          {lanes.map((lane) => (
+            <Lane key={lane.id} db={lane.db} label={lane.id} />
+          ))}
+        </div>
       </div>
-      <p className={styles.loudnessNote}>{liveLine}</p>
-      <p className={styles.loudnessNote}>{sampleLine}</p>
-    </div>
+      <p>{usingLive ? 'now' : 'sample'} {nowText}</p>
+      <p>RMS {formatLoudnessDb(usingLive && live ? live.rms : sampleRms)}</p>
+    </aside>
   )
 }

@@ -18,6 +18,7 @@ import { getHearingReveal, showTransientOnWave } from './reveal'
 import { nearestSpaceBucket } from './spaceLive'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
 import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelPosition, clampPanelSize } from './settings'
+import { heardDelay, heardSpaceTimeline, type HeardDelay } from './heardSpace'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
 import { voiceEstimate } from './voiceEstimate'
 
@@ -422,6 +423,134 @@ describe('hearing access analysis', () => {
     expect(next.filter((item) => item.id === 'wide' || item.id === 'narrow')).toHaveLength(1)
   })
 
+  it('moves the space field when mid/side or a right-channel delay changes', () => {
+    const n = 44100
+    const left = new Float32Array(n)
+    const right = new Float32Array(n)
+    for (let i = 0; i < n; i++) {
+      left[i] = Math.sin(i * 0.17) * 0.35
+      right[i] = Math.sin(i * 0.17 + 1.4) * 0.35
+    }
+    const base = {
+      left,
+      right,
+      sampleRate: 44100,
+      originSec: 0,
+      startFrame: 0,
+      frames: n,
+      panPct: 0,
+      leftDb: 0,
+      rightDb: 0,
+      delay: null,
+    }
+    const meanWidth = (widthPct: number, balance = 0) => {
+      const buckets = heardSpaceTimeline({ ...base, midSide: { widthPct, midDb: 0, sideDb: 0, balance } })
+      return buckets.reduce((sum, bucket) => sum + bucket.width, 0) / buckets.length
+    }
+    expect(meanWidth(0)).toBeLessThan(0.05)
+    expect(meanWidth(160)).toBeGreaterThan(meanWidth(0) + 0.08)
+    expect(meanWidth(100, 100)).toBeGreaterThan(meanWidth(100, -100) + 0.2)
+    const rightOnly: HeardDelay = {
+      stereo: true,
+      timeL: 0.08,
+      timeR: 0.25,
+      fbL: 0,
+      fbR: 0,
+      pingToL: 0,
+      pingToR: 0,
+      dryL: 1,
+      wetL: 0,
+      dryR: 0,
+      wetR: 1,
+      moduleDry: 0,
+      moduleWet: 1,
+      pan: 0,
+      widthGain: 1,
+    }
+    const fromParams = heardDelay(
+      paramRecord({
+        delayStereo: 1,
+        delayTime: 80,
+        delayTimeR: 250,
+        delayWet: 0,
+        delayDry: 100,
+        delayWetR: 100,
+        delayDryR: 0,
+        delayCorrelate: 0,
+        delayFeedback: 0,
+        delayFeedbackR: 0,
+        delayWidth: 100,
+        delayPan: 0,
+      }),
+      'digital',
+      120,
+    )
+    expect(fromParams.stereo).toBe(true)
+    expect(fromParams.timeR).toBeCloseTo(0.25, 2)
+    expect(fromParams.wetR).toBeCloseTo(1)
+    expect(fromParams.dryR).toBeCloseTo(0)
+    expect(fromParams.wetL).toBeCloseTo(0)
+    const burst = new Float32Array(22050)
+    const burstR = new Float32Array(22050)
+    for (let i = 0; i < 900; i++) {
+      burst[i] = 0.7
+      burstR[i] = 0.7
+    }
+    const delayed = heardSpaceTimeline({
+      ...base,
+      left: burst,
+      right: burstR,
+      frames: burst.length,
+      midSide: null,
+      delay: rightOnly,
+    })
+    const early = delayed.find((bucket) => bucket.time < 0.04)
+    const echo = delayed.reduce<(typeof delayed)[number] | null>(
+      (best, bucket) => (bucket.balance > (best?.balance ?? -2) ? bucket : best),
+      null,
+    )
+    expect(early).toBeTruthy()
+    expect(echo).toBeTruthy()
+    expect(early!.balance).toBeLessThan(-0.5)
+    expect(echo!.balance).toBeGreaterThan(0.5)
+    const noise = new Float32Array(44100)
+    const noiseR = new Float32Array(44100)
+    for (let i = 0; i < noise.length; i++) {
+      const sample = ((i * 17) % 100) / 50 - 1
+      noise[i] = sample
+      noiseR[i] = sample
+    }
+    const plain = heardSpaceTimeline({ ...base, left: noise, right: noiseR, frames: noise.length, midSide: null, delay: null })
+    const shifted = heardSpaceTimeline({
+      ...base,
+      left: noise,
+      right: noiseR,
+      frames: noise.length,
+      midSide: null,
+      delay: { ...rightOnly, timeR: 0.03 },
+    })
+    const meanCorr = (buckets: typeof plain) => buckets.reduce((sum, bucket) => sum + bucket.correlation, 0) / buckets.length
+    expect(meanCorr(shifted)).toBeLessThan(meanCorr(plain) - 0.15)
+    const dryImage = heardSpaceTimeline({
+      ...base,
+      left: noise,
+      right: noiseR,
+      frames: noise.length,
+      delay: null,
+      midSide: { widthPct: 100, midDb: 0, sideDb: 0 },
+    })
+    const haas = heardSpaceTimeline({
+      ...base,
+      left: noise,
+      right: noiseR,
+      frames: noise.length,
+      delay: null,
+      midSide: { widthPct: 100, midDb: 0, sideDb: 0, haasAmount: 100, haasTime: 30, haasDir: 0 },
+    })
+    const meanW = (buckets: typeof plain) => buckets.reduce((sum, bucket) => sum + bucket.width, 0) / buckets.length
+    expect(meanW(haas)).toBeGreaterThan(meanW(dryImage) + 0.15)
+  })
+
   it('names loudness zones on a dBFS scale', () => {
     expect(loudnessZone(null)).toBe('silent')
     expect(loudnessZone(-70)).toBe('silent')
@@ -533,6 +662,8 @@ describe('hearing access analysis', () => {
     expect(parseHearingSettings({ panelWidth: 800, panelHeight: 700 }).panelWidth).toBe(800)
     expect(parseHearingSettings({}).panelLeft).toBeNull()
     expect(parseHearingSettings({ panelLeft: 40, panelTop: 80 })).toMatchObject({ panelLeft: 40, panelTop: 80 })
+    expect(parseHearingSettings({}).transientSensitivity).toBe(0.5)
+    expect(parseHearingSettings({ transientSensitivity: 2 }).transientSensitivity).toBe(1)
     expect(clampPanelPosition(-20)).toBe(0)
     expect(clampPanelPosition(9000)).toBe(8000)
     expect(clampPanelPosition('nope')).toBeNull()

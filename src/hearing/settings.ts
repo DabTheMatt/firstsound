@@ -65,6 +65,8 @@ export type HearingAccessSettings = {
   /** Null docks the panel at the corner. A pair of numbers detaches it. */
   panelLeft: number | null
   panelTop: number | null
+  /** 0 marks only strong onsets. 1 also marks quieter ones. Shared with Mark transients. */
+  transientSensitivity: number
 }
 
 export const PROFILE_LAYERS: Record<HearingProfile, HearingLayers> = {
@@ -127,6 +129,7 @@ export const DEFAULT_HEARING_SETTINGS: HearingAccessSettings = {
   panelHeight: 560,
   panelLeft: null,
   panelTop: null,
+  transientSensitivity: 0.5,
 }
 
 export const PANEL_WIDTH_MIN = 320
@@ -151,6 +154,12 @@ export function clampPanelSize(width: unknown, height: unknown): { panelWidth: n
     panelWidth: Math.round(Math.min(PANEL_WIDTH_MAX, Math.max(PANEL_WIDTH_MIN, w))),
     panelHeight: Math.round(Math.min(PANEL_HEIGHT_MAX, Math.max(PANEL_HEIGHT_MIN, h))),
   }
+}
+
+function clampSensitivity(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return 0.5
+  return Math.min(1, Math.max(0, Math.round(n * 100) / 100))
 }
 
 function clampDb(value: unknown): number {
@@ -199,6 +208,7 @@ export function parseHearingSettings(raw: unknown): HearingAccessSettings {
   next.panelHeight = size.panelHeight
   next.panelLeft = clampPanelPosition(rec.panelLeft)
   next.panelTop = clampPanelPosition(rec.panelTop)
+  next.transientSensitivity = clampSensitivity(rec.transientSensitivity)
   if (rec.layers && typeof rec.layers === 'object') {
     const layers = rec.layers as Record<string, unknown>
     for (const key of Object.keys(next.layers) as (keyof HearingLayers)[]) {

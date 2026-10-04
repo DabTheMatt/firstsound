@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectTransients, estimateTempo } from './transients'
+import { detectTransients, estimateTempo, transientThresholdScale } from './transients'
 import { addTap, bpmFromTaps, emptyTapTempo } from './tapTempo'
 
 function clickTrain(sampleRate: number, durationSec: number, intervalSec: number, startSec = 0.08): Float32Array {
@@ -30,6 +30,21 @@ describe('detectTransients', () => {
 
   it('returns nothing for silence', () => {
     expect(detectTransients(new Float32Array(8000), 8000)).toEqual([])
+  })
+
+  it('marks more onsets when sensitivity is higher', () => {
+    expect(transientThresholdScale(0.5)).toBeCloseTo(1, 5)
+    expect(transientThresholdScale(0)).toBeGreaterThan(2)
+    expect(transientThresholdScale(1)).toBeLessThan(0.5)
+    const sr = 8000
+    const samples = clickTrain(sr, 4, 0.5)
+    for (let t = 0.25; t < 3.8; t += 0.5) {
+      const i0 = Math.floor(t * sr)
+      for (let k = 0; k < 12; k++) samples[i0 + k] = 0.08 * Math.exp(-k / 4)
+    }
+    const strict = detectTransients(samples, sr, 0, 0)
+    const loose = detectTransients(samples, sr, 0, 1)
+    expect(loose.length).toBeGreaterThan(strict.length)
   })
 })
 

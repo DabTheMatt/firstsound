@@ -6,6 +6,16 @@
   min-height: 0;
 }
 
+.hearingEditor {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.hearingEditor > .stage {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .stage {
   position: relative;
   display: flex;
@@ -593,7 +603,7 @@
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 2px;
+  width: 1px;
   background: color-mix(in srgb, var(--transient, var(--spectrum-line)) 88%, transparent);
   transform: translateX(-50%);
 }

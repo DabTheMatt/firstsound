@@ -3288,14 +3288,21 @@ export class AudioEngine {
     this.emit()
   }
 
-  markSampleTransients(): void {
+  /** Same onset detector the waveform marks use. Sensitivity is 0 (strict) to 1 (sensitive). */
+  detectSampleTransients(sensitivity = 0.5): number[] {
+    const region = this.analysisFull()
+    if (!region) return []
+    return detectTransients(region.samples, region.sampleRate, region.offsetSec, sensitivity)
+  }
+
+  markSampleTransients(sensitivity = 0.5): void {
     const region = this.analysisFull()
     if (!region) {
       this.tempoNotice = 'Load a sample first.'
       this.emit()
       return
     }
-    this.transients = detectTransients(region.samples, region.sampleRate, region.offsetSec)
+    this.transients = detectTransients(region.samples, region.sampleRate, region.offsetSec, sensitivity)
     this.showTransients = this.transients.length > 0
     this.tempoNotice = this.transients.length
       ? `Marked ${this.transients.length} transients.`
@@ -3303,9 +3310,9 @@ export class AudioEngine {
     this.emit()
   }
 
-  setShowTransients(show: boolean): void {
+  setShowTransients(show: boolean, sensitivity = 0.5): void {
     this.showTransients = show
-    if (show && !this.transients.length) this.markSampleTransients()
+    if (show) this.markSampleTransients(sensitivity)
     else this.emit()
   }
 
