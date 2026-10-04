@@ -1417,7 +1417,7 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
         >
           Mark transients
         </button>
-        <label className={styles.readout}>
+        <label className={`${styles.readout} ${styles.tempoSensitivity}`}>
           <span>Sensitivity</span>
           <input
             type="range"

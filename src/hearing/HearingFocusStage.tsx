@@ -35,11 +35,27 @@ function TagRow({ tags }: { tags: Descriptor[] }) {
   return (
     <ul className={styles.chips} aria-label="Hearing tags">
       {tags.map((item) => (
-        <li key={item.id} data-tag={item.id} title={item.detail}>
+        <li key={`${item.id}:${item.label}`} data-tag={item.id} title={item.detail}>
           {item.label}
         </li>
       ))}
     </ul>
+  )
+}
+
+function NoteSensitivity({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  return (
+    <label className={styles.toneSensitivity}>
+      <span>Notes</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(value * 100)}
+        aria-label="Note detection sensitivity"
+        onChange={(event) => onChange(Number(event.target.value) / 100)}
+      />
+    </label>
   )
 }
 
@@ -57,8 +73,8 @@ export function HearingFocusStage() {
   const [tags, setTags] = useState<Descriptor[]>([])
   useEffect(() => {
     if (!analysis || !settings.layers.descriptors) return
-    setTags(updateDescriptors(analysis, tagMemory.current, performance.now()))
-  }, [analysis, settings.layers.descriptors])
+    setTags(updateDescriptors(analysis, tagMemory.current, performance.now(), settings.toneSensitivity))
+  }, [analysis, settings.layers.descriptors, settings.toneSensitivity])
   const shownTags = analysis && settings.layers.descriptors ? tags : []
   const pitch = snap.params.pitch
   const pitched = Math.abs(pitch) >= 0.05
@@ -78,7 +94,7 @@ export function HearingFocusStage() {
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
           <InfoTip label="More about Hearing Access focus">
-            Squares on the T row are distinct attacks, one per hit. The band rows use a fixed loudness scale, so a quieter high band stays visible beside a louder bass band. The waveform line is the same dashed mark as Input → Mark transients, and it stays hidden until that control is on. Sensitivity for it sits next to Mark transients. The legend under the time scale turns those lines and the strip symbols on or off. The strip is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The loudness rail on the right follows the output while audio plays. When playback is stopped the bars rest at silence, and the sample peak stays listed as a number. The head and the space field follow pan, mid/side, and delay. On the head, a larger reverb size draws a smaller head inside a bigger room. The source sits in front of the head and moves to the front wall with reverb distance. Wet only draws the reflections. It does not move the source. Spread is stereo width. A hollow mark is low correlation.
+            Attacks on the sound map are thin vertical lines at the time they happen. The band rows sit edge to edge on a fixed loudness scale, so a quieter high band stays visible beside a louder bass band. Drag across the wave to select a fragment. Releasing that drag makes it the loop. A click only moves the playhead. The Notes slider lists detected partials: strict keeps the loudest, sensitive adds quieter ones, and the same note is listed once. The waveform line is the same dashed mark as Input → Mark transients, and it stays hidden until that control is on. Sensitivity for it sits on its own row under the tempo buttons. The legend under the time scale turns those lines and the strip symbols on or off. The strip is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The loudness rail on the right follows the output while audio plays. When playback is stopped the bars rest at silence, and the sample peak stays listed as a number. The head and the space field follow pan, mid/side, and delay. On the head, a larger reverb size draws a smaller head. The source sits in front of the head and moves to the front wall with reverb distance. Wet does not move the source. When wet is above zero, the sound map smears forward and dulls the high rows, and the space field draws a short tail under each mark. Spread is stereo width. A hollow mark is low correlation.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -96,7 +112,10 @@ export function HearingFocusStage() {
           </button>
         </div>
       </div>
-      <TagRow tags={shownTags} />
+      <div className={styles.tagBar}>
+        <TagRow tags={shownTags} />
+        <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
+      </div>
       <SoundMap
         columns={columns}
         playhead={hearing.playhead}
@@ -104,6 +123,7 @@ export function HearingFocusStage() {
         duration={analysis?.durationSec ?? 0}
         transients={marks}
         onTransient={showTransientOnWave}
+        space={room}
       />
       {analysis && liveBucket ? (
         <>

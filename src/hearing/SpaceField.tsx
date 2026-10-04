@@ -83,6 +83,16 @@ export function SpaceField({
       const x = padX + ((bucket.balance + 1) / 2) * plotW
       const spread = Math.max(4, bucket.width * plotW * 0.45)
       const low = bucket.correlation < 0.2
+      if (space.engaged && space.wet > 0.02) {
+        const tail = (6 + space.decay * 36) * space.wet
+        ctx.globalAlpha = 0.28 * space.wet
+        ctx.strokeStyle = accent
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x, Math.min(padTop + plotH, y + tail))
+        ctx.stroke()
+      }
       ctx.globalAlpha = low ? 1 : 0.85
       ctx.strokeStyle = low ? ink : accent
       ctx.fillStyle = accent
@@ -138,7 +148,7 @@ export function SpaceField({
       ctx.setLineDash([])
     }
     ctx.globalAlpha = 1
-  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb, space.engaged, space.size, space.distance, space.wet, box.width, box.height])
+  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb, space.engaged, space.size, space.distance, space.wet, space.decay, box.width, box.height])
 
   return (
     <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
@@ -146,7 +156,7 @@ export function SpaceField({
         ref={ref}
         className="hearing-space-field"
         role="img"
-        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation. The right edge is the room: a longer line is a larger room, and the dot is how far the source sits in front of the listener."
+        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation. A short tail under a mark is reverb wet. The right edge is the room: a longer line is a larger room, and the dot is how far the source sits in front of the listener."
         style={
           fill
             ? undefined

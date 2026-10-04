@@ -46,10 +46,6 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
     const layout = headLayout(widthPx, heightPx, balance, space.size, space.distance)
     const { headRadius: head, headX: cx, headY: cy, sourceX: x, sourceY: y } = layout
     if (space.engaged) {
-      ctx.globalAlpha = 0.35 + space.wet * 0.5
-      ctx.strokeStyle = ink
-      ctx.lineWidth = 1
-      ctx.strokeRect(layout.roomX, layout.roomY, layout.roomW, layout.roomH)
       const echoes = space.wet > 0.02 ? 2 + Math.round(space.decay * 6) : 0
       for (let i = 0; i < echoes; i++) {
         const t = (i + 1) / (echoes + 1)

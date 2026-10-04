@@ -171,8 +171,8 @@ export function HearingAccessLayer({
   useEffect(() => {
     if (!settings.enabled || !settings.layers.descriptors || !hearing.analysis) return
     if (snap.playing && settings.panelOpen) return
-    setLive(updateDescriptors(hearing.analysis, memory.current, performance.now()))
-  }, [settings.enabled, settings.layers.descriptors, settings.panelOpen, hearing.analysis, snap.playing])
+    setLive(updateDescriptors(hearing.analysis, memory.current, performance.now(), settings.toneSensitivity))
+  }, [settings.enabled, settings.layers.descriptors, settings.panelOpen, settings.toneSensitivity, hearing.analysis, snap.playing])
 
   useEffect(() => {
     if (!settings.enabled || !settings.panelOpen || !settings.layers.descriptors || !snap.playing) return
@@ -192,10 +192,10 @@ export function HearingAccessLayer({
         originSec: start / rate,
         scope: 'current',
       })
-      setLive(updateDescriptors(current, memory.current, performance.now()))
+      setLive(updateDescriptors(current, memory.current, performance.now(), settings.toneSensitivity))
     }, 500)
     return () => window.clearInterval(id)
-  }, [settings.enabled, settings.panelOpen, settings.layers.descriptors, snap.playing, snap.sampleRate, snap.bufferRev])
+  }, [settings.enabled, settings.panelOpen, settings.layers.descriptors, settings.toneSensitivity, snap.playing, snap.sampleRate, snap.bufferRev])
 
   useEffect(() => {
     if (!settings.enabled || settings.hapticIntensity === 'off' || !hapticsOk || !snap.playing) return
@@ -711,6 +711,22 @@ function selectedEq(snap: ReturnType<typeof useEngine>, pick: EqBandSelection | 
   return { readout, region: affectedRegion(band, snap.sampleRate || 44100) }
 }
 
+function NoteSensitivity({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  return (
+    <label className={styles.toneSensitivity}>
+      <span>Notes</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(value * 100)}
+        aria-label="Note detection sensitivity"
+        onChange={(event) => onChange(Number(event.target.value) / 100)}
+      />
+    </label>
+  )
+}
+
 function SoundSection(props: {
   surface: Surface
   showDetails: boolean
@@ -726,6 +742,8 @@ function SoundSection(props: {
   showFingerprint: boolean
   showAssistant: boolean
 }) {
+  const { settings, patch } = useHearingSettings()
+  const room = useReverbSpace()
   const { analysis } = props.hearing
   const autoId = props.snap.automation.selectedParamId
   const stored = props.snap.params[autoId]
@@ -735,7 +753,7 @@ function SoundSection(props: {
       <div className={styles.sectionTitle}>
         <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
         <InfoTip label="More about Sound">
-          Tags follow the playhead and stay in this row. Extra tags scroll here. The fingerprint is this scope before effects. Hover a tag for the measured reason.
+          Tags follow the playhead and stay in this row. Extra tags scroll here. The Notes slider lists detected partials beside the other tags. Strict keeps the loudest. Sensitive adds quieter ones. The same note is listed once. Silence does not invent a note. The fingerprint is this scope before effects. Hover a tag for the measured reason.
         </InfoTip>
       </div>
       {props.summary && props.surface === 'simple' ? (
@@ -754,13 +772,16 @@ function SoundSection(props: {
           {props.settingsDetails ? 'Hide details' : 'Details'}
         </button>
       ) : null}
-      <ul className={styles.chips} aria-label="Hearing tags">
-        {props.live.map((item) => (
-          <li key={item.id} data-tag={item.id} title={item.detail}>
-            {item.label}
-          </li>
-        ))}
-      </ul>
+      <div className={styles.tagBar}>
+        <ul className={styles.chips} aria-label="Hearing tags">
+          {props.live.map((item) => (
+            <li key={`${item.id}:${item.label}`} data-tag={item.id} title={item.detail}>
+              {item.label}
+            </li>
+          ))}
+        </ul>
+        <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
+      </div>
       {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} pitch={props.snap.params.pitch} /> : null}
       {props.showDetails && analysis ? (
         <AfterEqChart
@@ -783,6 +804,7 @@ function SoundSection(props: {
             duration={analysis?.durationSec ?? 0}
             transients={transientMarkers(props.hearing.events, analysis?.dynamics)}
             onTransient={showTransientOnWave}
+            space={room}
           />
         </>
       ) : null}
@@ -927,7 +949,7 @@ function SpaceSection({
       <div className={styles.sectionTitle}>
         <h3>Space</h3>
         <InfoTip label="More about space">
-          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size draws a smaller head in a bigger room. The source moves to the front wall with reverb distance. Wet draws the reflections and does not move the source. The right edge shows that room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
+          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size draws a smaller head. The source moves to the front wall with reverb distance. Wet does not move the source. When wet is above zero, the sound map smears forward and the field draws a short tail under each mark. The right edge shows the room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
         </InfoTip>
       </div>
       <div className={styles.spaceStack}>

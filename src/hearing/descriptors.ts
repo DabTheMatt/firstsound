@@ -6,6 +6,7 @@
 
 import type { BufferAnalysis } from './analyze'
 import type { HearingBandId } from './bands'
+import { spectralTones } from './tones'
 
 /** Enter when this fraction of spectral power is below 250 Hz. */
 export const BASS_HEAVY_ON = 0.38
@@ -55,6 +56,7 @@ export type DescriptorId =
   | 'near-full-scale'
   | 'dc-offset'
   | 'dominant'
+  | 'tone'
 
 export type Descriptor = {
   id: DescriptorId
@@ -125,7 +127,12 @@ function exclusiveHold(
   return hold(memory, id, want, nowMs)
 }
 
-export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMemory, nowMs: number): Descriptor[] {
+export function updateDescriptors(
+  analysis: BufferAnalysis,
+  memory: DescriptorMemory,
+  nowMs: number,
+  toneSensitivity = 0.5,
+): Descriptor[] {
   if (analysis.silent) {
     hold(memory, 'silence', true, nowMs)
     for (const id of [
@@ -285,13 +292,12 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
   ]
 
   const out = flags.filter((flag) => flag.on).map(({ id, label, detail }) => ({ id, label, detail }))
-  if (analysis.dominantHz && analysis.dominantNote) {
+  const tones = spectralTones(analysis.spectrumDb, analysis.sampleRate, analysis.fftSize, toneSensitivity)
+  for (const tone of tones) {
     out.push({
-      id: 'dominant',
-      label: `DOMINANT ${Math.round(analysis.dominantHz)} Hz · ${analysis.dominantNote}`,
-      detail: analysis.peakProminenceDb !== null
-        ? `Strongest partial is ${Math.round(analysis.dominantHz)} Hz, ${analysis.peakProminenceDb.toFixed(1)} dB above the median bin.`
-        : `Strongest partial is ${Math.round(analysis.dominantHz)} Hz.`,
+      id: 'tone',
+      label: `${tone.note} · ${Math.round(tone.hz)} Hz`,
+      detail: `${tone.note} at ${Math.round(tone.hz)} Hz, ${tone.db.toFixed(1)} dB. Louder partials are listed first.`,
     })
   }
   return out
