@@ -27,6 +27,8 @@ describe('focus workspace', () => {
     expect(focusHas('auto', 'segmentInterpolation')).toBe(true)
     expect(focusHas('auto', 'fadeOut')).toBe(false)
     expect(focusHas('fft', 'minimalAnalyzerControls')).toBe(true)
+    expect(focusHas('hearing', 'liveReadout')).toBe(true)
+    expect(focusHas('hearing', 'editActions')).toBe(false)
     expect(focusHas('eq', 'editActions')).toBe(false)
   })
 

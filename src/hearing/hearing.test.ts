@@ -7,6 +7,7 @@ import { analyzePcm, stereoMetrics } from './analyze'
 import { mixingFindings } from './assistant'
 import { HEARING_BANDS } from './bands'
 import { eqCompare, gainCompare, stereoCompare } from './compare'
+import { afterShares } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
 import { detectEvents } from './events'
@@ -172,6 +173,9 @@ describe('hearing access analysis', () => {
     const rows = eqBandDeltas(analysis, [band], RATE)
     const mid = rows.find((item) => item.id === 'mid')
     expect(mid?.deltaDb ?? 0).toBeGreaterThan(3)
+    const shares = afterShares(analysis, rows)
+    const midIndex = rows.findIndex((item) => item.id === 'mid')
+    expect(shares[midIndex] ?? 0).toBeGreaterThan(analysis.bands[midIndex]?.share ?? 1)
     const region = affectedRegion(band, RATE)
     expect(region).not.toBeNull()
     expect(region!.lo).toBeLessThan(1000)

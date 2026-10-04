@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { getHearingReveal, subscribeHearingReveal, type HearingReveal } from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
 
@@ -87,5 +88,48 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
         color: 'var(--text-primary)',
       }}
     />
+  )
+}
+
+/** Frames the span a Show action asked for. Does not take pointer events. */
+export function HearingRevealMark({ viewStart, viewEnd }: Props) {
+  const [reveal, setReveal] = useState<HearingReveal | null>(() => getHearingReveal())
+  useEffect(() => subscribeHearingReveal(() => setReveal(getHearingReveal())), [])
+  if (!reveal) return null
+  const span = Math.max(0.0001, viewEnd - viewStart)
+  const left = ((reveal.start - viewStart) / span) * 100
+  const width = Math.max(0.8, ((reveal.end - reveal.start) / span) * 100)
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 8,
+        bottom: 28,
+        left: `${left}%`,
+        width: `${width}%`,
+        border: '1px solid var(--text-primary)',
+        background: 'color-mix(in srgb, var(--text-primary) 12%, transparent)',
+        pointerEvents: 'none',
+        zIndex: 5,
+        overflow: 'hidden',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 4,
+          left: 4,
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--text-primary)',
+          background: 'var(--bg-panel)',
+          padding: '1px 4px',
+        }}
+      >
+        {reveal.label}
+      </span>
+    </div>
   )
 }

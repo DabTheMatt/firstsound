@@ -20,7 +20,11 @@ import {
 import { emptyDescriptorMemory, simpleSummary, updateDescriptors, type Descriptor } from './descriptors'
 import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
+import { AfterEqChart } from './AfterEqChart'
 import { SoundMap } from './SoundMap'
+import { SpaceField } from './SpaceField'
+import { revealHearingSpan } from './reveal'
+import type { HearingBandId } from './bands'
 import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
 import { HEARING_SECTIONS, clampPanelSize, type HearingSection } from './settings'
@@ -417,7 +421,7 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
               />
             ) : null}
             {settings.section === 'events' ? <EventsSection hearing={hearing} /> : null}
-            {settings.section === 'space' ? <SpaceSection analysis={analysis} /> : null}
+            {settings.section === 'space' ? <SpaceSection analysis={analysis} playhead={hearing.playhead} /> : null}
             {settings.section === 'dynamics' ? <DynamicsSection analysis={analysis} /> : null}
             {settings.section === 'compare' ? <CompareSection analysis={analysis} snap={snap} /> : null}
             {settings.section === 'haptics' ? (
@@ -547,6 +551,14 @@ function SoundSection(props: {
         </ul>
       ) : null}
       {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} /> : null}
+      {props.showDetails && analysis ? (
+        <AfterEqChart
+          analysis={analysis}
+          bands={props.snap.eqBands}
+          sampleRate={props.snap.sampleRate}
+          engaged={props.snap.chain.some((mod) => mod.type === 'eq' && !mod.bypassed)}
+        />
+      ) : null}
       {props.showDetails && props.showMap ? (
         <SoundMap
           columns={analysis?.soundMap ?? null}
@@ -575,7 +587,7 @@ function SoundSection(props: {
           Automation {PARAMS[autoId]?.label ?? autoId}: stored {stored.toFixed(2)} · effective {liveValue.toFixed(2)}
         </p>
       ) : null}
-      {props.showDetails && props.showAssistant ? <Assistant findings={props.hearing.findings} /> : null}
+      {props.showDetails && props.showAssistant ? <Assistant findings={props.hearing.findings} analysis={analysis} /> : null}
     </div>
   )
 }
@@ -583,7 +595,8 @@ function SoundSection(props: {
 function Fingerprint({ analysis }: { analysis: BufferAnalysis }) {
   return (
     <div>
-      <h3>Sound fingerprint</h3>
+      <h3>Original fingerprint</h3>
+      <p className={styles.help}>This is the sample or selection before effects. EQ and other modules are not baked into these numbers.</p>
       <ul className={styles.bands}>
         {analysis.bands.map((band) => (
           <li key={band.id} data-hatch={band.hatch}>
@@ -644,7 +657,7 @@ function EventsSection({ hearing }: { hearing: HearingView }) {
   )
 }
 
-function SpaceSection({ analysis }: { analysis: BufferAnalysis | null }) {
+function SpaceSection({ analysis, playhead }: { analysis: BufferAnalysis | null; playhead: number | null }) {
   if (!analysis?.stereo) {
     return (
       <div>
@@ -657,8 +670,9 @@ function SpaceSection({ analysis }: { analysis: BufferAnalysis | null }) {
   return (
     <div>
       <p className={styles.help}>
-        Same scope as Sound. The meter is left to right. Low correlation is a mono-compatibility note, not a judgment of the mix.
+        Time runs left to right. Left is the top edge, right is the bottom. A longer mark is wider. A hollow mark has low correlation. This is the original sample, before effects.
       </p>
+      <SpaceField buckets={analysis.spaceTimeline} playhead={playhead} origin={analysis.originSec} duration={analysis.durationSec} />
       <p className={styles.meter} aria-label={`Balance ${stereo.balanceSide} ${Math.round(stereo.balancePct)} percent`}>
         {balanceMeter(stereo.balance)}
       </p>
@@ -827,24 +841,47 @@ function ReverbSketch({ snap }: { snap: ReturnType<typeof useEngine> }) {
   )
 }
 
-function Assistant({ findings }: { findings: HearingView['findings'] }) {
+function bandsForFinding(id: string): HearingBandId[] {
+  if (id === 'high-low-energy') return ['sub', 'bass']
+  return []
+}
+
+function Assistant({ findings, analysis }: { findings: HearingView['findings']; analysis: BufferAnalysis | null }) {
+  const [shown, setShown] = useState<string | null>(null)
   if (findings.length === 0) return <p>No technical findings in this scope.</p>
   return (
     <div>
       <h3>Visual mixing assistant</h3>
+      <p className={styles.help}>Show frames that span on the waveform and moves the playhead. It does not change the audio.</p>
       <ul className={styles.events}>
         {findings.map((finding) => (
-          <li key={finding.id}>
+          <li key={finding.id} className={styles.finding}>
             <strong>{finding.title}</strong>
             <span>{finding.detail}</span>
-            {finding.time !== null ? (
-              <button type="button" onClick={() => engine.seekSeconds(finding.time ?? 0, 'sample')}>
-                Show
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const start = finding.time ?? analysis?.originSec ?? 0
+                const fallbackEnd = analysis ? analysis.originSec + Math.max(analysis.durationSec, 0.05) : start + 0.2
+                const end = Math.max(finding.end ?? fallbackEnd, start + 0.05)
+                engine.seekSeconds(start, 'sample')
+                revealHearingSpan({
+                  id: finding.id,
+                  start,
+                  end,
+                  label: finding.title,
+                  bands: bandsForFinding(finding.id),
+                })
+                setShown(finding.id)
+                announce(`Showing ${finding.title} at ${formatTimecode(start)}.`)
+              }}
+            >
+              Show
+            </button>
           </li>
         ))}
       </ul>
+      {shown ? <p className={styles.note}>The waveform is framed on that span. The outline is the region. Audio is unchanged.</p> : null}
     </div>
   )
 }

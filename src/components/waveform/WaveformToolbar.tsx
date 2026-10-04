@@ -37,6 +37,8 @@ type Props = {
   normalizeView: boolean
   minimal?: boolean
   onToggleWorkspace?: () => void
+  hearingFocus?: boolean
+  onHearingFocus?: () => void
   arrangement?: 'single' | 'multi'
   onArrangement?: (arrangement: 'single' | 'multi') => void
 }
@@ -133,6 +135,8 @@ export function WaveformToolbar({
   normalizeView,
   minimal = false,
   onToggleWorkspace,
+  hearingFocus = false,
+  onHearingFocus,
   arrangement = 'single',
   onArrangement,
 }: Props) {
@@ -393,6 +397,16 @@ export function WaveformToolbar({
         >
           <AutomationIcon />
         </IconButton>
+        {onHearingFocus ? (
+          <IconButton
+            label="Hearing Access focus"
+            caption={t.focus.hearing}
+            pressed={hearingFocus}
+            onClick={onHearingFocus}
+          >
+            <HearingFocusIcon />
+          </IconButton>
+        ) : null}
         {onToggleWorkspace ? (
           <IconButton label={t.focus.enter} caption={t.focus.caption} onClick={onToggleWorkspace}>
             <FocusIcon />
@@ -401,6 +415,16 @@ export function WaveformToolbar({
         </div>
       </div>
     </div>
+  )
+}
+
+function HearingFocusIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="M5.2 8.2a2.8 2.8 0 0 1 5.6 0c0 1.7-1.6 2-1.6 3.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8 12.2v.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M2.2 13.2V8.2M3.8 13.2V6.2M5.4 13.2V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
   )
 }
 

@@ -23,6 +23,7 @@ import { setRandomHistoryRunner } from '../audio/random/historyBridge'
 import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
+import { layersForProfile, persistHearingSettings, readStoredHearingSettings } from '../hearing/settings'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
@@ -694,6 +695,25 @@ export default function App() {
     setFocusWorkspace(focusWorkspaceForViz(shown))
   }
 
+  const enterHearingFocus = () => {
+    setMenuOpen(false)
+    setLfoCenterOpen(false)
+    if (focusWorkspace === 'hearing') {
+      setFocusWorkspace(null)
+      return
+    }
+    const current = readStoredHearingSettings()
+    persistHearingSettings({
+      ...current,
+      enabled: true,
+      panelOpen: false,
+      profile: current.enabled ? current.profile : 'visual',
+      layers: current.enabled ? current.layers : layersForProfile('visual'),
+    })
+    setInspectorOpen(false)
+    setFocusWorkspace('hearing')
+  }
+
   const focusViz = (next: VizMode) => {
     if (next === 'eq-split') {
       const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
@@ -1267,6 +1287,8 @@ export default function App() {
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
           onToggleWorkspace={enterFocus}
+          hearingFocus={activeFocus === 'hearing'}
+          onHearingFocus={enterHearingFocus}
           arrangement={arrangement}
           onArrangement={setArrangement}
         />
@@ -1291,6 +1313,7 @@ export default function App() {
                 onAddNode={() => waveRef.current?.addAutomationNode()}
                 onDeleteNode={() => waveRef.current?.deleteAutomationNode()}
                 onViz={isPhoneLayout ? undefined : focusViz}
+                onHearing={enterHearingFocus}
                 touch={isPhoneLayout}
                 edit={{
                   canCopy: snap.canCopySelection,

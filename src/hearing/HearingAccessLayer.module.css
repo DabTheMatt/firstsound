@@ -239,6 +239,25 @@
   display: block;
 }
 
+.finding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.finding strong,
+.finding span {
+  min-width: 0;
+}
+
+.finding button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
 .eventRow {
   display: grid;
   grid-template-columns: 6.4rem minmax(0, 1fr);

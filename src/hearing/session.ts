@@ -11,6 +11,7 @@ import { mixingFindings, type MixingFinding } from './assistant'
 import { analysisCacheKey } from './cache'
 import { detectEvents, filterEvents, type HearingEvent } from './events'
 import type { HearingAccessSettings } from './settings'
+import { hearingMapDemand, subscribeHearingMapDemand } from './reveal'
 import { hearingRuntimeStats, setHearingClockDemand, subscribeHearingClock } from './scheduler'
 
 export type HearingView = {
@@ -54,6 +55,8 @@ function sliceOf(data: Float32Array, start: number, end: number): Float32Array {
 }
 
 export function useHearingAnalysis(settings: HearingAccessSettings, snap: EngineSnapshot): void {
+  const [mapDemand, setMapDemand] = useState(hearingMapDemand)
+  useEffect(() => subscribeHearingMapDemand(() => setMapDemand(hearingMapDemand())), [])
   const active =
     settings.enabled &&
     (settings.panelOpen ||
@@ -84,7 +87,7 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
       const scope = resolveScope(duration, regionStart, regionEnd, false)
       const startFrame = scope === 'full' ? 0 : Math.floor(regionStart * rate)
       const endFrame = scope === 'full' ? left.length : Math.max(startFrame + 1, Math.floor(regionEnd * rate))
-      const soundMap = settings.panelOpen && settings.layers.soundMap && settings.section === 'sound'
+      const soundMap = settings.layers.soundMap && (mapDemand || (settings.panelOpen && settings.section === 'sound'))
       const key = analysisCacheKey({
         bufferRev: snap.bufferRev,
         sampleRate: rate,
@@ -183,6 +186,7 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
     settings.layers.soundMap,
     settings.layers.assistant,
     settings.eventFilters,
+    mapDemand,
   ])
 
   useEffect(() => {

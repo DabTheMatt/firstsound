@@ -174,6 +174,7 @@ export type Messages = {
     auto: string
     wave: string
     fft: string
+    hearing: string
     more: string
     fadeMs: (label: string, ms: number) => string
     filters: string
@@ -877,6 +878,7 @@ export const EN: Messages = {
     auto: 'Auto',
     wave: 'Wave',
     fft: 'FFT',
+    hearing: 'Hearing',
     more: 'More edit actions',
     fadeMs: (label, ms) => `${label}  ${ms} ms`,
     filters: 'Filters',
@@ -1684,6 +1686,7 @@ export const PL: Messages = {
     auto: 'Auto',
     wave: 'Fala',
     fft: 'FFT',
+    hearing: 'Słuch',
     more: 'Więcej edycji',
     fadeMs: (label, ms) => `${label}  ${ms} ms`,
     filters: 'Filtry',

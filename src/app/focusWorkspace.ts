@@ -29,6 +29,7 @@ const CAPABILITIES: Record<FocusWorkspace, readonly FocusCapability[]> = {
   wave: ['selection', 'editActions', 'fadeIn', 'fadeOut', 'undoRedo'],
   auto: ['laneSelect', 'addParameter', 'addNode', 'deleteNode', 'segmentInterpolation'],
   fft: ['minimalAnalyzerControls'],
+  hearing: ['liveReadout'],
 }
 
 export function focusCapabilities(workspace: FocusWorkspace): readonly FocusCapability[] {

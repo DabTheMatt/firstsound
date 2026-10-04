@@ -71,6 +71,7 @@ type Props = {
   onDeleteNode: () => void
   /** Desktop can switch the focused task without leaving Focus Mode. */
   onViz?: (viz: VizMode) => void
+  onHearing?: () => void
   /** Phone uses the shared touch modulation sheet. Desktop uses the shared popover. */
   touch?: boolean
 }
@@ -89,13 +90,14 @@ export function FocusChrome({
   onAddNode,
   onDeleteNode,
   onViz,
+  onHearing,
   touch = false,
 }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const track = snap.tracks.find((item) => item.id === snap.selectedTrackId)
   const title =
-    workspace === 'eq' ? t.focus.eq : workspace === 'auto' ? t.focus.auto : workspace === 'fft' ? t.focus.fft : t.focus.wave
+    workspace === 'eq' ? t.focus.eq : workspace === 'auto' ? t.focus.auto : workspace === 'fft' ? t.focus.fft : workspace === 'hearing' ? t.focus.hearing : t.focus.wave
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -112,7 +114,7 @@ export function FocusChrome({
     <div className={styles.chrome} data-focus-chrome={workspace}>
       <div className={styles.top}>
         <div className={styles.identity} data-focus-zone="identity" data-focus-track={track?.id}>
-          {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} /> : <span className={styles.title}>{title}</span>}
+          {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} onHearing={onHearing} /> : <span className={styles.title}>{title}</span>}
           {track ? (
             <span className={styles.trackCue} style={{ color: trackColorVar(track.color) }}>
               {track.name}
@@ -162,13 +164,22 @@ export function FocusChrome({
   )
 }
 
-function WorkspaceSwitch({ workspace, onViz }: { workspace: FocusWorkspace; onViz: (viz: VizMode) => void }) {
+function WorkspaceSwitch({
+  workspace,
+  onViz,
+  onHearing,
+}: {
+  workspace: FocusWorkspace
+  onViz: (viz: VizMode) => void
+  onHearing?: () => void
+}) {
   const { t } = useI18n()
-  const items: { id: FocusWorkspace; viz: VizMode; label: string }[] = [
+  const items: { id: FocusWorkspace; viz: VizMode | null; label: string }[] = [
     { id: 'wave', viz: 'waveform', label: t.focus.wave },
     { id: 'eq', viz: 'eq-split', label: t.focus.eq },
     { id: 'fft', viz: 'spectrum', label: t.focus.fft },
     { id: 'auto', viz: 'automation', label: t.focus.auto },
+    { id: 'hearing', viz: null, label: t.focus.hearing },
   ]
   return (
     <div className={styles.switcher} role="tablist" aria-label={t.waveform.viewGroup}>
@@ -179,7 +190,10 @@ function WorkspaceSwitch({ workspace, onViz }: { workspace: FocusWorkspace; onVi
           role="tab"
           className={styles.switch}
           aria-selected={workspace === item.id}
-          onClick={() => onViz(item.viz)}
+          onClick={() => {
+            if (item.id === 'hearing') onHearing?.()
+            else if (item.viz) onViz(item.viz)
+          }}
         >
           {item.label}
         </button>

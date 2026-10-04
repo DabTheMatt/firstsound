@@ -49,7 +49,7 @@ export function phoneDisplayViz(viz: VizMode): VizMode {
  * not effect-enabled, playback, or DSP state. Specialized effect editors can
  * extend the union later; EQ, wave, and automation are the first workspaces.
  */
-export type FocusWorkspace = PhoneViz | 'fft'
+export type FocusWorkspace = PhoneViz | 'fft' | 'hearing'
 
 export function focusWorkspaceForViz(viz: VizMode): FocusWorkspace {
   if (viz === 'automation') return 'auto'

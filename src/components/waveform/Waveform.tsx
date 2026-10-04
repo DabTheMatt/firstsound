@@ -43,7 +43,9 @@ import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { formatAutomationNodeValue } from './automationValue'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
-import { HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { HearingFocusStage } from '../../hearing/HearingFocusStage'
+import { HearingRevealMark, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
 import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
@@ -392,6 +394,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     handlePx.current = simple || window.matchMedia('(pointer: coarse)').matches ? 44 : 22
   }, [simple])
+
+  useEffect(() => {
+    return subscribeHearingReveal(() => {
+      const reveal = getHearingReveal()
+      if (!reveal || duration <= 0) return
+      const pad = Math.max(0.08, (reveal.end - reveal.start) * 0.08)
+      const nextStart = Math.max(0, reveal.start - pad)
+      const nextEnd = Math.min(duration, Math.max(nextStart + 0.05, reveal.end + pad))
+      setView({ start: nextStart, end: nextEnd })
+    })
+  }, [duration, setView])
 
   useImperativeHandle(ref, () => ({
     fitSample: () => setView(fitView(duration)),
@@ -1216,7 +1229,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     deleteAutomationNodeRef.current = deleteSelectedAutomationNode
     applyFadeRef.current = applyDefaultFade
   })
-  const showWave = phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
+  const hearingFocus = phoneFocus === 'hearing'
+  const showWave = hearingFocus || phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
   const automationLanes = automationView ? automatedLanes(snap.automation) : []
   const automationLane = automationLanes.find((lane) => lane.paramId === snap.automation.selectedParamId) ?? null
@@ -1270,6 +1284,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     !showArrangement &&
     !phoneEq &&
     phoneFocus !== 'wave' &&
+    !hearingFocus &&
     (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
   const eqFocus = phoneFocus === 'eq'
   const eqFocusClean = phoneEq || eqFocus
@@ -1291,7 +1306,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
           onKeyDown={onEditorKeyDown}
-          style={viz === 'split' ? { flex: waveShare } : undefined}
+          style={hearingFocus ? { flex: '0 0 34%' } : viz === 'split' ? { flex: waveShare } : undefined}
         >
           {automationView ? (
             <div className={styles.autoBar}>
@@ -1328,6 +1343,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
             <HearingWaveOverlay viewStart={view.start} viewEnd={view.end} />
+            <HearingRevealMark viewStart={view.start} viewEnd={view.end} />
             {spectralBandsEnabled && snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">
                 {snap.spectral.bands.map((band) => (
@@ -1703,6 +1719,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             />
           </div>
         ) : null}
+        {hearingFocus ? <HearingFocusStage /> : null}
         {phoneEq ? (
           <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} phoneFocus={phoneFocus === 'eq'} />
         ) : null}
