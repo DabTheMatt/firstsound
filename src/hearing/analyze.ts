@@ -431,7 +431,9 @@ function soundMap(span: PcmSpan, columns: number, scratch: SpectrumFftScratch): 
       const band = bandForHz(hz)
       if (!band) continue
       const index = HEARING_BANDS.findIndex((item) => item.id === band.id)
-      if (index >= 0) power[index] = (power[index] ?? 0) + dbfsToPower(bins[i] ?? DB_FLOOR)
+      if (index < 0) continue
+      const bin = dbfsToPower(bins[i] ?? DB_FLOOR)
+      if (bin > (power[index] ?? 0)) power[index] = bin
     }
     out.push({ time: span.originSec + (from - start) / span.sampleRate, power })
   }

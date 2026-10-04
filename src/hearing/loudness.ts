@@ -16,6 +16,15 @@ export const LOUDNESS_ZONE_LABEL: Record<LoudnessZone, string> = {
 /** Labeled ticks from the floor up to full scale. */
 export const LOUDNESS_TICKS = [-60, -40, -24, -12, -6, 0] as const
 
+/**
+ * The rail's word follows the output while audio plays.
+ * A stopped transport is silence, even when the file's peak is hot.
+ */
+export function liveMeterZone(playing: boolean, liveDb: number | null, liveClip = false): LoudnessZone {
+  if (!playing || liveDb === null || !Number.isFinite(liveDb)) return 'silent'
+  return loudnessZone(liveDb, liveClip)
+}
+
 export function loudnessZone(db: number | null, clipped = false): LoudnessZone {
   if (clipped) return 'clipping'
   if (db === null || !Number.isFinite(db) || db <= LOUDNESS_FLOOR_DB) return 'silent'

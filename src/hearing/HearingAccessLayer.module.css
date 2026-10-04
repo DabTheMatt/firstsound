@@ -656,18 +656,29 @@
 
 .focusFacts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  width: fit-content;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 18px;
+  width: max-content;
   max-width: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 .focusFacts div {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: max-content 4.6rem;
+  column-gap: 6px;
+  align-items: baseline;
+  flex: 0 0 auto;
   padding: 0;
   border-bottom: 0;
+}
+
+.focusFacts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .loudnessRail {
@@ -675,11 +686,11 @@
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  width: 168px;
+  width: 112px;
   flex: none;
   min-height: 0;
-  margin: 8px 8px 8px 0;
-  padding: 8px 8px 10px;
+  margin: 8px 8px 8px 12px;
+  padding: 6px 6px 8px;
   border: 1px solid var(--border-default);
   border-radius: 10px;
   background: var(--bg-panel);
@@ -719,8 +730,8 @@
 
 .loudnessBody {
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 4px;
   flex: 1 1 auto;
   min-height: 180px;
 }
@@ -733,8 +744,8 @@
   position: absolute;
   right: 0;
   transform: translateY(50%);
-  font-size: 9px;
-  letter-spacing: 0.04em;
+  font-size: 8px;
+  letter-spacing: 0.02em;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -792,6 +803,65 @@
 
 .loudnessRail[data-zone='clipping'] .loudnessFill {
   background: var(--playhead);
+}
+
+.waveLegend {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  margin: 0;
+  padding: 0 8px;
+  overflow-x: auto;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.waveLegend span {
+  flex: none;
+}
+
+.waveLegendTransient {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.waveLegendTransient::before {
+  content: '';
+  width: 1px;
+  height: 12px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--transient, var(--spectrum-line)) 0 2px,
+    transparent 2px 4px
+  );
+}
+
+.waveLegend button {
+  flex: none;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.waveLegend button[aria-pressed='true'] {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .focusSpace {

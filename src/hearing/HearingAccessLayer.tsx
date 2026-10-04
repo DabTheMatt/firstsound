@@ -35,6 +35,8 @@ import { useHearingSettings } from './useHearingSettings'
 import { HEARING_SECTIONS, HAPTIC_INTENSITIES, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection, type HapticIntensity } from './settings'
 import { balanceLabel, nearestSpaceBucket } from './spaceLive'
 import { useHeardSpace } from './useHeardSpace'
+import { useReverbSpace } from './useImageDepth'
+import { distanceWord, roomWord } from './reverbDepth'
 import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
@@ -905,6 +907,7 @@ function SpaceSection({
   playhead: number | null
 }) {
   const buckets = useHeardSpace(analysis)
+  const room = useReverbSpace()
   if (!analysis) {
     return (
       <div>
@@ -924,16 +927,17 @@ function SpaceSection({
       <div className={styles.sectionTitle}>
         <h3>Space</h3>
         <InfoTip label="More about space">
-          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side width, balance, and Haas, and delay, including a delay that replaces one channel. Time runs from top to bottom.
+          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size draws a smaller head in a bigger room. The source moves to the front wall with reverb distance. Wet draws the reflections and does not move the source. The right edge shows that room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
         </InfoTip>
       </div>
       <div className={styles.spaceStack}>
-        <HeadSpace balance={heard} width={live?.width ?? 0} correlation={live?.correlation ?? 1} />
+        <HeadSpace balance={heard} width={live?.width ?? 0} correlation={live?.correlation ?? 1} space={room} />
         <SpaceField
           buckets={buckets}
           playhead={playhead}
           origin={analysis.originSec}
           duration={analysis.durationSec}
+          space={room}
         />
       </div>
       {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it.</p> : null}
@@ -945,6 +949,8 @@ function SpaceSection({
         <div><dt>Sample balance</dt><dd>{stereo ? balanceLabel(stereo.balance) : 'CENTER'}</dd></div>
         <div><dt>Width</dt><dd>{live ? `${Math.round(live.width * 100)}%` : '0%'}</dd></div>
         <div><dt>Correlation</dt><dd>{live ? live.correlation.toFixed(2) : '—'}</dd></div>
+        <div><dt>Room</dt><dd>{room.engaged ? roomWord(room.size) : '—'}</dd></div>
+        <div><dt>Distance</dt><dd>{room.engaged ? distanceWord(room.distance) : '—'}</dd></div>
         <div><dt>Mid</dt><dd>{stereo ? `${Math.round(stereo.midShare * 100)}%` : '—'}</dd></div>
         <div><dt>Side</dt><dd>{stereo ? `${Math.round(stereo.sideShare * 100)}%` : '—'}</dd></div>
       </dl>

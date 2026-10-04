@@ -22,6 +22,16 @@ export function powerToDbfs(power: number): number | null {
   return 10 * Math.log10(power)
 }
 
+/** Fixed window for the sound-map cells. Each cell is the loudest bin in that band, so a high tone is not averaged away by empty bins, and it stays visible beside a louder bass band. */
+export const SOUND_MAP_FLOOR_DB = -48
+
+/** 0 at the floor, 1 at 0 dBFS. Silence is 0. */
+export function soundMapLevel(meanPower: number): number {
+  const db = powerToDbfs(meanPower)
+  if (db === null || db <= SOUND_MAP_FLOOR_DB) return 0
+  return Math.min(1, (db - SOUND_MAP_FLOOR_DB) / -SOUND_MAP_FLOOR_DB)
+}
+
 export function formatDb(db: number | null, digits = 1): string {
   if (db === null || !Number.isFinite(db)) return '—'
   const rounded = Number(db.toFixed(digits))

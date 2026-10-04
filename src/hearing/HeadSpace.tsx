@@ -1,21 +1,26 @@
 import { useEffect, useRef } from 'react'
 import styles from './HearingAccessLayer.module.css'
+import { distanceWord, headLayout, roomWord, type ReverbSpacePicture } from './reverbDepth'
 import { useElementBox } from './useElementBox'
+
+const DRY: ReverbSpacePicture = { engaged: false, size: 0, distance: 0, wet: 0, decay: 0 }
 
 type Props = {
   balance: number
   width: number
   correlation: number
+  /** Room size, source distance, wet mix, and tail length. */
+  space?: ReverbSpacePicture
   /** Stretch into the leftover focus area. */
   fill?: boolean
 }
 
 /**
  * Listener's head, seen from above. Front is the top of the picture.
- * The marker is the heard image at the playhead.
- * Spread follows stereo width. A hollow marker is low correlation.
+ * A larger room draws a smaller head. The source sits in front of the head
+ * and moves to the front wall with reverb distance. Wet draws the reflections.
  */
-export function HeadSpace({ balance, width, correlation, fill = false }: Props) {
+export function HeadSpace({ balance, width, correlation, space = DRY, fill = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
   const box = useElementBox(ref)
 
@@ -38,12 +43,23 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
     const panel = stylesCss.backgroundColor || '#111'
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, widthPx, heightPx)
-    const size = Math.max(48, Math.min(widthPx, heightPx))
-    const ox = (widthPx - size) / 2
-    const oy = (heightPx - size) / 2
-    const cx = ox + size / 2
-    const cy = oy + size * 0.56
-    const head = size * 0.22
+    const layout = headLayout(widthPx, heightPx, balance, space.size, space.distance)
+    const { headRadius: head, headX: cx, headY: cy, sourceX: x, sourceY: y } = layout
+    if (space.engaged) {
+      ctx.globalAlpha = 0.35 + space.wet * 0.5
+      ctx.strokeStyle = ink
+      ctx.lineWidth = 1
+      ctx.strokeRect(layout.roomX, layout.roomY, layout.roomW, layout.roomH)
+      const echoes = space.wet > 0.02 ? 2 + Math.round(space.decay * 6) : 0
+      for (let i = 0; i < echoes; i++) {
+        const t = (i + 1) / (echoes + 1)
+        const ey = layout.roomY + 10 + t * (layout.roomH - 20)
+        ctx.globalAlpha = space.wet * (0.55 - t * 0.4)
+        ctx.fillStyle = muted
+        ctx.fillRect(layout.roomX + 5, ey, 3, 3)
+        ctx.fillRect(layout.roomX + layout.roomW - 8, ey, 3, 3)
+      }
+    }
     ctx.strokeStyle = ink
     ctx.fillStyle = ink
     ctx.lineWidth = 1.5
@@ -61,12 +77,10 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
     ctx.font = '10px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('front', cx, oy + 12)
+    ctx.fillText('front', cx, layout.roomY + 11)
     ctx.fillText('L', cx - head * 1.35, cy)
     ctx.fillText('R', cx + head * 1.35, cy)
-    const x = cx + Math.max(-1, Math.min(1, balance)) * head * 1.15
-    const y = cy - head * 1.35
-    const spread = Math.max(6, Math.min(size * 0.7, 8 + width * head * 2.2))
+    const spread = Math.max(6, Math.min(layout.roomW * 0.7, 8 + width * head * 2.2))
     const low = correlation < 0.2
     ctx.globalAlpha = 1
     ctx.strokeStyle = low ? warning : accent
@@ -80,25 +94,27 @@ export function HeadSpace({ balance, width, correlation, fill = false }: Props) 
       ctx.lineTo(x + spread / 2, y)
       ctx.stroke()
       ctx.beginPath()
-      ctx.arc(x, y, 4, 0, Math.PI * 2)
+      ctx.arc(x, y, 3.2, 0, Math.PI * 2)
       ctx.fill()
     }
-    ctx.globalAlpha = 0.55
+    ctx.globalAlpha = 0.45
     ctx.strokeStyle = muted
     ctx.beginPath()
-    ctx.moveTo(cx, cy - head * 0.2)
+    ctx.moveTo(cx, cy - head)
     ctx.lineTo(x, y)
     ctx.stroke()
     ctx.globalAlpha = 1
-  }, [balance, width, correlation, box.width, box.height])
+  }, [balance, width, correlation, space.engaged, space.size, space.distance, space.wet, space.decay, box.width, box.height])
 
   const side = Math.abs(balance) < 0.03 ? 'center' : balance < 0 ? 'left' : 'right'
+  const room = space.engaged ? roomWord(space.size) : 'none'
+  const distance = space.engaged ? distanceWord(space.distance) : 'close'
   return (
     <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
       <canvas
         ref={ref}
         role="img"
-        aria-label={`Head view. Heard image is ${side}. Front is up.`}
+        aria-label={`Head view. Room is ${room}. Source is ${distance} and ${side}, in front of the head. Front is up. A larger room draws a smaller head. Distance follows reverb distance. Wet draws the reflections.`}
         style={
           fill
             ? undefined
