@@ -51,3 +51,19 @@ export function subscribeHearingMapDemand(listener: () => void): () => void {
   mapListeners.add(listener)
   return () => mapListeners.delete(listener)
 }
+
+export type WaveZoomCommand = 'fit' | 'in' | 'out'
+
+let waveZoom: ((command: WaveZoomCommand) => void) | null = null
+
+/** Ask the waveform to fit or step its zoom. Hearing focus uses this so the short wave stays reachable. */
+export function requestWaveZoom(command: WaveZoomCommand): void {
+  waveZoom?.(command)
+}
+
+export function bindWaveZoom(fn: (command: WaveZoomCommand) => void): () => void {
+  waveZoom = fn
+  return () => {
+    if (waveZoom === fn) waveZoom = null
+  }
+}

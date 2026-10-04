@@ -1,25 +1,30 @@
 import { useEffect, useRef } from 'react'
 import type { SpaceBucket } from './analyze'
+import { applyPanToBalance } from './effectViz'
 
 type Props = {
   buckets: SpaceBucket[]
   playhead: number | null
   origin: number
   duration: number
+  panPct?: number
+  leftDb?: number
+  rightDb?: number
 }
 
 /**
- * Time runs left to right. Left is the top edge, right is the bottom edge.
+ * Time runs top to bottom. Left is the left edge, right is the right edge.
  * Mark length is stereo width. A hollow mark is low correlation.
+ * Pan and channel gain move each mark with the output stage.
  */
-export function SpaceField({ buckets, playhead, origin, duration }: Props) {
+export function SpaceField({ buckets, playhead, origin, duration, panPct = 0, leftDb = 0, rightDb = 0 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
     const width = canvas.clientWidth || 280
-    const height = canvas.clientHeight || 140
+    const height = canvas.clientHeight || 180
     const ratio = Math.min(2, window.devicePixelRatio || 1)
     canvas.width = Math.floor(width * ratio)
     canvas.height = Math.floor(height * ratio)
@@ -31,34 +36,43 @@ export function SpaceField({ buckets, playhead, origin, duration }: Props) {
     const panel = styles.backgroundColor || '#111'
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, width, height)
-    const gutter = 28
-    const plotW = Math.max(1, width - gutter - 8)
-    const plotH = height - 16
+    const padX = 16
+    const padTop = 8
+    const padBottom = 18
+    const plotW = Math.max(1, width - padX * 2)
+    const plotH = Math.max(1, height - padTop - padBottom)
     ctx.font = '10px sans-serif'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = ink
     ctx.globalAlpha = 0.75
-    ctx.fillText('L', 6, 10)
-    ctx.fillText('C', 6, height / 2)
-    ctx.fillText('R', 6, height - 10)
+    ctx.textAlign = 'left'
+    ctx.fillText('L', 4, height - 8)
+    ctx.textAlign = 'center'
+    ctx.fillText('C', width / 2, height - 8)
+    ctx.textAlign = 'right'
+    ctx.fillText('R', width - 4, height - 8)
     ctx.globalAlpha = 0.25
-    ctx.fillRect(gutter, height / 2, plotW, 1)
+    ctx.fillRect(width / 2, padTop, 1, plotH)
     const span = Math.max(0.0001, duration)
-    buckets.forEach((bucket) => {
-      const x = gutter + ((bucket.time - origin) / span) * plotW
-      const y = ((bucket.balance + 1) / 2) * plotH + 8
-      const spread = Math.max(3, bucket.width * plotH * 0.45)
+    const placed = buckets.map((bucket) => ({
+      ...bucket,
+      balance: applyPanToBalance(bucket.balance, panPct, leftDb, rightDb),
+    }))
+    placed.forEach((bucket) => {
+      const y = padTop + ((bucket.time - origin) / span) * plotH
+      const x = padX + ((bucket.balance + 1) / 2) * plotW
+      const spread = Math.max(4, bucket.width * plotW * 0.45)
       const low = bucket.correlation < 0.2
       ctx.globalAlpha = low ? 1 : 0.85
       ctx.strokeStyle = ink
       ctx.fillStyle = ink
       ctx.lineWidth = 1.25
       if (low) {
-        ctx.strokeRect(x - 3, y - spread / 2, 6, spread)
+        ctx.strokeRect(x - spread / 2, y - 3, spread, 6)
       } else {
         ctx.beginPath()
-        ctx.moveTo(x, y - spread / 2)
-        ctx.lineTo(x, y + spread / 2)
+        ctx.moveTo(x - spread / 2, y)
+        ctx.lineTo(x + spread / 2, y)
         ctx.stroke()
         ctx.beginPath()
         ctx.arc(x, y, 2.2, 0, Math.PI * 2)
@@ -66,25 +80,26 @@ export function SpaceField({ buckets, playhead, origin, duration }: Props) {
       }
     })
     if (playhead !== null && duration > 0) {
-      const x = gutter + ((playhead - origin) / span) * plotW
+      const y = padTop + ((playhead - origin) / span) * plotH
       ctx.globalAlpha = 0.9
+      ctx.strokeStyle = ink
       ctx.setLineDash([3, 3])
       ctx.beginPath()
-      ctx.moveTo(x, 4)
-      ctx.lineTo(x, height - 4)
+      ctx.moveTo(padX, y)
+      ctx.lineTo(width - padX, y)
       ctx.stroke()
       ctx.setLineDash([])
     }
     ctx.globalAlpha = 1
-  }, [buckets, playhead, origin, duration])
+  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb])
 
   return (
     <canvas
       ref={ref}
       className="hearing-space-field"
       role="img"
-      aria-label="Stereo field over time. Left is the top, right is the bottom. Longer marks are wider. Hollow marks have low correlation."
-      style={{ width: '100%', height: 140, display: 'block', background: 'var(--bg-control)', color: 'var(--text-primary)', borderRadius: 8 }}
+      aria-label="Stereo field. Left is the left side, right is the right side. Time runs from top to bottom. Longer marks are wider. Hollow marks have low correlation. Pan and channel gain move the marks."
+      style={{ width: '100%', height: 180, display: 'block', background: 'var(--bg-control)', color: 'var(--text-primary)', borderRadius: 8 }}
     />
   )
 }

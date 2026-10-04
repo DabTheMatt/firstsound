@@ -62,6 +62,9 @@ export type HearingAccessSettings = {
   /** Desktop panel size in pixels. The sheet on a narrow screen uses the height only. */
   panelWidth: number
   panelHeight: number
+  /** Null docks the panel at the corner. A pair of numbers detaches it. */
+  panelLeft: number | null
+  panelTop: number | null
 }
 
 export const PROFILE_LAYERS: Record<HearingProfile, HearingLayers> = {
@@ -122,12 +125,24 @@ export const DEFAULT_HEARING_SETTINGS: HearingAccessSettings = {
   section: 'sound',
   panelWidth: 420,
   panelHeight: 560,
+  panelLeft: null,
+  panelTop: null,
 }
 
 export const PANEL_WIDTH_MIN = 320
 export const PANEL_WIDTH_MAX = 960
 export const PANEL_HEIGHT_MIN = 360
 export const PANEL_HEIGHT_MAX = 1100
+
+const PANEL_POS_MAX = 8000
+
+/** A stored corner offset. Null, and anything that is not a finite number, stays docked. */
+export function clampPanelPosition(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return null
+  return Math.round(Math.min(PANEL_POS_MAX, Math.max(0, n)))
+}
 
 export function clampPanelSize(width: unknown, height: unknown): { panelWidth: number; panelHeight: number } {
   const w = typeof width === 'number' && Number.isFinite(width) ? width : DEFAULT_HEARING_SETTINGS.panelWidth
@@ -182,6 +197,8 @@ export function parseHearingSettings(raw: unknown): HearingAccessSettings {
   const size = clampPanelSize(rec.panelWidth, rec.panelHeight)
   next.panelWidth = size.panelWidth
   next.panelHeight = size.panelHeight
+  next.panelLeft = clampPanelPosition(rec.panelLeft)
+  next.panelTop = clampPanelPosition(rec.panelTop)
   if (rec.layers && typeof rec.layers === 'object') {
     const layers = rec.layers as Record<string, unknown>
     for (const key of Object.keys(next.layers) as (keyof HearingLayers)[]) {

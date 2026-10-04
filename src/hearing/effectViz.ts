@@ -117,6 +117,20 @@ export function gainShift(before: BufferAnalysis, gainDb: number): { peak: numbe
   }
 }
 
+/**
+ * Stereo balance after the same equal-power pan and channel gains the output stage uses.
+ * `balance` is (R − L) / (R + L), from −1 (left) to +1 (right).
+ */
+export function applyPanToBalance(balance: number, panPct: number, leftDb = 0, rightDb = 0): number {
+  const { left, right } = equalPowerPanGains(panPct)
+  const b = Math.max(-0.999, Math.min(0.999, Number.isFinite(balance) ? balance : 0))
+  const l = left * dbToGain(leftDb)
+  const r = ((1 + b) / (1 - b)) * right * dbToGain(rightDb)
+  const denom = l + r
+  if (!(denom > 1e-9)) return 0
+  return Math.max(-1, Math.min(1, (r - l) / denom))
+}
+
 export function stereoAfterBalance(
   left: ArrayLike<number>,
   right: ArrayLike<number> | null | undefined,

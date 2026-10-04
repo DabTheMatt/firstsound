@@ -8,13 +8,13 @@ import { mixingFindings } from './assistant'
 import { HEARING_BANDS } from './bands'
 import { eqCompare, gainCompare, stereoCompare } from './compare'
 import { afterShares } from './AfterEqChart'
-import { affectedRegion, eqBandDeltas } from './eqAssist'
+import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
 import { detectEvents } from './events'
-import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
+import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
-import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelSize } from './settings'
+import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelPosition, clampPanelSize } from './settings'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
 import { voiceEstimate } from './voiceEstimate'
 
@@ -176,6 +176,9 @@ describe('hearing access analysis', () => {
     const shares = afterShares(analysis, rows)
     const midIndex = rows.findIndex((item) => item.id === 'mid')
     expect(shares[midIndex] ?? 0).toBeGreaterThan(analysis.bands[midIndex]?.share ?? 1)
+    const heard = heardBandLevels(analysis, RATE, 0, [band], true).find((item) => item.id === 'mid')
+    expect(heard?.deltaDb ?? 0).toBeGreaterThan(3)
+    expect(levelBar(heard?.afterDb ?? null)).toBeGreaterThan(levelBar(heard?.beforeDb ?? null))
     const region = affectedRegion(band, RATE)
     expect(region).not.toBeNull()
     expect(region!.lo).toBeLessThan(1000)
@@ -183,6 +186,39 @@ describe('hearing access analysis', () => {
     expect(region!.hi - region!.lo).toBeLessThan(16000)
     const text = eqCompare(analysis, [band], RATE).map((item) => item.label).join(' ')
     expect(text.length).toBeGreaterThan(0)
+  })
+
+  it('keeps a quieter high band visible on a dB scale', () => {
+    const bass = sine(80, 1, 0.55)
+    const high = sine(8000, 1, 0.08)
+    const mix = bass.map((sample, index) => sample + (high[index] ?? 0))
+    const analysis = span(mix)
+    const share = analysis.bands.find((band) => band.id === 'high')?.share ?? 1
+    expect(share).toBeLessThan(0.2)
+    const row = heardBandLevels(analysis, RATE, 0, [], false).find((band) => band.id === 'high')
+    expect(levelBar(row?.beforeDb ?? null)).toBeGreaterThan(0.15)
+    expect(levelBar(null)).toBe(0)
+    expect(levelBar(0)).toBe(1)
+  })
+
+  it('moves band energy up an octave of pitch', () => {
+    const analysis = span(sine(300, 1, 0.45))
+    const rows = heardBandLevels(analysis, RATE, 12, [], false)
+    const low = rows.find((band) => band.id === 'lowMid')
+    const mid = rows.find((band) => band.id === 'mid')
+    expect(low?.beforeDb ?? -200).toBeGreaterThan((mid?.beforeDb ?? 0) + 6)
+    expect(mid?.afterDb ?? -200).toBeGreaterThan((low?.afterDb ?? -200) + 6)
+    const shifted = shiftSoundMap([{ time: 0, power: [0, 0, 1, 0, 0, 0, 0] }], 12)
+    expect(shifted?.[0]?.power[2]).toBe(0)
+    expect(shifted?.[0]?.power[3]).toBeGreaterThan(0)
+    expect(shiftSoundMap([{ time: 0, power: [1, 0, 0, 0, 0, 0, 0] }], 0)?.[0]?.power[0]).toBe(1)
+  })
+
+  it('moves a centered image when pan goes hard right or left', () => {
+    expect(applyPanToBalance(0, 100)).toBeGreaterThan(0.9)
+    expect(applyPanToBalance(0, -100)).toBeLessThan(-0.9)
+    expect(Math.abs(applyPanToBalance(0, 0))).toBeLessThan(0.02)
+    expect(applyPanToBalance(0.2, 80)).toBeGreaterThan(0.2)
   })
 
   it('follows compressor gain reduction on a transient', () => {
@@ -388,6 +424,11 @@ describe('hearing access analysis', () => {
     expect(readStoredHearingSettings()).toBe(readStoredHearingSettings())
     expect(clampPanelSize(10, 9000)).toEqual({ panelWidth: 320, panelHeight: 1100 })
     expect(parseHearingSettings({ panelWidth: 800, panelHeight: 700 }).panelWidth).toBe(800)
+    expect(parseHearingSettings({}).panelLeft).toBeNull()
+    expect(parseHearingSettings({ panelLeft: 40, panelTop: 80 })).toMatchObject({ panelLeft: 40, panelTop: 80 })
+    expect(clampPanelPosition(-20)).toBe(0)
+    expect(clampPanelPosition(9000)).toBe(8000)
+    expect(clampPanelPosition('nope')).toBeNull()
   })
 
   it('navigates findings without prescribing a fix', () => {

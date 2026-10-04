@@ -45,7 +45,7 @@ import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { HearingFocusStage } from '../../hearing/HearingFocusStage'
 import { HearingRevealMark, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
-import { getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
+import { bindWaveZoom, getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
 import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
@@ -324,6 +324,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     setViewState(next)
     onZoomLabel(`${Math.round(zoomPercent(next, duration || 1))}%`)
   }
+  const setViewRef = useRef<(next: View) => void>(() => {})
+  useEffect(() => {
+    setViewRef.current = setView
+  })
 
   useEffect(() => {
     waveShareRef.current = waveShare
@@ -398,13 +402,27 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     return subscribeHearingReveal(() => {
       const reveal = getHearingReveal()
-      if (!reveal || duration <= 0) return
+      const span = stateRef.current.duration
+      if (!reveal || span <= 0) return
       const pad = Math.max(0.08, (reveal.end - reveal.start) * 0.08)
       const nextStart = Math.max(0, reveal.start - pad)
-      const nextEnd = Math.min(duration, Math.max(nextStart + 0.05, reveal.end + pad))
-      setView({ start: nextStart, end: nextEnd })
+      const nextEnd = Math.min(span, Math.max(nextStart + 0.05, reveal.end + pad))
+      setViewRef.current({ start: nextStart, end: nextEnd })
     })
-  }, [duration, setView])
+  }, [])
+
+  useEffect(() => {
+    return bindWaveZoom((command) => {
+      const span = stateRef.current.duration
+      if (span <= 0) return
+      const current = viewRef.current
+      const next =
+        command === 'fit'
+          ? fitView(span)
+          : zoomAround(current, command === 'out' ? 1.4 : 1 / 1.4, (current.start + current.end) / 2, span)
+      setViewRef.current(next)
+    })
+  }, [])
 
   useImperativeHandle(ref, () => ({
     fitSample: () => setView(fitView(duration)),
@@ -1177,6 +1195,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       return
     }
     if (duration <= 0) return
+    if (phoneFocus === 'hearing') {
+      const current = viewRef.current
+      const selSpan = Math.max(0.001, end - start)
+      const viewSpan = Math.max(0.001, current.end - current.start)
+      const coversSelection = current.start <= start + selSpan * 0.2 && current.end >= end - selSpan * 0.2
+      const tight = viewSpan <= selSpan * 1.8 && viewSpan < duration * 0.98
+      const whole = start <= 0.001 && end >= duration - 0.001
+      if ((coversSelection && tight) || (whole && viewSpan < duration * 0.98)) setView(fitView(duration))
+      else setView(zoomToSelection(start, end, duration))
+      return
+    }
     const full = start <= 0.001 && end >= duration - 0.001
     setView(full ? fitView(duration) : zoomToSelection(start, end, duration))
   }
@@ -1306,7 +1335,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
           onKeyDown={onEditorKeyDown}
-          style={hearingFocus ? { flex: '0 0 34%' } : viz === 'split' ? { flex: waveShare } : undefined}
+          style={hearingFocus ? { flex: '1 1 46%', minHeight: 180 } : viz === 'split' ? { flex: waveShare } : undefined}
         >
           {automationView ? (
             <div className={styles.autoBar}>

@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { announce } from '../a11y'
 import type { FocusWorkspace } from '../app/phoneWorkspace'
 import { PARAMS } from '../audio/parameters/definitions'
+import { pitchRatio } from '../audio/parameters/mapping'
+import { formatHoverFreq, hzToNoteName } from '../audio/engine/pitchScale'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { getEqBandSelection, subscribeEqBandSelection, type EqBandSelection } from '../audio/engine/eqBandSelection'
 import { engine, useEngine } from '../hooks/useEngine'
 import { dismissHearingAlert, getHearingAlerts, pushHearingAlert, subscribeHearingAlerts, type HearingAlert } from './alerts'
 import { analyzePcm, type BufferAnalysis } from './analyze'
 import { scopeLabel } from './events'
-import { eqReadout, affectedRegion, eqBandDeltas } from './eqAssist'
+import { eqReadout, affectedRegion, eqBandDeltas, heardBandLevels, shiftSoundMap } from './eqAssist'
 import {
   compressorCompare,
   delayCompare,
@@ -18,9 +20,9 @@ import {
   stereoCompare,
 } from './compare'
 import { emptyDescriptorMemory, simpleSummary, updateDescriptors, type Descriptor } from './descriptors'
-import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
+import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
-import { AfterEqChart } from './AfterEqChart'
+import { AfterEqChart, LevelTrack } from './AfterEqChart'
 import { SoundMap } from './SoundMap'
 import { SpaceField } from './SpaceField'
 import { revealHearingSpan } from './reveal'
@@ -105,11 +107,6 @@ function startPanelResize(
   window.addEventListener('pointerup', up)
 }
 
-function bars(share: number): string {
-  const n = Math.round(Math.max(0, Math.min(1, share)) * 8)
-  return `${'▓'.repeat(n)}${'░'.repeat(8 - n)}`
-}
-
 function balanceMeter(balance: number): string {
   const pos = Math.round(((balance + 1) / 2) * 10)
   const cells = Array.from({ length: 11 }, (_, index) => (index === pos ? '●' : '─'))
@@ -126,6 +123,7 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
   const [live, setLive] = useState<Descriptor[]>([])
   const [note, setNote] = useState<string | null>(null)
   const [narrow, setNarrow] = useState(false)
+  const [floatAt, setFloatAt] = useState<{ left: number; top: number } | null>(null)
   const memory = useRef(emptyDescriptorMemory())
   const edge = useRef({ recording: snap.recording, loop: snap.loop, blocked: snap.audioStatus === 'blocked', error: snap.recordError })
   const hapticsOk = vibrationSupported()
@@ -319,6 +317,47 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
   if (!settings.enabled) return null
 
   const showDetails = surface !== 'simple' || settings.simpleDetails
+  const dockedPoint =
+    settings.panelLeft !== null && settings.panelTop !== null ? { left: settings.panelLeft, top: settings.panelTop } : null
+  const floating = narrow ? null : (floatAt ?? dockedPoint)
+
+  const onHeaderPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (narrow || event.button !== 0) return
+    const target = event.target
+    if (target instanceof Element && target.closest('button')) return
+    event.preventDefault()
+    const section = event.currentTarget.parentElement
+    if (!section) return
+    const rect = section.getBoundingClientRect()
+    const originX = event.clientX
+    const originY = event.clientY
+    const originLeft = rect.left
+    const originTop = rect.top
+    const pointer = event.pointerId
+    const place = (clientX: number, clientY: number) => {
+      const maxL = Math.max(0, window.innerWidth - 120)
+      const maxT = Math.max(0, window.innerHeight - 64)
+      return {
+        left: Math.round(Math.min(maxL, Math.max(0, originLeft + clientX - originX))),
+        top: Math.round(Math.min(maxT, Math.max(0, originTop + clientY - originY))),
+      }
+    }
+    setFloatAt(place(event.clientX, event.clientY))
+    const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointer) return
+      setFloatAt(place(pointerEvent.clientX, pointerEvent.clientY))
+    }
+    const up = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointer) return
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const next = place(pointerEvent.clientX, pointerEvent.clientY)
+      patch({ panelLeft: next.left, panelTop: next.top })
+      setFloatAt(null)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   const focusText = focusLine(focus, analysis, eq, snap)
 
@@ -357,6 +396,9 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
           style={{
             ['--hearing-panel-w' as string]: `${settings.panelWidth}px`,
             ['--hearing-panel-h' as string]: `${settings.panelHeight}px`,
+            ...(floating
+              ? { position: 'fixed', left: floating.left, top: floating.top, right: 'auto', bottom: 'auto', zIndex: 41 }
+              : {}),
           }}
         >
           <button
@@ -366,9 +408,18 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
             onPointerDown={(event) => startPanelResize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
             onKeyDown={(event) => nudgePanelSize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
           />
-          <header className={styles.head}>
+          <header
+            className={narrow ? styles.head : `${styles.head} ${styles.movable}`}
+            title={narrow ? undefined : 'Drag to move this panel. Dock returns it to the corner.'}
+            onPointerDown={onHeaderPointerDown}
+          >
             <h2>Hearing Access</h2>
             <div className={styles.tools}>
+              {dockedPoint && !narrow ? (
+                <button type="button" onClick={() => patch({ panelLeft: null, panelTop: null })}>
+                  Dock
+                </button>
+              ) : null}
               <button type="button" onClick={() => patch(nextPanelSize(settings.panelWidth))}>
                 {settings.panelWidth >= 640 ? 'Restore' : 'Enlarge'}
               </button>
@@ -421,7 +472,15 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
               />
             ) : null}
             {settings.section === 'events' ? <EventsSection hearing={hearing} /> : null}
-            {settings.section === 'space' ? <SpaceSection analysis={analysis} playhead={hearing.playhead} /> : null}
+            {settings.section === 'space' ? (
+              <SpaceSection
+                analysis={analysis}
+                playhead={hearing.playhead}
+                pan={snap.params.pan}
+                leftDb={snap.params.channelGainL}
+                rightDb={snap.params.channelGainR}
+              />
+            ) : null}
             {settings.section === 'dynamics' ? <DynamicsSection analysis={analysis} /> : null}
             {settings.section === 'compare' ? <CompareSection analysis={analysis} snap={snap} /> : null}
             {settings.section === 'haptics' ? (
@@ -550,22 +609,28 @@ function SoundSection(props: {
           ))}
         </ul>
       ) : null}
-      {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} /> : null}
+      {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} pitch={props.snap.params.pitch} /> : null}
       {props.showDetails && analysis ? (
         <AfterEqChart
           analysis={analysis}
           bands={props.snap.eqBands}
           sampleRate={props.snap.sampleRate}
+          pitchSemitones={props.snap.params.pitch}
           engaged={props.snap.chain.some((mod) => mod.type === 'eq' && !mod.bypassed)}
         />
       ) : null}
       {props.showDetails && props.showMap ? (
-        <SoundMap
-          columns={analysis?.soundMap ?? null}
-          playhead={props.hearing.playhead}
-          origin={analysis?.originSec ?? 0}
-          duration={analysis?.durationSec ?? 0}
-        />
+        <>
+          {Math.abs(props.snap.params.pitch) >= 0.05 ? (
+            <p className={styles.help}>Sound map after pitch. The fingerprint above stays on the original sample.</p>
+          ) : null}
+          <SoundMap
+            columns={shiftSoundMap(analysis?.soundMap ?? null, props.snap.params.pitch)}
+            playhead={props.hearing.playhead}
+            origin={analysis?.originSec ?? 0}
+            duration={analysis?.durationSec ?? 0}
+          />
+        </>
       ) : null}
       {props.showDetails && props.voice ? (
         <p>
@@ -592,25 +657,43 @@ function SoundSection(props: {
   )
 }
 
-function Fingerprint({ analysis }: { analysis: BufferAnalysis }) {
+function Fingerprint({ analysis, pitch }: { analysis: BufferAnalysis; pitch: number }) {
+  const levels = heardBandLevels(analysis, analysis.sampleRate, 0, [], false)
+  const pitched = Math.abs(pitch) >= 0.05
+  const heardHz = analysis.dominantHz && pitched ? analysis.dominantHz * pitchRatio(pitch) : null
   return (
     <div>
       <h3>Original fingerprint</h3>
-      <p className={styles.help}>This is the sample or selection before effects. EQ and other modules are not baked into these numbers.</p>
+      <p className={styles.help}>
+        This is the sample or selection before effects. Bars are mean level per band, from −96 dB to 0 dB, so a quieter high band stays visible beside a loud bass band.
+      </p>
       <ul className={styles.bands}>
-        {analysis.bands.map((band) => (
-          <li key={band.id} data-hatch={band.hatch}>
-            <span>{band.label}</span>
-            <span aria-hidden="true">{bars(band.share)}</span>
-            <span>{Math.round(band.share * 100)}%</span>
-          </li>
-        ))}
+        {analysis.bands.map((band) => {
+          const db = levels.find((row) => row.id === band.id)?.beforeDb ?? null
+          return (
+            <li key={band.id} data-hatch={band.hatch}>
+              <span>{band.label}</span>
+              <LevelTrack db={db} />
+              <span>{db === null ? '—' : `${db.toFixed(0)} dB`}</span>
+            </li>
+          )
+        })}
       </ul>
       <dl className={styles.grid}>
         <div><dt>Peak</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
         <div><dt>RMS</dt><dd>{analysis.rmsDbfs === null ? '—' : `${analysis.rmsDbfs.toFixed(1)} dBFS`}</dd></div>
         <div><dt>Crest</dt><dd>{analysis.crestDb === null ? '—' : `${analysis.crestDb.toFixed(1)} dB`}</dd></div>
         <div><dt>Dominant</dt><dd>{analysis.dominantHz ? `${Math.round(analysis.dominantHz)} Hz · ${analysis.dominantNote}` : '—'}</dd></div>
+        {pitched ? (
+          <div>
+            <dt>Pitch</dt>
+            <dd>
+              {pitch > 0 ? '+' : ''}
+              {pitch.toFixed(1)} st
+              {heardHz ? ` · heard ${formatHoverFreq(heardHz)} · ${hzToNoteName(heardHz)}` : ''}
+            </dd>
+          </div>
+        ) : null}
         <div><dt>Tonality</dt><dd>{analysis.tonality ?? '—'}</dd></div>
         <div><dt>Noise</dt><dd>{analysis.noise ?? '—'}</dd></div>
         <div><dt>Transients</dt><dd>{analysis.transientLevel ?? '—'}</dd></div>
@@ -657,33 +740,66 @@ function EventsSection({ hearing }: { hearing: HearingView }) {
   )
 }
 
-function SpaceSection({ analysis, playhead }: { analysis: BufferAnalysis | null; playhead: number | null }) {
-  if (!analysis?.stereo) {
+function balanceSide(balance: number): string {
+  if (Math.abs(balance) < 0.03) return 'CENTER'
+  return `${balance > 0 ? 'R' : 'L'} ${Math.round(Math.abs(balance) * 100)}%`
+}
+
+function SpaceSection({
+  analysis,
+  playhead,
+  pan,
+  leftDb,
+  rightDb,
+}: {
+  analysis: BufferAnalysis | null
+  playhead: number | null
+  pan: number
+  leftDb: number
+  rightDb: number
+}) {
+  if (!analysis) {
     return (
       <div>
         <p className={styles.help}>Space reads left/right balance, width, correlation, and mid/side energy for this scope.</p>
-        <p>Space metrics need a stereo buffer. A mono file has no width to report.</p>
+        <p>Load a sample to place it in the field.</p>
       </div>
     )
   }
   const stereo = analysis.stereo
+  const source = stereo?.balance ?? 0
+  const heard = applyPanToBalance(source, pan, leftDb, rightDb)
+  const buckets =
+    analysis.spaceTimeline.length > 0
+      ? analysis.spaceTimeline
+      : [{ time: analysis.originSec, balance: 0, width: 0, correlation: 1 }]
   return (
     <div>
       <p className={styles.help}>
-        Time runs left to right. Left is the top edge, right is the bottom. A longer mark is wider. A hollow mark has low correlation. This is the original sample, before effects.
+        Time runs from top to bottom. Left is the left edge, right is the right edge. A longer mark is wider. A hollow mark has low correlation. Pan and the left/right channel gains move the marks. The sample image is measured before other effects.
       </p>
-      <SpaceField buckets={analysis.spaceTimeline} playhead={playhead} origin={analysis.originSec} duration={analysis.durationSec} />
-      <p className={styles.meter} aria-label={`Balance ${stereo.balanceSide} ${Math.round(stereo.balancePct)} percent`}>
-        {balanceMeter(stereo.balance)}
+      <SpaceField
+        buckets={buckets}
+        playhead={playhead}
+        origin={analysis.originSec}
+        duration={analysis.durationSec}
+        panPct={pan}
+        leftDb={leftDb}
+        rightDb={rightDb}
+      />
+      {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it left or right.</p> : null}
+      <p className={styles.meter} aria-label={`Heard balance ${balanceSide(heard)}`}>
+        {balanceMeter(heard)}
       </p>
       <dl className={styles.grid}>
-        <div><dt>Balance</dt><dd>{stereo.balanceSide === 'C' ? 'CENTER' : `${stereo.balanceSide} ${Math.round(stereo.balancePct)}%`}</dd></div>
-        <div><dt>Width</dt><dd>{Math.round(stereo.width * 100)}%</dd></div>
-        <div><dt>Correlation</dt><dd>{stereo.correlation.toFixed(2)}</dd></div>
-        <div><dt>Mid</dt><dd>{Math.round(stereo.midShare * 100)}%</dd></div>
-        <div><dt>Side</dt><dd>{Math.round(stereo.sideShare * 100)}%</dd></div>
+        <div><dt>Heard balance</dt><dd>{balanceSide(heard)}</dd></div>
+        <div><dt>Sample balance</dt><dd>{stereo ? balanceSide(stereo.balance) : 'CENTER'}</dd></div>
+        <div><dt>Width</dt><dd>{stereo ? `${Math.round(stereo.width * 100)}%` : '0%'}</dd></div>
+        <div><dt>Correlation</dt><dd>{stereo ? stereo.correlation.toFixed(2) : '—'}</dd></div>
+        <div><dt>Mid</dt><dd>{stereo ? `${Math.round(stereo.midShare * 100)}%` : '—'}</dd></div>
+        <div><dt>Side</dt><dd>{stereo ? `${Math.round(stereo.sideShare * 100)}%` : '—'}</dd></div>
       </dl>
-      {stereo.lowCorrelation ? <p>Low correlation. Possible mono compatibility issue.</p> : null}
+      {stereo?.lowCorrelation ? <p>Low correlation. Possible mono compatibility issue.</p> : null}
     </div>
   )
 }

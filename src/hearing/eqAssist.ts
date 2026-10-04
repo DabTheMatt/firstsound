@@ -6,9 +6,10 @@
 import type { EqBand } from '../audio/engine/eqBands'
 import { bandIsActive } from '../audio/engine/eqBands'
 import { eqMagnitudeDb } from '../audio/engine/eqResponse'
+import { pitchRatio } from '../audio/parameters/mapping'
 import { formatHoverFreq, hzToNoteName } from '../audio/engine/pitchScale'
 import { HEARING_BANDS, bandForHz, type HearingBandId } from './bands'
-import type { BufferAnalysis } from './analyze'
+import type { BufferAnalysis, SoundMapColumn } from './analyze'
 import { dbfsToPower, powerToDbfs } from './levels'
 
 export type EqReadout = {
@@ -87,6 +88,98 @@ export type BandDelta = {
   beforeDb: number | null
   afterDb: number | null
   deltaDb: number | null
+}
+
+/** 0 at −96 dB, 1 at 0 dB. Keeps a quiet high band visible when it actually has energy. */
+export function levelBar(db: number | null): number {
+  if (db === null || !Number.isFinite(db)) return 0
+  return Math.max(0, Math.min(1, (db + 96) / 96))
+}
+
+export type HeardBand = {
+  id: HearingBandId
+  label: string
+  beforeDb: number | null
+  afterDb: number | null
+  deltaDb: number | null
+}
+
+/**
+ * Band level is mean power per FFT bin, so a wide high band is not hidden by a loud narrow bass bin.
+ * After applies pitch (energy moves to the heard frequency) and the real EQ curve.
+ */
+export function heardBandLevels(
+  analysis: BufferAnalysis,
+  sampleRate: number,
+  pitchSemitones: number,
+  bands: readonly EqBand[],
+  eqEngaged: boolean,
+): HeardBand[] {
+  const fft = analysis.fftSize
+  const rate = sampleRate > 0 ? sampleRate : analysis.sampleRate
+  const empty = HEARING_BANDS.map((band) => ({
+    id: band.id,
+    label: band.label,
+    beforeDb: null,
+    afterDb: null,
+    deltaDb: null,
+  }))
+  if (fft < 256 || analysis.spectrumDb.length < 2 || analysis.silent || !(rate > 0)) return empty
+  const ratio = pitchRatio(pitchSemitones)
+  const before = HEARING_BANDS.map(() => ({ power: 0, count: 0 }))
+  const after = HEARING_BANDS.map(() => ({ power: 0, count: 0 }))
+  for (let i = 1; i < analysis.spectrumDb.length; i++) {
+    const hz = (i * rate) / fft
+    const power = dbfsToPower(analysis.spectrumDb[i] ?? -120)
+    const source = bandForHz(hz)
+    if (source) {
+      const index = HEARING_BANDS.findIndex((band) => band.id === source.id)
+      const bin = before[index]
+      if (bin) {
+        bin.power += power
+        bin.count += 1
+      }
+    }
+    const heardHz = hz * ratio
+    const dest = bandForHz(heardHz)
+    if (!dest) continue
+    const index = HEARING_BANDS.findIndex((band) => band.id === dest.id)
+    const bin = after[index]
+    if (!bin) continue
+    const mag = eqEngaged ? eqMagnitudeDb(bands as EqBand[], heardHz, rate) : 0
+    const gain = Number.isFinite(mag) ? 10 ** (mag / 10) : 1
+    bin.power += power * gain
+    bin.count += 1
+  }
+  return HEARING_BANDS.map((band, index) => {
+    const src = before[index]
+    const dst = after[index]
+    const beforeDb = src && src.count > 0 ? powerToDbfs(src.power / src.count) : null
+    const afterDb = dst && dst.count > 0 ? powerToDbfs(dst.power / dst.count) : null
+    const deltaDb =
+      beforeDb !== null && afterDb !== null && Number.isFinite(beforeDb) && Number.isFinite(afterDb)
+        ? afterDb - beforeDb
+        : null
+    return { id: band.id, label: band.label, beforeDb, afterDb, deltaDb }
+  })
+}
+
+/** Move each sound-map column's band energy to the band that contains its center after pitch. */
+export function shiftSoundMap(columns: SoundMapColumn[] | null, pitchSemitones: number): SoundMapColumn[] | null {
+  if (!columns) return null
+  const ratio = pitchRatio(pitchSemitones)
+  if (Math.abs(ratio - 1) < 0.001) return columns
+  return columns.map((column) => {
+    const power = HEARING_BANDS.map(() => 0)
+    HEARING_BANDS.forEach((band, index) => {
+      const center = Math.sqrt(band.lo * band.hi)
+      const dest = bandForHz(center * ratio)
+      if (!dest) return
+      const destIndex = HEARING_BANDS.findIndex((item) => item.id === dest.id)
+      if (destIndex >= 0) power[destIndex] = (power[destIndex] ?? 0) + (column.power[index] ?? 0)
+    })
+    return { time: column.time, power }
+  })
 }
 
 /** Apply the real EQ magnitude to a measured spectrum and compare band power. */

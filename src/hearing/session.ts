@@ -87,7 +87,7 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
       const scope = resolveScope(duration, regionStart, regionEnd, false)
       const startFrame = scope === 'full' ? 0 : Math.floor(regionStart * rate)
       const endFrame = scope === 'full' ? left.length : Math.max(startFrame + 1, Math.floor(regionEnd * rate))
-      const soundMap = settings.layers.soundMap && (mapDemand || (settings.panelOpen && settings.section === 'sound'))
+      const soundMap = mapDemand || (settings.layers.soundMap && settings.panelOpen && settings.section === 'sound')
       const key = analysisCacheKey({
         bufferRev: snap.bufferRev,
         sampleRate: rate,
