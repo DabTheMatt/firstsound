@@ -13,7 +13,7 @@ import { detectEvents } from './events'
 import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
-import { parseHearingSettings, layersForProfile, readStoredHearingSettings } from './settings'
+import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelSize } from './settings'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
 import { voiceEstimate } from './voiceEstimate'
 
@@ -382,6 +382,8 @@ describe('hearing access analysis', () => {
     expect(layersForProfile('visual').soundMap).toBe(true)
     expect(parseHearingSettings({ profile: 'doctor' }).profile).toBe('assisted')
     expect(readStoredHearingSettings()).toBe(readStoredHearingSettings())
+    expect(clampPanelSize(10, 9000)).toEqual({ panelWidth: 320, panelHeight: 1100 })
+    expect(parseHearingSettings({ panelWidth: 800, panelHeight: 700 }).panelWidth).toBe(800)
   })
 
   it('navigates findings without prescribing a fix', () => {

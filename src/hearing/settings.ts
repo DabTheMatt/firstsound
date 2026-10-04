@@ -59,6 +59,9 @@ export type HearingAccessSettings = {
   simpleDetails: boolean
   panelOpen: boolean
   section: HearingSection
+  /** Desktop panel size in pixels. The sheet on a narrow screen uses the height only. */
+  panelWidth: number
+  panelHeight: number
 }
 
 export const PROFILE_LAYERS: Record<HearingProfile, HearingLayers> = {
@@ -117,6 +120,22 @@ export const DEFAULT_HEARING_SETTINGS: HearingAccessSettings = {
   simpleDetails: false,
   panelOpen: false,
   section: 'sound',
+  panelWidth: 420,
+  panelHeight: 560,
+}
+
+export const PANEL_WIDTH_MIN = 320
+export const PANEL_WIDTH_MAX = 960
+export const PANEL_HEIGHT_MIN = 360
+export const PANEL_HEIGHT_MAX = 1100
+
+export function clampPanelSize(width: unknown, height: unknown): { panelWidth: number; panelHeight: number } {
+  const w = typeof width === 'number' && Number.isFinite(width) ? width : DEFAULT_HEARING_SETTINGS.panelWidth
+  const h = typeof height === 'number' && Number.isFinite(height) ? height : DEFAULT_HEARING_SETTINGS.panelHeight
+  return {
+    panelWidth: Math.round(Math.min(PANEL_WIDTH_MAX, Math.max(PANEL_WIDTH_MIN, w))),
+    panelHeight: Math.round(Math.min(PANEL_HEIGHT_MAX, Math.max(PANEL_HEIGHT_MIN, h))),
+  }
 }
 
 function clampDb(value: unknown): number {
@@ -160,6 +179,9 @@ export function parseHearingSettings(raw: unknown): HearingAccessSettings {
   next.monitorHigh = clampDb(rec.monitorHigh)
   if (typeof rec.simpleDetails === 'boolean') next.simpleDetails = rec.simpleDetails
   if (typeof rec.panelOpen === 'boolean') next.panelOpen = rec.panelOpen
+  const size = clampPanelSize(rec.panelWidth, rec.panelHeight)
+  next.panelWidth = size.panelWidth
+  next.panelHeight = size.panelHeight
   if (rec.layers && typeof rec.layers === 'object') {
     const layers = rec.layers as Record<string, unknown>
     for (const key of Object.keys(next.layers) as (keyof HearingLayers)[]) {

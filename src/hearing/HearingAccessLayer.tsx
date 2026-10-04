@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { announce } from '../a11y'
 import type { FocusWorkspace } from '../app/phoneWorkspace'
 import { PARAMS } from '../audio/parameters/definitions'
@@ -23,7 +23,7 @@ import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
 import { SoundMap } from './SoundMap'
 import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
-import { HEARING_SECTIONS, type HearingSection } from './settings'
+import { HEARING_SECTIONS, clampPanelSize, type HearingSection } from './settings'
 import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
@@ -36,6 +36,69 @@ const SECTION_LABEL: Record<HearingSection, string> = {
   dynamics: 'Dynamics',
   compare: 'Compare',
   haptics: 'Haptics',
+}
+
+function nextPanelSize(width: number): { panelWidth: number; panelHeight: number } {
+  if (width >= 640) return clampPanelSize(420, 560)
+  const availableW = typeof window === 'undefined' ? 760 : window.innerWidth - 48
+  const availableH = typeof window === 'undefined' ? 820 : window.innerHeight - 96
+  return clampPanelSize(Math.max(720, availableW), Math.max(760, availableH))
+}
+
+function nudgePanelSize(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  width: number,
+  height: number,
+  narrow: boolean,
+  patch: (partial: { panelWidth: number; panelHeight: number }) => void,
+): void {
+  const step = event.shiftKey ? 48 : 24
+  let nextWidth = width
+  let nextHeight = height
+  if (event.key === 'ArrowLeft') nextWidth += step
+  else if (event.key === 'ArrowRight') nextWidth -= step
+  else if (event.key === 'ArrowUp') nextHeight += step
+  else if (event.key === 'ArrowDown') nextHeight -= step
+  else return
+  event.preventDefault()
+  patch(clampPanelSize(narrow ? width : nextWidth, nextHeight))
+}
+
+function startPanelResize(
+  event: ReactPointerEvent<HTMLButtonElement>,
+  width: number,
+  height: number,
+  narrow: boolean,
+  patch: (partial: { panelWidth: number; panelHeight: number }) => void,
+): void {
+  if (event.button !== 0) return
+  event.preventDefault()
+  const pointer = event.pointerId
+  const startX = event.clientX
+  const startY = event.clientY
+  const section = event.currentTarget.parentElement
+  const move = (pointerEvent: PointerEvent) => {
+    if (pointerEvent.pointerId !== pointer) return
+    const next = clampPanelSize(
+      narrow ? width : width + (startX - pointerEvent.clientX),
+      height + (startY - pointerEvent.clientY),
+    )
+    section?.style.setProperty('--hearing-panel-w', `${next.panelWidth}px`)
+    section?.style.setProperty('--hearing-panel-h', `${next.panelHeight}px`)
+  }
+  const up = (pointerEvent: PointerEvent) => {
+    if (pointerEvent.pointerId !== pointer) return
+    patch(
+      clampPanelSize(
+        narrow ? width : width + (startX - pointerEvent.clientX),
+        height + (startY - pointerEvent.clientY),
+      ),
+    )
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
 }
 
 function bars(share: number): string {
@@ -221,15 +284,27 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
 
   const armedBand = selectedBand(snap, eqPick)
   const confirmKey = `${snap.params.gain}|${snap.params.pan}|${snap.params.delayTime}|${snap.params.delayTimeR}|${armedBand?.frequency ?? ''}|${armedBand?.gain ?? ''}|${armedBand?.q ?? ''}`
+  const confirmReady = useRef(false)
   useEffect(() => {
-    if (!settings.enabled) return
+    if (!settings.enabled) {
+      confirmReady.current = false
+      return
+    }
+    if (!confirmReady.current) {
+      confirmReady.current = true
+      return
+    }
     const current = engine.getSnapshot()
     const active = selectedBand(current, getEqBandSelection())
     const text = active
       ? `EQ ${active.frequency.toFixed(0)} Hz · ${active.gain.toFixed(1)} dB · Q ${active.q.toFixed(2)}`
       : `GAIN ${current.params.gain.toFixed(1)} dB`
     const handle = window.setTimeout(() => setNote(text), 700)
-    return () => window.clearTimeout(handle)
+    const clear = window.setTimeout(() => setNote(null), 4200)
+    return () => {
+      window.clearTimeout(handle)
+      window.clearTimeout(clear)
+    }
   }, [settings.enabled, confirmKey])
 
   const analysis = hearing.analysis
@@ -275,12 +350,28 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
           className={narrow ? styles.sheet : styles.panel}
           role="dialog"
           aria-label="Hearing Access panel"
+          style={{
+            ['--hearing-panel-w' as string]: `${settings.panelWidth}px`,
+            ['--hearing-panel-h' as string]: `${settings.panelHeight}px`,
+          }}
         >
+          <button
+            type="button"
+            className={styles.grip}
+            aria-label={narrow ? 'Resize panel height' : 'Resize panel. Arrow keys grow it from the corner.'}
+            onPointerDown={(event) => startPanelResize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
+            onKeyDown={(event) => nudgePanelSize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
+          />
           <header className={styles.head}>
             <h2>Hearing Access</h2>
-            <button type="button" onClick={() => patch({ panelOpen: false })}>
-              Close
-            </button>
+            <div className={styles.tools}>
+              <button type="button" onClick={() => patch(nextPanelSize(settings.panelWidth))}>
+                {settings.panelWidth >= 640 ? 'Restore' : 'Enlarge'}
+              </button>
+              <button type="button" onClick={() => patch({ panelOpen: false })}>
+                Close
+              </button>
+            </div>
           </header>
           {settings.monitorEnabled ? (
             <p className={styles.monitor}>Monitoring only. Not included in export. Not a hearing aid.</p>
@@ -331,10 +422,13 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
             {settings.section === 'compare' ? <CompareSection analysis={analysis} snap={snap} /> : null}
             {settings.section === 'haptics' ? (
               <div>
+                <p className={styles.help}>
+                  Optional pulses on transients, clipping, loop edges, and selection edges. They are never a continuous buzz. Intensity and the experimental frequency pattern are in Accessibility.
+                </p>
                 {hapticsOk ? (
-                  <p>Optional pulses for transients, clipping, loop boundaries, and selection edges. Intensity {settings.hapticIntensity}.</p>
+                  <p>This device accepts vibration. Current intensity: {settings.hapticIntensity}.</p>
                 ) : (
-                  <p>This browser does not provide vibration. Haptic feedback is unavailable.</p>
+                  <p>This browser does not provide vibration, so the control stays disabled. FIELD does not imitate haptics on screen.</p>
                 )}
                 {settings.frequencyHaptics ? <p>Frequency haptics are experimental and can be turned off in Accessibility settings.</p> : null}
               </div>
@@ -423,6 +517,9 @@ function SoundSection(props: {
   const liveValue = props.snap.liveParams[autoId]
   return (
     <div>
+      <p className={styles.help}>
+        Live tags follow the playhead. The fingerprint stays on this scope. Hover a tag for the measured reason. Extra tags scroll in their own row.
+      </p>
       <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
       {props.summary && props.surface === 'simple' ? (
         <dl className={styles.grid}>
@@ -510,30 +607,58 @@ function Fingerprint({ analysis }: { analysis: BufferAnalysis }) {
 }
 
 function EventsSection({ hearing }: { hearing: HearingView }) {
+  const [moved, setMoved] = useState<string | null>(null)
+  const scope = hearing.analysis ? scopeLabel(hearing.analysis.scope) : 'THIS SCOPE'
   return (
-    <ul className={styles.events}>
-      {hearing.events.length === 0 ? <li>No events in this scope.</li> : null}
-      {hearing.events.map((event) => (
-        <li key={event.id}>
-          <button
-            type="button"
-            onClick={() => engine.seekSeconds(event.time, 'sample')}
-          >
-            <span>{formatTimecode(event.time)}</span>
-            <span>{event.label}</span>
-          </button>
-          <small>{event.detail}</small>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <p className={styles.help}>
+        Listed moments are measured in {scope}: transients, silence, loud peaks, low-frequency onsets, sustained tones, possible clicks, and possible clipping. Click a row to move the playhead. The audio is not edited.
+      </p>
+      {hearing.events.length === 0 ? (
+        <p className={styles.empty}>
+          No qualifying events in {scope}. A short or steady selection often has none. Clear the selection to scan the full sample, or choose a passage with a clear attack or a gap.
+        </p>
+      ) : (
+        <ul className={styles.events}>
+          {hearing.events.map((event) => (
+            <li key={event.id}>
+              <button
+                type="button"
+                className={styles.eventRow}
+                onClick={() => {
+                  engine.seekSeconds(event.time, 'sample')
+                  setMoved(event.id)
+                  announce(`Playhead ${formatTimecode(event.time)}. ${event.label}.`)
+                }}
+              >
+                <span>{formatTimecode(event.time)}</span>
+                <span>{event.label}</span>
+                <span className={styles.eventDetail}>{event.detail}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {moved ? <p className={styles.note}>Playhead moved. Press play to hear from that point.</p> : null}
+    </div>
   )
 }
 
 function SpaceSection({ analysis }: { analysis: BufferAnalysis | null }) {
-  if (!analysis?.stereo) return <p>Space metrics need a stereo buffer.</p>
+  if (!analysis?.stereo) {
+    return (
+      <div>
+        <p className={styles.help}>Space reads left/right balance, width, correlation, and mid/side energy for this scope.</p>
+        <p>Space metrics need a stereo buffer. A mono file has no width to report.</p>
+      </div>
+    )
+  }
   const stereo = analysis.stereo
   return (
     <div>
+      <p className={styles.help}>
+        Same scope as Sound. The meter is left to right. Low correlation is a mono-compatibility note, not a judgment of the mix.
+      </p>
       <p className={styles.meter} aria-label={`Balance ${stereo.balanceSide} ${Math.round(stereo.balancePct)} percent`}>
         {balanceMeter(stereo.balance)}
       </p>
@@ -550,11 +675,14 @@ function SpaceSection({ analysis }: { analysis: BufferAnalysis | null }) {
 }
 
 function DynamicsSection({ analysis }: { analysis: BufferAnalysis | null }) {
-  if (!analysis) return <p>No level map yet.</p>
+  if (!analysis) return <p className={styles.help}>Dynamics needs a loaded sample.</p>
   const clips = analysis.dynamics.filter((bucket) => bucket.clip).length
   const transients = analysis.dynamics.filter((bucket) => bucket.transient).length
   return (
     <div>
+      <p className={styles.help}>
+        Levels for this scope. The thin strip on the waveform marks quiet, loud, and full-scale clipping. Loud audio below full scale is not clipping.
+      </p>
       <dl className={styles.grid}>
         <div><dt>Peak</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
         <div><dt>RMS</dt><dd>{analysis.rmsDbfs === null ? '—' : `${analysis.rmsDbfs.toFixed(1)} dBFS`}</dd></div>
@@ -641,7 +769,10 @@ function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; s
   const deltas = analysis ? eqBandDeltas(analysis, snap.eqBands, snap.sampleRate || analysis.sampleRate) : []
   return (
     <div>
-      {rows.length === 0 ? <p>No measurable change for the current parameters.</p> : null}
+      <p className={styles.help}>
+        What the active effects change, measured on this scope. A bypassed module drops out. Delay times and the reverb tail follow the same parameters as the DSP. Nothing here rewrites the audio.
+      </p>
+      {rows.length === 0 ? <p>No measurable change yet. Move gain, EQ, compressor, delay, reverb, or stereo width and this list fills in.</p> : null}
       <ul className={styles.events}>
         {rows.map((row) => (
           <li key={`${row.group}-${row.id}`}>
