@@ -197,10 +197,46 @@ export function irStackTrim(durationSec: number): number {
 }
 
 /**
+ * Broadband convolution gain of one channel, `sqrt(sum h[n]²)`.
+ * A dense source through that IR comes out about this many times louder.
+ * Halls land near 3× after the early-RMS scale, which is what slams Mix into clip.
+ * The target keeps that gain near a full-scale dry path. Shorter rooms already
+ * under the target are left alone — this never boosts, and it is not a live follower.
+ */
+export const IR_NOISE_GAIN_TARGET = 2.3
+
+export function irNoiseTrim(sumSquares: number): number {
+  const gain = Math.sqrt(Math.max(0, sumSquares))
+  if (!Number.isFinite(gain) || gain <= IR_NOISE_GAIN_TARGET) return 1
+  return IR_NOISE_GAIN_TARGET / gain
+}
+
+/**
+ * How to spend a too-hot impulse. The early window stays put when the tail
+ * can absorb the cut, so a long hall is still audible against dry. If the
+ * early window alone is already over the target, both parts scale together.
+ */
+export function irNoiseScales(earlyPower: number, tailPower: number): { head: number; tail: number } {
+  const early = Math.max(0, earlyPower)
+  const tail = Math.max(0, tailPower)
+  const targetPower = IR_NOISE_GAIN_TARGET * IR_NOISE_GAIN_TARGET
+  const total = early + tail
+  if (!(total > targetPower)) return { head: 1, tail: 1 }
+  if (tail <= 1e-12 || early >= targetPower) {
+    const scale = Math.sqrt(targetPower / total)
+    return { head: scale, tail: scale }
+  }
+  return { head: 1, tail: Math.sqrt((targetPower - early) / tail) }
+}
+
+/**
  * ConvolverNode.normalize uses Chrome's 0.00125 GainCalibration, which turns a
  * peak-normalized hall into ~-36 dB wet. We scale ourselves and keep
  * normalize = false. Match early-window RMS so long cathedrals stay as loud as
  * short rooms, then peak-limit so Mix cannot clip the dry path.
+ * A second static trim (`irNoiseScales`) caps broadband convolution gain so a
+ * dense source at high Wet does not drive the sum into clipping. The cut
+ * prefers the tail, so the early window stays at the RMS target.
  */
 export function scaleReverbImpulse(
   left: Float32Array,
@@ -223,9 +259,29 @@ export function scaleReverbImpulse(
   const peakGain = IR_PEAK_LIMIT / peak
   const stack = irStackTrim(n / sampleRate)
   const gain = Math.min(rmsGain, peakGain) * stack
+  let earlyL = 0
+  let earlyR = 0
+  let tailL = 0
+  let tailR = 0
   for (let i = 0; i < n; i++) {
-    left[i]! *= gain
-    right[i]! *= gain
+    const l = left[i]! * gain
+    const r = right[i]! * gain
+    const l2 = l * l
+    const r2 = r * r
+    if (i < earlyN) {
+      earlyL += l2
+      earlyR += r2
+    } else {
+      tailL += l2
+      tailR += r2
+    }
+  }
+  const useLeft = earlyL + tailL >= earlyR + tailR
+  const scales = irNoiseScales(useLeft ? earlyL : earlyR, useLeft ? tailL : tailR)
+  for (let i = 0; i < n; i++) {
+    const scale = i < earlyN ? scales.head : scales.tail
+    left[i]! *= gain * scale
+    right[i]! *= gain * scale
   }
 }
 

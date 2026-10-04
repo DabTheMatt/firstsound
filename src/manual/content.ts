@@ -132,7 +132,8 @@ const en: ManualSection[] = [
     body: [
       'Each compressor instance has its own Threshold, Ratio, Attack, Release, Knee, and Makeup. It is not the master safety limiter. Threshold is the level where reduction starts. Ratio, from 1:1 to 20:1, sets how hard the signal is turned down above that. Attack and Release are shown in milliseconds and applied in seconds. Knee 0 dB is a hard corner; a higher knee softens the transition.',
       'Makeup sits after the compressor. It changes the output level and does not change the gain-reduction meter. Auto Makeup is a fixed estimate from Threshold and Ratio. Turn it off to use Makeup by hand. It is not a live loudness matcher.',
-      'The transfer curve is that Threshold, Ratio, and Knee map: input level across, output level up. IN is the level into the compressor, OUT is after Makeup, and GR is the compressor’s own reduction in dB. At rest GR stays at 0. Presets such as Gentle, Vocal, Punch, Tight, and Limit are starting points, not mastering settings. A second compressor does not share the first one’s settings.',
+      'Low Cut is the frequency below which the compressor does not react. Sound under that cutoff goes around the compressor and is not reduced. At the minimum, shown as Off, the whole signal is compressed.',
+      'Curve is the Threshold, Ratio, and Knee map: input level across, output level up. Needle shows the same gain reduction as a moving needle. It rests at 0 and swings only while the compressor is reducing gain. IN is the level into the compressor, OUT is after Makeup, and GR is the compressor’s own reduction in dB. At rest GR stays at 0. Presets such as Gentle, Vocal, Punch, Tight, and Limit are starting points, not mastering settings. A second compressor does not share the first one’s settings.',
     ],
   },
   {
@@ -145,7 +146,7 @@ const en: ManualSection[] = [
     title: 'Reverb',
     body: [
       'Each reverb instance keeps its own size, decay, wet mix, and impulse response. The dry path and the reverberated path are separate, then summed.',
-      'When Dry and Wet are linked they are one Mix. The percentages are that mix position: 35% Wet means Dry 65% and Wet 35%. FIELD applies an equal-power crossfade, dry = cos(mix × π/2) and wet = sin(mix × π/2), so the middle does not drop the way a straight linear blend does. That does not keep every source and every impulse response at the same loudness. Unlink them to set Dry and Wet as independent levels. The output can then get louder or quieter.',
+      'When Dry and Wet are linked they are one Mix. The percentages are that mix position: 35% Wet means Dry 65% and Wet 35%. FIELD applies an equal-power crossfade, dry = cos(mix × π/2) and wet = sin(mix × π/2), so the middle does not drop the way a straight linear blend does. The wet impulse is scaled once from its own energy, so a full-scale source mixed in does not slam the sum into clipping. A fixed ceiling after that sum catches the peaks equal-power mixing can still add. Neither step is a live loudness control, and neither keeps every source at the same loudness. Unlink Dry and Wet to set them as independent levels. The output can then get louder or quieter.',
     ],
   },
   {
@@ -410,7 +411,8 @@ const pl: ManualSection[] = [
     body: [
       'Każda instancja kompresora ma własny Threshold, Ratio, Attack, Release, Knee i Makeup. To nie jest główny limiter bezpieczeństwa. Threshold to poziom, od którego zaczyna się redukcja. Ratio od 1:1 do 20:1 określa, jak mocno sygnał powyżej progu jest ściszany. Attack i Release są pokazane w milisekundach, a w DSP liczone w sekundach. Knee 0 dB to ostre kolano; wyższe kolano łagodzi przejście.',
       'Makeup jest za kompresorem. Zmienia poziom wyjścia i nie rusza miernika redukcji wzmocnienia. Auto Makeup to stałe oszacowanie z Threshold i Ratio. Wyłącz je, żeby ustawić Makeup ręcznie. To nie jest żywy dopasowywacz głośności.',
-      'Krzywa przenoszenia to mapa Threshold, Ratio i Knee: poziom wejścia w poziomie, poziom wyjścia w pionie. IN to poziom wchodzący do kompresora, OUT jest po Makeup, a GR to własna redukcja kompresora w dB. W spoczynku GR zostaje na 0. Presety takie jak Gentle, Vocal, Punch, Tight i Limit są punktami startowymi, nie ustawieniami masteringowymi. Drugi kompresor nie dzieli ustawień z pierwszym.',
+      'Low Cut to częstotliwość, poniżej której kompresor nie reaguje. Dźwięk pod tym odcięciem omija kompresor i nie jest ściszany. Przy minimum, pokazywanym jako Off, kompresowany jest cały sygnał.',
+      'Curve to mapa Threshold, Ratio i Knee: poziom wejścia w poziomie, poziom wyjścia w pionie. Needle pokazuje tę samą redukcję wzmocnienia jako wychylającą się wskazówkę. W spoczynku stoi na 0 i rusza się tylko wtedy, gdy kompresor rzeczywiście redukuje wzmocnienie. IN to poziom wchodzący do kompresora, OUT jest po Makeup, a GR to własna redukcja kompresora w dB. W spoczynku GR zostaje na 0. Presety takie jak Gentle, Vocal, Punch, Tight i Limit są punktami startowymi, nie ustawieniami masteringowymi. Drugi kompresor nie dzieli ustawień z pierwszym.',
     ],
   },
   {
@@ -423,7 +425,7 @@ const pl: ManualSection[] = [
     title: 'Pogłos',
     body: [
       'Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, miks wet i własną odpowiedź impulsową. Ścieżka dry i ścieżka pogłosu są osobne, a potem sumowane.',
-      'Gdy Dry i Wet są zlinkowane, to jeden Mix. Procenty opisują pozycję miksu: 35% Wet oznacza Dry 65% i Wet 35%. FIELD stosuje crossfade o stałej mocy, dry = cos(mix × π/2) i wet = sin(mix × π/2), więc środek nie zapada się tak jak przy zwykłym liniowym blendzie. To nie utrzymuje tej samej głośności dla każdego źródła i każdej odpowiedzi impulsowej. Odłącz je, żeby ustawić Dry i Wet jako niezależne poziomy. Wyjście może wtedy stać się głośniejsze albo cichsze.',
+      'Gdy Dry i Wet są zlinkowane, to jeden Mix. Procenty opisują pozycję miksu: 35% Wet oznacza Dry 65% i Wet 35%. FIELD stosuje crossfade o stałej mocy, dry = cos(mix × π/2) i wet = sin(mix × π/2), więc środek nie zapada się tak jak przy zwykłym liniowym blendzie. Odpowiedź impulsowa wet jest skalowana raz, według własnej energii, więc pełnoskalowe źródło wmiksowane w pogłos nie wbija sumy w clipping. Stały pułap za tą sumą łapie szczyty, które miks o stałej mocy nadal może dodać. Żaden z tych kroków nie jest żywym dopasowaniem głośności i żaden nie utrzymuje tej samej głośności dla każdego źródła. Odłącz Dry i Wet, żeby ustawić je jako niezależne poziomy. Wyjście może wtedy stać się głośniejsze albo cichsze.',
     ],
   },
   {

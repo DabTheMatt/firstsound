@@ -228,6 +228,7 @@ const COMPRESSOR_TARGETS: ParamId[] = [
   'compressorRelease',
   'compressorMakeup',
   'compressorInput',
+  'compressorLowCut',
 ]
 
 const LIMITER_TARGETS: ParamId[] = [

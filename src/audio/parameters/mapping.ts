@@ -246,6 +246,8 @@ export function formatParamValue(value: number, def: ParamDef): string {
       return value >= 1000
         ? `${(value / 1000).toFixed(2)} kHz`
         : `${Math.round(value)} Hz`
+    case 'compressorLowCut':
+      return value <= def.min + 0.5 ? 'Off' : `${Math.round(value)} Hz`
     case 'filterReso':
       return `${value.toFixed(2)} Q`
     case 'filterLfoSync':

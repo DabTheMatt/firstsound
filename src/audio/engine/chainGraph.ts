@@ -6,6 +6,7 @@ import { createFilterGraph, filterDryWetGains, type FilterGraph } from '../fx/fi
 import {
   createDelayGraph,
   createReverbGraph,
+  reverbSumCeilingCurve,
   wetDryFor,
   type DelayGraph,
   type ReverbGraph,
@@ -114,8 +115,22 @@ export function createChainSlot(
     slot.delayFx = createDelayGraph(ctx, wet, output, input)
   }
   if (mod.type === 'reverb') {
+    const sum = ctx.createGain()
+    const ceiling = ctx.createWaveShaper()
+    const shared = reverbSumCeilingCurve(ctx)
+    const curve = new Float32Array(new ArrayBuffer(shared.length * 4))
+    curve.set(shared)
+    ceiling.curve = curve
+    try {
+      dry.disconnect(output)
+    } catch {
+      /* first connect */
+    }
+    dry.connect(sum)
     input.connect(wet)
-    slot.reverbFx = createReverbGraph(ctx, wet, output, input)
+    slot.reverbFx = createReverbGraph(ctx, wet, sum, input)
+    sum.connect(ceiling)
+    ceiling.connect(output)
   }
   if (mod.type === 'compressor') {
     slot.compressorFx = createCompressorGraph(ctx, input, wet)

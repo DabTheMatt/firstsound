@@ -1358,6 +1358,15 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     mapping: 'linear',
     step: 1,
   },
+  compressorLowCut: {
+    id: 'compressorLowCut',
+    label: 'Low Cut',
+    min: 20,
+    max: 400,
+    defaultValue: 20,
+    unit: 'Hz',
+    mapping: 'log',
+  },
   eq1Freq: { id: 'eq1Freq', label: 'EQ 1 Freq', min: 10, max: 25000, defaultValue: 80, unit: 'Hz', mapping: 'log' },
   eq1Gain: { id: 'eq1Gain', label: 'EQ 1 Gain', min: -24, max: 24, defaultValue: 0, unit: 'dB', mapping: 'linear', step: 0.1 },
   eq1Q: { id: 'eq1Q', label: 'EQ 1 Q', min: 0.1, max: 20, defaultValue: 0.7, unit: '', mapping: 'log' },
@@ -1816,6 +1825,7 @@ export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
   'compressorRatio',
   'compressorAttack',
   'compressorRelease',
+  'compressorLowCut',
 ]
 export const COMPRESSOR_ADV_KNOBS: ParamId[] = [
   'compressorKnee',

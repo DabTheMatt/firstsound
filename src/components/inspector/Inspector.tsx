@@ -835,7 +835,7 @@ function CompressorEditor({
             <LimiterPlot kind="compressor" />
           </div>
           <p className={styles.help}>
-            The curve is the Threshold, Ratio, and Knee map. IN is the level into the compressor, OUT is after Makeup, and GR is the compressor&apos;s own gain reduction. Presets are starting points.
+            Curve is the Threshold, Ratio, and Knee map. Needle is that same gain reduction: it rests at 0 and swings only while the compressor is working. IN is the level into the compressor, OUT is after Makeup. Low Cut is the frequency below which the compressor does not react. Presets are starting points.
           </p>
           {params(COMPRESSOR_MAIN_KNOBS)}
         </>

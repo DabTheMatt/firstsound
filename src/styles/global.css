@@ -79,6 +79,12 @@ button {
   cursor: pointer;
 }
 
+/* Reset drops drag cursors. The arrow stays until the next press, including over controls that set their own cursor. */
+html[data-cursor-reset],
+html[data-cursor-reset] * {
+  cursor: default !important;
+}
+
 input,
 textarea {
   user-select: text;

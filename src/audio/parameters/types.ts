@@ -145,6 +145,7 @@ export type ParamId =
   | 'compressorMakeup'
   | 'compressorInput'
   | 'compressorAutoMakeup'
+  | 'compressorLowCut'
   | 'eq1Freq'
   | 'eq1Gain'
   | 'eq1Q'

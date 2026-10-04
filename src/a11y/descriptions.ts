@@ -183,6 +183,10 @@ export const PARAM_DESCRIPTIONS: Record<ParamId, LocalizedText> = {
   compressorMakeup: d('Adds gain after compression.', 'Dodaje wzmocnienie po kompresji.'),
   compressorInput: d('Sets the compressor input level.', 'Ustawia poziom wejściowy kompresora.'),
   compressorAutoMakeup: d('Automatically compensates level after compression.', 'Automatycznie wyrównuje poziom po kompresji.'),
+  compressorLowCut: d(
+    'Frequencies below this skip the compressor, so it does not react to them. At the minimum the whole signal is compressed.',
+    'Częstotliwości poniżej tej wartości omijają kompresor, więc na nie nie reaguje. Przy minimum kompresowany jest cały sygnał.',
+  ),
   ...eqBandEntries(),
   eqcfTeeth: d('Sets how many notches the comb filter uses.', 'Ustawia liczbę wcięć filtra grzebieniowego.'),
   eqcfGain: d('Sets the depth of the comb filter notches.', 'Ustawia głębokość wcięć filtra grzebieniowego.'),

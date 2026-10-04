@@ -146,6 +146,7 @@ const PL_OVERRIDES: Partial<Record<ParamId, string>> = {
   compressorMakeup: 'Makeup',
   compressorInput: 'Wejście',
   compressorAutoMakeup: 'Auto makeup',
+  compressorLowCut: 'Odcięcie dołu',
   eqcfTeeth: 'Zęby grzebienia',
   eqcfGain: 'Wzm. grzebienia',
   eqcfSpacing: 'Odstęp grzebienia',

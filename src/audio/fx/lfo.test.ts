@@ -310,6 +310,7 @@ describe('inspectorPaneForLfo', () => {
     expect(inspectorPaneForLfo('compressor', 'compressorRatio')).toBe('main')
     expect(inspectorPaneForLfo('compressor', 'compressorAttack')).toBe('main')
     expect(inspectorPaneForLfo('compressor', 'compressorRelease')).toBe('main')
+    expect(inspectorPaneForLfo('compressor', 'compressorLowCut')).toBe('main')
     expect(inspectorPaneForLfo('compressor', 'compressorKnee')).toBe('advanced')
     expect(inspectorPaneForLfo('compressor', 'compressorInput')).toBe('advanced')
     expect(inspectorPaneForLfo('compressor', 'compressorMakeup')).toBe('advanced')

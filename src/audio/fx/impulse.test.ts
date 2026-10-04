@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { fillReverbImpulse, impulseLengthSec, irStackTrim, IR_PEAK_LIMIT, IR_TARGET_EARLY_RMS } from './impulse'
+import {
+  fillReverbImpulse,
+  impulseLengthSec,
+  irNoiseScales,
+  irNoiseTrim,
+  irStackTrim,
+  IR_NOISE_GAIN_TARGET,
+  IR_PEAK_LIMIT,
+  IR_TARGET_EARLY_RMS,
+} from './impulse'
 
 describe('impulse', () => {
   it('writes a decaying stereo IR', () => {
@@ -50,7 +59,7 @@ describe('impulse', () => {
     for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(left[i]!), Math.abs(right[i]!))
     for (let i = 0; i < rmsN; i++) earlyEnergy += left[i]! * left[i]! + right[i]! * right[i]!
     const earlyRms = Math.sqrt(earlyEnergy / (2 * rmsN))
-    expect(peak).toBeGreaterThan(0.08)
+    expect(peak).toBeGreaterThan(0.03)
     expect(peak).toBeLessThanOrEqual(IR_PEAK_LIMIT)
     expect(earlyRms).toBeGreaterThan(IR_TARGET_EARLY_RMS * 0.35)
     expect(earlyRms).toBeLessThan(0.08)
@@ -104,6 +113,42 @@ describe('impulse', () => {
   it('trims long IRs so overlapping tails stay quieter', () => {
     expect(irStackTrim(0.3)).toBe(1)
     expect(irStackTrim(6)).toBeLessThan(0.55)
+  })
+
+  it('caps broadband convolution gain without boosting a short impulse', () => {
+    expect(irNoiseTrim(0)).toBe(1)
+    expect(irNoiseTrim(IR_NOISE_GAIN_TARGET ** 2)).toBe(1)
+    expect(irNoiseTrim(9)).toBeCloseTo(IR_NOISE_GAIN_TARGET / 3)
+    expect(irNoiseScales(1, 1)).toEqual({ head: 1, tail: 1 })
+    const cut = irNoiseScales(1, 8)
+    expect(cut.head).toBe(1)
+    expect(1 + 8 * cut.tail * cut.tail).toBeCloseTo(IR_NOISE_GAIN_TARGET ** 2)
+    const spec = {
+      type: 'hall' as const,
+      sampleRate: 22050,
+      decaySec: 1.6,
+      size: 0.5,
+      diffusion: 0.55,
+      density: 0.7,
+      early: 0.4,
+      damping: 0.6,
+      reverse: 0,
+      shimmer: 0,
+      shimmerPitch: 12,
+      color: 0,
+      freeze: false,
+    }
+    const n = Math.floor(spec.sampleRate * impulseLengthSec(spec))
+    const left = new Float32Array(n)
+    const right = new Float32Array(n)
+    fillReverbImpulse(left, right, spec)
+    let sumL = 0
+    let sumR = 0
+    for (let i = 0; i < n; i++) {
+      sumL += left[i]! * left[i]!
+      sumR += right[i]! * right[i]!
+    }
+    expect(Math.sqrt(Math.max(sumL, sumR))).toBeLessThanOrEqual(IR_NOISE_GAIN_TARGET * 1.001)
   })
 
   it('gated IRs stay short', () => {

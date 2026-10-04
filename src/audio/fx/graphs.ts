@@ -1,5 +1,5 @@
 import type { ParamId } from '../parameters/types'
-import { rampAudioParamLinear, setSmoothedAudioParam } from '../engine/paramSmooth'
+import { rampAudioParamLinear, setDynamicsAudioParam, setSmoothedAudioParam } from '../engine/paramSmooth'
 import { webAudioBiquadQ } from '../engine/eqBands'
 import {
   delayFeedbackGains,
@@ -20,7 +20,7 @@ import {
 } from './dryWet'
 import { fillReverbImpulse, impulseLengthSec, type ImpulseSpec } from './impulse'
 import { delayChannelTimeSeconds, delayTimeSeconds, isDelayStereo, isReverbStereo } from './spaceModel'
-import { reverbWetOutputGain } from './reverbLevel'
+import { makeReverbSumCeiling, reverbWetOutputGain } from './reverbLevel'
 import { reverbLoopGains } from './reverbLoop'
 import { syncedDelayMs } from './sync'
 import { createClickSafeShaper, type ClickSafeShaper } from './shaperCurve'
@@ -851,21 +851,34 @@ export function applyReverbGraph(
 
   const gateAmt = type === 'gated' ? Math.max(params.reverbGate / 100, 0.55) : params.reverbGate / 100
   if (gateAmt < 0.02) {
-    setSmoothedAudioParam(g.gate.threshold, 0, now, 'db')
-    setSmoothedAudioParam(g.gate.ratio, 1, now, 'gain')
+    setDynamicsAudioParam(g.gate.threshold, 0, now)
+    setDynamicsAudioParam(g.gate.ratio, 1, now)
   } else {
-    setSmoothedAudioParam(g.gate.threshold, params.reverbGateThres, now, 'db')
-    setSmoothedAudioParam(g.gate.ratio, 1 + gateAmt * 18, now, 'gain')
-    setSmoothedAudioParam(g.gate.attack, params.reverbGateAttack / 1000, now, 'time')
-    setSmoothedAudioParam(g.gate.release, params.reverbGateRelease / 1000, now, 'time')
-    setSmoothedAudioParam(g.gate.knee, 2, now, 'db')
+    setDynamicsAudioParam(g.gate.threshold, params.reverbGateThres, now)
+    setDynamicsAudioParam(g.gate.ratio, 1 + gateAmt * 18, now)
+    setDynamicsAudioParam(g.gate.attack, params.reverbGateAttack / 1000, now)
+    setDynamicsAudioParam(g.gate.release, params.reverbGateRelease / 1000, now)
+    setDynamicsAudioParam(g.gate.knee, 2, now)
   }
 
-  setSmoothedAudioParam(g.limit.threshold, -1.5, now, 'db')
-  setSmoothedAudioParam(g.limit.knee, 3, now, 'db')
-  setSmoothedAudioParam(g.limit.ratio, 16, now, 'gain')
-  setSmoothedAudioParam(g.limit.attack, 0.002, now, 'time')
-  setSmoothedAudioParam(g.limit.release, 0.08, now, 'time')
+  // Peak safety on the wet return only. Idle while the impulse trim holds the body under this threshold.
+  setDynamicsAudioParam(g.limit.threshold, -0.8, now)
+  setDynamicsAudioParam(g.limit.knee, 1, now)
+  setDynamicsAudioParam(g.limit.ratio, 20, now)
+  setDynamicsAudioParam(g.limit.attack, 0.001, now)
+  setDynamicsAudioParam(g.limit.release, 0.04, now)
+}
+
+/** Constant curve. Built once per context so the sum ceiling is not rewritten on the audio thread. */
+const reverbCeilingCurve = new WeakMap<BaseAudioContext, Float32Array<ArrayBuffer>>()
+
+export function reverbSumCeilingCurve(ctx: BaseAudioContext): Float32Array<ArrayBuffer> {
+  let curve = reverbCeilingCurve.get(ctx)
+  if (!curve) {
+    curve = makeReverbSumCeiling()
+    reverbCeilingCurve.set(ctx, curve)
+  }
+  return curve
 }
 
 export function wetDryFor(

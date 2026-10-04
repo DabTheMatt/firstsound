@@ -475,7 +475,7 @@ function DryWetPair({
       {showHelp ? (
         <p className={styles.help}>
           {reverbMix && linked
-            ? 'Linked mix is one control. The percentages are the mix position. FIELD uses an equal-power crossfade so the middle does not fall off the way a straight linear blend does. That is not a promise of identical loudness for every impulse response.'
+            ? 'Linked mix is one control. The percentages are the mix position. FIELD uses an equal-power crossfade so the middle does not fall off the way a straight linear blend does. The wet impulse is scaled once so a full-scale source does not slam the sum into clipping, and a fixed ceiling catches the peaks that remain. That is not a promise of identical loudness.'
             : reverbMix
               ? 'Unlinked. Dry and Wet are independent levels, so the output can get louder or quieter.'
               : 'The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).'}

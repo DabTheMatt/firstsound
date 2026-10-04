@@ -69,18 +69,15 @@ export function onPointerReset(listener: ResetListener): () => void {
 
 function pinDefaultCursor(doc: Document): void {
   const root = doc.documentElement
-  const body = doc.body
-  if (root?.style) root.style.cursor = 'default'
-  if (body?.style) body.style.cursor = 'default'
+  if (root?.dataset) root.dataset.cursorReset = '1'
+  root?.style?.removeProperty?.('cursor')
+  doc.body?.style?.removeProperty?.('cursor')
   const release = () => {
-    root?.style?.removeProperty('cursor')
-    body?.style?.removeProperty('cursor')
+    if (root?.dataset) delete root.dataset.cursorReset
   }
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => requestAnimationFrame(release))
-  }
-  doc.addEventListener?.('pointerup', release, { once: true })
-  doc.addEventListener?.('pointercancel', release, { once: true })
+  // The next press restores control cursors. A move would bring the stuck
+  // shape back while the pointer is still resting on the same control.
+  doc.addEventListener?.('pointerdown', release, { capture: true, once: true })
 }
 
 /**

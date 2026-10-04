@@ -195,6 +195,24 @@ export function scheduledAudioParamTarget(param: AudioParam): number | undefined
   return scheduled.get(param)?.target
 }
 
+/**
+ * DynamicsCompressor AudioParams do not survive `cancelAndHoldAtTime`.
+ * That call reports the new value and then compresses with a corrupted law
+ * (a 1:1 ratio still ducks). Write the value directly at the start of the
+ * timeline, and `setValueAtTime` later so automation can move it.
+ * Do not also assign `.value` on later points — that wipes the timeline.
+ */
+export function setDynamicsAudioParam(param: AudioParam, value: number, now: number): void {
+  if (!Number.isFinite(value)) return
+  const t = Math.max(0, Number.isFinite(now) ? now : 0)
+  if (t <= 1e-6) param.value = value
+  try {
+    param.setValueAtTime(value, t)
+  } catch {
+    param.value = value
+  }
+}
+
 export function setSmoothedAudioParam(
   param: AudioParam,
   target: number,

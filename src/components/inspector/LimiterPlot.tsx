@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fallHoldDb } from '../../app/editorState'
 import { compressorCurveDb, compressorSettings, type CompressorSettings } from '../../audio/fx/compressor'
+import { COMPRESSOR_NEEDLE_SPAN_DB, compressorNeedleRadians } from '../../audio/fx/compressorNeedle'
 import {
   amplitudeToDb,
   buildLimiterWavePreview,
@@ -23,12 +24,17 @@ import styles from './EqCurve.module.css'
 
 const GR_MAX = 24
 
-export type LimiterPlotMode = 'curve' | 'wave'
+export type LimiterPlotMode = 'curve' | 'wave' | 'needle'
 export type LimiterPlotKind = 'compressor' | 'limiter'
 
-const PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
-  { value: 'curve', label: 'Curve', title: 'Compressor transfer curve with knee' },
+const LIMITER_PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
+  { value: 'curve', label: 'Curve', title: 'Transfer curve with knee' },
   { value: 'wave', label: 'Wave', title: 'Next 10 seconds of sample with threshold overlay' },
+]
+
+const COMPRESSOR_PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
+  { value: 'curve', label: 'Curve', title: 'Threshold, ratio, and knee' },
+  { value: 'needle', label: 'Needle', title: 'Gain reduction as a moving needle' },
 ]
 
 export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind }) {
@@ -118,7 +124,8 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
 
-      if (compressor || modeRef.current === 'curve') {
+      const showNeedle = compressor && modeRef.current === 'needle'
+      if (showNeedle || compressor || modeRef.current === 'curve') {
         const dt = Math.min(0.08, Math.max(0.001, dtPaint))
         holdIn = fallHoldDb(holdIn, readPeakDb(preTap()), dt, 18)
         holdOut = fallHoldDb(holdOut, readPeakDb(postTap()), dt, 18)
@@ -130,7 +137,8 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
         } else {
           holdGr = fallHoldDb(holdGr, Math.max(0, -reductionDb()), dt, 24)
         }
-        drawCompressorCurve(ctx, width, height, dpr, settings, holdIn, holdOut, holdGr, colors, compressor)
+        if (showNeedle) drawCompressorNeedle(ctx, width, height, dpr, holdGr, colors)
+        else drawCompressorCurve(ctx, width, height, dpr, settings, holdIn, holdOut, holdGr, colors, compressor)
       } else {
         const result = drawWavePreview(
           ctx,
@@ -155,27 +163,108 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
   }, [])
 
   const label = kind === 'compressor' ? 'Compressor preview' : 'Limiter preview'
+  const modes = kind === 'compressor' ? COMPRESSOR_PLOT_MODES : LIMITER_PLOT_MODES
 
   return (
     <div className={styles.plotStack}>
-      {kind === 'compressor' ? null : (
-        <Segmented label={label} value={mode} options={PLOT_MODES} onChange={setMode} />
-      )}
+      <Segmented label={label} value={mode} options={modes} onChange={setMode} />
       <div className={styles.wrap}>
         <canvas
           ref={canvasRef}
           className={styles.canvas}
           aria-label={
-            kind === 'compressor'
-              ? 'Compressor transfer curve, input, output, and gain reduction'
-              : mode === 'curve'
-                ? 'Transfer curve with soft-knee region'
-                : 'Next 10 seconds of sample with threshold overlay'
+            kind === 'compressor' && mode === 'needle'
+              ? 'Compressor gain-reduction needle'
+              : kind === 'compressor'
+                ? 'Compressor transfer curve, input, output, and gain reduction'
+                : mode === 'curve'
+                  ? 'Transfer curve with soft-knee region'
+                  : 'Next 10 seconds of sample with threshold overlay'
           }
         />
       </div>
     </div>
   )
+}
+
+function drawCompressorNeedle(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  dpr: number,
+  holdGr: number,
+  colors: ReturnType<typeof readThemeColors>,
+): void {
+  const cx = width / 2
+  const cy = height * 0.78
+  const radius = Math.min(width * 0.4, height * 0.58)
+  const left = compressorNeedleRadians(-COMPRESSOR_NEEDLE_SPAN_DB)
+  const right = compressorNeedleRadians(0)
+  const face = colorWithAlpha(colors.textPrimary, 0.06)
+  ctx.fillStyle = face
+  const pad = 8 * dpr
+  ctx.beginPath()
+  ctx.roundRect(pad, pad, width - pad * 2, height - pad * 2, 8 * dpr)
+  ctx.fill()
+
+  ctx.strokeStyle = colorWithAlpha(colors.textMuted, 0.55)
+  ctx.lineWidth = Math.max(1.2, dpr * 1.1)
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, left, right)
+  ctx.stroke()
+
+  const marks = [0, -3, -6, -12, -18, -24]
+  ctx.font = `${Math.round(9 * dpr)}px ui-sans-serif, system-ui, sans-serif`
+  ctx.fillStyle = colors.textMuted
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (const db of marks) {
+    const angle = compressorNeedleRadians(db)
+    const major = db % 6 === 0
+    const inner = radius * (major ? 0.82 : 0.9)
+    const outer = radius * 1.02
+    ctx.strokeStyle = colorWithAlpha(colors.textPrimary, major ? 0.7 : 0.35)
+    ctx.lineWidth = Math.max(1, dpr * (major ? 1.1 : 0.7))
+    ctx.beginPath()
+    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner)
+    ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer)
+    ctx.stroke()
+    if (major) {
+      const labelR = radius * 1.18
+      ctx.fillText(
+        `${db}`,
+        cx + Math.cos(angle) * labelR,
+        cy + Math.sin(angle) * labelR,
+      )
+    }
+  }
+
+  const angle = compressorNeedleRadians(holdGr)
+  const tip = radius * 0.78
+  ctx.strokeStyle = colors.textPrimary
+  ctx.lineWidth = Math.max(1.4, dpr * 1.3)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx, cy)
+  ctx.lineTo(cx + Math.cos(angle) * tip, cy + Math.sin(angle) * tip)
+  ctx.stroke()
+  ctx.fillStyle = colors.eqCurve || colors.accent
+  ctx.beginPath()
+  ctx.arc(cx + Math.cos(angle) * tip, cy + Math.sin(angle) * tip, 2.2 * dpr, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = colors.textPrimary
+  ctx.beginPath()
+  ctx.arc(cx, cy, 3.2 * dpr, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.font = `${Math.round(11 * dpr)}px ui-sans-serif, system-ui, sans-serif`
+  ctx.fillStyle = colors.textPrimary
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillText(holdGr.toFixed(1), cx, 12 * dpr)
+  ctx.font = `${Math.round(8 * dpr)}px ui-sans-serif, system-ui, sans-serif`
+  ctx.fillStyle = colors.textMuted
+  ctx.fillText('GR', cx, 24 * dpr)
 }
 
 function drawCompressorCurve(

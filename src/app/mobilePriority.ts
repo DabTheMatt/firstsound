@@ -56,7 +56,7 @@ export const MOBILE_PARAM_PRIORITY: Record<ModuleType, MobileParamPriority> = {
   },
   compressor: {
     primary: ['compressorThreshold', 'compressorRatio', 'compressorAttack', 'compressorRelease'],
-    secondary: ['compressorKnee', 'compressorMakeup'],
+    secondary: ['compressorKnee', 'compressorMakeup', 'compressorLowCut'],
     advanced: ['compressorInput'],
   },
   limiter: {
