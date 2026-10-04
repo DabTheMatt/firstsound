@@ -19,7 +19,9 @@ import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './ha
 import { getHearingReveal, showTransientOnWave } from './reveal'
 import { nearestSpaceBucket } from './spaceLive'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
+import { smearSoundMap } from './soundMapHear'
 import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelPosition, clampPanelSize } from './settings'
+import { spectralTones } from './tones'
 import { heardDelay, heardSpaceTimeline, type HeardDelay } from './heardSpace'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
 import { voiceEstimate } from './voiceEstimate'
@@ -98,6 +100,8 @@ describe('hearing access analysis', () => {
     expect(bandShare('lowMid', analysis)).toBeGreaterThan(0.6)
     expect(bandShare('high', analysis) + bandShare('air', analysis)).toBeLessThan(0.05)
     expect(analysis.soundMap && analysis.soundMap.length).toBeGreaterThan(0)
+    const tags = updateDescriptors(analysis, emptyDescriptorMemory(), 0, 0.5)
+    expect(tags.some((item) => item.id === 'tone' && item.label.includes('A4'))).toBe(true)
   })
 
   it('measures a 60 Hz sine as low-frequency energy without a false high band', () => {
@@ -709,6 +713,8 @@ describe('hearing access analysis', () => {
     expect(parseHearingSettings({}).panelLeft).toBeNull()
     expect(parseHearingSettings({ panelLeft: 40, panelTop: 80 })).toMatchObject({ panelLeft: 40, panelTop: 80 })
     expect(parseHearingSettings({}).transientSensitivity).toBe(0.5)
+    expect(parseHearingSettings({}).toneSensitivity).toBe(0.5)
+    expect(parseHearingSettings({ toneSensitivity: 2 }).toneSensitivity).toBe(1)
     expect(parseHearingSettings({}).showWaveSymbols).toBe(true)
     expect(parseHearingSettings({ showWaveSymbols: false }).showWaveSymbols).toBe(false)
     expect(parseHearingSettings({ transientSensitivity: 2 }).transientSensitivity).toBe(1)
@@ -726,5 +732,36 @@ describe('hearing access analysis', () => {
     expect(findings.some((finding) => /bad|poor|wrong/i.test(finding.title))).toBe(false)
     const clip = findings.find((finding) => finding.id === 'possible-clipping')
     expect(clip?.time).not.toBeNull()
+  })
+
+  it('lists a quieter partial only when note sensitivity is open', () => {
+    const mixed = span(mixTone(440, 0.5, 880, 0.12))
+    const strict = spectralTones(mixed.spectrumDb, mixed.sampleRate, mixed.fftSize, 0)
+    const open = spectralTones(mixed.spectrumDb, mixed.sampleRate, mixed.fftSize, 1)
+    expect(strict).toHaveLength(1)
+    expect(strict[0]?.note).toBe('A4')
+    expect(open.length).toBeGreaterThanOrEqual(2)
+    expect(open.map((tone) => tone.note)).toContain('A4')
+    expect(open.map((tone) => tone.note)).toContain('A5')
+    const quiet = span(new Float32Array(RATE))
+    expect(spectralTones(quiet.spectrumDb, quiet.sampleRate, quiet.fftSize, 1)).toEqual([])
+    const tags = updateDescriptors(mixed, emptyDescriptorMemory(), 0, 1)
+    expect(tags.filter((item) => item.id === 'tone').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('smears the sound map only when reverb wet is above zero', () => {
+    const columns = [
+      { time: 0, power: [0, 1, 0, 0, 0, 1, 0] },
+      { time: 0.1, power: [0, 0, 0, 0, 0, 0, 0] },
+      { time: 0.2, power: [0, 0, 0, 0, 0, 0, 0] },
+    ]
+    const dry = { engaged: true, size: 0.5, distance: 0, wet: 0, decay: 0.5 }
+    expect(smearSoundMap(columns, dry)).toBe(columns)
+    expect(smearSoundMap(columns, { ...dry, engaged: false, wet: 1 })).toBe(columns)
+    const near = smearSoundMap(columns, { ...dry, wet: 1, distance: 0, decay: 1 })
+    const far = smearSoundMap(columns, { ...dry, wet: 1, distance: 1, decay: 1 })
+    expect(near?.[1]?.power[1] ?? 0).toBeGreaterThan(0)
+    expect(far?.[0]?.power[5] ?? 1).toBeLessThan(near?.[0]?.power[5] ?? 0)
+    expect(columns[1]?.power[1]).toBe(0)
   })
 })

@@ -1206,6 +1206,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           if (mode === 'end' || mode === 'move' || mode === 'select') engine.snapToZero('end')
         }
         onRegionCommit()
+        if (phoneFocus === 'hearing' && mode === 'select') engine.setLoop(true)
       }
       if (
         mode === 'fadeIn' ||
