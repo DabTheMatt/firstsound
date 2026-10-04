@@ -393,6 +393,12 @@
   text-transform: none;
 }
 
+.typeField select:focus,
+.typeField select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .fftTools {
   justify-content: center;
   gap: 4px;

@@ -418,11 +418,6 @@ export function ValueKnob({
             strokeLinecap="round"
           />
         </svg>
-        {lfoRange ? (
-          <span className={styles.lfoMark} aria-hidden="true">
-            〰
-          </span>
-        ) : null}
       </div>
       <span className={styles.modSlot}>
         {paramId ? <ParamActionPair id={paramId} compact /> : null}
@@ -449,9 +444,9 @@ export function ValueKnob({
         />
       ) : (
         <>
-          {baseValueText ? (
-            <p className={styles.baseValue} title="Stored value (LFO zero)">
-              {baseValueText}
+          {focus || baseValueText ? (
+            <p className={styles.baseValue} title={baseValueText ? 'Stored value (LFO zero)' : undefined}>
+              {baseValueText ?? '\u00a0'}
             </p>
           ) : null}
           <p

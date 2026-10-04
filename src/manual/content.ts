@@ -117,7 +117,7 @@ const en: ManualSection[] = [
     title: 'EQ',
     body: [
       'Each EQ instance has its own bands. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered over the grid when the filter type changes.',
-      'Focus lists the filters on the left of the graph. The knobs sit in the center and float over the grid. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24 and the axis scale Lin, Log, or Mel. Guides use the usual round frequencies and sit on a logarithmic axis unless Lin is selected.',
+      'Focus lists the filters on the left of the graph. The knobs sit in the center and float over the grid. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24 and the axis scale Lin, Log, or Mel. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
     ],
   },
   {
@@ -366,7 +366,7 @@ const pl: ManualSection[] = [
     title: 'EQ',
     body: [
       'Każda instancja EQ ma własne pasma. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku siatki przy zmianie typu.',
-      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku i unoszą się nad siatką. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24 oraz skalę Lin, Log albo Mel. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin.',
+      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku i unoszą się nad siatką. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24 oraz skalę Lin, Log albo Mel. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
     ],
   },
   {

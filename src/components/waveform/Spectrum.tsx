@@ -94,6 +94,7 @@ import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import {
+  SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_HZ_LABEL_OFFSET,
   compactDbMarks,
   spectrumPlotPad,
@@ -446,6 +447,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           ctx.lineTo(tick.x, bottom)
           ctx.stroke()
         }
+        if (focusPlot) {
+          ctx.strokeStyle = colorWithAlpha(colors.textMuted, 0.72)
+          ctx.lineWidth = dpr
+          ctx.beginPath()
+          ctx.moveTo(left, bottom)
+          ctx.lineTo(right, bottom)
+          ctx.stroke()
+        }
 
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.82)
@@ -786,16 +795,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           }
         }
         ctx.textAlign = 'center'
-        ctx.textBaseline = tight ? 'bottom' : 'top'
-        ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.62 : 1)
+        ctx.textBaseline = tight && !focusPlot ? 'bottom' : 'top'
+        ctx.fillStyle = colorWithAlpha(colors.textMuted, tight ? 0.9 : 1)
           for (let i = 0; i < hzTicks.length; i++) {
           const tick = hzTicks[i]!
           ctx.font = `${(tick.major ? 9 : 8) * dpr}px ui-sans-serif, system-ui, sans-serif`
-          ctx.fillText(
-            tick.label,
-            tick.x,
-            tight ? bottom - 4 * dpr : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr,
-          )
+          const labelY = focusPlot
+            ? bottom + SPECTRUM_FOCUS_HZ_LABEL_OFFSET * dpr
+            : tight
+              ? bottom - 4 * dpr
+              : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr
+          ctx.fillText(tick.label, tick.x, labelY)
         }
       }
       frame = requestAnimationFrame(tick)
@@ -1547,7 +1557,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             className={styles.graphMenuButton}
             aria-expanded={gridOpen}
             aria-label="Graph settings"
-            onClick={() => setGridOpen((open) => !open)}
+            onClick={(event) => {
+              setGridOpen((open) => !open)
+              event.currentTarget.blur()
+            }}
           >
             •••
           </button>
@@ -1560,9 +1573,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     key={density}
                     type="button"
                     aria-pressed={gridDensity === density}
-                    onClick={() => {
+                    onClick={(event) => {
                       setGridDensity(density)
                       persistFreqGridDensity(density)
+                      event.currentTarget.blur()
                     }}
                   >
                     {density}
@@ -1577,7 +1591,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                     type="button"
                     aria-pressed={freqScale === opt.value}
                     title={opt.title}
-                    onClick={() => setFreqScale(opt.value)}
+                    onClick={(event) => {
+                      setFreqScale(opt.value)
+                      event.currentTarget.blur()
+                    }}
                   >
                     {opt.label}
                   </button>
