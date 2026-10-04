@@ -351,7 +351,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const colors = readThemeColors()
         const prefsNow = prefsRef.current
         const focusPlot = phoneFocusRef.current
-        const layer = focusPlot ? 'post' : prefsNow.layer
+        const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
         const regionColors = focusPlot ? false : prefsNow.regionColors
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
@@ -1583,6 +1583,28 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   </button>
                 ))}
               </div>
+              {phoneFocus ? (
+                <div className={styles.graphMenuRow}>
+                  <span>Layer</span>
+                  {([
+                    ['pre', 'Before'],
+                    ['post', 'After'],
+                    ['both', 'Both'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={prefs.layer === value}
+                      onClick={(event) => {
+                        setPrefs((current) => ({ ...current, layer: value }))
+                        event.currentTarget.blur()
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className={styles.graphMenuRow}>
                 <span>Scale</span>
                 {FREQ_SCALE_OPTIONS.map((opt) => (
