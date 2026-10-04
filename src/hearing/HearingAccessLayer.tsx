@@ -19,7 +19,9 @@ import {
   reverbCompare,
   stereoCompare,
 } from './compare'
-import { emptyDescriptorMemory, simpleSummary, updateDescriptors, type Descriptor } from './descriptors'
+import { emptyDescriptorMemory, localDescriptors, simpleSummary, updateDescriptors, type Descriptor } from './descriptors'
+import { EarIcon } from './EarIcon'
+import { HearingTagList } from './HearingTagList'
 import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
 import { AfterEqChart, LevelTrack } from './AfterEqChart'
@@ -171,8 +173,8 @@ export function HearingAccessLayer({
   useEffect(() => {
     if (!settings.enabled || !settings.layers.descriptors || !hearing.analysis) return
     if (snap.playing && settings.panelOpen) return
-    setLive(updateDescriptors(hearing.analysis, memory.current, performance.now(), settings.toneSensitivity))
-  }, [settings.enabled, settings.layers.descriptors, settings.panelOpen, settings.toneSensitivity, hearing.analysis, snap.playing])
+    setLive(updateDescriptors(hearing.analysis, memory.current, performance.now()))
+  }, [settings.enabled, settings.layers.descriptors, settings.panelOpen, hearing.analysis, snap.playing])
 
   useEffect(() => {
     if (!settings.enabled || !settings.panelOpen || !settings.layers.descriptors || !snap.playing) return
@@ -192,10 +194,10 @@ export function HearingAccessLayer({
         originSec: start / rate,
         scope: 'current',
       })
-      setLive(updateDescriptors(current, memory.current, performance.now(), settings.toneSensitivity))
+      setLive(updateDescriptors(current, memory.current, performance.now()))
     }, 500)
     return () => window.clearInterval(id)
-  }, [settings.enabled, settings.panelOpen, settings.layers.descriptors, settings.toneSensitivity, snap.playing, snap.sampleRate, snap.bufferRev])
+  }, [settings.enabled, settings.panelOpen, settings.layers.descriptors, snap.playing, snap.sampleRate, snap.bufferRev])
 
   useEffect(() => {
     if (!settings.enabled || settings.hapticIntensity === 'off' || !hapticsOk || !snap.playing) return
@@ -457,19 +459,18 @@ export function HearingAccessLayer({
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        className={styles.launcher}
-        hidden={focus === 'hearing'}
-        aria-pressed={settings.panelOpen}
-        aria-label="Hearing Access"
-        onClick={() => patch({ panelOpen: !settings.panelOpen })}
-      >
-        <span aria-hidden="true" className={styles.mark}>
-          ♪
-        </span>
-        Hearing Access
-      </button>
+      {narrow && focus !== 'hearing' ? (
+        <button
+          type="button"
+          className={styles.launcher}
+          aria-pressed={settings.panelOpen}
+          aria-label="Hearing Access"
+          title="Hearing Access"
+          onClick={() => patch({ panelOpen: !settings.panelOpen })}
+        >
+          <EarIcon />
+        </button>
+      ) : null}
       {settings.panelOpen ? (
         <section
           className={narrow ? styles.sheet : styles.panel}
@@ -753,7 +754,7 @@ function SoundSection(props: {
       <div className={styles.sectionTitle}>
         <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
         <InfoTip label="More about Sound">
-          Tags follow the playhead and stay in this row. Extra tags scroll here. The Notes slider lists detected partials beside the other tags. Strict keeps the loudest. Sensitive adds quieter ones. The same note is listed once. Silence does not invent a note. The fingerprint is this scope before effects. Hover a tag for the measured reason.
+          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. Extra tags scroll in this row. The fingerprint is this scope before effects.
         </InfoTip>
       </div>
       {props.summary && props.surface === 'simple' ? (
@@ -773,13 +774,13 @@ function SoundSection(props: {
         </button>
       ) : null}
       <div className={styles.tagBar}>
-        <ul className={styles.chips} aria-label="Hearing tags">
-          {props.live.map((item) => (
-            <li key={`${item.id}:${item.label}`} data-tag={item.id} title={item.detail}>
-              {item.label}
-            </li>
-          ))}
-        </ul>
+        <HearingTagList
+          tags={
+            analysis
+              ? props.live.concat(localDescriptors(analysis, props.hearing.playhead ?? analysis.originSec, settings.toneSensitivity))
+              : props.live
+          }
+        />
         <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
       </div>
       {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} pitch={props.snap.params.pitch} /> : null}
@@ -949,7 +950,7 @@ function SpaceSection({
       <div className={styles.sectionTitle}>
         <h3>Space</h3>
         <InfoTip label="More about space">
-          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size draws a smaller head. The source moves to the front wall with reverb distance. Wet does not move the source. When wet is above zero, the sound map smears forward and the field draws a short tail under each mark. The right edge shows the room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
+          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size or a greater distance draws a smaller head. The source moves toward the front as distance grows. Wet does not move the head or the source. When wet is above zero, the sound map smears forward and the field draws a short tail under each mark. The right edge shows the room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
         </InfoTip>
       </div>
       <div className={styles.spaceStack}>

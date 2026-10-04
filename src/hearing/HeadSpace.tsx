@@ -17,8 +17,8 @@ type Props = {
 
 /**
  * Listener's head, seen from above. Front is the top of the picture.
- * A larger room draws a smaller head. The source sits in front of the head
- * and moves to the front wall with reverb distance. Wet draws the reflections.
+ * A larger room or a greater distance draws a smaller head. The source sits
+ * in front of the head and moves toward the front as distance grows.
  */
 export function HeadSpace({ balance, width, correlation, space = DRY, fill = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -45,17 +45,6 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
     ctx.fillRect(0, 0, widthPx, heightPx)
     const layout = headLayout(widthPx, heightPx, balance, space.size, space.distance)
     const { headRadius: head, headX: cx, headY: cy, sourceX: x, sourceY: y } = layout
-    if (space.engaged) {
-      const echoes = space.wet > 0.02 ? 2 + Math.round(space.decay * 6) : 0
-      for (let i = 0; i < echoes; i++) {
-        const t = (i + 1) / (echoes + 1)
-        const ey = layout.roomY + 10 + t * (layout.roomH - 20)
-        ctx.globalAlpha = space.wet * (0.55 - t * 0.4)
-        ctx.fillStyle = muted
-        ctx.fillRect(layout.roomX + 5, ey, 3, 3)
-        ctx.fillRect(layout.roomX + layout.roomW - 8, ey, 3, 3)
-      }
-    }
     ctx.strokeStyle = ink
     ctx.fillStyle = ink
     ctx.lineWidth = 1.5
@@ -74,8 +63,10 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText('front', cx, layout.roomY + 11)
-    ctx.fillText('L', cx - head * 1.35, cy)
-    ctx.fillText('R', cx + head * 1.35, cy)
+    const earOuter = head * 1.13
+    const labelX = Math.max(head * 1.45, earOuter + 12)
+    ctx.fillText('L', cx - labelX, cy)
+    ctx.fillText('R', cx + labelX, cy)
     const spread = Math.max(6, Math.min(layout.roomW * 0.7, 8 + width * head * 2.2))
     const low = correlation < 0.2
     ctx.globalAlpha = 1
@@ -100,7 +91,7 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
     ctx.lineTo(x, y)
     ctx.stroke()
     ctx.globalAlpha = 1
-  }, [balance, width, correlation, space.engaged, space.size, space.distance, space.wet, space.decay, box.width, box.height])
+  }, [balance, width, correlation, space.engaged, space.size, space.distance, box.width, box.height])
 
   const side = Math.abs(balance) < 0.03 ? 'center' : balance < 0 ? 'left' : 'right'
   const room = space.engaged ? roomWord(space.size) : 'none'
@@ -110,7 +101,7 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
       <canvas
         ref={ref}
         role="img"
-        aria-label={`Head view. Room is ${room}. Source is ${distance} and ${side}, in front of the head. Front is up. A larger room draws a smaller head. Distance follows reverb distance. Wet draws the reflections.`}
+        aria-label={`Head view. Room is ${room}. Source is ${distance} and ${side}, in front of the head. Front is up. A larger room or a greater distance draws a smaller head.`}
         style={
           fill
             ? undefined

@@ -8,6 +8,7 @@ import { hzToNoteName } from '../audio/engine/pitchScale'
 import { timeDomainToDb, type SpectrumFftScratch } from '../audio/engine/spectrumFft'
 import { HEARING_BANDS, type HearingBandId, bandForHz } from './bands'
 import { CLIP_AMPLITUDE, DB_FLOOR, SILENCE_PEAK, amplitudeToDbfs, dbfsToPower, powerToDbfs } from './levels'
+import { spectralTones, type ToneMoment } from './tones'
 
 export type AnalysisScope = 'selection' | 'current' | 'full'
 
@@ -101,6 +102,8 @@ export type BufferAnalysis = {
   dynamics: DynamicsBucket[]
   spaceTimeline: SpaceBucket[]
   soundMap: SoundMapColumn[] | null
+  /** Detected partials over time. Tags read the moment under the playhead. */
+  toneTimeline: ToneMoment[]
   spectrumDb: Float32Array
   fftSize: number
 }
@@ -412,6 +415,84 @@ function spaceTimeline(span: PcmSpan): SpaceBucket[] {
   return out
 }
 
+function windowCrestDb(samples: Float32Array): number | null {
+  let peak = 0
+  let sum = 0
+  for (let i = 0; i < samples.length; i++) {
+    const sample = samples[i] ?? 0
+    const abs = Math.abs(sample)
+    if (abs > peak) peak = abs
+    sum += sample * sample
+  }
+  if (!(peak > 1e-5) || samples.length === 0) return null
+  const rms = Math.sqrt(sum / samples.length)
+  if (!(rms > 1e-8)) return null
+  return 20 * Math.log10(peak / rms)
+}
+
+function centroidHz(bins: Float32Array, sampleRate: number, fftSize: number): number | null {
+  let weight = 0
+  let mass = 0
+  for (let i = 1; i < bins.length; i++) {
+    const power = dbfsToPower(bins[i] ?? DB_FLOOR)
+    if (!(power > 0)) continue
+    weight += power * ((i * sampleRate) / fftSize)
+    mass += power
+  }
+  if (!(mass > 0)) return null
+  return weight / mass
+}
+
+function momentFlatness(bins: Float32Array): number | null {
+  let logSum = 0
+  let count = 0
+  let linear = 0
+  for (let i = 1; i < bins.length; i++) {
+    const power = Math.max(1e-12, dbfsToPower(bins[i] ?? DB_FLOOR))
+    logSum += Math.log(power)
+    linear += power
+    count++
+  }
+  if (count < 8 || !(linear > 0)) return null
+  return Math.exp(logSum / count) / (linear / count)
+}
+
+/** One spectrum per slice, so a note tag can appear only while that slice is under the playhead. */
+function toneTimeline(span: PcmSpan, scratch: SpectrumFftScratch): ToneMoment[] {
+  const frames = frameCount(span)
+  const fftSize = frames >= 2048 ? 2048 : frames >= 1024 ? 1024 : 0
+  if (!fftSize) return []
+  const count = Math.max(1, Math.min(64, Math.floor(frames / fftSize) || 1))
+  const start = Math.max(0, Math.floor(span.startFrame))
+  const out: ToneMoment[] = []
+  const window = new Float32Array(fftSize)
+  const bins = new Float32Array(fftSize >> 1)
+  for (let col = 0; col < count; col++) {
+    const from = start + Math.min(frames - fftSize, Math.floor((col * Math.max(0, frames - fftSize)) / Math.max(1, count - 1)))
+    let peak = 0
+    for (let i = 0; i < fftSize; i++) {
+      const sample = mixFrame(span, from + i)
+      window[i] = sample
+      const abs = Math.abs(sample)
+      if (abs > peak) peak = abs
+    }
+    const time = span.originSec + (from - start) / span.sampleRate
+    if (peak < 1e-4) {
+      out.push({ time, tones: [], flatness: null, centroidHz: null, crestDb: null })
+      continue
+    }
+    timeDomainToDb(window, bins, scratch, DB_FLOOR)
+    out.push({
+      time,
+      tones: spectralTones(bins, span.sampleRate, fftSize, 1),
+      flatness: momentFlatness(bins),
+      centroidHz: centroidHz(bins, span.sampleRate, fftSize),
+      crestDb: windowCrestDb(window),
+    })
+  }
+  return out
+}
+
 function soundMap(span: PcmSpan, columns: number, scratch: SpectrumFftScratch): SoundMapColumn[] {
   const frames = frameCount(span)
   const fftSize = frames >= 2048 ? 2048 : frames >= 1024 ? 1024 : 0
@@ -495,6 +576,7 @@ export function analyzePcm(span: PcmSpan, options: AnalysisOptions = {}): Buffer
     dynamics: dynamicsMap({ ...span, sampleRate }, silent),
     spaceTimeline: spaceTimeline({ ...span, sampleRate }),
     soundMap: options.soundMap ? soundMap({ ...span, sampleRate }, options.maxMapColumns ?? 96, scratch) : null,
+    toneTimeline: silent ? [] : toneTimeline({ ...span, sampleRate }, scratch),
     spectrumDb,
     fftSize,
   }

@@ -193,7 +193,9 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
     settings.enabled &&
     (mapDemand ||
       (settings.panelOpen &&
-        (settings.section === 'space' || (settings.layers.soundMap && settings.section === 'sound'))))
+        (settings.layers.descriptors ||
+          settings.section === 'space' ||
+          (settings.layers.soundMap && settings.section === 'sound'))))
 
   useEffect(() => {
     setHearingClockDemand({

@@ -72,8 +72,9 @@ export function distanceWord(distance: number): 'close' | 'mid' | 'far' {
 
 /**
  * Top-down head. Front is up.
- * A larger room draws a smaller head inside a wider floor.
- * The source stays outside the head and walks to the front wall as distance grows.
+ * Room size and source distance both shrink the head, so a larger or more
+ * distant space reads as a smaller listener. The source stays outside the
+ * head and moves toward the front as distance grows.
  */
 export function headLayout(
   width: number,
@@ -85,20 +86,21 @@ export function headLayout(
   const size01 = clamp01(size)
   const distance01 = clamp01(distance)
   const minSide = Math.max(48, Math.min(width, height))
-  const inset = 8 + (1 - size01) * minSide * 0.16
+  const inset = 8 + (1 - size01) * minSide * 0.1
   const roomX = inset
   const roomY = inset
   const roomW = Math.max(24, width - inset * 2)
   const roomH = Math.max(24, height - inset * 2)
-  const headRadius = Math.min(roomW, roomH) * 0.42 * (1 - size01 * 0.62)
+  const shrink = Math.min(1, size01 * 0.75 + distance01 * 0.75)
+  const headRadius = Math.max(9, minSide * (0.33 - shrink * 0.23))
   const headX = roomX + roomW / 2
-  const headY = roomY + roomH * 0.7
+  const headY = roomY + roomH * 0.64
   const frontOfHead = headY - headRadius
-  const gap = Math.max(10, headRadius * 0.45)
+  const gap = Math.max(12, headRadius * 0.28)
   const nearY = frontOfHead - gap
-  const farY = roomY + 12
+  const farY = Math.max(14, nearY - Math.max(36, headRadius * 0.85))
   const sourceY = nearY + (farY - nearY) * distance01
-  const sourceX = headX + Math.max(-1, Math.min(1, balance)) * Math.min(roomW * 0.28, headRadius * 1.4)
+  const sourceX = headX + Math.max(-1, Math.min(1, balance)) * Math.min(roomW * 0.22, headRadius)
   return { headRadius, headX, headY, roomX, roomY, roomW, roomH, sourceX, sourceY }
 }
 

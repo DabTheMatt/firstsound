@@ -39,6 +39,7 @@ import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
 import { LfoCenter } from '../components/inspector/LfoCenter'
 import { InspectorEye } from '../components/inspector/InspectorEye'
 import { CompactTransport, TransportExportButton } from '../components/transport/CompactTransport'
+import { HearingTransportButton } from '../hearing/HearingTransportButton'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
@@ -1556,6 +1557,7 @@ export default function App() {
           />
           {isPhoneLayout ? null : (
           <div className={styles.exportCol}>
+            <HearingTransportButton hidden={activeFocus === 'hearing'} />
             <TransportExportButton disabled={!snap.sampleLoaded} onExport={() => setExportOpen(true)} />
           </div>
           )}
