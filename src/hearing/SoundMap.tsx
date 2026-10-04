@@ -151,7 +151,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       ref={ref}
       className={`${styles.palette} hearing-sound-map`}
       role="img"
-      aria-label="Sound map. Rows are labeled frequency regions. Color follows the theme and is paired with the label. Squares along the top are transients. Choose a square to frame it on the waveform."
+      aria-label="Sound map. Rows are labeled frequency regions. Color follows the theme and is paired with the label. Squares along the top are transients. Choose a square to mark it with a line on the waveform."
       onClick={(event) => pickTransient(event.clientX)}
       style={{ width: '100%', height: 184, color: 'var(--text-primary)', background: 'var(--bg-app)', cursor: onTransient && transients.length ? 'pointer' : undefined }}
     />

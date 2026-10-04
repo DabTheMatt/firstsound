@@ -12,6 +12,8 @@ export type HearingReveal = {
   end: number
   label: string
   bands: HearingBandId[]
+  /** `line` marks one time and leaves the waveform zoom alone. `span` frames a region. */
+  mark: 'line' | 'span'
   token: number
 }
 
@@ -23,21 +25,22 @@ export function getHearingReveal(): HearingReveal | null {
   return reveal
 }
 
-export function revealHearingSpan(next: Omit<HearingReveal, 'token'>): HearingReveal {
+export function revealHearingSpan(next: Omit<HearingReveal, 'token' | 'mark'> & { mark?: HearingReveal['mark'] }): HearingReveal {
   token += 1
-  reveal = { ...next, token }
+  reveal = { ...next, mark: next.mark ?? 'span', token }
   for (const listener of listeners) listener()
   return reveal
 }
 
-/** Frame a transient on the waveform and move the playhead. Does not edit audio. */
+/** Mark a transient with a line and move the playhead. Does not zoom or edit audio. */
 export function showTransientOnWave(time: number): void {
   revealHearingSpan({
     id: `transient-${time.toFixed(4)}`,
-    start: Math.max(0, time - 0.05),
-    end: time + 0.12,
+    start: time,
+    end: time,
     label: 'TRANSIENT',
     bands: [],
+    mark: 'line',
   })
   engine.seekSeconds(time, 'sample')
 }

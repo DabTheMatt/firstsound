@@ -13,14 +13,16 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { eqStripHeading } from './eqBandStyle'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
+import { EnterFocusButton } from '../focus/EnterFocusButton'
 import styles from './EqConsole.module.css'
 
 type Props = {
   onFocusModule?: (instanceId: string) => void
+  onEnterFocus?: () => void
 }
 
 /** Mixer-style EQ strips under the FFT: one column per enabled band. */
-export function EqConsole({ onFocusModule }: Props) {
+export function EqConsole({ onFocusModule, onEnterFocus }: Props) {
   const snap = useEngine()
   const eqs = snap.chain.filter((m) => m.type === 'eq')
   const many = eqs.length > 1
@@ -35,8 +37,9 @@ export function EqConsole({ onFocusModule }: Props) {
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {many ? (
-        <div className={styles.consoleHead}>
+      {many || onEnterFocus ? (
+      <div className={styles.consoleHead}>
+        {many ? (
           <label className={styles.focus}>
             EQ
             <select
@@ -54,7 +57,11 @@ export function EqConsole({ onFocusModule }: Props) {
               ))}
             </select>
           </label>
-        </div>
+        ) : (
+          <span />
+        )}
+        {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
+      </div>
       ) : null}
       <div className={styles.strips}>
         <div className={styles.stripRow}>

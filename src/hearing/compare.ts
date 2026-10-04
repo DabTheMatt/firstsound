@@ -14,6 +14,7 @@ export type CompareRow = {
   label: string
   before: string
   after: string
+  delta: string
 }
 
 export type CompareEffect = 'eq' | 'gain' | 'compressor' | 'delay' | 'reverb' | 'stereo'
@@ -23,18 +24,18 @@ function changed(before: number | null, after: number | null, min: number): bool
   return Math.abs(after - before) >= min
 }
 
-function row(id: string, label: string, before: string, after: string): CompareRow {
-  return { id, label, before, after }
+function row(id: string, label: string, before: string, after: string, delta = '—'): CompareRow {
+  return { id, label, before, after, delta }
 }
 
 export function gainCompare(before: BufferAnalysis, gainDb: number): CompareRow[] {
   if (Math.abs(gainDb) < 0.05 || before.silent) return []
   const rows: CompareRow[] = []
   if (before.peakDbfs !== null) {
-    rows.push(row('peak', 'PEAK', formatDb(before.peakDbfs), formatDb(before.peakDbfs + gainDb)))
+    rows.push(row('peak', 'PEAK', formatDb(before.peakDbfs), formatDb(before.peakDbfs + gainDb), formatDbDelta(gainDb)))
   }
   if (before.rmsDbfs !== null) {
-    rows.push(row('rms', 'RMS', formatDb(before.rmsDbfs), formatDb(before.rmsDbfs + gainDb)))
+    rows.push(row('rms', 'RMS', formatDb(before.rmsDbfs), formatDb(before.rmsDbfs + gainDb), formatDbDelta(gainDb)))
   }
   return rows
 }
@@ -47,7 +48,8 @@ export function eqCompare(analysis: BufferAnalysis, bands: readonly EqBand[], sa
         band.id,
         `${band.label} ENERGY`,
         band.beforeDb === null ? '—' : `${band.beforeDb.toFixed(1)} dB`,
-        band.deltaDb === null ? '—' : formatDbDelta(band.deltaDb),
+        band.afterDb === null ? '—' : `${band.afterDb.toFixed(1)} dB`,
+        formatDbDelta(band.deltaDb),
       ),
     )
 }
@@ -60,7 +62,7 @@ export function compressorCompare(before: BufferAnalysis, picture: CompressorPic
       return best === null ? point.outputDb : Math.max(best, point.outputDb)
     }, null)
     if (outPeak !== null && changed(before.peakDbfs, outPeak, 0.4)) {
-      rows.push(row('peak', 'PEAK', formatDb(before.peakDbfs), formatDb(outPeak)))
+      rows.push(row('peak', 'PEAK', formatDb(before.peakDbfs), formatDb(outPeak), formatDbDelta(outPeak - before.peakDbfs)))
     }
   }
   if (picture.peaksReduced) {

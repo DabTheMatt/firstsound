@@ -1,39 +1,48 @@
 import { useEffect, useRef } from 'react'
+import styles from './HearingAccessLayer.module.css'
+import { useElementBox } from './useElementBox'
 
 type Props = {
   balance: number
   width: number
   correlation: number
+  /** Stretch into the leftover focus area. */
+  fill?: boolean
 }
 
 /**
  * Listener's head, seen from above. Front is the top of the picture.
- * The marker is the heard image: left on the left, right on the right.
+ * The marker is the heard image at the playhead.
  * Spread follows stereo width. A hollow marker is low correlation.
  */
-export function HeadSpace({ balance, width, correlation }: Props) {
+export function HeadSpace({ balance, width, correlation, fill = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const box = useElementBox(ref)
 
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
-    const size = canvas.clientWidth || 160
+    const widthPx = canvas.clientWidth || 160
+    const heightPx = canvas.clientHeight || 160
     const ratio = Math.min(2, window.devicePixelRatio || 1)
-    canvas.width = Math.floor(size * ratio)
-    canvas.height = Math.floor(size * ratio)
+    canvas.width = Math.floor(widthPx * ratio)
+    canvas.height = Math.floor(heightPx * ratio)
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-    const styles = getComputedStyle(canvas)
-    const ink = styles.color || '#fff'
-    const accent = styles.getPropertyValue('--accent-primary').trim() || ink
-    const muted = styles.getPropertyValue('--text-muted').trim() || ink
-    const warning = styles.getPropertyValue('--warning').trim() || accent
-    const panel = styles.backgroundColor || '#111'
+    const stylesCss = getComputedStyle(canvas)
+    const ink = stylesCss.color || '#fff'
+    const accent = stylesCss.getPropertyValue('--accent-primary').trim() || ink
+    const muted = stylesCss.getPropertyValue('--text-muted').trim() || ink
+    const warning = stylesCss.getPropertyValue('--warning').trim() || accent
+    const panel = stylesCss.backgroundColor || '#111'
     ctx.fillStyle = panel
-    ctx.fillRect(0, 0, size, size)
-    const cx = size / 2
-    const cy = size * 0.56
+    ctx.fillRect(0, 0, widthPx, heightPx)
+    const size = Math.max(48, Math.min(widthPx, heightPx))
+    const ox = (widthPx - size) / 2
+    const oy = (heightPx - size) / 2
+    const cx = ox + size / 2
+    const cy = oy + size * 0.56
     const head = size * 0.22
     ctx.strokeStyle = ink
     ctx.fillStyle = ink
@@ -52,7 +61,7 @@ export function HeadSpace({ balance, width, correlation }: Props) {
     ctx.font = '10px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('front', cx, 12)
+    ctx.fillText('front', cx, oy + 12)
     ctx.fillText('L', cx - head * 1.35, cy)
     ctx.fillText('R', cx + head * 1.35, cy)
     const x = cx + Math.max(-1, Math.min(1, balance)) * head * 1.15
@@ -81,24 +90,31 @@ export function HeadSpace({ balance, width, correlation }: Props) {
     ctx.lineTo(x, y)
     ctx.stroke()
     ctx.globalAlpha = 1
-  }, [balance, width, correlation])
+  }, [balance, width, correlation, box.width, box.height])
 
   const side = Math.abs(balance) < 0.03 ? 'center' : balance < 0 ? 'left' : 'right'
   return (
-    <canvas
-      ref={ref}
-      role="img"
-      aria-label={`Head view. The heard image is toward the ${side}. Front is the top. Left ear is on the left.`}
-      style={{
-        width: '100%',
-        maxWidth: 180,
-        height: 160,
-        display: 'block',
-        margin: '0 auto',
-        background: 'var(--bg-control)',
-        color: 'var(--text-primary)',
-        borderRadius: 8,
-      }}
-    />
+    <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
+      <canvas
+        ref={ref}
+        role="img"
+        aria-label={`Head view. Heard image is ${side}. Front is up.`}
+        style={
+          fill
+            ? undefined
+            : {
+                width: '100%',
+                maxWidth: 180,
+                height: 160,
+                display: 'block',
+                margin: '0 auto',
+                background: 'var(--bg-control)',
+                color: 'var(--text-primary)',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+              }
+        }
+      />
+    </div>
   )
 }

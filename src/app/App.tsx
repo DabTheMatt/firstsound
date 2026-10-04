@@ -695,6 +695,21 @@ export default function App() {
     setFocusWorkspace(focusWorkspaceForViz(shown))
   }
 
+  const enterNamedFocus = (workspace: 'wave' | 'fft' | 'eq' | 'auto') => {
+    setMenuOpen(false)
+    setLfoCenterOpen(false)
+    const nextViz = workspace === 'auto' ? 'automation' : workspace === 'eq' ? 'eq-split' : workspace === 'fft' ? 'spectrum' : 'waveform'
+    if (nextViz === 'eq-split') {
+      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+      if (eq) selectModule(eq.instanceId)
+    }
+    const routed = routeViz(nextViz, focus, inspectorOpen)
+    setViz(routed.viz)
+    rememberFocus(routed.focus)
+    setInspectorOpen(routed.inspectorOpen)
+    setFocusWorkspace(workspace)
+  }
+
   const enterHearingFocus = () => {
     setMenuOpen(false)
     setLfoCenterOpen(false)
@@ -1433,6 +1448,7 @@ export default function App() {
               arrangement={arrangement}
               onSelectTrack={followTrack}
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
+              onEnterFocus={enterNamedFocus}
               onInspectEffect={(trackId, instanceId) => {
                 if (engine.getSnapshot().selectedTrackId !== trackId) {
                   intentRef.current = trackId
@@ -1551,7 +1567,7 @@ export default function App() {
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
-      <HearingAccessLayer surface="technical" focus={activeFocus} />
+      <HearingAccessLayer surface="technical" focus={activeFocus} onEnterFocus={enterHearingFocus} />
     </div>
     </FxLfoConnectProvider>
   )

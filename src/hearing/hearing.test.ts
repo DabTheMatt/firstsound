@@ -7,12 +7,14 @@ import { analyzePcm, stereoMetrics } from './analyze'
 import { mixingFindings } from './assistant'
 import { HEARING_BANDS } from './bands'
 import { eqCompare, gainCompare, stereoCompare } from './compare'
-import { afterShares } from './AfterEqChart'
+import { afterShares, compareTrackGeometry } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
 import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
+import { getHearingReveal, showTransientOnWave } from './reveal'
+import { nearestSpaceBucket } from './spaceLive'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
 import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelPosition, clampPanelSize } from './settings'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
@@ -184,8 +186,28 @@ describe('hearing access analysis', () => {
     expect(region!.lo).toBeLessThan(1000)
     expect(region!.hi).toBeGreaterThan(1000)
     expect(region!.hi - region!.lo).toBeLessThan(16000)
-    const text = eqCompare(analysis, [band], RATE).map((item) => item.label).join(' ')
-    expect(text.length).toBeGreaterThan(0)
+    const text = eqCompare(analysis, [band], RATE).find((item) => item.id === 'mid')
+    expect(text?.label.length ?? 0).toBeGreaterThan(0)
+    expect(text?.after.endsWith('dB')).toBe(true)
+    expect(text?.delta.startsWith('+')).toBe(true)
+    expect(text?.after).not.toBe(text?.delta)
+    expect(compareTrackGeometry(-40, -20).boost).toBe(true)
+    expect(compareTrackGeometry(-40, -20).afterPct).toBeGreaterThan(compareTrackGeometry(-40, -20).beforePct)
+    expect(compareTrackGeometry(-20, -40).boost).toBe(false)
+  })
+
+  it('marks a transient with a line and follows the nearest space bucket', () => {
+    showTransientOnWave(1.25)
+    const reveal = getHearingReveal()
+    expect(reveal?.mark).toBe('line')
+    expect(reveal?.start).toBe(1.25)
+    expect(reveal?.end).toBe(1.25)
+    const buckets = [
+      { time: 0, balance: -0.4, width: 0.1, correlation: 0.9 },
+      { time: 1, balance: 0.6, width: 0.4, correlation: 0.2 },
+    ]
+    expect(nearestSpaceBucket(buckets, 0.8)?.balance).toBe(0.6)
+    expect(nearestSpaceBucket(buckets, null)).toBeNull()
   })
 
   it('keeps a quieter high band visible on a dB scale', () => {
@@ -312,6 +334,7 @@ describe('hearing access analysis', () => {
   it('rate-limits haptics and stays quiet when unsupported or off', () => {
     expect(vibrationSupported({})).toBe(false)
     expect(vibrationSupported({ vibrate: () => true })).toBe(true)
+    expect(vibrationSupported({ vibrate: () => false })).toBe(true)
     expect(shouldPulse(100, 0, 'off')).toBe(false)
     expect(shouldPulse(100, 0, 'low')).toBe(false)
     expect(shouldPulse(500, 0, 'low')).toBe(true)

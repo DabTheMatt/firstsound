@@ -2,6 +2,7 @@ import type { EqBand } from '../audio/engine/eqBands'
 import type { BufferAnalysis } from './analyze'
 import { HEARING_BANDS } from './bands'
 import { eqBandDeltas, heardBandLevels, levelBar } from './eqAssist'
+import { InfoTip } from './InfoTip'
 import styles from './HearingAccessLayer.module.css'
 
 type Props = {
@@ -33,14 +34,26 @@ export function LevelTrack({ db, tone = 'band' }: { db: number | null; tone?: 'b
   )
 }
 
-/** One track: the dimmer bar is the original, the brighter bar is what you hear. */
-export function CompareTrack({ before, after }: { before: number | null; after: number | null }) {
+/** Bar geometry for one band. A boost is the heard level extending past the original. */
+export function compareTrackGeometry(before: number | null, after: number | null): {
+  beforePct: number
+  afterPct: number
+  boost: boolean
+} {
   const beforePct = Math.round(levelBar(before) * 100)
   const afterPct = Math.round(levelBar(after) * 100)
+  return { beforePct, afterPct, boost: afterPct > beforePct }
+}
+
+/** One track: the dimmer bar is the original, the brighter bar is what you hear. A tick marks the original end. */
+export function CompareTrack({ before, after }: { before: number | null; after: number | null }) {
+  const { beforePct, afterPct, boost } = compareTrackGeometry(before, after)
   return (
     <span className={styles.level} aria-hidden="true">
       <i className={styles.original} style={{ width: `${beforePct}%` }} />
       <i className={styles.heard} style={{ width: `${afterPct}%` }} />
+      {boost ? <i className={styles.boost} style={{ left: `${beforePct}%`, width: `${afterPct - beforePct}%` }} /> : null}
+      <i className={styles.originMark} style={{ left: `${beforePct}%` }} />
     </span>
   )
 }
@@ -57,18 +70,19 @@ export function AfterEqChart({ analysis, bands, sampleRate, engaged, pitchSemito
   const changed = rows.some((band) => band.deltaDb !== null && Math.abs(band.deltaDb) >= 0.3)
   return (
     <div>
-      <h3 style={{ margin: '0 0 4px', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        {pitched ? 'Original → heard' : 'Original → after EQ'}
-      </h3>
-      <p style={{ margin: '0 0 6px', fontSize: 12 }}>
-        One bar per band, from −96 dB to 0 dB. The dimmer bar is the original. The brighter bar is what you hear
-        {pitched
-          ? ` after pitch ${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)} st and the EQ curve.`
-          : engaged
-            ? ' after the current EQ curve. Pitch is at 0 st.'
-            : '. EQ is bypassed and pitch is at 0 st, so the bars match.'}
-        {changed || (!pitched && !engaged) ? '' : ' Nothing in the current pitch or EQ moves a band by 0.3 dB or more.'}
-      </p>
+      <div className={styles.sectionTitle}>
+        <h3>{pitched ? 'Original → heard' : 'Original → after EQ'}</h3>
+        <InfoTip label="More about original and heard levels">
+          Each track runs from −96 dB to 0 dB. The dimmer bar is the original and the tick is its end. The brighter bar is what you hear
+          {pitched
+            ? ` after pitch ${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)} st and the EQ curve.`
+            : engaged
+              ? ' after the current EQ curve.'
+              : '. EQ is bypassed and pitch is at 0 st, so the bars match.'}{' '}
+          A bright extension past the tick is a boost. A dim tail past the bright bar is a cut.
+          {changed || (!pitched && !engaged) ? '' : ' Nothing in the current pitch or EQ moves a band by 0.3 dB or more.'}
+        </InfoTip>
+      </div>
       <ul className={styles.compare}>
         {HEARING_BANDS.map((band) => {
           const row = rows.find((item) => item.id === band.id)

@@ -189,11 +189,17 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
     mapDemand,
   ])
 
+  const spaceWatch =
+    settings.enabled &&
+    (mapDemand ||
+      (settings.panelOpen &&
+        (settings.section === 'space' || (settings.layers.soundMap && settings.section === 'sound'))))
+
   useEffect(() => {
     setHearingClockDemand({
       enabled: settings.enabled,
       playing: snap.playing,
-      soundMapVisible: settings.panelOpen && settings.layers.soundMap && settings.section === 'sound',
+      soundMapVisible: spaceWatch,
       haptics: settings.hapticIntensity !== 'off',
     })
     return () =>
@@ -203,7 +209,19 @@ export function useHearingAnalysis(settings: HearingAccessSettings, snap: Engine
         soundMapVisible: false,
         haptics: false,
       })
-  }, [settings.enabled, settings.panelOpen, settings.layers.soundMap, settings.section, settings.hapticIntensity, snap.playing])
+  }, [settings.enabled, settings.hapticIntensity, snap.playing, spaceWatch])
+
+  useEffect(() => {
+    if (!spaceWatch) return
+    const tick = () => {
+      const playhead = engine.getPlayheadSeconds()
+      if (view.playhead === playhead) return
+      publish({ ...view, playhead })
+    }
+    tick()
+    const id = window.setInterval(tick, 100)
+    return () => window.clearInterval(id)
+  }, [spaceWatch])
 
   useEffect(() => {
     let last = 0

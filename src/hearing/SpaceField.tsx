@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { SpaceBucket } from './analyze'
 import { applyPanToBalance } from './effectViz'
+import styles from './HearingAccessLayer.module.css'
+import { useElementBox } from './useElementBox'
 
 type Props = {
   buckets: SpaceBucket[]
@@ -13,12 +15,21 @@ type Props = {
 }
 
 /**
- * Time runs top to bottom. Left is the left edge, right is the right edge.
- * Mark length is stereo width. A hollow mark is low correlation.
- * Pan and channel gain move each mark with the output stage.
+ * Time runs top to bottom. Mark length is stereo width.
+ * A hollow mark is low correlation. Pan and channel gain move each mark.
  */
-export function SpaceField({ buckets, playhead, origin, duration, panPct = 0, leftDb = 0, rightDb = 0 }: Props) {
+export function SpaceField({
+  buckets,
+  playhead,
+  origin,
+  duration,
+  panPct = 0,
+  leftDb = 0,
+  rightDb = 0,
+  fill = false,
+}: Props & { fill?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const box = useElementBox(ref)
 
   useEffect(() => {
     const canvas = ref.current
@@ -92,15 +103,29 @@ export function SpaceField({ buckets, playhead, origin, duration, panPct = 0, le
       ctx.setLineDash([])
     }
     ctx.globalAlpha = 1
-  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb])
+  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb, box.width, box.height])
 
   return (
-    <canvas
-      ref={ref}
-      className="hearing-space-field"
-      role="img"
-      aria-label="Stereo field. Left is the left side, right is the right side. Time runs from top to bottom. Longer marks are wider. Hollow marks have low correlation. Pan and channel gain move the marks."
-      style={{ width: '100%', height: 180, display: 'block', background: 'var(--bg-control)', color: 'var(--text-primary)', borderRadius: 8 }}
-    />
+    <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
+      <canvas
+        ref={ref}
+        className="hearing-space-field"
+        role="img"
+        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation."
+        style={
+          fill
+            ? undefined
+            : {
+                width: '100%',
+                height: 180,
+                display: 'block',
+                background: 'var(--bg-control)',
+                color: 'var(--text-primary)',
+                borderRadius: 8,
+                border: '1px solid var(--border-subtle)',
+              }
+        }
+      />
+    </div>
   )
 }

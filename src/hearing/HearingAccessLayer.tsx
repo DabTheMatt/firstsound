@@ -10,7 +10,7 @@ import { engine, useEngine } from '../hooks/useEngine'
 import { dismissHearingAlert, getHearingAlerts, pushHearingAlert, subscribeHearingAlerts, type HearingAlert } from './alerts'
 import { analyzePcm, type BufferAnalysis } from './analyze'
 import { scopeLabel, transientMarkers } from './events'
-import { eqReadout, affectedRegion, eqBandDeltas, heardBandLevels, shiftSoundMap } from './eqAssist'
+import { eqReadout, affectedRegion, heardBandLevels, shiftSoundMap } from './eqAssist'
 import {
   compressorCompare,
   delayCompare,
@@ -23,6 +23,8 @@ import { emptyDescriptorMemory, simpleSummary, updateDescriptors, type Descripto
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
 import { AfterEqChart, LevelTrack } from './AfterEqChart'
+import { EnterFocusButton } from '../components/focus/EnterFocusButton'
+import { InfoTip } from './InfoTip'
 import { SoundMap } from './SoundMap'
 import { HeadSpace } from './HeadSpace'
 import { SpaceField } from './SpaceField'
@@ -30,7 +32,8 @@ import { revealHearingSpan, showTransientOnWave } from './reveal'
 import type { HearingBandId } from './bands'
 import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
-import { HEARING_SECTIONS, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection } from './settings'
+import { HEARING_SECTIONS, HAPTIC_INTENSITIES, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection, type HapticIntensity } from './settings'
+import { balanceLabel, nearestSpaceBucket } from './spaceLive'
 import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
@@ -114,7 +117,15 @@ function balanceMeter(balance: number): string {
   return `L ${cells.join('')} R`
 }
 
-export function HearingAccessLayer({ surface, focus = null }: { surface: Surface; focus?: FocusWorkspace | null }) {
+export function HearingAccessLayer({
+  surface,
+  focus = null,
+  onEnterFocus,
+}: {
+  surface: Surface
+  focus?: FocusWorkspace | null
+  onEnterFocus?: () => void
+}) {
   const { settings, patch } = useHearingSettings()
   const snap = useEngine()
   useHearingAnalysis(settings, snap)
@@ -129,6 +140,7 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
   const memory = useRef(emptyDescriptorMemory())
   const edge = useRef({ recording: snap.recording, loop: snap.loop, blocked: snap.audioStatus === 'blocked', error: snap.recordError })
   const hapticsOk = vibrationSupported()
+  const [pulseNote, setPulseNote] = useState<string | null>(null)
 
   useEffect(() => subscribeEqBandSelection(setEqPick), [])
 
@@ -191,14 +203,18 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
       const head = engine.getPlayheadSeconds()
       const now = performance.now()
       const vibrate = (pattern: number | number[]) => navigator.vibrate(pattern)
-      const hit = getHearingView().events.find(
+      const viewNow = getHearingView()
+      const hit = viewNow.events.find(
         (event) =>
           prev <= event.time &&
           head >= event.time &&
           (event.kind === 'transient' || event.kind === 'possibleClip' || event.kind === 'possibleClick' || event.kind === 'loud'),
       )
-      if (hit) {
-        const kind: HapticKind = hit.kind === 'possibleClip' ? 'clip' : 'transient'
+      const onset =
+        !hit &&
+        viewNow.analysis?.dynamics.some((bucket) => bucket.transient && prev <= bucket.time && head >= bucket.time)
+      if (hit || onset) {
+        const kind: HapticKind = hit?.kind === 'possibleClip' ? 'clip' : 'transient'
         const fired = fireHaptic(kind, settings.hapticIntensity, now, lastPulse, vibrate)
         if (fired.result.fired) lastPulse = fired.lastPulseMs
       }
@@ -505,6 +521,7 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
               <button type="button" onClick={() => patch(nextPanelSize(settings.panelWidth))}>
                 {settings.panelWidth >= 640 ? 'Restore' : 'Enlarge'}
               </button>
+              {onEnterFocus && focus !== 'hearing' ? <EnterFocusButton label="Hearing Access" onClick={onEnterFocus} /> : null}
               <button type="button" onClick={() => patch({ panelOpen: false })}>
                 Close
               </button>
@@ -523,7 +540,6 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
                 id={`hearing-tab-${section}`}
                 aria-selected={settings.section === section}
                 aria-controls={`hearing-panel-${section}`}
-                disabled={section === 'haptics' && !hapticsOk}
                 onClick={() => patch({ section })}
               >
                 {SECTION_LABEL[section]}
@@ -566,21 +582,79 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
             {settings.section === 'dynamics' ? <DynamicsSection analysis={analysis} /> : null}
             {settings.section === 'compare' ? <CompareSection analysis={analysis} snap={snap} /> : null}
             {settings.section === 'haptics' ? (
-              <div>
-                <p className={styles.help}>
-                  Optional pulses on transients, clipping, loop edges, and selection edges. They are never a continuous buzz. Intensity and the experimental frequency pattern are in Accessibility.
-                </p>
-                {hapticsOk ? (
-                  <p>This device accepts vibration. Current intensity: {settings.hapticIntensity}.</p>
-                ) : (
-                  <p>This browser does not provide vibration, so the control stays disabled. FIELD does not imitate haptics on screen.</p>
-                )}
-                {settings.frequencyHaptics ? <p>Frequency haptics are experimental and can be turned off in Accessibility settings.</p> : null}
-              </div>
+              <HapticsSection
+                ok={hapticsOk}
+                intensity={settings.hapticIntensity}
+                frequency={settings.frequencyHaptics}
+                note={pulseNote}
+                onIntensity={(value) => patch({ hapticIntensity: value })}
+                onTest={() => {
+                  const intensity = settings.hapticIntensity === 'off' ? 'medium' : settings.hapticIntensity
+                  const vibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' ? navigator.vibrate.bind(navigator) : null
+                  const fired = fireHaptic('transient', intensity, performance.now(), -1e9, vibrate)
+                  if (fired.result.fired) {
+                    setPulseNote(settings.hapticIntensity === 'off' ? 'Pulse sent. Set intensity above off to pulse during playback.' : 'Pulse sent.')
+                  } else if (fired.result.reason === 'unsupported') {
+                    setPulseNote('This device rejected the pulse. FIELD does not imitate haptics on screen.')
+                  } else {
+                    setPulseNote('No pulse.')
+                  }
+                }}
+              />
             ) : null}
           </div>
         </section>
       ) : null}
+    </div>
+  )
+}
+
+function HapticsSection({
+  ok,
+  intensity,
+  frequency,
+  note,
+  onIntensity,
+  onTest,
+}: {
+  ok: boolean
+  intensity: HapticIntensity
+  frequency: boolean
+  note: string | null
+  onIntensity: (value: HapticIntensity) => void
+  onTest: () => void
+}) {
+  return (
+    <div>
+      <div className={styles.sectionTitle}>
+        <h3>Haptics</h3>
+        <InfoTip label="More about haptics">
+          Optional pulses on transients, clipping, loop edges, and selection edges. They are never a continuous buzz. Test sends one pulse. Intensity above off is what pulses during playback. FIELD does not imitate haptics on screen.
+        </InfoTip>
+      </div>
+      {ok ? (
+        <>
+          <p>
+            <label>
+              Intensity{' '}
+              <select aria-label="Haptic intensity" value={intensity} onChange={(event) => onIntensity(event.target.value as HapticIntensity)}>
+                {HAPTIC_INTENSITIES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </p>
+          <button type="button" onClick={onTest}>
+            Test pulse
+          </button>
+          {note ? <p className={styles.note}>{note}</p> : null}
+          {frequency ? <p>Frequency haptics are experimental and can be turned off in Accessibility settings.</p> : null}
+        </>
+      ) : (
+        <p>This browser does not provide vibration. FIELD does not imitate haptics on screen.</p>
+      )}
     </div>
   )
 }
@@ -662,10 +736,12 @@ function SoundSection(props: {
   const liveValue = props.snap.liveParams[autoId]
   return (
     <div>
-      <p className={styles.help}>
-        Live tags follow the playhead. The fingerprint stays on this scope. Hover a tag for the measured reason. Extra tags scroll in their own row.
-      </p>
-      <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
+      <div className={styles.sectionTitle}>
+        <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
+        <InfoTip label="More about Sound">
+          Tags follow the playhead and stay in this row. Extra tags scroll here. The fingerprint is this scope before effects. Hover a tag for the measured reason.
+        </InfoTip>
+      </div>
       {props.summary && props.surface === 'simple' ? (
         <dl className={styles.grid}>
           <div><dt>Level</dt><dd>{props.summary.level}</dd></div>
@@ -682,15 +758,13 @@ function SoundSection(props: {
           {props.settingsDetails ? 'Hide details' : 'Details'}
         </button>
       ) : null}
-      {props.live.length ? (
-        <ul className={styles.chips}>
-          {props.live.map((item) => (
-            <li key={item.id} data-tag={item.id} title={item.detail}>
-              {item.label}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <ul className={styles.chips} aria-label="Hearing tags">
+        {props.live.map((item) => (
+          <li key={item.id} data-tag={item.id} title={item.detail}>
+            {item.label}
+          </li>
+        ))}
+      </ul>
       {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} pitch={props.snap.params.pitch} /> : null}
       {props.showDetails && analysis ? (
         <AfterEqChart
@@ -747,10 +821,12 @@ function Fingerprint({ analysis, pitch }: { analysis: BufferAnalysis; pitch: num
   const heardHz = analysis.dominantHz && pitched ? analysis.dominantHz * pitchRatio(pitch) : null
   return (
     <div>
-      <h3>Original fingerprint</h3>
-      <p className={styles.help}>
-        This is the sample or selection before effects. Bars are mean level per band, from −96 dB to 0 dB, so a quieter high band stays visible beside a loud bass band.
-      </p>
+      <div className={styles.sectionTitle}>
+        <h3>Original fingerprint</h3>
+        <InfoTip label="More about the fingerprint">
+          Mean level per band, from −96 dB to 0 dB. A quieter high band stays visible beside a loud bass band. This is the sample or selection before effects.
+        </InfoTip>
+      </div>
       <ul className={styles.bands}>
         {analysis.bands.map((band) => {
           const db = levels.find((row) => row.id === band.id)?.beforeDb ?? null
@@ -791,9 +867,12 @@ function EventsSection({ hearing }: { hearing: HearingView }) {
   const scope = hearing.analysis ? scopeLabel(hearing.analysis.scope) : 'THIS SCOPE'
   return (
     <div>
-      <p className={styles.help}>
-        Listed moments are measured in {scope}: transients, silence, loud peaks, low-frequency onsets, sustained tones, possible clicks, and possible clipping. Click a row to move the playhead. The audio is not edited.
-      </p>
+      <div className={styles.sectionTitle}>
+        <h3>{scope}</h3>
+        <InfoTip label="More about events">
+          Listed moments are transients, silence, loud peaks, low-frequency onsets, sustained tones, possible clicks, and possible clipping. Click a row to move the playhead. The audio is not edited.
+        </InfoTip>
+      </div>
       {hearing.events.length === 0 ? (
         <p className={styles.empty}>
           No qualifying events in {scope}. A short or steady selection often has none. Clear the selection to scan the full sample, or choose a passage with a clear attack or a gap.
@@ -824,11 +903,6 @@ function EventsSection({ hearing }: { hearing: HearingView }) {
   )
 }
 
-function balanceSide(balance: number): string {
-  if (Math.abs(balance) < 0.03) return 'CENTER'
-  return `${balance > 0 ? 'R' : 'L'} ${Math.round(Math.abs(balance) * 100)}%`
-}
-
 function SpaceSection({
   analysis,
   playhead,
@@ -845,42 +919,50 @@ function SpaceSection({
   if (!analysis) {
     return (
       <div>
-        <p className={styles.help}>Space reads left/right balance, width, correlation, and mid/side energy for this scope.</p>
+        <div className={styles.sectionTitle}>
+          <h3>Space</h3>
+          <InfoTip label="More about space">Balance, width, correlation, and mid/side energy for this scope.</InfoTip>
+        </div>
         <p>Load a sample to place it in the field.</p>
       </div>
     )
   }
   const stereo = analysis.stereo
-  const source = stereo?.balance ?? 0
-  const heard = applyPanToBalance(source, pan, leftDb, rightDb)
   const buckets =
     analysis.spaceTimeline.length > 0
       ? analysis.spaceTimeline
-      : [{ time: analysis.originSec, balance: 0, width: 0, correlation: 1 }]
+      : [{ time: analysis.originSec, balance: stereo?.balance ?? 0, width: stereo?.width ?? 0, correlation: stereo?.correlation ?? 1 }]
+  const live = nearestSpaceBucket(buckets, playhead) ?? buckets[0]
+  const heard = applyPanToBalance(live?.balance ?? 0, pan, leftDb, rightDb)
   return (
     <div>
-      <p className={styles.help}>
-        The head shows where the heard image sits: left ear on the left, right ear on the right, in front of the listener. The field below runs in time from top to bottom. A longer mark is wider. A hollow mark has low correlation. Pan and the left/right channel gains move both pictures.
-      </p>
-      <HeadSpace balance={heard} width={stereo?.width ?? 0} correlation={stereo?.correlation ?? 1} />
-      <SpaceField
-        buckets={buckets}
-        playhead={playhead}
-        origin={analysis.originSec}
-        duration={analysis.durationSec}
-        panPct={pan}
-        leftDb={leftDb}
-        rightDb={rightDb}
-      />
-      {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it left or right.</p> : null}
-      <p className={styles.meter} aria-label={`Heard balance ${balanceSide(heard)}`}>
+      <div className={styles.sectionTitle}>
+        <h3>Space</h3>
+        <InfoTip label="More about space">
+          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. Pan and the channel gains move the heard image. The field under the head runs in time from top to bottom.
+        </InfoTip>
+      </div>
+      <div className={styles.spaceStack}>
+        <HeadSpace balance={heard} width={live?.width ?? 0} correlation={live?.correlation ?? 1} />
+        <SpaceField
+          buckets={buckets}
+          playhead={playhead}
+          origin={analysis.originSec}
+          duration={analysis.durationSec}
+          panPct={pan}
+          leftDb={leftDb}
+          rightDb={rightDb}
+        />
+      </div>
+      {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it.</p> : null}
+      <p className={styles.meter} aria-label={`Heard balance ${balanceLabel(heard)}`}>
         {balanceMeter(heard)}
       </p>
       <dl className={styles.grid}>
-        <div><dt>Heard balance</dt><dd>{balanceSide(heard)}</dd></div>
-        <div><dt>Sample balance</dt><dd>{stereo ? balanceSide(stereo.balance) : 'CENTER'}</dd></div>
-        <div><dt>Width</dt><dd>{stereo ? `${Math.round(stereo.width * 100)}%` : '0%'}</dd></div>
-        <div><dt>Correlation</dt><dd>{stereo ? stereo.correlation.toFixed(2) : '—'}</dd></div>
+        <div><dt>Heard balance</dt><dd>{balanceLabel(heard)}</dd></div>
+        <div><dt>Sample balance</dt><dd>{stereo ? balanceLabel(stereo.balance) : 'CENTER'}</dd></div>
+        <div><dt>Width</dt><dd>{live ? `${Math.round(live.width * 100)}%` : '0%'}</dd></div>
+        <div><dt>Correlation</dt><dd>{live ? live.correlation.toFixed(2) : '—'}</dd></div>
         <div><dt>Mid</dt><dd>{stereo ? `${Math.round(stereo.midShare * 100)}%` : '—'}</dd></div>
         <div><dt>Side</dt><dd>{stereo ? `${Math.round(stereo.sideShare * 100)}%` : '—'}</dd></div>
       </dl>
@@ -895,9 +977,12 @@ function DynamicsSection({ analysis }: { analysis: BufferAnalysis | null }) {
   const transients = analysis.dynamics.filter((bucket) => bucket.transient).length
   return (
     <div>
-      <p className={styles.help}>
-        Levels for this scope. The thin strip on the waveform marks quiet, loud, and full-scale clipping. Loud audio below full scale is not clipping.
-      </p>
+      <div className={styles.sectionTitle}>
+        <h3>Dynamics</h3>
+        <InfoTip label="More about dynamics">
+          Levels for this scope. The thin strip on the waveform marks quiet, loud, and full-scale clipping. Loud audio below full scale is not clipping.
+        </InfoTip>
+      </div>
       <dl className={styles.grid}>
         <div><dt>Peak</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
         <div><dt>RMS</dt><dd>{analysis.rmsDbfs === null ? '—' : `${analysis.rmsDbfs.toFixed(1)} dBFS`}</dd></div>
@@ -981,35 +1066,43 @@ function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; s
     // `revision` already covers the parameter fields this picture reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis, revision])
-  const deltas = analysis ? eqBandDeltas(analysis, snap.eqBands, snap.sampleRate || analysis.sampleRate) : []
+  const groups = rows.reduce<string[]>((list, row) => (list.includes(row.group) ? list : [...list, row.group]), [])
   return (
     <div>
-      <p className={styles.help}>
-        What the active effects change, measured on this scope. A bypassed module drops out. Delay times and the reverb tail follow the same parameters as the DSP. Nothing here rewrites the audio.
-      </p>
-      {rows.length === 0 ? <p>No measurable change yet. Move gain, EQ, compressor, delay, reverb, or stereo width and this list fills in.</p> : null}
-      <ul className={styles.events}>
-        {rows.map((row) => (
-          <li key={`${row.group}-${row.id}`}>
-            <span>{row.group}</span> {row.label} {row.before} → {row.after}
-          </li>
-        ))}
-      </ul>
-      {deltas.some((band) => band.deltaDb !== null && Math.abs(band.deltaDb) >= 0.4) ? (
-        <div>
-          <h3>Difference</h3>
-          <ul className={styles.bands}>
-            {deltas
-              .filter((band) => band.deltaDb !== null && Math.abs(band.deltaDb) >= 0.4)
-              .map((band) => (
-                <li key={band.id}>
-                  <span>{band.label}</span>
-                  <span>{band.deltaDb?.toFixed(1)} dB</span>
-                </li>
-              ))}
-          </ul>
-        </div>
-      ) : null}
+      <div className={styles.sectionTitle}>
+        <h3>Compare</h3>
+        <InfoTip label="More about compare">
+          Each table is one active effect on this scope. A bypassed module is omitted. Delay times and the reverb tail follow the same parameters as the DSP. Nothing here rewrites the audio.
+        </InfoTip>
+      </div>
+      {rows.length === 0 ? <p>No measurable change yet. Move gain, EQ, compressor, delay, reverb, or stereo width and the tables fill in.</p> : null}
+      {groups.map((group) => (
+        <section key={group} className={styles.compareGroup}>
+          <h3>{group}</h3>
+          <table className={styles.compareTable}>
+            <thead>
+              <tr>
+                <th>Measure</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows
+                .filter((row) => row.group === group)
+                .map((row) => (
+                  <tr key={`${row.group}-${row.id}`}>
+                    <th scope="row">{row.label}</th>
+                    <td>{row.before}</td>
+                    <td>{row.after}</td>
+                    <td>{row.delta}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
       {snap.chain.some((mod) => mod.type === 'delay' && !mod.bypassed) ? <DelaySketch snap={snap} /> : null}
       {snap.chain.some((mod) => mod.type === 'reverb' && !mod.bypassed) ? <ReverbSketch snap={snap} /> : null}
     </div>
@@ -1052,8 +1145,10 @@ function Assistant({ findings, analysis }: { findings: HearingView['findings']; 
   if (findings.length === 0) return <p>No technical findings in this scope.</p>
   return (
     <div>
-      <h3>Visual mixing assistant</h3>
-      <p className={styles.help}>Show frames that span on the waveform and moves the playhead. It does not change the audio.</p>
+      <div className={styles.sectionTitle}>
+        <h3>Visual mixing assistant</h3>
+        <InfoTip label="More about the assistant">Show frames that span on the waveform and moves the playhead. It does not change the audio.</InfoTip>
+      </div>
       <ul className={styles.events}>
         {findings.map((finding) => (
           <li key={finding.id} className={styles.finding}>

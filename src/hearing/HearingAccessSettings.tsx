@@ -131,7 +131,7 @@ export function HearingAccessSettings() {
           </label>
         ))}
       </fieldset>
-      <fieldset className={styles.profiles} disabled={!settings.enabled || !haptics}>
+      <fieldset className={styles.profiles} disabled={!settings.enabled}>
         <legend className={styles.sub}>Haptics</legend>
         {haptics ? null : <p className={styles.help}>This browser does not provide vibration. Haptic controls stay off.</p>}
         <label className={styles.slider}>

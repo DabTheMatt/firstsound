@@ -277,6 +277,18 @@
   pointer-events: none;
 }
 
+.wavePane:has([data-enter-focus]) .monoBadge {
+  right: 44px;
+}
+
+.wavePane:has([data-enter-focus]) .trackTabs {
+  right: 44px;
+}
+
+.wavePane:has([data-enter-focus]) .autoLegend {
+  max-width: calc(100% - 52px);
+}
+
 .fxCanvas {
   position: absolute;
   inset: 0 0 22px 0;

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
@@ -125,6 +126,7 @@ type Props = {
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
+  onEnterFocus?: () => void
 }
 
 function emptyBands(n: number): Float32Array {
@@ -200,7 +202,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -995,6 +997,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       role="region"
       aria-label="Spectrum analyzer"
     >
+      {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
+        <EnterFocusButton corner label="FFT" onClick={onEnterFocus} />
+      ) : null}
       {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
@@ -1332,6 +1337,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
             </svg>
           </button>
+          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
         </div>
       </div>
       )}

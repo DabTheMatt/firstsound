@@ -25,29 +25,16 @@ const PULSE_MS: Record<HapticIntensity, number> = {
   high: 22,
 }
 
-let cachedSupport: boolean | null = null
-
 /**
- * `vibrate` exists on some desktop browsers and returns false.
- * A zero-length pulse cancels vibration and reports whether the device accepts it.
- * The real navigator is probed once so render does not keep cancelling pulses.
+ * The Vibration API is present when `vibrate` is a function.
+ * Calling it here would cancel a pulse and, before a user gesture, can report false.
+ * A later `fireHaptic` call is what checks whether this device accepts a pattern.
  */
 export function vibrationSupported(
   nav?: { vibrate?: VibrationApi } | null,
 ): boolean {
-  const useGlobal = nav === undefined
-  if (useGlobal && cachedSupport !== null) return cachedSupport
-  const target = useGlobal ? (typeof navigator === 'undefined' ? null : navigator) : nav
-  let supported = false
-  if (typeof target?.vibrate === 'function') {
-    try {
-      supported = target.vibrate(0) !== false
-    } catch {
-      supported = false
-    }
-  }
-  if (useGlobal) cachedSupport = supported
-  return supported
+  const target = nav === undefined ? (typeof navigator === 'undefined' ? null : navigator) : nav
+  return typeof target?.vibrate === 'function'
 }
 
 export function hapticPattern(kind: HapticKind, intensity: HapticIntensity, band?: HearingBandId): number[] {

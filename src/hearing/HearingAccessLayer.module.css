@@ -158,6 +158,24 @@
   background: var(--band, var(--hearing-heard));
 }
 
+.level i.boost {
+  top: 0;
+  height: 100%;
+  opacity: 1;
+  border-radius: 0 2px 2px 0;
+  background: var(--band, var(--accent-primary));
+}
+
+.level i.originMark {
+  top: 0;
+  width: 2px;
+  height: 100%;
+  border-radius: 0;
+  opacity: 1;
+  background: var(--text-primary);
+  transform: translateX(-1px);
+}
+
 .compare {
   list-style: none;
   margin: 0;
@@ -467,10 +485,14 @@
 .chips {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 6px;
-  max-height: 7.4rem;
+  height: 4.6rem;
+  min-height: 4.6rem;
+  max-height: 4.6rem;
   overflow: auto;
   flex: 0 0 auto;
+  box-sizing: border-box;
   padding-inline-end: 4px;
   scrollbar-gutter: stable;
 }
@@ -549,4 +571,125 @@
   to {
     opacity: 1;
   }
+}
+
+.sectionTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.sectionTitle h3 {
+  margin: 0;
+}
+
+.infoWrap {
+  display: contents;
+}
+
+.info {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.infoNote {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.spaceStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.spaceInline {
+  display: contents;
+}
+
+.spaceFillSlot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.spaceFillSlot > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: block;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.focusStage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: 8px 14px 12px 10px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.focusSpace {
+  flex: 1 1 auto;
+  min-height: 220px;
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+.compareTable th,
+.compareTable td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.compareTable thead th {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.compareTable th[scope='row'] {
+  white-space: normal;
+}
+
+.compareGroup {
+  margin: 0 0 8px;
 }

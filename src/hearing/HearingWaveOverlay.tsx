@@ -91,13 +91,49 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
   )
 }
 
-/** Frames the span a Show action asked for. Does not take pointer events. */
+/** Frames a Show span, or draws a line for a transient. Does not take pointer events. */
 export function HearingRevealMark({ viewStart, viewEnd }: Props) {
   const [reveal, setReveal] = useState<HearingReveal | null>(() => getHearingReveal())
   useEffect(() => subscribeHearingReveal(() => setReveal(getHearingReveal())), [])
   if (!reveal) return null
   const span = Math.max(0.0001, viewEnd - viewStart)
   const left = ((reveal.start - viewStart) / span) * 100
+  if (reveal.mark === 'line') {
+    const labelOnLeft = left > 78
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 8,
+          bottom: 28,
+          left: `${left}%`,
+          width: 2,
+          background: 'var(--playhead)',
+          pointerEvents: 'none',
+          zIndex: 5,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 4,
+            left: labelOnLeft ? 'auto' : 6,
+            right: labelOnLeft ? 6 : 'auto',
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--text-primary)',
+            background: 'var(--bg-panel)',
+            padding: '1px 4px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {reveal.label}
+        </span>
+      </div>
+    )
+  }
   const width = Math.max(0.8, ((reveal.end - reveal.start) / span) * 100)
   return (
     <div

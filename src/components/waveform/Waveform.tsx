@@ -77,6 +77,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
 import { rulerMarks, rulerMinFracGap } from './rulerTicks'
@@ -140,6 +141,8 @@ type Props = {
   onSelectTrack?: (trackId: string) => void
   onEditTrack?: (trackId: string) => void
   onInspectEffect?: (trackId: string, instanceId: string) => void
+  /** Opens Focus for the view this surface is showing. */
+  onEnterFocus?: (workspace: 'wave' | 'fft' | 'eq' | 'auto') => void
 }
 
 export type WaveformHandle = {
@@ -266,6 +269,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onSelectTrack,
     onEditTrack,
     onInspectEffect,
+    onEnterFocus,
   },
   ref,
 ) {
@@ -420,7 +424,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     return subscribeHearingReveal(() => {
       const reveal = getHearingReveal()
       const span = stateRef.current.duration
-      if (!reveal || span <= 0) return
+      if (!reveal || span <= 0 || reveal.mark === 'line') return
       const pad = Math.max(0.08, (reveal.end - reveal.start) * 0.08)
       const nextStart = Math.max(0, reveal.start - pad)
       const nextEnd = Math.min(span, Math.max(nextStart + 0.05, reveal.end + pad))
@@ -1705,6 +1709,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               onScrub={setView}
             />
           ) : null}
+          {onEnterFocus && !phoneFocus ? (
+            <EnterFocusButton
+              corner
+              label={automationView ? 'Automation' : 'Wave'}
+              onClick={() => onEnterFocus(automationView ? 'auto' : 'wave')}
+            />
+          ) : null}
         </div>
         {showArrangement ? (
           <MultiTrackView
@@ -1762,6 +1773,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
+              onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus('fft') : undefined}
             />
           </div>
         ) : null}
@@ -1799,7 +1811,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         ) : null}
         {hearingFocus ? <HearingFocusStage /> : null}
         {phoneEq ? (
-          <PhoneEqGraph instanceId={phoneEqId} onSelectModule={onSelectModule} phoneFocus={phoneFocus === 'eq'} />
+          <PhoneEqGraph
+            instanceId={phoneEqId}
+            onSelectModule={onSelectModule}
+            phoneFocus={phoneFocus === 'eq'}
+            onEnterFocus={onEnterFocus && phoneFocus !== 'eq' ? () => onEnterFocus('eq') : undefined}
+          />
         ) : null}
         {showEqConsole ? (
           <>
@@ -1836,7 +1853,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               className={styles.eqConsole}
               style={{ height: eqStripHeight, flexBasis: eqStripHeight }}
             >
-              <EqConsole onFocusModule={onSelectModule} />
+              <EqConsole
+                onFocusModule={onSelectModule}
+                onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus('eq') : undefined}
+              />
             </div>
           </>
         ) : null}
