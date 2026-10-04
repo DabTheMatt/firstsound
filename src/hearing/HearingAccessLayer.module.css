@@ -13,13 +13,13 @@
 
 .host {
   position: fixed;
-  left: 16px;
-  right: auto;
+  left: auto;
+  right: 12px;
   bottom: 72px;
   z-index: 40;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 8px;
   max-width: calc(100vw - 16px);
   pointer-events: none;
@@ -63,13 +63,33 @@
   color: var(--text-primary);
 }
 
-.launcher {
+.launcher,
+.besideExport {
   min-height: 40px;
-  padding: 0 12px;
-  border-radius: 999px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 11px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.besideExport {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 0;
+  width: 40px;
+  height: 40px;
+  z-index: 3;
+  border: 1px solid var(--border-default);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.besideExport[aria-pressed='true'] {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .mark {
@@ -519,6 +539,24 @@
 .chips li[data-tag='low-correlation'],
 .chips li[data-tag='dc-offset'] { border-color: var(--warning); }
 .chips li[data-tag='tone'] { border-color: var(--accent-secondary); }
+.chips li[data-tag='tonal'],
+.chips li[data-tag='harmonic'],
+.chips li[data-tag='sustained'] { border-color: var(--hearing-mid); }
+.chips li[data-tag='bright'] { border-color: var(--hearing-high); }
+.chips li[data-tag='dull'] { border-color: var(--hearing-bass); }
+.chips li[data-tag='percussive'] { border-color: var(--playhead); }
+.chips li[data-tag='noise-like'],
+.chips li[data-tag='inharmonic'] { border-color: var(--warning); }
+
+.chips button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
 
 .tagBar {
   display: flex;

@@ -9,7 +9,7 @@ import { HEARING_BANDS } from './bands'
 import { eqCompare, gainCompare, stereoCompare } from './compare'
 import { afterShares, compareTrackGeometry } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
-import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
+import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, localDescriptors, simpleSummary, updateDescriptors } from './descriptors'
 import { formatLoudnessDb, levelsFromTimeDomain, liveMeterZone, loudnessZone } from './loudness'
 import { SOUND_MAP_FLOOR_DB, soundMapLevel } from './levels'
 import { distanceWord, headLayout, reverbSpacePicture, roomWord, sourceOutsideHead } from './reverbDepth'
@@ -21,6 +21,7 @@ import { nearestSpaceBucket } from './spaceLive'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
 import { smearSoundMap } from './soundMapHear'
 import { parseHearingSettings, layersForProfile, readStoredHearingSettings, clampPanelPosition, clampPanelSize } from './settings'
+import { previewPeakForHz } from './tonePreview'
 import { spectralTones } from './tones'
 import { heardDelay, heardSpaceTimeline, type HeardDelay } from './heardSpace'
 import { hearingRuntimeStats, setHearingClockDemand } from './scheduler'
@@ -100,8 +101,9 @@ describe('hearing access analysis', () => {
     expect(bandShare('lowMid', analysis)).toBeGreaterThan(0.6)
     expect(bandShare('high', analysis) + bandShare('air', analysis)).toBeLessThan(0.05)
     expect(analysis.soundMap && analysis.soundMap.length).toBeGreaterThan(0)
-    const tags = updateDescriptors(analysis, emptyDescriptorMemory(), 0, 0.5)
+    const tags = localDescriptors(analysis, 0.25, 0.5)
     expect(tags.some((item) => item.id === 'tone' && item.label.includes('A4'))).toBe(true)
+    expect(tags.some((item) => item.id === 'tonal' || item.id === 'sustained')).toBe(true)
   })
 
   it('measures a 60 Hz sine as low-frequency energy without a false high band', () => {
@@ -598,7 +600,10 @@ describe('hearing access analysis', () => {
     const small = headLayout(220, 180, 0, 0, 1)
     const large = headLayout(220, 180, 0, 1, 1)
     const closeSource = headLayout(220, 180, 0, 1, 0)
+    const closeOnly = headLayout(220, 180, 0, 0.4, 0)
+    const farOnly = headLayout(220, 180, 0, 0.4, 1)
     expect(large.headRadius).toBeLessThan(small.headRadius * 0.7)
+    expect(farOnly.headRadius).toBeLessThan(closeOnly.headRadius * 0.75)
     expect(large.sourceY).toBeLessThan(closeSource.sourceY - 24)
     expect(sourceOutsideHead(small)).toBe(true)
     expect(sourceOutsideHead(large)).toBe(true)
@@ -745,8 +750,24 @@ describe('hearing access analysis', () => {
     expect(open.map((tone) => tone.note)).toContain('A5')
     const quiet = span(new Float32Array(RATE))
     expect(spectralTones(quiet.spectrumDb, quiet.sampleRate, quiet.fftSize, 1)).toEqual([])
-    const tags = updateDescriptors(mixed, emptyDescriptorMemory(), 0, 1)
-    expect(tags.filter((item) => item.id === 'tone').length).toBeGreaterThanOrEqual(2)
+    const together = localDescriptors(mixed, 0.2, 1)
+    expect(together.filter((item) => item.id === 'tone').length).toBeGreaterThanOrEqual(2)
+    const first = sine(440, 0.55, 0.5)
+    const second = sine(880, 0.55, 0.35)
+    const sequence = new Float32Array(first.length + second.length)
+    sequence.set(first, 0)
+    sequence.set(second, first.length)
+    const split = span(sequence)
+    const early = localDescriptors(split, 0.2, 0.5).filter((item) => item.id === 'tone')
+    const late = localDescriptors(split, 0.8, 0.5).filter((item) => item.id === 'tone')
+    expect(early.some((item) => item.label.includes('A4'))).toBe(true)
+    expect(early.some((item) => item.label.includes('A5'))).toBe(false)
+    expect(late.some((item) => item.label.includes('A5'))).toBe(true)
+    expect(late.some((item) => item.label.includes('A4'))).toBe(false)
+    expect(previewPeakForHz(440)).toBeLessThanOrEqual(0.045)
+    expect(previewPeakForHz(3000)).toBeLessThan(previewPeakForHz(440))
+    expect(previewPeakForHz(10000)).toBeLessThan(previewPeakForHz(3000))
+    expect(previewPeakForHz(10000)).toBeLessThan(0.012)
   })
 
   it('smears the sound map only when reverb wet is above zero', () => {

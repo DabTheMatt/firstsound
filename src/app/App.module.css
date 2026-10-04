@@ -316,6 +316,7 @@
   grid-row: 1;
   justify-self: stretch;
   align-self: start;
+  position: relative;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -323,7 +324,9 @@
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  overflow: hidden;
+  overflow: visible;
+  /* Above the inspector (z-index 3), which covers the strip left of Export. */
+  z-index: 4;
 }
 
 .transportPinned {

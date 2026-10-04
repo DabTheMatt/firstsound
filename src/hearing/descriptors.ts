@@ -6,7 +6,7 @@
 
 import type { BufferAnalysis } from './analyze'
 import type { HearingBandId } from './bands'
-import { spectralTones } from './tones'
+import { filterTones, momentAtTime, momentCharacters } from './tones'
 
 /** Enter when this fraction of spectral power is below 250 Hz. */
 export const BASS_HEAVY_ON = 0.38
@@ -57,11 +57,21 @@ export type DescriptorId =
   | 'dc-offset'
   | 'dominant'
   | 'tone'
+  | 'tonal'
+  | 'noise-like'
+  | 'percussive'
+  | 'sustained'
+  | 'bright'
+  | 'dull'
+  | 'harmonic'
+  | 'inharmonic'
 
 export type Descriptor = {
   id: DescriptorId
   label: string
   detail: string
+  /** Set on a detected-note tag so a click can synthesize that frequency. */
+  hz?: number
 }
 
 export type DescriptorMemory = {
@@ -127,12 +137,7 @@ function exclusiveHold(
   return hold(memory, id, want, nowMs)
 }
 
-export function updateDescriptors(
-  analysis: BufferAnalysis,
-  memory: DescriptorMemory,
-  nowMs: number,
-  toneSensitivity = 0.5,
-): Descriptor[] {
+export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMemory, nowMs: number): Descriptor[] {
   if (analysis.silent) {
     hold(memory, 'silence', true, nowMs)
     for (const id of [
@@ -291,13 +296,26 @@ export function updateDescriptors(
     },
   ]
 
-  const out = flags.filter((flag) => flag.on).map(({ id, label, detail }) => ({ id, label, detail }))
-  const tones = spectralTones(analysis.spectrumDb, analysis.sampleRate, analysis.fftSize, toneSensitivity)
-  for (const tone of tones) {
+  return flags.filter((flag) => flag.on).map(({ id, label, detail }) => ({ id, label, detail }))
+}
+
+/**
+ * Note and character tags for the slice under the playhead.
+ * A partial that is only present later in the sample stays hidden until then.
+ */
+export function localDescriptors(analysis: BufferAnalysis, timeSec: number, toneSensitivity = 0.5): Descriptor[] {
+  const moment = momentAtTime(analysis.toneTimeline, timeSec)
+  if (!moment) return []
+  const out: Descriptor[] = []
+  for (const character of momentCharacters(moment, toneSensitivity)) {
+    out.push({ id: character.id, label: character.label, detail: character.detail })
+  }
+  for (const tone of filterTones(moment.tones, toneSensitivity)) {
     out.push({
       id: 'tone',
+      hz: tone.hz,
       label: `${tone.note} · ${Math.round(tone.hz)} Hz`,
-      detail: `${tone.note} at ${Math.round(tone.hz)} Hz, ${tone.db.toFixed(1)} dB. Louder partials are listed first.`,
+      detail: `${tone.note} at ${Math.round(tone.hz)} Hz, ${tone.db.toFixed(1)} dB in this moment. Click to hear a quiet synthesized tone. High frequencies stay much quieter.`,
     })
   }
   return out
