@@ -833,6 +833,9 @@ function CompressorEditor({
           <div className={styles.eqViz}>
             <LimiterPlot kind="compressor" />
           </div>
+          <p className={styles.help}>
+            The curve is the Threshold, Ratio, and Knee map. IN is the level into the compressor, OUT is after Makeup, and GR is the compressor&apos;s own gain reduction. Presets are starting points.
+          </p>
           {params(COMPRESSOR_MAIN_KNOBS)}
         </>
       ) : (

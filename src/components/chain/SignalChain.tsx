@@ -9,6 +9,7 @@ import {
   type ModuleType,
 } from '../../audio/chain/chain'
 import { announce, useA11ySettings } from '../../a11y'
+import { onPointerReset } from '../../app/pointerSession'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
@@ -37,6 +38,17 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   useEffect(() => {
     chainRef.current = chain
   }, [chain])
+
+  useEffect(() => {
+    return onPointerReset(() => {
+      drag.current = null
+      hoverIndex.current = null
+      press.current = null
+      pressOrigin.current = null
+      setGapAt(null)
+      setReorder(false)
+    })
+  }, [])
   const middle = chain.filter((m) => !isFixedType(m.type)).length
   const canAdd = middle < MAX_CHAIN_MIDDLE
 

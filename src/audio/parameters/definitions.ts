@@ -1283,7 +1283,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
   compressorThreshold: {
     id: 'compressorThreshold',
     label: 'Threshold',
-    min: -48,
+    min: -60,
     max: 0,
     defaultValue: -6,
     unit: 'dB',
@@ -1314,7 +1314,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     id: 'compressorAttack',
     label: 'Attack',
     min: 0.1,
-    max: 50,
+    max: 500,
     defaultValue: 3,
     unit: 'ms',
     mapping: 'log',
@@ -1323,7 +1323,7 @@ export const PARAMS: Record<ParamId, ParamDef> = {
     id: 'compressorRelease',
     label: 'Release',
     min: 10,
-    max: 2000,
+    max: 1000,
     defaultValue: 120,
     unit: 'ms',
     mapping: 'log',
@@ -1814,12 +1814,12 @@ export const FILTER_MOD_KNOBS: ParamId[] = [
 export const COMPRESSOR_MAIN_KNOBS: ParamId[] = [
   'compressorThreshold',
   'compressorRatio',
-  'compressorKnee',
+  'compressorAttack',
   'compressorRelease',
 ]
 export const COMPRESSOR_ADV_KNOBS: ParamId[] = [
+  'compressorKnee',
   'compressorInput',
-  'compressorAttack',
   'compressorMakeup',
 ]
 export const LIMITER_MAIN_KNOBS: ParamId[] = ['limiterCeiling', 'limiterRelease']

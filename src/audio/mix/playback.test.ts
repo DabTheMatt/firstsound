@@ -7,6 +7,7 @@ import {
   dragLoopRegion,
   selectionAsLoop,
   sourcePlayheadSeconds,
+  waveformDisplaySample,
   waveformTiles,
   waveformVisualGain,
   type TrackClock,
@@ -104,6 +105,23 @@ describe('track playback resolver', () => {
     expect(waveformVisualGain(-12)).toBeCloseTo(10 ** (-12 / 20))
     expect(waveformVisualGain(0)).toBeCloseTo(1)
     expect(waveformVisualGain(12)).toBeCloseTo(10 ** (12 / 20))
+    expect(waveformVisualGain(6)).toBeCloseTo(10 ** (6 / 20))
+    expect(waveformVisualGain(-6)).toBeCloseTo(10 ** (-6 / 20))
+    expect(waveformVisualGain(-24)).toBeCloseTo(10 ** (-24 / 20))
+  })
+
+  it('scales cached source peaks by linear input gain without rewriting them', () => {
+    const peaks = new Float32Array([0.5, -0.25, 1])
+    const before = Array.from(peaks)
+    const shown = [-12, 0, 6, 12].map((db) => waveformDisplaySample(peaks[0]!, db))
+    expect(shown[0]!).toBeLessThan(shown[1]!)
+    expect(shown[1]!).toBeLessThan(shown[2]!)
+    expect(shown[2]!).toBeLessThan(shown[3]!)
+    expect(shown[1]!).toBeCloseTo(0.5)
+    expect(shown[3]! / shown[1]!).toBeCloseTo(10 ** (12 / 20))
+    expect(shown[0]! / shown[1]!).toBeCloseTo(10 ** (-12 / 20))
+    expect(waveformDisplaySample(peaks[0]!, 12)).toBeGreaterThan(1)
+    expect(Array.from(peaks)).toEqual(before)
   })
 
   it('drags a loop region without letting the handles cross', () => {

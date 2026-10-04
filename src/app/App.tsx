@@ -31,6 +31,7 @@ import { AppHeader } from '../components/header/AppHeader'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
 import { FIELD_VERSION } from '../version'
+import { clearPointerInteraction, installPointerSession } from './pointerSession'
 import { trackColorVar } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
@@ -631,7 +632,14 @@ export default function App() {
   }
 
   const activeFocus = focusWorkspace
+  useEffect(() => {
+    installPointerSession()
+    clearPointerInteraction()
+  }, [])
+
   const resetSession = useCallback(() => {
+    clearPointerInteraction()
+    setDragging(false)
     engine.resetSession()
     const dsp = captureDsp(engine)
     appliedRef.current = cloneDsp(dsp)

@@ -425,6 +425,9 @@ function DryWetPair({
   showHelp?: boolean
 }) {
   const linked = snap.params[correlateId] > 0.5
+  const reverbMix = correlateId === 'reverbCorrelate'
+  const wetPct = Math.round(snap.params[wetId])
+  const dryPct = Math.round(snap.params[dryId])
   const vertical = layout === 'vertical'
   const dashClass = vertical
     ? `${styles.mixDashVert} ${linked ? styles.mixDashVertOn : ''}`
@@ -443,7 +446,15 @@ function DryWetPair({
             className={`${styles.correlate} ${linked ? styles.correlateOn : ''}`}
             aria-pressed={linked}
             aria-label="Correlate Dry and Wet"
-            title={linked ? 'Correlate on — Dry + Wet stay at 100%' : 'Correlate off — Dry and Wet are independent'}
+            title={
+              reverbMix
+                ? linked
+                  ? 'Linked mix — Dry and Wet show one mix position'
+                  : 'Unlinked — Dry and Wet are independent levels'
+                : linked
+                  ? 'Correlate on — Dry + Wet stay at 100%'
+                  : 'Correlate off — Dry and Wet are independent'
+            }
             onClick={() => engine.setParam(correlateId, linked ? 0 : 1)}
           >
             <PlugGlyph />
@@ -452,9 +463,22 @@ function DryWetPair({
         </div>
         <ParamControl id={wetId} value={snap.params[wetId]} variant={variant} />
       </div>
+      {reverbMix && linked ? (
+        <div className={styles.mixReadout}>
+          <span className={styles.mixReadoutLabel}>MIX</span>
+          <span className={styles.mixReadoutWet}>{wetPct}% WET</span>
+          <span className={styles.mixReadoutPair}>
+            DRY {dryPct}% · WET {wetPct}%
+          </span>
+        </div>
+      ) : null}
       {showHelp ? (
         <p className={styles.help}>
-          The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).
+          {reverbMix && linked
+            ? 'Linked mix is one control. The percentages are the mix position. FIELD uses an equal-power crossfade so the middle does not fall off the way a straight linear blend does. That is not a promise of identical loudness for every impulse response.'
+            : reverbMix
+              ? 'Unlinked. Dry and Wet are independent levels, so the output can get louder or quieter.'
+              : 'The link keeps Dry + Wet at 100%. Turn it off to set the two levels independently (can get loud).'}
         </p>
       ) : null}
     </>

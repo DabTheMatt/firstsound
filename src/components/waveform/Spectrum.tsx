@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
@@ -251,6 +252,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     menuOpened: boolean
     timer: number
   } | null>(null)
+
+  useEffect(() => {
+    return onPointerReset(() => {
+      const active = drag.current
+      if (active?.timer) window.clearTimeout(active.timer)
+      drag.current = null
+      setDragNode(null)
+    })
+  }, [])
 
   useEffect(() => {
     freqScaleRef.current = freqScale

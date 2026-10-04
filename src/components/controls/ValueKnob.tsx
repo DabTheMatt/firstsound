@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { onPointerReset } from '../../app/pointerSession'
 import { createPortal } from 'react-dom'
 import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
@@ -111,6 +112,13 @@ export function ValueKnob({
   const [draft, setDraft] = useState('')
   const [tipOpen, setTipOpen] = useState(false)
   const [adjusting, setAdjusting] = useState(false)
+  useEffect(() => {
+    return onPointerReset(() => {
+      setAdjusting(false)
+      const root = rootRef.current
+      if (root) delete root.dataset.gesture
+    })
+  }, [])
   const labelId = useId()
   const descId = useId()
   const spoken = valueTextAccessible ?? valueText

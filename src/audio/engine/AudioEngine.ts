@@ -1334,8 +1334,17 @@ export class AudioEngine {
   }
 
   getCompressorReduction(): number {
-    const slot = [...this.slots.values()].find((s) => s.type === 'compressor')
-    return compressorReductionDb(slot?.compressorFx)
+    return compressorReductionDb(this.compressorSlot()?.compressorFx)
+  }
+
+  /** Focused compressor when the inspector is on one; otherwise the first in the chain. */
+  private compressorSlot(): Slot | undefined {
+    const focus = this.analyserFocusId
+    if (focus) {
+      const slot = this.slots.get(focus)
+      if (slot?.type === 'compressor') return slot
+    }
+    return [...this.slots.values()].find((s) => s.type === 'compressor')
   }
 
   setRegionFades(
@@ -3639,6 +3648,7 @@ export class AudioEngine {
 
   /** Chain, parameters, automation, and modulation the offline render must match. */
   processingSnapshot(): ProcessingSnapshot {
+    this.commitOwnedEffects()
     const eqById: Record<string, ExportEqState> = {}
     for (const [id, st] of this.eqById) {
       eqById[id] = {
@@ -3683,6 +3693,19 @@ export class AudioEngine {
       })),
       noiseMuted: this.noiseMuted,
       noiseFadeTau: this.noiseFadeTau,
+      effectById: Object.fromEntries(
+        [...this.effectMap().entries()].map(([id, st]) => [
+          id,
+          {
+            params: { ...st.params },
+            owner: this.ownerId(st.type) === id,
+            reverbType: st.reverbType,
+            delayType: st.delayType,
+            distortionType: st.distortionType,
+            distortionNoiseKind: st.distortionNoiseKind,
+          },
+        ]),
+      ),
       randomOffsets: { ...this.randomOffsets },
       trackRacks: this.serializedRacks(),
     }
@@ -5551,6 +5574,11 @@ export class AudioEngine {
             /* not connected */
           }
           try {
+            slot.compressorFx?.inputTap.disconnect(tap)
+          } catch {
+            /* not connected */
+          }
+          try {
             slot.output.disconnect(tap)
           } catch {
             /* not connected */
@@ -5612,10 +5640,14 @@ export class AudioEngine {
       this.pullAnalyser(this.analyserLimiterPre, pull)
       if (lim.limiterFx) this.analyserLimiterPost = lim.limiterFx.analyserPost
     }
-    const comp = ordered.find((slot) => slot.type === 'compressor')
+    const comp =
+      (focus?.type === 'compressor' ? focus : undefined) ?? ordered.find((slot) => slot.type === 'compressor')
     if (comp && this.analyserCompressorPre) {
-      comp.input.connect(this.analyserCompressorPre)
+      // IN tap is after the compressor input gain, before DynamicsCompressorNode.
+      const inputTap = comp.compressorFx?.inputTap ?? comp.input
+      inputTap.connect(this.analyserCompressorPre)
       this.pullAnalyser(this.analyserCompressorPre, pull)
+      // OUT tap is analyserPost: after compression and makeup, before wet/dry.
       if (comp.compressorFx) this.analyserCompressorPost = comp.compressorFx.analyserPost
     }
     const tone = focus?.type === 'eq' || focus?.type === 'filter' ? focus : ordered.find((slot) => slot.type === 'eq' || slot.type === 'filter')

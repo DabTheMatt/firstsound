@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { onPointerReset } from '../../app/pointerSession'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
 import type { ParamId } from '../../audio/parameters/types'
@@ -59,6 +60,14 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
     pointerId: number
   } | null>(null)
   const labelPress = useRef<{ x: number; y: number; id: number; role: ModulationPress } | null>(null)
+  useEffect(() => {
+    return onPointerReset(() => {
+      setAdjusting(false)
+      gesture.current = null
+      const row = rowRef.current
+      if (row) delete row.dataset.gesture
+    })
+  }, [])
   useEffect(() => {
     nRef.current = n
   }, [n])

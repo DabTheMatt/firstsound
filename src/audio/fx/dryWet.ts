@@ -71,12 +71,27 @@ export function correlatedSendLevels(
   return fxSendLevels(dry, wet, 100)
 }
 
+/**
+ * Reverb mix law.
+ *
+ * Linked (`reverbCorrelate`): one mix position. Wet percent is authoritative
+ * and Dry is its complement. Gains are an equal-power crossfade
+ * (`equalPowerDryWet`), not two linear faders. The displayed percentages stay
+ * the mix position — they are not the cos/sin coefficients.
+ *
+ * Unlinked: Dry and Wet are independent linear levels. Loudness may change.
+ */
 export function reverbSendLevels(params: {
   reverbDry: number
   reverbWet: number
   reverbCorrelate: number
 }): { dry: number; wet: number; out: number } {
-  return correlatedSendLevels(params.reverbDry, params.reverbWet, params.reverbCorrelate)
+  if (isCorrelated(params.reverbCorrelate)) {
+    const mix = clampPct(params.reverbWet) / 100
+    const law = equalPowerDryWet(mix)
+    return { dry: law.dry, wet: law.wet, out: 1 }
+  }
+  return fxSendLevels(clampPct(params.reverbDry), clampPct(params.reverbWet), 100)
 }
 
 export function delaySendLevels(params: {

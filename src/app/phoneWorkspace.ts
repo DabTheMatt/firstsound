@@ -15,7 +15,7 @@ const ESSENTIAL: Partial<Record<ModuleType, ParamId[]>> = {
   filter: ['filterCutoff', 'filterReso', 'filterMix'],
   delay: ['delayTime', 'delayFeedback', 'delayWet'],
   reverb: ['reverbSize', 'reverbDecay', 'reverbWet'],
-  compressor: ['compressorThreshold', 'compressorRatio', 'compressorRelease'],
+  compressor: ['compressorThreshold', 'compressorRatio', 'compressorAttack'],
   limiter: ['limiterCeiling', 'limiterRelease'],
   distortion: ['saturation', 'saturationMix'],
   midside: ['msWidth', 'msBalance'],

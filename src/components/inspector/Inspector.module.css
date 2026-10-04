@@ -462,6 +462,32 @@
   border-top-color: var(--accent-primary);
 }
 
+.mixReadout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.mixReadoutLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.mixReadoutWet {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.mixReadoutPair {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .mixDashVert {
   flex: 1 1 auto;
   min-height: 10px;

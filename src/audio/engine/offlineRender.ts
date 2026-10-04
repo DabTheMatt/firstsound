@@ -10,7 +10,7 @@ import {
 } from '../samplePrep/types'
 import { dbToGain } from '../parameters/mapping'
 import type { ParamId } from '../parameters/types'
-import { anyFxLfoActive, defaultLfoHold, type FxLfoMap } from '../fx/lfo'
+import { anyFxLfoActive, applyFxLfos, defaultLfoHold, type FxLfoMap } from '../fx/lfo'
 import { applyFilterModulation, filterModNeedsClock, followerEnvelope } from '../fx/filter'
 import { applyDelayGraph, applyReverbGraph, buildReverbBuffer, reverbImpulseKey } from '../fx/graphs'
 import { convolverHasBuffer, setConvolverPairBuffer } from './convolverCrossfade'
@@ -55,6 +55,17 @@ export type ExportEqState = {
   comb: CombFilterState
 }
 
+/** One effect insert as offline export should hear it. */
+export type ExportEffectState = {
+  params: Partial<Record<ParamId, number>>
+  /** The insert currently loaded into `ProcessingSnapshot.params`. */
+  owner: boolean
+  reverbType: ReverbType
+  delayType: DelayType
+  distortionType: DistortionType
+  distortionNoiseKind: DistortionNoiseKind
+}
+
 /** Audible processing state. Realtime playback and offline export both read this. */
 export type ProcessingSnapshot = {
   chain: ChainModule[]
@@ -87,6 +98,11 @@ export type ProcessingSnapshot = {
   }[]
   noiseMuted: boolean
   noiseFadeTau: number
+  /**
+   * Per-insert parameters. The owner insert follows `params` (automation, LFO,
+   * Random). Other inserts keep the values stored on that instance.
+   */
+  effectById?: Record<string, ExportEffectState>
   /** Normalized Random offsets. Applied only while automation owns the center. */
   randomOffsets?: Partial<Record<ParamId, number>>
   /**
@@ -243,6 +259,42 @@ function scheduleEq(
   }
 }
 
+/**
+ * Owner inserts already carry unscoped LFO in `live`.
+ * Instance routes are applied here so a compressor LFO aimed at that insert
+ * reaches the same AudioParams as realtime. A second insert does not inherit
+ * the first insert's scoped route.
+ */
+function modulatedSlotParams(
+  live: Record<ParamId, number>,
+  state: ProcessingSnapshot,
+  instanceId: string,
+  clock: EqModClock,
+): Record<ParamId, number> {
+  const base = paramsForSlot(live, state, instanceId)
+  if (!anyFxLfoActive(state.fxLfos)) return base
+  const fx = state.effectById?.[instanceId]
+  const owner = !fx || fx.owner
+  return applyFxLfos(base, state.fxLfos, clock.lfoTimeSec, clock.hold, clock.rand ?? Math.random, {
+    instanceId,
+    includeUnscoped: !owner,
+  })
+}
+
+function paramsForSlot(
+  live: Record<ParamId, number>,
+  state: ProcessingSnapshot,
+  instanceId: string,
+): Record<ParamId, number> {
+  const fx = state.effectById?.[instanceId]
+  if (!fx || fx.owner) return live
+  const next = { ...live }
+  for (const [key, value] of Object.entries(fx.params)) {
+    if (typeof value === 'number') next[key as ParamId] = value
+  }
+  return next
+}
+
 function scheduleChain(
   ctx: BaseAudioContext,
   slots: readonly ChainSlot[],
@@ -279,14 +331,20 @@ function scheduleChain(
   if (outSlot) setAudibleGain(outSlot.output.gain, dbToGain(params.outputGain), now)
   scheduleEq(ctx, slots, state, now, clock)
   for (const slot of slots) {
-    if (slot.filterFx) applyFilterGraph(slot.filterFx, params, now, smoothing, ctx.sampleRate, commitStatic)
-    if (slot.midSideFx) applyMidSideGraph(slot.midSideFx, params, now, smoothing)
+    const slotParams = modulatedSlotParams(params, state, slot.instanceId, clock)
+    const fx = state.effectById?.[slot.instanceId]
+    const delayType = fx && !fx.owner ? fx.delayType : state.delayType
+    const reverbType = fx && !fx.owner ? fx.reverbType : state.reverbType
+    const distortionType = fx && !fx.owner ? fx.distortionType : state.distortionType
+    const distortionNoiseKind = fx && !fx.owner ? fx.distortionNoiseKind : state.distortionNoiseKind
+    if (slot.filterFx) applyFilterGraph(slot.filterFx, slotParams, now, smoothing, ctx.sampleRate, commitStatic)
+    if (slot.midSideFx) applyMidSideGraph(slot.midSideFx, slotParams, now, smoothing)
     if (slot.distortionFx) {
       applyDistortionGraph(
         slot.distortionFx,
-        params,
-        state.distortionType,
-        state.distortionNoiseKind,
+        slotParams,
+        distortionType,
+        distortionNoiseKind,
         now,
         smoothing,
         ctx.sampleRate,
@@ -295,18 +353,18 @@ function scheduleChain(
         commitStatic,
       )
     }
-    if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, params, now, smoothing)
-    if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, params, now, smoothing)
+    if (slot.compressorFx) applyCompressorGraph(slot.compressorFx, slotParams, now, smoothing)
+    if (slot.limiterFx) applyLimiterGraph(slot.limiterFx, slotParams, now, smoothing)
     if (slot.delayFx) {
-      applyDelayGraph(slot.delayFx, params, state.delayType, params.bpm, now, smoothing, ctx, commitStatic)
+      applyDelayGraph(slot.delayFx, slotParams, delayType, slotParams.bpm, now, smoothing, ctx, commitStatic)
     }
     if (slot.reverbFx) {
-      applyReverbGraph(slot.reverbFx, params, state.reverbType, params.bpm, now, smoothing, commitStatic)
+      applyReverbGraph(slot.reverbFx, slotParams, reverbType, slotParams.bpm, now, smoothing, commitStatic)
       if (commitStatic) {
-        const key = reverbImpulseKey(params, state.reverbType)
+        const key = reverbImpulseKey(slotParams, reverbType)
         if (key !== irKey.current || !convolverHasBuffer(slot.reverbFx.conv)) {
           irKey.current = key
-          setConvolverPairBuffer(slot.reverbFx.conv, buildReverbBuffer(ctx, params, state.reverbType), now)
+          setConvolverPairBuffer(slot.reverbFx.conv, buildReverbBuffer(ctx, slotParams, reverbType), now)
         }
       }
     }
@@ -314,7 +372,10 @@ function scheduleChain(
   for (const mod of chain) {
     const slot = slots.find((item) => item.instanceId === mod.instanceId)
     if (!slot) continue
-    const mix = moduleMixGains(mod, params, state.distortionType, {
+    const slotParams = modulatedSlotParams(params, state, slot.instanceId, clock)
+    const fx = state.effectById?.[slot.instanceId]
+    const distortionType = fx && !fx.owner ? fx.distortionType : state.distortionType
+    const mix = moduleMixGains(mod, slotParams, distortionType, {
       eqListenFilters: false,
       spaceLatched: false,
     })

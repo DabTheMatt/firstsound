@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { fallHoldDb } from '../../app/editorState'
-import { compressorSettings } from '../../audio/fx/compressor'
+import { compressorCurveDb, compressorSettings, type CompressorSettings } from '../../audio/fx/compressor'
 import {
   amplitudeToDb,
   buildLimiterWavePreview,
@@ -11,11 +11,11 @@ import {
   LIMITER_PREVIEW_SECONDS,
   limiterBrickwallSettings,
   limiterOutputDb,
-  limiterPlotT,
   peakAmplitude,
   type LimiterSettings,
   type LimiterWavePreview,
 } from '../../audio/fx/limiter'
+import { paintIntervalMs } from '../../app/frameBudget'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, readThemeColors } from '../../theme'
 import { Segmented } from '../controls/Segmented'
@@ -33,7 +33,7 @@ const PLOT_MODES: { value: LimiterPlotMode; label: string; title: string }[] = [
 
 export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [mode, setMode] = useState<LimiterPlotMode>('wave')
+  const [mode, setMode] = useState<LimiterPlotMode>(kind === 'compressor' ? 'curve' : 'wave')
   const modeRef = useRef(mode)
   const kindRef = useRef(kind)
 
@@ -49,10 +49,10 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
     const canvas = canvasRef.current
     if (!canvas) return
     let frame = 0
-    let last = performance.now()
     let holdIn = Number.NEGATIVE_INFINITY
     let holdOut = Number.NEGATIVE_INFINITY
     let holdGr = 0
+    let painted = 0
     let cacheKey = ''
     let preview: LimiterWavePreview | null = null
 
@@ -76,7 +76,7 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
       return amplitudeToDb(peakAmplitude(buf))
     }
 
-    const settingsFor = (params: Parameters<typeof compressorSettings>[0]): LimiterSettings =>
+    const settingsFor = (params: Parameters<typeof compressorSettings>[0]): LimiterSettings | CompressorSettings =>
       kindRef.current === 'compressor' ? compressorSettings(params) : limiterBrickwallSettings(params)
 
     const moduleOn = (snap: ReturnType<typeof engine.getSnapshot>): boolean =>
@@ -103,28 +103,41 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
       }
 
       const snap = engine.getSnapshot()
+      const playing = snap.playing
+      if (painted > 0 && now - painted < paintIntervalMs(playing)) {
+        frame = requestAnimationFrame(draw)
+        return
+      }
+      const dtPaint = painted > 0 ? (now - painted) / 1000 : 0.016
+      painted = now
       const settings = settingsFor(snap.params)
       const active = moduleOn(snap)
       const colors = readThemeColors()
+      const compressor = kindRef.current === 'compressor'
       ctx.clearRect(0, 0, width, height)
       ctx.fillStyle = colors.bgApp
       ctx.fillRect(0, 0, width, height)
 
-      if (modeRef.current === 'curve') {
-        const dt = Math.min(0.08, Math.max(0, (now - last) / 1000))
-        last = now
+      if (compressor || modeRef.current === 'curve') {
+        const dt = Math.min(0.08, Math.max(0.001, dtPaint))
         holdIn = fallHoldDb(holdIn, readPeakDb(preTap()), dt, 18)
         holdOut = fallHoldDb(holdOut, readPeakDb(postTap()), dt, 18)
-        holdGr = fallHoldDb(holdGr, Math.max(0, -reductionDb()), dt, 24)
-        drawCompressorCurve(ctx, width, height, dpr, settings, holdIn, holdOut, holdGr, colors)
+        if (compressor) {
+          const target = reductionDb()
+          const k = 1 - Math.exp(-dt / 0.05)
+          holdGr = holdGr + (target - holdGr) * k
+          if (Math.abs(target) < 0.05 && Math.abs(holdGr) < 0.05) holdGr = 0
+        } else {
+          holdGr = fallHoldDb(holdGr, Math.max(0, -reductionDb()), dt, 24)
+        }
+        drawCompressorCurve(ctx, width, height, dpr, settings, holdIn, holdOut, holdGr, colors, compressor)
       } else {
-        last = now
         const result = drawWavePreview(
           ctx,
           width,
           height,
           dpr,
-          settings,
+          settings as LimiterSettings,
           active,
           colors,
           preview,
@@ -145,15 +158,19 @@ export function LimiterPlot({ kind = 'compressor' }: { kind?: LimiterPlotKind })
 
   return (
     <div className={styles.plotStack}>
-      <Segmented label={label} value={mode} options={PLOT_MODES} onChange={setMode} />
+      {kind === 'compressor' ? null : (
+        <Segmented label={label} value={mode} options={PLOT_MODES} onChange={setMode} />
+      )}
       <div className={styles.wrap}>
         <canvas
           ref={canvasRef}
           className={styles.canvas}
           aria-label={
-            mode === 'curve'
-              ? 'Transfer curve with soft-knee region'
-              : 'Next 10 seconds of sample with threshold overlay'
+            kind === 'compressor'
+              ? 'Compressor transfer curve, input, output, and gain reduction'
+              : mode === 'curve'
+                ? 'Transfer curve with soft-knee region'
+                : 'Next 10 seconds of sample with threshold overlay'
           }
         />
       </div>
@@ -166,26 +183,35 @@ function drawCompressorCurve(
   width: number,
   height: number,
   dpr: number,
-  settings: LimiterSettings,
+  settings: LimiterSettings | CompressorSettings,
   holdIn: number,
   holdOut: number,
   holdGr: number,
   colors: ReturnType<typeof readThemeColors>,
+  liveReduction = false,
 ): void {
-  const padL = 22 * dpr
+  const padL = 28 * dpr
   const padR = 16 * dpr
   const padT = 16 * dpr
-  const padB = 14 * dpr
-  const grW = 8 * dpr
-  const plotW = Math.max(8, width - padL - padR - grW - 6 * dpr)
+  const padB = 18 * dpr
+  const grW = liveReduction ? 14 * dpr : 8 * dpr
+  const plotW = Math.max(8, width - padL - padR - grW - 8 * dpr)
   const plotH = Math.max(8, height - padT - padB)
   const left = padL
   const top = padT
-  const grX = left + plotW + 5 * dpr
+  const grX = left + plotW + 6 * dpr
   const knee = compressorKneeRange(settings.threshold, settings.knee)
-
-  const xOf = (db: number) => left + limiterPlotT(db) * plotW
-  const yOf = (db: number) => top + (1 - limiterPlotT(db)) * plotH
+  const plotMin = liveReduction ? -60 : LIMITER_PLOT_MIN_DB
+  const plotMax = liveReduction ? 0 : LIMITER_PLOT_MAX_DB
+  const span = plotMax - plotMin
+  const tOf = (db: number) => {
+    const v = Math.min(plotMax, Math.max(plotMin, db))
+    return (v - plotMin) / span
+  }
+  const xOf = (db: number) => left + tOf(db) * plotW
+  const yOf = (db: number) => top + (1 - tOf(db)) * plotH
+  const outputAt = (db: number) =>
+    liveReduction ? compressorCurveDb(db, settings as CompressorSettings) : limiterOutputDb(db, settings as LimiterSettings)
 
   ctx.strokeStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.45)
   ctx.lineWidth = Math.max(1, dpr * 0.6)
@@ -217,16 +243,18 @@ function drawCompressorCurve(
   ctx.strokeStyle = colorWithAlpha(colors.textMuted, 0.45)
   ctx.setLineDash([3 * dpr, 3 * dpr])
   ctx.beginPath()
-  ctx.moveTo(xOf(LIMITER_PLOT_MIN_DB), yOf(LIMITER_PLOT_MIN_DB))
-  ctx.lineTo(xOf(LIMITER_PLOT_MAX_DB), yOf(LIMITER_PLOT_MAX_DB))
+  ctx.moveTo(xOf(plotMin), yOf(plotMin))
+  ctx.lineTo(xOf(plotMax), yOf(plotMax))
   ctx.stroke()
 
   ctx.strokeStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.55)
   ctx.beginPath()
   ctx.moveTo(xOf(settings.threshold), top)
   ctx.lineTo(xOf(settings.threshold), top + plotH)
-  ctx.moveTo(left, yOf(settings.ceiling))
-  ctx.lineTo(left + plotW, yOf(settings.ceiling))
+  if (!liveReduction && 'ceiling' in settings) {
+    ctx.moveTo(left, yOf(settings.ceiling))
+    ctx.lineTo(left + plotW, yOf(settings.ceiling))
+  }
   ctx.stroke()
   ctx.setLineDash([])
 
@@ -236,17 +264,17 @@ function drawCompressorCurve(
   ctx.beginPath()
   const steps = Math.max(32, Math.floor(plotW))
   for (let i = 0; i <= steps; i++) {
-    const db = LIMITER_PLOT_MIN_DB + (i / steps) * (LIMITER_PLOT_MAX_DB - LIMITER_PLOT_MIN_DB)
+    const db = plotMin + (i / steps) * (plotMax - plotMin)
     const x = xOf(db)
-    const y = yOf(limiterOutputDb(db, settings))
+    const y = yOf(outputAt(db))
     if (i === 0) ctx.moveTo(x, y)
     else ctx.lineTo(x, y)
   }
   ctx.stroke()
 
-  if (Number.isFinite(holdIn)) {
+  if (Number.isFinite(holdIn) && holdIn > plotMin + 0.5) {
     const inX = xOf(holdIn)
-    const outY = yOf(Number.isFinite(holdOut) ? holdOut : limiterOutputDb(holdIn, settings))
+    const outY = yOf(Number.isFinite(holdOut) ? holdOut : outputAt(holdIn))
     ctx.strokeStyle = colorWithAlpha(colors.waveform || colors.textMuted, 0.55)
     ctx.lineWidth = Math.max(1, dpr * 0.7)
     ctx.beginPath()
@@ -263,30 +291,51 @@ function drawCompressorCurve(
 
   ctx.fillStyle = colorWithAlpha(colors.borderSubtle || colors.textMuted, 0.35)
   ctx.fillRect(grX, top, grW, plotH)
-  const grT = Math.min(1, Math.max(0, holdGr / GR_MAX))
+  const grAmount = liveReduction ? Math.max(0, -holdGr) : Math.max(0, holdGr)
+  const grScale = liveReduction ? 20 : GR_MAX
+  const grT = Math.min(1, grAmount / grScale)
   const grH = plotH * grT
-  ctx.fillStyle = colors.eqCurve || colors.accent
-  ctx.fillRect(grX, top + plotH - grH, grW, grH)
+  if (grH > 0.5) {
+    ctx.fillStyle = colors.eqCurve || colors.accent
+    ctx.fillRect(grX, liveReduction ? top : top + plotH - grH, grW, grH)
+  }
+  if (liveReduction) {
+    ctx.font = `${Math.round(7 * dpr)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.fillStyle = colors.textMuted
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    for (const mark of [0, -6, -12, -20]) {
+      const y = top + (Math.min(grScale, -mark) / grScale) * plotH
+      ctx.fillText(`${mark}`, grX + grW + 2 * dpr, y)
+    }
+  }
 
   ctx.font = `${Math.round(9 * dpr)}px ui-sans-serif, system-ui, sans-serif`
   ctx.textBaseline = 'top'
   ctx.fillStyle = colors.textMuted
   ctx.textAlign = 'left'
-  ctx.fillText('In →', left, 3 * dpr)
+  const inLabel = Number.isFinite(holdIn) ? `IN ${holdIn.toFixed(1)}` : 'IN'
+  ctx.fillText(inLabel, left, 2 * dpr)
   ctx.textAlign = 'right'
   ctx.fillStyle = colors.eqCurve || colors.accent
-  ctx.fillText(`${holdGr.toFixed(1)} dB GR`, width - 4 * dpr, 3 * dpr)
+  const grLabel = liveReduction ? `${holdGr.toFixed(1)} GR` : `${grAmount.toFixed(1)} dB GR`
+  ctx.fillText(grLabel, grX - 4 * dpr, 2 * dpr)
   ctx.fillStyle = colorWithAlpha(colors.eqCurve || colors.accent, 0.9)
   ctx.font = `${Math.round(8 * dpr)}px ui-sans-serif, system-ui, sans-serif`
   const kneeLabel =
     knee.width > 0.05
-      ? `th ${settings.threshold.toFixed(0)} · knee ${knee.width.toFixed(0)}`
-      : `th ${settings.threshold.toFixed(0)} · hard`
-  ctx.fillText(kneeLabel, width - 4 * dpr, padT + 2 * dpr)
+      ? `th ${settings.threshold.toFixed(0)} · ${settings.ratio.toFixed(1)}:1 · knee ${knee.width.toFixed(0)}`
+      : `th ${settings.threshold.toFixed(0)} · ${settings.ratio.toFixed(1)}:1 · hard`
+  if (!liveReduction) ctx.fillText(kneeLabel, width - 4 * dpr, padT + 2 * dpr)
   ctx.fillStyle = colors.textMuted
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
-  ctx.fillText('Out ↑', left, height - 2 * dpr)
+  const outLabel = Number.isFinite(holdOut) ? `OUT ${holdOut.toFixed(1)}` : 'OUT'
+  ctx.fillText(outLabel, left, height - 2 * dpr)
+  if (liveReduction) {
+    ctx.textAlign = 'right'
+    ctx.fillText(kneeLabel, left + plotW, height - 2 * dpr)
+  }
 }
 
 function drawWavePreview(

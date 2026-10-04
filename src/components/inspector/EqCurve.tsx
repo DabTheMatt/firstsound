@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { onPointerReset } from '../../app/pointerSession'
 import type { CombFilterState } from '../../audio/engine/comb'
 import { combAsEqBands } from '../../audio/engine/comb'
 import { EQ_MIN_HZ, eqStripKey, type EqBand } from '../../audio/engine/eqBands'
@@ -72,6 +73,13 @@ export function EqCurve({
     y0: number
   } | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    return onPointerReset(() => {
+      drag.current = null
+      setDragIndex(null)
+    })
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { onPointerReset } from '../../app/pointerSession'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 
 export type ArmedLfo = { kind: FxLfoKind; slot: number }
@@ -15,6 +16,7 @@ const FxLfoConnectContext = createContext<Ctx>({
 
 export function FxLfoConnectProvider({ children }: { children: ReactNode }) {
   const [armed, setArmed] = useState<ArmedLfo | null>(null)
+  useEffect(() => onPointerReset(() => setArmed(null)), [])
   useEffect(() => {
     if (!armed) return
     const onKey = (event: KeyboardEvent) => {

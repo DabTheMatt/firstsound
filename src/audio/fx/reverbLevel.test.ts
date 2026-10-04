@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { REVERB_WET_TRIM, reverbDecayStackTrim, reverbWetOutputGain } from './reverbLevel'
 
 describe('reverbWetOutputGain', () => {
-  it('trims unity output so the wet send stays under dry', () => {
-    expect(reverbWetOutputGain(100, 0.5)).toBeCloseTo(REVERB_WET_TRIM)
-    expect(reverbWetOutputGain(100, 0.5)).toBeLessThan(0.7)
+  it('keeps a unity static trim and still follows the output knob', () => {
+    expect(REVERB_WET_TRIM).toBe(1)
+    expect(reverbWetOutputGain(100, 0.5)).toBeCloseTo(1)
     expect(reverbWetOutputGain(0)).toBe(0)
-    expect(reverbWetOutputGain(200, 0.5)).toBeCloseTo(REVERB_WET_TRIM * 2)
+    expect(reverbWetOutputGain(200, 0.5)).toBeCloseTo(2)
   })
 
   it('lowers the wet send as decay grows so tails do not pile up', () => {

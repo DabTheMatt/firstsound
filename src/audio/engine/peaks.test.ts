@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeMinMax, computeMinMaxCached, computePeaks, buildPeakMips, mixToMono } from './peaks'
+import { computeMinMax, computeMinMaxCached, computePeaks, buildPeakMips, mipsCovering, mixToMono } from './peaks'
 
 describe('computePeaks', () => {
   it('finds the absolute peak in each bucket', () => {
@@ -38,6 +38,13 @@ describe('peak mips', () => {
     const cached = computeMinMaxCached(data, mips, 0, data.length, 16)
     expect(cached.peak).toBeCloseTo(raw.peak)
     expect(cached.peak).toBeCloseTo(0.8)
+  })
+
+  it('rejects a mip cache that belongs to another buffer length', () => {
+    const data = new Float32Array(4096)
+    const mips = buildPeakMips(data, [32])
+    expect(mipsCovering(data.length, mips)).toBe(mips)
+    expect(mipsCovering(data.length * 4, mips)).toEqual([])
   })
 })
 

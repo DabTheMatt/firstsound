@@ -596,7 +596,7 @@ export function inspectorPaneForLfo(kind: FxLfoKind, target: ParamId | null): 'm
   if (
     kind === 'compressor' &&
     target &&
-    (target === 'compressorAttack' || target === 'compressorInput' || target === 'compressorMakeup')
+    (target === 'compressorKnee' || target === 'compressorInput' || target === 'compressorMakeup')
   ) {
     return 'advanced'
   }

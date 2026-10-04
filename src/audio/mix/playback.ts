@@ -71,6 +71,16 @@ export function waveformVisualGain(gainDb: number): number {
 }
 
 /**
+ * SINGLE / WAVE display sample.
+ * Source peaks stay immutable. Input gain only scales the draw.
+ * Callers clamp to the canvas; this value is allowed to exceed ±1.
+ */
+export function waveformDisplaySample(source: number, gainDb: number): number {
+  if (!Number.isFinite(source)) return 0
+  return source * waveformVisualGain(gainDb)
+}
+
+/**
  * Loop fragment in source time.
  * A non-positive span means "the whole source" so older tracks stay compatible.
  */

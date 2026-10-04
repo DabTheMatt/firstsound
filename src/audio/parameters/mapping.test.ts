@@ -76,14 +76,14 @@ describe('mapping', () => {
   it('formats limiter params', () => {
     expect(formatParamValue(-6, PARAMS.limiterThreshold)).toBe('-6.0 dB')
     expect(formatParamValue(120, PARAMS.limiterRelease)).toBe('120 ms')
-    expect(formatParamValue(12, PARAMS.limiterRatio)).toBe('12.0:1')
+    expect(formatParamValue(12, PARAMS.limiterRatio)).toBe('12:1')
     expect(formatParamValue(1, PARAMS.limiterAutoMakeup)).toBe('On')
   })
 
   it('formats compressor params', () => {
     expect(formatParamValue(-6, PARAMS.compressorThreshold)).toBe('-6.0 dB')
     expect(formatParamValue(120, PARAMS.compressorRelease)).toBe('120 ms')
-    expect(formatParamValue(12, PARAMS.compressorRatio)).toBe('12.0:1')
+    expect(formatParamValue(12, PARAMS.compressorRatio)).toBe('12:1')
     expect(formatParamValue(1, PARAMS.compressorAutoMakeup)).toBe('On')
   })
 

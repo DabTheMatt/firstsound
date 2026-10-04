@@ -311,7 +311,10 @@ export function formatParamValue(value: number, def: ParamDef): string {
       if (def.unit === '%') return `${Math.round(value)} %`
       if (def.unit === 'ms') return `${Math.round(value)} ms`
       if (def.unit === 'Hz') return `${value.toFixed(2)} Hz`
-      if (def.unit === ':1') return `${value.toFixed(1)}:1`
+      if (def.unit === ':1') {
+        const rounded = Math.round(value)
+        return Math.abs(value - rounded) < 0.05 ? `${rounded}:1` : `${value.toFixed(1)}:1`
+      }
       if (def.unit === 'dB') return `${value.toFixed(1)} dB`
       const digits = def.step != null ? stepDecimals(def.step) : 2
       const body = Number.isFinite(value) ? value.toFixed(digits) : String(value)

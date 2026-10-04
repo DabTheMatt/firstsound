@@ -67,7 +67,7 @@ describe('wetDryFor', () => {
     expect(stacked.wet).toBeCloseTo(0.5)
   })
 
-  it('correlates reverb Dry and Wet so they sum to unity', () => {
+  it('correlates reverb Dry and Wet with an equal-power law', () => {
     const p = defaultParamValues()
     p.reverbCorrelate = 1
     p.reverbWet = 100
@@ -78,9 +78,10 @@ describe('wetDryFor', () => {
     p.reverbWet = 40
     p.reverbDry = 100
     const correlated = wetDryFor('reverb', p)
-    expect(correlated.dry).toBeCloseTo(0.6)
-    expect(correlated.wet).toBeCloseTo(0.4)
-    expect(correlated.dry + correlated.wet).toBeCloseTo(1)
+    const mix = 0.4
+    expect(correlated.dry).toBeCloseTo(Math.cos(mix * Math.PI / 2), 5)
+    expect(correlated.wet).toBeCloseTo(Math.sin(mix * Math.PI / 2), 5)
+    expect(correlated.dry ** 2 + correlated.wet ** 2).toBeCloseTo(1, 5)
   })
 
   it('lets uncorrelated reverb Dry and Wet stack', () => {
@@ -149,10 +150,26 @@ describe('delaySendLevels', () => {
 })
 
 describe('reverbSendLevels', () => {
-  it('ignores stored Dry when Correlate is on', () => {
+  it('ignores stored Dry when Correlate is on and uses equal power', () => {
     const send = reverbSendLevels({ reverbDry: 100, reverbWet: 25, reverbCorrelate: 1 })
-    expect(send.dry).toBeCloseTo(0.75)
-    expect(send.wet).toBeCloseTo(0.25)
+    const mix = 0.25
+    expect(send.dry).toBeCloseTo(Math.cos(mix * Math.PI / 2), 5)
+    expect(send.wet).toBeCloseTo(Math.sin(mix * Math.PI / 2), 5)
+    expect(send.out).toBe(1)
+  })
+
+  it('keeps unlinked Dry and Wet independent', () => {
+    const send = reverbSendLevels({ reverbDry: 80, reverbWet: 40, reverbCorrelate: 0 })
+    expect(send.dry).toBeCloseTo(0.8)
+    expect(send.wet).toBeCloseTo(0.4)
+  })
+
+  it('avoids the linear midpoint power dip', () => {
+    const mid = reverbSendLevels({ reverbDry: 50, reverbWet: 50, reverbCorrelate: 1 })
+    const equalPower = mid.dry ** 2 + mid.wet ** 2
+    const linear = 0.5 ** 2 + 0.5 ** 2
+    expect(equalPower).toBeCloseTo(1, 5)
+    expect(equalPower).toBeGreaterThan(linear + 0.4)
   })
 })
 

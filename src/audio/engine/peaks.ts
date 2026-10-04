@@ -135,6 +135,21 @@ export function computeMinMaxCached(
   return { min, max, peak }
 }
 
+/**
+ * Mips built for this channel. A length mismatch means the cache belongs to
+ * another buffer — callers fall back to a view-window scan and do not rebuild
+ * the cache just to redraw.
+ */
+export function mipsCovering(channelLength: number, mips: PeakMip[] | undefined): PeakMip[] {
+  if (!mips || mips.length === 0 || !(channelLength > 0)) return []
+  const finest = mips[0]!
+  if (!(finest.hop > 0)) return []
+  const covered = finest.min.length * finest.hop
+  if (covered + finest.hop < channelLength) return []
+  if (covered > channelLength + finest.hop * 2) return []
+  return mips
+}
+
 export function samplesPerPixel(startIdx: number, endIdx: number, width: number): number {
   return Math.max(1, endIdx - startIdx) / Math.max(1, width)
 }

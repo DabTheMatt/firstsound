@@ -11,7 +11,9 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
-import { computeMinMax, mixToMono } from '../../audio/engine/peaks'
+import { computeMinMax, computeMinMaxCached, mipsCovering, mixToMono } from '../../audio/engine/peaks'
+import { waveformVisualGain } from '../../audio/mix/playback'
+import { onPointerReset } from '../../app/pointerSession'
 import { waveformLaneLayout } from '../../audio/engine/stereoStage'
 import { PARAMS } from '../../audio/parameters/definitions'
 import {
@@ -546,7 +548,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           const s = Math.floor(view.start * samplesPerSec)
           const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
           const { min, max, peak } = computeMinMax(data, s, e, width)
-          const gain = normalizeView ? verticalGain(peak) : 1
+          const gain = (normalizeView ? verticalGain(peak) : 1) * waveformVisualGain(engine.getSnapshot().liveParams.gain)
           const mid = top0 + laneH / 2
           const half = laneH * 0.38
           const span = Math.max(0.0001, view.end - view.start)
@@ -616,8 +618,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const samplesPerSec = data.length / duration
         const s = Math.floor(view.start * samplesPerSec)
         const e = Math.max(s + 1, Math.floor(view.end * samplesPerSec))
-        const { min, max, peak } = computeMinMax(data, s, e, width)
-        const gain = (normalizeView ? verticalGain(peak) : 1) * (layout.gains[lane] ?? 1)
+        const cached = mixed ? [] : mipsCovering(data.length, engine.getSourceMips()[srcCh])
+        const { min, max, peak } = computeMinMaxCached(data, cached, s, e, width)
+        const gain =
+          (normalizeView ? verticalGain(peak) : 1) *
+          (layout.gains[lane] ?? 1) *
+          waveformVisualGain(snapNow.liveParams.gain)
         const mid = top0 + laneH / 2
         const half = laneH * 0.42
         const span = Math.max(0.0001, view.end - view.start)
@@ -692,7 +698,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       ro.disconnect()
       unsub()
     }
-  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR, snap.channelLayout, snap.recording, snap.liveParams.pan, snap.liveParams.channelGainL, snap.liveParams.channelGainR, snap.spectral.enabled, snap.spectral.ready, snap.spectral.computing, snap.spectral.crossoversHz, snap.spectral.bands])
+  }, [view, normalizeView, loaded, duration, viz, contentRev, start, end, fadeIn, fadeOut, fadeCurve, fadeInBend, fadeOutBend, appearance, snap.params.makeMono, snap.params.pan, snap.params.channelGainL, snap.params.channelGainR, snap.params.gain, snap.channelLayout, snap.recording, snap.liveParams.gain, snap.liveParams.pan, snap.liveParams.channelGainL, snap.liveParams.channelGainR, snap.spectral.enabled, snap.spectral.ready, snap.spectral.computing, snap.spectral.crossoversHz, snap.spectral.bands])
 
   useEffect(() => {
     let frame = 0
@@ -800,6 +806,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     originTension?: number
   } | null>(null)
   const pinch = useRef<{ dist: number; view: View; focus: number } | null>(null)
+
+  useEffect(() => {
+    return onPointerReset(() => {
+      drag.current = null
+      pinch.current = null
+      pointers.current.clear()
+      setPanning(false)
+      setFadeDrag(null)
+      if (overlayRef.current) delete overlayRef.current.dataset.cursor
+    })
+  }, [])
 
   const onEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (sensory) return

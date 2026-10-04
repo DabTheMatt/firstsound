@@ -67,6 +67,7 @@ const en: ManualSection[] = [
     body: [
       'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed.',
       'The overview under the wave shows the whole sample. Fit returns the view to the full duration.',
+      'SINGLE / WAVE draws the cached source peaks times Input Gain. The linear scale is 10^(dB/20), so +6 dB is about twice as tall and −6 dB is about half. Peaks that pass the lane are clipped only in the drawing. The source buffer is not re-analysed when Gain moves. Later effects and the output fader stay on the meters.',
     ],
   },
   {
@@ -94,7 +95,7 @@ const en: ManualSection[] = [
     id: 'input',
     title: 'Input controls',
     body: [
-      'The start of the chain is the input gain. Make mono folds the sample to one channel. Record captures the microphone into the sample slot when the browser allows it.',
+      'The start of the chain is the input gain. It changes the audio level and the SINGLE / WAVE height together. Make mono folds the sample to one channel. Record captures the microphone into the sample slot when the browser allows it.',
     ],
   },
   {
@@ -128,7 +129,11 @@ const en: ManualSection[] = [
   {
     id: 'comp',
     title: 'Compressor',
-    body: ['The compressor instance has its own threshold, ratio, attack, release, and makeup. It is not the master safety limiter.'],
+    body: [
+      'Each compressor instance has its own Threshold, Ratio, Attack, Release, Knee, and Makeup. It is not the master safety limiter. Threshold is the level where reduction starts. Ratio, from 1:1 to 20:1, sets how hard the signal is turned down above that. Attack and Release are shown in milliseconds and applied in seconds. Knee 0 dB is a hard corner; a higher knee softens the transition.',
+      'Makeup sits after the compressor. It changes the output level and does not change the gain-reduction meter. Auto Makeup is a fixed estimate from Threshold and Ratio. Turn it off to use Makeup by hand. It is not a live loudness matcher.',
+      'The transfer curve is that Threshold, Ratio, and Knee map: input level across, output level up. IN is the level into the compressor, OUT is after Makeup, and GR is the compressor’s own reduction in dB. At rest GR stays at 0. Presets such as Gentle, Vocal, Punch, Tight, and Limit are starting points, not mastering settings. A second compressor does not share the first one’s settings.',
+    ],
   },
   {
     id: 'delay',
@@ -138,7 +143,10 @@ const en: ManualSection[] = [
   {
     id: 'reverb',
     title: 'Reverb',
-    body: ['Each reverb instance keeps its own size, decay, and wet mix, and its own impulse response.'],
+    body: [
+      'Each reverb instance keeps its own size, decay, wet mix, and impulse response. The dry path and the reverberated path are separate, then summed.',
+      'When Dry and Wet are linked they are one Mix. The percentages are that mix position: 35% Wet means Dry 65% and Wet 35%. FIELD applies an equal-power crossfade, dry = cos(mix × π/2) and wet = sin(mix × π/2), so the middle does not drop the way a straight linear blend does. That does not keep every source and every impulse response at the same loudness. Unlink them to set Dry and Wet as independent levels. The output can then get louder or quieter.',
+    ],
   },
   {
     id: 'dist',
@@ -337,6 +345,7 @@ const pl: ManualSection[] = [
     body: [
       'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony.',
       'Pasek pod falą pokazuje cały sample. Fit wraca do pełnej długości.',
+      'Widok SINGLE / WAVE rysuje zapamiętane szczyty źródła razy Input Gain. Skala liniowa to 10^(dB/20): +6 dB jest około dwa razy wyższe, −6 dB około dwa razy niższe. Szczyty, które wychodzą poza pas, są obcinane tylko na rysunku. Ruch Gain nie analizuje bufora od nowa. Dalsze efekty i tłumik wyjścia widać na miernikach.',
     ],
   },
   {
@@ -364,7 +373,7 @@ const pl: ManualSection[] = [
     id: 'input',
     title: 'Wejście',
     body: [
-      'Początek łańcucha to wzmocnienie wejścia. Make mono składa sample do jednego kanału. Nagrywanie zapisuje mikrofon w slocie sampla, gdy przeglądarka na to pozwala.',
+      'Początek łańcucha to wzmocnienie wejścia. Zmienia poziom audio i wysokość fali w SINGLE / WAVE. Make mono składa sample do jednego kanału. Nagrywanie zapisuje mikrofon w slocie sampla, gdy przeglądarka na to pozwala.',
     ],
   },
   {
@@ -398,7 +407,11 @@ const pl: ManualSection[] = [
   {
     id: 'comp',
     title: 'Compressor',
-    body: ['Instancja kompresora ma własny próg, ratio, attack, release i makeup. To nie jest główny limiter bezpieczeństwa.'],
+    body: [
+      'Każda instancja kompresora ma własny Threshold, Ratio, Attack, Release, Knee i Makeup. To nie jest główny limiter bezpieczeństwa. Threshold to poziom, od którego zaczyna się redukcja. Ratio od 1:1 do 20:1 określa, jak mocno sygnał powyżej progu jest ściszany. Attack i Release są pokazane w milisekundach, a w DSP liczone w sekundach. Knee 0 dB to ostre kolano; wyższe kolano łagodzi przejście.',
+      'Makeup jest za kompresorem. Zmienia poziom wyjścia i nie rusza miernika redukcji wzmocnienia. Auto Makeup to stałe oszacowanie z Threshold i Ratio. Wyłącz je, żeby ustawić Makeup ręcznie. To nie jest żywy dopasowywacz głośności.',
+      'Krzywa przenoszenia to mapa Threshold, Ratio i Knee: poziom wejścia w poziomie, poziom wyjścia w pionie. IN to poziom wchodzący do kompresora, OUT jest po Makeup, a GR to własna redukcja kompresora w dB. W spoczynku GR zostaje na 0. Presety takie jak Gentle, Vocal, Punch, Tight i Limit są punktami startowymi, nie ustawieniami masteringowymi. Drugi kompresor nie dzieli ustawień z pierwszym.',
+    ],
   },
   {
     id: 'delay',
@@ -408,7 +421,10 @@ const pl: ManualSection[] = [
   {
     id: 'reverb',
     title: 'Pogłos',
-    body: ['Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, wet i własną odpowiedź impulsową.'],
+    body: [
+      'Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, miks wet i własną odpowiedź impulsową. Ścieżka dry i ścieżka pogłosu są osobne, a potem sumowane.',
+      'Gdy Dry i Wet są zlinkowane, to jeden Mix. Procenty opisują pozycję miksu: 35% Wet oznacza Dry 65% i Wet 35%. FIELD stosuje crossfade o stałej mocy, dry = cos(mix × π/2) i wet = sin(mix × π/2), więc środek nie zapada się tak jak przy zwykłym liniowym blendzie. To nie utrzymuje tej samej głośności dla każdego źródła i każdej odpowiedzi impulsowej. Odłącz je, żeby ustawić Dry i Wet jako niezależne poziomy. Wyjście może wtedy stać się głośniejsze albo cichsze.',
+    ],
   },
   {
     id: 'dist',
