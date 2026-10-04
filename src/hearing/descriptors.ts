@@ -23,6 +23,18 @@ export const NARROW_ON = 0.12
 export const NARROW_OFF = 0.2
 export const TRANSIENT_CREST_ON = 12
 export const TRANSIENT_CREST_OFF = 9
+/** Enter when power from 6 kHz up exceeds this share. */
+export const HIGH_BAND_ON = 0.16
+export const HIGH_BAND_OFF = 0.1
+/** Enter when AIR (12–20 kHz) exceeds this share. */
+export const AIR_ON = 0.05
+export const AIR_OFF = 0.03
+export const IMBALANCE_ON = 0.28
+export const IMBALANCE_OFF = 0.18
+export const DC_ON = 0.02
+export const DC_OFF = 0.012
+export const NEAR_FULL_ON = -1
+export const NEAR_FULL_OFF = -3
 export const MIN_HOLD_MS = 700
 
 export type DescriptorId =
@@ -31,10 +43,17 @@ export type DescriptorId =
   | 'quiet'
   | 'bass-heavy'
   | 'midrange-dominant'
+  | 'high-band'
+  | 'air'
   | 'wide'
   | 'narrow'
+  | 'imbalance'
+  | 'low-correlation'
   | 'strong-transients'
   | 'continuous'
+  | 'clipped'
+  | 'near-full-scale'
+  | 'dc-offset'
   | 'dominant'
 
 export type Descriptor = {
@@ -64,6 +83,10 @@ function midShare(analysis: BufferAnalysis): number {
   return bandShare(analysis, ['lowMid', 'mid', 'highMid'])
 }
 
+function highShare(analysis: BufferAnalysis): number {
+  return bandShare(analysis, ['high', 'air'])
+}
+
 function hold(
   memory: DescriptorMemory,
   id: DescriptorId,
@@ -85,7 +108,24 @@ function hold(
 export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMemory, nowMs: number): Descriptor[] {
   if (analysis.silent) {
     hold(memory, 'silence', true, nowMs)
-    for (const id of ['loud', 'quiet', 'bass-heavy', 'midrange-dominant', 'wide', 'narrow', 'strong-transients', 'continuous', 'dominant'] as const) {
+    for (const id of [
+      'loud',
+      'quiet',
+      'bass-heavy',
+      'midrange-dominant',
+      'high-band',
+      'air',
+      'wide',
+      'narrow',
+      'imbalance',
+      'low-correlation',
+      'strong-transients',
+      'continuous',
+      'clipped',
+      'near-full-scale',
+      'dc-offset',
+      'dominant',
+    ] as const) {
       hold(memory, id, false, nowMs)
     }
     return [
@@ -108,8 +148,21 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
   const mids = !bass && (memory.flags['midrange-dominant'] ? mid >= MID_DOMINANT_OFF : mid >= MID_DOMINANT_ON)
   const wide = analysis.stereo ? (memory.flags.wide ? width >= WIDE_OFF : width >= WIDE_ON) : false
   const narrow = analysis.stereo ? (memory.flags.narrow ? width <= NARROW_OFF : width <= NARROW_ON) : false
+  const highs = highShare(analysis)
+  const air = bandShare(analysis, ['air'])
   const transients = crest !== null && (memory.flags['strong-transients'] ? crest >= TRANSIENT_CREST_OFF : crest >= TRANSIENT_CREST_ON)
   const continuous = analysis.tonality === 'high' && !transients && crest !== null && crest < 8
+  const balance = analysis.stereo?.balance ?? 0
+  const imbalance = analysis.stereo
+    ? memory.flags.imbalance
+      ? Math.abs(balance) >= IMBALANCE_OFF
+      : Math.abs(balance) >= IMBALANCE_ON
+    : false
+  const lowCorrelation = analysis.stereo?.lowCorrelation === true
+  const dc = Math.abs(analysis.dcOffset)
+  const dcOn = memory.flags['dc-offset'] ? dc >= DC_OFF : dc >= DC_ON
+  const peak = analysis.peakDbfs
+  const nearFull = peak !== null && (memory.flags['near-full-scale'] ? peak >= NEAR_FULL_OFF : peak >= NEAR_FULL_ON)
 
   const flags: { id: DescriptorId; on: boolean; label: string; detail: string }[] = [
     {
@@ -137,6 +190,18 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
       detail: `${Math.round(mid * 100)}% of measured spectral energy is between 250 Hz and 6 kHz.`,
     },
     {
+      id: 'high-band',
+      on: hold(memory, 'high-band', highs >= (memory.flags['high-band'] ? HIGH_BAND_OFF : HIGH_BAND_ON), nowMs),
+      label: 'HIGH-BAND ENERGY',
+      detail: `${Math.round(highs * 100)}% of measured spectral energy is above 6 kHz.`,
+    },
+    {
+      id: 'air',
+      on: hold(memory, 'air', air >= (memory.flags.air ? AIR_OFF : AIR_ON), nowMs),
+      label: 'AIR ENERGY',
+      detail: `${Math.round(air * 100)}% of measured spectral energy is between 12 kHz and 20 kHz.`,
+    },
+    {
       id: 'wide',
       on: hold(memory, 'wide', wide && !narrow, nowMs),
       label: 'WIDE STEREO',
@@ -147,6 +212,22 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
       on: hold(memory, 'narrow', narrow && !wide, nowMs),
       label: 'NARROW STEREO',
       detail: analysis.stereo ? `Side energy is ${Math.round(analysis.stereo.width * 100)}% of mid+side energy.` : '',
+    },
+    {
+      id: 'imbalance',
+      on: hold(memory, 'imbalance', imbalance, nowMs),
+      label: analysis.stereo && analysis.stereo.balance < 0 ? 'LEFT-HEAVY' : 'RIGHT-HEAVY',
+      detail: analysis.stereo
+        ? `Balance is ${analysis.stereo.balanceSide} ${Math.round(analysis.stereo.balancePct)}%.`
+        : '',
+    },
+    {
+      id: 'low-correlation',
+      on: hold(memory, 'low-correlation', lowCorrelation, nowMs),
+      label: 'LOW CORRELATION',
+      detail: analysis.stereo
+        ? `Correlation ${analysis.stereo.correlation.toFixed(2)}. Possible mono compatibility issue.`
+        : '',
     },
     {
       id: 'strong-transients',
@@ -162,6 +243,24 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
         analysis.flatness !== null
           ? `Spectral flatness ${analysis.flatness.toFixed(3)}. Narrow tonal energy is present.`
           : 'Narrow tonal energy is present.',
+    },
+    {
+      id: 'clipped',
+      on: hold(memory, 'clipped', analysis.clipped, nowMs),
+      label: 'CLIPPING',
+      detail: `${analysis.clipCount} full-scale sample${analysis.clipCount === 1 ? '' : 's'}.`,
+    },
+    {
+      id: 'near-full-scale',
+      on: hold(memory, 'near-full-scale', nearFull && !analysis.clipped, nowMs),
+      label: 'NEAR FULL SCALE',
+      detail: peak !== null ? `Peak ${peak.toFixed(1)} dBFS.` : 'Peak is close to full scale.',
+    },
+    {
+      id: 'dc-offset',
+      on: hold(memory, 'dc-offset', dcOn, nowMs),
+      label: 'DC OFFSET',
+      detail: `Mean sample ${analysis.dcOffset.toFixed(4)}.`,
     },
   ]
 

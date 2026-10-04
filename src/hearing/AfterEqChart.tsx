@@ -24,11 +24,23 @@ export function afterShares(analysis: BufferAnalysis, deltas: ReturnType<typeof 
   return weighted.map((value) => (sum > 0 ? value / sum : 0))
 }
 
-export function LevelTrack({ db }: { db: number | null }) {
+export function LevelTrack({ db, tone = 'band' }: { db: number | null; tone?: 'band' | 'original' | 'heard' }) {
   const pct = Math.round(levelBar(db) * 100)
   return (
     <span className={styles.level} aria-hidden="true">
-      <i style={{ width: `${pct}%` }} />
+      <i className={tone === 'band' ? undefined : styles[tone]} style={{ width: `${pct}%` }} />
+    </span>
+  )
+}
+
+/** One track: the dimmer bar is the original, the brighter bar is what you hear. */
+export function CompareTrack({ before, after }: { before: number | null; after: number | null }) {
+  const beforePct = Math.round(levelBar(before) * 100)
+  const afterPct = Math.round(levelBar(after) * 100)
+  return (
+    <span className={styles.level} aria-hidden="true">
+      <i className={styles.original} style={{ width: `${beforePct}%` }} />
+      <i className={styles.heard} style={{ width: `${afterPct}%` }} />
     </span>
   )
 }
@@ -49,34 +61,22 @@ export function AfterEqChart({ analysis, bands, sampleRate, engaged, pitchSemito
         {pitched ? 'Original → heard' : 'Original → after EQ'}
       </h3>
       <p style={{ margin: '0 0 6px', fontSize: 12 }}>
-        Bars are mean level per band, from −96 dB to 0 dB, so a quieter high band stays visible beside a loud bass band.
+        One bar per band, from −96 dB to 0 dB. The dimmer bar is the original. The brighter bar is what you hear
         {pitched
-          ? ` Right bar applies pitch ${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)} st, which moves energy to the heard frequency, then the EQ curve.`
+          ? ` after pitch ${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)} st and the EQ curve.`
           : engaged
-            ? ' Right bar applies the current EQ curve. Pitch is at 0 st.'
-            : ' EQ is bypassed and pitch is at 0 st, so the columns match.'}
+            ? ' after the current EQ curve. Pitch is at 0 st.'
+            : '. EQ is bypassed and pitch is at 0 st, so the bars match.'}
         {changed || (!pitched && !engaged) ? '' : ' Nothing in the current pitch or EQ moves a band by 0.3 dB or more.'}
       </p>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: 12 }}>
+      <ul className={styles.compare}>
         {HEARING_BANDS.map((band) => {
           const row = rows.find((item) => item.id === band.id)
           const delta = row?.deltaDb ?? null
           return (
-            <li
-              key={band.id}
-              data-lit={lit?.has(band.id) ? 'true' : 'false'}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '5.2rem 1fr 1fr auto',
-                gap: 8,
-                alignItems: 'center',
-                minHeight: 24,
-                outline: lit?.has(band.id) ? '1px solid var(--border-strong)' : 'none',
-              }}
-            >
+            <li key={band.id} data-band={band.id} data-lit={lit?.has(band.id) ? 'true' : 'false'}>
               <span>{band.label}</span>
-              <LevelTrack db={row?.beforeDb ?? null} />
-              <LevelTrack db={row?.afterDb ?? null} />
+              <CompareTrack before={row?.beforeDb ?? null} after={row?.afterDb ?? null} />
               <span>
                 {dbText(row?.afterDb ?? null)}
                 {delta === null || Math.abs(delta) < 0.05 ? '' : ` ${delta > 0 ? '+' : ''}${delta.toFixed(1)}`}

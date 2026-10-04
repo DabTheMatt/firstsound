@@ -162,9 +162,20 @@ function blocksSampleDeleteKey(target: EventTarget | null): boolean {
 }
 
 const SPLIT_PREF = 'field.splitWave'
+const HEARING_WAVE_PREF = 'field.hearingWaveShare'
 const EQ_STRIPS_PREF = 'field.eqStripHeight'
 const EQ_STRIPS_MIN = 220
 const EQ_STRIPS_MAX = 720
+
+function loadHearingWaveShare(): number {
+  try {
+    const n = Number(localStorage.getItem(HEARING_WAVE_PREF))
+    if (Number.isFinite(n)) return Math.min(0.72, Math.max(0.16, n))
+  } catch {
+    /* private mode */
+  }
+  return 0.4
+}
 
 function loadSplitShare(): number {
   try {
@@ -294,6 +305,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     return () => observer.disconnect()
   }, [])
   const [waveShare, setWaveShare] = useState(loadSplitShare)
+  const [hearingWaveShare, setHearingWaveShare] = useState(loadHearingWaveShare)
+  const hearingWaveRef = useRef(hearingWaveShare)
   const waveShareRef = useRef(waveShare)
   const [eqStripHeight, setEqStripHeight] = useState(loadEqStripHeight)
   const [localAutoFocus, setLocalAutoFocus] = useState<AutomationEditFocus>(EMPTY_AUTOMATION_FOCUS)
@@ -332,6 +345,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   useEffect(() => {
     waveShareRef.current = waveShare
   }, [waveShare])
+
+  useEffect(() => {
+    hearingWaveRef.current = hearingWaveShare
+  }, [hearingWaveShare])
 
   useEffect(() => {
     eqStripHeightRef.current = eqStripHeight
@@ -1335,7 +1352,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
           onKeyDown={onEditorKeyDown}
-          style={hearingFocus ? { flex: '1 1 46%', minHeight: 180 } : viz === 'split' ? { flex: waveShare } : undefined}
+          style={hearingFocus ? { flex: `${hearingWaveShare} 1 0%`, minHeight: 72 } : viz === 'split' ? { flex: waveShare } : undefined}
         >
           {automationView ? (
             <div className={styles.autoBar}>
@@ -1747,6 +1764,38 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               onGraphEdit={onGraphEdit}
             />
           </div>
+        ) : null}
+        {hearingFocus ? (
+          <button
+            type="button"
+            className={styles.splitHandle}
+            aria-label="Resize waveform"
+            title="Drag to shrink or grow the waveform"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId)
+              splitDrag.current = { y: event.clientY, share: hearingWaveRef.current, kind: 'wave' }
+            }}
+            onPointerMove={(event) => {
+              const drag = splitDrag.current
+              if (!drag || drag.kind !== 'wave' || drag.share == null || !hearingFocus) return
+              const stage = event.currentTarget.parentElement
+              if (!stage) return
+              const h = stage.getBoundingClientRect().height
+              if (h < 80) return
+              const next = Math.min(0.72, Math.max(0.16, drag.share + (event.clientY - drag.y) / h))
+              hearingWaveRef.current = next
+              setHearingWaveShare(next)
+            }}
+            onPointerUp={() => {
+              if (!splitDrag.current || splitDrag.current.kind !== 'wave') return
+              splitDrag.current = null
+              try {
+                localStorage.setItem(HEARING_WAVE_PREF, String(hearingWaveRef.current))
+              } catch {
+                /* private mode */
+              }
+            }}
+          />
         ) : null}
         {hearingFocus ? <HearingFocusStage /> : null}
         {phoneEq ? (

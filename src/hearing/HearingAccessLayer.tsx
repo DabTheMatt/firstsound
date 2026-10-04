@@ -9,7 +9,7 @@ import { getEqBandSelection, subscribeEqBandSelection, type EqBandSelection } fr
 import { engine, useEngine } from '../hooks/useEngine'
 import { dismissHearingAlert, getHearingAlerts, pushHearingAlert, subscribeHearingAlerts, type HearingAlert } from './alerts'
 import { analyzePcm, type BufferAnalysis } from './analyze'
-import { scopeLabel } from './events'
+import { scopeLabel, transientMarkers } from './events'
 import { eqReadout, affectedRegion, eqBandDeltas, heardBandLevels, shiftSoundMap } from './eqAssist'
 import {
   compressorCompare,
@@ -24,12 +24,13 @@ import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverb
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
 import { AfterEqChart, LevelTrack } from './AfterEqChart'
 import { SoundMap } from './SoundMap'
+import { HeadSpace } from './HeadSpace'
 import { SpaceField } from './SpaceField'
-import { revealHearingSpan } from './reveal'
+import { revealHearingSpan, showTransientOnWave } from './reveal'
 import type { HearingBandId } from './bands'
 import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
-import { HEARING_SECTIONS, clampPanelSize, type HearingSection } from './settings'
+import { HEARING_SECTIONS, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection } from './settings'
 import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
@@ -124,6 +125,7 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
   const [note, setNote] = useState<string | null>(null)
   const [narrow, setNarrow] = useState(false)
   const [floatAt, setFloatAt] = useState<{ left: number; top: number } | null>(null)
+  const [resizeAt, setResizeAt] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
   const memory = useRef(emptyDescriptorMemory())
   const edge = useRef({ recording: snap.recording, loop: snap.loop, blocked: snap.audioStatus === 'blocked', error: snap.recordError })
   const hapticsOk = vibrationSupported()
@@ -359,10 +361,70 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
     window.addEventListener('pointerup', up)
   }
 
+  const nudgeCorner = (event: ReactKeyboardEvent<HTMLButtonElement>, corner: 'nw' | 'ne' | 'sw' | 'se') => {
+    const step = event.shiftKey ? 48 : 24
+    let dw = 0
+    let dh = 0
+    if (event.key === 'ArrowLeft') dw = corner.endsWith('w') ? step : -step
+    else if (event.key === 'ArrowRight') dw = corner.endsWith('e') ? step : -step
+    else if (event.key === 'ArrowUp') dh = corner.startsWith('n') ? step : -step
+    else if (event.key === 'ArrowDown') dh = corner.startsWith('s') ? step : -step
+    else return
+    event.preventDefault()
+    const rect = event.currentTarget.parentElement?.getBoundingClientRect()
+    const size = clampPanelSize(settings.panelWidth + dw, settings.panelHeight + dh)
+    const anchorX = corner.endsWith('w') ? (rect?.right ?? size.panelWidth) : (rect?.left ?? 0)
+    const anchorY = corner.startsWith('n') ? (rect?.bottom ?? size.panelHeight) : (rect?.top ?? 0)
+    const maxL = Math.max(0, window.innerWidth - 80)
+    const maxT = Math.max(0, window.innerHeight - 48)
+    const left = Math.round(Math.min(maxL, Math.max(0, corner.endsWith('w') ? anchorX - size.panelWidth : anchorX)))
+    const top = Math.round(Math.min(maxT, Math.max(0, corner.startsWith('n') ? anchorY - size.panelHeight : anchorY)))
+    patch({ panelLeft: left, panelTop: top, panelWidth: size.panelWidth, panelHeight: size.panelHeight })
+  }
+
+  const startCornerResize = (event: ReactPointerEvent<HTMLButtonElement>, corner: 'nw' | 'ne' | 'sw' | 'se') => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const section = event.currentTarget.parentElement
+    if (!section) return
+    const rect = section.getBoundingClientRect()
+    const anchorX = corner.endsWith('w') ? rect.right : rect.left
+    const anchorY = corner.startsWith('n') ? rect.bottom : rect.top
+    const pointer = event.pointerId
+    const place = (clientX: number, clientY: number) => {
+      const movingLeft = corner.endsWith('w')
+      const movingTop = corner.startsWith('n')
+      const size = clampPanelSize(Math.abs(clientX - anchorX), Math.abs(clientY - anchorY))
+      const width = Math.max(PANEL_WIDTH_MIN, size.panelWidth)
+      const height = Math.max(PANEL_HEIGHT_MIN, size.panelHeight)
+      const maxL = Math.max(0, window.innerWidth - 80)
+      const maxT = Math.max(0, window.innerHeight - 48)
+      const left = Math.round(Math.min(maxL, Math.max(0, movingLeft ? anchorX - width : anchorX)))
+      const top = Math.round(Math.min(maxT, Math.max(0, movingTop ? anchorY - height : anchorY)))
+      return { left, top, width, height }
+    }
+    setResizeAt(place(event.clientX, event.clientY))
+    const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointer) return
+      setResizeAt(place(pointerEvent.clientX, pointerEvent.clientY))
+    }
+    const up = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointer) return
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const next = place(pointerEvent.clientX, pointerEvent.clientY)
+      patch({ panelLeft: next.left, panelTop: next.top, panelWidth: next.width, panelHeight: next.height })
+      setResizeAt(null)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   const focusText = focusLine(focus, analysis, eq, snap)
 
   return (
-    <div className={focus ? `${styles.host} ${styles.hostFocus}` : styles.host} data-surface={surface}>
+    <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface}>
       {focusText ? (
         <p className={styles.focusChip} title={focusText}>
           {focusText}
@@ -394,20 +456,36 @@ export function HearingAccessLayer({ surface, focus = null }: { surface: Surface
           role="dialog"
           aria-label="Hearing Access panel"
           style={{
-            ['--hearing-panel-w' as string]: `${settings.panelWidth}px`,
-            ['--hearing-panel-h' as string]: `${settings.panelHeight}px`,
-            ...(floating
-              ? { position: 'fixed', left: floating.left, top: floating.top, right: 'auto', bottom: 'auto', zIndex: 41 }
-              : {}),
+            ['--hearing-panel-w' as string]: `${resizeAt?.width ?? settings.panelWidth}px`,
+            ['--hearing-panel-h' as string]: `${resizeAt?.height ?? settings.panelHeight}px`,
+            ...(resizeAt
+              ? { position: 'fixed', left: resizeAt.left, top: resizeAt.top, right: 'auto', bottom: 'auto', zIndex: 41 }
+              : floating
+                ? { position: 'fixed', left: floating.left, top: floating.top, right: 'auto', bottom: 'auto', zIndex: 41 }
+                : {}),
           }}
         >
-          <button
-            type="button"
-            className={styles.grip}
-            aria-label={narrow ? 'Resize panel height' : 'Resize panel. Arrow keys grow it from the corner.'}
-            onPointerDown={(event) => startPanelResize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
-            onKeyDown={(event) => nudgePanelSize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
-          />
+          {narrow ? (
+            <button
+              type="button"
+              className={styles.grip}
+              aria-label="Resize panel height"
+              onPointerDown={(event) => startPanelResize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
+              onKeyDown={(event) => nudgePanelSize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
+            />
+          ) : (
+            (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
+              <button
+                key={corner}
+                type="button"
+                className={styles.corner}
+                data-corner={corner}
+                aria-label={`Resize from the ${corner} corner`}
+                onPointerDown={(event) => startCornerResize(event, corner)}
+                onKeyDown={(event) => nudgeCorner(event, corner)}
+              />
+            ))
+          )}
           <header
             className={narrow ? styles.head : `${styles.head} ${styles.movable}`}
             title={narrow ? undefined : 'Drag to move this panel. Dock returns it to the corner.'}
@@ -603,7 +681,7 @@ function SoundSection(props: {
       {props.live.length ? (
         <ul className={styles.chips}>
           {props.live.map((item) => (
-            <li key={item.id} title={item.detail}>
+            <li key={item.id} data-tag={item.id} title={item.detail}>
               {item.label}
             </li>
           ))}
@@ -629,6 +707,8 @@ function SoundSection(props: {
             playhead={props.hearing.playhead}
             origin={analysis?.originSec ?? 0}
             duration={analysis?.durationSec ?? 0}
+            transients={transientMarkers(props.hearing.events, analysis?.dynamics)}
+            onTransient={showTransientOnWave}
           />
         </>
       ) : null}
@@ -671,7 +751,7 @@ function Fingerprint({ analysis, pitch }: { analysis: BufferAnalysis; pitch: num
         {analysis.bands.map((band) => {
           const db = levels.find((row) => row.id === band.id)?.beforeDb ?? null
           return (
-            <li key={band.id} data-hatch={band.hatch}>
+            <li key={band.id} data-band={band.id} data-hatch={band.hatch}>
               <span>{band.label}</span>
               <LevelTrack db={db} />
               <span>{db === null ? '—' : `${db.toFixed(0)} dB`}</span>
@@ -776,8 +856,9 @@ function SpaceSection({
   return (
     <div>
       <p className={styles.help}>
-        Time runs from top to bottom. Left is the left edge, right is the right edge. A longer mark is wider. A hollow mark has low correlation. Pan and the left/right channel gains move the marks. The sample image is measured before other effects.
+        The head shows where the heard image sits: left ear on the left, right ear on the right, in front of the listener. The field below runs in time from top to bottom. A longer mark is wider. A hollow mark has low correlation. Pan and the left/right channel gains move both pictures.
       </p>
+      <HeadSpace balance={heard} width={stereo?.width ?? 0} correlation={stereo?.correlation ?? 1} />
       <SpaceField
         buckets={buckets}
         playhead={playhead}

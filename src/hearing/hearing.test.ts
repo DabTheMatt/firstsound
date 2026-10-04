@@ -10,7 +10,7 @@ import { eqCompare, gainCompare, stereoCompare } from './compare'
 import { afterShares } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
-import { detectEvents } from './events'
+import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
@@ -329,6 +329,41 @@ describe('hearing access analysis', () => {
     expect(hapticPattern('frequency', 'low', 'bass').length).toBeGreaterThan(1)
     expect(fireHaptic('transient', 'off', 0, 0, () => true).result.reason).toBe('off')
     expect(fireHaptic('clip', 'medium', 0, -1000, null).result.reason).toBe('unsupported')
+  })
+
+  it('tags high-band energy and a hard-panned image', () => {
+    const high = span(sine(8000, 1, 0.4))
+    expect(bandShare('high', high) + bandShare('air', high)).toBeGreaterThan(0.16)
+    const highTags = updateDescriptors(high, emptyDescriptorMemory(), 0)
+    expect(highTags.some((item) => item.id === 'high-band')).toBe(true)
+    const left = sine(440, 0.5, 0.6)
+    const right = sine(440, 0.5, 0.02)
+    const panned = span(left, right)
+    expect(Math.abs(panned.stereo?.balance ?? 0)).toBeGreaterThan(0.28)
+    const sideTags = updateDescriptors(panned, emptyDescriptorMemory(), 0)
+    expect(sideTags.some((item) => item.id === 'imbalance' && item.label === 'LEFT-HEAVY')).toBe(true)
+  })
+
+  it('prefers measured transient events over the dynamics map', () => {
+    expect(
+      transientMarkers(
+        [
+          {
+            id: 't',
+            kind: 'transient',
+            time: 1.25,
+            duration: 0.01,
+            label: 'TRANSIENT',
+            detail: '',
+            confidence: 'measured',
+          },
+        ],
+        [{ time: 4, transient: true }],
+      ),
+    ).toEqual([{ time: 1.25, label: 'TRANSIENT' }])
+    expect(transientMarkers([], [{ time: 0.4, transient: true }, { time: 0.8, transient: false }])).toEqual([
+      { time: 0.4, label: 'TRANSIENT' },
+    ])
   })
 
   it('keeps descriptor labels stable across a brief dip', () => {

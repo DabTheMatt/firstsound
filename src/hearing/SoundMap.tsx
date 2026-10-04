@@ -1,16 +1,30 @@
 import { useEffect, useRef } from 'react'
 import type { SoundMapColumn } from './analyze'
-import { HEARING_BANDS } from './bands'
+import { HEARING_BANDS, type HearingBandId } from './bands'
+import type { TransientMark } from './events'
+import styles from './HearingAccessLayer.module.css'
 
 type Props = {
   columns: SoundMapColumn[] | null
   playhead: number | null
   origin: number
   duration: number
+  transients?: readonly TransientMark[]
+  onTransient?: (time: number) => void
+}
+
+const BAND_VAR: Record<HearingBandId, string> = {
+  sub: '--hearing-sub',
+  bass: '--hearing-bass',
+  lowMid: '--hearing-lowMid',
+  mid: '--hearing-mid',
+  highMid: '--hearing-highMid',
+  high: '--hearing-high',
+  air: '--hearing-air',
 }
 
 /** Static time × band × energy picture. One draw when the data changes, not a private animation loop. */
-export function SoundMap({ columns, playhead, origin, duration }: Props) {
+export function SoundMap({ columns, playhead, origin, duration, transients = [], onTransient }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -24,9 +38,10 @@ export function SoundMap({ columns, playhead, origin, duration }: Props) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-    const styles = getComputedStyle(canvas)
-    const ink = styles.color || '#fff'
-    const panel = styles.backgroundColor || '#111'
+    const computed = getComputedStyle(canvas)
+    const ink = computed.color || '#fff'
+    const panel = computed.backgroundColor || '#111'
+    const accent = computed.getPropertyValue('--accent-primary').trim() || ink
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, width, height)
     const gutter = 72
@@ -36,10 +51,12 @@ export function SoundMap({ columns, playhead, origin, duration }: Props) {
     ctx.textBaseline = 'middle'
     HEARING_BANDS.forEach((band, index) => {
       const y = 4 + (rows - 1 - index) * rowH
+      const tone = computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink
       ctx.fillStyle = ink
-      ctx.globalAlpha = 0.8
+      ctx.globalAlpha = 0.9
       ctx.fillText(band.label, 4, y + rowH / 2)
-      ctx.globalAlpha = 0.18
+      ctx.globalAlpha = 0.16
+      ctx.fillStyle = tone
       ctx.fillRect(gutter, y, width - gutter - 4, rowH - 1)
       ctx.globalAlpha = 1
     })
@@ -56,19 +73,35 @@ export function SoundMap({ columns, playhead, origin, duration }: Props) {
       const x = gutter + (col / columns.length) * plotW
       const cellW = Math.max(1, plotW / columns.length - 0.5)
       column.power.forEach((power, index) => {
+        const band = HEARING_BANDS[index]
         const y = 4 + (rows - 1 - index) * rowH
+        const tone = band ? computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink : ink
         const norm = Math.max(0, Math.min(1, Math.log10(1 + power) / Math.log10(1 + max)))
-        ctx.globalAlpha = 0.15 + norm * 0.85
-        ctx.fillStyle = ink
+        ctx.globalAlpha = 0.12 + norm * 0.88
+        ctx.fillStyle = tone
         ctx.fillRect(x, y + 1, cellW, rowH - 3)
-        if (norm > 0.72) {
+        if (norm > 0.72 && band) {
           ctx.globalAlpha = 1
-          const mark = HEARING_BANDS[index]?.hatch
+          ctx.fillStyle = ink
+          const mark = band.hatch
           ctx.fillText(mark === 'dots' ? '·' : mark === 'sparse' ? '°' : '▮', x + 1, y + rowH / 2)
         }
       })
     })
     ctx.globalAlpha = 1
+    const span = Math.max(0.0001, duration)
+    transients.forEach((mark) => {
+      const t = (mark.time - origin) / span
+      if (t < 0 || t > 1) return
+      const x = gutter + t * plotW
+      ctx.strokeStyle = accent
+      ctx.fillStyle = accent
+      ctx.lineWidth = 1.25
+      ctx.strokeRect(x - 4, 3, 8, 8)
+      ctx.globalAlpha = 0.35
+      ctx.fillRect(x - 3, 4, 6, 6)
+      ctx.globalAlpha = 1
+    })
     if (playhead !== null && duration > 0) {
       const t = (playhead - origin) / duration
       if (t >= 0 && t <= 1) {
@@ -82,15 +115,36 @@ export function SoundMap({ columns, playhead, origin, duration }: Props) {
         ctx.setLineDash([])
       }
     }
-  }, [columns, playhead, origin, duration])
+  }, [columns, playhead, origin, duration, transients])
+
+  const pickTransient = (clientX: number) => {
+    const canvas = ref.current
+    if (!canvas || !onTransient || transients.length === 0 || duration <= 0) return
+    const rect = canvas.getBoundingClientRect()
+    const gutter = 72
+    const plotW = Math.max(1, rect.width - gutter - 4)
+    const x = clientX - rect.left
+    let best: TransientMark | null = null
+    let bestDx = 14
+    for (const mark of transients) {
+      const markX = gutter + ((mark.time - origin) / duration) * plotW
+      const dx = Math.abs(markX - x)
+      if (dx < bestDx) {
+        best = mark
+        bestDx = dx
+      }
+    }
+    if (best) onTransient(best.time)
+  }
 
   return (
     <canvas
       ref={ref}
-      className="hearing-sound-map"
+      className={`${styles.palette} hearing-sound-map`}
       role="img"
-      aria-label="Sound map. Rows are labeled frequency regions. Brightness shows energy over time."
-      style={{ width: '100%', height: 168, color: 'var(--text-primary)', background: 'var(--bg-app)' }}
+      aria-label="Sound map. Rows are labeled frequency regions. Color follows the theme and is paired with the label. Squares along the top are transients. Choose a square to frame it on the waveform."
+      onClick={(event) => pickTransient(event.clientX)}
+      style={{ width: '100%', height: 168, color: 'var(--text-primary)', background: 'var(--bg-app)', cursor: onTransient ? 'pointer' : undefined }}
     />
   )
 }

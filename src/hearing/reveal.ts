@@ -3,6 +3,7 @@
  * It does not edit audio or the playback region.
  */
 
+import { engine } from '../hooks/useEngine'
 import type { HearingBandId } from './bands'
 
 export type HearingReveal = {
@@ -27,6 +28,18 @@ export function revealHearingSpan(next: Omit<HearingReveal, 'token'>): HearingRe
   reveal = { ...next, token }
   for (const listener of listeners) listener()
   return reveal
+}
+
+/** Frame a transient on the waveform and move the playhead. Does not edit audio. */
+export function showTransientOnWave(time: number): void {
+  revealHearingSpan({
+    id: `transient-${time.toFixed(4)}`,
+    start: Math.max(0, time - 0.05),
+    end: time + 0.12,
+    label: 'TRANSIENT',
+    bands: [],
+  })
+  engine.seekSeconds(time, 'sample')
 }
 
 export function subscribeHearingReveal(listener: () => void): () => void {

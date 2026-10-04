@@ -33,6 +33,7 @@ export function SpaceField({ buckets, playhead, origin, duration, panPct = 0, le
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
     const styles = getComputedStyle(canvas)
     const ink = styles.color || '#fff'
+    const accent = styles.getPropertyValue('--accent-primary').trim() || ink
     const panel = styles.backgroundColor || '#111'
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, width, height)
@@ -64,8 +65,8 @@ export function SpaceField({ buckets, playhead, origin, duration, panPct = 0, le
       const spread = Math.max(4, bucket.width * plotW * 0.45)
       const low = bucket.correlation < 0.2
       ctx.globalAlpha = low ? 1 : 0.85
-      ctx.strokeStyle = ink
-      ctx.fillStyle = ink
+      ctx.strokeStyle = low ? ink : accent
+      ctx.fillStyle = accent
       ctx.lineWidth = 1.25
       if (low) {
         ctx.strokeRect(x - spread / 2, y - 3, spread, 6)

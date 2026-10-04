@@ -1,3 +1,16 @@
+.palette {
+  --hearing-sub: var(--spectrum-fill);
+  --hearing-bass: var(--waveform-primary);
+  --hearing-lowMid: color-mix(in srgb, var(--waveform-primary) 40%, var(--accent-primary));
+  --hearing-mid: var(--accent-primary);
+  --hearing-highMid: var(--accent-secondary);
+  --hearing-high: var(--playhead);
+  --hearing-air: var(--warning);
+  --hearing-original: color-mix(in srgb, var(--text-primary) 45%, transparent);
+  --hearing-heard: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .host {
   position: fixed;
   right: 12px;
@@ -113,18 +126,165 @@
 }
 
 .level {
+  position: relative;
   display: block;
-  height: 8px;
+  height: 10px;
   border-radius: 2px;
-  background: color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
   overflow: hidden;
 }
 
 .level i {
+  position: absolute;
+  left: 0;
+  top: 0;
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: currentColor;
+  background: var(--band, var(--text-primary));
+}
+
+.level i.original {
+  top: 0;
+  height: 100%;
+  opacity: 0.38;
+  background: var(--hearing-original);
+}
+
+.level i.heard {
+  top: 2px;
+  height: 6px;
+  opacity: 1;
+  background: var(--band, var(--hearing-heard));
+}
+
+.compare {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.compare li {
+  display: grid;
+  grid-template-columns: 5.2rem minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+}
+
+.compare li[data-lit='true'] {
+  outline: 1px solid var(--border-strong);
+}
+
+.bands li[data-band='sub'] .level i,
+.compare li[data-band='sub'] {
+  --band: var(--hearing-sub);
+}
+
+.bands li[data-band='bass'] .level i,
+.compare li[data-band='bass'] {
+  --band: var(--hearing-bass);
+}
+
+.bands li[data-band='lowMid'] .level i,
+.compare li[data-band='lowMid'] {
+  --band: var(--hearing-lowMid);
+}
+
+.bands li[data-band='mid'] .level i,
+.compare li[data-band='mid'] {
+  --band: var(--hearing-mid);
+}
+
+.bands li[data-band='highMid'] .level i,
+.compare li[data-band='highMid'] {
+  --band: var(--hearing-highMid);
+}
+
+.bands li[data-band='high'] .level i,
+.compare li[data-band='high'] {
+  --band: var(--hearing-high);
+}
+
+.bands li[data-band='air'] .level i,
+.compare li[data-band='air'] {
+  --band: var(--hearing-air);
+}
+
+.corner {
+  position: absolute;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.corner::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 0 solid var(--text-muted);
+}
+
+.corner[data-corner='nw'] {
+  top: 2px;
+  left: 2px;
+  cursor: nwse-resize;
+}
+
+.corner[data-corner='nw']::after {
+  top: 1px;
+  left: 1px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+
+.corner[data-corner='ne'] {
+  top: 2px;
+  right: 2px;
+  cursor: nesw-resize;
+}
+
+.corner[data-corner='ne']::after {
+  top: 1px;
+  right: 1px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+
+.corner[data-corner='sw'] {
+  bottom: 2px;
+  left: 2px;
+  cursor: nesw-resize;
+}
+
+.corner[data-corner='sw']::after {
+  bottom: 1px;
+  left: 1px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+
+.corner[data-corner='se'] {
+  right: 2px;
+  bottom: 2px;
+  cursor: nwse-resize;
+}
+
+.corner[data-corner='se']::after {
+  right: 1px;
+  bottom: 1px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+.sheet .corner {
+  display: none;
 }
 
 .grip {
@@ -200,6 +360,8 @@
   gap: 8px;
   min-height: 0;
   overflow: auto;
+  padding-inline-end: 14px;
+  scrollbar-gutter: stable;
   font-size: 13px;
   line-height: 1.4;
 }
@@ -306,9 +468,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 4.6rem;
+  max-height: 7.4rem;
   overflow: auto;
   flex: 0 0 auto;
+  padding-inline-end: 4px;
+  scrollbar-gutter: stable;
 }
 
 .chips li {
@@ -317,7 +481,20 @@
   padding: 3px 8px;
   font-size: 11px;
   letter-spacing: 0.06em;
+  color: var(--text-primary);
 }
+
+.chips li[data-tag='bass-heavy'] { border-color: var(--hearing-bass); }
+.chips li[data-tag='midrange-dominant'] { border-color: var(--hearing-mid); }
+.chips li[data-tag='high-band'] { border-color: var(--hearing-high); }
+.chips li[data-tag='air'] { border-color: var(--hearing-air); }
+.chips li[data-tag='wide'],
+.chips li[data-tag='imbalance'] { border-color: var(--accent-primary); }
+.chips li[data-tag='strong-transients'],
+.chips li[data-tag='clipped'],
+.chips li[data-tag='near-full-scale'] { border-color: var(--playhead); }
+.chips li[data-tag='low-correlation'],
+.chips li[data-tag='dc-offset'] { border-color: var(--warning); }
 
 .meter {
   font-family: ui-monospace, monospace;
