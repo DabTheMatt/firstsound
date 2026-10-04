@@ -11,7 +11,8 @@ import { afterShares, compareTrackGeometry } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
 import { formatLoudnessDb, levelsFromTimeDomain, liveMeterZone, loudnessZone } from './loudness'
-import { depthWord, reverbImageDepth } from './reverbDepth'
+import { SOUND_MAP_FLOOR_DB, soundMapLevel } from './levels'
+import { distanceWord, headLayout, reverbSpacePicture, roomWord, sourceOutsideHead } from './reverbDepth'
 import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
@@ -29,6 +30,14 @@ function sine(freq: number, seconds: number, amplitude: number, phase = 0): Floa
   const n = Math.floor(seconds * RATE)
   const out = new Float32Array(n)
   for (let i = 0; i < n; i++) out[i] = amplitude * Math.sin(phase + (2 * Math.PI * freq * i) / RATE)
+  return out
+}
+
+function mixTone(lowHz: number, lowAmp: number, highHz: number, highAmp: number): Float32Array {
+  const low = sine(lowHz, 1, lowAmp)
+  const high = sine(highHz, 1, highAmp)
+  const out = new Float32Array(low.length)
+  for (let i = 0; i < out.length; i++) out[i] = (low[i] ?? 0) + (high[i] ?? 0)
   return out
 }
 
@@ -360,6 +369,13 @@ describe('hearing access analysis', () => {
   it('tags high-band energy and a hard-panned image', () => {
     const high = span(sine(8000, 1, 0.4))
     expect(bandShare('high', high) + bandShare('air', high)).toBeGreaterThan(0.16)
+    const mixed = span(mixTone(80, 0.5, 8000, 0.08))
+    const column = mixed.soundMap?.[0]
+    expect(column).toBeTruthy()
+    const bassLevel = soundMapLevel(column?.power[1] ?? 0)
+    const highLevel = Math.max(soundMapLevel(column?.power[4] ?? 0), soundMapLevel(column?.power[5] ?? 0))
+    expect(bassLevel).toBeGreaterThan(highLevel)
+    expect(highLevel).toBeGreaterThan(0.25)
     const highTags = updateDescriptors(high, emptyDescriptorMemory(), 0)
     expect(highTags.some((item) => item.id === 'high-band')).toBe(true)
     const left = sine(440, 0.5, 0.6)
@@ -562,14 +578,33 @@ describe('hearing access analysis', () => {
     expect(loudnessZone(-0.2)).toBe('clipping')
     expect(liveMeterZone(false, -2, true)).toBe('silent')
     expect(liveMeterZone(true, -2, false)).toBe('very-loud')
-    expect(reverbImageDepth({ engaged: false, wet: 100, distance: 100, size: 100, predelayMs: 80 })).toBe(0)
-    const dryRoom = reverbImageDepth({ engaged: true, wet: 0, distance: 100, size: 100, predelayMs: 80 })
-    const close = reverbImageDepth({ engaged: true, wet: 100, distance: 0, size: 0, predelayMs: 1 })
-    const far = reverbImageDepth({ engaged: true, wet: 100, distance: 100, size: 100, predelayMs: 80 })
-    expect(dryRoom).toBe(0)
-    expect(far).toBeGreaterThan(close + 0.2)
-    expect(depthWord(0)).toBe('near')
-    expect(depthWord(far)).toBe('far')
+    const bypassed = reverbSpacePicture({ engaged: false, wet: 100, distance: 100, size: 100, decaySec: 4 })
+    expect(bypassed.distance).toBe(0)
+    expect(bypassed.size).toBe(0)
+    const dryFar = reverbSpacePicture({ engaged: true, wet: 0, distance: 100, size: 100, decaySec: 4 })
+    const wetClose = reverbSpacePicture({ engaged: true, wet: 100, distance: 0, size: 20, decaySec: 0.4 })
+    expect(dryFar.distance).toBe(1)
+    expect(dryFar.wet).toBe(0)
+    expect(wetClose.distance).toBe(0)
+    expect(wetClose.distance).toBeLessThan(dryFar.distance)
+    expect(dryFar.size).toBeGreaterThan(wetClose.size)
+    expect(roomWord(dryFar.size)).toBe('large')
+    expect(distanceWord(0)).toBe('close')
+    expect(distanceWord(1)).toBe('far')
+    const small = headLayout(220, 180, 0, 0, 1)
+    const large = headLayout(220, 180, 0, 1, 1)
+    const closeSource = headLayout(220, 180, 0, 1, 0)
+    expect(large.headRadius).toBeLessThan(small.headRadius * 0.7)
+    expect(large.sourceY).toBeLessThan(closeSource.sourceY - 24)
+    expect(sourceOutsideHead(small)).toBe(true)
+    expect(sourceOutsideHead(large)).toBe(true)
+    expect(sourceOutsideHead(closeSource)).toBe(true)
+    expect(soundMapLevel(0)).toBe(0)
+    expect(soundMapLevel(1)).toBe(1)
+    const quietHigh = soundMapLevel(10 ** (-24 / 10))
+    expect(quietHigh).toBeGreaterThan(0.4)
+    expect(quietHigh).toBeLessThan(soundMapLevel(1))
+    expect(SOUND_MAP_FLOOR_DB).toBeLessThan(-24)
     expect(loudnessZone(-30, true)).toBe('clipping')
     expect(formatLoudnessDb(-6.24)).toBe('-6.2 dBFS')
     const tone = levelsFromTimeDomain(Float32Array.from([0, 0.5, 0, -0.5]))

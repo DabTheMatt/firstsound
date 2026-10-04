@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { SoundMapColumn } from './analyze'
 import { HEARING_BANDS, type HearingBandId } from './bands'
 import type { TransientMark } from './events'
+import { soundMapLevel } from './levels'
 import styles from './HearingAccessLayer.module.css'
 
 type Props = {
@@ -56,7 +57,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       ctx.fillStyle = ink
       ctx.globalAlpha = 0.9
       ctx.fillText(band.label, 4, y + rowH / 2)
-      ctx.globalAlpha = 0.16
+      ctx.globalAlpha = 0.05
       ctx.fillStyle = tone
       ctx.fillRect(gutter, y, width - gutter - 4, rowH - 1)
       ctx.globalAlpha = 1
@@ -67,8 +68,6 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       ctx.fillText('No spectral columns yet', gutter + 8, height / 2)
       return
     }
-    let max = 1e-8
-    for (const column of columns) for (const power of column.power) if (power > max) max = power
     const plotW = width - gutter - 4
     columns.forEach((column, col) => {
       const x = gutter + (col / columns.length) * plotW
@@ -77,8 +76,9 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
         const band = HEARING_BANDS[index]
         const y = lane + (rows - 1 - index) * rowH
         const tone = band ? computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink : ink
-        const norm = Math.max(0, Math.min(1, Math.log10(1 + power) / Math.log10(1 + max)))
-        ctx.globalAlpha = 0.12 + norm * 0.88
+        const norm = soundMapLevel(power)
+        if (norm <= 0) return
+        ctx.globalAlpha = 0.15 + norm * 0.85
         ctx.fillStyle = tone
         ctx.fillRect(x, y + 1, cellW, rowH - 3)
         if (norm > 0.72 && band) {

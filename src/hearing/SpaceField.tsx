@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react'
 import type { SpaceBucket } from './analyze'
 import { applyPanToBalance } from './effectViz'
 import styles from './HearingAccessLayer.module.css'
+import type { ReverbSpacePicture } from './reverbDepth'
 import { useElementBox } from './useElementBox'
+
+const DRY: ReverbSpacePicture = { engaged: false, size: 0, distance: 0, wet: 0, decay: 0 }
 
 type Props = {
   buckets: SpaceBucket[]
@@ -12,13 +15,14 @@ type Props = {
   panPct?: number
   leftDb?: number
   rightDb?: number
-  /** 0 is close in front of the listener. 1 is further in front. */
-  depth?: number
+  /** Room size and source distance. Wet does not move the marks. */
+  space?: ReverbSpacePicture
 }
 
 /**
  * Time runs top to bottom. Mark length is stereo width.
  * A hollow mark is low correlation. Pan and channel gain move each mark.
+ * The right edge is the room: its length is room size, and the dot is source distance.
  */
 export function SpaceField({
   buckets,
@@ -28,7 +32,7 @@ export function SpaceField({
   panPct = 0,
   leftDb = 0,
   rightDb = 0,
-  depth = 0,
+  space = DRY,
   fill = false,
 }: Props & { fill?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -70,8 +74,6 @@ export function SpaceField({
     ctx.globalAlpha = 0.25
     ctx.fillRect(width / 2, padTop, 1, plotH)
     const span = Math.max(0.0001, duration)
-    const depth01 = Math.max(0, Math.min(1, depth))
-    const nearness = 1 - depth01
     const placed = buckets.map((bucket) => ({
       ...bucket,
       balance: applyPanToBalance(bucket.balance, panPct, leftDb, rightDb),
@@ -79,12 +81,12 @@ export function SpaceField({
     placed.forEach((bucket) => {
       const y = padTop + ((bucket.time - origin) / span) * plotH
       const x = padX + ((bucket.balance + 1) / 2) * plotW
-      const spread = Math.max(4, bucket.width * plotW * 0.45) * (0.62 + nearness * 0.38)
+      const spread = Math.max(4, bucket.width * plotW * 0.45)
       const low = bucket.correlation < 0.2
-      ctx.globalAlpha = (low ? 1 : 0.85) * (0.4 + nearness * 0.6)
+      ctx.globalAlpha = low ? 1 : 0.85
       ctx.strokeStyle = low ? ink : accent
       ctx.fillStyle = accent
-      ctx.lineWidth = 0.8 + nearness * 0.7
+      ctx.lineWidth = 1.2
       if (low) {
         ctx.strokeRect(x - spread / 2, y - 3, spread, 6)
       } else {
@@ -93,18 +95,23 @@ export function SpaceField({
         ctx.lineTo(x + spread / 2, y)
         ctx.stroke()
         ctx.beginPath()
-        ctx.arc(x, y, 1.3 + nearness * 1.5, 0, Math.PI * 2)
+        ctx.arc(x, y, 2.4, 0, Math.PI * 2)
         ctx.fill()
       }
     })
+    const size01 = space.engaged ? Math.max(0, Math.min(1, space.size)) : 0
+    const distance01 = space.engaged ? Math.max(0, Math.min(1, space.distance)) : 0
+    const roomSpan = plotH * (0.34 + size01 * 0.66)
+    const roomTop = padTop + (plotH - roomSpan) / 2
+    const roomBot = roomTop + roomSpan
     const gaugeX = width - 10
-    const gaugeY = padTop + (1 - depth01) * plotH
-    ctx.globalAlpha = 0.35
+    const gaugeY = roomBot - distance01 * roomSpan
+    ctx.globalAlpha = space.engaged ? 0.28 + space.wet * 0.45 : 0.2
     ctx.strokeStyle = ink
     ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.moveTo(gaugeX, padTop)
-    ctx.lineTo(gaugeX, padTop + plotH)
+    ctx.moveTo(gaugeX, roomTop)
+    ctx.lineTo(gaugeX, roomBot)
     ctx.stroke()
     ctx.globalAlpha = 0.9
     ctx.fillStyle = accent
@@ -116,9 +123,9 @@ export function SpaceField({
     ctx.font = '9px sans-serif'
     ctx.textAlign = 'right'
     ctx.textBaseline = 'top'
-    ctx.fillText('far', gaugeX - 6, padTop)
+    ctx.fillText('far', gaugeX - 6, roomTop)
     ctx.textBaseline = 'bottom'
-    ctx.fillText('near', gaugeX - 6, padTop + plotH)
+    ctx.fillText('close', gaugeX - 6, roomBot)
     if (playhead !== null && duration > 0) {
       const y = padTop + ((playhead - origin) / span) * plotH
       ctx.globalAlpha = 0.9
@@ -131,7 +138,7 @@ export function SpaceField({
       ctx.setLineDash([])
     }
     ctx.globalAlpha = 1
-  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb, depth, box.width, box.height])
+  }, [buckets, playhead, origin, duration, panPct, leftDb, rightDb, space.engaged, space.size, space.distance, space.wet, box.width, box.height])
 
   return (
     <div className={fill ? styles.spaceFillSlot : styles.spaceInline}>
@@ -139,7 +146,7 @@ export function SpaceField({
         ref={ref}
         className="hearing-space-field"
         role="img"
-        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation. The right edge is depth: near is close in front of the listener, far is further in front."
+        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation. The right edge is the room: a longer line is a larger room, and the dot is how far the source sits in front of the listener."
         style={
           fill
             ? undefined

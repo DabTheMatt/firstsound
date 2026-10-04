@@ -656,18 +656,29 @@
 
 .focusFacts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  width: fit-content;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0 18px;
+  width: max-content;
   max-width: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 .focusFacts div {
-  display: flex;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: max-content 4.6rem;
+  column-gap: 6px;
+  align-items: baseline;
+  flex: 0 0 auto;
   padding: 0;
   border-bottom: 0;
+}
+
+.focusFacts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .loudnessRail {
