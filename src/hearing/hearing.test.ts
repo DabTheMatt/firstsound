@@ -10,6 +10,7 @@ import { eqCompare, gainCompare, stereoCompare } from './compare'
 import { afterShares, compareTrackGeometry } from './AfterEqChart'
 import { affectedRegion, eqBandDeltas, heardBandLevels, levelBar, shiftSoundMap } from './eqAssist'
 import { BASS_HEAVY_ON, MIN_HOLD_MS, emptyDescriptorMemory, simpleSummary, updateDescriptors } from './descriptors'
+import { formatLoudnessDb, levelsFromTimeDomain, loudnessZone } from './loudness'
 import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
@@ -406,6 +407,35 @@ describe('hearing access analysis', () => {
         [{ time: 0.42, transient: true }],
       ),
     ).toEqual([{ time: 0.4, label: 'TRANSIENT' }])
+  })
+
+  it('replaces wide stereo with narrow stereo immediately', () => {
+    const sample = span(noise(0.3, 0.4, 1), noise(0.3, 0.4, 9))
+    expect(sample.stereo).toBeTruthy()
+    const memory = emptyDescriptorMemory()
+    const wide = { ...sample, stereo: { ...sample.stereo!, width: 0.8 } }
+    expect(updateDescriptors(wide, memory, 0).some((item) => item.id === 'wide')).toBe(true)
+    const narrow = { ...wide, stereo: { ...wide.stereo!, width: 0.05 } }
+    const next = updateDescriptors(narrow, memory, 50)
+    expect(next.some((item) => item.id === 'wide')).toBe(false)
+    expect(next.some((item) => item.id === 'narrow')).toBe(true)
+    expect(next.filter((item) => item.id === 'wide' || item.id === 'narrow')).toHaveLength(1)
+  })
+
+  it('names loudness zones on a dBFS scale', () => {
+    expect(loudnessZone(null)).toBe('silent')
+    expect(loudnessZone(-70)).toBe('silent')
+    expect(loudnessZone(-42)).toBe('quiet')
+    expect(loudnessZone(-20)).toBe('medium')
+    expect(loudnessZone(-10)).toBe('loud')
+    expect(loudnessZone(-3)).toBe('very-loud')
+    expect(loudnessZone(-0.2)).toBe('clipping')
+    expect(loudnessZone(-30, true)).toBe('clipping')
+    expect(formatLoudnessDb(-6.24)).toBe('-6.2 dBFS')
+    const tone = levelsFromTimeDomain(Float32Array.from([0, 0.5, 0, -0.5]))
+    expect(tone.peakDb).toBeCloseTo(20 * Math.log10(0.5), 4)
+    expect(tone.rmsDb).toBeLessThan(tone.peakDb)
+    expect(levelsFromTimeDomain(new Float32Array(8)).peakDb).toBe(Number.NEGATIVE_INFINITY)
   })
 
   it('keeps descriptor labels stable across a brief dip', () => {

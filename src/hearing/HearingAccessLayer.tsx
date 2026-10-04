@@ -441,7 +441,7 @@ export function HearingAccessLayer({
 
   return (
     <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface}>
-      {focusText ? (
+      {focusText && focus !== 'hearing' ? (
         <p className={styles.focusChip} title={focusText}>
           {focusText}
         </p>
@@ -457,6 +457,7 @@ export function HearingAccessLayer({
       <button
         type="button"
         className={styles.launcher}
+        hidden={focus === 'hearing'}
         aria-pressed={settings.panelOpen}
         aria-label="Hearing Access"
         onClick={() => patch({ panelOpen: !settings.panelOpen })}

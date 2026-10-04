@@ -671,16 +671,24 @@ export default function App() {
     if (!col) return
     if (!activeFocus || activeFocus === 'eq') {
       col.style.setProperty('--focus-toolbar-height', '0px')
+      document.documentElement.style.removeProperty('--focus-chrome-height')
       if (!activeFocus) col.style.removeProperty('--focus-toolbar-height')
       return
     }
     const node = col.querySelector<HTMLElement>('[data-focus-chrome]')
     if (!node) return
-    const apply = () => col.style.setProperty('--focus-toolbar-height', `${Math.ceil(node.getBoundingClientRect().height)}px`)
+    const apply = () => {
+      const px = `${Math.ceil(node.getBoundingClientRect().height)}px`
+      col.style.setProperty('--focus-toolbar-height', px)
+      document.documentElement.style.setProperty('--focus-chrome-height', px)
+    }
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(node)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty('--focus-chrome-height')
+    }
   }, [activeFocus])
   const monitorFocus = resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : null
   const chainKey = snap.chain.map((mod) => `${mod.instanceId}:${mod.type}`).join('|')

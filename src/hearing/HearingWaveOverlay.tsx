@@ -71,23 +71,42 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
   }, [viewStart, viewEnd, settings.enabled, settings.layers.dynamicsMap, settings.layers.events])
 
   if (!settings.enabled) return null
+  const showStrip = settings.layers.dynamicsMap || settings.layers.events
 
   return (
-    <canvas
-      ref={ref}
-      aria-hidden="true"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 22,
-        height: 18,
-        width: '100%',
-        pointerEvents: 'none',
-        zIndex: 4,
-        color: 'var(--text-primary)',
-      }}
-    />
+    <>
+      {showStrip ? (
+      <span
+        style={{
+          position: 'absolute',
+          left: 6,
+          bottom: 42,
+          zIndex: 4,
+          pointerEvents: 'none',
+          fontSize: 9,
+          letterSpacing: '0.08em',
+          color: 'var(--text-muted)',
+        }}
+      >
+        LEVEL
+      </span>
+      ) : null}
+      <canvas
+        ref={ref}
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 22,
+          height: 18,
+          width: '100%',
+          pointerEvents: 'none',
+          zIndex: 4,
+          color: 'var(--text-primary)',
+        }}
+      />
+    </>
   )
 }
 

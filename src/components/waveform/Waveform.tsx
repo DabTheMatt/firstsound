@@ -166,6 +166,8 @@ function blocksSampleDeleteKey(target: EventTarget | null): boolean {
 
 const SPLIT_PREF = 'field.splitWave'
 const HEARING_WAVE_PREF = 'field.hearingWaveShare'
+const HEARING_WAVE_MIN = 0.16
+const HEARING_WAVE_MAX = 0.88
 const EQ_STRIPS_PREF = 'field.eqStripHeight'
 const EQ_STRIPS_MIN = 220
 const EQ_STRIPS_MAX = 720
@@ -173,7 +175,7 @@ const EQ_STRIPS_MAX = 720
 function loadHearingWaveShare(): number {
   try {
     const n = Number(localStorage.getItem(HEARING_WAVE_PREF))
-    if (Number.isFinite(n)) return Math.min(0.72, Math.max(0.16, n))
+    if (Number.isFinite(n)) return Math.min(HEARING_WAVE_MAX, Math.max(HEARING_WAVE_MIN, n))
   } catch {
     /* private mode */
   }
@@ -1338,7 +1340,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
   const eqFocus = phoneFocus === 'eq'
   const eqFocusClean = phoneEq || eqFocus
-  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean
+  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
   const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split')
 
@@ -1356,7 +1358,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
           onKeyDown={onEditorKeyDown}
-          style={hearingFocus ? { flex: `${hearingWaveShare} 1 0%`, minHeight: 72 } : viz === 'split' ? { flex: waveShare } : undefined}
+          style={
+            hearingFocus
+              ? { flex: `${hearingWaveShare} 1 0%`, minHeight: 72 }
+              : viz === 'split'
+                ? { flex: waveShare }
+                : undefined
+          }
         >
           {automationView ? (
             <div className={styles.autoBar}>
@@ -1794,7 +1802,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               if (!stage) return
               const h = stage.getBoundingClientRect().height
               if (h < 80) return
-              const next = Math.min(0.72, Math.max(0.16, drag.share + (event.clientY - drag.y) / h))
+              const next = Math.min(HEARING_WAVE_MAX, Math.max(HEARING_WAVE_MIN, drag.share + (event.clientY - drag.y) / h))
               hearingWaveRef.current = next
               setHearingWaveShare(next)
             }}
@@ -1809,7 +1817,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             }}
           />
         ) : null}
-        {hearingFocus ? <HearingFocusStage /> : null}
+        {hearingFocus ? (
+          <div style={{ flex: `${Math.max(0.12, 1 - hearingWaveShare)} 1 0%`, minHeight: 96, minWidth: 0, display: 'flex' }}>
+            <HearingFocusStage />
+          </div>
+        ) : null}
         {phoneEq ? (
           <PhoneEqGraph
             instanceId={phoneEqId}

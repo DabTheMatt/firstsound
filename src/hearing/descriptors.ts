@@ -105,6 +105,26 @@ function hold(
   return want
 }
 
+function clearHold(memory: DescriptorMemory, id: DescriptorId) {
+  memory.flags[id] = false
+  delete memory.shownAt[id]
+}
+
+/** One of a pair may stay through the hold window. The opposite measurement replaces it at once. */
+function exclusiveHold(
+  memory: DescriptorMemory,
+  id: DescriptorId,
+  want: boolean,
+  oppositeWant: boolean,
+  nowMs: number,
+): boolean {
+  if (oppositeWant) {
+    clearHold(memory, id)
+    return false
+  }
+  return hold(memory, id, want, nowMs)
+}
+
 export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMemory, nowMs: number): Descriptor[] {
   if (analysis.silent) {
     hold(memory, 'silence', true, nowMs)
@@ -167,13 +187,13 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
   const flags: { id: DescriptorId; on: boolean; label: string; detail: string }[] = [
     {
       id: 'loud',
-      on: hold(memory, 'loud', loud && !quiet, nowMs),
+      on: exclusiveHold(memory, 'loud', loud && !quiet, quiet && !loud, nowMs),
       label: 'LOUD',
       detail: rms !== null ? `RMS ${rms.toFixed(1)} dBFS.` : 'RMS is high.',
     },
     {
       id: 'quiet',
-      on: hold(memory, 'quiet', quiet && !loud, nowMs),
+      on: exclusiveHold(memory, 'quiet', quiet && !loud, loud && !quiet, nowMs),
       label: 'QUIET',
       detail: rms !== null ? `RMS ${rms.toFixed(1)} dBFS.` : 'RMS is low.',
     },
@@ -203,13 +223,13 @@ export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMe
     },
     {
       id: 'wide',
-      on: hold(memory, 'wide', wide && !narrow, nowMs),
+      on: exclusiveHold(memory, 'wide', wide && !narrow, narrow && !wide, nowMs),
       label: 'WIDE STEREO',
       detail: analysis.stereo ? `Side energy is ${Math.round(analysis.stereo.width * 100)}% of mid+side energy.` : '',
     },
     {
       id: 'narrow',
-      on: hold(memory, 'narrow', narrow && !wide, nowMs),
+      on: exclusiveHold(memory, 'narrow', narrow && !wide, wide && !narrow, nowMs),
       label: 'NARROW STEREO',
       detail: analysis.stereo ? `Side energy is ${Math.round(analysis.stereo.width * 100)}% of mid+side energy.` : '',
     },

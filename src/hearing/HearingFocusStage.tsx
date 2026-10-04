@@ -6,6 +6,7 @@ import { scopeLabel, transientMarkers } from './events'
 import { shiftSoundMap } from './eqAssist'
 import { HeadSpace } from './HeadSpace'
 import { InfoTip } from './InfoTip'
+import { LoudnessMeter } from './LoudnessMeter'
 import { SoundMap } from './SoundMap'
 import { SpaceField } from './SpaceField'
 import { requestWaveZoom, setHearingMapDemand, showTransientOnWave } from './reveal'
@@ -43,7 +44,7 @@ function TagRow({ tags }: { tags: Descriptor[] }) {
 
 /** Graph-first Hearing Access surface. EQ stays in the floating panel so this view is the picture of the sound. */
 export function HearingFocusStage() {
-  const { settings } = useHearingSettings()
+  const { settings, patch } = useHearingSettings()
   const snap = useEngine()
   const hearing = useHearingView()
   useEffect(() => {
@@ -80,10 +81,13 @@ export function HearingFocusStage() {
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
           <InfoTip label="More about Hearing Access focus">
-            Squares on the map are transients. A click draws a line on the waveform and moves the playhead. The zoom stays put. The head follows the playhead. Spread is stereo width. A hollow mark is low correlation.
+            Squares on the T row are distinct attacks, one per hit. A line drops through the bands at that time. The strip under the wave is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. One hit can light several triangles, so the wave shows more marks than the T row. A click on a square draws a line on the waveform and moves the playhead. The zoom stays put. The loudness meter uses words and a scale from −60 dBFS to 0. Quiet is under −40, medium is under −18, loud is under −8, and 0 is clipping. The head follows the playhead. Spread is stereo width. A hollow mark is low correlation.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" style={zoomButton} aria-pressed={settings.panelOpen} onClick={() => patch({ panelOpen: !settings.panelOpen })}>
+            Panel
+          </button>
           <button type="button" style={zoomButton} onClick={() => requestWaveZoom('out')}>
             Zoom out
           </button>
@@ -96,6 +100,11 @@ export function HearingFocusStage() {
         </div>
       </div>
       <TagRow tags={shownTags} />
+      <LoudnessMeter
+        samplePeakDb={analysis?.peakDbfs ?? null}
+        sampleRmsDb={analysis?.rmsDbfs ?? null}
+        clipped={analysis?.clipped === true}
+      />
       <SoundMap
         columns={columns}
         playhead={hearing.playhead}
@@ -120,7 +129,7 @@ export function HearingFocusStage() {
               fill
             />
           </div>
-          <dl className={styles.grid}>
+          <dl className={styles.focusFacts}>
             <div><dt>Heard</dt><dd>{balanceLabel(heardBalance)}</dd></div>
             <div><dt>Width</dt><dd>{Math.round(liveBucket.width * 100)}%</dd></div>
             <div><dt>Correlation</dt><dd>{liveBucket.correlation.toFixed(2)}</dd></div>
