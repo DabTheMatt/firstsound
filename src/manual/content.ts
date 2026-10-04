@@ -240,7 +240,7 @@ const en: ManualSection[] = [
     id: 'a11y',
     title: 'Accessibility',
     body: [
-      'Settings includes larger interface, stronger focus, tooltips, reduced motion, and screen-reader optimizations. Controls keep names and keyboard access.',
+      'Settings includes larger interface, stronger focus, tooltips, reduced motion, screen-reader optimizations, and Hearing Access. Controls keep names and keyboard access.',
     ],
   },
   {
@@ -257,6 +257,25 @@ const en: ManualSection[] = [
     body: [
       'The header shows UI load, a smoothed estimate of main-thread event-loop delay. It is not the operating system’s process CPU percentage. Browsers do not expose that figure to a page.',
       'Memory, when the browser provides it, is the JavaScript heap, not the whole machine.',
+    ],
+  },
+  {
+    id: 'hearing',
+    title: 'Hearing Access',
+    body: [
+      'Hearing Access is an accessibility layer, not a fourth editing mode. Turn it on in Settings → Accessibility → Hearing Access. It stays available in Simple, Technical, and Sensory. Off is the default. FIELD does not infer a disability from this switch.',
+      'Choose a profile. Assisted listening adds measurements beside ordinary monitoring. Visual first prioritizes the sound map, fingerprint, events, space, dynamics, and numbers when auditory monitoring is not reliable. Visual + haptic adds optional pulses on devices that actually support vibration.',
+      'The sound map shows time, frequency region, and energy. Regions are SUB, BASS, LOW MID, MID, HIGH MID, HIGH, and AIR. Each region has a label, a vertical position, and a texture. Color is never the only channel, so the map stays readable in Black & White, Noire, and Eyes Friendly themes.',
+      'Sound fingerprint describes the current selection, or the full sample when the region covers the file. It reports band energy, peak, RMS, crest factor, stereo balance, width, correlation, and a dominant frequency only when a narrow partial is actually present. Silence does not invent a note.',
+      'Live descriptions such as BASS-HEAVY or WIDE STEREO come from documented thresholds, with hysteresis so labels do not flicker. Each label has an explanation that includes the measured value. FIELD does not call a sound good, bad, warm, or professional.',
+      'Before / after compares the measured buffer with the change implied by the active effect: EQ magnitude, gain, compressor gain reduction, delay repeats, reverb tail, and stereo width or balance. Delay times and reverb decay follow the same parameters as the DSP. Reverb duration is parameter-derived. It is not a measured RT60.',
+      'The dynamics map marks quiet, loud, transient, and actual full-scale clipping on a thin waveform strip. Loud audio below full scale is not labeled as clipping. Event detection can mark transients, silence, loud events, low-frequency events, tonal stretches, possible clicks, and possible clipping. Choose Show or an event row to move the playhead. Nothing is rewritten automatically.',
+      'The space map reports balance, width, correlation, and mid/side energy, including a neutral warning when correlation suggests a mono-compatibility issue. EQ assistance shows the selected band’s frequency, note, region, gain, Q, and the frequency span the real filter response actually moves.',
+      'Monitoring assistance is a bounded low/mid/high emphasis on the speaker path only, after the safety gain and before the hardware output. It is not a hearing aid. It is not included in export. Exported audio is rendered by the offline engine, which never inserts this filter.',
+      'Haptics are optional and feature-detected. Unsupported browsers explain that vibration is unavailable instead of pretending. Intensity is off, low, medium, or high. Pulses are rate-limited. Frequency haptics are experimental and can be disabled.',
+      'The visual mixing assistant lists technical conditions such as possible clipping, low-frequency energy, channel imbalance, low correlation, dynamic range, long silence, and DC offset. Show moves the playhead. It does not fix the audio.',
+      'In Focus mode Hearing Access stays a single readout on the active graph: the selected EQ band, waveform peak and scope, dominant spectrum frequency, or the automation parameter’s stored and effective values. The graph remains the main surface.',
+      'Limitations: Hearing Access provides visual, numerical, and optional tactile representations of measurable audio properties. It does not reproduce every perceptual aspect of hearing and does not guarantee that a mix will sound subjectively correct to every listener. Monitoring assistance is not a medical hearing device. Voice/background figures, when shown, are estimates and are omitted when the spectrum is a narrow tone or otherwise inconclusive.',
     ],
   },
   {
@@ -489,7 +508,7 @@ const pl: ManualSection[] = [
     id: 'a11y',
     title: 'Dostępność',
     body: [
-      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu i optymalizacje czytnika ekranu. Kontrolki zachowują nazwy i obsługę klawiaturą.',
+      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu, optymalizacje czytnika ekranu i Hearing Access. Kontrolki zachowują nazwy i obsługę klawiaturą.',
     ],
   },
   {
@@ -506,6 +525,25 @@ const pl: ManualSection[] = [
     body: [
       'Nagłówek pokazuje obciążenie UI: wygładzone opóźnienie pętli zdarzeń wątku głównego. To nie jest procent CPU procesu w systemie. Przeglądarka nie udostępnia tej liczby stronie.',
       'Pamięć, gdy przeglądarka ją podaje, to sterta JavaScript, nie cała maszyna.',
+    ],
+  },
+  {
+    id: 'hearing',
+    title: 'Hearing Access',
+    body: [
+      'Hearing Access to warstwa dostępności, a nie czwarty tryb edycji. Włącza się ją w Ustawienia → Dostępność → Hearing Access. Działa w trybach Prosty, Sterowanie i Słuch. Domyślnie jest wyłączona. FIELD nie wnioskuje z tego przełącznika o niepełnosprawności.',
+      'Profil wybiera użytkownik. Assisted listening dokłada pomiary do zwykłego odsłuchu. Visual first stawia na mapę dźwięku, odcisk, zdarzenia, przestrzeń, dynamikę i liczby, gdy odsłuch nie jest wiarygodny. Visual + haptic dodaje opcjonalne impulsy tam, gdzie urządzenie naprawdę ma wibrację.',
+      'Mapa dźwięku pokazuje czas, region częstotliwości i energię. Regiony to SUB, BASS, LOW MID, MID, HIGH MID, HIGH i AIR. Każdy ma etykietę, pozycję i fakturę. Sam kolor nic nie znaczy, więc mapa zostaje czytelna w motywach Black & White, Noire i Eyes Friendly.',
+      'Sound fingerprint opisuje zaznaczenie albo całą próbkę, gdy region obejmuje plik. Podaje energię pasm, peak, RMS, crest, balans, szerokość, korelację i częstotliwość dominującą tylko wtedy, gdy jest wąski częściowy. Cisza nie wymyśla nuty.',
+      'Opisy na żywo, takie jak BASS-HEAVY albo WIDE STEREO, wynikają z opisanych progów i histerezy, żeby etykiety nie mrugały. Każda etykieta ma wyjaśnienie z wartością pomiaru. FIELD nie nazywa dźwięku dobrym, złym, ciepłym ani profesjonalnym.',
+      'Before / after porównuje zmierzony bufor ze zmianą wynikającą z aktywnego efektu: magnituda EQ, gain, redukcja wzmocnienia kompresora, powtórzenia delay, ogon pogłosu oraz szerokość lub balans. Czasy delay i decay pogłosu biorą się z tych samych parametrów co DSP. Czas pogłosu wynika z parametrów. To nie jest zmierzony RT60.',
+      'Mapa dynamiki oznacza ciche, głośne, transjent i rzeczywiste przesterowanie pełnej skali na cienkim pasku fali. Głośny materiał poniżej pełnej skali nie jest clippingiem. Detekcja zdarzeń może oznaczyć transjent, ciszę, głośne zdarzenie, niską częstotliwość, odcinek tonalny, możliwy klik i możliwe clipping. Show albo wiersz zdarzenia przesuwa głowicę. Audio nie jest przepisywane samo.',
+      'Mapa przestrzeni podaje balans, szerokość, korelację i energię mid/side, w tym neutralne ostrzeżenie, gdy korelacja sugeruje problem zgodności z mono. Pomoc EQ pokazuje częstotliwość, nutę, region, gain, Q i zakres, który naprawdę rusza odpowiedź filtra.',
+      'Monitoring assistance to ograniczone podbicie low/mid/high tylko na ścieżce odsłuchu, za safety gain i przed wyjściem sprzętowym. To nie jest aparat słuchowy. Nie wchodzi do eksportu. Eksport renderuje silnik offline, który tego filtra nie wstawia.',
+      'Haptyka jest opcjonalna i wykrywana. Przeglądarka bez wibracji mówi o tym wprost. Intensywność: off, low, medium, high. Impulsy mają limit częstości. Frequency haptics są eksperymentalne i można je wyłączyć.',
+      'Visual mixing assistant wymienia warunki techniczne: możliwe clipping, energia niskich częstotliwości, nierównowaga kanałów, niska korelacja, zakres dynamiki, długa cisza i offset DC. Show przesuwa głowicę. Nie naprawia audio.',
+      'W trybie Focus Hearing Access zostaje jednym odczytem na aktywnym wykresie: wybrany pas EQ, szczyt i zakres fali, dominująca częstotliwość widma albo wartość zapisana i efektywna parametru automacji. Wykres pozostaje główną powierzchnią.',
+      'Ograniczenia: Hearing Access daje wizualną, liczbową i opcjonalnie dotykową reprezentację mierzalnych właściwości dźwięku. Nie odtwarza każdego percepcyjnego aspektu słyszenia i nie gwarantuje, że miks będzie subiektywnie poprawny dla każdego słuchacza. Monitoring assistance nie jest medycznym urządzeniem słuchowym. Liczby voice/background, jeśli się pojawią, są szacunkiem i są pomijane, gdy widmo jest wąskim tonem albo wynik jest niejednoznaczny.',
     ],
   },
   {

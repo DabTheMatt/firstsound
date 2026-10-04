@@ -43,6 +43,7 @@ import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { formatAutomationNodeValue } from './automationValue'
 import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
+import { HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
 import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
@@ -1326,6 +1327,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </div>
             ) : null}
             <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+            <HearingWaveOverlay viewStart={view.start} viewEnd={view.end} />
             {spectralBandsEnabled && snap.spectral.enabled && snap.spectral.ready && !sensory && !simple && (viz === 'waveform' || viz === 'split') ? (
               <div className={styles.bandLaneLabels} aria-hidden="true">
                 {snap.spectral.bands.map((band) => (

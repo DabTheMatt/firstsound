@@ -1,0 +1,97 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.title,
+.sub {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.help,
+.warn,
+.profile small {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.warn {
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.switch,
+.slider,
+.check,
+.profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.profile {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.profile span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pair {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pair button {
+  min-height: 32px;
+  min-width: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.pair button.on {
+  background: var(--bg-control-active);
+  color: var(--text-primary);
+  outline: 1px solid var(--border-strong);
+}
+
+.profiles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.profiles:disabled {
+  opacity: 0.55;
+}
+
+.slider input,
+.slider select {
+  min-width: 8rem;
+}

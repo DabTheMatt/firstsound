@@ -7,6 +7,7 @@ import { Waveform } from '../components/waveform/Waveform'
 import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
+import { pushHearingAlert } from '../hearing/alerts'
 import { useI18n } from '../i18n'
 import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
 import { StableLabel } from '../components/header/StableLabel'
@@ -215,6 +216,12 @@ export function SimpleShell({
         })
         const blob = encodeSimpleWav(prepared, saveFormat === 'mp3' ? 16 : saveBits)
         downloadBlob(simpleExportFilename(saveName, saveFormat === 'mp3' ? 'wav' : 'wav'), blob)
+        pushHearingAlert({
+          id: 'export',
+          title: 'EXPORT COMPLETE',
+          detail: simpleExportFilename(saveName, 'wav'),
+          tone: 'info',
+        })
         setSheet('none')
       } catch (err) {
         setStatus(err instanceof Error && err.message ? err.message : t.export.exportFailed)

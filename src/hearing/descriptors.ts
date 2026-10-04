@@ -1,0 +1,216 @@
+/**
+ * Measurement-based descriptors.
+ * Thresholds are the enter values. Exit values provide hysteresis.
+ * A label stays up for at least MIN_HOLD_MS so it does not flicker.
+ */
+
+import type { BufferAnalysis } from './analyze'
+import type { HearingBandId } from './bands'
+
+/** Enter when this fraction of spectral power is below 250 Hz. */
+export const BASS_HEAVY_ON = 0.38
+export const BASS_HEAVY_OFF = 0.3
+/** Enter when power from 250 Hz to 6 kHz exceeds this share. */
+export const MID_DOMINANT_ON = 0.45
+export const MID_DOMINANT_OFF = 0.36
+export const LOUD_RMS_ON = -14
+export const LOUD_RMS_OFF = -18
+export const QUIET_RMS_ON = -30
+export const QUIET_RMS_OFF = -26
+export const WIDE_ON = 0.5
+export const WIDE_OFF = 0.4
+export const NARROW_ON = 0.12
+export const NARROW_OFF = 0.2
+export const TRANSIENT_CREST_ON = 12
+export const TRANSIENT_CREST_OFF = 9
+export const MIN_HOLD_MS = 700
+
+export type DescriptorId =
+  | 'silence'
+  | 'loud'
+  | 'quiet'
+  | 'bass-heavy'
+  | 'midrange-dominant'
+  | 'wide'
+  | 'narrow'
+  | 'strong-transients'
+  | 'continuous'
+  | 'dominant'
+
+export type Descriptor = {
+  id: DescriptorId
+  label: string
+  detail: string
+}
+
+export type DescriptorMemory = {
+  flags: Partial<Record<DescriptorId, boolean>>
+  shownAt: Partial<Record<DescriptorId, number>>
+}
+
+export function emptyDescriptorMemory(): DescriptorMemory {
+  return { flags: {}, shownAt: {} }
+}
+
+function bandShare(analysis: BufferAnalysis, ids: readonly HearingBandId[]): number {
+  return analysis.bands.filter((band) => ids.includes(band.id)).reduce((sum, band) => sum + band.share, 0)
+}
+
+function below250(analysis: BufferAnalysis): number {
+  return bandShare(analysis, ['sub', 'bass'])
+}
+
+function midShare(analysis: BufferAnalysis): number {
+  return bandShare(analysis, ['lowMid', 'mid', 'highMid'])
+}
+
+function hold(
+  memory: DescriptorMemory,
+  id: DescriptorId,
+  want: boolean,
+  nowMs: number,
+): boolean {
+  const current = memory.flags[id] === true
+  if (want === current) {
+    if (want && memory.shownAt[id] === undefined) memory.shownAt[id] = nowMs
+    return current
+  }
+  const shown = memory.shownAt[id]
+  if (current && !want && shown !== undefined && nowMs - shown < MIN_HOLD_MS) return true
+  memory.flags[id] = want
+  memory.shownAt[id] = nowMs
+  return want
+}
+
+export function updateDescriptors(analysis: BufferAnalysis, memory: DescriptorMemory, nowMs: number): Descriptor[] {
+  if (analysis.silent) {
+    hold(memory, 'silence', true, nowMs)
+    for (const id of ['loud', 'quiet', 'bass-heavy', 'midrange-dominant', 'wide', 'narrow', 'strong-transients', 'continuous', 'dominant'] as const) {
+      hold(memory, id, false, nowMs)
+    }
+    return [
+      {
+        id: 'silence',
+        label: 'SILENCE',
+        detail: 'Peak level is below the silence threshold. No dominant frequency is reported.',
+      },
+    ]
+  }
+  hold(memory, 'silence', false, nowMs)
+  const low = below250(analysis)
+  const mid = midShare(analysis)
+  const rms = analysis.rmsDbfs
+  const crest = analysis.crestDb
+  const width = analysis.stereo?.width ?? 0
+  const loud = rms !== null && (memory.flags.loud ? rms >= LOUD_RMS_OFF : rms >= LOUD_RMS_ON)
+  const quiet = rms !== null && (memory.flags.quiet ? rms <= QUIET_RMS_OFF : rms <= QUIET_RMS_ON)
+  const bass = memory.flags['bass-heavy'] ? low >= BASS_HEAVY_OFF : low >= BASS_HEAVY_ON
+  const mids = !bass && (memory.flags['midrange-dominant'] ? mid >= MID_DOMINANT_OFF : mid >= MID_DOMINANT_ON)
+  const wide = analysis.stereo ? (memory.flags.wide ? width >= WIDE_OFF : width >= WIDE_ON) : false
+  const narrow = analysis.stereo ? (memory.flags.narrow ? width <= NARROW_OFF : width <= NARROW_ON) : false
+  const transients = crest !== null && (memory.flags['strong-transients'] ? crest >= TRANSIENT_CREST_OFF : crest >= TRANSIENT_CREST_ON)
+  const continuous = analysis.tonality === 'high' && !transients && crest !== null && crest < 8
+
+  const flags: { id: DescriptorId; on: boolean; label: string; detail: string }[] = [
+    {
+      id: 'loud',
+      on: hold(memory, 'loud', loud && !quiet, nowMs),
+      label: 'LOUD',
+      detail: rms !== null ? `RMS ${rms.toFixed(1)} dBFS.` : 'RMS is high.',
+    },
+    {
+      id: 'quiet',
+      on: hold(memory, 'quiet', quiet && !loud, nowMs),
+      label: 'QUIET',
+      detail: rms !== null ? `RMS ${rms.toFixed(1)} dBFS.` : 'RMS is low.',
+    },
+    {
+      id: 'bass-heavy',
+      on: hold(memory, 'bass-heavy', bass, nowMs),
+      label: 'BASS-HEAVY',
+      detail: `${Math.round(low * 100)}% of measured spectral energy is below 250 Hz.`,
+    },
+    {
+      id: 'midrange-dominant',
+      on: hold(memory, 'midrange-dominant', mids, nowMs),
+      label: 'MIDRANGE-DOMINANT',
+      detail: `${Math.round(mid * 100)}% of measured spectral energy is between 250 Hz and 6 kHz.`,
+    },
+    {
+      id: 'wide',
+      on: hold(memory, 'wide', wide && !narrow, nowMs),
+      label: 'WIDE STEREO',
+      detail: analysis.stereo ? `Side energy is ${Math.round(analysis.stereo.width * 100)}% of mid+side energy.` : '',
+    },
+    {
+      id: 'narrow',
+      on: hold(memory, 'narrow', narrow && !wide, nowMs),
+      label: 'NARROW STEREO',
+      detail: analysis.stereo ? `Side energy is ${Math.round(analysis.stereo.width * 100)}% of mid+side energy.` : '',
+    },
+    {
+      id: 'strong-transients',
+      on: hold(memory, 'strong-transients', transients, nowMs),
+      label: 'STRONG TRANSIENTS',
+      detail: crest !== null ? `Crest factor ${crest.toFixed(1)} dB.` : '',
+    },
+    {
+      id: 'continuous',
+      on: hold(memory, 'continuous', continuous, nowMs),
+      label: 'CONTINUOUS / TONAL',
+      detail:
+        analysis.flatness !== null
+          ? `Spectral flatness ${analysis.flatness.toFixed(3)}. Narrow tonal energy is present.`
+          : 'Narrow tonal energy is present.',
+    },
+  ]
+
+  const out = flags.filter((flag) => flag.on).map(({ id, label, detail }) => ({ id, label, detail }))
+  if (analysis.dominantHz && analysis.dominantNote) {
+    out.push({
+      id: 'dominant',
+      label: `DOMINANT ${Math.round(analysis.dominantHz)} Hz · ${analysis.dominantNote}`,
+      detail: analysis.peakProminenceDb !== null
+        ? `Strongest partial is ${Math.round(analysis.dominantHz)} Hz, ${analysis.peakProminenceDb.toFixed(1)} dB above the median bin.`
+        : `Strongest partial is ${Math.round(analysis.dominantHz)} Hz.`,
+    })
+  }
+  return out
+}
+
+export type LevelWord = 'LOW' | 'MEDIUM' | 'HIGH'
+export type SimpleSummary = {
+  level: 'SILENT' | 'QUIET' | 'NORMAL' | 'LOUD'
+  low: LevelWord
+  mid: LevelWord
+  high: LevelWord
+  space: 'MONO' | 'NARROW' | 'MEDIUM' | 'WIDE' | '—'
+  dynamics: LevelWord | '—'
+  transients: 'LOW' | 'MEDIUM' | 'STRONG' | '—'
+}
+
+function word(share: number): LevelWord {
+  if (share >= 0.34) return 'HIGH'
+  if (share >= 0.18) return 'MEDIUM'
+  return 'LOW'
+}
+
+export function simpleSummary(analysis: BufferAnalysis): SimpleSummary {
+  if (analysis.silent) {
+    return { level: 'SILENT', low: 'LOW', mid: 'LOW', high: 'LOW', space: analysis.stereo ? 'MONO' : '—', dynamics: '—', transients: '—' }
+  }
+  const rms = analysis.rmsDbfs ?? -120
+  const level = rms >= LOUD_RMS_ON ? 'LOUD' : rms <= QUIET_RMS_ON ? 'QUIET' : 'NORMAL'
+  const low = word(bandShare(analysis, ['sub', 'bass']))
+  const mid = word(bandShare(analysis, ['lowMid', 'mid', 'highMid']))
+  const high = word(bandShare(analysis, ['high', 'air']))
+  let space: SimpleSummary['space'] = '—'
+  if (analysis.stereo) {
+    const width = analysis.stereo.width
+    space = width < 0.08 ? 'MONO' : width < 0.25 ? 'NARROW' : width < WIDE_ON ? 'MEDIUM' : 'WIDE'
+  }
+  const crest = analysis.crestDb
+  const dynamics = crest === null ? '—' : crest >= 12 ? 'HIGH' : crest >= 6 ? 'MEDIUM' : 'LOW'
+  const transients = crest === null ? '—' : crest >= TRANSIENT_CREST_ON ? 'STRONG' : crest >= 6 ? 'MEDIUM' : 'LOW'
+  return { level, low, mid, high, space, dynamics, transients }
+}

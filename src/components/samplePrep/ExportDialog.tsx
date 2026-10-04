@@ -4,6 +4,7 @@ import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
 import { engine } from '../../hooks/useEngine'
+import { pushHearingAlert } from '../../hearing/alerts'
 import { useI18n } from '../../i18n'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import styles from './ExportDialog.module.css'
@@ -119,6 +120,12 @@ export function ExportDialog({ snap, onClose }: Props) {
           return
         }
         downloadBlob(result.filename, result.blob)
+        pushHearingAlert({
+          id: 'export',
+          title: 'EXPORT COMPLETE',
+          detail: result.filename,
+          tone: 'info',
+        })
         closed = true
         onClose()
       } catch (err) {

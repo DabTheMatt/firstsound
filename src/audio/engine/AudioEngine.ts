@@ -129,6 +129,7 @@ import {
 } from './comb'
 import { selectEqBand } from './eqBandSelection'
 import { ANALYSER_FFT_IDLE, clampAnalyserFftSize } from './analyserBudget'
+import { monitorCurves, type MonitorEmphasis } from './hearingMonitor'
 import { SPECTRUM_FLOOR_DB } from './spectrumBands'
 import { createPinkNoiseBuffer } from './pinkNoise'
 import { demoSampleName, renderDemoSample } from './demoSample'
@@ -642,6 +643,11 @@ export class AudioEngine {
   private projectEndAt = Number.POSITIVE_INFINITY
   private usingProjectTransport = false
   private safetyGain: GainNode | null = null
+  /** Speaker-only shelves. Never inserted into offline export. */
+  private hearingMonitor: MonitorEmphasis | null = null
+  private hearingLow: BiquadFilterNode | null = null
+  private hearingMid: BiquadFilterNode | null = null
+  private hearingHigh: BiquadFilterNode | null = null
   private limiter: DynamicsCompressorNode | null = null
   private analyser: AnalyserNode | null = null
   private analyserPre: AnalyserNode | null = null
@@ -1360,6 +1366,57 @@ export class AudioEngine {
 
   getChannelAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
     return { left: this.analyserL, right: this.analyserR }
+  }
+
+  /**
+   * Listening-path emphasis after the safety gain and before the hardware output.
+   * `null` or a near-zero curve reconnects the safety gain directly to the destination.
+   * Export uses renderProcessedPcm and does not call this.
+   */
+  setHearingMonitor(emphasis: MonitorEmphasis | null): void {
+    this.hearingMonitor = emphasis
+    this.wireHearingMonitor()
+  }
+
+  private wireHearingMonitor(): void {
+    if (!this.ctx || !this.safetyGain) return
+    const destination = this.ctx.destination
+    try {
+      this.safetyGain.disconnect()
+    } catch {
+      /* output was already open */
+    }
+    for (const node of [this.hearingLow, this.hearingMid, this.hearingHigh]) {
+      if (!node) continue
+      try {
+        node.disconnect()
+      } catch {
+        /* filter was idle */
+      }
+    }
+    const curves = monitorCurves(this.hearingMonitor)
+    if (!curves) {
+      this.safetyGain.connect(destination)
+      return
+    }
+    if (!this.hearingLow || !this.hearingMid || !this.hearingHigh) {
+      this.hearingLow = this.ctx.createBiquadFilter()
+      this.hearingMid = this.ctx.createBiquadFilter()
+      this.hearingHigh = this.ctx.createBiquadFilter()
+    }
+    const nodes = [this.hearingLow, this.hearingMid, this.hearingHigh]
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]!
+      const curve = curves[i]!
+      node.type = curve.type
+      node.frequency.value = curve.frequency
+      node.Q.value = curve.q
+      node.gain.value = curve.gain
+    }
+    this.safetyGain.connect(this.hearingLow)
+    this.hearingLow.connect(this.hearingMid)
+    this.hearingMid.connect(this.hearingHigh)
+    this.hearingHigh.connect(destination)
   }
 
   /**
@@ -5410,7 +5467,7 @@ export class AudioEngine {
     forceStereoUpmix(this.limiter)
     forceStereoUpmix(this.safetyGain)
     this.limiter.connect(this.safetyGain)
-    this.safetyGain.connect(this.ctx.destination)
+    this.wireHearingMonitor()
     this.limiter.connect(this.analyser)
     this.pullAnalyser(this.analyser)
     if (this.previewGain) {

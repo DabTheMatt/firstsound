@@ -22,6 +22,7 @@ import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
 import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
+import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
@@ -1056,6 +1057,7 @@ export default function App() {
         />
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
+        <HearingAccessLayer surface="simple" />
       </>
     )
   }
@@ -1103,6 +1105,7 @@ export default function App() {
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
         {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+        <HearingAccessLayer surface="sensory" />
       </>
     )
   }
@@ -1525,6 +1528,7 @@ export default function App() {
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+      <HearingAccessLayer surface="technical" focus={activeFocus} />
     </div>
     </FxLfoConnectProvider>
   )

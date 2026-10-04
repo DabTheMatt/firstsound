@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n'
+import { HearingAccessSettings } from '../hearing/HearingAccessSettings'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
 
@@ -70,6 +71,7 @@ export function A11ySettings() {
         <span>{a.shortcuts}</span>
       </label>
       <p className={styles.help}>{a.shortcutsHelp}</p>
+      <HearingAccessSettings />
       <details className={styles.shortcuts}>
         <summary className={styles.sub}>{a.shortcutsTitle}</summary>
         <ul className={styles.list}>
