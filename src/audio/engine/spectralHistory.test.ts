@@ -11,12 +11,15 @@ import {
   formatSpectralReadout,
   nearestSpectralHit,
   projectSpectralPoint,
+  interpolateSpectralFrame,
   selectSpectralSlices,
   spectralAgeOpacity,
   spectralCameraEases,
   spectralCaptureInterval,
   spectralHistoryAriaLabel,
+  spectralLevelColor,
   spectralPointCount,
+  spectralScrollAge,
   spectralSliceTarget,
   spectralTimeLabels,
   SPECTRAL_HISTORY_CAPACITY,
@@ -182,6 +185,40 @@ describe('3D projection', () => {
 })
 
 describe('history presentation', () => {
+  it('scrolls ridge ages continuously and carries a slice across the step boundary', () => {
+    const duration = 5
+    const slices = 20
+    const step = duration / slices
+    const now = 3.1
+    const before = spectralScrollAge(2, slices, now, duration)
+    const after = spectralScrollAge(2, slices, now + 0.016, duration)
+    expect(after - before).toBeCloseTo(0.016, 3)
+    const edge = Math.ceil(now / step) * step
+    const leaving = spectralScrollAge(0, slices, edge - 1e-4, duration)
+    const continued = spectralScrollAge(1, slices, edge + 1e-4, duration)
+    expect(Math.abs(continued - leaving)).toBeLessThan(0.002)
+  })
+
+  it('lerps a stored spectrum instead of jumping to the next frame', () => {
+    const buffer = new SpectralFrameBuffer(4, 2)
+    buffer.push([0, -10], 0)
+    buffer.push([10, -20], 1)
+    const times = new Float64Array([0, 1])
+    const out = new Float32Array(2)
+    expect(interpolateSpectralFrame(buffer, times, 2, 0.25, out)).toBe(true)
+    expect(out[0]).toBeCloseTo(2.5)
+    expect(out[1]).toBeCloseTo(-12.5)
+    expect(interpolateSpectralFrame(buffer, times, 2, 4, out)).toBe(false)
+  })
+
+  it('maps level color from the cool ridge to the warm ridge', () => {
+    const quiet = spectralLevelColor('#aeb5b6', '#e8e6df', '#e6ad48', 0)
+    const loud = spectralLevelColor('#aeb5b6', '#e8e6df', '#e6ad48', 1)
+    expect(quiet.toLowerCase()).toBe('#aeb5b6')
+    expect(loud.toLowerCase()).toBe('#e6ad48')
+    expect(quiet).not.toBe(loud)
+  })
+
   it('fades older ridges smoothly', () => {
     const now = spectralAgeOpacity(0)
     const mid = spectralAgeOpacity(0.5)
@@ -301,6 +338,9 @@ describe('canvas history paint', () => {
       spectrumLine: '#d0e0d4',
       borderSubtle: '#333333',
       bgApp: '#050505',
+      ridgeCool: '#aeb5b6',
+      ridgeMid: '#e8e6df',
+      ridgeWarm: '#e6ad48',
     }
     paintSpectralHistory(ctx, 900, 420, runtime, {
       dt: 0.05,
@@ -358,6 +398,34 @@ describe('canvas history paint', () => {
     })
     expect(runtime.post.count).toBe(1)
     expect(runtime.clock.now).toBeCloseTo(0.05)
+    calls.length = 0
+    paintSpectralHistory(ctx, 900, 420, runtime, {
+      dt: 0.05,
+      dpr: 1,
+      cssWidth: 900,
+      cssHeight: 420,
+      playing: true,
+      sampleRate: 44100,
+      preBins: null,
+      postBins: bins,
+      showPre: false,
+      showPost: true,
+      historySec: 5,
+      density: 'auto',
+      drawStyle: 'surface',
+      levelColor: true,
+      peakTrails: false,
+      cameraPreset: 'angled',
+      fall: 'normal',
+      range: 90,
+      scale: 'log',
+      colors: colors as ReturnType<typeof readThemeColors>,
+      mobile: false,
+      reducedMotion: true,
+      layer: 'post',
+    })
+    expect(calls).toContain('fill')
+    expect(calls).toContain('stroke')
   })
 })
 
