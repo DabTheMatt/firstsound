@@ -71,7 +71,9 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const slots = eqStripParamSlots(band.type)
 
   const knob = (slot: EqStripSlot, mini: boolean) => {
-    const size = mini ? { mini: true as const } : { compact: true as const }
+    const size = mini
+      ? { mini: true as const, actionsBelow: true as const }
+      : { compact: true as const }
     if (slot === 'freq') {
       return (
         <ParamSlot id={ids?.freq} afford>
