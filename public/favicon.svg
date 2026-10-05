@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Full-bleed square: macOS/Safari apply their own squircle mask.
-       Pre-rounded corners double-mask and fray the Dock outline. -->
-  <rect width="32" height="32" fill="#1A1A1A"/>
-  <circle cx="16" cy="16" r="8" fill="none" stroke="#D4A251" stroke-width="2"/>
-  <path d="M16 10v12" stroke="#D4A251" stroke-width="2" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><image width="32" height="32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAB5UlEQVR42u2VQW+bMBTH7ecADphAhBIO2xTlmJXx/T9HkJJDkxQpOyAhNdHKnNoGpwevkORQrdLaw8T/gB7v2fz8/J4Nnkyn6CMF6IPVA3pAD/gEwKBDAZzPZ2MbA2NsjDdCRhhj4zHPy1AH0FrfwNtxb4TaV+O58XcAxliSJOL5+YyQlHK1Wtm2HQRBWZaO46Rp2tS11hoAHvL8eDzGcVwURZsKY+zu+52QAmN8OBzyPG9T/AMIw/Dw+Hi/2WCMAQAh5Lruty9fy7IMgkAIkWUZABCARmtCyGw2K4oCY2ymj8fj6ne12Wwsy5rP54vFYr1eXxVZa818P4qiyWRCCDHJqqZGCNV1zTwvjuN4OsUATdMghJRSV1ukNedcCFFVVZZlnudRSm+7yPf9MAyD0chxnLZuJjQcDpnn+b5PKcWvgleZMYQQALAsCyEkpTRGt0WA8Xa73e/3l3UzkweDwUOe73a7y5DW+rLyGEBKaZxRFFFKq6q6AkilKKXmi6YltNacc4SQEOJHknieZ0b+3O9/PT0FQZAkiVlEnuen0ylN09FoZNu2bdvL5bJj/80v03Vdy7JMm584l0o5jkMpNR7OuVKKMUYIaZqmXfs7AO+SqVx7IAb//G64OWv9bdoDesD/AHgB57IEaTY89KIAAAAASUVORK5CYII="/></svg>

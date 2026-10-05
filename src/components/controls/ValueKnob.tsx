@@ -433,7 +433,11 @@ export function ValueKnob({
           />
         </svg>
       </div>
-      {actionsBelow ? null : (
+      {actionsBelow ? (
+        <span className={`${styles.modSlot} ${styles.actionsBelow}`}>
+          {paramId ? <ParamActionPair id={paramId} compact /> : null}
+        </span>
+      ) : (
         <span className={styles.modSlot}>
           {paramId ? <ParamActionPair id={paramId} compact /> : null}
         </span>
@@ -477,11 +481,6 @@ export function ValueKnob({
           >
             {shownText}
           </p>
-          {actionsBelow ? (
-            <span className={`${styles.modSlot} ${styles.actionsBelow}`}>
-              {paramId ? <ParamActionPair id={paramId} compact /> : null}
-            </span>
-          ) : null}
         </>
       )}
     </div>

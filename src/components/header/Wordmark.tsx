@@ -1,6 +1,5 @@
 import styles from './Wordmark.module.css'
 
-const BRAND_NAME = 'FIELD'
 const BRAND_TAGLINE = 'sound / interference / transformation'
 
 type Props = {
@@ -16,7 +15,7 @@ export function Wordmark({ variant = 'studio', compact = false, hideTagline = fa
       aria-hidden={variant === 'gate' ? undefined : true}
     >
       <span className={styles.identity}>
-        <span className={styles.name}>{BRAND_NAME}</span>
+        <span className={styles.logo} role="img" aria-label="FIELD" />
         <span className={styles.tagline}>{BRAND_TAGLINE}</span>
       </span>
     </p>
