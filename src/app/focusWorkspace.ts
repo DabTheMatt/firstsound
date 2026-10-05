@@ -1,6 +1,6 @@
 import type { FocusWorkspace } from './phoneWorkspace'
 
-export { focusWorkspaceForViz, type FocusWorkspace } from './phoneWorkspace'
+export { focusWorkspaceForViz, graphFocusWorkspace, type FocusWorkspace } from './phoneWorkspace'
 
 /**
  * Focus Mode hides everything unrelated to the current task and keeps the

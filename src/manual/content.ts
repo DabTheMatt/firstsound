@@ -119,7 +119,7 @@ const en: ManualSection[] = [
     title: 'EQ',
     body: [
       'Each EQ instance has its own bands. Band and comb gain run from −24 dB to +24 dB. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay on the center of the graph when the filter type changes. The list does not shift them.',
-      'Focus lists the filters on the left of the graph. The knobs sit on the center of the screen and float over the grid. The filter type menu is in the band header, next to the band name. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, and the spectrum layer Before, After, or Both. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
+      'Focus lists the filters on the left of the graph. The knobs sit on the center of the screen and float over the grid. The filter type menu is in the band header, next to the band name. The pointer shows frequency first, then the note, for example 440 Hz · A4. The focus control on the EQ graph opens EQ Focus. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, the spectrum layer Before, After, or Both, and frequency color on or off. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
     ],
   },
   {
@@ -215,7 +215,7 @@ const en: ManualSection[] = [
     title: 'Focus mode',
     body: [
       'Focus mode fills the editor with one task: wave, FFT, EQ, or automation. Exit returns to the normal layout. In WAVE Focus, fade handles are inset below the toolbar.',
-      'EQ Focus knobs are a larger, quieter dial with a black face and thin marks. The indicator follows the effective value, including LFO motion. Knobs and their readouts stay neutral. Only the band name and number use the band color. The filter type menu sits in the band header. EQ Focus does not show the Hearing Access readout.',
+      'EQ Focus knobs are a larger, quieter dial with a dark translucent face and thin marks. The indicator follows the effective value, including LFO motion. The small mark under a knob follows the LFO wave shape. Knobs and their readouts stay neutral. Only the band name and number use the band color, unless frequency color is on. The filter type menu sits in the band header. EQ Focus does not show the Hearing Access readout.',
     ],
   },
   {
@@ -414,7 +414,7 @@ const pl: ManualSection[] = [
     title: 'EQ',
     body: [
       'Każda instancja EQ ma własne pasma. Gain pasma i grzebienia sięga od −24 dB do +24 dB. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku wykresu przy zmianie typu. Lista ich nie przesuwa.',
-      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku ekranu i unoszą się nad siatką. Menu typu filtra jest w nagłówku pasma, przy nazwie. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel oraz warstwę widma Before, After albo Both. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
+      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku ekranu i unoszą się nad siatką. Menu typu filtra jest w nagłówku pasma, przy nazwie. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Przycisk focus na wykresie EQ otwiera EQ Focus. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel, warstwę widma Before, After albo Both oraz kolor częstotliwości włącza albo wyłącza. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
     ],
   },
   {
@@ -510,7 +510,7 @@ const pl: ManualSection[] = [
     title: 'Tryb Focus',
     body: [
       'Focus wypełnia edytor jednym zadaniem: fala, FFT, EQ albo automatyzacja. Wyjście wraca do zwykłego układu. W WAVE Focus uchwyty fade są odsunięte pod pasek narzędzi.',
-      'Pokrętła EQ Focus są większe i cichsze: czarna tarcza i cienkie kreski. Wskazówka śledzi wartość skuteczną, także przy LFO. Pokrętła i odczyty zostają neutralne. Kolor pasma ma tylko nazwa i numer. Menu typu filtra jest w nagłówku pasma. EQ Focus nie pokazuje odczytu Hearing Access.',
+      'Pokrętła EQ Focus są większe i cichsze: ciemna, lekko przezroczysta tarcza i cienkie kreski. Wskazówka śledzi wartość skuteczną, także przy LFO. Mały znak pod pokrętłem podąża za kształtem fali LFO. Pokrętła i odczyty zostają neutralne. Kolor pasma ma tylko nazwa i numer, chyba że włączony jest kolor częstotliwości. Menu typu filtra jest w nagłówku pasma. EQ Focus nie pokazuje odczytu Hearing Access.',
     ],
   },
   {

@@ -26,8 +26,17 @@
 }
 
 .mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
   line-height: 1;
+}
+
+.mark svg {
+  display: block;
+  width: 20px;
+  height: 13px;
 }
 
 .buttonCompact {
