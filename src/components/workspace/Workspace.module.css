@@ -394,7 +394,70 @@
 
 .analyzerPanel {
   min-width: 0;
-  padding: 4px 4px 16px;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+}
+
+.analyzerHeading {
+  margin: 20px 0 0;
+}
+
+.analyzerHeading:first-child {
+  margin-top: 0;
+}
+
+.displayRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.displayRow {
+  display: grid;
+  grid-template-columns: 4.8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.displayLabel {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.displayChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.displayChoices button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.displayChoices button:hover {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.displayChoices button[aria-pressed='true'] {
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+  color: var(--accent-primary);
 }
 
 .badge {

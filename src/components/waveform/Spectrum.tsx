@@ -118,6 +118,7 @@ import {
   type EqDragMode,
 } from '../mobile/eqFocusGesture'
 import { focusEqTypeLabel } from '../mobile/focusReadout'
+import { SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
 import { VizBackground } from './VizBackground'
 import { FftViewToggle, SpectralHistoryControls } from './SpectralHistoryControls'
 import {
@@ -140,6 +141,8 @@ type Props = {
   phoneFocus?: boolean
   /** FFT Focus owns the analyzer controls in the shared header. */
   suppressAnalyzerChrome?: boolean
+  /** Workspace FFT keeps display settings in the inspector, so the graph menu stays closed. */
+  hideGraphMenu?: boolean
   /** Experimental FFT workspace keeps the plot clear of the legend. */
   hideLegend?: boolean
   analyzerOpen?: boolean
@@ -223,7 +226,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -1801,7 +1804,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {hover.label}
           </div>
         ) : null}
-        {spatial ? null : (
+        {spatial || hideGraphMenu ? null : (
         <div className={styles.graphMenu}>
           <button
             type="button"
@@ -1817,6 +1820,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
           {gridOpen ? (
             <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
+              {phoneFocus ? (
+                <SpectrumDisplaySettings showLayer />
+              ) : (
+              <>
               <div className={styles.graphMenuRow}>
                 <span>Grid</span>
                 {([6, 12, 24] as const).map((density) => (
@@ -1834,55 +1841,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   </button>
                 ))}
               </div>
-              {phoneFocus ? (
-                <div className={styles.graphMenuRow}>
-                  <span>Layer</span>
-                  {([
-                    ['pre', 'Before'],
-                    ['post', 'After'],
-                    ['both', 'Both'],
-                  ] as const).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={prefs.layer === value}
-                      onClick={(event) => {
-                        setPrefs((current) => ({ ...current, layer: value }))
-                        event.currentTarget.blur()
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {phoneFocus ? (
-                <div className={styles.graphMenuRow}>
-                  <span>Color</span>
-                  <button
-                    type="button"
-                    aria-pressed={!prefs.eqFreqColors}
-                    aria-label="Frequency colors off"
-                    onClick={(event) => {
-                      setPrefs((current) => ({ ...current, eqFreqColors: false }))
-                      event.currentTarget.blur()
-                    }}
-                  >
-                    Off
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={prefs.eqFreqColors}
-                    aria-label="Frequency colors on"
-                    onClick={(event) => {
-                      setPrefs((current) => ({ ...current, eqFreqColors: true }))
-                      event.currentTarget.blur()
-                    }}
-                  >
-                    On
-                  </button>
-                </div>
-              ) : null}
               <div className={styles.graphMenuRow}>
                 <span>Scale</span>
                 {FREQ_SCALE_OPTIONS.map((opt) => (
@@ -1900,6 +1858,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   </button>
                 ))}
               </div>
+              </>
+              )}
             </div>
           ) : null}
         </div>

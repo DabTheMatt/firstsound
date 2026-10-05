@@ -8,7 +8,6 @@ import {
   persistEqOverlayFocus,
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
-import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
 import {
   SPECTRUM_BAND_CHOICES,
   SPECTRUM_FALL_MODES,
@@ -38,13 +37,15 @@ import {
   loadSpectrumPrefs,
   persistSpectrumPrefs,
   subscribeSpectrumPrefs,
-  type SpectrumLayer,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { spectrumListenId } from '../../audio/spectral/bands'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
+import { Segmented } from '../controls/Segmented'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import panel from '../inspector/Inspector.module.css'
+import { SpectrumDisplaySettings } from './SpectrumDisplaySettings'
 import styles from './Workspace.module.css'
 
 const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
@@ -53,28 +54,20 @@ const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
   { id: 'top', label: 'Top' },
 ]
 
-const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Before' },
-  { id: 'post', label: 'After' },
-  { id: 'both', label: 'Both' },
-]
-
 const COLOR_LABEL: Record<SpectralColorMode, string> = {
   off: 'Off',
   level: 'Level',
   frequency: 'Frequency',
 }
 
-/** Every analyzer option, in the same rows as the workspace bar. */
+/** Analyzer options in the same fields other inspectors use. Layer stays on the FFT bar. */
 export function AnalyzerSettingsMenu() {
   const { t } = useI18n()
   const snap = useEngine()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
-  const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const [overlay, setOverlay] = useState<string>(() => loadEqOverlayFocus())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
-  useEffect(() => subscribeFreqScale(setScale), [])
   useEffect(() => subscribeEqOverlayFocus(setOverlay), [])
   useEffect(
     () =>
@@ -92,37 +85,36 @@ export function AnalyzerSettingsMenu() {
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
 
   return (
-    <div className={styles.analyzerMenu}>
-      <p className={styles.analyzerSection}>History</p>
-      <Row label="Time">
-        <Choices
+    <div className={panel.panel}>
+      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>History</h2>
+      <div className={panel.stack}>
+        <ChoiceField
+          label="Time"
           value={String(prefs.historySec)}
           options={SPECTRAL_HISTORY_SECONDS.map((sec) => ({ id: String(sec), label: `${sec}s` }))}
           onChange={(id) => patch({ historySec: clampSpectralHistorySeconds(Number(id)) })}
         />
-      </Row>
-      <Row label="View">
-        <Choices
+        <ChoiceField
+          label="View"
           value={prefs.cameraPreset}
           options={VIEWS}
           onChange={(id) => patch({ cameraPreset: id })}
         />
-      </Row>
-      <Row label="Freeze">
-        <button
-          type="button"
-          className={frozen ? styles.segmentOn : styles.segmentOff}
-          aria-pressed={frozen}
-          title="Freeze history. Audio keeps playing."
-          onClick={() => setSpectralHistoryFrozen(!frozen)}
-        >
-          {frozen ? 'On' : 'Off'}
-        </button>
-      </Row>
+        <ChoiceField
+          label="Freeze"
+          value={frozen ? 'on' : 'off'}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'on', label: 'On', title: 'Freeze history. Audio keeps playing.' },
+          ]}
+          onChange={(id) => setSpectralHistoryFrozen(id === 'on')}
+        />
+      </div>
 
-      <p className={styles.analyzerSection}>Picture</p>
-      <Row label="Density">
-        <Choices
+      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Picture</h2>
+      <div className={panel.stack}>
+        <ChoiceField
+          label="Density"
           value={prefs.density}
           options={SPECTRAL_DENSITIES.map((density) => ({
             id: density,
@@ -130,9 +122,8 @@ export function AnalyzerSettingsMenu() {
           }))}
           onChange={(id) => patch({ density: id as SpectralDensity })}
         />
-      </Row>
-      <Row label="Draw">
-        <Choices
+        <ChoiceField
+          label="Draw"
           value={prefs.drawStyle}
           options={[
             { id: 'lines' as const, label: 'Lines' },
@@ -140,145 +131,106 @@ export function AnalyzerSettingsMenu() {
           ]}
           onChange={(id) => patch({ drawStyle: id as SpectralDrawStyle })}
         />
-      </Row>
-      <Row label="Color">
-        <Choices
+        <ChoiceField
+          label="Color"
           value={prefs.colorMode}
           options={SPECTRAL_COLOR_MODES.map((mode) => ({ id: mode, label: COLOR_LABEL[mode] }))}
           onChange={(id) => patch({ colorMode: id })}
         />
-      </Row>
-      <Row label="Trails">
-        <label className={styles.analyzerCheck}>
-          <input
-            type="checkbox"
-            checked={prefs.peakTrails}
-            onChange={(event) => patch({ peakTrails: event.target.checked })}
-          />
-          Peak trails
-        </label>
-      </Row>
-      <div className={styles.analyzerActions}>
-        <button
-          type="button"
-          className={styles.textButton}
-          onClick={() => {
-            patch({ cameraPreset: 'angled' })
-            requestSpectralViewReset()
-          }}
-        >
-          Reset view
-        </button>
-        <button type="button" className={styles.textButton} onClick={() => requestSpectralHistoryClear()}>
-          Clear history
-        </button>
+        <ChoiceField
+          label="Trails"
+          value={prefs.peakTrails ? 'on' : 'off'}
+          options={[
+            { id: 'off', label: 'Off' },
+            { id: 'on', label: 'On' },
+          ]}
+          onChange={(id) => patch({ peakTrails: id === 'on' })}
+        />
+        <div className={panel.row}>
+          <button
+            type="button"
+            className={panel.ghost}
+            onClick={() => {
+              patch({ cameraPreset: 'angled' })
+              requestSpectralViewReset()
+            }}
+          >
+            Reset view
+          </button>
+          <button type="button" className={panel.ghost} onClick={() => requestSpectralHistoryClear()}>
+            Clear history
+          </button>
+        </div>
       </div>
 
-      <p className={styles.analyzerSection}>Analyzer</p>
-      {spectralBandsEnabled && listenBand ? (
-        <p className={styles.analyzerNote}>
-          {t.waveform.spectral.analyseBand}
-        </p>
-      ) : null}
-      <Row label="Layer">
-        <Choices
-          value={prefs.layer}
-          options={LAYERS}
-          onChange={(id) => patch({ layer: id, historyLayer: id })}
-        />
-      </Row>
-      <Row label="Range">
-        <select
-          aria-label="Analyzer range"
+      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Analyzer</h2>
+      <div className={panel.stack}>
+        {spectralBandsEnabled && listenBand ? (
+          <p className={styles.analyzerNote}>{t.waveform.spectral.analyseBand}</p>
+        ) : null}
+        <SelectField
+          label="Range"
           value={String(prefs.range)}
-          onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
+          onChange={(value) => patch({ range: clampSpectrumRange(Number(value)) })}
         >
           {SPECTRUM_RANGE_CHOICES.map((db) => (
             <option key={db} value={db}>
               {db} dB
             </option>
           ))}
-        </select>
-      </Row>
-      <Row label="Scale">
-        <Choices
-          value={scale}
-          options={FREQ_SCALE_OPTIONS.map((opt) => ({ id: opt.value, label: opt.label, title: opt.title }))}
-          onChange={(id) => persistFreqScale(id)}
-        />
-      </Row>
-      <Row label="Columns">
-        <select
-          aria-label="Spectrum display columns"
+        </SelectField>
+        <SelectField
+          label="Columns"
           value={String(prefs.bands)}
-          onChange={(event) => patch({ bands: clampSpectrumBandCount(Number(event.target.value)) })}
+          onChange={(value) => patch({ bands: clampSpectrumBandCount(Number(value)) })}
         >
           {SPECTRUM_BAND_CHOICES.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
           ))}
-        </select>
-      </Row>
-      <Row label="FFT">
-        <select
-          aria-label="FFT size"
+        </SelectField>
+        <SelectField
+          label="FFT"
           value={String(prefs.resolution)}
-          onChange={(event) => patch({ resolution: clampSpectrumResolution(Number(event.target.value)) })}
+          onChange={(value) => patch({ resolution: clampSpectrumResolution(Number(value)) })}
         >
           {SPECTRUM_RESOLUTION_CHOICES.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
           ))}
-        </select>
-      </Row>
-      <Row label="Fall">
-        <select
-          aria-label="Spectrum fall speed"
+        </SelectField>
+        <ChoiceField
+          label="Fall"
           value={prefs.fall}
-          onChange={(event) => patch({ fall: clampSpectrumFallMode(event.target.value) })}
-        >
-          {SPECTRUM_FALL_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
-            </option>
-          ))}
-        </select>
-      </Row>
-      <Row label="Follow">
-        <select
-          aria-label="Spectrum envelope follow"
+          options={SPECTRUM_FALL_MODES.map((mode) => ({
+            id: mode,
+            label: mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal',
+          }))}
+          onChange={(id) => patch({ fall: clampSpectrumFallMode(id) })}
+        />
+        <ChoiceField
+          label="Follow"
           value={prefs.follow}
-          onChange={(event) => patch({ follow: clampSpectrumFollowMode(event.target.value) })}
-        >
-          {SPECTRUM_FOLLOW_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode === 'peak' ? 'Peak' : mode === 'slow' ? 'Slow' : 'Both'}
-            </option>
-          ))}
-        </select>
-      </Row>
-      <Row label="EQ ch">
-        <select
-          aria-label="EQ channel"
+          options={SPECTRUM_FOLLOW_MODES.map((mode) => ({
+            id: mode,
+            label: mode === 'peak' ? 'Peak' : mode === 'slow' ? 'Slow' : 'Both',
+          }))}
+          onChange={(id) => patch({ follow: clampSpectrumFollowMode(id) })}
+        />
+        <ChoiceField
+          label="EQ ch"
           value={snap.eqChannelMode}
-          onChange={(event) => engine.setEqChannelMode(event.target.value as EqChannelMode)}
-        >
-          {EQ_CHANNEL_MODES.map((opt) => (
-            <option key={opt.value} value={opt.value} title={opt.title}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </Row>
-      {eqs.length > 1 ? (
-        <Row label="EQ">
-          <select
-            aria-label="EQ overlay"
+          options={EQ_CHANNEL_MODES.map((opt) => ({ id: opt.value, label: opt.label, title: opt.title }))}
+          onChange={(id) => engine.setEqChannelMode(id as EqChannelMode)}
+        />
+        {eqs.length > 1 ? (
+          <SelectField
+            label="EQ"
             value={overlayValue}
-            onChange={(event) => {
-              const next = clampEqOverlayFocus(event.target.value, snap.chain)
+            onChange={(value) => {
+              const next = clampEqOverlayFocus(value, snap.chain)
               setOverlay(next)
               persistEqOverlayFocus(next)
             }}
@@ -288,130 +240,58 @@ export function AnalyzerSettingsMenu() {
                 {opt.label}
               </option>
             ))}
-          </select>
-        </Row>
-      ) : null}
-
-      <p className={styles.analyzerSection}>Display</p>
-      <div className={styles.analyzerIcons}>
-        <Icon
-          pressed={prefs.eqFreqColors}
-          label={prefs.eqFreqColors ? 'Frequency colors on' : 'Frequency colors off'}
-          onClick={() => patch({ eqFreqColors: !prefs.eqFreqColors })}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <circle cx="4" cy="8" r="2.2" fill="#d97706" />
-            <circle cx="8" cy="8" r="2.2" fill="#16a34a" />
-            <circle cx="12" cy="8" r="2.2" fill="#7c3aed" />
-          </svg>
-        </Icon>
-        <Icon
-          pressed={prefs.regionColors}
-          label={prefs.regionColors ? 'Use solid band color' : 'Use region band colors'}
-          onClick={() => patch({ regionColors: !prefs.regionColors })}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <circle cx="5" cy="6" r="3" fill="currentColor" opacity="0.85" />
-            <circle cx="11" cy="6" r="3" fill="currentColor" opacity="0.55" />
-            <circle cx="8" cy="11" r="3" fill="currentColor" opacity="0.7" />
-          </svg>
-        </Icon>
-        <Icon
-          pressed={prefs.showBars}
-          label={prefs.showBars ? 'Hide FFT bars' : 'Show FFT bars'}
-          onClick={() => patch({ showBars: !prefs.showBars })}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <rect x="2" y="8" width="3" height="6" rx="0.6" fill="currentColor" />
-            <rect x="6.5" y="3" width="3" height="11" rx="0.6" fill="currentColor" />
-            <rect x="11" y="6" width="3" height="8" rx="0.6" fill="currentColor" />
-          </svg>
-        </Icon>
-        <Icon
-          pressed={prefs.showLine}
-          label={prefs.showLine ? 'Hide spectrum line' : 'Show spectrum line'}
-          onClick={() => patch({ showLine: !prefs.showLine })}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              d="M1.5 11.5 L4.5 6.5 L7.2 9.2 L10.5 3.5 L14.5 8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </Icon>
-        <Icon
-          pressed={prefs.legendOpen}
-          label={prefs.legendOpen ? 'Hide spectrum legend' : 'Show spectrum legend'}
-          onClick={() => patch({ legendOpen: !prefs.legendOpen })}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <rect x="1.5" y="2" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="2.5" width="8" height="2" rx="1" fill="currentColor" />
-            <rect x="1.5" y="6.5" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="7" width="8" height="2" rx="1" fill="currentColor" />
-            <rect x="1.5" y="11" width="3" height="3" rx="1" fill="currentColor" />
-            <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
-          </svg>
-        </Icon>
+          </SelectField>
+        ) : null}
       </div>
+
+      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Display</h2>
+      <SpectrumDisplaySettings />
     </div>
   )
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className={styles.analyzerRow}>
-      <span className={styles.analyzerLabel}>{label}</span>
-      <div className={styles.analyzerControl}>{children}</div>
-    </div>
-  )
-}
-
-function Choices<T extends string>({
+function ChoiceField<T extends string>({
+  label,
   value,
   options,
   onChange,
 }: {
+  label: string
   value: T
   options: { id: T; label: string; title?: string }[]
   onChange: (id: T) => void
 }) {
   return (
-    <div className={styles.segment} role="group">
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          className={value === opt.id ? styles.segmentOn : styles.segmentOff}
-          aria-pressed={value === opt.id}
-          title={opt.title}
-          onClick={() => onChange(opt.id)}
-        >
-          {opt.label}
-        </button>
-      ))}
+    <div className={panel.field}>
+      {label}
+      <Segmented
+        label={label}
+        value={value}
+        wrap
+        options={options.map((opt) => ({ value: opt.id, label: opt.label, title: opt.title }))}
+        onChange={onChange}
+      />
     </div>
   )
 }
 
-function Icon({
+function SelectField({
   label,
-  pressed,
-  onClick,
+  value,
+  onChange,
   children,
 }: {
   label: string
-  pressed?: boolean
-  onClick: () => void
+  value: string
+  onChange: (value: string) => void
   children: ReactNode
 }) {
   return (
-    <button type="button" className={styles.analyzerIcon} aria-label={label} title={label} aria-pressed={pressed} onClick={onClick}>
-      {children}
-    </button>
+    <label className={panel.field}>
+      {label}
+      <select className={panel.select} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+        {children}
+      </select>
+    </label>
   )
 }
