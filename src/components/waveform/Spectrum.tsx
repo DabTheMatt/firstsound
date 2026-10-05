@@ -140,6 +140,8 @@ type Props = {
   phoneFocus?: boolean
   /** FFT Focus owns the analyzer controls in the shared header. */
   suppressAnalyzerChrome?: boolean
+  /** Experimental FFT workspace keeps the plot clear of the legend. */
+  hideLegend?: boolean
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
@@ -219,7 +221,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -1500,7 +1502,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       )}
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen && !spatial && (!compact || analyzerOpen) ? (
+        {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (
               <ul className={styles.regions}>

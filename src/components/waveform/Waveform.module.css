@@ -6,6 +6,25 @@
   min-height: 0;
 }
 
+.editor[data-calm] .stage {
+  animation: workspaceIn 150ms ease;
+}
+
+@keyframes workspaceIn {
+  from {
+    opacity: 0.82;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor[data-calm] .stage {
+    animation: none;
+  }
+}
+
 .hearingEditor {
   flex-direction: row;
   align-items: stretch;

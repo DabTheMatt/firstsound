@@ -1174,3 +1174,96 @@
 .sheet .shell {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Experimental Technical workspace. Presentation only. */
+.shell[data-technical-ui='workspace'] {
+  --surface-app: var(--bg-app);
+  --surface-workspace: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-app));
+  --surface-context: var(--bg-app);
+  --surface-raised: var(--bg-panel);
+  gap: 8px;
+  background: var(--surface-app);
+}
+
+.shell[data-technical-ui='workspace'].dock-right {
+  --meter-col: 64px;
+  --inspector-col: 280px;
+  --editor-grid: minmax(0, 1fr) minmax(220px, 280px) var(--meter-col);
+}
+
+.shell[data-technical-ui='workspace'][data-context='closed'].dock-right {
+  --editor-grid: minmax(0, 1fr) var(--meter-col);
+}
+
+.shell[data-technical-ui='workspace'].dock-right:not([data-workspace='focus']) .stageMain {
+  grid-template-columns: var(--editor-grid);
+}
+
+.shell[data-technical-ui='workspace'][data-context='closed'].dock-right:not([data-workspace='focus']) .meterDock {
+  grid-column: 2;
+}
+
+/* Medium desktop keeps the workspace dominant: context drops under the editor. */
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) {
+  --editor-grid: minmax(0, 1fr) var(--meter-col);
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) .stageMain {
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) .meterDock {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) .bottom {
+  grid-column: 1;
+  grid-row: 3;
+  max-height: 34%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'][data-context='compact'].dock-right:not([data-workspace='focus']) .bottom {
+  max-height: 188px;
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) .editRow {
+  grid-row: 4;
+}
+
+.shell[data-technical-ui='workspace'][data-context-place='bottom'].dock-right:not([data-workspace='focus']) .transportWrap {
+  grid-row: 5;
+}
+
+.shell[data-technical-ui='workspace'] .inspector {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.shell[data-technical-ui='workspace'].dock-right .inspector {
+  border-left: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.shell[data-technical-ui='workspace']:not(.dock-right) .bottom {
+  max-height: 34%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 50%, transparent);
+}
+
+.shell[data-technical-ui='workspace'][data-context='compact']:not(.dock-right) .bottom {
+  max-height: 188px;
+}
+
+.shell[data-technical-ui='workspace'] .chainBand {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}

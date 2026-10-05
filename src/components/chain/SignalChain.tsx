@@ -20,9 +20,10 @@ type Props = {
   onSelect: (instanceId: string) => void
   touch: boolean
   minimal?: boolean
+  quiet?: boolean
 }
 
-export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false }: Props) {
+export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false, quiet = false }: Props) {
   const { t, moduleName } = useI18n()
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
@@ -158,7 +159,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
 
   return (
     <nav
-      className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''}`}
+      className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''} ${quiet ? styles.quiet : ''}`}
       aria-label={t.chain.aria}
     >
       {chain.map((mod, index) => {

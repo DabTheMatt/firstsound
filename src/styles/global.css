@@ -15,6 +15,18 @@
   --toolbar-font: 10px;
   --toolbar-tracking: 0.12em;
   --field-stack-gap: 12px;
+  --surface-app: var(--bg-app);
+  --surface-workspace: var(--bg-panel);
+  --surface-context: var(--bg-panel);
+  --surface-raised: var(--bg-panel-elevated, var(--bg-panel));
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --control-compact: 28px;
+  --control-standard: 32px;
+  --control-touch: 44px;
 }
 
 *,

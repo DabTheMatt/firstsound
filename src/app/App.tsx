@@ -54,7 +54,7 @@ import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySenso
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
 import { cloneFxLfos } from '../audio/fx/lfo'
-import { automationEqual, cloneAutomation, EMPTY_AUTOMATION_FOCUS, type AutomationDocument, type AutomationEditFocus } from '../audio/automation/automation'
+import { automationEqual, cloneAutomation, EMPTY_AUTOMATION_FOCUS, laneFor, type AutomationDocument, type AutomationEditFocus } from '../audio/automation/automation'
 import {
   nextSamplePcmId,
   snapshotFromCapture,
@@ -72,7 +72,21 @@ import { SimpleShell } from '../simple/SimpleShell'
 import { cloneSpectralState, spectralStatesEqual, type SpectralState } from '../audio/spectral/bands'
 import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../sensory/colorSound'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
+import { useTechnicalInterface } from './useTechnicalInterface'
+import { TechnicalInterfaceSetting } from '../components/workspace/TechnicalInterfaceSetting'
+import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
+import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
+import { ContextBar } from '../components/workspace/ContextBar'
+import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
+import { FftPrimaryBar } from '../components/workspace/FftPrimaryBar'
+import { vizForWorkspace, workspaceFromViz, type TechnicalWorkspaceId } from '../components/workspace/workspaces'
+import { countHiddenActivity } from '../components/workspace/disclosure'
+import { parameterModulationState } from '../components/modulation/modulationModel'
+import { toNormalized } from '../audio/parameters/mapping'
+import { PARAMS } from '../audio/parameters/definitions'
+import type { ParamId } from '../audio/parameters/types'
 import styles from './App.module.css'
+import ws from '../components/workspace/Workspace.module.css'
 
 type Hist = {
   start: number
@@ -161,9 +175,11 @@ function histEqual(a: Hist, b: Hist): boolean {
 export default function App() {
   const { t } = useI18n()
   const { settings: a11y } = useA11ySettings()
+  const [technicalUi, setTechnicalUi] = useTechnicalInterface()
   const snap = useEngine()
   const { mode, width: viewportWidth, height: viewportHeight } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
+  const workspaceOn = technicalUi === 'workspace' && !isPhoneLayout
   const [menuOpen, setMenuOpen] = useState(false)
   const [libraryTick, setLibraryTick] = useState(0)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
@@ -178,6 +194,8 @@ export default function App() {
   const [inspectorOpen, setInspectorOpen] = useState(true)
   const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
   const [focusWorkspace, setFocusWorkspace] = useState<FocusWorkspace | null>(null)
+  const [hearingBoard, setHearingBoard] = useState(false)
+  const [contextLevel, setContextLevel] = useState<'closed' | 'compact' | 'open'>('compact')
   const [analyzerOpen, setAnalyzerOpen] = useState(false)
   const [collapseToken, setCollapseToken] = useState(0)
   const [zoomLabel, setZoomLabel] = useState('100%')
@@ -585,6 +603,11 @@ export default function App() {
     const routed = routeModule(instanceId, mod.type, pane)
     rememberFocus(routed.focus)
     setInspectorOpen(routed.inspectorOpen)
+    if (workspaceOn && mod.type === 'eq') {
+      setHearingBoard(false)
+      setViz('eq-split')
+    }
+    if (workspaceOn && contextLevel === 'closed') setContextLevel('compact')
     if (mode === 'sheet') {
       setSheetLevel('medium')
       if (mod.type === 'eq') setViz('eq-split')
@@ -751,6 +774,39 @@ export default function App() {
     setFocusWorkspace('hearing')
   }
 
+  const workspaceId = workspaceFromViz(viz, hearingBoard)
+
+  const activateWorkspace = (id: TechnicalWorkspaceId) => {
+    if (id === 'hearing') {
+      setHearingBoard(true)
+      const current = readStoredHearingSettings()
+      persistHearingSettings({
+        ...current,
+        enabled: true,
+        panelOpen: false,
+        profile: current.enabled ? current.profile : 'visual',
+        layers: current.enabled ? current.layers : layersForProfile('visual'),
+      })
+      if (contextLevel === 'closed') setContextLevel('compact')
+      return
+    }
+    setHearingBoard(false)
+    if (id === 'eq') {
+      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+      if (eq) selectModule(eq.instanceId)
+      else setViz('eq-split')
+      if (contextLevel === 'closed') setContextLevel('compact')
+      return
+    }
+    const nextViz = vizForWorkspace(id)
+    if (!nextViz) return
+    const routed = routeViz(nextViz, focus, true)
+    setViz(routed.viz)
+    rememberFocus(routed.focus)
+    setInspectorOpen(true)
+    if (contextLevel === 'closed') setContextLevel('compact')
+  }
+
   const focusViz = (next: VizMode) => {
     if (next === 'eq-split') {
       const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
@@ -768,17 +824,53 @@ export default function App() {
   const dockRight = mode === 'dock-right'
   const sheet = mode === 'sheet'
   const compact = mode !== 'dock-right'
+  const workspaceContextBottom = workspaceOn && dockRight && viewportWidth < 1180
   const activeSheetLevel = isPhoneLayout && sheetLevel === 'medium' ? 'collapsed' : sheetLevel
 
   const moreOpen = menuOpen
 
   const panelKey = inspectorKey(resolvedFocus)
-  const inspector = inspectorOpen ? (
-    resolvedFocus.kind === 'automation' ? (
+  const hiddenCount =
+    workspaceOn && resolvedFocus.kind === 'module'
+      ? countHiddenActivity({
+          type: resolvedFocus.type,
+          params: snap.params,
+          automated: (id: ParamId) => (laneFor(snap.automation, id)?.nodes.length ?? 0) > 0,
+          modulated: (id: ParamId) =>
+            parameterModulationState({
+              lfos: snap.fxLfos,
+              automation: snap.automation,
+              paramId: id,
+              baseNormalized: toNormalized(snap.params[id], PARAMS[id]),
+              editorOpen: false,
+            }).lfoActive,
+          randomized: (id: ParamId) => Boolean(snap.random.generators[id]?.auto),
+          extra:
+            (resolvedFocus.type === 'gain' && snap.direction !== 'forward' ? 1 : 0) +
+            (resolvedFocus.type === 'eq' && (snap.eqById[resolvedFocus.instanceId]?.comb ?? snap.comb).enabled ? 1 : 0),
+        })
+      : 0
+  const showContext = workspaceOn ? contextLevel !== 'closed' && !activeFocus : inspectorOpen
+  const inspector = showContext ? (
+    workspaceOn && workspaceId === 'hearing' && contextLevel === 'compact' ? (
+      <p className={ws.hearingNote}>
+        {t.workspace.hearingNote}
+        <button
+          type="button"
+          className={ws.textButton}
+          onClick={() => {
+            const current = readStoredHearingSettings()
+            persistHearingSettings({ ...current, enabled: true, panelOpen: true })
+          }}
+        >
+          {t.workspace.hearingQuick}
+        </button>
+      </p>
+    ) : resolvedFocus.kind === 'automation' ? (
       <AutomationInspector
         sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
         compact={isPhoneLayout}
-        onHideInspector={dockRight ? hideInspector : undefined}
+        onHideInspector={workspaceOn ? undefined : dockRight ? hideInspector : undefined}
         onCommit={commit}
         focus={autoFocus}
         onFocus={setAutoFocus}
@@ -801,7 +893,9 @@ export default function App() {
       }}
       knobs={mode !== 'sheet' || isPhoneLayout}
       compact={isPhoneLayout}
-      onHideInspector={dockRight ? hideInspector : undefined}
+      disclosure={workspaceOn && contextLevel === 'compact' ? 'compact' : 'full'}
+      hideEqPlot={workspaceOn && workspaceId === 'eq'}
+      onHideInspector={workspaceOn ? undefined : dockRight ? hideInspector : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
       edits={{
         canCopy: snap.canCopySelection,
@@ -822,6 +916,20 @@ export default function App() {
     />
     )
   ) : null
+  const contextBody =
+    workspaceOn && inspector ? (
+      <ContextBar
+        level={contextLevel === 'closed' ? 'compact' : contextLevel}
+        hiddenCount={hiddenCount}
+        onClose={() => setContextLevel('closed')}
+        onCompact={() => setContextLevel('compact')}
+        onOpen={() => setContextLevel('open')}
+      >
+        {inspector}
+      </ContextBar>
+    ) : (
+      inspector
+    )
 
   const actions = useMemo(
     () => (
@@ -975,10 +1083,11 @@ export default function App() {
         <button type="button" onClick={() => applyHistory(redoHistory(history))}>
           {t.settings.redo}
         </button>
+        <TechnicalInterfaceSetting value={technicalUi} onChange={setTechnicalUi} />
         <A11ySettings />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout, resetSession],
+    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
   )
 
   const fileInputs = (
@@ -1188,6 +1297,9 @@ export default function App() {
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
         data-workspace={activeFocus ? 'focus' : 'edit'}
+        data-technical-ui={workspaceOn ? 'workspace' : 'classic'}
+        data-context={workspaceOn ? contextLevel : undefined}
+        data-context-place={workspaceContextBottom ? 'bottom' : undefined}
         data-focus={activeFocus ?? undefined}
         data-phone-viz={isPhoneLayout ? phoneDisplayViz(viz) : undefined}
         style={
@@ -1222,6 +1334,9 @@ export default function App() {
               <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />
             </div>
             )
+          }
+          uiSwitch={
+            isPhoneLayout ? undefined : <TechnicalUiSwitch value={technicalUi} onChange={setTechnicalUi} />
           }
         />
         <div className={styles.stage}>
@@ -1276,10 +1391,63 @@ export default function App() {
             onSelect={selectModule}
             touch={compact}
             minimal={isPhoneLayout}
+            quiet={workspaceOn}
           />
         </section>
 
-        {isPhoneLayout ? null : (
+        {isPhoneLayout ? null : workspaceOn ? (
+          <div data-workspace-chrome="">
+            <WorkspaceTabs
+              workspace={workspaceId}
+              onWorkspace={activateWorkspace}
+              contextClosed={contextLevel === 'closed'}
+              onOpenContext={() => setContextLevel('compact')}
+              onEnterFocus={() => {
+                if (workspaceId === 'hearing') enterHearingFocus()
+                else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
+              }}
+            />
+            {workspaceId === 'fft' ? <FftPrimaryBar /> : null}
+            {workspaceId === 'wave' ? (
+              <SelectionToolbar
+                selected={snap.canClearSelection}
+                zoomLabel={zoomLabel}
+                onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
+                onZoomOut={() => waveRef.current?.zoomBy(1.4)}
+                onFit={() => waveRef.current?.fitSample()}
+                primary={[
+                  { id: 'cut', label: t.waveform.cutCaption, disabled: !snap.canCutSelection, onClick: cutSelection },
+                  { id: 'copy', label: t.waveform.copyCaption, disabled: !snap.canCopySelection, onClick: copySelection },
+                  { id: 'mute', label: t.waveform.muteSelectionCaption, disabled: !snap.canMuteSelection, onClick: muteSelection },
+                  { id: 'delete', label: t.waveform.deleteSelectionCaption, disabled: !snap.canDeleteSelection, danger: true, onClick: deleteSelection },
+                  { id: 'fade-in', label: t.waveform.fadeIn, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('in') },
+                  { id: 'fade-out', label: t.waveform.fadeOut, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('out') },
+                ]}
+                more={[
+                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
+                  { id: 'trim', label: t.waveform.trim, disabled: !snap.sampleLoaded, onClick: () => {
+                    void engine.trimPlayRegion().then((ok) => {
+                      if (!ok) return
+                      setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                      waveRef.current?.fitSample()
+                      commit()
+                    })
+                  } },
+                  { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
+                  { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
+                  { id: 'undo', label: t.waveform.undo, disabled: history.past.length === 0, onClick: () => applyHistory(undoHistory(history)) },
+                  { id: 'redo', label: t.waveform.redo, disabled: history.future.length === 0, onClick: () => applyHistory(redoHistory(history)) },
+                  { id: 'norm', label: t.waveform.normalizeView, onClick: () => setNormalizeView((value) => !value) },
+                  { id: 'auto-fade', label: t.waveform.autoFadeTitle, onClick: () => {
+                    setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
+                    commit()
+                  } },
+                  { id: 'arrange', label: arrangement === 'multi' ? t.waveform.wave : t.waveform.multi, onClick: () => setArrangement((value) => (value === 'multi' ? 'single' : 'multi')) },
+                ]}
+              />
+            ) : null}
+          </div>
+        ) : (
         <WaveformToolbar
           tool={tool}
           onTool={selectTool}
@@ -1477,6 +1645,7 @@ export default function App() {
               onSelectTrack={followTrack}
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
               onEnterFocus={enterNamedFocus}
+              calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
               onInspectEffect={(trackId, instanceId) => {
                 if (engine.getSnapshot().selectedTrackId !== trackId) {
                   intentRef.current = trackId
@@ -1486,12 +1655,12 @@ export default function App() {
               }}
             />
           </div>
-          {dockRight && inspectorOpen && !activeFocus ? (
+          {dockRight && showContext && !activeFocus && !workspaceContextBottom ? (
             <aside className={styles.inspector} data-inspector={panelKey}>
-              {inspector}
+              {contextBody}
             </aside>
           ) : null}
-          {dockRight && !inspectorOpen && !activeFocus ? (
+          {dockRight && !workspaceOn && !inspectorOpen && !activeFocus ? (
             <div className={styles.inspectorReveal} data-inspector-toggle="show">
               <InspectorEye open={false} onClick={revealInspector} />
             </div>
@@ -1512,7 +1681,7 @@ export default function App() {
           </div>
         ) : null}
 
-        {!isPhoneLayout && !dockRight && inspectorOpen && !activeFocus ? (
+        {!isPhoneLayout && (!dockRight || workspaceContextBottom) && showContext && !activeFocus ? (
           <div
             className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}
             data-inspector={panelKey}
@@ -1530,7 +1699,7 @@ export default function App() {
                 {t.banner.inspector}
               </button>
             ) : null}
-            {activeSheetLevel !== 'collapsed' || !sheet ? inspector : null}
+            {activeSheetLevel !== 'collapsed' || !sheet ? contextBody : null}
           </div>
         ) : null}
 

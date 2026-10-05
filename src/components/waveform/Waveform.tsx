@@ -148,6 +148,11 @@ type Props = {
   onInspectEffect?: (trackId: string, instanceId: string) => void
   /** Opens Focus for the view this surface is showing. */
   onEnterFocus?: (workspace: 'wave' | 'fft' | 'eq' | 'auto') => void
+  /**
+   * Experimental Technical workspace. Presentation only: which surface is dominant.
+   * Null keeps the classic stack. Does not change playback or the audio graph.
+   */
+  calmWorkspace?: FocusWorkspace | null
 }
 
 export type WaveformHandle = {
@@ -277,6 +282,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onEditTrack,
     onInspectEffect,
     onEnterFocus,
+    calmWorkspace = null,
   },
   ref,
 ) {
@@ -1309,7 +1315,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     deleteAutomationNodeRef.current = deleteSelectedAutomationNode
     applyFadeRef.current = applyDefaultFade
   })
-  const hearingFocus = phoneFocus === 'hearing'
+  const calm = calmWorkspace != null && !phone && phoneFocus == null
+  const hearingFocus = phoneFocus === 'hearing' || (calm && calmWorkspace === 'hearing')
   const { settings: hearingSettings } = useHearingSettings()
   const showWaveLegend = (hearingFocus || hearingSettings.enabled) && !sensory && !simple
   const showWave = hearingFocus || phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
@@ -1370,7 +1377,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
   const eqFocus = phoneFocus === 'eq'
   const eqFocusClean = phoneEq || eqFocus
-  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus
+  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus && !calm
+  const calmEq = calm && calmWorkspace === 'eq'
+  const calmFft = calm && calmWorkspace === 'fft'
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
   const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split')
 
@@ -1378,6 +1387,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     <div
       className={`${styles.editor} ${hearingFocus ? styles.hearingEditor : ''} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
+      data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
         <div
@@ -1738,9 +1748,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                   )}
             </div>
           </div>
-          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) && !phoneFocus ? (
+          {loaded && duration > 0 && !sensory && !simple && (!phone || zoomed) && !phoneFocus && (!calm || (calmWorkspace === 'wave' && zoomed)) ? (
             <Overview
-              thin={phone}
+              thin={phone || Boolean(calm)}
               duration={duration}
               start={start}
               end={end}
@@ -1749,7 +1759,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               onScrub={setView}
             />
           ) : null}
-          {onEnterFocus && !phoneFocus ? (
+          {onEnterFocus && !phoneFocus && !calm ? (
             <EnterFocusButton
               corner
               label={automationView ? 'Automation' : 'Wave'}
@@ -1808,8 +1818,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <Spectrum
               active={showSpec}
               compact={phone}
-              phoneFocus={eqFocus}
-              suppressAnalyzerChrome={phoneFocus === 'fft'}
+              phoneFocus={eqFocus || calmEq}
+              suppressAnalyzerChrome={phoneFocus === 'fft' || calmFft || calmEq}
+              hideLegend={calmFft}
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
@@ -1905,7 +1916,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           </>
         ) : null}
       </div>
-      {loaded && duration > 0 && !showWave && !showArrangement && !phone && !phoneFocus ? (
+      {loaded && duration > 0 && !showWave && !showArrangement && !phone && !phoneFocus && !calm ? (
         <Overview
           duration={duration}
           start={start}

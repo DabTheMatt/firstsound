@@ -57,6 +57,40 @@
   max-height: 44px;
 }
 
+.quiet .tile,
+.quiet .tile.enabled,
+.quiet .tile.bypassed {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.quiet .tile {
+  color: var(--text-muted);
+}
+
+.quiet .tile.enabled {
+  color: var(--text-secondary);
+}
+
+.quiet .tile.bypassed {
+  color: var(--text-disabled);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.quiet .tile.selected,
+.quiet .tile.selected.enabled,
+.quiet .tile.selected.bypassed,
+.quiet .tile.selected:hover,
+.quiet .tile.selected.enabled:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: inset 0 -1px 0 var(--accent-primary);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
 .tile.enabled {
   border-color: transparent;
   background: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-panel));

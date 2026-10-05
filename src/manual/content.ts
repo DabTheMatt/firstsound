@@ -38,6 +38,15 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'technical-interface',
+    title: 'Technical interface',
+    body: [
+      'Technical has two presentations. Classic is the current layout. Workspace (Experimental) reorganizes the same Technical controls: a chain, one active workspace (Wave, EQ, FFT, Auto, or Hearing), contextual controls, and transport. It uses the same audio engine and the same features.',
+      'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the workspace header. Exit Focus returns the chrome without changing the sound, the selection, or the playhead.',
+      'Workspace is experimental. Settings → Technical interface → Classic switches back immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
+    ],
+  },
+  {
     id: 'load',
     title: 'Loading audio',
     body: [
@@ -330,6 +339,15 @@ const pl: ManualSection[] = [
     body: [
       'Na starcie wybierz Technical, Simple albo Sensory. Technical to pełny edytor. Simple i Sensory to cieńsze powierzchnie tego samego silnika.',
       'Zezwól na dźwięk, gdy przeglądarka zapyta. Jeśli status mówi, że audio jest zablokowane, kliknij stronę jeszcze raz, żeby AudioContext mógł wystartować.',
+    ],
+  },
+  {
+    id: 'technical-interface',
+    title: 'Interfejs techniczny',
+    body: [
+      'Technical ma dwa układy. Klasyczny to dotychczasowy widok. Workspace (eksperymentalny) układa te same kontrolki inaczej: łańcuch, jeden aktywny obszar (Fala, EQ, FFT, Auto albo Hearing), kontrolki kontekstu i transport. Korzysta z tego samego silnika i tych samych funkcji.',
+      'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest w nagłówku obszaru. Wyjście przywraca ramkę i nie zmienia dźwięku, zaznaczenia ani głowicy.',
+      'Workspace jest eksperymentalny. Ustawienia → Interfejs techniczny → Klasyczny wraca od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
     ],
   },
   {

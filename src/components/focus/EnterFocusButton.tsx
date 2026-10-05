@@ -5,17 +5,20 @@ type Props = {
   onClick: () => void
   /** Pins the button to the top-right of the nearest positioned surface. */
   corner?: boolean
+  /** Overrides the default "{label} focus" name. Workspace uses Enter Focus Mode. */
+  accessibleName?: string
 }
 
 /** Opens Focus for one view. The brackets match the toolbar focus icon. */
-export function EnterFocusButton({ label, onClick, corner = false }: Props) {
+export function EnterFocusButton({ label, onClick, corner = false, accessibleName }: Props) {
+  const name = accessibleName ?? `${label} focus`
   return (
     <button
       type="button"
       className={corner ? `${styles.button} ${styles.corner}` : styles.button}
       data-enter-focus=""
-      aria-label={`${label} focus`}
-      title={`${label} focus`}
+      aria-label={name}
+      title={name}
       onClick={onClick}
     >
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">

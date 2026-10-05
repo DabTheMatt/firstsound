@@ -67,6 +67,7 @@ import { EffectRandomMenu } from '../random/EffectRandomMenu'
 import { selectEqBand, subscribeEqBandSelection } from '../../audio/engine/eqBandSelection'
 import { ParamActionPair } from '../random/ParamActionPair'
 import { inspectorAccentStyle, TrackIdentity } from './TrackIdentity'
+import { primaryParamIds } from '../workspace/disclosure'
 import styles from './Inspector.module.css'
 
 export type EditActions = {
@@ -103,6 +104,10 @@ type Props = {
   compact?: boolean
   /** Phone sheet: essentials only until the sheet is expanded. */
   detail?: 'essential' | 'full'
+  /** Experimental Technical context. Compact shows primary controls only. */
+  disclosure?: 'full' | 'compact'
+  /** Workspace EQ graph already owns the plot. */
+  hideEqPlot?: boolean
   onHideInspector?: () => void
   edits?: EditActions
 }
@@ -178,6 +183,8 @@ export function Inspector({
   knobs = true,
   compact = false,
   detail = 'full',
+  disclosure = 'full',
+  hideEqPlot = false,
   onHideInspector,
   edits,
 }: Props) {
@@ -211,6 +218,8 @@ export function Inspector({
           variant={variant}
           paneHint={focus.pane}
           detail={detail}
+          disclosure={disclosure}
+          hideEqPlot={hideEqPlot}
           onHideInspector={onHideInspector}
         />
       )}
@@ -506,6 +515,8 @@ function ModuleInspector({
   variant,
   paneHint,
   detail = 'full',
+  disclosure = 'full',
+  hideEqPlot = false,
   onHideInspector,
 }: {
   snap: EngineSnapshot
@@ -514,6 +525,8 @@ function ModuleInspector({
   variant: 'knob' | 'slider'
   paneHint?: 'main' | 'advanced'
   detail?: 'essential' | 'full'
+  disclosure?: 'full' | 'compact'
+  hideEqPlot?: boolean
   onHideInspector?: () => void
 }) {
   const { t } = useI18n()
@@ -523,7 +536,7 @@ function ModuleInspector({
     if (!paneHint) return
     setPaneById((prev) => (prev[instanceId] === paneHint ? prev : { ...prev, [instanceId]: paneHint }))
   }, [paneHint, instanceId])
-  const pane = detail === 'essential' ? 'main' : (paneById[instanceId] ?? paneHint ?? 'main')
+  const pane = detail === 'essential' || disclosure === 'compact' ? 'main' : (paneById[instanceId] ?? paneHint ?? 'main')
   const setPane = (next: 'main' | 'advanced') =>
     setPaneById((prev) => (prev[instanceId] === next ? prev : { ...prev, [instanceId]: next }))
   const hasAdvanced = type !== 'output'
@@ -539,6 +552,35 @@ function ModuleInspector({
     ) : (
       ids.map((id) => <ParamControl key={id} id={id} value={snap.params[id]} variant={variant} />)
     )
+  const compact = disclosure === 'compact'
+  if (compact && type !== 'eq') {
+    const ids = primaryParamIds(type)
+    return (
+      <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
+        <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact">
+          <div className={styles.head}>
+            <h2 className={styles.title} id={`module-${instanceId}-title`}>
+              {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
+            </h2>
+            <div className={styles.headActions}>
+              {type !== 'gain' && type !== 'output' ? (
+                <Toggle
+                  pressed={!mod?.bypassed}
+                  label={mod?.bypassed ? t.inspector.bypassed : t.inspector.active}
+                  reserveLabel={mod?.bypassed ? t.inspector.active : t.inspector.bypassed}
+                  onToggle={() => engine.toggleModuleBypass(instanceId)}
+                />
+              ) : null}
+            </div>
+          </div>
+          {ids.length ? params([...ids]) : null}
+          {type === 'output' ? (
+            <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
+          ) : null}
+        </section>
+      </ModulationScopeProvider>
+    )
+  }
   return (
     <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
     <section className={styles.module} aria-labelledby={`module-${instanceId}-title`}>
@@ -570,7 +612,7 @@ function ModuleInspector({
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
-      {hasAdvanced && detail !== 'essential' ? (
+      {hasAdvanced && detail !== 'essential' && disclosure !== 'compact' ? (
         <InspectorTabs
           value={pane}
           onChange={setPane}
@@ -719,7 +761,14 @@ function ModuleInspector({
         </>
       ) : null}
       {type === 'eq' ? (
-        <EqEditor snap={snap} instanceId={instanceId} knobs={variant === 'knob'} pane={pane} />
+        <EqEditor
+          snap={snap}
+          instanceId={instanceId}
+          knobs={variant === 'knob'}
+          pane={pane}
+          compact={disclosure === 'compact'}
+          hidePlot={hideEqPlot || disclosure === 'compact'}
+        />
       ) : null}
       {type === 'filter' ? <FilterInspector snap={snap} variant={variant} pane={pane} /> : null}
       {type === 'midside' ? <MidSideInspector snap={snap} variant={variant} pane={pane} /> : null}
@@ -905,11 +954,15 @@ function EqEditor({
   knobs,
   instanceId,
   pane,
+  compact = false,
+  hidePlot = false,
 }: {
   snap: EngineSnapshot
   knobs: boolean
   instanceId: string
   pane: 'main' | 'advanced'
+  compact?: boolean
+  hidePlot?: boolean
 }) {
   const [openBand, setOpenBand] = useState(0)
   const chooseBand = (index: number) => {
@@ -942,6 +995,29 @@ function EqEditor({
   return (
     <div className={styles.eq}>
       {pane === 'main' ? (
+        <>
+      {compact ? (
+        <ul className={styles.filterList} aria-label="Filters">
+          {bands.map((band, index) => {
+            const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
+            const on = openBand === index
+            return (
+              <li key={eqStripKey(instanceId, band)}>
+                <button
+                  type="button"
+                  className={on ? styles.filterOn : styles.filterRow}
+                  aria-pressed={on}
+                  onClick={() => chooseBand(index)}
+                >
+                  <span>EQ {index + 1}</span>
+                  <span>{formatHz(band.frequency)}</span>
+                  <span>{band.bypassed ? 'Bypass' : typeLabel}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
         <>
       <PresetMenu
         label="EQ presets"
@@ -980,6 +1056,7 @@ function EqEditor({
         wrap
         onChange={(mode) => engine.setEqListen(mode)}
       />
+      {hidePlot ? null : (
       <div className={styles.eqViz}>
         <EqCurve
           bands={bands}
@@ -993,7 +1070,11 @@ function EqEditor({
           onDragBand={(index, patch) => setBand(index, patch)}
         />
       </div>
+      )}
+        </>
+      )}
       {bands.map((band, index) => (
+        compact && index !== openBand ? null : (
         <details
           key={eqStripKey(instanceId, band)}
           className={styles.band}
@@ -1233,6 +1314,7 @@ function EqEditor({
             </>
           )}
         </details>
+        )
       ))}
       {bands.length < EQ_MAX_BANDS ? (
         <button

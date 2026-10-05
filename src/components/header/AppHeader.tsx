@@ -24,6 +24,8 @@ type Props = {
   compact: boolean
   minimal?: boolean
   modeSwitch?: ReactNode
+  uiSwitch?: ReactNode
+  zoned?: boolean
 }
 
 export function AppHeader({
@@ -38,6 +40,8 @@ export function AppHeader({
   compact,
   minimal = false,
   modeSwitch,
+  uiSwitch,
+  zoned = false,
 }: Props) {
   const { t } = useI18n()
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
@@ -52,7 +56,7 @@ export function AppHeader({
           ? t.header.channels(snap.channelCount)
           : '—'
   return (
-    <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''}`}>
+    <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''} ${zoned ? styles.zoned : ''}`}>
       <div className={styles.brand}>
         <Wordmark compact={minimal} />
         <button
@@ -143,6 +147,7 @@ export function AppHeader({
         </button>
         ) : null}
         <div className={styles.utilities}>
+          {uiSwitch}
           <ResetSessionButton onReset={onReset} label={t.header.resetAction} toolbar />
           <ChaosControl />
           <button

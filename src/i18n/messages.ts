@@ -136,6 +136,24 @@ export type Messages = {
     undo: string
     redo: string
   }
+  workspace: {
+    interface: string
+    classic: string
+    workspace: string
+    experimental: string
+    settingHint: string
+    workspaces: string
+    context: string
+    close: string
+    closeContext: string
+    more: string
+    less: string
+    moreEdit: string
+    analyzerLayer: string
+    analyzerSettings: string
+    hearingNote: string
+    hearingQuick: string
+  }
   runtime: { refresh: string; refreshing: string; refreshTitle: string; uiLoadTitle: string }
   banner: { audioBlocked: string; inspector: string }
   mobile: {
@@ -832,6 +850,24 @@ export const EN: Messages = {
     revertSource: 'Revert to source',
     undo: 'Undo',
     redo: 'Redo',
+  },
+  workspace: {
+    interface: 'Technical interface',
+    classic: 'Classic',
+    workspace: 'Workspace',
+    experimental: 'Experimental',
+    settingHint: 'Workspace rearranges Technical controls. It uses the same engine, project, and sound. Switch back to Classic here at any time.',
+    workspaces: 'Technical workspaces',
+    context: 'Context',
+    close: 'Close',
+    closeContext: 'Close context',
+    more: 'More',
+    less: 'Less',
+    moreEdit: 'More edit commands',
+    analyzerLayer: 'Analyzer layer',
+    analyzerSettings: 'Analyzer settings',
+    hearingNote: 'Full hearing analysis is this workspace. The quick panel is still available.',
+    hearingQuick: 'Quick view',
   },
   runtime: {
     refresh: 'Refresh app',
@@ -1641,6 +1677,24 @@ export const PL: Messages = {
     revertSource: 'Przywróć źródło',
     undo: 'Cofnij',
     redo: 'Ponów',
+  },
+  workspace: {
+    interface: 'Interfejs techniczny',
+    classic: 'Klasyczny',
+    workspace: 'Workspace',
+    experimental: 'Eksperymentalny',
+    settingHint: 'Workspace układa kontrolki Technical inaczej. Korzysta z tego samego silnika, projektu i dźwięku. W każdej chwili można wrócić do Klasycznego.',
+    workspaces: 'Obszary Technical',
+    context: 'Kontekst',
+    close: 'Zamknij',
+    closeContext: 'Zamknij kontekst',
+    more: 'Więcej',
+    less: 'Mniej',
+    moreEdit: 'Więcej poleceń edycji',
+    analyzerLayer: 'Warstwa analizatora',
+    analyzerSettings: 'Ustawienia analizatora',
+    hearingNote: 'Pełna analiza Hearing jest tym obszarem roboczym. Zwięzły panel zostaje dostępny.',
+    hearingQuick: 'Szybki podgląd',
   },
   runtime: {
     refresh: 'Odśwież aplikację',

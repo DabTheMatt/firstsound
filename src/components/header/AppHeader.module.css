@@ -15,6 +15,21 @@
   container-name: app-header;
 }
 
+.zoned {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr);
+  column-gap: 12px;
+}
+
+.zoned .tools {
+  justify-content: center;
+}
+
+.zoned .trailing {
+  margin-left: 0;
+  justify-self: end;
+}
+
 .compact {
   min-height: 32px;
 }

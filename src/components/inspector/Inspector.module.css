@@ -1205,3 +1205,35 @@
   width: 100%;
   overflow: visible;
 }
+
+.filterList {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filterRow,
+.filterOn {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+  font-size: 12px;
+  min-height: 32px;
+}
+
+.filterOn {
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent-primary);
+}
+

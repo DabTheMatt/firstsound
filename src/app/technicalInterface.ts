@@ -1,0 +1,34 @@
+export const TECHNICAL_INTERFACE_KEY = 'field.technicalInterface'
+
+/** Presentation variant of Technical mode. Not an audio mode. */
+export const TECHNICAL_INTERFACES = ['classic', 'workspace'] as const
+
+export type TechnicalInterface = (typeof TECHNICAL_INTERFACES)[number]
+
+export function parseTechnicalInterface(raw: string | null | undefined): TechnicalInterface {
+  return raw === 'workspace' ? 'workspace' : 'classic'
+}
+
+export function readStoredTechnicalInterface(): TechnicalInterface {
+  try {
+    return parseTechnicalInterface(localStorage.getItem(TECHNICAL_INTERFACE_KEY))
+  } catch {
+    return 'classic'
+  }
+}
+
+const listeners = new Set<() => void>()
+
+export function persistTechnicalInterface(next: TechnicalInterface): void {
+  try {
+    localStorage.setItem(TECHNICAL_INTERFACE_KEY, next)
+  } catch {
+    /* private mode */
+  }
+  for (const listener of listeners) listener()
+}
+
+export function subscribeTechnicalInterface(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
