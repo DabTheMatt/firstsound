@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
+import { PARAMS } from '../audio/parameters/definitions'
 import { formatSimpleClock } from '../audio/engine/formatTime'
 import type { EditState } from '../app/editorState'
 import type { WaveformHandle } from '../components/waveform/Waveform'
@@ -133,6 +134,7 @@ export function SimpleShell({
   const [saveRate, setSaveRate] = useState<'original' | '44100' | '48000'>('original')
   const [saveBits, setSaveBits] = useState<16 | 24>(24)
   const [saveMono, setSaveMono] = useState(false)
+  const [saveTail, setSaveTail] = useState(true)
   const [saving, setSaving] = useState(false)
   const saveBusyRef = useRef(false)
   const liveDspRef = useRef(captureDsp(engine))
@@ -321,7 +323,7 @@ export function SimpleShell({
     void (async () => {
       try {
         await new Promise((resolve) => setTimeout(resolve, 0))
-        const pcm = await bounceSimplePcm(engine, edit)
+        const pcm = await bounceSimplePcm(engine, edit, { includeEffectTail: saveTail })
         if (!pcm) return
         const prepared = prepareSimpleExportPcm(pcm, {
           name: saveName,
@@ -524,6 +526,29 @@ export function SimpleShell({
               >
                 {t.simple.evenOut}
               </button>
+              <label className={styles.amount}>
+                <span>
+                  {t.simple.gain}
+                  <em>{t.simple.gainValue(formatSimpleDb(snap.params.gain, locale))}</em>
+                </span>
+                <input
+                  type="range"
+                  min={PARAMS.gain.min}
+                  max={PARAMS.gain.max}
+                  step={PARAMS.gain.step ?? 0.1}
+                  value={snap.params.gain}
+                  disabled={!snap.sampleLoaded}
+                  aria-label={t.simple.gainAria(formatSimpleDb(snap.params.gain, locale))}
+                  onPointerDown={() => exitOriginal()}
+                  onChange={(event) => {
+                    exitOriginal()
+                    engine.setParam('gain', Number(event.target.value))
+                  }}
+                  onPointerUp={() => onToneCommit()}
+                  onPointerCancel={() => onToneCommit()}
+                  onKeyUp={() => onToneCommit()}
+                />
+              </label>
             </section>
           </div>
         ) : null}
@@ -775,7 +800,9 @@ export function SimpleShell({
                     appearance="simple"
                     trimHandles
                     emptyLabel={t.simple.loadSample}
+                    onLoadSample={onLoadSample}
                     onLoadDemo={onLoadDemo}
+                    fxMode={!listenOriginal && delay.kind !== 'off' ? 'delay' : null}
                   />
                 </div>
                 {hasSelection ? (
@@ -829,6 +856,29 @@ export function SimpleShell({
                 </label>
                 <p className={styles.sheetLabel}>{t.simple.saveFormat}</p>
                 <p className={styles.meta}>{t.simple.wav}</p>
+                <p className={styles.sheetLabel} id="simple-tail">
+                  {t.simple.tail}
+                </p>
+                <div className={styles.tail} role="radiogroup" aria-labelledby="simple-tail">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={saveTail}
+                    className={saveTail ? styles.segOn : ''}
+                    onClick={() => setSaveTail(true)}
+                  >
+                    {t.simple.tailOn}
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!saveTail}
+                    className={!saveTail ? styles.segOn : ''}
+                    onClick={() => setSaveTail(false)}
+                  >
+                    {t.simple.tailOff}
+                  </button>
+                </div>
                 <button type="button" className={styles.textBtn} onClick={() => setMoreSave((value) => !value)}>
                   {moreSave ? t.simple.hideSettings : t.simple.moreSettings}
                 </button>
@@ -884,6 +934,33 @@ export function SimpleShell({
   )
 }
 
+function formatSimpleDb(value: number, locale: 'en' | 'pl'): string {
+  const text = value.toFixed(1)
+  return locale === 'pl' ? text.replace('.', ',') : text
+}
+
+function fadeIconPath(side: 'in' | 'out', step: FadeStepId): string {
+  if (side === 'in') {
+    if (step === 'none') return 'M4 17 V5 H32'
+    if (step === 'short') return 'M4 17 C6 17 8 6 12 5 H32'
+    if (step === 'medium') return 'M4 17 C11 17 15 6 21 5 H32'
+    return 'M4 17 C13 16 22 11 32 5'
+  }
+  if (step === 'none') return 'M4 5 H32 V17'
+  if (step === 'short') return 'M4 5 H24 C28 5 30 17 32 17'
+  if (step === 'medium') return 'M4 5 H15 C21 5 25 17 32 17'
+  return 'M4 5 C14 6 23 11 32 17'
+}
+
+function FadeLengthIcon({ side, step }: { side: 'in' | 'out'; step: FadeStepId }) {
+  return (
+    <svg className={styles.fadeIcon} viewBox="0 0 36 22" aria-hidden="true">
+      <path d="M2 19 H34" />
+      <path d={fadeIconPath(side, step)} />
+    </svg>
+  )
+}
+
 function FadeMark({ side }: { side: 'in' | 'out' }) {
   const rise = side === 'in'
   return (
@@ -919,7 +996,7 @@ function FadeGroup({
         <FadeMark side={side} />
         <span className="sr-only">{label}</span>
       </h2>
-      <div className={styles.segments} role="radiogroup" aria-labelledby={id}>
+      <div className={`${styles.segments} ${styles.fadeSegments}`} role="radiogroup" aria-labelledby={id}>
         {FADE_STEP_IDS.map((step) => (
           <button
             key={step}
@@ -927,11 +1004,11 @@ function FadeGroup({
             role="radio"
             aria-checked={value === step}
             aria-label={aria(copy[step])}
-            className={value === step ? styles.segOn : ''}
+            className={`${styles.fadeStep} ${value === step ? styles.segOn : ''}`}
             disabled={disabled}
             onClick={() => onChange(step)}
           >
-            {copy[step]}
+            <FadeLengthIcon side={side} step={step} />
           </button>
         ))}
       </div>

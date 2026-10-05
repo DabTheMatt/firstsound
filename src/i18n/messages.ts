@@ -70,6 +70,12 @@ export type SimpleMessages = {
   clarity: string
   level: string
   evenOut: string
+  gain: string
+  gainValue: (db: string) => string
+  gainAria: (db: string) => string
+  tail: string
+  tailOn: string
+  tailOff: string
   reverb: string
   delay: string
   reverbHint: string
@@ -791,6 +797,12 @@ export const EN: Messages = {
     clarity: 'Clarity',
     level: 'Level',
     evenOut: 'Even out',
+    gain: 'Gain',
+    gainValue: (db) => `${db} dB`,
+    gainAria: (db) => `Gain ${db} decibels`,
+    tail: 'Effect tail',
+    tailOn: 'With tail',
+    tailOff: 'Without tail',
     reverb: 'Reverb',
     delay: 'Delay',
     reverbHint: 'Adds a sense of space.',
@@ -846,17 +858,17 @@ export const EN: Messages = {
       },
       moreBass: {
         label: 'More bass',
-        hint: 'A gentle lift in the low end.',
+        hint: 'Lifts the low end.',
         aria: 'Tone: more bass',
       },
       lessBass: {
         label: 'Less bass',
-        hint: 'A gentle reduction in the low end.',
+        hint: 'Reduces the low end.',
         aria: 'Tone: less bass',
       },
       brighter: {
         label: 'Brighter',
-        hint: 'A little more air up top.',
+        hint: 'Opens the top.',
         aria: 'Tone: brighter',
       },
       warmer: {
@@ -876,7 +888,7 @@ export const EN: Messages = {
       },
       softer: {
         label: 'Softer',
-        hint: 'A gentler top.',
+        hint: 'Rolls off the top.',
         aria: 'Clarity: softer',
       },
     },
@@ -1652,6 +1664,12 @@ export const PL: Messages = {
     clarity: 'Czytelność',
     level: 'Poziom',
     evenOut: 'Wyrównaj',
+    gain: 'Gain',
+    gainValue: (db) => `${db} dB`,
+    gainAria: (db) => `Gain ${db} decybeli`,
+    tail: 'Wybrzmienie',
+    tailOn: 'Z ogonem',
+    tailOff: 'Bez ogona',
     reverb: 'Pogłos',
     delay: 'Opóźnienie',
     reverbHint: 'Dodaje przestrzeń.',

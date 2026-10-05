@@ -3217,6 +3217,17 @@ export class AudioEngine {
     else this.emit()
   }
 
+  /**
+   * Stop has latched delay and reverb silent. Simple edits happen while
+   * playback is stopped, so the next mix has to open those sends again.
+   */
+  releaseSpaceLatch(): void {
+    this.touchRacks((rack) => {
+      rack.spaceLatched = false
+    })
+    if (this.ctx) this.applyLiveAudio()
+  }
+
   /** Cut delay/reverb recirculation and rebuild empty buffers. */
   killFx(which: 'delay' | 'reverb' | 'all' = 'all'): void {
     const keepLive = this.playing
@@ -3695,9 +3706,13 @@ export class AudioEngine {
   renderAudiblePcm(
     source: Pcm,
     timelineStart = 0,
+    options?: { includeEffectTail?: boolean },
   ): Promise<Pcm> {
     return this.occupyExport(() =>
-      renderProcessedPcm(source, this.processingSnapshot(), { timelineStart }),
+      renderProcessedPcm(source, this.processingSnapshot(), {
+        timelineStart,
+        includeEffectTail: options?.includeEffectTail,
+      }),
     )
   }
 

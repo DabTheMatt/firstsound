@@ -1486,7 +1486,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 )}
               </div>
             ) : null}
-            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || simple} aria-hidden="true" />
+            <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || (simple && !fxMode)} aria-hidden="true" />
             <div
               ref={overlayRef}
               className={`${styles.overlay} ${automationView ? styles.autoOverlay : ''} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}

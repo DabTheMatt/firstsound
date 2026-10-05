@@ -49,10 +49,12 @@ export function applySimpleReverb(engine: AudioEngine, id: SimpleReverbId, amoun
   if (!reverbTypeIsSimple(engine.getSnapshot().reverbType)) engine.setReverbType('hall')
   engine.setParams(reverbParamPatch(id, amount))
   setBypass(engine, 'reverb', false)
+  engine.releaseSpaceLatch()
 }
 
 export function applySimpleReverbAmount(engine: AudioEngine, amount: number): void {
   engine.setParams(reverbAmountPatch(amount))
+  engine.releaseSpaceLatch()
 }
 
 export function disableSimpleReverb(engine: AudioEngine): void {
@@ -65,10 +67,12 @@ export function applySimpleDelay(engine: AudioEngine, id: SimpleDelayId, amount:
   if (!delayTypeIsSimple(engine.getSnapshot().delayType)) engine.setDelayType('digital')
   engine.setParams(delayParamPatch(id, amount))
   setBypass(engine, 'delay', false)
+  engine.releaseSpaceLatch()
 }
 
 export function applySimpleDelayAmount(engine: AudioEngine, amount: number): void {
   engine.setParams(delayAmountPatch(amount))
+  engine.releaseSpaceLatch()
 }
 
 export function disableSimpleDelay(engine: AudioEngine): void {

@@ -34,11 +34,11 @@ describe('simple tone presets', () => {
     const bass = toneBandsAt('moreBass', 1)
     const low = bass[0]
     expect(low?.type).toBe('lowshelf')
-    expect(low?.gain ?? 0).toBeGreaterThan(3)
-    expect(Math.abs(low?.gain ?? 0)).toBeLessThanOrEqual(6)
+    expect(low?.gain ?? 0).toBeGreaterThan(6)
+    expect(Math.abs(low?.gain ?? 0)).toBeLessThanOrEqual(12)
     const clearer = toneBandsAt('clearer', 1)
-    expect(clearer.some((band) => Math.abs(band.gain) > 1.5)).toBe(true)
-    expect(clearer.some((band) => Math.abs(band.gain) > 6)).toBe(false)
+    expect(clearer.some((band) => Math.abs(band.gain) > 3)).toBe(true)
+    expect(clearer.some((band) => Math.abs(band.gain) > 12)).toBe(false)
   })
 
   it('returns to a flat curve when the character is natural', () => {
@@ -95,7 +95,7 @@ describe('simple effect presets', () => {
       const patch = reverbParamPatch(id, 1)
       for (const key of Object.keys(patch) as ParamId[]) expect(params[key]).toEqual(expect.any(Number))
       expect(patch.reverbWet).toBe(REVERB_WET_MAX)
-      expect(patch.reverbWet ?? 0).toBeLessThanOrEqual(40)
+      expect(patch.reverbWet ?? 0).toBeLessThanOrEqual(55)
       expect(patch.reverbDecay ?? 0).toBeLessThanOrEqual(2.4)
       expect(patch.reverbCorrelate).toBe(1)
     }
@@ -103,7 +103,7 @@ describe('simple effect presets', () => {
       const patch = delayParamPatch(id, 1)
       for (const key of Object.keys(patch) as ParamId[]) expect(params[key]).toEqual(expect.any(Number))
       expect(patch.delayWet).toBe(DELAY_WET_MAX)
-      expect(patch.delayFeedback ?? 0).toBeLessThanOrEqual(32)
+      expect(patch.delayFeedback ?? 0).toBeLessThanOrEqual(40)
       expect(patch.delayCorrelate).toBe(1)
     }
     expect(reverbParamPatch('medium', 0).reverbWet).toBe(0)

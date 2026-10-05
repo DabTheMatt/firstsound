@@ -14,11 +14,11 @@ export const SIMPLE_DELAY_IDS = ['short', 'medium', 'long'] as const
 export type SimpleDelayId = (typeof SIMPLE_DELAY_IDS)[number]
 
 /** Full Simple amount maps to this wet percent, not 100%. */
-export const REVERB_WET_MAX = 40
-export const DELAY_WET_MAX = 30
+export const REVERB_WET_MAX = 55
+export const DELAY_WET_MAX = 75
 
-export const DEFAULT_REVERB_AMOUNT = 0.4
-export const DEFAULT_DELAY_AMOUNT = 0.3
+export const DEFAULT_REVERB_AMOUNT = 0.45
+export const DEFAULT_DELAY_AMOUNT = 0.6
 
 const REVERB_FAMILY: ReadonlySet<ReverbType> = new Set(['room', 'chamber', 'hall', 'ambience', 'largeHall'])
 const DELAY_FAMILY: ReadonlySet<DelayType> = new Set(['digital', 'analog', 'tape', 'stereo'])
@@ -43,9 +43,9 @@ export const simpleReverbPresets: Record<SimpleReverbId, ReverbBody> = {
 }
 
 export const simpleDelayPresets: Record<SimpleDelayId, DelayBody> = {
-  short: { time: 90, feedback: 16 },
-  medium: { time: 220, feedback: 24 },
-  long: { time: 380, feedback: 30 },
+  short: { time: 140, feedback: 24 },
+  medium: { time: 280, feedback: 32 },
+  long: { time: 460, feedback: 40 },
 }
 
 export function clampFxAmount(amount: number): number {

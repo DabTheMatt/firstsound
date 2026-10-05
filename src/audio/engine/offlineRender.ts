@@ -420,6 +420,8 @@ export type ProcessedRenderOptions = {
   timelineStart?: number
   factory?: OfflineContextFactory
   onProgress?: (phase: ExportProgressPhase) => void
+  /** False renders only the source. The default keeps the effect decay. */
+  includeEffectTail?: boolean
 }
 
 const EXPORT_TRACE = () =>
@@ -451,7 +453,8 @@ export async function renderProcessedPcm(
   if (!(sampleRate > 0) || sourceFrames < 1) {
     return { sampleRate: sampleRate > 0 ? sampleRate : 44100, channels: [new Float32Array()] }
   }
-  const tail = effectTailBudgetSec(state.chain, state.params, state.reverbType)
+  const tail =
+    options.includeEffectTail === false ? 0 : effectTailBudgetSec(state.chain, state.params, state.reverbType)
   const length = exportFrameCount(sourceFrames, sampleRate, tail)
   const totalSeconds = length / sampleRate
   traceExport('SOURCE PREPARED', {

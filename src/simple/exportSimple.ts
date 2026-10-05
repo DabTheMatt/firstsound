@@ -20,6 +20,7 @@ export function mixPcmToMono(pcm: Pcm): Pcm {
 export async function bounceSimplePcm(
   engine: AudioEngine,
   edit: { fadeIn: number; fadeOut: number; fadeCurve: FadeCurve; fadeInBend: number; fadeOutBend: number },
+  options?: { includeEffectTail?: boolean },
 ): Promise<Pcm | null> {
   const rendered = engine.renderEdit({
     fadeIn: edit.fadeIn,
@@ -38,6 +39,7 @@ export async function bounceSimplePcm(
   return engine.renderAudiblePcm(
     { sampleRate: rendered.sampleRate, channels },
     engine.getSnapshot().params.start,
+    { includeEffectTail: options?.includeEffectTail },
   )
 }
 

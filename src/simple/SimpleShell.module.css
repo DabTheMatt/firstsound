@@ -311,6 +311,53 @@
   stroke-width: 1.7;
 }
 
+.fadeSegments {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fadeStep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+}
+
+.fadeIcon {
+  display: block;
+  width: 100%;
+  height: 22px;
+  overflow: visible;
+}
+
+.fadeIcon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fadeIcon path:first-child {
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+.fadeIcon path:last-child {
+  stroke-width: 1.8;
+}
+
+.amount span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.amount em {
+  font-style: normal;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
 .effectHead {
   display: flex;
   align-items: baseline;
@@ -514,27 +561,33 @@
 .compare {
   display: flex;
   flex: none;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
 }
 
 .compare button {
   min-height: 44px;
-  min-width: 0;
+  min-width: 72px;
   flex: 1 1 auto;
   padding: 0 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
+.compare button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
 .compare button.compareOn {
-  background: var(--accent-primary);
-  color: var(--text-on-accent);
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--accent-primary);
 }
 
 .export {
@@ -672,6 +725,17 @@
 .phone .segments,
 .tablet .segments {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phone .fadeSegments,
+.tablet .fadeSegments {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .phone .effect .segments,

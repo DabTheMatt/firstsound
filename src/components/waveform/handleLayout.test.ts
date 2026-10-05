@@ -176,9 +176,11 @@ describe('promotePlayheadDrag', () => {
     expect(promotePlayheadDrag({ simple: false, button: 0, pointerType: 'mouse', dx: 6 })).toBe('select')
   })
 
-  it('keeps touch and simple-mode drags as a pan', () => {
+  it('selects with the mouse in Simple and pans on touch', () => {
+    expect(promotePlayheadDrag({ simple: true, button: 0, pointerType: 'mouse', dx: 20 })).toBe('select')
+    expect(promotePlayheadDrag({ simple: true, button: 0, pointerType: 'mouse', dx: 2 })).toBe('playhead')
+    expect(promotePlayheadDrag({ simple: true, button: 0, pointerType: 'touch', dx: 20 })).toBe('pan')
     expect(promotePlayheadDrag({ simple: false, button: 0, pointerType: 'touch', dx: 20 })).toBe('pan')
-    expect(promotePlayheadDrag({ simple: true, button: 0, pointerType: 'mouse', dx: 20 })).toBe('pan')
     expect(promotePlayheadDrag({ simple: false, button: 2, pointerType: 'mouse', dx: 20 })).toBe('pan')
   })
 })

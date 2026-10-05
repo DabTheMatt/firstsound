@@ -43,8 +43,8 @@ export const SELECTION_DRAG_THRESHOLD_PX = 4
 export const PAN_DRAG_THRESHOLD_PX = 8
 
 /**
- * Left-button drag on the technical waveform draws a selection.
- * Touch keeps the previous pan gesture. Simple mode keeps trim edges.
+ * A mouse left-drag draws a selection in Simple and Technical.
+ * Touch keeps the pan gesture. Trim edges are chosen before this runs.
  */
 export function promotePlayheadDrag(opts: {
   simple: boolean
@@ -52,12 +52,7 @@ export function promotePlayheadDrag(opts: {
   pointerType: string
   dx: number
 }): 'playhead' | 'select' | 'pan' {
-  if (
-    !opts.simple &&
-    opts.pointerType !== 'touch' &&
-    opts.button === 0 &&
-    opts.dx > SELECTION_DRAG_THRESHOLD_PX
-  ) {
+  if (opts.pointerType !== 'touch' && opts.button === 0 && opts.dx > SELECTION_DRAG_THRESHOLD_PX) {
     return 'select'
   }
   if (opts.dx > PAN_DRAG_THRESHOLD_PX) return 'pan'

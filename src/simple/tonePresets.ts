@@ -35,24 +35,24 @@ type ToneStop = Partial<EqBand> & { index: number }
 /** Full-strength stops. Amount scales gain from silence up to these values. */
 export const simpleSoundPresets: Record<SimpleToneId, readonly ToneStop[]> = {
   natural: [],
-  moreBass: [{ index: 0, type: 'lowshelf', frequency: 110, q: 0.7, slope: 12, gain: 4.8 }],
-  lessBass: [{ index: 0, type: 'lowshelf', frequency: 130, q: 0.7, slope: 12, gain: -4.2 }],
-  brighter: [{ index: 3, type: 'highshelf', frequency: 6500, q: 0.7, slope: 12, gain: 3.6 }],
+  moreBass: [{ index: 0, type: 'lowshelf', frequency: 140, q: 0.7, slope: 12, gain: 12 }],
+  lessBass: [{ index: 0, type: 'lowshelf', frequency: 160, q: 0.7, slope: 12, gain: -10 }],
+  brighter: [{ index: 3, type: 'highshelf', frequency: 4500, q: 0.7, slope: 12, gain: 9 }],
   warmer: [
-    { index: 1, type: 'peaking', frequency: 280, q: 0.75, slope: 12, gain: 2.6 },
-    { index: 3, type: 'highshelf', frequency: 8500, q: 0.7, slope: 12, gain: -2.2 },
+    { index: 1, type: 'peaking', frequency: 280, q: 0.75, slope: 12, gain: 6 },
+    { index: 3, type: 'highshelf', frequency: 7000, q: 0.7, slope: 12, gain: -6 },
   ],
   lessHarsh: [
-    { index: 2, type: 'peaking', frequency: 3400, q: 1.05, slope: 12, gain: -3.4 },
-    { index: 3, type: 'highshelf', frequency: 9500, q: 0.7, slope: 12, gain: -1.8 },
+    { index: 2, type: 'peaking', frequency: 3200, q: 1.05, slope: 12, gain: -8 },
+    { index: 3, type: 'highshelf', frequency: 8000, q: 0.7, slope: 12, gain: -5 },
   ],
   clearer: [
-    { index: 1, type: 'peaking', frequency: 300, q: 0.9, slope: 12, gain: -2.6 },
-    { index: 2, type: 'peaking', frequency: 2800, q: 0.85, slope: 12, gain: 2 },
+    { index: 1, type: 'peaking', frequency: 280, q: 0.9, slope: 12, gain: -6 },
+    { index: 2, type: 'peaking', frequency: 2800, q: 0.85, slope: 12, gain: 5 },
   ],
   softer: [
-    { index: 2, type: 'peaking', frequency: 4500, q: 0.8, slope: 12, gain: -1.4 },
-    { index: 3, type: 'highshelf', frequency: 5500, q: 0.7, slope: 12, gain: -3.2 },
+    { index: 2, type: 'peaking', frequency: 3500, q: 0.8, slope: 12, gain: -4 },
+    { index: 3, type: 'highshelf', frequency: 4200, q: 0.7, slope: 12, gain: -10 },
   ],
 }
 
