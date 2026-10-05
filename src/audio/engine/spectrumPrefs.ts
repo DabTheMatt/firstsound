@@ -15,6 +15,19 @@ import {
   type SpectrumFollowMode,
   type SpectrumRangeDb,
 } from './spectrumBands'
+import {
+  clampSpectralCameraPreset,
+  clampSpectralDensity,
+  clampSpectralDrawStyle,
+  clampSpectralHistoryLayer,
+  clampSpectralHistorySeconds,
+  clampSpectralViewMode,
+  type SpectralCameraPreset,
+  type SpectralDensity,
+  type SpectralDrawStyle,
+  type SpectralHistorySeconds,
+  type SpectralViewMode,
+} from './spectralHistory'
 
 export const SPECTRUM_PREF_KEY = 'field.spectrum'
 
@@ -47,6 +60,19 @@ export type SpectrumPrefs = {
   follow: SpectrumFollowMode
   /** Visual spectrum release. Does not freeze, and does not change audio. */
   fall: SpectrumFallMode
+  /** 2D analyzer or 3D spectral history. A view inside FFT, not a workspace. */
+  viewMode: SpectralViewMode
+  /** Seconds of real playback represented by the depth axis. */
+  historySec: SpectralHistorySeconds
+  /** 3D tap. Defaults to the output (after the chain) so two meshes are not the first picture. */
+  historyLayer: SpectrumLayer
+  cameraPreset: SpectralCameraPreset
+  density: SpectralDensity
+  /** Amplitude tint. Position and height stay the level readout. */
+  levelColor: boolean
+  drawStyle: SpectralDrawStyle
+  /** Max-hold ridge. Off by default. It is not the history itself. */
+  peakTrails: boolean
 }
 
 const DEFAULT_PREFS: SpectrumPrefs = {
@@ -61,6 +87,14 @@ const DEFAULT_PREFS: SpectrumPrefs = {
   showLine: true,
   follow: 'peak',
   fall: 'normal',
+  viewMode: '2d',
+  historySec: 5,
+  historyLayer: 'post',
+  cameraPreset: 'angled',
+  density: 'auto',
+  levelColor: false,
+  drawStyle: 'lines',
+  peakTrails: false,
 }
 
 const listeners = new Set<(prefs: SpectrumPrefs) => void>()
@@ -84,6 +118,14 @@ export function loadSpectrumPrefs(): SpectrumPrefs {
       showLine: raw?.showLine !== false,
       follow: clampSpectrumFollowMode(raw?.follow),
       fall: clampSpectrumFallMode(raw?.fall),
+      viewMode: clampSpectralViewMode(raw?.viewMode),
+      historySec: clampSpectralHistorySeconds(raw?.historySec),
+      historyLayer: clampSpectralHistoryLayer(raw?.historyLayer),
+      cameraPreset: clampSpectralCameraPreset(raw?.cameraPreset),
+      density: clampSpectralDensity(raw?.density),
+      levelColor: raw?.levelColor === true,
+      drawStyle: clampSpectralDrawStyle(raw?.drawStyle),
+      peakTrails: raw?.peakTrails === true,
     }
   } catch {
     return defaultSpectrumPrefs()

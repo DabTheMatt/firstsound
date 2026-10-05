@@ -123,6 +123,10 @@
   border-radius: 8px;
 }
 
+.canvasSpatial {
+  touch-action: none;
+}
+
 .bands {
   display: flex;
   flex-direction: row;
@@ -365,7 +369,7 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  white-space: nowrap;
+  white-space: pre-line;
 }
 
 .cursorReadoutFlip {

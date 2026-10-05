@@ -30,6 +30,7 @@ import { spectrumListenId } from '../../audio/spectral/bands'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { FftViewToggle, SpectralHistoryControls } from '../waveform/SpectralHistoryControls'
 import styles from './FocusChrome.module.css'
 
 /** Analyzer controls for the Focus workspace zone. Same prefs as the spectrum chrome. */
@@ -49,6 +50,14 @@ export function FftFocusTools() {
   const eqs = snap.chain.filter((mod) => mod.type === 'eq')
   const overlayValue = clampEqOverlayFocus(overlay, snap.chain)
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
+
+  if (prefs.viewMode === '3d') {
+    return (
+      <div className={styles.fftTools} data-fft-focus="">
+        <SpectralHistoryControls variant="focus" />
+      </div>
+    )
+  }
 
   return (
     <div className={styles.fftTools} data-fft-focus="">
@@ -156,6 +165,7 @@ export function FftFocusTools() {
           ))}
         </Select>
       ) : null}
+      <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
       <div className={styles.fftIcons}>
         <Icon
           pressed={prefs.eqFreqColors}

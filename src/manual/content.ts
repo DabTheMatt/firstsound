@@ -191,7 +191,17 @@ const en: ManualSection[] = [
     id: 'views',
     title: 'WAVE, FFT, EQ, and AUTO',
     body: [
-      'WAVE shows the sample. FFT shows the spectrum of the playing audio. EQ opens the equalizer workspace. AUTO opens automation. These are views of the same project.',
+      'WAVE shows the sample. FFT shows the spectrum of the playing audio. EQ opens the equalizer workspace. AUTO opens automation. These are views of the same project. 3D Spectral History is a view inside FFT, not another workspace.',
+    ],
+  },
+  {
+    id: 'fft-3d',
+    title: 'FFT → 3D Spectral History',
+    body: [
+      'Open 3D Spectral History from the stacked-spectrum icon in FFT. 2D returns to the ordinary analyzer. Frequency runs left to right, level rises in dB, and time recedes backward. The front ridge is now. Older ridges fade as they move back. They stay until they leave the history window.',
+      'History is 1, 2, 5, or 10 seconds of real playback. Five seconds is the default. The picture keeps the same depth; a longer history means each step back is more time, not a bigger scene. The view uses the same FFT as the 2D analyzer: FFT size, smoothing, range, and frequency scale. It measures the audio. It does not draw the EQ response. Source is the tap before the effect chain. Output, the default in 3D, is the tap after the chain. Both keeps Output in front and draws Source as a thinner ridge.',
+      'Front, Angled, and Top are the views. Angled is the default. Front is for reading the current spectrum. Top lays frequency across and time away from now, with level in the strength of the line. Drag on the graph nudges the camera. Pinch or the wheel zooms, inside a limited range. Reset View returns to Angled. Freeze holds the ridges while audio continues. Pause and Stop also leave the picture where it is, because history follows playback time. Clear History, in the ••• menu, drops only the stored ridges.',
+      'Point at a ridge to read frequency, note, level, and age, for example 440 Hz · A4, −18.2 dB, −1.8 s. Lines are the default. Surface, density, level color, and peak trails are in the ••• menu. A small screen draws fewer ridges. The history buffer has a fixed size and starts empty after a reload. Reduced motion skips camera glide; the spectrum itself still updates, because it is the measurement.',
     ],
   },
   {
@@ -470,7 +480,17 @@ const pl: ManualSection[] = [
     id: 'views',
     title: 'WAVE, FFT, EQ i AUTO',
     body: [
-      'WAVE pokazuje sample. FFT pokazuje widmo odtwarzanego audio. EQ otwiera warsztat korektora. AUTO otwiera automatyzację. To widoki tego samego projektu.',
+      'WAVE pokazuje sample. FFT pokazuje widmo odtwarzanego audio. EQ otwiera warsztat korektora. AUTO otwiera automatyzację. To widoki tego samego projektu. 3D Spectral History jest widokiem wewnątrz FFT, a nie osobnym warsztatem.',
+    ],
+  },
+  {
+    id: 'fft-3d',
+    title: 'FFT → 3D Spectral History',
+    body: [
+      '3D Spectral History otwiera ikona ułożonych widm w FFT. 2D wraca do zwykłego analizatora. Częstotliwość biegnie od lewej do prawej, poziom rośnie w dB, a czas cofa się w głąb. Przednia grań to teraz. Starsze granie bledną, gdy oddalają się do tyłu. Znikają dopiero po wyjściu z okna historii.',
+      'Historia to 1, 2, 5 albo 10 sekund rzeczywistego odtwarzania. Domyślnie jest 5 sekund. Głębokość obrazu zostaje ta sama: dłuższa historia oznacza więcej czasu na tej samej osi, a nie większą scenę. Widok korzysta z tego samego FFT co analizator 2D: rozmiar FFT, wygładzanie, zakres i skala częstotliwości. Mierzy audio. Nie rysuje krzywej EQ. Source to odczep przed łańcuchem efektów. Output, domyślny w 3D, to odczep za łańcuchem. Both zostawia Output z przodu, a Source rysuje cieńszą granią.',
+      'Front, Angled i Top to widoki kamery. Angled jest domyślny. Front służy do czytania bieżącego widma. Top kładzie częstotliwość w poziomie, a czas w głąb od teraz; poziom widać w sile linii. Przeciągnięcie po wykresie lekko rusza kamerę. Uszczypnięcie albo kółko przybliża, w ograniczonym zakresie. Reset View wraca do Angled. Freeze zatrzymuje granie, a audio gra dalej. Pauza i Stop też zostawiają obraz w miejscu, bo historia idzie za czasem odtwarzania. Clear History, w menu •••, kasuje tylko zapisane granie.',
+      'Wskazanie grani czyta częstotliwość, nutę, poziom i wiek, na przykład 440 Hz · A4, −18.2 dB, −1.8 s. Domyślne są linie. Surface, gęstość, kolor poziomu i ślady szczytów są w menu •••. Mały ekran rysuje mniej grani. Bufor historii ma stały rozmiar i po odświeżeniu strony zaczyna się pusty. Ograniczenie ruchu wyłącza poślizg kamery; samo widmo dalej się aktualizuje, bo jest pomiarem.',
     ],
   },
   {

@@ -223,6 +223,62 @@ export function writeSpectrumCurve(
   return count
 }
 
+/**
+ * Log-spaced (or linear/mel) display magnitudes for one FFT snapshot.
+ * Each column keeps the peak of the bins it covers. A column narrower than the
+ * bin grid interpolates, so a coarse low-frequency bin is not painted as a shelf.
+ * Columns the FFT cannot resolve, including anything above Nyquist, are NaN.
+ * The ridge renderer breaks the stroke there instead of drawing a wall down to the floor.
+ */
+export function sampleLogSpectrumDb(
+  bins: ArrayLike<number>,
+  sampleRate: number,
+  minHz: number,
+  maxHz: number,
+  out: Float32Array,
+  scale: FreqScaleKind = 'log',
+): void {
+  const slots = out.length
+  if (slots < 2) return
+  const n = bins.length
+  const nyquist = sampleRate > 0 ? sampleRate / 2 : 0
+  const hi = Math.min(maxHz, nyquist > 0 ? nyquist : maxHz)
+  if (n < 2 || !(sampleRate > 0) || !(hi > minHz)) {
+    out.fill(Number.NaN)
+    return
+  }
+  const firstHz = fftFirstBinHz(sampleRate, n)
+  const lastHz = Math.min(fftLastUsableHz(sampleRate, n), hi)
+  const denom = slots - 1
+  for (let i = 0; i < slots; i++) {
+    const u = i / denom
+    const uLo = i === 0 ? 0 : (i - 0.5) / denom
+    const uHi = i === slots - 1 ? 1 : (i + 0.5) / denom
+    const hz = xToHz(u, minHz, hi, 0, 1, scale)
+    const hzLo = xToHz(uLo, minHz, hi, 0, 1, scale)
+    const hzHi = xToHz(uHi, minHz, hi, 0, 1, scale)
+    if (!(hz > 0) || hz > lastHz || !(hzHi > firstHz) || !(hzLo < lastHz)) {
+      out[i] = Number.NaN
+      continue
+    }
+    out[i] = magnitudeDbInColumn(bins, sampleRate, hz, Math.max(hzLo, firstHz), Math.min(hzHi, lastHz), i === slots - 1)
+  }
+}
+
+/** Frequency at a display column. Matches `sampleLogSpectrumDb` placement. */
+export function logSpectrumHz(
+  index: number,
+  slots: number,
+  minHz: number,
+  maxHz: number,
+  scale: FreqScaleKind = 'log',
+): number {
+  if (slots < 2) return minHz
+  const u = Math.min(1, Math.max(0, index / (slots - 1)))
+  const hi = Math.max(minHz * 1.01, maxHz)
+  return xToHz(u, minHz, hi, 0, 1, scale)
+}
+
 /** Polyline through x,y pairs. Same segment style as the EQ magnitude stroke. */
 export function strokeSpectrumXY(ctx: CanvasRenderingContext2D, xy: ArrayLike<number>, count: number): void {
   if (count < 1) return

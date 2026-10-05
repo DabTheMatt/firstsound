@@ -756,8 +756,7 @@ export default function App() {
     rememberFocus(routed.focus)
     setInspectorOpen(routed.inspectorOpen)
     if (focusWorkspace) {
-      const shown = isPhoneLayout ? phoneDisplayViz(routed.viz) : routed.viz
-      setFocusWorkspace(focusWorkspaceForViz(shown))
+      setFocusWorkspace(focusWorkspaceForViz(routed.viz))
     }
   }
 
@@ -1344,7 +1343,7 @@ export default function App() {
                 onAutomationCommit={commit}
                 onAddNode={() => waveRef.current?.addAutomationNode()}
                 onDeleteNode={() => waveRef.current?.deleteAutomationNode()}
-                onViz={isPhoneLayout ? undefined : focusViz}
+                onViz={focusViz}
                 onHearing={enterHearingFocus}
                 touch={isPhoneLayout}
                 edit={{

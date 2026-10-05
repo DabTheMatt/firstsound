@@ -1352,7 +1352,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const showArrangement = arrangement === 'multi' && !sensory && !simple && phoneFocus == null
   const mixTrack = snap.tracks.find((item) => item.id === snap.selectedTrackId) ?? snap.tracks[0] ?? null
   const mixDim = Boolean(mixTrack && anyTrackSoloed(snap.tracks) && !mixTrack.solo)
-  const shownViz = phone ? phoneDisplayViz(viz) : viz
+  const shownViz = phone && phoneFocus !== 'fft' ? phoneDisplayViz(viz) : viz
   const phoneEq = phone && shownViz === 'eq-split'
   const showSpec =
     !showArrangement &&

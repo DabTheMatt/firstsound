@@ -71,6 +71,12 @@ import {
   subscribeEqOverlayFocus,
 } from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectrumCurve } from '../../audio/engine/spectrumEnvelope'
+import {
+  formatSpectralReadout,
+  spectralHistoryAriaLabel,
+  spectralHistorySession,
+  subscribeSpectralHistorySession,
+} from '../../audio/engine/spectralHistory'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
 import { measureSpectrumDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { frameAround, spectrumListenId } from '../../audio/spectral/bands'
@@ -113,6 +119,16 @@ import {
 } from '../mobile/eqFocusGesture'
 import { focusEqTypeLabel } from '../mobile/focusReadout'
 import { VizBackground } from './VizBackground'
+import { FftViewToggle, SpectralHistoryControls } from './SpectralHistoryControls'
+import {
+  createSpectralHistoryRuntime,
+  inspectSpectralHistory,
+  paintSpectralHistory,
+  readAnalyserSpectrumBins,
+  readTimeDomainSpectrumBins,
+  type SpectralHistoryRuntime,
+} from './spectralHistoryDraw'
+import historyStyles from './SpectralHistory.module.css'
 import styles from './Spectrum.module.css'
 
 type Props = {
@@ -209,6 +225,18 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const historyRef = useRef<SpectralHistoryRuntime | null>(null)
+  const spatialGesture = useRef<{
+    pointerId: number
+    x: number
+    y: number
+    yaw: number
+    pitch: number
+    zoom: number
+    pinch: number
+    moved: boolean
+  } | null>(null)
+  const spatialPointers = useRef<Map<number, { x: number; y: number }>>(new Map())
   const compactRef = useRef(compact)
   const phoneEqRef = useRef(phoneEq)
   const phoneFocusRef = useRef(phoneFocus)
@@ -224,6 +252,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const gridDensityRef = useRef(gridDensity)
   const [gridOpen, setGridOpen] = useState(false)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
+  const [historyFrozen, setHistoryFrozen] = useState(() => spectralHistorySession().frozen)
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
   const eqFocus = clampEqOverlayFocus(eqFocusRaw, snap.chain)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; flip: boolean; low: boolean } | null>(null)
@@ -234,6 +263,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const lastGraphTap = useRef<{ t: number; x: number; y: number } | null>(null)
   const graphDown = useRef<{ id: number; x: number; y: number; t: number } | null>(null)
   const prefsRef = useRef(prefs)
+  const spatialRef = useRef(false)
   const eqFocusRef = useRef(eqFocus)
   const preFast = useRef(emptyBands(prefs.bands))
   const preSlow = useRef(emptyBands(prefs.bands))
@@ -291,6 +321,28 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   useEffect(() => subscribeEqBandSelection(setSelectedBand), [])
 
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
+  useEffect(
+    () =>
+      subscribeSpectralHistorySession(() => {
+        setHistoryFrozen(spectralHistorySession().frozen)
+      }),
+    [],
+  )
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !active) return
+    const onWheel = (event: WheelEvent) => {
+      if (!spatialRef.current) return
+      event.preventDefault()
+      if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
+      const camera = historyRef.current.camera
+      const next = camera.zoom * (event.deltaY > 0 ? 0.96 : 1.04)
+      camera.zoom = Math.min(1.4, Math.max(0.75, next))
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [active])
 
   useEffect(() => {
     eqFocusRef.current = eqFocus
@@ -298,8 +350,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
   useEffect(() => {
     prefsRef.current = prefs
+    spatialRef.current = prefs.viewMode === '3d' && !phoneEq && !phoneFocus
     persistSpectrumPrefs(prefs)
-  }, [prefs])
+  }, [prefs, phoneEq, phoneFocus])
 
   useEffect(() => {
     preFast.current = emptyBands(prefs.bands)
@@ -341,7 +394,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     let lineXY = new Float32Array(4096)
     let lastTs = 0
     const tick = (now: number) => {
-      const dt = lastTs === 0 ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastTs) / 1000))
+      const elapsed = lastTs === 0 ? 1 / 60 : Math.max(0, (now - lastTs) / 1000)
+      const dt = Math.min(0.05, elapsed)
       lastTs = now
       if (isDocumentHidden()) {
         lastTs = 0
@@ -363,6 +417,57 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const colors = readThemeColors()
         const prefsNow = prefsRef.current
         const focusPlot = phoneFocusRef.current
+        if (prefsNow.viewMode === '3d' && !phoneEqRef.current && !focusPlot) {
+          if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
+          engine.setSpectrumFftSize(prefsNow.resolution)
+          const sr = live.sampleRate || 44100
+          const taps = spectrumLayerTaps(prefsNow.historyLayer)
+          const showPre = taps.includes('pre')
+          const showPost = taps.includes('post')
+          const listenId = spectrumListenId(live.spectral.enabled, live.spectral.analyser)
+          let preBins: Float32Array | null = null
+          let postBins: Float32Array | null = null
+          if (listenId) {
+            const mono = engine.spectralBandMono(listenId)
+            const fftSize = engine.getAnalyser('post')?.fftSize ?? prefsNow.resolution
+            if (mono) {
+              const frame = frameAround(mono, engine.getSourcePlayheadSeconds() * sr, fftSize)
+              postBins = readTimeDomainSpectrumBins(frame, postScratch)
+            }
+          } else {
+            if (showPre) preBins = readAnalyserSpectrumBins(engine.getAnalyser('pre'), preScratch)
+            if (showPost) postBins = readAnalyserSpectrumBins(engine.getAnalyser('post'), postScratch)
+          }
+          const cssW = rect.width
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          paintSpectralHistory(ctx, width, height, historyRef.current, {
+            dt: Math.min(1, elapsed),
+            dpr,
+            cssWidth: cssW,
+            cssHeight: rect.height,
+            playing: live.playing,
+            sampleRate: sr,
+            preBins,
+            postBins,
+            showPre: listenId ? false : showPre,
+            showPost: listenId ? true : showPost,
+            historySec: prefsNow.historySec,
+            density: prefsNow.density,
+            drawStyle: prefsNow.drawStyle,
+            levelColor: prefsNow.levelColor,
+            peakTrails: prefsNow.peakTrails,
+            cameraPreset: prefsNow.cameraPreset,
+            fall: prefsNow.fall,
+            range: prefsNow.range,
+            scale,
+            colors,
+            mobile: compactRef.current || cssW < 720,
+            reducedMotion: reduced,
+            layer: listenId ? 'post' : prefsNow.historyLayer,
+          })
+          frame = requestAnimationFrame(tick)
+          return
+        }
         const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
         const regionColors = focusPlot ? false : prefsNow.regionColors
@@ -988,6 +1093,32 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     [],
   )
 
+  const inspectSpatial = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current
+    const runtime = historyRef.current
+    if (!canvas || !runtime) return
+    const rect = canvas.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
+      setHover(null)
+      return
+    }
+    const dpr = canvas.width / Math.max(1, rect.width)
+    const hit = inspectSpectralHistory(runtime, x * dpr, y * dpr, 18 * dpr)
+    if (!hit) {
+      setHover(null)
+      return
+    }
+    setHover({
+      x,
+      y,
+      label: formatSpectralReadout(hit.hz, hit.db, hit.ageSec).join('\n'),
+      flip: x > rect.width * 0.62,
+      low: y < 48,
+    })
+  }
+
   if (!active) return null
   const plotPad = spectrumPlotPad({ compact, focus: phoneFocus, phoneEq: phoneEq && !phoneFocus })
   const menuBand =
@@ -1001,16 +1132,28 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     (mod) => mod.type === 'filter' && filterModuleIsAudible(mod.bypassed, snap.liveParams.filterMix),
   )
   const showResponseKey = !phoneFocus && shouldShowResponseLegend(eqCurveOn, filterCurveOn)
+  const spatial = prefs.viewMode === '3d' && !phoneEq && !phoneFocus
   return (
     <div
       className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${phoneFocus ? styles.eqFocus : ''} ${analyzerOpen && !phoneEq && !phoneFocus ? styles.analyzerOpen : ''}`}
       role="region"
-      aria-label="Spectrum analyzer"
+      aria-label={
+        prefs.viewMode === '3d' && !phoneEq && !phoneFocus
+          ? spectralHistoryAriaLabel(prefs.historySec, historyFrozen)
+          : 'Spectrum analyzer'
+      }
     >
       {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
         <EnterFocusButton corner label="FFT" onClick={onEnterFocus} />
       ) : null}
-      {suppressAnalyzerChrome ? null : (
+      {suppressAnalyzerChrome ? null : spatial ? (
+      <div className={styles.chrome}>
+        <SpectralHistoryControls />
+        <div className={styles.chromeRight}>
+          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
+        </div>
+      </div>
+      ) : (
       <div
         className={styles.chrome}
       >
@@ -1257,6 +1400,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </label>
         </div>
         <div className={styles.chromeRight}>
+          <FftViewToggle
+            mode={prefs.viewMode}
+            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+          />
           {showResponseKey ? (
             <ul className={styles.curveKey} aria-label="Response curves">
               <li>
@@ -1353,7 +1500,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       )}
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen && (!compact || analyzerOpen) ? (
+        {prefs.legendOpen && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
             {prefs.regionColors ? (
               <ul className={styles.regions}>
@@ -1376,19 +1523,57 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             )}
           </div>
         ) : null}
+        {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (
+          <div className={historyStyles.dock}>
+            {spatial ? (
+              <SpectralHistoryControls />
+            ) : (
+              <FftViewToggle
+                mode={prefs.viewMode}
+                onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+              />
+            )}
+          </div>
+        ) : null}
         <canvas
           ref={canvasRef}
-          className={styles.canvas}
+          className={`${styles.canvas} ${spatial ? styles.canvasSpatial : ''}`}
           aria-hidden="true"
           onDoubleClick={(event) => {
-            if (phoneEq) return
+            if (phoneEq || spatial) return
             placeBellAt(event.clientX, event.clientY)
           }}
           onPointerDown={(event) => {
+            if (spatial && isPrimaryPointerDown(event)) {
+              spatialPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+              if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
+              spatialGesture.current = {
+                pointerId: event.pointerId,
+                x: event.clientX,
+                y: event.clientY,
+                yaw: historyRef.current.camera.yaw,
+                pitch: historyRef.current.camera.pitch,
+                zoom: historyRef.current.camera.zoom,
+                pinch: 0,
+                moved: false,
+              }
+              event.currentTarget.setPointerCapture(event.pointerId)
+              return
+            }
             if (!phoneEq || !isPrimaryPointerDown(event)) return
             graphDown.current = { id: event.pointerId, x: event.clientX, y: event.clientY, t: performance.now() }
           }}
           onPointerUp={(event) => {
+            if (spatial) {
+              const gesture = spatialGesture.current
+              spatialPointers.current.delete(event.pointerId)
+              if (gesture?.pointerId === event.pointerId) {
+                if (!gesture.moved) inspectSpatial(event.clientX, event.clientY)
+                spatialGesture.current = null
+              }
+              if (event.pointerType !== 'mouse') setHover(null)
+              return
+            }
             if (event.pointerType !== 'mouse') setHover(null)
             const start = graphDown.current
             graphDown.current = null
@@ -1408,6 +1593,42 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             }
           }}
           onPointerMove={(event) => {
+            if (spatial) {
+              spatialPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+              const points = [...spatialPointers.current.values()]
+              if (points.length >= 2 && historyRef.current) {
+                const dist = Math.hypot(points[0]!.x - points[1]!.x, points[0]!.y - points[1]!.y)
+                const gesture = spatialGesture.current
+                if (gesture) {
+                  if (gesture.pinch <= 0) {
+                    gesture.pinch = dist
+                    gesture.zoom = historyRef.current.camera.zoom
+                  }
+                  gesture.moved = true
+                  const scale = dist / Math.max(24, gesture.pinch)
+                  historyRef.current.camera.zoom = Math.min(1.4, Math.max(0.75, gesture.zoom * scale))
+                  historyRef.current.displayZoom = historyRef.current.camera.zoom
+                }
+                return
+              }
+              const gesture = spatialGesture.current
+              if (gesture && gesture.pointerId === event.pointerId && (event.buttons & 1) === 1) {
+                const dx = event.clientX - gesture.x
+                const dy = event.clientY - gesture.y
+                if (!gesture.moved && Math.hypot(dx, dy) < 6) return
+                gesture.moved = true
+                if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
+                const width = Math.max(1, canvasRef.current?.clientWidth ?? 1)
+                const height = Math.max(1, canvasRef.current?.clientHeight ?? 1)
+                historyRef.current.camera.yaw = Math.min(1, Math.max(-1, gesture.yaw + (dx / width) * 1.4))
+                historyRef.current.camera.pitch = Math.min(1, Math.max(-1, gesture.pitch + (dy / height) * 1.2))
+                historyRef.current.displayYaw = historyRef.current.camera.yaw
+                historyRef.current.displayPitch = historyRef.current.camera.pitch
+                return
+              }
+              if (event.pointerType !== 'touch') inspectSpatial(event.clientX, event.clientY)
+              return
+            }
             if (drag.current) return
             const canvas = canvasRef.current
             if (!canvas) return
@@ -1427,8 +1648,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const hz = xToHz(x, SPECTRUM_AXIS_MIN_HZ, maxHz, left, right, freqScaleRef.current)
             setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68, low: y < 28 })
           }}
-          onPointerCancel={() => setHover(null)}
-          onPointerLeave={() => setHover(null)}
+          onPointerCancel={() => {
+            spatialGesture.current = null
+            spatialPointers.current.clear()
+            setHover(null)
+          }}
+          onPointerLeave={() => {
+            if (!spatialGesture.current) setHover(null)
+          }}
         />
         <div
           ref={plotRef}
@@ -1440,7 +1667,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             bottom: plotPad.bottom,
           }}
         >
-          {compact && !phoneEq
+          {spatial || (compact && !phoneEq)
             ? null
             : eqMods.flatMap((mod) => {
             if (!eqOverlayIncludes(eqFocus, mod.instanceId)) return []
@@ -1567,6 +1794,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {hover.label}
           </div>
         ) : null}
+        {spatial ? null : (
         <div className={styles.graphMenu}>
           <button
             type="button"
@@ -1641,6 +1869,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             </div>
           ) : null}
         </div>
+        )}
       </div>
     </div>
   )
