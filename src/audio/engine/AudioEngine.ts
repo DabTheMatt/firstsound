@@ -105,6 +105,7 @@ import {
 import { eqShadowField, moduleRandomKind, participatingTargets } from '../random/groups'
 import { LFO_RANDOM_DEFAULT_FIELDS, randomLfoPatch } from '../random/lfoRandom'
 import { isAutoRandomizable } from '../random/metadata'
+import { planReverbRandom } from '../random/reverbRandom'
 import { pickDifferent } from '../random/rng'
 import { applyRandomOffset, offsetForTarget } from '../random/ownership'
 import { loadRandomDocument, parseRandomDocument, saveRandomDocument } from '../random/persist'
@@ -2348,6 +2349,7 @@ export class AudioEngine {
   randomizeEffect(kind: FxLfoKind): boolean {
     const bandIndex = EQ_BAND_LFO_KINDS.indexOf(kind)
     if (bandIndex >= 0) return this.randomizeEqBand(bandIndex)
+    if (kind === 'reverb') return this.randomizeReverb()
     const entries = participatingEntries(this.randomDoc, kind)
     for (const entry of entries) {
       if (entry.selectId) this.applyRandomSelect(entry.selectId)
@@ -2373,6 +2375,56 @@ export class AudioEngine {
       const shadow = eqShadowField(id)
       if (shadow) {
         this.writeEqBandQuiet(shadow.index, { [shadow.field]: next })
+        changed = true
+        continue
+      }
+      patch[id] = next
+    }
+    if (Object.keys(patch).length > 0) {
+      this.setParams(patch)
+      return true
+    }
+    if (changed) {
+      if (this.ctx) this.applyLiveAudio(0.03)
+      this.emit()
+    }
+    return changed
+  }
+
+  /**
+   * One reverb transaction: type, creative parameters, and linked Mix.
+   * Dry is derived when correlate is on. Wet-return gain is left alone.
+   * The convolver pair stays; only the impulse buffer is replaced when the key changes.
+   */
+  private randomizeReverb(): boolean {
+    const entries = participatingEntries(this.randomDoc, 'reverb')
+    const chaos = this.randomDoc.chaos
+    const plan = planReverbRandom({
+      params: this.params,
+      type: this.reverbType,
+      chaos,
+      participating: entries.map((entry) => entry.ref),
+      intensity: (id) => (this.randomDoc.generators[id] ?? defaultParamRandom()).intensity,
+      rand: Math.random,
+      bpm: this.params.bpm,
+    })
+    let changed = false
+    if (plan.type !== this.reverbType && plan.type !== 'custom') {
+      this.reverbType = plan.type
+      const preset = this.spacePresetId ? findSpacePreset(this.spacePresetId) : undefined
+      if (!preset || preset.kind !== 'reverb' || preset.reverbType !== plan.type) this.spacePresetId = null
+      this.reverbIrKey = ''
+      changed = true
+    }
+    const linked = this.params.reverbCorrelate >= 0.5
+    const patch: Partial<Record<ParamId, number>> = {}
+    for (const id of Object.keys(plan.patch) as ParamId[]) {
+      const next = plan.patch[id]
+      if (typeof next !== 'number' || !Number.isFinite(next)) continue
+      if (linked && id === 'reverbDry' && this.randomOwns('reverbWet')) continue
+      if (this.randomOwns(id)) {
+        this.randomOffsets[id] = offsetForTarget(this.automatedCenter(id), next, id)
+        delete this.randomRuntime.glides[id]
         changed = true
         continue
       }

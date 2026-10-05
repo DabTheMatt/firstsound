@@ -22,6 +22,8 @@ export const RANDOM_META: Partial<Record<ParamId, RandomMeta>> = {
   delayNoteKindR: { kind: 'enum', options: [0, 1, 2] },
   reverbNote: { kind: 'division', options: [0, 1, 2, 3, 4, 5, 6, 7] },
   reverbNoteKind: { kind: 'enum', options: [0, 1, 2] },
+  /** Linked reverb stores Mix in Wet and derives Dry. Not an independent draw. */
+  reverbDry: { kind: 'continuous', derived: true, auto: false },
   msHaasDir: { kind: 'enum', options: [0, 1] },
 }
 

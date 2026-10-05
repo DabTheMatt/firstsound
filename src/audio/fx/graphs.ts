@@ -807,7 +807,8 @@ export function applyReverbGraph(
   setSmoothedAudioParam(g.inCrossL.gain, input.cross, now, 'gain')
   setSmoothedAudioParam(g.inCrossR.gain, input.cross, now, 'gain')
 
-  const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
+  // Freeze holds the tank. The infinite *type* is a long impulse, not a muted send.
+  const freeze = params.reverbFreeze > 0.5
   setSmoothedAudioParam(g.freezeIn.gain, freeze ? 0.05 : 1, now, 'gain')
   const huge = type === 'cathedral' || type === 'largeHall' || type === 'cloud' || type === 'bloom' || type === 'infinite'
   const shimmerAmt = type === 'shimmer' ? Math.max(params.reverbShimmer / 100, 0.35) : params.reverbShimmer / 100

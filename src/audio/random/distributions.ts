@@ -38,6 +38,9 @@ const DENY = new Set<ParamId>([
   'reverbFreeze',
   'reverbReverse',
   'reverbGate',
+  // Wet-return staging and an unwired safety trim. Not creative Chaos targets.
+  'reverbOutput',
+  'reverbLimit',
   'msSoloMid',
   'msSoloSide',
   'msMono',
@@ -58,8 +61,6 @@ const DENY = new Set<ParamId>([
 const OUTPUT_IDS = new Set<ParamId>([
   'outputGain',
   'delayOutput',
-  'reverbOutput',
-  'reverbLimit',
   'distortionOutput',
   'limiterMakeup',
   'limiterCeiling',
@@ -135,7 +136,9 @@ export function randomFamily(id: ParamId): RandomFamily {
 /** Shared-registry parameters Random may write. Switches, routing, and identity stay out. */
 export function isRandomizable(id: ParamId): boolean {
   if (DENY.has(id)) return false
-  if (randomMeta(id)) return true
+  const meta = randomMeta(id)
+  if (meta?.derived) return false
+  if (meta) return true
   const def = PARAMS[id]
   if (!def) return false
   if (def.step === 1 && def.max - def.min <= 8) return false
@@ -146,7 +149,50 @@ export { isAutoRandomizable, isDiscreteRandom }
 
 type Window = { lo: number; hi: number; space: 'linear' | 'log'; shape: 'uniform' | 'triangular' | 'low' }
 
+/**
+ * Musical spans for reverb. Generic families mis-handle a few of these:
+ * Wet-return output used to inherit the dB window and collapse to 0–6%,
+ * and Low/High Cut could cross and empty the wet band.
+ */
+function reverbCreativeWindow(id: ParamId, chaos: boolean): Window | null {
+  const def = PARAMS[id]
+  const clip = (lo: number, hi: number): { lo: number; hi: number } => ({
+    lo: clamp(lo, def.min, def.max),
+    hi: clamp(hi, def.min, def.max),
+  })
+  if (id === 'reverbDecay') {
+    return { ...clip(chaos ? 0.15 : 0.3, chaos ? 8 : 4), space: 'log', shape: 'triangular' }
+  }
+  if (id === 'reverbPredelay') {
+    return { ...clip(chaos ? 1 : 8, chaos ? 220 : 70), space: 'log', shape: 'triangular' }
+  }
+  if (id === 'reverbSize') {
+    return { ...clip(chaos ? 8 : 18, chaos ? 92 : 70), space: 'linear', shape: 'triangular' }
+  }
+  if (id === 'reverbDamping') {
+    return { ...clip(chaos ? 900 : 2000, chaos ? 14000 : 11000), space: 'log', shape: 'triangular' }
+  }
+  if (id === 'reverbWidth') {
+    return { ...clip(chaos ? 25 : 70, chaos ? 180 : 150), space: 'linear', shape: 'triangular' }
+  }
+  if (id === 'reverbLowCut') {
+    return { ...clip(chaos ? 30 : 40, chaos ? 800 : 400), space: 'log', shape: 'triangular' }
+  }
+  if (id === 'reverbHighCut') {
+    return { ...clip(chaos ? 2500 : 5000, chaos ? 17000 : 16000), space: 'log', shape: 'triangular' }
+  }
+  if (id === 'reverbDuck') {
+    return { ...clip(0, chaos ? 45 : 24), space: 'linear', shape: 'low' }
+  }
+  if (id === 'reverbGateThres') {
+    return { ...clip(chaos ? -50 : -42, chaos ? -18 : -24), space: 'linear', shape: 'triangular' }
+  }
+  return null
+}
+
 function familyWindow(id: ParamId, chaos: boolean): Window {
+  const creative = reverbCreativeWindow(id, chaos)
+  if (creative) return creative
   const def = PARAMS[id]
   const family = randomFamily(id)
   const clip = (lo: number, hi: number): { lo: number; hi: number } => ({
@@ -303,6 +349,30 @@ function randomDiscrete(id: ParamId, current: number, rand: () => number): numbe
   return applyParamValue(pick, def)
 }
 
+/**
+ * User-facing Mix percent (0–100), not an equal-power coefficient.
+ * Normal draws stay near 10–65% wet. Chaos may reach 0% and 100%.
+ */
+function randomLinkedReverbMix(current: number, intensity: number, chaos: boolean, rand: () => number): number {
+  const def = PARAMS.reverbWet
+  if (!chaos) {
+    const [lo, hi] = around(current, 10, 65, intensity, 'linear')
+    return applyParamValue(sampleRange(lo, hi, 'linear', 'triangular', rand), def)
+  }
+  const roll = randomUnit(rand)
+  if (roll < 0.07) return applyParamValue(0, def)
+  if (roll < 0.14) return applyParamValue(100, def)
+  const [lo, hi] = around(current, 8, 72, Math.max(0.6, intensity), 'linear')
+  return applyParamValue(sampleRange(lo, hi, 'linear', 'triangular', rand), def)
+}
+
+/** Unlinked Dry or Wet level. The floor keeps the pair from both landing on silence. */
+function randomUnlinkedReverbLevel(current: number, intensity: number, chaos: boolean, rand: () => number): number {
+  const def = PARAMS.reverbDry
+  const [lo, hi] = around(current, chaos ? 18 : 28, chaos ? 100 : 90, intensity, 'linear')
+  return applyParamValue(sampleRange(lo, hi, 'linear', 'triangular', rand), def)
+}
+
 export function randomParamValue(input: {
   id: ParamId
   current: number
@@ -314,6 +384,8 @@ export function randomParamValue(input: {
   const rand = input.rand ?? Math.random
   const def = PARAMS[input.id]
   if (!Number.isFinite(input.current)) return def.defaultValue
+  if (input.id === 'reverbWet') return randomLinkedReverbMix(input.current, input.intensity, input.chaos, rand)
+  if (input.id === 'reverbDry') return randomUnlinkedReverbLevel(input.current, input.intensity, input.chaos, rand)
   if (isDiscreteRandom(input.id)) return randomDiscrete(input.id, input.current, rand)
   if (randomFamily(input.id) === 'pitch') {
     return randomPitch(input.current, input.id, input.intensity, input.chaos, rand)
@@ -329,6 +401,8 @@ export function randomParamValue(input: {
 
 /** Safe creative window used by tests and the editor. Chaos widens it; DSP min/max still clamp. */
 export function randomWindow(id: ParamId, chaos: boolean): { min: number; max: number } {
+  if (id === 'reverbWet') return chaos ? { min: 0, max: 100 } : { min: 10, max: 65 }
+  if (id === 'reverbDry') return chaos ? { min: 18, max: 100 } : { min: 28, max: 90 }
   const window = familyWindow(id, chaos)
   return { min: window.lo, max: window.hi }
 }
