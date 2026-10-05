@@ -132,19 +132,59 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--chip, var(--border-subtle));
+  border: 1px solid color-mix(in srgb, var(--text-disabled) 18%, transparent);
   border-radius: 4px;
   background: transparent;
-  color: var(--chip, var(--text-secondary));
+  color: color-mix(in srgb, var(--text-disabled) 22%, transparent);
   font-size: 13px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
-.trackChipOn {
+.trackChip:hover,
+.trackChip:focus-visible {
+  border-color: color-mix(in srgb, var(--text-muted) 42%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+
+.trackChip:focus-visible {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* A slot lights only after it holds a sample, in that track's theme color. */
+.trackChip[data-loaded='true'] {
+  border-color: var(--chip, var(--accent-primary));
+  background: color-mix(in srgb, var(--chip, var(--accent-primary)) 22%, transparent);
+  color: var(--chip, var(--accent-primary));
+}
+
+.trackChip[data-loaded='true']:hover,
+.trackChip[data-loaded='true']:focus-visible {
+  background: color-mix(in srgb, var(--chip, var(--accent-primary)) 34%, transparent);
+  color: var(--chip, var(--accent-primary));
+}
+
+.trackChipOn:not([data-loaded='true']) {
+  border-color: color-mix(in srgb, var(--border-default) 28%, transparent);
+  color: color-mix(in srgb, var(--text-disabled) 34%, transparent);
+}
+
+.trackChipOn[data-loaded='true'] {
   border-color: transparent;
   background: var(--chip, var(--accent-primary));
-  color: #fff;
+  color: var(--text-on-accent);
+}
+
+.trackChipOn[data-loaded='true']:hover,
+.trackChipOn[data-loaded='true']:focus-visible {
+  background: var(--chip, var(--accent-primary));
+  color: var(--text-on-accent);
+}
+
+:global(html[data-low-vision='on']) .trackChip:not([data-loaded='true']) {
+  border-color: var(--border-default);
+  color: var(--text-secondary);
 }
 
 .modeCluster {
