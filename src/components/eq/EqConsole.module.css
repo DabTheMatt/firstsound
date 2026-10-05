@@ -1,4 +1,5 @@
 .console {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -190,6 +191,7 @@
 }
 
 .console {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -439,23 +441,32 @@
   gap: 6px;
 }
 
+.layoutFloat {
+  position: absolute;
+  z-index: 4;
+  top: 6px;
+  right: 8px;
+}
+
 .miniRow {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
   gap: 8px;
+  width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  padding: 2px 2px 8px;
+  overflow: visible;
+  padding: 2px 0 8px;
 }
 
 .inlineStrip {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 0 0 auto;
-  width: 176px;
-  padding: 6px 6px 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-panel-elevated) 55%, transparent);
@@ -464,10 +475,13 @@
 
 .inlineHead {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-height: 18px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  min-width: 36px;
+  max-width: 52px;
 }
 
 .inlineHead .power {
@@ -478,18 +492,26 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: space-evenly;
   gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .inlineSlot {
   flex: 1 1 0;
   min-width: 0;
+  max-width: 72px;
   display: flex;
   justify-content: center;
 }
 
+.inlineStrip .typeWrap {
+  flex: 0 0 72px;
+  width: 72px;
+}
+
 .inlineStrip .typeBtn {
-  min-height: 28px;
+  min-height: 40px;
   padding: 2px 4px;
 }

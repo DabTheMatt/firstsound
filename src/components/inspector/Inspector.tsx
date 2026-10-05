@@ -1357,7 +1357,9 @@ function EqEditor({
           type="button"
           className={styles.ghost}
           onClick={() => {
-            const next = engine.addEqBand(instanceId)
+            const next = miniStrips
+              ? engine.createEqStrip('peaking', instanceId)
+              : engine.addEqBand(instanceId)
             if (next != null) chooseBand(next)
           }}
         >

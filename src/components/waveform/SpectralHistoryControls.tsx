@@ -33,39 +33,6 @@ import focusStyles from '../mobile/FocusChrome.module.css'
 import spectrumStyles from './Spectrum.module.css'
 import styles from './SpectralHistory.module.css'
 
-function SpectrumHistoryIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-      <path
-        d="M1.2 4.4 L3.6 3.1 L5.7 4 L8.1 2.6 L10.4 3.7 L14.6 2.9"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.35"
-      />
-      <path
-        d="M1.2 8 L3.8 6.1 L6.2 7.4 L8.7 5.2 L11.1 6.8 L14.6 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.65"
-      />
-      <path
-        d="M1.2 12.2 L4 8.2 L6.5 10 L9.1 6.6 L11.5 9.2 L14.6 8.3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function FftViewToggle({
   mode,
   onChange,
@@ -86,11 +53,11 @@ export function FftViewToggle({
         type="button"
         className={choice}
         aria-pressed={mode === '3d'}
-        aria-label="Open 3D Spectral History."
+        aria-label="3D"
         title="3D Spectral History"
         onClick={() => onChange('3d')}
       >
-        <SpectrumHistoryIcon />
+        3D
       </button>
     </div>
   )
