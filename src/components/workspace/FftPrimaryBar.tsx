@@ -7,8 +7,8 @@ import {
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
-import { FftFocusTools } from '../mobile/FftFocusTools'
 import { FftViewToggle } from '../waveform/SpectralHistoryControls'
+import { AnalyzerSettingsMenu } from './AnalyzerSettingsMenu'
 import styles from './Workspace.module.css'
 
 const ANALYZER_MENU_WIDTH = 440
@@ -94,7 +94,7 @@ export function FftPrimaryBar() {
           aria-label={t.workspace.analyzerSettings}
           style={analyzerMenuStyle(anchorRef.current)}
         >
-          <FftFocusTools />
+          <AnalyzerSettingsMenu />
         </div>
       ) : null}
     </div>

@@ -199,6 +199,127 @@
   max-height: min(70vh, 640px);
 }
 
+.analyzerMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.analyzerSection {
+  margin: 10px 8px 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.analyzerSection:first-child {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.analyzerNote {
+  margin: 0 8px 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.analyzerRow {
+  display: grid;
+  grid-template-columns: 4.8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 4px 0 8px;
+}
+
+.analyzerLabel {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.analyzerControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analyzerControl select {
+  width: 100%;
+  max-width: 12rem;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.analyzerCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.analyzerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 8px 4px  calc(4.8rem + 16px);
+}
+
+.analyzerIcons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 8px calc(4.8rem + 16px);
+}
+
+.analyzerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control, 4px);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.analyzerIcon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.analyzerIcon:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.analyzerIcon[aria-pressed='true'] {
+  color: var(--text-primary);
+  box-shadow: inset 0 -1px 0 var(--accent-primary);
+}
+
 .menuItem {
   margin: 0;
   padding: 8px;

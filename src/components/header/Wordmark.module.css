@@ -9,81 +9,30 @@
   line-height: 1;
 }
 
-.identity {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 3px;
-  min-width: 0;
-  line-height: 1;
-}
-
 .logo {
   display: block;
   flex: none;
-  height: 16px;
+  height: 18px;
   aspect-ratio: 960 / 331;
   background: var(--text-primary);
   -webkit-mask: url('../../assets/field-wordmark.png') center / contain no-repeat;
   mask: url('../../assets/field-wordmark.png') center / contain no-repeat;
 }
 
-.tagline {
-  flex: none;
-  margin: 0;
-  font-weight: 400;
-  font-style: normal;
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  line-height: 1.15;
-  text-transform: none;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
 .compact .logo {
-  height: 14px;
-}
-
-.compact .tagline,
-.hideTagline .tagline {
-  display: none;
-}
-
-.editorial {
-  position: relative;
-  align-items: center;
-}
-
-.editorial .identity {
-  gap: 7px;
+  height: 16px;
 }
 
 .editorial .logo {
   height: 18px;
 }
 
-.editorial .tagline {
-  letter-spacing: 0.06em;
-}
-
 .gate {
   justify-content: center;
 }
 
-.gate .identity {
-  align-items: center;
-  gap: 8px;
-}
-
 .gate .logo {
   height: 52px;
-}
-
-.gate .tagline {
-  font-size: 9px;
-  letter-spacing: 0.12em;
 }
 
 @media (max-width: 900px) {
@@ -93,24 +42,6 @@
 
   .editorial .logo {
     height: 16px;
-  }
-}
-
-/* Sensory tools need the full header row below this width. */
-@media (max-width: 1100px) {
-  .editorial .tagline {
-    display: none;
-  }
-
-  .editorial .identity {
-    gap: 0;
-  }
-}
-
-/* Narrow viewports drop the descriptor before header controls compress. */
-@media (max-width: 700px) {
-  .studio .tagline {
-    display: none;
   }
 }
 

@@ -17,6 +17,16 @@ function moduleId(engine: AudioEngine, type: 'reverb' | 'delay' | 'eq'): string 
   return engine.getSnapshot().chain.find((mod) => mod.type === type)?.instanceId ?? null
 }
 
+/**
+ * A new session is Input → Output. Simple presets must insert the real
+ * processor before writing its parameters, or the controls only change
+ * numbers that nothing in the graph can hear.
+ */
+function ensureEffect(engine: AudioEngine, type: 'reverb' | 'delay' | 'eq'): void {
+  if (moduleId(engine, type)) return
+  engine.ensureModules([type])
+}
+
 function setBypass(engine: AudioEngine, type: 'reverb' | 'delay' | 'eq', bypassed: boolean): void {
   const id = moduleId(engine, type)
   if (!id) return
@@ -28,12 +38,14 @@ function setBypass(engine: AudioEngine, type: 'reverb' | 'delay' | 'eq', bypasse
 /** Replace the EQ character. Natural bypasses EQ and writes a flat curve. */
 export function applySimpleTone(engine: AudioEngine, id: SimpleToneId, amount: number): number {
   const strength = id === 'natural' ? 0 : clampToneAmount(amount)
+  if (id !== 'natural') ensureEffect(engine, 'eq')
   const dsp = applyToneToDsp(captureDsp(engine), toneBandsAt(id, strength), id === 'natural')
   writeDsp(engine, dsp)
   return strength
 }
 
 export function applySimpleReverb(engine: AudioEngine, id: SimpleReverbId, amount: number): void {
+  ensureEffect(engine, 'reverb')
   if (!reverbTypeIsSimple(engine.getSnapshot().reverbType)) engine.setReverbType('hall')
   engine.setParams(reverbParamPatch(id, amount))
   setBypass(engine, 'reverb', false)
@@ -49,6 +61,7 @@ export function disableSimpleReverb(engine: AudioEngine): void {
 }
 
 export function applySimpleDelay(engine: AudioEngine, id: SimpleDelayId, amount: number): void {
+  ensureEffect(engine, 'delay')
   if (!delayTypeIsSimple(engine.getSnapshot().delayType)) engine.setDelayType('digital')
   engine.setParams(delayParamPatch(id, amount))
   setBypass(engine, 'delay', false)
