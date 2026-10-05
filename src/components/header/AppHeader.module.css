@@ -374,17 +374,33 @@
 }
 }
 
-/* Workspace uses one quiet bar: text controls, an underline on the active one. */
+/* Workspace bar: one size and weight, no strokes. Hover and the active control share a soft wash. */
 :global([data-technical-ui='workspace']) .header {
-  min-height: 32px;
-  gap: 2px 6px;
-  border-bottom: 1px solid var(--border-subtle);
+  min-height: 36px;
+  gap: 2px 4px;
+  border-bottom: 0;
 }
 
 :global([data-technical-ui='workspace']) .tools,
 :global([data-technical-ui='workspace']) .trailing,
 :global([data-technical-ui='workspace']) .utilities {
-  gap: 0;
+  gap: 2px;
+}
+
+:global([data-technical-ui='workspace']) .file {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+:global([data-technical-ui='workspace']) .file:hover,
+:global([data-technical-ui='workspace']) .file:focus-visible {
+  background: var(--ws-bar-hover);
+  color: var(--text-primary);
 }
 
 :global([data-technical-ui='workspace']) .load,
@@ -392,20 +408,25 @@
 :global([data-technical-ui='workspace']) .lfo,
 :global([data-technical-ui='workspace']) .rec {
   border: 0;
-  border-radius: 0 !important;
+  border-radius: 4px !important;
   background: transparent;
+  box-shadow: none;
   height: 32px;
   min-height: 32px;
-  padding: 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  padding: 0 8px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
   color: var(--text-secondary);
 }
 
 :global([data-technical-ui='workspace']) .load:hover,
 :global([data-technical-ui='workspace']) .settings:hover,
-:global([data-technical-ui='workspace']) .lfo:hover {
-  background: transparent;
+:global([data-technical-ui='workspace']) .lfo:hover,
+:global([data-technical-ui='workspace']) .load:focus-visible,
+:global([data-technical-ui='workspace']) .settings:focus-visible,
+:global([data-technical-ui='workspace']) .lfo:focus-visible {
+  background: var(--ws-bar-hover);
   color: var(--text-primary);
 }
 
@@ -413,25 +434,46 @@
 :global([data-technical-ui='workspace']) .lfoOn,
 :global([data-technical-ui='workspace']) .lfoLive {
   border: 0;
-  background: transparent;
+  background: var(--ws-bar-on);
   color: var(--text-primary);
-  box-shadow: inset 0 -1px 0 var(--accent-primary);
+  box-shadow: none;
 }
 
-:global([data-technical-ui='workspace']) .rec {
+:global([data-technical-ui='workspace']) .lfoLive {
+  color: var(--accent-primary);
+}
+
+:global([data-technical-ui='workspace']) .rec,
+:global([data-technical-ui='workspace']) .rec:hover,
+:global([data-technical-ui='workspace']) .rec:focus-visible {
   color: var(--danger);
 }
 
-:global([data-technical-ui='workspace']) .recOn {
+:global([data-technical-ui='workspace']) .rec:hover,
+:global([data-technical-ui='workspace']) .rec:focus-visible {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+:global([data-technical-ui='workspace']) .recMark {
+  width: 6px;
+  height: 6px;
   border: 0;
-  background: transparent;
+  background: currentColor;
+}
+
+:global([data-technical-ui='workspace']) .recOn,
+:global([data-technical-ui='workspace']) .recOn:hover,
+:global([data-technical-ui='workspace']) .recOn:focus-visible {
+  border: 0;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
   color: var(--danger);
-  box-shadow: inset 0 -1px 0 var(--danger);
+  box-shadow: none;
 }
 
 :global([data-technical-ui='workspace']) .meta {
   gap: 8px;
-  padding: 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  padding: 0 8px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: 0.02em;
 }

@@ -1181,6 +1181,12 @@
   --surface-workspace: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-app));
   --surface-context: var(--bg-app);
   --surface-raised: var(--bg-panel);
+  /* One type and one hover for every control in the workspace bar. */
+  --ws-bar-size: 11px;
+  --ws-bar-weight: 500;
+  --ws-bar-track: 0.08em;
+  --ws-bar-hover: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --ws-bar-on: color-mix(in srgb, var(--text-primary) 16%, transparent);
   gap: 8px;
   background: var(--surface-app);
 }

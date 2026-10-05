@@ -61,3 +61,26 @@
   opacity: 0.55;
   pointer-events: none;
 }
+
+:global([data-technical-ui='workspace']) .stats {
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: 0.02em;
+}
+
+:global([data-technical-ui='workspace']) .refresh {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px !important;
+  background: transparent;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
+}
+
+:global([data-technical-ui='workspace']) .refresh:hover,
+:global([data-technical-ui='workspace']) .refresh:focus-visible {
+  background: var(--ws-bar-hover);
+  color: var(--text-primary);
+}
