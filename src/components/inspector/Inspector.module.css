@@ -5,7 +5,6 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  box-shadow: inset 2px 0 0 var(--inspector-accent, transparent);
   container-type: inline-size;
   container-name: inspector;
   overflow-x: hidden;

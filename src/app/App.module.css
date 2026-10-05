@@ -243,9 +243,9 @@
   padding-top: 0;
 }
 
-.waveCol[data-focus-workspace='eq'] > [data-focus-chrome] {
-  bottom: 0;
-  height: 100%;
+.shell[data-workspace='focus'] .waveCol[data-focus-workspace='eq'] > [data-focus-chrome] {
+  bottom: auto;
+  height: auto;
 }
 
 .inspector {

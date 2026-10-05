@@ -166,6 +166,7 @@ export type Messages = {
     exit: string
     caption: string
     band: (index: number, type: string) => string
+    bandName: (index: number) => string
     addNode: string
     deleteNode: string
     addAutomation: string
@@ -870,6 +871,7 @@ export const EN: Messages = {
     exit: 'Exit Focus Mode',
     caption: 'Focus',
     band: (index, type) => `Band ${index} · ${type}`,
+    bandName: (index) => `Band ${index}`,
     addNode: 'Add node',
     deleteNode: 'Delete node',
     addAutomation: 'Add automation',
@@ -1678,6 +1680,7 @@ export const PL: Messages = {
     exit: 'Wyjdź z trybu Focus',
     caption: 'Fokus',
     band: (index, type) => `Pasmo ${index} · ${type}`,
+    bandName: (index) => `Pasmo ${index}`,
     addNode: 'Dodaj węzeł',
     deleteNode: 'Usuń węzeł',
     addAutomation: 'Dodaj automatyzację',
