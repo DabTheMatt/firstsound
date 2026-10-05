@@ -381,4 +381,43 @@ describe('multi-track foundation', () => {
     expect(snap.params.start).toBeCloseTo(0.1)
     expect(snap.params.end).toBeCloseTo(0.4)
   })
+
+  it('keeps a selection on the longer file after a shorter one is loaded', () => {
+    const engine = new AudioEngine()
+    const [short, long] = engine.getSnapshot().tracks
+    expect(engine.loadTrackPcm(short!.id, tone(1, 8000, 2, 0.2), 8000, 'short.wav')).toBe(true)
+    expect(engine.loadTrackPcm(long!.id, tone(1, 8000, 8, 0.2), 8000, 'long.wav')).toBe(true)
+    engine.selectTrack(long!.id)
+    engine.setRegion(0.2, 7.5)
+    const snap = engine.getSnapshot()
+    expect(snap.duration).toBeCloseTo(8, 2)
+    expect(snap.params.start).toBeLessThan(0.5)
+    expect(snap.params.end).toBeGreaterThan(7)
+  })
+
+  it('fades a playhead jump instead of stepping a steady tone', async () => {
+    const engine = new AudioEngine()
+    const rate = 8000
+    const host = window as Window & { setInterval?: typeof setInterval; clearInterval?: typeof clearInterval }
+    if (typeof host.setInterval !== 'function') {
+      host.setInterval = ((fn: TimerHandler, ms?: number) => setInterval(fn, ms)) as typeof setInterval
+      host.clearInterval = ((id: number) => clearInterval(id)) as typeof clearInterval
+    }
+    const ctx = new OfflineAudioContext(2, rate, rate)
+    engine.useOfflineGraph(ctx)
+    const [a, b] = engine.getSnapshot().tracks
+    engine.loadTrackPcm(a!.id, tone(1, rate, 1, 0.45), rate, 'a.wav')
+    engine.loadTrackPcm(b!.id, tone(1, rate, 1, 0.45), rate, 'b.wav')
+    await engine.play()
+    engine.seekSeconds(0.4, 'sample')
+    const data = (await ctx.startRendering()).getChannelData(0)
+    let maxJump = 0
+    const from = Math.floor(rate * 0.015)
+    const to = Math.floor(rate * 0.12)
+    for (let i = from; i < to; i++) maxJump = Math.max(maxJump, Math.abs((data[i] ?? 0) - (data[i - 1] ?? 0)))
+    expect(maxJump).toBeLessThan(0.2)
+    let peak = 0
+    for (let i = Math.floor(rate * 0.08); i < data.length; i++) peak = Math.max(peak, Math.abs(data[i] ?? 0))
+    expect(peak).toBeGreaterThan(0.2)
+  })
 })
