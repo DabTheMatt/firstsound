@@ -70,7 +70,7 @@
 
 :global([data-technical-ui='workspace']) .refresh {
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
   border-radius: 4px !important;
   background: transparent;

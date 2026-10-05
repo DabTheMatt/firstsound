@@ -91,7 +91,7 @@
 
 :global([data-technical-ui='workspace']) .opt {
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: 4px !important;
   font-size: var(--ws-bar-size, 11px);
   font-weight: var(--ws-bar-weight, 500);

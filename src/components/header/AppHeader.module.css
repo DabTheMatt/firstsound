@@ -389,7 +389,7 @@
 
 :global([data-technical-ui='workspace']) .file {
   height: 32px;
-  padding: 0 8px;
+  padding: 0 4px;
   border-radius: 4px;
   font-size: var(--ws-bar-size, 11px);
   font-weight: var(--ws-bar-weight, 500);
@@ -413,7 +413,7 @@
   box-shadow: none;
   height: 32px;
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   font-size: var(--ws-bar-size, 11px);
   font-weight: var(--ws-bar-weight, 500);
   letter-spacing: var(--ws-bar-track, 0.08em);
@@ -472,7 +472,7 @@
 
 :global([data-technical-ui='workspace']) .meta {
   gap: 8px;
-  padding: 0 8px;
+  padding: 0 4px;
   font-size: var(--ws-bar-size, 11px);
   font-weight: var(--ws-bar-weight, 500);
   letter-spacing: 0.02em;

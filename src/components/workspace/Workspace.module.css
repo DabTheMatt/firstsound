@@ -47,7 +47,7 @@
 :global([data-technical-ui='workspace']) .uiOff,
 :global([data-technical-ui='workspace']) .uiOn {
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: 4px;
   box-shadow: none;
   color: var(--text-secondary);

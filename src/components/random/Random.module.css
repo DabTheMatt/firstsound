@@ -384,7 +384,7 @@
 :global([data-technical-ui='workspace']) .chaos {
   height: 32px;
   min-height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
   border-radius: 4px !important;
   background: transparent;
