@@ -19,6 +19,7 @@ export type HearingReveal = {
 
 let reveal: HearingReveal | null = null
 let token = 0
+let lineVisible = true
 const listeners = new Set<() => void>()
 
 export function getHearingReveal(): HearingReveal | null {
@@ -32,8 +33,21 @@ export function revealHearingSpan(next: Omit<HearingReveal, 'token' | 'mark'> & 
   return reveal
 }
 
+/** Whether the clicked transient line is drawn on the waveform. */
+export function isTransientLineVisible(): boolean {
+  return lineVisible
+}
+
+/** Show or hide the clicked transient line. The stored time stays put. */
+export function setTransientLineVisible(on: boolean): void {
+  if (lineVisible === on) return
+  lineVisible = on
+  for (const listener of listeners) listener()
+}
+
 /** Mark a transient with a line and move the playhead. Does not zoom or edit audio. */
 export function showTransientOnWave(time: number): void {
+  lineVisible = true
   revealHearingSpan({
     id: `transient-${time.toFixed(4)}`,
     start: time,

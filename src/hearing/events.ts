@@ -53,6 +53,32 @@ function mix(left: ArrayLike<number>, right: ArrayLike<number> | null | undefine
   return (l + sampleAt(right, index)) * 0.5
 }
 
+/**
+ * Sample where the rise begins inside [from, to).
+ * The window start is often still quiet, so a mark there sits before the attack.
+ */
+export function attackOnsetIndex(ampAt: (index: number) => number, from: number, to: number, floor = 0): number {
+  const start = Math.max(0, Math.floor(from))
+  const end = Math.max(start, Math.floor(to))
+  let peak = 0
+  let peakAt = start
+  for (let i = start; i < end; i++) {
+    const amp = Math.abs(ampAt(i))
+    if (amp > peak) {
+      peak = amp
+      peakAt = i
+    }
+  }
+  if (!(peak > 0)) return start
+  const thresh = Math.max(floor, peak * 0.12)
+  let onset = peakAt
+  for (let i = peakAt; i >= start; i--) {
+    if (Math.abs(ampAt(i)) >= thresh) onset = i
+    else break
+  }
+  return onset
+}
+
 export function detectEvents(
   left: ArrayLike<number>,
   right: ArrayLike<number> | null | undefined,
@@ -130,7 +156,7 @@ export function detectEvents(
       highEnergy += hp * hp
     }
     const rms = count > 0 ? Math.sqrt(sumSq / count) : 0
-    const time = originSec + (from - start) / rate
+    const blockTime = originSec + (from - start) / rate
     const peakDb = amplitudeToDbfs(peak)
     const rmsDb = amplitudeToDbfs(rms)
 
@@ -145,7 +171,7 @@ export function detectEvents(
     if (clips > 0) {
       hits.push({
         kind: 'possibleClip',
-        time,
+        time: blockTime,
         duration: (to - from) / rate,
         score: clips,
         detail: `${clips} sample${clips === 1 ? '' : 's'} at or above ${CLIP_AMPLITUDE} (±0.1 dB of full scale)`,
@@ -160,6 +186,8 @@ export function detectEvents(
       (peakDb ?? -120) > -24 &&
       (fromQuiet ? peak > 0.12 : peak > prevRms * 6)
     if (onset) {
+      const onsetAt = attackOnsetIndex((index) => mix(left, right, index), from, to, Math.max(prevRms, prevPeak * 0.25))
+      const time = originSec + (onsetAt - start) / rate
       const lowShare = lowEnergy + highEnergy > 0 ? lowEnergy / (lowEnergy + highEnergy) : 0
       const short = peak > prevPeak * 8
       if (short && (peakDb ?? -120) > -18 && lowShare < 0.72) {
@@ -193,7 +221,7 @@ export function detectEvents(
     } else if ((peakDb ?? -120) >= -6 && peak > prevPeak * 1.4) {
       hits.push({
         kind: 'loud',
-        time,
+        time: blockTime,
         duration: (to - from) / rate,
         score: peak,
         detail: peakDb !== null ? `Peak ${peakDb.toFixed(1)} dBFS` : 'High level',

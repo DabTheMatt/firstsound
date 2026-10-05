@@ -2,15 +2,13 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { announce } from '../a11y'
 import type { FocusWorkspace } from '../app/phoneWorkspace'
 import { PARAMS } from '../audio/parameters/definitions'
-import { pitchRatio } from '../audio/parameters/mapping'
-import { formatHoverFreq, hzToNoteName } from '../audio/engine/pitchScale'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { getEqBandSelection, subscribeEqBandSelection, type EqBandSelection } from '../audio/engine/eqBandSelection'
 import { engine, useEngine } from '../hooks/useEngine'
 import { dismissHearingAlert, getHearingAlerts, pushHearingAlert, subscribeHearingAlerts, type HearingAlert } from './alerts'
 import { analyzePcm, type BufferAnalysis } from './analyze'
 import { scopeLabel, transientMarkers } from './events'
-import { eqReadout, affectedRegion, heardBandLevels, shiftSoundMap } from './eqAssist'
+import { eqReadout, affectedRegion, shiftSoundMap } from './eqAssist'
 import {
   compressorCompare,
   delayCompare,
@@ -24,7 +22,7 @@ import { EarIcon } from './EarIcon'
 import { HearingTagList } from './HearingTagList'
 import { compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterBalance, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, vibrationSupported, type HapticKind } from './haptics'
-import { AfterEqChart, LevelTrack } from './AfterEqChart'
+import { AfterEqChart } from './AfterEqChart'
 import { EnterFocusButton } from '../components/focus/EnterFocusButton'
 import { InfoTip } from './InfoTip'
 import { SoundMap } from './SoundMap'
@@ -570,7 +568,6 @@ export function HearingAccessLayer({
                 eq={eq}
                 snap={snap}
                 showMap={settings.layers.soundMap}
-                showFingerprint={settings.layers.fingerprint}
                 showAssistant={settings.layers.assistant}
               />
             ) : null}
@@ -740,7 +737,6 @@ function SoundSection(props: {
   eq: ReturnType<typeof selectedEq>
   snap: ReturnType<typeof useEngine>
   showMap: boolean
-  showFingerprint: boolean
   showAssistant: boolean
 }) {
   const { settings, patch } = useHearingSettings()
@@ -754,7 +750,7 @@ function SoundSection(props: {
       <div className={styles.sectionTitle}>
         <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
         <InfoTip label="More about Sound">
-          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. Extra tags scroll in this row. The fingerprint is this scope before effects.
+          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. Tags wrap on one height, with room for another row and no scrollbar. Original and heard levels share one bar per band.
         </InfoTip>
       </div>
       {props.summary && props.surface === 'simple' ? (
@@ -783,7 +779,6 @@ function SoundSection(props: {
         />
         <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
       </div>
-      {props.showDetails && props.showFingerprint && analysis ? <Fingerprint analysis={analysis} pitch={props.snap.params.pitch} /> : null}
       {props.showDetails && analysis ? (
         <AfterEqChart
           analysis={analysis}
@@ -796,7 +791,7 @@ function SoundSection(props: {
       {props.showDetails && props.showMap ? (
         <>
           {Math.abs(props.snap.params.pitch) >= 0.05 ? (
-            <p className={styles.help}>Sound map after pitch. The fingerprint above stays on the original sample.</p>
+            <p className={styles.help}>Sound map after pitch. The bars above compare the original with what you hear.</p>
           ) : null}
           <SoundMap
             columns={shiftSoundMap(analysis?.soundMap ?? null, props.snap.params.pitch)}
@@ -830,53 +825,6 @@ function SoundSection(props: {
         </p>
       ) : null}
       {props.showDetails && props.showAssistant ? <Assistant findings={props.hearing.findings} analysis={analysis} /> : null}
-    </div>
-  )
-}
-
-function Fingerprint({ analysis, pitch }: { analysis: BufferAnalysis; pitch: number }) {
-  const levels = heardBandLevels(analysis, analysis.sampleRate, 0, [], false)
-  const pitched = Math.abs(pitch) >= 0.05
-  const heardHz = analysis.dominantHz && pitched ? analysis.dominantHz * pitchRatio(pitch) : null
-  return (
-    <div>
-      <div className={styles.sectionTitle}>
-        <h3>Original fingerprint</h3>
-        <InfoTip label="More about the fingerprint">
-          Mean level per band, from −96 dB to 0 dB. A quieter high band stays visible beside a loud bass band. This is the sample or selection before effects.
-        </InfoTip>
-      </div>
-      <ul className={styles.bands}>
-        {analysis.bands.map((band) => {
-          const db = levels.find((row) => row.id === band.id)?.beforeDb ?? null
-          return (
-            <li key={band.id} data-band={band.id} data-hatch={band.hatch}>
-              <span>{band.label}</span>
-              <LevelTrack db={db} />
-              <span>{db === null ? '—' : `${db.toFixed(0)} dB`}</span>
-            </li>
-          )
-        })}
-      </ul>
-      <dl className={styles.grid}>
-        <div><dt>Peak</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
-        <div><dt>RMS</dt><dd>{analysis.rmsDbfs === null ? '—' : `${analysis.rmsDbfs.toFixed(1)} dBFS`}</dd></div>
-        <div><dt>Crest</dt><dd>{analysis.crestDb === null ? '—' : `${analysis.crestDb.toFixed(1)} dB`}</dd></div>
-        <div><dt>Dominant</dt><dd>{analysis.dominantHz ? `${Math.round(analysis.dominantHz)} Hz · ${analysis.dominantNote}` : '—'}</dd></div>
-        {pitched ? (
-          <div>
-            <dt>Pitch</dt>
-            <dd>
-              {pitch > 0 ? '+' : ''}
-              {pitch.toFixed(1)} st
-              {heardHz ? ` · heard ${formatHoverFreq(heardHz)} · ${hzToNoteName(heardHz)}` : ''}
-            </dd>
-          </div>
-        ) : null}
-        <div><dt>Tonality</dt><dd>{analysis.tonality ?? '—'}</dd></div>
-        <div><dt>Noise</dt><dd>{analysis.noise ?? '—'}</dd></div>
-        <div><dt>Transients</dt><dd>{analysis.transientLevel ?? '—'}</dd></div>
-      </dl>
     </div>
   )
 }

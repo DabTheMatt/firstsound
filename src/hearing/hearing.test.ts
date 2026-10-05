@@ -16,7 +16,7 @@ import { distanceWord, headLayout, reverbSpacePicture, roomWord, sourceOutsideHe
 import { detectEvents, transientMarkers } from './events'
 import { applyPanToBalance, compressorPicture, delayPicture, paramRecord, reverbPicture, stereoAfterMidSide } from './effectViz'
 import { fireHaptic, hapticPattern, shouldPulse, vibrationSupported } from './haptics'
-import { getHearingReveal, showTransientOnWave } from './reveal'
+import { getHearingReveal, isTransientLineVisible, setTransientLineVisible, showTransientOnWave } from './reveal'
 import { nearestSpaceBucket } from './spaceLive'
 import { applyMonitorToChannel, monitorCurves } from './monitor'
 import { smearSoundMap } from './soundMapHear'
@@ -155,6 +155,27 @@ describe('hearing access analysis', () => {
     expect(events.length).toBeLessThan(8)
   })
 
+  it('marks the start of a rise, not the quiet start of its window', () => {
+    const seconds = 8
+    const frames = RATE * seconds
+    const buckets = 160
+    const bucket = Math.floor(frames / buckets)
+    const bin = 40
+    const windowStart = Math.floor((bin * frames) / buckets)
+    const at = windowStart + Math.floor(bucket * 0.72)
+    const left = new Float32Array(frames)
+    for (let i = 0; i < 500; i++) left[at + i] = Math.min(0.85, i / 24)
+    const analysis = span(left)
+    const mark = analysis.dynamics.find((bucketRow) => bucketRow.transient)
+    expect(mark).toBeTruthy()
+    expect(mark!.time).toBeGreaterThan(windowStart / RATE + 0.02)
+    expect(Math.abs(mark!.time - at / RATE)).toBeLessThan(0.012)
+    const events = detectEvents(left, null, RATE, 0, left.length, 0)
+    const hit = events.find((event) => event.kind === 'transient' || event.kind === 'possibleClick' || event.kind === 'loud' || event.kind === 'lowFrequency')
+    expect(hit).toBeTruthy()
+    expect(Math.abs(hit!.time - at / RATE)).toBeLessThan(0.02)
+  })
+
   it('reports a right-heavy stereo balance', () => {
     const right = sine(220, 0.5, 0.5)
     const left = right.map((sample) => sample * 10 ** (-12 / 20))
@@ -220,6 +241,11 @@ describe('hearing access analysis', () => {
     expect(reveal?.mark).toBe('line')
     expect(reveal?.start).toBe(1.25)
     expect(reveal?.end).toBe(1.25)
+    expect(isTransientLineVisible()).toBe(true)
+    setTransientLineVisible(false)
+    expect(isTransientLineVisible()).toBe(false)
+    showTransientOnWave(1.25)
+    expect(isTransientLineVisible()).toBe(true)
     const buckets = [
       { time: 0, balance: -0.4, width: 0.1, correlation: 0.9 },
       { time: 1, balance: 0.6, width: 0.4, correlation: 0.2 },

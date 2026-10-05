@@ -506,24 +506,28 @@
 .chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   align-content: flex-start;
-  gap: 6px;
-  height: 4.6rem;
-  min-height: 4.6rem;
-  max-height: 4.6rem;
-  overflow: auto;
-  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 44px;
+  overflow: visible;
+  flex: 1 1 auto;
   box-sizing: border-box;
-  padding-inline-end: 4px;
-  scrollbar-gutter: stable;
 }
 
 .chips li {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 20px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   color: var(--text-primary);
 }
 
@@ -549,12 +553,18 @@
 .chips li[data-tag='inharmonic'] { border-color: var(--warning); }
 
 .chips button {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  max-height: 100%;
   border: 0;
   padding: 0;
   background: transparent;
   color: inherit;
   font: inherit;
+  line-height: 1;
   letter-spacing: inherit;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -932,6 +942,14 @@
 .waveLegend button[aria-pressed='true'] {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
+}
+
+.waveLegendIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  padding: 0;
 }
 
 .focusSpace {

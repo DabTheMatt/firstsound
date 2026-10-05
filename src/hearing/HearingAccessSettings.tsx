@@ -76,7 +76,6 @@ export function HearingAccessSettings() {
         {(
           [
             ['soundMap', 'Sound map'],
-            ['fingerprint', 'Sound fingerprint'],
             ['descriptors', 'Live description'],
             ['events', 'Event detection'],
             ['dynamicsMap', 'Dynamics map'],

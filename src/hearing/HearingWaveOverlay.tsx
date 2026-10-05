@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { engine, useEngine } from '../hooks/useEngine'
-import { getHearingReveal, subscribeHearingReveal, type HearingReveal } from './reveal'
+import {
+  getHearingReveal,
+  isTransientLineVisible,
+  setTransientLineVisible,
+  subscribeHearingReveal,
+  type HearingReveal,
+} from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
 import styles from './HearingAccessLayer.module.css'
@@ -95,13 +101,25 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
   )
 }
 
+function TransientLineIcon({ hidden }: { hidden: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="M8 2.2v11.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      {hidden ? <path d="M3.2 12.8 L12.8 3.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /> : null}
+    </svg>
+  )
+}
+
 /** Names the waveform marks and turns the shared transient lines and the strip symbols on or off. */
 export function HearingWaveLegend() {
   const { settings, patch } = useHearingSettings()
   const snap = useEngine()
+  const [lineShown, setLineShown] = useState(() => isTransientLineVisible())
+  useEffect(() => subscribeHearingReveal(() => setLineShown(isTransientLineVisible())), [])
   const toggleTransients = () => {
     engine.setShowTransients(!snap.showTransients, settings.transientSensitivity)
   }
+  const toggleLine = () => setTransientLineVisible(!lineShown)
   return (
     <div className={styles.waveLegend}>
       <span className={styles.waveLegendTransient}>transient</span>
@@ -117,6 +135,16 @@ export function HearingWaveLegend() {
       </button>
       <button
         type="button"
+        className={styles.waveLegendIcon}
+        aria-pressed={lineShown}
+        aria-label={lineShown ? 'Hide transient line' : 'Show transient line'}
+        title={lineShown ? 'Hide transient line' : 'Show transient line'}
+        onClick={toggleLine}
+      >
+        <TransientLineIcon hidden={!lineShown} />
+      </button>
+      <button
+        type="button"
         aria-pressed={settings.showWaveSymbols}
         onClick={() => patch({ showWaveSymbols: !settings.showWaveSymbols })}
       >
@@ -129,8 +157,16 @@ export function HearingWaveLegend() {
 /** Frames a Show span, or draws a line for a transient. Does not take pointer events. */
 export function HearingRevealMark({ viewStart, viewEnd }: Props) {
   const [reveal, setReveal] = useState<HearingReveal | null>(() => getHearingReveal())
-  useEffect(() => subscribeHearingReveal(() => setReveal(getHearingReveal())), [])
-  if (!reveal) return null
+  const [shown, setShown] = useState(() => isTransientLineVisible())
+  useEffect(
+    () =>
+      subscribeHearingReveal(() => {
+        setReveal(getHearingReveal())
+        setShown(isTransientLineVisible())
+      }),
+    [],
+  )
+  if (!reveal || !shown) return null
   const span = Math.max(0.0001, viewEnd - viewStart)
   const left = ((reveal.start - viewStart) / span) * 100
   if (reveal.mark === 'line') {
