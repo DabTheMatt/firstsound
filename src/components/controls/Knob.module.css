@@ -332,6 +332,15 @@ html[data-a11y-tips='off'] .tip {
   width: min(88px, 100%);
 }
 
+:global([data-eq-knob]) .focus.compact .dialWrap {
+  width: min(112px, 100%);
+}
+
+:global([data-eq-knob]) .dial svg {
+  width: 100%;
+  height: auto;
+}
+
 .compact .label {
   font-size: var(--param-label-size-compact, 8px);
   letter-spacing: var(--param-label-tracking-tight, 0.02em);
