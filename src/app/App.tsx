@@ -1209,22 +1209,15 @@ export default function App() {
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
           onRestoreOriginal={() => {
-            engine.revertToSource()
-            engine.resetAll()
-            setEdit(DEFAULT_EDIT)
-            const dsp = captureDsp(engine)
-            appliedRef.current = cloneDsp(dsp)
-            sensoryBaseRef.current = cloneDsp(dsp)
+            setEdit((current) => {
+              const next = { ...current, fadeIn: 0, fadeOut: 0, fadeAuto: false }
+              editRef.current = next
+              return next
+            })
             commit('dsp')
           }}
           onLevelLoudness={() => {
             engine.normalizeRegion()
-            commit('dsp')
-          }}
-          onAutoFix={() => {
-            engine.normalizeRegion()
-            const dsp = captureDsp(engine)
-            writeDsp(engine, { ...dsp, bypass: { ...dsp.bypass, eq: false, limiter: false } })
             commit('dsp')
           }}
           onApplyTrim={() => {

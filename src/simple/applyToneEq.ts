@@ -56,11 +56,11 @@ export function applyToneToChannels(
   })
 }
 
-export function applyToneToDsp(dsp: DspSnapshot, bands: EqBand[]): DspSnapshot {
+export function applyToneToDsp(dsp: DspSnapshot, bands: EqBand[], eqBypassed = false): DspSnapshot {
   return {
     ...dsp,
     eqBands: bands.map((band) => ({ ...band })),
-    bypass: { ...dsp.bypass, eq: false },
+    bypass: { ...dsp.bypass, eq: eqBypassed },
   }
 }
 

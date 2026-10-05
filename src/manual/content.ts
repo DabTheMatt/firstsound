@@ -33,8 +33,19 @@ const en: ManualSection[] = [
     id: 'start',
     title: 'Getting started',
     body: [
-      'Choose Technical, Simple, or Sensory when FIELD opens. Technical is the full editor. Simple and Sensory are thinner control surfaces over the same engine.',
+      'Choose Technical, Simple, or Sensory when FIELD opens. Simple is a quick editor for finishing a sample. Technical is the full editor. Sensory shapes sound by feeling. All three use the same engine.',
       'Grant audio when the browser asks. If the status says audio is blocked, interact with the page again so the AudioContext can start.',
+    ],
+  },
+  {
+    id: 'simple',
+    title: 'Simple — Quick Editor',
+    body: [
+      'Simple finishes a recording without a mixing desk. Load a sample, drag a selection, trim, then add a fade in and a fade out. Short, Medium, and Long are the only fade lengths. The curve is the same one Technical uses.',
+      'Sound is one character at a time: Natural, More bass, Less bass, Brighter, Warmer, Less harsh, Clearer, or Softer. Amount scales that character from subtle to strong. Natural clears it. Even out raises the selection to a steady peak. Choosing a character again replaces the previous one.',
+      'Effects holds Reverb and Delay. Each stays off until you enable it. Small, Medium, and Large are spaces. Short, Medium, and Long are echoes. Amount is how much of that effect you hear. It does not change tone.',
+      'Original and After compare the loaded material with the current Simple result. Switching them does not clear your settings. Export writes that result, including trim, fades, tone, reverb, and delay.',
+      'Simple and Technical share one audio engine. A tone, reverb, or delay you set here is the same processing Technical shows in more detail. If the project already has processing Simple cannot represent, Simple leaves it in place and says advanced processing is active. Reset changes clears fades, tone, reverb, and delay. It does not replace the loaded file.',
     ],
   },
   {
@@ -340,8 +351,19 @@ const pl: ManualSection[] = [
     id: 'start',
     title: 'Pierwsze kroki',
     body: [
-      'Na starcie wybierz Technical, Simple albo Sensory. Technical to pełny edytor. Simple i Sensory to cieńsze powierzchnie tego samego silnika.',
+      'Na starcie wybierz Technical, Simple albo Sensory. Simple to szybki edytor wykończenia sampla. Technical to pełny edytor. Sensoryczny kształtuje dźwięk odczuciem. Wszystkie trzy korzystają z tego samego silnika.',
       'Zezwól na dźwięk, gdy przeglądarka zapyta. Jeśli status mówi, że audio jest zablokowane, kliknij stronę jeszcze raz, żeby AudioContext mógł wystartować.',
+    ],
+  },
+  {
+    id: 'simple',
+    title: 'Simple — szybki edytor',
+    body: [
+      'Simple wykańcza nagranie bez stołu mikserskiego. Wczytaj sample, przeciągnij zaznaczenie, przytnij, potem dodaj płynny początek i płynny koniec. Długości to tylko Krótki, Średni i Długi. Krzywa zanikania jest ta sama co w Technical.',
+      'Brzmienie to jedna barwa naraz: Naturalnie, Więcej basu, Mniej basu, Jaśniej, Cieplej, Mniej ostro, Czyściej albo Miękcej. Ilość skaluje tę barwę od subtelnej do mocniejszej. Naturalnie ją zdejmuje. Wyrównaj podnosi zaznaczenie do równego szczytu. Wybranie innej barwy zastępuje poprzednią.',
+      'Efekty to pogłos i opóźnienie. Każdy jest wyłączony, dopóki go nie włączysz. Mały, Średni i Duży to przestrzenie. Krótkie, Średnie i Długie to echa. Ilość mówi, jak słyszalny jest dany efekt. Nie zmienia barwy.',
+      'Oryginał i Po porównują wczytany materiał z bieżącym wynikiem Simple. Przełączenie nie kasuje ustawień. Eksport zapisuje ten wynik: przycięcie, zaniki, barwę, pogłos i opóźnienie.',
+      'Simple i Technical korzystają z jednego silnika audio. Barwa, pogłos albo opóźnienie ustawione tutaj to ta sama obróbka, którą Technical pokazuje dokładniej. Jeśli projekt ma już obróbkę, której Simple nie umie pokazać, zostawia ją i mówi, że aktywna jest zaawansowana obróbka. Resetuj zmiany czyści zaniki, barwę, pogłos i opóźnienie. Nie podmienia wczytanego pliku.',
     ],
   },
   {

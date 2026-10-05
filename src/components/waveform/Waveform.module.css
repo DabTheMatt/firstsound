@@ -723,9 +723,9 @@
 }
 
 .simple .regionFrame {
-  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-  border-left: 2px solid var(--text-primary);
-  border-right: 2px solid var(--text-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--text-primary) 70%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--text-primary) 70%, transparent);
 }
 
 .simpleEdge {
@@ -755,12 +755,12 @@
 .simpleEdge::before {
   content: '';
   position: absolute;
-  top: 8%;
-  bottom: 8%;
-  width: 2px;
-  border-radius: 2px;
+  top: 12%;
+  bottom: 12%;
+  width: 1px;
+  border-radius: 1px;
   background: var(--text-primary);
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .simpleEdgeStart::before {
@@ -778,26 +778,26 @@
   content: '';
   position: absolute;
   top: 50%;
-  width: 18px;
-  height: 36px;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
-  border: 2px solid var(--text-primary);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg-app);
+  border: 1.5px solid var(--text-primary);
 }
 
 .simpleEdgeStart::after {
-  left: 3px;
-  transform: translateY(-50%);
+  left: 0;
+  transform: translate(-50%, -50%);
 }
 
 .simpleEdgeEnd::after {
   left: auto;
-  right: 3px;
-  transform: translateY(-50%);
+  right: 0;
+  transform: translate(50%, -50%);
 }
 
 .simpleEdgeHot::after {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-primary) 28%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 55%, transparent);
 }
 
 .simpleEdge:focus-visible {
