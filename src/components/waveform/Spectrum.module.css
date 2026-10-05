@@ -76,11 +76,22 @@
   flex: none;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 4px 8px;
-  padding: 2px 8px 4px;
+  padding: 2px 132px 4px 8px;
   pointer-events: none;
+}
+
+.viewAnchor {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
 }
 
 .chromeLeft,
@@ -507,6 +518,14 @@
   right: 6px;
   z-index: 6;
   pointer-events: none;
+}
+
+.compact .viewAnchor {
+  display: none;
+}
+
+.compact .chrome {
+  padding-right: 8px;
 }
 
 .compact .chromeLeft,

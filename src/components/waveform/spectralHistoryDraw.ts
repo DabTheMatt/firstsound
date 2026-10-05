@@ -404,11 +404,11 @@ function paintTimeChip(
   ceiling: number,
 ): number {
   const padX = 5 * dpr
-  const height = 14 * dpr
+  const height = 16 * dpr
   const width = ctx.measureText(text).width + padX * 2
-  const gap = 2 * dpr
+  const gap = 3 * dpr
   let left = x
-  let top = y - height / 2
+  let top = y - height - 3 * dpr
   const minLeft = plot.left + 4 * dpr
   const maxLeft = Math.max(minLeft, plot.right - width - 4 * dpr)
   left = Math.min(maxLeft, Math.max(minLeft, left))
@@ -422,6 +422,9 @@ function paintTimeChip(
   if (typeof ctx.roundRect === 'function') ctx.roundRect(left, top, width, height, radius)
   else ctx.rect(left, top, width, height)
   ctx.fill()
+  ctx.strokeStyle = colorWithAlpha(ink, 0.45)
+  ctx.lineWidth = Math.max(1, dpr)
+  ctx.stroke()
   ctx.fillStyle = ink
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
@@ -641,16 +644,16 @@ export function paintSpectralHistory(
   ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
   ctx.fillText(source, plot.right - 4 * input.dpr, plot.top + 2 * input.dpr)
 
-  ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
+  ctx.font = `${12 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  const chipFill = colorWithAlpha(colors.bgApp || '#050505', 0.88)
-  const chipInk = colorWithAlpha(colors.textPrimary, 0.92)
-  let chipCeiling = plot.bottom
+  const chipFill = colorWithAlpha(colors.bgApp || '#050505', 0.94)
+  const chipInk = colorWithAlpha(colors.textPrimary, 0.96)
+  let chipCeiling = plot.bottom - 16 * input.dpr
   for (const mark of timeLabels) {
     const age = input.historySec <= 0 ? 0 : mark.ageSec / input.historySec
-    const at = projectSpectralPoint(0, 0, age, plot, viewCamera)
-    chipCeiling = paintTimeChip(ctx, mark.text, at.x + 6 * input.dpr, at.y, plot, input.dpr, chipFill, chipInk, chipCeiling)
+    const at = projectSpectralPoint(0.045, 0, age, plot, viewCamera)
+    chipCeiling = paintTimeChip(ctx, mark.text, at.x, at.y, plot, input.dpr, chipFill, chipInk, chipCeiling)
   }
 
   const elapsed = performance.now() - started

@@ -1489,6 +1489,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             </svg>
           </button>
           </>}
+        </div>
+        <div className={styles.viewAnchor}>
           <FftViewToggle
             mode={prefs.viewMode}
             onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
