@@ -79,6 +79,7 @@ import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { ContextBar } from '../components/workspace/ContextBar'
 import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
+import { AnalyzerSettingsMenu } from '../components/workspace/AnalyzerSettingsMenu'
 import { FftPrimaryBar } from '../components/workspace/FftPrimaryBar'
 import { vizForWorkspace, workspaceFromViz, type TechnicalWorkspaceId } from '../components/workspace/workspaces'
 import { countHiddenActivity } from '../components/workspace/disclosure'
@@ -872,9 +873,14 @@ export default function App() {
         </button>
       </p>
     ) : null
+  const fftInspector = workspaceOn && workspaceId === 'fft'
   const inspector = showContext ? (
     <>
-      {resolvedFocus.kind === 'automation' ? (
+      {fftInspector ? (
+        <div className={ws.analyzerPanel} data-fft-inspector="">
+          <AnalyzerSettingsMenu />
+        </div>
+      ) : resolvedFocus.kind === 'automation' ? (
       <AutomationInspector
         sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
         compact={isPhoneLayout}

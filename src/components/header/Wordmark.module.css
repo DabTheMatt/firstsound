@@ -12,8 +12,8 @@
 .logo {
   display: block;
   flex: none;
-  height: 18px;
-  aspect-ratio: 960 / 331;
+  height: 20px;
+  aspect-ratio: 960 / 320;
   background: var(--text-primary);
   -webkit-mask: url('../../assets/field-wordmark.png') center / contain no-repeat;
   mask: url('../../assets/field-wordmark.png') center / contain no-repeat;
@@ -23,8 +23,16 @@
   height: 16px;
 }
 
+:global([data-technical-ui='workspace']) .logo {
+  height: 22px;
+}
+
+:global([data-technical-ui='workspace']) .compact .logo {
+  height: 16px;
+}
+
 .editorial .logo {
-  height: 18px;
+  height: 20px;
 }
 
 .gate {
