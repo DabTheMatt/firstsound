@@ -135,8 +135,8 @@
 }
 
 .switch[aria-selected='true'] {
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
+  color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .hit,

@@ -52,11 +52,12 @@ import { LoudnessMeter } from '../../hearing/LoudnessMeter'
 import { bindWaveZoom, getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
 import { VizBackground } from './VizBackground'
 import { EqConsole } from '../eq/EqConsole'
-import { anyTrackSoloed, trackHasAudio } from '../../audio/mix/tracks'
+import { anyTrackSoloed, trackAccentStyle, trackHasAudio } from '../../audio/mix/tracks'
 import { MultiTrackView } from '../mix/MultiTrackView'
 import {
   clampView,
   fitView,
+  sampleViewChanged,
   fracToTime,
   panView,
   timeToFrac,
@@ -293,6 +294,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const editorRef = useRef<HTMLDivElement>(null)
   const [view, setViewState] = useState<View>(() => fitView(duration || 1))
   const [fittedRev, setFittedRev] = useState(contentRev)
+  const [fittedTrack, setFittedTrack] = useState(snap.selectedTrackId)
+  const [fittedDuration, setFittedDuration] = useState(duration)
   const [panning, setPanning] = useState(false)
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
   const [fadeDrag, setFadeDrag] = useState<'in' | 'out' | null>(null)
@@ -332,8 +335,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const eqStripHeightRef = useRef(eqStripHeight)
   const splitDrag = useRef<{ y: number; share?: number; height?: number; kind: 'wave' | 'eq' } | null>(null)
   const viewRef = useRef(view)
-  if (fittedRev !== contentRev) {
+  if (
+    fittedRev !== contentRev ||
+    sampleViewChanged({ trackId: fittedTrack, duration: fittedDuration }, { trackId: snap.selectedTrackId, duration })
+  ) {
     setFittedRev(contentRev)
+    setFittedTrack(snap.selectedTrackId)
+    setFittedDuration(duration)
     setViewState(fitView(duration || 1))
   }
   useLayoutEffect(() => {
@@ -1412,6 +1420,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       aria-selected={on}
                       title={track.fileName || track.name}
                       className={`${styles.trackTab} ${on ? styles.trackTabOn : ''}`}
+                      style={trackAccentStyle(track.color)}
                       onClick={() => (onSelectTrack ? onSelectTrack(track.id) : engine.selectTrack(track.id))}
                     >
                       <span>{track.name}</span>

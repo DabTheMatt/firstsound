@@ -58,7 +58,7 @@ const en: ManualSection[] = [
     id: 'transport',
     title: 'Transport',
     body: [
-      'Play/Pause, Stop, and Loop stay on the transport. Play from start jumps to the beginning of the sample rather than the selection.',
+      'Play/Pause, Stop, and Loop stay on the transport. Play from start jumps to the beginning of the sample rather than the selection. Dragging the playhead while audio plays fades the jump, so the move does not click.',
       'On a narrow desktop the secondary actions compress, then move into More. They do not wrap onto a second row. The phone transport keeps large targets and does not force the full desktop labels.',
     ],
   },
@@ -66,7 +66,7 @@ const en: ManualSection[] = [
     id: 'wave',
     title: 'Waveform editing',
     body: [
-      'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed.',
+      'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed. Loading a second sample fits SINGLE to the file you are editing, so the selection can cover any part of that file.',
       'The overview under the wave shows the whole sample. Fit returns the view to the full duration.',
       'SINGLE / WAVE draws the cached source peaks times Input Gain. The linear scale is 10^(dB/20), so +6 dB is about twice as tall and −6 dB is about half. Peaks that pass the lane are clipped only in the drawing. The source buffer is not re-analysed when Gain moves. Later effects and the output fader stay on the meters.',
     ],
@@ -103,7 +103,7 @@ const en: ManualSection[] = [
     id: 'chain',
     title: 'Audio chain',
     body: [
-      'Modules run in series from input to output. Add, remove, bypass, and reorder them from the chain. Each added effect is its own instance with its own settings, even when the type matches one already in the chain.',
+      'Modules run in series from input to output. Add, remove, bypass, and reorder them from the chain. Each added effect is its own instance with its own settings, even when the type matches one already in the chain. Input, each effect, and output take the selected track’s color, the same color as the Wave, EQ, and other view tabs.',
     ],
   },
   {
@@ -338,7 +338,7 @@ const pl: ManualSection[] = [
     id: 'transport',
     title: 'Transport',
     body: [
-      'Play/Pause, Stop i Loop zostają na transporcie. Play from start skacze na początek sampla, nie zaznaczenia.',
+      'Play/Pause, Stop i Loop zostają na transporcie. Play from start skacze na początek sampla, nie zaznaczenia. Przeciąganie głowicy w trakcie odtwarzania wygasza skok, więc ruch nie trzaska.',
       'Na węższym pulpicie akcje drugorzędne najpierw się zagęszczają, potem wchodzą do Więcej. Nie zawijają się do drugiego rzędu. Transport telefonu ma duże cele i nie wciska pełnych etykiet pulpitu.',
     ],
   },
@@ -346,7 +346,7 @@ const pl: ManualSection[] = [
     id: 'wave',
     title: 'Edycja fali',
     body: [
-      'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony.',
+      'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony. Wczytanie drugiego sampla dopasowuje SINGLE do edytowanego pliku, więc zaznaczenie może objąć dowolny jego fragment.',
       'Pasek pod falą pokazuje cały sample. Fit wraca do pełnej długości.',
       'Widok SINGLE / WAVE rysuje zapamiętane szczyty źródła razy Input Gain. Skala liniowa to 10^(dB/20): +6 dB jest około dwa razy wyższe, −6 dB około dwa razy niższe. Szczyty, które wychodzą poza pas, są obcinane tylko na rysunku. Ruch Gain nie analizuje bufora od nowa. Dalsze efekty i tłumik wyjścia widać na miernikach.',
     ],
@@ -383,7 +383,7 @@ const pl: ManualSection[] = [
     id: 'chain',
     title: 'Łańcuch audio',
     body: [
-      'Moduły idą szeregowo od wejścia do wyjścia. Dodajesz, usuwasz, omijasz i zmieniasz ich kolejność w łańcuchu. Każdy dodany efekt jest osobną instancją, nawet gdy typ już jest w łańcuchu.',
+      'Moduły idą szeregowo od wejścia do wyjścia. Dodajesz, usuwasz, omijasz i zmieniasz ich kolejność w łańcuchu. Każdy dodany efekt jest osobną instancją, nawet gdy typ już jest w łańcuchu. Wejście, każdy efekt i wyjście biorą kolor wybranej ścieżki, ten sam co zakładki Wave, EQ i pozostałe widoki.',
     ],
   },
   {

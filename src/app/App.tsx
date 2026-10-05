@@ -32,7 +32,7 @@ import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
-import { trackColorVar, trackHasAudio } from '../audio/mix/tracks'
+import { trackAccentStyle, trackColorVar, trackHasAudio } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
 import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
@@ -1228,7 +1228,12 @@ export default function App() {
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
-        <section className={styles.chainBand} aria-label={t.chain.aria}>
+        <section
+          className={styles.chainBand}
+          aria-label={t.chain.aria}
+          data-track-accent={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber'}
+          style={trackAccentStyle(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber')}
+        >
           <div className={styles.trackContext}>
             <span
               className={styles.trackSwatch}

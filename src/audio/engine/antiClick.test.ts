@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ANTI_CLICK_SEC,
+  SCRUB_FADE_SEC,
   antiClickSeconds,
   applyLinearEdges,
   crossfadeInsert,
@@ -26,6 +27,8 @@ describe('antiClickSeconds', () => {
     expect(antiClickSeconds(8000, 1)).toBeCloseTo(64 / 8000, 5)
     expect(antiClickSeconds(48000, 4)).toBeGreaterThan(antiClickSeconds(48000, 1))
     expect(antiClickSeconds(48000, 4)).toBeLessThanOrEqual(0.012)
+    expect(SCRUB_FADE_SEC).toBeGreaterThan(antiClickSeconds(48000, 1))
+    expect(SCRUB_FADE_SEC).toBeLessThanOrEqual(0.03)
   })
 
   it('keeps the loop crossfade inside a short region', () => {

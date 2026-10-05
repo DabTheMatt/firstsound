@@ -14,7 +14,7 @@ import {
   type AutomationEditFocus,
 } from '../../audio/automation/automation'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { trackColorVar } from '../../audio/mix/tracks'
+import { trackAccentStyle, trackColorVar } from '../../audio/mix/tracks'
 import type { FxLfoKind } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
 import type { ParamId } from '../../audio/parameters/types'
@@ -111,7 +111,7 @@ export function FocusChrome({
   }, [onExit])
 
   return (
-    <div className={styles.chrome} data-focus-chrome={workspace}>
+    <div className={styles.chrome} data-focus-chrome={workspace} style={track ? trackAccentStyle(track.color) : undefined}>
       <div className={styles.top}>
         <div className={styles.identity} data-focus-zone="identity" data-focus-track={track?.id}>
           {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} onHearing={onHearing} /> : <span className={styles.title}>{title}</span>}
