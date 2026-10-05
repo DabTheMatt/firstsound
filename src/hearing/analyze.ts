@@ -8,6 +8,7 @@ import { hzToNoteName } from '../audio/engine/pitchScale'
 import { timeDomainToDb, type SpectrumFftScratch } from '../audio/engine/spectrumFft'
 import { HEARING_BANDS, type HearingBandId, bandForHz } from './bands'
 import { CLIP_AMPLITUDE, DB_FLOOR, SILENCE_PEAK, amplitudeToDbfs, dbfsToPower, powerToDbfs } from './levels'
+import { attackOnsetIndex } from './events'
 import { spectralTones, type ToneMoment } from './tones'
 
 export type AnalysisScope = 'selection' | 'current' | 'full'
@@ -383,9 +384,10 @@ function dynamicsMap(span: PcmSpan, silent: boolean): DynamicsBucket[] {
     }
     const rms = count > 0 ? Math.sqrt(sumSq / count) : 0
     const transient = !silent && b > 0 && peak > 0.05 && peak > prevPeak * 4 && peak > 0.05
+    const onset = transient ? attackOnsetIndex((index) => mixFrame(span, index), a, c, prevPeak) : a
     prevPeak = peak
     out.push({
-      time: span.originSec + (a - start) / span.sampleRate,
+      time: span.originSec + (onset - start) / span.sampleRate,
       peakDb: silent ? null : amplitudeToDbfs(peak),
       rmsDb: silent ? null : amplitudeToDbfs(rms),
       clip,

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { trackAccentStyle } from '../../audio/mix/tracks'
+import { useEngine } from '../../hooks/useEngine'
 import type { VizMode } from '../../app/editorState'
 import { phoneDisplayViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
@@ -59,6 +61,8 @@ export function MobileModeBar({
   canRedo,
 }: Props) {
   const { t } = useI18n()
+  const snap = useEngine()
+  const accent = trackAccentStyle(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber')
   const [viewOpen, setViewOpen] = useState(false)
   const [editMore, setEditMore] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
@@ -78,7 +82,7 @@ export function MobileModeBar({
   }, [viewOpen, editMore])
 
   return (
-    <div ref={barRef} className={styles.bar} data-mobile-modes="">
+    <div ref={barRef} className={styles.bar} data-mobile-modes="" style={accent}>
       <div className={styles.modes} role="tablist" aria-label={t.waveform.viewGroup}>
         {MODES.map((mode) => (
           <button

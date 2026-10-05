@@ -32,7 +32,7 @@ import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
-import { trackColorVar } from '../audio/mix/tracks'
+import { trackAccentStyle, trackColorVar, trackHasAudio } from '../audio/mix/tracks'
 import { SignalChain } from '../components/chain/SignalChain'
 import { Inspector } from '../components/inspector/Inspector'
 import { FxLfoConnectProvider } from '../components/inspector/FxLfoConnect'
@@ -1227,7 +1227,12 @@ export default function App() {
         ) : null}
         {snap.recordError ? <p className={styles.banner}>{snap.recordError}</p> : null}
 
-        <section className={styles.chainBand} aria-label={t.chain.aria}>
+        <section
+          className={styles.chainBand}
+          aria-label={t.chain.aria}
+          data-track-accent={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber'}
+          style={trackAccentStyle(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber')}
+        >
           <div className={styles.trackContext}>
             <span
               className={styles.trackSwatch}
@@ -1241,6 +1246,7 @@ export default function App() {
               <div className={styles.trackChips} role="tablist" aria-label={t.mix.tracks}>
                 {snap.tracks.map((track, index) => {
                   const on = track.id === snap.selectedTrackId
+                  const loaded = trackHasAudio(track)
                   return (
                     <button
                       key={track.id}
@@ -1248,8 +1254,9 @@ export default function App() {
                       role="tab"
                       aria-selected={on}
                       title={track.name}
+                      data-loaded={loaded ? 'true' : 'false'}
                       className={`${styles.trackChip} ${on ? styles.trackChipOn : ''}`}
-                      style={{ ['--chip' as string]: trackColorVar(track.color), borderColor: trackColorVar(track.color) }}
+                      style={{ ['--chip' as string]: trackColorVar(track.color) }}
                       onClick={() => followTrack(track.id)}
                     >
                       {index + 1}

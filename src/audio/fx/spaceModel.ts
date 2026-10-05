@@ -154,7 +154,7 @@ export function reverbTail(
     params.reverbSync > 0.5
       ? syncedDelayMs(bpm, noteDivisionAt(params.reverbNote), noteKindAt(params.reverbNoteKind)) / 1000
       : params.reverbPredelay / 1000
-  const freeze = params.reverbFreeze > 0.5 || type === 'infinite'
+  const freeze = params.reverbFreeze > 0.5
   const reverse = type === 'reverse' || params.reverbReverse > 50
   const size = params.reverbSize / 100
   const decay = freeze ? 12 : params.reverbDecay * (0.7 + size * 1.35)

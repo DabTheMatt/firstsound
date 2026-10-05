@@ -105,6 +105,7 @@ import {
 import { eqShadowField, moduleRandomKind, participatingTargets } from '../random/groups'
 import { LFO_RANDOM_DEFAULT_FIELDS, randomLfoPatch } from '../random/lfoRandom'
 import { isAutoRandomizable } from '../random/metadata'
+import { planReverbRandom } from '../random/reverbRandom'
 import { pickDifferent } from '../random/rng'
 import { applyRandomOffset, offsetForTarget } from '../random/ownership'
 import { loadRandomDocument, parseRandomDocument, saveRandomDocument } from '../random/persist'
@@ -285,6 +286,7 @@ import {
 import { eqHeardBandLists, modulatedEqBands, withEqBandCenters } from './eqPerformance'
 import {
   antiClickSeconds,
+  SCRUB_FADE_SEC,
   loopCrossfadeSeconds,
   nextLoopSegment,
   rampGainLinear,
@@ -607,6 +609,16 @@ function hostClearInterval(id: number): void {
   clear(id)
 }
 
+function hostSetTimeout(fn: () => void, ms: number): number {
+  const timer = typeof window.setTimeout === 'function' ? window.setTimeout.bind(window) : setTimeout
+  return timer(fn, ms) as unknown as number
+}
+
+function hostClearTimeout(id: number): void {
+  const clear = typeof window.clearTimeout === 'function' ? window.clearTimeout.bind(window) : clearTimeout
+  clear(id)
+}
+
 /**
  * Client-side sample instrument engine.
  * React must not drive audio timing — this class owns the clock.
@@ -629,7 +641,12 @@ export class AudioEngine {
    */
   private mixerStructure = 0
   private companionSources: AudioBufferSourceNode[] = []
-  private projectVoices: { id: string; src: AudioBufferSourceNode }[] = []
+  private projectVoices: { id: string; src: AudioBufferSourceNode; gain: GainNode }[] = []
+  private releasingProject: { src: AudioBufferSourceNode; gain: GainNode }[] = []
+  private scrubTimer = 0
+  private scrubPending = false
+  private lastScrubMs = 0
+  private voiceFadeInSec = 0
   private stretchCursors = new Map<string, TrackStretchCursor>()
   /** Grains tagged by track so one reschedule cannot stop another track. */
   private stretchSources: { id: string; src: AudioBufferSourceNode }[] = []
@@ -1655,6 +1672,7 @@ export class AudioEngine {
   }
 
   stop(): void {
+    this.clearScrubRestart()
     this.stopVoices()
     this.playing = false
     this.lfoWallMs = 0
@@ -1682,6 +1700,7 @@ export class AudioEngine {
   /** Keep the playhead; fade distortion noise instead of cutting it. */
   pause(): void {
     if (!this.playing) return
+    this.clearScrubRestart()
     this.playOffset = this.getPlayheadSeconds()
     this.stopVoices()
     this.playing = false
@@ -1755,11 +1774,6 @@ export class AudioEngine {
       project > 0 && mode === 'sample' ? Math.min(duration, Math.max(0, time)) : clampScrubTime(time, mode, start, end, duration)
     this.playOffset = offset
     if (this.ctx) this.playCtxTime = this.ctx.currentTime
-    if (this.usingProjectTransport && this.playing && this.ctx && this.engineMode === 'playback') {
-      this.startProjectVoices(this.ctx.currentTime, offset, true)
-      this.emit()
-      return
-    }
     if (this.engineMode === 'grain') {
       const span = Math.max(end - start, MIN_REGION)
       if (offset >= start && offset <= end) {
@@ -1769,18 +1783,59 @@ export class AudioEngine {
       this.emit()
       return
     }
-    if (this.playing) {
-      if (this.direction === 'forward' && this.engineMode === 'playback') {
-        this.stopVoices()
-        this.startRegionPlayback()
-        if (this.loadedTrackCount() > 1 && this.ctx) this.startSyncedCompanions(this.ctx.currentTime, this.playOffset)
-        this.emit()
-      } else {
-        void this.play()
-      }
-    } else {
-      this.emit()
+    if (this.playing) this.scheduleScrubRestart(offset)
+    this.emit()
+  }
+
+  /** Drop a queued playhead restart so pause and stop cannot revive it. */
+  private clearScrubRestart(): void {
+    if (this.scrubTimer) {
+      hostClearTimeout(this.scrubTimer)
+      this.scrubTimer = 0
     }
+    this.scrubPending = false
+  }
+
+  /**
+   * The playhead moves on every pointer event. Audio follows the latest time,
+   * but a second restart inside the fade would cut the ramp and click.
+   */
+  private scheduleScrubRestart(offset: number): void {
+    const now = typeof performance !== 'undefined' ? performance.now() : 0
+    const gap = SCRUB_FADE_SEC * 1000 + 16
+    if (!this.scrubTimer && now - this.lastScrubMs >= gap) {
+      this.lastScrubMs = now
+      this.restartAudiblePlayhead(offset)
+      return
+    }
+    this.scrubPending = true
+    if (this.scrubTimer) return
+    this.scrubTimer = hostSetTimeout(() => {
+      this.scrubTimer = 0
+      if (!this.scrubPending || !this.playing) {
+        this.scrubPending = false
+        return
+      }
+      this.scrubPending = false
+      this.lastScrubMs = typeof performance !== 'undefined' ? performance.now() : 0
+      this.restartAudiblePlayhead(this.playOffset)
+    }, gap)
+  }
+
+  private restartAudiblePlayhead(offset: number): void {
+    if (!this.ctx || !this.playing) return
+    if (this.usingProjectTransport && this.engineMode === 'playback') {
+      this.startProjectVoices(this.ctx.currentTime, offset, true, SCRUB_FADE_SEC)
+      return
+    }
+    if (this.direction === 'forward' && this.engineMode === 'playback') {
+      this.stopVoices(SCRUB_FADE_SEC)
+      this.playing = true
+      this.startRegionPlayback(null, SCRUB_FADE_SEC)
+      if (this.loadedTrackCount() > 1 && this.ctx) this.startSyncedCompanions(this.ctx.currentTime, offset)
+      return
+    }
+    void this.play()
   }
 
   nudgePlayhead(delta: number, mode: ScrubMode = this.scrubMode): void {
@@ -2348,6 +2403,7 @@ export class AudioEngine {
   randomizeEffect(kind: FxLfoKind): boolean {
     const bandIndex = EQ_BAND_LFO_KINDS.indexOf(kind)
     if (bandIndex >= 0) return this.randomizeEqBand(bandIndex)
+    if (kind === 'reverb') return this.randomizeReverb()
     const entries = participatingEntries(this.randomDoc, kind)
     for (const entry of entries) {
       if (entry.selectId) this.applyRandomSelect(entry.selectId)
@@ -2373,6 +2429,56 @@ export class AudioEngine {
       const shadow = eqShadowField(id)
       if (shadow) {
         this.writeEqBandQuiet(shadow.index, { [shadow.field]: next })
+        changed = true
+        continue
+      }
+      patch[id] = next
+    }
+    if (Object.keys(patch).length > 0) {
+      this.setParams(patch)
+      return true
+    }
+    if (changed) {
+      if (this.ctx) this.applyLiveAudio(0.03)
+      this.emit()
+    }
+    return changed
+  }
+
+  /**
+   * One reverb transaction: type, creative parameters, and linked Mix.
+   * Dry is derived when correlate is on. Wet-return gain is left alone.
+   * The convolver pair stays; only the impulse buffer is replaced when the key changes.
+   */
+  private randomizeReverb(): boolean {
+    const entries = participatingEntries(this.randomDoc, 'reverb')
+    const chaos = this.randomDoc.chaos
+    const plan = planReverbRandom({
+      params: this.params,
+      type: this.reverbType,
+      chaos,
+      participating: entries.map((entry) => entry.ref),
+      intensity: (id) => (this.randomDoc.generators[id] ?? defaultParamRandom()).intensity,
+      rand: Math.random,
+      bpm: this.params.bpm,
+    })
+    let changed = false
+    if (plan.type !== this.reverbType && plan.type !== 'custom') {
+      this.reverbType = plan.type
+      const preset = this.spacePresetId ? findSpacePreset(this.spacePresetId) : undefined
+      if (!preset || preset.kind !== 'reverb' || preset.reverbType !== plan.type) this.spacePresetId = null
+      this.reverbIrKey = ''
+      changed = true
+    }
+    const linked = this.params.reverbCorrelate >= 0.5
+    const patch: Partial<Record<ParamId, number>> = {}
+    for (const id of Object.keys(plan.patch) as ParamId[]) {
+      const next = plan.patch[id]
+      if (typeof next !== 'number' || !Number.isFinite(next)) continue
+      if (linked && id === 'reverbDry' && this.randomOwns('reverbWet')) continue
+      if (this.randomOwns(id)) {
+        this.randomOffsets[id] = offsetForTarget(this.automatedCenter(id), next, id)
+        delete this.randomRuntime.glides[id]
         changed = true
         continue
       }
@@ -6584,7 +6690,7 @@ export class AudioEngine {
     this.motionRandCur += (this.motionRandTarget - this.motionRandCur) * Math.min(1, dt * 4)
   }
 
-  private startRegionPlayback(stretchSeed?: StretchControlSeed | null): void {
+  private startRegionPlayback(stretchSeed?: StretchControlSeed | null, edgeFade = 0): void {
     const live = this.liveParams()
     if (playbackNeedsStretch(live.speed, live.pitch)) {
       this.loopScheduling = false
@@ -6592,7 +6698,7 @@ export class AudioEngine {
       this.startStretchPlayback(stretchSeed)
       return
     }
-    this.startBufferLoop()
+    this.startBufferLoop(edgeFade)
   }
 
   /**
@@ -6600,7 +6706,7 @@ export class AudioEngine {
    * with the current one, so a loop restart is a few-millisecond crossfade
    * instead of an `onended` gap.
    */
-  private startBufferLoop(): void {
+  private startBufferLoop(edgeFade = 0): void {
     const ctx = this.ctx
     const lead = this.leadInput()
     if (!ctx || !lead) return
@@ -6639,8 +6745,8 @@ export class AudioEngine {
       this.loopFromRelBase = loopStart
     }
     const span = Math.max(0.001, this.loopRegionEnd - this.loopRegionStart)
-    const xf = loopCrossfadeSeconds(ctx.sampleRate, 1, span)
-    this.loopOverlapSec = this.loop ? xf : 0
+    const xf = Math.max(edgeFade, loopCrossfadeSeconds(ctx.sampleRate, 1, span))
+    this.loopOverlapSec = this.loop || edgeFade > 0 ? xf : 0
     this.loopCursorWhen = ctx.currentTime
     this.playCtxTime = ctx.currentTime
     this.loopScheduling = true
@@ -6801,13 +6907,13 @@ export class AudioEngine {
     else this.source = null
   }
 
-  private releaseVoices(fade: boolean): void {
+  private releaseVoices(fade: boolean, fadeSec = 0): void {
     const pending = this.voices.splice(0, this.voices.length)
-    for (const voice of pending) this.releaseVoice(voice, fade)
+    for (const voice of pending) this.releaseVoice(voice, fade, fadeSec)
     this.source = null
   }
 
-  private releaseVoice(voice: ActiveVoice, fade: boolean): void {
+  private releaseVoice(voice: ActiveVoice, fade: boolean, fadeSec = 0): void {
     const ctx = this.ctx
     try {
       voice.src.onended = null
@@ -6833,7 +6939,7 @@ export class AudioEngine {
       this.disconnectVoice(voice)
       return
     }
-    const sec = antiClickSeconds(ctx.sampleRate, 1)
+    const sec = fadeSec > 0.0005 ? fadeSec : antiClickSeconds(ctx.sampleRate, 1)
     try {
       rampGainLinear(voice.edge.gain, 0, now, sec)
       voice.src.stop(now + sec)
@@ -7147,7 +7253,7 @@ export class AudioEngine {
     }
   }
 
-  private stopVoices(): void {
+  private stopVoices(fadeSec = 0): void {
     if (this.schedulerId) {
       window.clearInterval(this.schedulerId)
       this.schedulerId = 0
@@ -7160,9 +7266,9 @@ export class AudioEngine {
     this.loopScheduling = false
     this.loopOverlapSec = 0
     this.usingProjectTransport = false
-    this.releaseVoices(Boolean(this.ctx))
+    this.releaseVoices(Boolean(this.ctx), fadeSec)
     this.stopCompanionVoices()
-    this.stopProjectVoices()
+    this.stopProjectVoices(fadeSec)
   }
 
   private bindWorkingFromTrack(id: string): void {
@@ -7358,6 +7464,11 @@ export class AudioEngine {
       } catch {
         /* already disconnected */
       }
+      try {
+        voice.gain.disconnect()
+      } catch {
+        /* already disconnected */
+      }
     }
     this.projectVoices = keptVoices
     this.stretchCursors.delete(id)
@@ -7439,14 +7550,31 @@ export class AudioEngine {
       src.loopStart = loopStart
       src.loopEnd = loopEnd
     }
-    src.connect(input)
+    const edge = ctx.createGain()
+    const fade = this.voiceFadeInSec
+    edge.gain.value = fade > 0.0005 ? 0 : 1
+    src.connect(edge)
+    edge.connect(input)
     const at = t0 + cue.at
+    if (fade > 0.0005) {
+      try {
+        edge.gain.setValueAtTime(0, at)
+        edge.gain.linearRampToValueAtTime(1, at + fade)
+      } catch {
+        edge.gain.value = 1
+      }
+    }
     const offset = Math.min(Math.max(0, cue.offset), Math.max(0, playBuffer.duration - 0.001))
     try {
       src.start(at, offset, Math.max(0.001, cue.duration))
     } catch {
       try {
         src.disconnect()
+      } catch {
+        /* unscheduled */
+      }
+      try {
+        edge.disconnect()
       } catch {
         /* unscheduled */
       }
@@ -7460,8 +7588,13 @@ export class AudioEngine {
         } catch {
           /* already released */
         }
+        try {
+          edge.disconnect()
+        } catch {
+          /* already released */
+        }
       }
-      this.projectVoices.push({ id: trackId, src })
+      this.projectVoices.push({ id: trackId, src, gain: edge })
     } else {
       src.onended = () => {
         try {
@@ -7552,10 +7685,11 @@ export class AudioEngine {
    * Loop, direction, speed, and pitch belong to the track. The project end is
    * the longest original source. Mute only closes the mixer gate.
    */
-  private startProjectVoices(when: number, origin: number, replace: boolean): void {
+  private startProjectVoices(when: number, origin: number, replace: boolean, fadeSec = 0): void {
     const ctx = this.ctx
     if (!ctx) return
-    if (replace) this.stopProjectVoices()
+    if (replace) this.stopProjectVoices(fadeSec)
+    this.voiceFadeInSec = fadeSec
     const spans = this.trackSpans()
     const plan = planProjectStart(spans, origin, when, 0.02)
     const future = when > ctx.currentTime + 0.005
@@ -7569,6 +7703,7 @@ export class AudioEngine {
     for (const track of this.tracks) {
       this.scheduleTrackSource(track, t0, plan.origin, project, 'project')
     }
+    this.voiceFadeInSec = 0
     const remain = Math.max(0.001, project - plan.origin)
     if (this.loop) {
       this.projectRestartAt = t0 + remain
@@ -7598,20 +7733,61 @@ export class AudioEngine {
     this.stretchCursors.clear()
   }
 
-  private stopProjectVoices(): void {
+  private disconnectProjectVoice(voice: { src: AudioBufferSourceNode; gain: GainNode }): void {
+    try {
+      voice.src.onended = null
+      voice.src.stop()
+    } catch {
+      /* already stopped */
+    }
+    try {
+      voice.src.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      voice.gain.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+  }
+
+  /** A new seek must not leave the previous fade running under the next one. */
+  private finishReleasingProject(hard: boolean): void {
+    const pending = this.releasingProject.splice(0, this.releasingProject.length)
+    if (!hard) return
+    for (const voice of pending) this.disconnectProjectVoice(voice)
+  }
+
+  private stopProjectVoices(fadeSec = 0): void {
+    this.finishReleasingProject(true)
     const voices = this.projectVoices.splice(0, this.projectVoices.length)
+    const now = this.ctx?.currentTime ?? 0
+    const fade = fadeSec > 0.0005 && this.ctx ? fadeSec : 0
     for (const voice of voices) {
       try {
         voice.src.onended = null
-        voice.src.stop()
       } catch {
-        /* already stopped */
+        /* already cleared */
       }
-      try {
-        voice.src.disconnect()
-      } catch {
-        /* already disconnected */
+      if (fade > 0) {
+        try {
+          rampGainLinear(voice.gain.gain, 0, now, fade)
+          voice.src.stop(now + fade)
+          this.releasingProject.push(voice)
+        } catch {
+          this.disconnectProjectVoice(voice)
+        }
+        continue
       }
+      this.disconnectProjectVoice(voice)
+    }
+    if (fade > 0) {
+      const pending = this.releasingProject.slice()
+      hostSetTimeout(() => {
+        for (const voice of pending) this.disconnectProjectVoice(voice)
+        this.releasingProject = this.releasingProject.filter((voice) => !pending.includes(voice))
+      }, fade * 1000 + 40)
     }
     this.stopStretchSources()
     this.projectRestartAt = Number.POSITIVE_INFINITY

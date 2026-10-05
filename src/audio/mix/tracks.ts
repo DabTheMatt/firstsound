@@ -11,6 +11,7 @@
  * mixer pan. The safety limiter and master output gain stay global.
  */
 
+import type { CSSProperties } from 'react'
 import type { PlaybackDirection } from '../parameters/types'
 import { clampMsDb, clampPan } from './mixerParams'
 
@@ -112,6 +113,15 @@ export function trackColorVar(id: TrackColorId): string {
       return 'var(--track-green)'
     case 'neutral':
       return 'var(--track-neutral)'
+  }
+}
+
+/** Selected-track accent for the chain and the Wave / EQ tabs. Tokens stay live. */
+export function trackAccentStyle(id: TrackColorId): CSSProperties {
+  const accent = trackColorVar(id)
+  return {
+    ['--accent-primary' as string]: accent,
+    ['--accent-soft' as string]: `color-mix(in srgb, ${accent} 18%, transparent)`,
   }
 }
 

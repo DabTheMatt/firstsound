@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { trackAccentStyle } from '../../audio/mix/tracks'
+import { useEngine } from '../../hooks/useEngine'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import { useI18n } from '../../i18n'
 import { BackgroundControl } from './BackgroundControl'
@@ -141,10 +143,12 @@ export function WaveformToolbar({
   onArrangement,
 }: Props) {
   const { t } = useI18n()
+  const snap = useEngine()
+  const accent = trackAccentStyle(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber')
   const tools = TOOLS
 
   return (
-    <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`} data-waveform-toolbar="">
+    <div className={`${styles.bar} ${minimal ? styles.minimal : ''}`} data-waveform-toolbar="" style={accent}>
       <div className={`${styles.cluster} ${styles.tools}`} data-command-group="edit">
         <span className={styles.kicker}>{t.waveform.edit}</span>
         <div className={styles.edit}>

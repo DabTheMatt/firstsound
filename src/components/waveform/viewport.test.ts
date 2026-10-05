@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   clampView,
   fitView,
+  sampleViewChanged,
   fracToTime,
   panView,
   overviewPointerMoved,
@@ -27,6 +28,9 @@ describe('viewport', () => {
 
   it('fits the whole sample across the view', () => {
     expect(fitView(3.76)).toEqual({ start: 0, end: 3.76 })
+    expect(sampleViewChanged({ trackId: 'a', duration: 4 }, { trackId: 'b', duration: 4 })).toBe(true)
+    expect(sampleViewChanged({ trackId: 'a', duration: 4 }, { trackId: 'a', duration: 12 })).toBe(true)
+    expect(sampleViewChanged({ trackId: 'a', duration: 4 }, { trackId: 'a', duration: 4 })).toBe(false)
     expect(zoomPercent(fitView(3.76), 3.76)).toBeCloseTo(100)
   })
 

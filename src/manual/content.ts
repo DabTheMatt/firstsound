@@ -42,6 +42,7 @@ const en: ManualSection[] = [
     title: 'Loading audio',
     body: [
       'Load sample is the primary action. It opens a file picker. You can also drop a file onto the editor.',
+      'Four track squares sit beside the chain. An empty slot stays nearly invisible. Loading a sample lights that slot’s square in its color from the active theme. The first sample lights square 1. Empty slots do not keep a dimmer copy of that color.',
       'Safari on iPhone and iPad decodes WAV, AIFF, MP3, M4A/AAC, and CAF. OGG and WebM usually fail there.',
     ],
   },
@@ -57,7 +58,7 @@ const en: ManualSection[] = [
     id: 'transport',
     title: 'Transport',
     body: [
-      'Play/Pause, Stop, and Loop stay on the transport. Play from start jumps to the beginning of the sample rather than the selection.',
+      'Play/Pause, Stop, and Loop stay on the transport. Play from start jumps to the beginning of the sample rather than the selection. Dragging the playhead while audio plays fades the jump, so the move does not click.',
       'On a narrow desktop the secondary actions compress, then move into More. They do not wrap onto a second row. The phone transport keeps large targets and does not force the full desktop labels.',
     ],
   },
@@ -65,7 +66,7 @@ const en: ManualSection[] = [
     id: 'wave',
     title: 'Waveform editing',
     body: [
-      'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed.',
+      'Drag across the waveform to set the selection. Drag the edges to resize it. Pinch with two fingers to zoom. Scroll or drag to pan when the view is zoomed. Loading a second sample fits SINGLE to the file you are editing, so the selection can cover any part of that file.',
       'The overview under the wave shows the whole sample. Fit returns the view to the full duration.',
       'SINGLE / WAVE draws the cached source peaks times Input Gain. The linear scale is 10^(dB/20), so +6 dB is about twice as tall and −6 dB is about half. Peaks that pass the lane are clipped only in the drawing. The source buffer is not re-analysed when Gain moves. Later effects and the output fader stay on the meters.',
     ],
@@ -102,7 +103,7 @@ const en: ManualSection[] = [
     id: 'chain',
     title: 'Audio chain',
     body: [
-      'Modules run in series from input to output. Add, remove, bypass, and reorder them from the chain. Each added effect is its own instance with its own settings, even when the type matches one already in the chain.',
+      'Modules run in series from input to output. Add, remove, bypass, and reorder them from the chain. Each added effect is its own instance with its own settings, even when the type matches one already in the chain. Input, each effect, and output take the selected track’s color, the same color as the Wave, EQ, and other view tabs.',
     ],
   },
   {
@@ -147,6 +148,7 @@ const en: ManualSection[] = [
     body: [
       'Each reverb instance keeps its own size, decay, wet mix, and impulse response. The dry path and the reverberated path are separate, then summed.',
       'When Dry and Wet are linked they are one Mix. The percentages are that mix position: 35% Wet means Dry 65% and Wet 35%. FIELD applies an equal-power crossfade, dry = cos(mix × π/2) and wet = sin(mix × π/2), so the middle does not drop the way a straight linear blend does. The wet impulse is scaled once from its own energy, so a full-scale source mixed in does not slam the sum into clipping. A fixed ceiling after that sum catches the peaks equal-power mixing can still add. Neither step is a live loudness control, and neither keeps every source at the same loudness. Unlink Dry and Wet to set them as independent levels. The output can then get louder or quieter.',
+      'Reverb Randomize changes creative parameters such as Mix, decay, size, pre-delay, damping, and width. When Dry and Wet are linked, Randomize moves that one Mix percentage. The equal-power dry and wet gains are derived from Mix and are not drawn on their own. Chaos may pick more extreme settings, including a fully wet mix. It does not randomize the internal wet-return gain, impulse normalization, or whether the reverb is bypassed.',
     ],
   },
   {
@@ -177,7 +179,10 @@ const en: ManualSection[] = [
   {
     id: 'random',
     title: 'Random',
-    body: ['Random offsets parameters inside their allowed ranges. The safety limiter is excluded so Random cannot push it into an unsafe setting.'],
+    body: [
+      'Random offsets parameters inside their allowed ranges. The safety limiter is excluded so Random cannot push it into an unsafe setting.',
+      'On a linked reverb, Randomize changes Mix. Dry and Wet percentages stay one position, and the equal-power gains are calculated afterwards. Internal return gain is not a Random target.',
+    ],
   },
   {
     id: 'chaos',
@@ -185,6 +190,7 @@ const en: ManualSection[] = [
     body: [
       'Chaos is the button immediately left of Settings. Turning it on enables the chain safety limiter if that limiter was bypassed or missing. It does not add a second limiter, and it does not add makeup gain.',
       'If you bypass the limiter while Chaos stays on, FIELD leaves that choice until you leave Chaos and enter it again.',
+      'Chaos can randomize more extreme reverb settings than a normal Randomize pass. It still changes Mix as one control when Dry and Wet are linked, and it does not randomize internal gain staging or bypass the effect.',
     ],
   },
   {
@@ -283,11 +289,11 @@ const en: ManualSection[] = [
     title: 'Hearing Access',
     body: [
       'Hearing Access is an accessibility layer, not a fourth editing mode. Turn it on in Settings → Accessibility → Hearing Access. It stays available in Simple, Technical, and Sensory. Off is the default. FIELD does not infer a disability from this switch.',
-      'The panel opens from the Hearing Access button, an ear icon immediately to the left of Export. Enlarge grows it; Restore returns the default size. Each corner has a resize handle, and the size and position are remembered. Drag the header to detach the panel; Dock puts it back. When the panel is small, the scrolling text keeps a margin beside the scrollbar. The tag row keeps a fixed height so extra tags scroll inside it and do not push the fingerprint. Sound is the live reading and the fingerprint. Events lists measured moments — click a row to move the playhead; an empty list means this scope has no qualifying attack, gap, or clip. Space is stereo balance, width, correlation, and mid/side, plus a head picture that follows the playhead. Dynamics is level, crest, and full-scale clipping. Compare is a table per active effect. Haptics can send a test pulse when the browser exposes vibration. Longer explanations sit behind the information button.',
+      'The panel opens from the Hearing Access button, an ear icon immediately to the left of Export. Enlarge grows it; Restore returns the default size. Each corner has a resize handle, and the size and position are remembered. Drag the header to detach the panel; Dock puts it back. When the panel is small, the scrolling text keeps a margin beside the scrollbar. Tags share one height and wrap onto another row without a scrollbar. Sound is the live reading and Original → heard. Events lists measured moments — click a row to move the playhead; an empty list means this scope has no qualifying attack, gap, or clip. Space is stereo balance, width, correlation, and mid/side, plus a head picture that follows the playhead. Dynamics is level, crest, and full-scale clipping. Compare is a table per active effect. Haptics can send a test pulse when the browser exposes vibration. Longer explanations sit behind the information button.',
       'Choose a profile. Assisted listening adds measurements beside ordinary monitoring. Visual first prioritizes the sound map, fingerprint, events, space, dynamics, and numbers when auditory monitoring is not reliable. Visual + haptic adds optional pulses on devices that actually support vibration.',
-      'The sound map shows time, frequency region, and energy. Regions are SUB, BASS, LOW MID, MID, HIGH MID, HIGH, and AIR. Each region has a label, a vertical position, a texture, and a color taken from the active theme. Color is never the only channel, so the map stays readable in Black & White, Noire, and Eyes Friendly themes. Attacks are thin vertical lines at the time they happen, drawn through the band rows. The rows sit edge to edge, so there is no square grid to line up with. Click a line to mark that time on the waveform and move the playhead. The view does not zoom. It does not edit the audio.',
-      'Sound fingerprint describes the original sample or selection before effects. Band bars are mean level from −96 dB to 0 dB, so a quieter high band stays visible beside a louder bass band. It also reports peak, RMS, crest factor, and a dominant frequency only when a narrow partial is actually present. Silence does not invent a note. When pitch is not zero, the fingerprint names the heard dominant frequency. Original → heard puts both levels on one bar per band. The dimmer bar is the original and a tick marks its end. The brighter bar is what you hear after pitch and the current EQ curve. A bright extension past the tick is a boost. A dim tail past the brighter bar is a cut. Its color follows the theme and the band name stays beside it.',
-      'Live descriptions such as BASS-HEAVY, HIGH-BAND ENERGY, AIR ENERGY, LEFT-HEAVY, RIGHT-HEAVY, LOW CORRELATION, CLIPPING, NEAR FULL SCALE, DC OFFSET, or WIDE STEREO come from documented thresholds, with hysteresis so labels do not flicker. WIDE STEREO and NARROW STEREO never appear together: when the measurement crosses to the other side, the old label is replaced at once. The same is true of LOUD and QUIET. Each label has an explanation that includes the measured value. The tag row keeps a fixed height in the panel and in Hearing Access focus, and extra tags scroll inside it. Note tags and character tags follow the playhead. A partial or a character such as TONAL, NOISE-LIKE, PERCUSSIVE, SUSTAINED, BRIGHT, DULL, HARMONIC, or INHARMONIC is listed while that moment is under the playhead, not for the whole sample at once. Click a note tag to hear a short synthesized sine of that frequency. The preview stays quiet, high frequencies are much quieter still, and a limiter caps it. It is not the sample itself and it does not pass through the instrument output. A Notes control beside the tags sets how many partials of the current moment are listed. A strict setting keeps the loudest one or two. A sensitive setting includes quieter partials, up to about six, and the same note is listed once. Silence does not invent a note. FIELD does not call a sound good, bad, warm, or professional.',
+      'The sound map shows time, frequency region, and energy. Regions are SUB, BASS, LOW MID, MID, HIGH MID, HIGH, and AIR. Each region has a label, a vertical position, a texture, and a color taken from the active theme. Color is never the only channel, so the map stays readable in Black & White, Noire, and Eyes Friendly themes. Attacks are thin vertical lines at the time they happen, drawn through the band rows. The rows sit edge to edge, so there is no square grid to line up with. Click a line to mark the start of that attack on the waveform and move the playhead. The line icon under the wave legend shows or hides that mark. The view does not zoom. It does not edit the audio.',
+      'Original → heard is the only band picture in Sound. It puts the sample or selection before effects and what you hear after pitch and EQ on one bar per band. Levels run from −96 dB to 0 dB, so a quieter high band stays visible beside a louder bass band. Peak, RMS, and crest stay in Dynamics. The dimmer bar is the original and a tick marks its end. The brighter bar is what you hear after pitch and the current EQ curve. A bright extension past the tick is a boost. A dim tail past the brighter bar is a cut. Its color follows the theme and the band name stays beside it.',
+      'Live descriptions such as BASS-HEAVY, HIGH-BAND ENERGY, AIR ENERGY, LEFT-HEAVY, RIGHT-HEAVY, LOW CORRELATION, CLIPPING, NEAR FULL SCALE, DC OFFSET, or WIDE STEREO come from documented thresholds, with hysteresis so labels do not flicker. WIDE STEREO and NARROW STEREO never appear together: when the measurement crosses to the other side, the old label is replaced at once. The same is true of LOUD and QUIET. Each label has an explanation that includes the measured value. Every tag has the same height in the panel and in Hearing Access focus, and extra tags wrap onto another row without a scrollbar. Note tags and character tags follow the playhead. A partial or a character such as TONAL, NOISE-LIKE, PERCUSSIVE, SUSTAINED, BRIGHT, DULL, HARMONIC, or INHARMONIC is listed while that moment is under the playhead, not for the whole sample at once. Click a note tag to hear a short synthesized sine of that frequency. The preview stays quiet, high frequencies are much quieter still, and a limiter caps it. It is not the sample itself and it does not pass through the instrument output. A Notes control beside the tags sets how many partials of the current moment are listed. A strict setting keeps the loudest one or two. A sensitive setting includes quieter partials, up to about six, and the same note is listed once. Silence does not invent a note. FIELD does not call a sound good, bad, warm, or professional.',
       'Before / after compares the measured buffer with the change implied by the active effect: EQ magnitude, gain, compressor gain reduction, delay repeats, reverb tail, and stereo width or balance. Compare shows each active effect as its own table, with the measure, the before value, the after value, and the change. Delay times and reverb decay follow the same parameters as the DSP. Reverb duration is parameter-derived. It is not a measured RT60.',
       'The dynamics map marks quiet, loud, transient, and actual full-scale clipping on a thin waveform strip labeled LEVEL. Bar height is the peak of that time slice. A triangle is a short attack. An exclamation mark is full-scale clipping. Loud audio below full scale is not labeled as clipping. Attacks on the sound map are thin vertical lines at the measured time. Each band row uses a fixed loudness scale, so a quieter high band stays visible beside a louder bass band. A bass-heavy sample can still be mostly bass. That is the level, not a hidden high. On the waveform a transient is a thin vertical line, the same mark Input → Mark transients uses. One hit can still light several triangles on the level strip. Event detection can mark transients, silence, loud events, low-frequency events, tonal stretches, possible clicks, and possible clipping. Choose Show or an event row to move the playhead. Nothing is rewritten automatically.',
       'The space map reports balance, width, correlation, and mid/side energy, including a neutral warning when correlation suggests a mono-compatibility issue. A head picture, seen from above, follows the playhead. Spread follows width, and a hollow mark has low correlation. The field sits apart from the head and runs in time from top to bottom. A longer mark is wider. The marks follow pan, mid/side width, balance, and Haas, and a delay that replaces one channel. The sample balance stays listed beside the heard balance. A mono file stays narrow, and pan still places it. EQ assistance shows the selected band’s frequency, note, region, gain, Q, and the frequency span the real filter response actually moves. Longer explanations sit behind the information button.',
@@ -331,6 +337,7 @@ const pl: ManualSection[] = [
     title: 'Wczytywanie audio',
     body: [
       'Wczytaj sample jest główną akcją. Otwiera wybór pliku. Plik można też upuścić na edytor.',
+      'Cztery kwadraty ścieżek stoją przy łańcuchu. Pusty slot zostaje prawie niewidoczny. Wczytanie sampla zapala kwadrat tego slotu kolorem ścieżki z palety aktywnego motywu. Pierwszy sample zapala kwadrat 1. Puste sloty nie trzymają przygaszonej wersji tego koloru.',
       'Safari na iPhonie i iPadzie dekoduje WAV, AIFF, MP3, M4A/AAC i CAF. OGG i WebM zwykle tam nie działają.',
     ],
   },
@@ -346,7 +353,7 @@ const pl: ManualSection[] = [
     id: 'transport',
     title: 'Transport',
     body: [
-      'Play/Pause, Stop i Loop zostają na transporcie. Play from start skacze na początek sampla, nie zaznaczenia.',
+      'Play/Pause, Stop i Loop zostają na transporcie. Play from start skacze na początek sampla, nie zaznaczenia. Przeciąganie głowicy w trakcie odtwarzania wygasza skok, więc ruch nie trzaska.',
       'Na węższym pulpicie akcje drugorzędne najpierw się zagęszczają, potem wchodzą do Więcej. Nie zawijają się do drugiego rzędu. Transport telefonu ma duże cele i nie wciska pełnych etykiet pulpitu.',
     ],
   },
@@ -354,7 +361,7 @@ const pl: ManualSection[] = [
     id: 'wave',
     title: 'Edycja fali',
     body: [
-      'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony.',
+      'Przeciągnij po fali, aby ustawić zaznaczenie. Krawędzie zmieniają jego długość. Uszczypnięcie dwoma palcami przybliża. Przewijanie albo przeciąganie przesuwa widok, gdy jest przybliżony. Wczytanie drugiego sampla dopasowuje SINGLE do edytowanego pliku, więc zaznaczenie może objąć dowolny jego fragment.',
       'Pasek pod falą pokazuje cały sample. Fit wraca do pełnej długości.',
       'Widok SINGLE / WAVE rysuje zapamiętane szczyty źródła razy Input Gain. Skala liniowa to 10^(dB/20): +6 dB jest około dwa razy wyższe, −6 dB około dwa razy niższe. Szczyty, które wychodzą poza pas, są obcinane tylko na rysunku. Ruch Gain nie analizuje bufora od nowa. Dalsze efekty i tłumik wyjścia widać na miernikach.',
     ],
@@ -391,7 +398,7 @@ const pl: ManualSection[] = [
     id: 'chain',
     title: 'Łańcuch audio',
     body: [
-      'Moduły idą szeregowo od wejścia do wyjścia. Dodajesz, usuwasz, omijasz i zmieniasz ich kolejność w łańcuchu. Każdy dodany efekt jest osobną instancją, nawet gdy typ już jest w łańcuchu.',
+      'Moduły idą szeregowo od wejścia do wyjścia. Dodajesz, usuwasz, omijasz i zmieniasz ich kolejność w łańcuchu. Każdy dodany efekt jest osobną instancją, nawet gdy typ już jest w łańcuchu. Wejście, każdy efekt i wyjście biorą kolor wybranej ścieżki, ten sam co zakładki Wave, EQ i pozostałe widoki.',
     ],
   },
   {
@@ -436,6 +443,7 @@ const pl: ManualSection[] = [
     body: [
       'Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, miks wet i własną odpowiedź impulsową. Ścieżka dry i ścieżka pogłosu są osobne, a potem sumowane.',
       'Gdy Dry i Wet są zlinkowane, to jeden Mix. Procenty opisują pozycję miksu: 35% Wet oznacza Dry 65% i Wet 35%. FIELD stosuje crossfade o stałej mocy, dry = cos(mix × π/2) i wet = sin(mix × π/2), więc środek nie zapada się tak jak przy zwykłym liniowym blendzie. Odpowiedź impulsowa wet jest skalowana raz, według własnej energii, więc pełnoskalowe źródło wmiksowane w pogłos nie wbija sumy w clipping. Stały pułap za tą sumą łapie szczyty, które miks o stałej mocy nadal może dodać. Żaden z tych kroków nie jest żywym dopasowaniem głośności i żaden nie utrzymuje tej samej głośności dla każdego źródła. Odłącz Dry i Wet, żeby ustawić je jako niezależne poziomy. Wyjście może wtedy stać się głośniejsze albo cichsze.',
+      'Randomize pogłosu zmienia parametry kreatywne: Mix, wybrzmienie, rozmiar, pre-delay, tłumienie i szerokość. Gdy Dry i Wet są zlinkowane, Randomize rusza ten jeden procent Mix. Wzmocnienia dry i wet o stałej mocy wynikają z Mix i nie są losowane osobno. Chaos może wybrać bardziej skrajne ustawienia, także pełny wet. Nie losuje wewnętrznego wzmocnienia powrotu wet, normalizacji impulsu ani obejścia pogłosu.',
     ],
   },
   {
@@ -466,7 +474,10 @@ const pl: ManualSection[] = [
   {
     id: 'random',
     title: 'Random',
-    body: ['Random odchyla parametry w dozwolonych zakresach. Limiter bezpieczeństwa jest wyłączony z losowania, więc Random nie ustawi go niebezpiecznie.'],
+    body: [
+      'Random odchyla parametry w dozwolonych zakresach. Limiter bezpieczeństwa jest wyłączony z losowania, więc Random nie ustawi go niebezpiecznie.',
+      'Na zlinkowanym pogłosie Randomize zmienia Mix. Procenty Dry i Wet zostają jedną pozycją, a wzmocnienia o stałej mocy są liczone potem. Wewnętrzne wzmocnienie powrotu nie jest celem Random.',
+    ],
   },
   {
     id: 'chaos',
@@ -474,6 +485,7 @@ const pl: ManualSection[] = [
     body: [
       'Chaos jest przyciskiem bezpośrednio na lewo od Ustawień. Włączenie go uruchamia limiter bezpieczeństwa w łańcuchu, jeśli był ominięty albo go nie było. Nie dodaje drugiego limitera i nie podbija makeup.',
       'Jeśli ominiesz limiter, gdy Chaos nadal jest włączony, FIELD zostawia ten wybór, dopóki nie wyjdziesz z Chaos i nie wejdziesz ponownie.',
+      'Chaos może losować bardziej skrajny pogłos niż zwykłe Randomize. Przy zlinkowanych Dry i Wet nadal zmienia jeden Mix i nie losuje wewnętrznego gain staging ani obejścia efektu.',
     ],
   },
   {
@@ -572,11 +584,11 @@ const pl: ManualSection[] = [
     title: 'Hearing Access',
     body: [
       'Hearing Access to warstwa dostępności, a nie czwarty tryb edycji. Włącza się ją w Ustawienia → Dostępność → Hearing Access. Działa w trybach Prosty, Sterowanie i Słuch. Domyślnie jest wyłączona. FIELD nie wnioskuje z tego przełącznika o niepełnosprawności.',
-      'Panel otwiera przycisk Hearing Access, ikona ucha tuż na lewo od Export. Enlarge powiększa okno, Restore wraca do rozmiaru domyślnego. Każdy róg ma uchwyt zmiany rozmiaru, a rozmiar i pozycja zostają zapamiętane. Przeciągnięcie nagłówka odpina panel; Dock stawia go z powrotem. Gdy okno jest małe, treść ma margines obok paska przewijania. Rząd tagów ma stałą wysokość, więc dodatkowe tagi przewijają się w nim i nie spychają odcisku. Sound to odczyt na żywo i fingerprint. Events to lista zmierzonych momentów — klik wiersza przesuwa głowicę; pusta lista znaczy, że w tym zakresie nie ma ataku, przerwy ani clippingu. Space to balans, szerokość, korelacja i mid/side oraz obraz głowy podążający za głowicą. Dynamics to poziom, crest i clipping pełnej skali. Compare to tabela dla każdego włączonego efektu. Haptics może wysłać impuls testowy, gdy przeglądarka udostępnia wibrację. Dłuższe wyjaśnienia są pod przyciskiem informacji.',
+      'Panel otwiera przycisk Hearing Access, ikona ucha tuż na lewo od Export. Enlarge powiększa okno, Restore wraca do rozmiaru domyślnego. Każdy róg ma uchwyt zmiany rozmiaru, a rozmiar i pozycja zostają zapamiętane. Przeciągnięcie nagłówka odpina panel; Dock stawia go z powrotem. Gdy okno jest małe, treść ma margines obok paska przewijania. Tagi mają jedną wysokość i zawijają się w kolejny rząd bez paska przewijania. Sound to odczyt na żywo i Original → heard. Events to lista zmierzonych momentów — klik wiersza przesuwa głowicę; pusta lista znaczy, że w tym zakresie nie ma ataku, przerwy ani clippingu. Space to balans, szerokość, korelacja i mid/side oraz obraz głowy podążający za głowicą. Dynamics to poziom, crest i clipping pełnej skali. Compare to tabela dla każdego włączonego efektu. Haptics może wysłać impuls testowy, gdy przeglądarka udostępnia wibrację. Dłuższe wyjaśnienia są pod przyciskiem informacji.',
       'Profil wybiera użytkownik. Assisted listening dokłada pomiary do zwykłego odsłuchu. Visual first stawia na mapę dźwięku, odcisk, zdarzenia, przestrzeń, dynamikę i liczby, gdy odsłuch nie jest wiarygodny. Visual + haptic dodaje opcjonalne impulsy tam, gdzie urządzenie naprawdę ma wibrację.',
-      'Mapa dźwięku pokazuje czas, region częstotliwości i energię. Regiony to SUB, BASS, LOW MID, MID, HIGH MID, HIGH i AIR. Każdy ma etykietę, pozycję, fakturę i kolor wzięty z aktywnego motywu. Sam kolor nic nie znaczy, więc mapa zostaje czytelna w motywach Black & White, Noire i Eyes Friendly. Ataki to cienkie pionowe linie w czasie, w którym się pojawiają, przez wiersze pasm. Wiersze stykają się krawędziami, więc nie ma siatki kwadratów do wyrównania. Klik linii oznacza ten czas na fali i przesuwa głowicę. Widok się nie przybliża. Nie edytuje audio.',
-      'Sound fingerprint opisuje oryginalną próbkę albo zaznaczenie, zanim zadziałają efekty. Paski pasm to średni poziom od −96 dB do 0 dB, więc cichsze wysokie pasmo zostaje widoczne obok głośnego basu. Podaje też peak, RMS, crest i częstotliwość dominującą tylko wtedy, gdy jest wąski częściowy. Cisza nie wymyśla nuty. Gdy pitch nie jest zerem, fingerprint podaje słyszaną dominującą częstotliwość. Original → heard składa oba poziomy na jednym pasku pasma. Bledszy pasek to oryginał, a kreska oznacza jego koniec. Jaśniejszy pasek to to, co słychać po pitchu i aktualnej krzywej EQ. Jasne przedłużenie za kreską to podbicie. Bledsza resztka za jaśniejszym paskiem to tłumienie. Kolor idzie z motywu, a nazwa pasma zostaje obok.',
-      'Opisy na żywo, takie jak BASS-HEAVY, HIGH-BAND ENERGY, AIR ENERGY, LEFT-HEAVY, RIGHT-HEAVY, LOW CORRELATION, CLIPPING, NEAR FULL SCALE, DC OFFSET albo WIDE STEREO, wynikają z opisanych progów i histerezy, żeby etykiety nie mrugały. WIDE STEREO i NARROW STEREO nie pojawiają się razem: gdy pomiar przechodzi na drugą stronę, stara etykieta znika od razu. To samo dotyczy LOUD i QUIET. Każda etykieta ma wyjaśnienie z wartością pomiaru. Rząd tagów ma stałą wysokość w panelu i w focusie Hearing Access, a dodatkowe tagi przewijają się w tym rzędzie. Tagi nut i charakteru podążają za głowicą. Składowa albo charakter, taki jak TONAL, NOISE-LIKE, PERCUSSIVE, SUSTAINED, BRIGHT, DULL, HARMONIC albo INHARMONIC, pojawia się, gdy ten moment jest pod głowicą, a nie dla całej próbki naraz. Klik tagu nuty odtwarza krótki zsyntezowany sinus tej częstotliwości. Podgląd jest cichy, wysokie częstotliwości są jeszcze cichsze, a limiter go ogranicza. To nie jest sama próbka i nie przechodzi przez wyjście instrumentu. Suwak Notes obok tagów ustawia, ile składowych bieżącego momentu widać. Niska czułość zostawia najgłośniejszą jedną albo dwie. Wysoka dodaje cichsze, do około sześciu, a ta sama nuta pojawia się raz. Cisza nie wymyśla nuty. FIELD nie nazywa dźwięku dobrym, złym, ciepłym ani profesjonalnym.',
+      'Mapa dźwięku pokazuje czas, region częstotliwości i energię. Regiony to SUB, BASS, LOW MID, MID, HIGH MID, HIGH i AIR. Każdy ma etykietę, pozycję, fakturę i kolor wzięty z aktywnego motywu. Sam kolor nic nie znaczy, więc mapa zostaje czytelna w motywach Black & White, Noire i Eyes Friendly. Ataki to cienkie pionowe linie w czasie, w którym się pojawiają, przez wiersze pasm. Wiersze stykają się krawędziami, więc nie ma siatki kwadratów do wyrównania. Klik linii stawia znak na początku tego ataku na fali i przesuwa głowicę. Ikona linii pod legendą fali pokazuje albo ukrywa ten znak. Widok się nie przybliża. Nie edytuje audio.',
+      'Original → heard to jedyny obraz pasm w Sound. Składa próbkę albo zaznaczenie przed efektami i to, co słychać po pitchu i EQ, na jednym pasku pasma. Poziomy idą od −96 dB do 0 dB, więc cichsze wysokie pasmo zostaje widoczne obok głośnego basu. Peak, RMS i crest zostają w Dynamics. Bledszy pasek to oryginał, a kreska oznacza jego koniec. Jaśniejszy pasek to to, co słychać po pitchu i aktualnej krzywej EQ. Jasne przedłużenie za kreską to podbicie. Bledsza resztka za jaśniejszym paskiem to tłumienie. Kolor idzie z motywu, a nazwa pasma zostaje obok.',
+      'Opisy na żywo, takie jak BASS-HEAVY, HIGH-BAND ENERGY, AIR ENERGY, LEFT-HEAVY, RIGHT-HEAVY, LOW CORRELATION, CLIPPING, NEAR FULL SCALE, DC OFFSET albo WIDE STEREO, wynikają z opisanych progów i histerezy, żeby etykiety nie mrugały. WIDE STEREO i NARROW STEREO nie pojawiają się razem: gdy pomiar przechodzi na drugą stronę, stara etykieta znika od razu. To samo dotyczy LOUD i QUIET. Każda etykieta ma wyjaśnienie z wartością pomiaru. Każdy tag ma tę samą wysokość w panelu i w focusie Hearing Access, a dodatkowe tagi zawijają się w kolejny rząd bez paska przewijania. Tagi nut i charakteru podążają za głowicą. Składowa albo charakter, taki jak TONAL, NOISE-LIKE, PERCUSSIVE, SUSTAINED, BRIGHT, DULL, HARMONIC albo INHARMONIC, pojawia się, gdy ten moment jest pod głowicą, a nie dla całej próbki naraz. Klik tagu nuty odtwarza krótki zsyntezowany sinus tej częstotliwości. Podgląd jest cichy, wysokie częstotliwości są jeszcze cichsze, a limiter go ogranicza. To nie jest sama próbka i nie przechodzi przez wyjście instrumentu. Suwak Notes obok tagów ustawia, ile składowych bieżącego momentu widać. Niska czułość zostawia najgłośniejszą jedną albo dwie. Wysoka dodaje cichsze, do około sześciu, a ta sama nuta pojawia się raz. Cisza nie wymyśla nuty. FIELD nie nazywa dźwięku dobrym, złym, ciepłym ani profesjonalnym.',
       'Before / after porównuje zmierzony bufor ze zmianą wynikającą z aktywnego efektu: magnituda EQ, gain, redukcja wzmocnienia kompresora, powtórzenia delay, ogon pogłosu oraz szerokość lub balans. Compare pokazuje każdy włączony efekt jako osobną tabelę: miara, wartość przed, wartość po i zmiana. Czasy delay i decay pogłosu biorą się z tych samych parametrów co DSP. Czas pogłosu wynika z parametrów. To nie jest zmierzony RT60.',
       'Mapa dynamiki oznacza ciche, głośne, transjent i rzeczywiste przesterowanie pełnej skali na cienkim pasku fali podpisanym LEVEL. Wysokość słupka to szczyt tego odcinka czasu. Trójkąt to krótki atak. Wykrzyknik to clipping pełnej skali. Głośny materiał poniżej pełnej skali nie jest clippingiem. Na fali transjent to cienka pionowa linia, ten sam znak co Input → Mark transients. Każdy wiersz pasma używa stałej skali głośności, więc cichsze wysokie pasmo zostaje widoczne obok głośniejszego basu. Próbka z mocnym basem nadal może być głównie basem. To jest poziom, a nie ukryte wysokie. Jedno uderzenie może zapalić kilka trójkątów na pasku poziomu. Na mapie dźwięku atak to cienka pionowa linia w zmierzonym czasie. Detekcja zdarzeń może oznaczyć transjent, ciszę, głośne zdarzenie, niską częstotliwość, odcinek tonalny, możliwy klik i możliwe clipping. Show albo wiersz zdarzenia przesuwa głowicę. Audio nie jest przepisywane samo.',
       'Mapa przestrzeni podaje balans, szerokość, korelację i energię mid/side, w tym neutralne ostrzeżenie, gdy korelacja sugeruje problem zgodności z mono. Obraz głowy, widziany z góry, podąża za głowicą. Rozpiętość idzie za szerokością, a pusty znacznik ma niską korelację. Pole jest oddzielone od głowy i biegnie w czasie z góry na dół. Dłuższy znacznik jest szerszy. Znaczniki podążają za panoramą, szerokością, balansem i Haasem mid/side oraz delayem, który zastępuje jeden kanał. Balans próbki zostaje obok słyszanego balansu. Plik mono zostaje wąski, a panorama i tak go ustawia. Pomoc EQ pokazuje częstotliwość, nutę, region, gain, Q i zakres, który naprawdę rusza odpowiedź filtra. Dłuższe wyjaśnienia są pod przyciskiem informacji.',

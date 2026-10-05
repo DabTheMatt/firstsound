@@ -6,6 +6,7 @@ import { bandUsesGain, bandUsesSlope, type EqFilterType } from '../../audio/engi
 import { EQ_BAND_LFO_IDS, FX_LFO_KIND_LABELS } from '../../audio/fx/lfo'
 import { withRandomHistory } from '../../audio/random/historyBridge'
 import { catalogFor, catalogLabel, participatingRefs, type RandomCatalogEntry } from '../../audio/random/catalog'
+import { reverbRandomSetupLabel } from '../../audio/random/reverbRandom'
 import { moduleRandomKind, participatingTargets } from '../../audio/random/groups'
 import { defaultParamRandom, type EqBandRandomField, type EqRandomCount, type ParamRandom } from '../../audio/random/types'
 import type { ParamId } from '../../audio/parameters/types'
@@ -106,7 +107,13 @@ function EffectSetup({ kind, paramLabel }: { kind: NonNullable<ReturnType<typeof
   }
   return (
     <>
-      <Group title={t.random.parameters} entries={parameters} selected={selected} labelOf={(entry) => (entry.paramId ? paramLabel(entry.paramId) : catalogLabel(entry))} onToggle={toggle} onAll={() => engine.setRandomParticipation(kind, entries.map((entry) => entry.ref))} onNone={() => engine.setRandomParticipation(kind, [])} allLabel={t.random.all} noneLabel={t.random.none} />
+      <Group title={t.random.parameters} entries={parameters} selected={selected} labelOf={(entry) => {
+        if (kind === 'reverb' && entry.paramId) {
+          const mix = reverbRandomSetupLabel(entry.paramId)
+          if (mix) return mix
+        }
+        return entry.paramId ? paramLabel(entry.paramId) : catalogLabel(entry)
+      }} onToggle={toggle} onAll={() => engine.setRandomParticipation(kind, entries.map((entry) => entry.ref))} onNone={() => engine.setRandomParticipation(kind, [])} allLabel={t.random.all} noneLabel={t.random.none} />
       {selects.length > 0 ? (
         <Group title={t.random.selects} entries={selects} selected={selected} labelOf={(entry) => selectLabel(entry, t.random)} onToggle={toggle} />
       ) : null}

@@ -327,8 +327,13 @@ describe('effect and EQ scopes', () => {
     const ids = participatingTargets(defaultRandomDocument(), 'reverb')
     expect(ids).toContain('reverbWet')
     expect(ids).toContain('reverbDecay')
+    expect(ids).not.toContain('reverbDry')
+    expect(ids).not.toContain('reverbOutput')
+    expect(ids).not.toContain('reverbLimit')
     expect(ids).not.toContain('reverbFreeze')
     expect(ids).not.toContain('reverbSync')
+    expect(isRandomizable('reverbOutput')).toBe(false)
+    expect(isRandomizable('reverbDry')).toBe(false)
   })
 
   it('skips gain on a lowpass and keeps a bell gain finite', () => {
@@ -436,6 +441,8 @@ describe('engine random', () => {
   it('includes reverb type in the effect catalog and keeps freeze out', () => {
     const ids = participatingTargets(defaultRandomDocument(), 'reverb')
     expect(ids).toContain('reverbNote')
+    expect(ids).not.toContain('reverbDry')
+    expect(ids).not.toContain('reverbOutput')
     expect(ids).not.toContain('reverbFreeze')
     expect(ids).not.toContain('reverbSync')
   })

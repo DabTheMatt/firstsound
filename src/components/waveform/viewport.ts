@@ -17,6 +17,18 @@ export function fitView(duration: number): View {
   return { start: 0, end: Math.max(duration, MIN_SPAN) }
 }
 
+/**
+ * SINGLE shows one sample. A different track, or a different length, is a new
+ * file: the previous zoom window must not stay and clip the selection.
+ */
+export function sampleViewChanged(
+  previous: { trackId: string; duration: number },
+  next: { trackId: string; duration: number },
+): boolean {
+  if (previous.trackId !== next.trackId) return true
+  return Math.abs(previous.duration - next.duration) > 0.0005
+}
+
 /** Display zoom vs the whole sample. 100% = the full file is in view. */
 export function zoomPercent(view: View, duration: number): number {
   if (duration <= 0) return 100

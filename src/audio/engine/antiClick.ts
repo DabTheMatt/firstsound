@@ -17,6 +17,12 @@ export const ANTI_CLICK_MIN_SAMPLES = 64
 /** Hard cap so the guard cannot turn into a musical fade. */
 export const ANTI_CLICK_MAX_SEC = 0.012
 
+/**
+ * Playhead moves restart the sounding buffer. This overlap is long enough
+ * to hide the cut and short enough that the new position is still the sound.
+ */
+export const SCRUB_FADE_SEC = 0.02
+
 export function antiClickSeconds(sampleRate: number, playbackRate = 1): number {
   const sr = Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 48000
   const rate = Math.min(8, Math.max(0.05, Math.abs(playbackRate) || 1))
