@@ -770,6 +770,7 @@ function SoundSection(props: {
         </button>
       ) : null}
       <div className={styles.tagBar}>
+        <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
         <HearingTagList
           tags={
             analysis
@@ -777,7 +778,6 @@ function SoundSection(props: {
               : props.live
           }
         />
-        <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
       </div>
       {props.showDetails && analysis ? (
         <AfterEqChart

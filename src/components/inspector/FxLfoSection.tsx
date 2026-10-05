@@ -20,6 +20,7 @@ import { LfoConnectButton } from './LfoConnectButton'
 import { lfoUiState, readStoredLfoOpen, storedExpansionForSection, writeLfoOpen } from './lfoOpen'
 import { lfoAddTone, lfoNumberTone } from './lfoSlots'
 import { ValueKnob } from '../controls/ValueKnob'
+import { TapCycleButton } from './TapCycleButton'
 import styles from './Inspector.module.css'
 
 const RATE_DEF: ParamDef = {
@@ -292,6 +293,11 @@ export function FxLfoSection({
         />
       )}
       {omitPrimary ? null : knobs}
+      {omitPrimary ? null : (
+        <div className={styles.tapCycle}>
+          <TapCycleButton className={styles.ghost} onRate={setRate} />
+        </div>
+      )}
       <div className={`${styles.row} ${styles.connectRow}`}>
         <LfoConnectButton
           kind={kind}

@@ -27,6 +27,7 @@ import { useI18n } from '../../i18n'
 import { LfoShapeIcon, LfoShapePicker } from '../controls/LfoShapePicker'
 import { useModulationScope } from '../controls/LfoParamShell'
 import { FxLfoSection } from '../inspector/FxLfoSection'
+import { TapCycleButton } from '../inspector/TapCycleButton'
 import { lockModulationGesture, type ModulationPress } from '../mobile/gestureIntent'
 import {
   connectParameterLfo,
@@ -439,6 +440,7 @@ function ModulatePanel({
             />
             <span>{rateText}</span>
           </label>
+          <TapCycleButton className={styles.ghost} onRate={onRate} />
           <label className={styles.field}>
             Depth
             <input

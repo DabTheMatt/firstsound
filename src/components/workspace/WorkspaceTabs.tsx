@@ -1,3 +1,4 @@
+import type { EqWorkspaceLayout } from '../../app/eqWorkspaceLayout'
 import type { FocusWorkspace } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
@@ -10,6 +11,8 @@ type Props = {
   contextClosed: boolean
   onOpenContext: () => void
   onEnterFocus: () => void
+  eqLayout?: EqWorkspaceLayout
+  onEqLayout?: (next: EqWorkspaceLayout) => void
 }
 
 const LABEL: Record<TechnicalWorkspaceId, 'wave' | 'eq' | 'fft' | 'auto' | 'hearing'> = {
@@ -20,7 +23,15 @@ const LABEL: Record<TechnicalWorkspaceId, 'wave' | 'eq' | 'fft' | 'auto' | 'hear
   hearing: 'hearing',
 }
 
-export function WorkspaceTabs({ workspace, onWorkspace, contextClosed, onOpenContext, onEnterFocus }: Props) {
+export function WorkspaceTabs({
+  workspace,
+  onWorkspace,
+  contextClosed,
+  onOpenContext,
+  onEnterFocus,
+  eqLayout,
+  onEqLayout,
+}: Props) {
   const { t } = useI18n()
   return (
     <div className={styles.tabs} role="tablist" aria-label={t.workspace.workspaces}>
@@ -40,6 +51,26 @@ export function WorkspaceTabs({ workspace, onWorkspace, contextClosed, onOpenCon
         )
       })}
       <span className={styles.tabSpacer} />
+      {workspace === 'eq' && eqLayout && onEqLayout ? (
+        <div className={styles.segment} role="group" aria-label={t.workspace.eqLayout}>
+          <button
+            type="button"
+            className={eqLayout === 'strips' ? styles.segmentOn : styles.segmentOff}
+            aria-pressed={eqLayout === 'strips'}
+            onClick={() => onEqLayout('strips')}
+          >
+            {t.workspace.eqStrips}
+          </button>
+          <button
+            type="button"
+            className={eqLayout === 'inspector' ? styles.segmentOn : styles.segmentOff}
+            aria-pressed={eqLayout === 'inspector'}
+            onClick={() => onEqLayout('inspector')}
+          >
+            {t.workspace.eqInspector}
+          </button>
+        </div>
+      ) : null}
       {contextClosed ? (
         <button type="button" className={styles.textButton} onClick={onOpenContext}>
           {t.workspace.context}

@@ -195,8 +195,8 @@
   z-index: 80;
   top: auto;
   right: auto;
-  width: min(320px, calc(100vw - 16px));
-  max-height: min(70vh, 560px);
+  width: min(440px, calc(100vw - 16px));
+  max-height: min(70vh, 640px);
 }
 
 .menuItem {

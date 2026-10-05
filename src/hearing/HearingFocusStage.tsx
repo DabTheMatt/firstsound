@@ -107,8 +107,8 @@ export function HearingFocusStage() {
         </div>
       </div>
       <div className={styles.tagBar}>
-        <HearingTagList tags={shownTags} />
         <NoteSensitivity value={settings.toneSensitivity} onChange={(toneSensitivity) => patch({ toneSensitivity })} />
+        <HearingTagList tags={shownTags} />
       </div>
       <SoundMap
         columns={columns}

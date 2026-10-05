@@ -13,6 +13,19 @@
   position: relative;
 }
 
+.embed {
+  flex: 1 0 100%;
+}
+
+.inline {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: min(280px, 100%);
+  padding-top: 4px;
+}
+
 .panel {
   position: absolute;
   z-index: 8;

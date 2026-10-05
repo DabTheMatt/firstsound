@@ -151,6 +151,9 @@ export type Messages = {
     moreEdit: string
     analyzerLayer: string
     analyzerSettings: string
+    eqLayout: string
+    eqStrips: string
+    eqInspector: string
     hearingNote: string
     hearingQuick: string
   }
@@ -866,6 +869,9 @@ export const EN: Messages = {
     moreEdit: 'More edit commands',
     analyzerLayer: 'Analyzer layer',
     analyzerSettings: 'Analyzer settings',
+    eqLayout: 'EQ layout',
+    eqStrips: 'Strips',
+    eqInspector: 'Inspector',
     hearingNote: 'Full hearing analysis is this workspace. The quick panel is still available.',
     hearingQuick: 'Quick view',
   },
@@ -1693,6 +1699,9 @@ export const PL: Messages = {
     moreEdit: 'Więcej poleceń edycji',
     analyzerLayer: 'Warstwa analizatora',
     analyzerSettings: 'Ustawienia analizatora',
+    eqLayout: 'Układ EQ',
+    eqStrips: 'Paski',
+    eqInspector: 'Inspektor',
     hearingNote: 'Pełna analiza Hearing jest tym obszarem roboczym. Zwięzły panel zostaje dostępny.',
     hearingQuick: 'Szybki podgląd',
   },

@@ -153,6 +153,8 @@ type Props = {
    * Null keeps the classic stack. Does not change playback or the audio graph.
    */
   calmWorkspace?: FocusWorkspace | null
+  /** Workspace EQ: show the resizable strip panel under the graph. */
+  eqStrips?: boolean
 }
 
 export type WaveformHandle = {
@@ -283,6 +285,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onInspectEffect,
     onEnterFocus,
     calmWorkspace = null,
+    eqStrips = false,
   },
   ref,
 ) {
@@ -1377,7 +1380,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     (shownViz === 'spectrum' || shownViz === 'split' || shownViz === 'eq-split')
   const eqFocus = phoneFocus === 'eq'
   const eqFocusClean = phoneEq || eqFocus
-  const showEqConsole = !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus && !calm
+  const showEqConsole =
+    !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus && (!calm || eqStrips)
   const calmEq = calm && calmWorkspace === 'eq'
   const calmFft = calm && calmWorkspace === 'fft'
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92

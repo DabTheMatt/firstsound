@@ -11,10 +11,12 @@ import { FftFocusTools } from '../mobile/FftFocusTools'
 import { FftViewToggle } from '../waveform/SpectralHistoryControls'
 import styles from './Workspace.module.css'
 
+const ANALYZER_MENU_WIDTH = 440
+
 function analyzerMenuStyle(anchor: HTMLButtonElement | null): { top: number; left: number } | undefined {
   if (!anchor) return undefined
   const rect = anchor.getBoundingClientRect()
-  const width = 320
+  const width = Math.min(ANALYZER_MENU_WIDTH, window.innerWidth - 16)
   return {
     top: rect.bottom + 4,
     left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),

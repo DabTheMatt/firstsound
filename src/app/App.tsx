@@ -73,6 +73,7 @@ import { cloneSpectralState, spectralStatesEqual, type SpectralState } from '../
 import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../sensory/colorSound'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import { useTechnicalInterface } from './useTechnicalInterface'
+import { useEqWorkspaceLayout } from './useEqWorkspaceLayout'
 import { TechnicalInterfaceSetting } from '../components/workspace/TechnicalInterfaceSetting'
 import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
@@ -176,6 +177,7 @@ export default function App() {
   const { t } = useI18n()
   const { settings: a11y } = useA11ySettings()
   const [technicalUi, setTechnicalUi] = useTechnicalInterface()
+  const [eqLayout, setEqLayout] = useEqWorkspaceLayout()
   const snap = useEngine()
   const { mode, width: viewportWidth, height: viewportHeight } = useLayoutMode()
   const isPhoneLayout = mode === 'sheet'
@@ -850,7 +852,8 @@ export default function App() {
             (resolvedFocus.type === 'eq' && (snap.eqById[resolvedFocus.instanceId]?.comb ?? snap.comb).enabled ? 1 : 0),
         })
       : 0
-  const showContext = workspaceOn ? contextLevel !== 'closed' && !activeFocus : inspectorOpen
+  const eqStrips = workspaceOn && workspaceId === 'eq' && eqLayout === 'strips'
+  const showContext = workspaceOn ? contextLevel !== 'closed' && !activeFocus && !eqStrips : inspectorOpen
   const hearingHint =
     workspaceOn && workspaceId === 'hearing' && contextLevel === 'compact' ? (
       <p className={ws.hearingNote}>
@@ -1303,7 +1306,8 @@ export default function App() {
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
         data-workspace={activeFocus ? 'focus' : 'edit'}
         data-technical-ui={workspaceOn ? 'workspace' : 'classic'}
-        data-context={workspaceOn ? contextLevel : undefined}
+        data-context={workspaceOn ? (eqStrips ? 'closed' : contextLevel) : undefined}
+        data-eq-layout={workspaceOn && workspaceId === 'eq' ? eqLayout : undefined}
         data-context-place={workspaceContextBottom ? 'bottom' : undefined}
         data-meter-words={workspaceOn && workspaceId === 'hearing' ? '' : undefined}
         data-focus={activeFocus ?? undefined}
@@ -1406,8 +1410,13 @@ export default function App() {
             <WorkspaceTabs
               workspace={workspaceId}
               onWorkspace={activateWorkspace}
-              contextClosed={contextLevel === 'closed'}
+              contextClosed={contextLevel === 'closed' && !eqStrips}
               onOpenContext={() => setContextLevel('compact')}
+              eqLayout={workspaceId === 'eq' ? eqLayout : undefined}
+              onEqLayout={(next) => {
+                setEqLayout(next)
+                if (next === 'inspector' && contextLevel === 'closed') setContextLevel('compact')
+              }}
               onEnterFocus={() => {
                 if (workspaceId === 'hearing') enterHearingFocus()
                 else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
@@ -1652,6 +1661,7 @@ export default function App() {
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
               onEnterFocus={enterNamedFocus}
               calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
+              eqStrips={eqStrips}
               onInspectEffect={(trackId, instanceId) => {
                 if (engine.getSnapshot().selectedTrackId !== trackId) {
                   intentRef.current = trackId

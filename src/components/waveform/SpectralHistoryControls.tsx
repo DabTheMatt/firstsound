@@ -115,7 +115,14 @@ const COLOR_LABEL: Record<SpectralColorMode, string> = {
 }
 
 /** Primary 3D controls. The 2D/3D switch stays in the FFT chrome, not in this bar. */
-export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' | 'focus' }) {
+export function SpectralHistoryControls({
+  variant = 'bar',
+  embedSettings = false,
+}: {
+  variant?: 'bar' | 'focus'
+  /** Draw the extra 3D options in this bar. Used when a parent menu would clip a popup. */
+  embedSettings?: boolean
+}) {
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
   const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
@@ -161,50 +168,68 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
     persistSpectrumPrefs({ ...prefs, ...next })
   }
 
-  const settings = (
+  const settings = (includeShared: boolean) => (
     <>
-      <div className={styles.row}>
-        <span>FFT</span>
-        <select
-          aria-label="FFT size"
-          value={String(prefs.resolution)}
-          onChange={(event) => patch({ resolution: clampSpectrumResolution(Number(event.target.value)) })}
-        >
-          {SPECTRUM_RESOLUTION_CHOICES.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={styles.row}>
-        <span>Smooth</span>
-        <select
-          aria-label="Smoothing"
-          value={prefs.fall}
-          onChange={(event) => patch({ fall: clampSpectrumFallMode(event.target.value) })}
-        >
-          {SPECTRUM_FALL_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className={styles.row}>
-        <span>Range</span>
-        <select
-          aria-label="Analyzer range"
-          value={String(prefs.range)}
-          onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
-        >
-          {SPECTRUM_RANGE_CHOICES.map((db) => (
-            <option key={db} value={db}>
-              {db} dB
-            </option>
-          ))}
-        </select>
-      </div>
+      {includeShared ? (
+        <>
+          <div className={styles.row}>
+            <span>FFT</span>
+            <select
+              aria-label="FFT size"
+              value={String(prefs.resolution)}
+              onChange={(event) => patch({ resolution: clampSpectrumResolution(Number(event.target.value)) })}
+            >
+              {SPECTRUM_RESOLUTION_CHOICES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.row}>
+            <span>Smooth</span>
+            <select
+              aria-label="Smoothing"
+              value={prefs.fall}
+              onChange={(event) => patch({ fall: clampSpectrumFallMode(event.target.value) })}
+            >
+              {SPECTRUM_FALL_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.row}>
+            <span>Range</span>
+            <select
+              aria-label="Analyzer range"
+              value={String(prefs.range)}
+              onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
+            >
+              {SPECTRUM_RANGE_CHOICES.map((db) => (
+                <option key={db} value={db}>
+                  {db} dB
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.row}>
+            <span>Scale</span>
+            {FREQ_SCALE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={scale === opt.value}
+                title={opt.title}
+                onClick={() => persistFreqScale(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
       <div className={styles.row}>
         <span>Density</span>
         {SPECTRAL_DENSITIES.map((density) => (
@@ -215,20 +240,6 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
             onClick={() => patch({ density: density as SpectralDensity })}
           >
             {density === 'auto' ? 'Auto' : density === 'low' ? 'Low' : density === 'high' ? 'High' : 'Normal'}
-          </button>
-        ))}
-      </div>
-      <div className={styles.row}>
-        <span>Scale</span>
-        {FREQ_SCALE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={scale === opt.value}
-            title={opt.title}
-            onClick={() => persistFreqScale(opt.value)}
-          >
-            {opt.label}
           </button>
         ))}
       </div>
@@ -284,7 +295,10 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
   )
 
   return (
-    <div className={variant === 'focus' ? styles.focus : styles.bar} data-spectral-history="">
+    <div
+      className={`${variant === 'focus' ? styles.focus : styles.bar} ${embedSettings ? styles.embed : ''}`}
+      data-spectral-history=""
+    >
       <div className={pill} role="group" aria-label="History">
         <span>History</span>
         {SPECTRAL_HISTORY_SECONDS.map((sec) => (
@@ -299,6 +313,7 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           </button>
         ))}
       </div>
+      {embedSettings ? null : (
       <div className={pill} role="group" aria-label="Signal">
         <span>Signal</span>
         {LAYERS.map((layer) => (
@@ -314,6 +329,7 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           </button>
         ))}
       </div>
+      )}
       <div className={pill} role="group" aria-label="View">
         <span>View</span>
         {VIEWS.map((view) => (
@@ -337,6 +353,11 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
       >
         Freeze
       </button>
+      {embedSettings ? (
+        <div className={styles.inline} id={panelId} aria-label="3D Spectral History settings">
+          {settings(false)}
+        </div>
+      ) : (
       <div className={styles.moreWrap} ref={wrapRef}>
         <button
           type="button"
@@ -352,17 +373,18 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           sheet ? (
             createPortal(
               <div className={styles.sheet} ref={panelRef} id={panelId} role="dialog" aria-label="3D Spectral History settings">
-                {settings}
+                {settings(true)}
               </div>,
               document.body,
             )
           ) : (
             <div className={styles.panel} ref={panelRef} id={panelId} role="dialog" aria-label="3D Spectral History settings">
-              {settings}
+              {settings(true)}
             </div>
           )
         ) : null}
       </div>
+      )}
     </div>
   )
 }

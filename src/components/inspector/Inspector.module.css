@@ -1197,6 +1197,21 @@
   overflow: visible;
 }
 
+.tapCycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tapCycle .ghost {
+  min-height: 32px;
+}
+
+.lfoCompact .tapCycle {
+  justify-content: center;
+}
+
 .lfoCompact .connectRow {
   display: flex;
   justify-content: center;
