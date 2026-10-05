@@ -33,6 +33,8 @@ type Props = {
   compact?: boolean
   /** Smaller dial that stays visually secondary to a compact knob. */
   mini?: boolean
+  /** Keep LFO and random icons under the readout, in a reserved row. */
+  actionsBelow?: boolean
   /** Thin arc showing the real LFO range around the stored center. */
   lfoRange?: { min: number; max: number }
   /** Current modulated position. The needle follows this when it is set. */
@@ -94,6 +96,7 @@ export function ValueKnob({
   reserveBase = false,
   compact = false,
   mini = false,
+  actionsBelow = false,
   lfoRange,
   liveNormalized,
   focus = false,
@@ -430,9 +433,11 @@ export function ValueKnob({
           />
         </svg>
       </div>
-      <span className={styles.modSlot}>
-        {paramId ? <ParamActionPair id={paramId} compact /> : null}
-      </span>
+      {actionsBelow ? null : (
+        <span className={styles.modSlot}>
+          {paramId ? <ParamActionPair id={paramId} compact /> : null}
+        </span>
+      )}
       </div>
       {editing ? (
         <input
@@ -472,6 +477,11 @@ export function ValueKnob({
           >
             {shownText}
           </p>
+          {actionsBelow ? (
+            <span className={`${styles.modSlot} ${styles.actionsBelow}`}>
+              {paramId ? <ParamActionPair id={paramId} compact /> : null}
+            </span>
+          ) : null}
         </>
       )}
     </div>

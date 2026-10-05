@@ -1536,6 +1536,11 @@ export class AudioEngine {
     await this.ensureContext()
   }
 
+  /** The context playback already uses. Null until audio is unlocked. */
+  getLiveContext(): AudioContext | null {
+    return this.ctx
+  }
+
   async loadDemoTone(): Promise<void> {
     await this.ensureContext()
     if (!this.ctx) return

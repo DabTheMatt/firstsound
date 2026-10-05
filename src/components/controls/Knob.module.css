@@ -74,6 +74,29 @@
   min-height: 26px;
 }
 
+.modSlot :global(button:focus),
+.modSlot :global(button:focus-visible) {
+  outline: none;
+}
+
+.actionsBelow {
+  position: static;
+  width: 100%;
+  height: 16px;
+  min-height: 16px;
+  margin-top: 6px;
+  gap: 6px;
+  align-items: center;
+}
+
+.actionsBelow :global(button) {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+}
+
 .knob:hover .modSlot :global(button),
 .knob:focus-within .modSlot :global(button),
 .modSlot :global(button):hover,
@@ -367,6 +390,14 @@ html[data-a11y-tips='off'] .tip {
 
 .mini .dialWrap {
   width: min(44px, 100%);
+}
+
+:global([data-eq-inline='true']) .mini {
+  max-width: 68px;
+}
+
+:global([data-eq-inline='true']) .mini .dialWrap {
+  width: min(52px, 100%);
 }
 
 .mini .label {

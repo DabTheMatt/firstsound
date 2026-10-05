@@ -49,6 +49,11 @@
   color: var(--accent-primary);
 }
 
+.buttonCompact:focus,
+.buttonCompact:focus-visible {
+  outline: none;
+}
+
 .button:focus-visible,
 .touch:focus-visible,
 .chaos:focus-visible,

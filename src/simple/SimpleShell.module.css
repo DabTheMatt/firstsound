@@ -279,6 +279,38 @@
   color: var(--text-muted);
 }
 
+.fadeHead {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.fadeMark {
+  display: block;
+  width: 44px;
+  height: 22px;
+  overflow: visible;
+}
+
+.fadeMark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fadeMark path:first-child {
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+.fadeMark path:last-child {
+  stroke-width: 1.7;
+}
+
 .effectHead {
   display: flex;
   align-items: baseline;

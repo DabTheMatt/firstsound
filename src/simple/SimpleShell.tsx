@@ -111,7 +111,7 @@ export function SimpleShell({
   onMode,
 }: Props) {
   const { t, locale } = useI18n()
-  const { mode: layoutMode, width } = useLayoutMode()
+  const { mode: layoutMode } = useLayoutMode()
   const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const sidePanel = frame === 'desktop'
   const [section, setSection] = useState<Section>('edit')
@@ -142,7 +142,9 @@ export function SimpleShell({
   const params = captured?.params ?? snap.params
   const bypassed = (type: 'eq' | 'reverb' | 'delay' | 'grain' | 'filter' | 'midside' | 'distortion' | 'compressor' | 'limiter') => {
     if (captured) return captured.bypass[type] !== false
-    return Boolean(snap.chain.find((mod) => mod.type === type)?.bypassed)
+    const mod = snap.chain.find((item) => item.type === type)
+    if (!mod) return true
+    return mod.bypassed
   }
   const eqBypassed = bypassed('eq')
   const toneSticky =
@@ -422,6 +424,7 @@ export function SimpleShell({
             </section>
             <FadeGroup
               id="fade-in"
+              side="in"
               label={t.simple.fadeIn}
               value={fadeInStep}
               copy={fadeCopy}
@@ -431,6 +434,7 @@ export function SimpleShell({
             />
             <FadeGroup
               id="fade-out"
+              side="out"
               label={t.simple.fadeOut}
               value={fadeOutStep}
               copy={fadeCopy}
@@ -713,7 +717,7 @@ export function SimpleShell({
     >
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Wordmark compact={frame === 'phone'} hideTagline={width < 960} />
+          <Wordmark compact={frame === 'phone'} />
           <button
             type="button"
             className={styles.file}
@@ -780,11 +784,11 @@ export function SimpleShell({
                     <button type="button" className={styles.chip} onClick={onApplyTrim}>
                       {t.simple.trimToSelection}
                     </button>
-                    <button type="button" className={styles.chip} onClick={() => quickFade('in')}>
-                      {t.simple.fadeIn}
+                    <button type="button" className={styles.chip} aria-label={t.simple.fadeIn} onClick={() => quickFade('in')}>
+                      <FadeMark side="in" />
                     </button>
-                    <button type="button" className={styles.chip} onClick={() => quickFade('out')}>
-                      {t.simple.fadeOut}
+                    <button type="button" className={styles.chip} aria-label={t.simple.fadeOut} onClick={() => quickFade('out')}>
+                      <FadeMark side="out" />
                     </button>
                     <button type="button" className={styles.chip} onClick={clearSelection}>
                       {t.simple.clearSelection}
@@ -880,8 +884,19 @@ export function SimpleShell({
   )
 }
 
+function FadeMark({ side }: { side: 'in' | 'out' }) {
+  const rise = side === 'in'
+  return (
+    <svg className={styles.fadeMark} viewBox="0 0 28 16" aria-hidden="true">
+      <path d="M2 14.5 H26" />
+      <path d={rise ? 'M2 13 C9 13 14 12 18 7 C21 3.5 24 2.5 26 2.5' : 'M2 2.5 C4 2.5 7 3.5 10 7 C14 12 19 13 26 13'} />
+    </svg>
+  )
+}
+
 function FadeGroup({
   id,
+  side,
   label,
   value,
   copy,
@@ -890,6 +905,7 @@ function FadeGroup({
   onChange,
 }: {
   id: string
+  side: 'in' | 'out'
   label: string
   value: FadeStepId
   copy: Record<FadeStepId, string>
@@ -899,7 +915,10 @@ function FadeGroup({
 }) {
   return (
     <section className={styles.group}>
-      <h2 id={id}>{label}</h2>
+      <h2 id={id} className={styles.fadeHead}>
+        <FadeMark side={side} />
+        <span className="sr-only">{label}</span>
+      </h2>
       <div className={styles.segments} role="radiogroup" aria-labelledby={id}>
         {FADE_STEP_IDS.map((step) => (
           <button

@@ -63,8 +63,9 @@
   color: var(--accent-primary-hover);
 }
 
+.buttonCompact:focus,
 .buttonCompact:focus-visible {
-  outline-offset: 1px;
+  outline: none;
 }
 
 @media (hover: hover) and (pointer: fine) {

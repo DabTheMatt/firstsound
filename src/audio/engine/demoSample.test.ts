@@ -54,7 +54,7 @@ describe('renderDemoSample', () => {
     expect(seconds).toBeGreaterThanOrEqual(12)
     expect(seconds).toBeLessThanOrEqual(24)
     expect(demoDurationSeconds(seed)).toBeCloseTo(seconds, 2)
-    expect(demoSampleName(seed)).toBe('FIELD Texture 582')
+    expect(demoSampleName(seed)).toBe('Texture 582')
   })
 
   it('is deterministic per seed and different across seeds', () => {
