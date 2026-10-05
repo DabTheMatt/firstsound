@@ -191,19 +191,19 @@
 }
 
 .eqLayout {
-  display: grid;
-  grid-template-columns: minmax(168px, 220px) minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
+  position: relative;
+  display: block;
   width: 100%;
   padding: 0 8px 6px;
   pointer-events: none;
 }
 
 .filterColumn {
-  position: relative;
+  position: absolute;
   z-index: 4;
-  width: auto;
+  top: 0;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  width: min(220px, 32vw);
   min-width: 0;
   pointer-events: auto;
 }
@@ -284,8 +284,11 @@
 }
 
 .eqWell {
+  width: max-content;
+  max-width: calc(100% - 16px);
   min-height: 0;
   min-width: 0;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -333,15 +336,32 @@
 }
 
 .eqKnob {
-  width: 92px;
-  flex: 0 0 92px;
+  width: 118px;
+  flex: 0 0 118px;
   min-width: 0;
-  --knob-arc: var(--text-primary);
+  --knob-arc: #d7d4cc;
   --accent-primary: var(--text-primary);
-  filter: drop-shadow(0 10px 16px color-mix(in srgb, black 42%, transparent));
+  filter: none;
 }
 
-@container focus (max-width: 760px) {
+.eqKnob svg > circle:first-of-type {
+  fill: rgb(42 44 46 / 72%);
+}
+
+.eqKnob svg > path {
+  stroke-width: 1.1px;
+}
+
+.eqKnob svg > path:first-of-type {
+  stroke: rgb(232 230 223 / 28%);
+}
+
+.eqKnob svg > line {
+  stroke: rgb(232 230 223 / 72%);
+  stroke-width: 1.05px;
+}
+
+@container focus (max-width: 860px) {
   .filterColumn {
     position: relative;
     width: auto;
@@ -451,6 +471,39 @@
   text-transform: none;
 }
 
+.fftField[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.fftChoice {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fftChoice[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.fftTail {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+  gap: 0;
+}
+
 .fftIcons {
   display: flex;
   align-items: center;
@@ -470,7 +523,7 @@
   .eqKnob {
     width: 31%;
     flex: 1 1 31%;
-    max-width: 88px;
+    max-width: 104px;
   }
 }
 

@@ -17,12 +17,14 @@ import {
 } from './spectrumBands'
 import {
   clampSpectralCameraPreset,
+  clampSpectralColorMode,
   clampSpectralDensity,
   clampSpectralDrawStyle,
   clampSpectralHistoryLayer,
   clampSpectralHistorySeconds,
   clampSpectralViewMode,
   type SpectralCameraPreset,
+  type SpectralColorMode,
   type SpectralDensity,
   type SpectralDrawStyle,
   type SpectralHistorySeconds,
@@ -68,8 +70,8 @@ export type SpectrumPrefs = {
   historyLayer: SpectrumLayer
   cameraPreset: SpectralCameraPreset
   density: SpectralDensity
-  /** Amplitude tint. Position and height stay the level readout. */
-  levelColor: boolean
+  /** Off, level, or frequency. Position and height stay the readout. */
+  colorMode: SpectralColorMode
   drawStyle: SpectralDrawStyle
   /** Max-hold ridge. Off by default. It is not the history itself. */
   peakTrails: boolean
@@ -92,7 +94,7 @@ const DEFAULT_PREFS: SpectrumPrefs = {
   historyLayer: 'post',
   cameraPreset: 'angled',
   density: 'auto',
-  levelColor: false,
+  colorMode: 'off',
   drawStyle: 'lines',
   peakTrails: false,
 }
@@ -105,7 +107,9 @@ export function defaultSpectrumPrefs(): SpectrumPrefs {
 
 export function loadSpectrumPrefs(): SpectrumPrefs {
   try {
-    const raw = JSON.parse(localStorage.getItem(SPECTRUM_PREF_KEY) ?? 'null') as Partial<SpectrumPrefs> | null
+    const raw = JSON.parse(localStorage.getItem(SPECTRUM_PREF_KEY) ?? 'null') as
+      | (Partial<SpectrumPrefs> & { levelColor?: boolean })
+      | null
     return {
       layer: raw?.layer === 'pre' || raw?.layer === 'post' || raw?.layer === 'both' ? raw.layer : DEFAULT_PREFS.layer,
       bands: clampSpectrumBandCount(raw?.bands ?? SPECTRUM_BAND_COUNT),
@@ -123,7 +127,7 @@ export function loadSpectrumPrefs(): SpectrumPrefs {
       historyLayer: clampSpectralHistoryLayer(raw?.historyLayer),
       cameraPreset: clampSpectralCameraPreset(raw?.cameraPreset),
       density: clampSpectralDensity(raw?.density),
-      levelColor: raw?.levelColor === true,
+      colorMode: clampSpectralColorMode(raw?.colorMode, raw?.levelColor === true),
       drawStyle: clampSpectralDrawStyle(raw?.drawStyle),
       peakTrails: raw?.peakTrails === true,
     }

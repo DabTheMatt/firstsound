@@ -146,6 +146,8 @@ type Props = {
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
   onEnterFocus?: () => void
+  /** Name on the graph’s focus control. The EQ view asks for EQ Focus. */
+  focusLabel?: string
 }
 
 function emptyBands(n: number): Float32Array {
@@ -221,7 +223,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -456,7 +458,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             historySec: prefsNow.historySec,
             density: prefsNow.density,
             drawStyle: prefsNow.drawStyle,
-            levelColor: prefsNow.levelColor,
+            colorMode: prefsNow.colorMode,
             peakTrails: prefsNow.peakTrails,
             cameraPreset: prefsNow.cameraPreset,
             fall: prefsNow.fall,
@@ -1146,20 +1148,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       }
     >
       {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
-        <EnterFocusButton corner label="FFT" onClick={onEnterFocus} />
+        <EnterFocusButton corner label={focusLabel} onClick={onEnterFocus} />
       ) : null}
-      {suppressAnalyzerChrome ? null : spatial ? (
-      <div className={styles.chrome}>
-        <SpectralHistoryControls />
-        <div className={styles.chromeRight}>
-          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
-        </div>
-      </div>
-      ) : (
+      {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
       >
         <div className={styles.chromeLeft}>
+          {spatial ? <SpectralHistoryControls /> : (
+          <>
           {compact ? (
             <button type="button" className={styles.analyzerClose} onClick={onAnalyzerClose}>
               ×
@@ -1400,13 +1397,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ))}
             </select>
           </label>
+          </>
+          )}
         </div>
         <div className={styles.chromeRight}>
-          <FftViewToggle
-            mode={prefs.viewMode}
-            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
-          />
-          {showResponseKey ? (
+          {spatial ? null : showResponseKey ? (
             <ul className={styles.curveKey} aria-label="Response curves">
               <li>
                 <i className={styles.eqSwatch} />
@@ -1418,6 +1413,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               </li>
             </ul>
           ) : null}
+          {spatial ? null : <>
           <button
             type="button"
             className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
@@ -1496,7 +1492,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
             </svg>
           </button>
-          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
+          </>}
+        </div>
+        <div className={styles.viewAnchor}>
+          <FftViewToggle
+            mode={prefs.viewMode}
+            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+          />
+          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label={focusLabel} onClick={onEnterFocus} /> : null}
         </div>
       </div>
       )}
@@ -1527,14 +1530,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) : null}
         {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (
           <div className={historyStyles.dock}>
-            {spatial ? (
-              <SpectralHistoryControls />
-            ) : (
-              <FftViewToggle
-                mode={prefs.viewMode}
-                onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
-              />
-            )}
+            <FftViewToggle
+              mode={prefs.viewMode}
+              onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+            />
+            {spatial ? <SpectralHistoryControls /> : null}
           </div>
         ) : null}
         <canvas
@@ -1703,8 +1703,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const bandTone = eqBandTone(index, readThemeColors())
             const freqColor = eqBandColorForHz(motion.frequencyHz)
             const tone = phoneEq || phoneFocus ? bandTone : moduleTone
-            const nodeColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.node
-            const curveColor = !phoneEq && !phoneFocus && prefs.eqFreqColors ? freqColor : tone.curve
+            const freqTint = prefs.eqFreqColors && !phoneEq
+            const nodeColor = freqTint ? freqColor : tone.node
+            const curveColor = freqTint ? freqColor : tone.curve
             const nodeY = Math.min(100, Math.max(0, yPct))
             return (
               <Fragment key={eqStripKey(mod.instanceId, band)}>
@@ -1849,6 +1850,33 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                       {label}
                     </button>
                   ))}
+                </div>
+              ) : null}
+              {phoneFocus ? (
+                <div className={styles.graphMenuRow}>
+                  <span>Color</span>
+                  <button
+                    type="button"
+                    aria-pressed={!prefs.eqFreqColors}
+                    aria-label="Frequency colors off"
+                    onClick={(event) => {
+                      setPrefs((current) => ({ ...current, eqFreqColors: false }))
+                      event.currentTarget.blur()
+                    }}
+                  >
+                    Off
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={prefs.eqFreqColors}
+                    aria-label="Frequency colors on"
+                    onClick={(event) => {
+                      setPrefs((current) => ({ ...current, eqFreqColors: true }))
+                      event.currentTarget.blur()
+                    }}
+                  >
+                    On
+                  </button>
                 </div>
               ) : null}
               <div className={styles.graphMenuRow}>

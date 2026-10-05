@@ -444,7 +444,7 @@ export function HearingAccessLayer({
 
   return (
     <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface}>
-      {focusText && focus !== 'hearing' ? (
+      {focusText && focus !== 'hearing' && focus !== 'eq' ? (
         <p className={styles.focusChip} title={focusText}>
           {focusText}
         </p>

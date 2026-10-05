@@ -24,7 +24,7 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { LfoShapePicker } from '../controls/LfoShapePicker'
+import { LfoShapeIcon, LfoShapePicker } from '../controls/LfoShapePicker'
 import { useModulationScope } from '../controls/LfoParamShell'
 import { FxLfoSection } from '../inspector/FxLfoSection'
 import { lockModulationGesture, type ModulationPress } from '../mobile/gestureIntent'
@@ -104,6 +104,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
   useEffect(() => () => releaseModulationPortal(id, portalToken), [id, portalToken])
   const label = paramLabel(id)
   const kind = fxLfoKindForParam(id)
+  const routedLfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
 
   if (!state.supportsModulation) return null
 
@@ -120,6 +121,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
           data-open={editorOpen ? 'true' : 'false'}
           data-automation={face.automationMark ? 'true' : 'false'}
           data-modulation-for={id}
+          data-lfo-shape={routedLfo?.shape}
           data-modulation-presentation="touch"
           aria-expanded={editorOpen}
           aria-haspopup="dialog"
@@ -142,9 +144,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
             toggleEditor()
           }}
         >
-          <span className={styles.mark} aria-hidden="true">
-            〰
-          </span>
+          <ModulationMark shape={routedLfo?.shape} />
           {face.depthLabel ? <span className={styles.depth}>{face.depthLabel}</span> : null}
           {face.automationMark ? <span className={styles.autoDot} aria-hidden="true" /> : null}
         </button>
@@ -155,7 +155,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
     )
   }
 
-  const lfo = state.binding ? snap.fxLfos[state.binding.kind][state.binding.slot] ?? null : null
+  const lfo = routedLfo
   const tip = `Modulate ${label}`
   const panel =
     editorOpen && ownsPortal && typeof document !== 'undefined' ? (
@@ -181,6 +181,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
         data-active={state.lfoActive ? 'true' : 'false'}
         data-open={editorOpen ? 'true' : 'false'}
         data-modulation-for={id}
+        data-lfo-shape={lfo?.shape}
         aria-expanded={editorOpen}
         aria-haspopup="dialog"
         aria-label={tip}
@@ -192,12 +193,25 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
           toggleEditor()
         }}
       >
-        <span className={styles.mark} aria-hidden="true">
-          〰
-        </span>
+        <ModulationMark shape={lfo?.shape} />
       </button>
       {panel}
     </>
+  )
+}
+
+function ModulationMark({ shape }: { shape: LfoShape | undefined }) {
+  if (!shape) {
+    return (
+      <span className={styles.mark} aria-hidden="true">
+        〰
+      </span>
+    )
+  }
+  return (
+    <span className={styles.mark} aria-hidden="true">
+      <LfoShapeIcon shape={shape} />
+    </span>
   )
 }
 

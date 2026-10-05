@@ -4,6 +4,7 @@
  * fixed ring with audio-time timestamps. Nothing here touches the DSP graph.
  */
 
+import { mixCssColor } from '../../theme/cssColor'
 import { formatHoverFreq, visibleAxisLabelIndices } from './pitchScale'
 import type { SpectrumLayer } from './spectrumPrefs'
 
@@ -23,6 +24,14 @@ export type SpectralDensity = (typeof SPECTRAL_DENSITIES)[number]
 
 export const SPECTRAL_DRAW_STYLES = ['lines', 'surface'] as const
 export type SpectralDrawStyle = (typeof SPECTRAL_DRAW_STYLES)[number]
+
+export const SPECTRAL_COLOR_MODES = ['off', 'level', 'frequency'] as const
+export type SpectralColorMode = (typeof SPECTRAL_COLOR_MODES)[number]
+
+export function clampSpectralColorMode(value: unknown, legacyLevel?: boolean): SpectralColorMode {
+  if (value === 'off' || value === 'level' || value === 'frequency') return value
+  return legacyLevel ? 'level' : 'off'
+}
 
 /** Restrained ticks. Not every grid line. */
 export const SPECTRAL_FREQ_TICKS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000] as const
@@ -262,6 +271,82 @@ export function spectralAgeOpacity(age01: number): number {
 export function spectralAgeWidth(age01: number): number {
   const t = clampUnit(age01, 0, 1)
   return 1.65 - t * 0.95
+}
+
+/**
+ * Theme ridge ramp: quiet stays cool, peaks warm.
+ * The two ends are different hues so level color stays readable on gray themes.
+ */
+export function spectralLevelColor(cool: string, mid: string, warm: string, level: number): string {
+  const shaped = clampUnit(level, 0, 1) ** 0.72
+  if (shaped < 0.5) return mixCssColor(cool, mid, shaped / 0.5)
+  return mixCssColor(mid, warm, (shaped - 0.5) / 0.5)
+}
+
+/**
+ * Age of one history ridge, measured back from now.
+ * Index 0 is the youngest slice. Ages advance with playback time, and a slice
+ * that reaches the next step continues as the following index instead of popping.
+ */
+export function spectralScrollAge(
+  indexFromFront: number,
+  sliceCount: number,
+  nowSec: number,
+  durationSec: number,
+): number {
+  const slices = Math.max(1, sliceCount)
+  const duration = Math.max(0, durationSec)
+  const step = duration / slices
+  if (!(step > 0)) return 0
+  const turns = Math.floor(nowSec / step)
+  const phase = nowSec - turns * step
+  const age = (phase < 0 ? phase + step : phase) + Math.max(0, indexFromFront) * step
+  return Math.min(duration, age)
+}
+
+/**
+ * Spectrum at an audio time, lerped between the two stored frames around it.
+ * `timesOldestFirst` matches `SpectralFrameBuffer` order. Writes into `out`.
+ */
+export function interpolateSpectralFrame(
+  buffer: SpectralFrameBuffer,
+  timesOldestFirst: ArrayLike<number>,
+  count: number,
+  timeSec: number,
+  out: Float32Array,
+): boolean {
+  const n = Math.min(count, timesOldestFirst.length)
+  if (n <= 0) return false
+  const oldest = timesOldestFirst[0] ?? Number.NaN
+  const newest = timesOldestFirst[n - 1] ?? Number.NaN
+  if (!Number.isFinite(oldest) || !Number.isFinite(newest)) return false
+  if (timeSec < oldest - 1e-4 || timeSec > newest + 1e-3) return false
+  let lo = 0
+  let hi = n - 1
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if ((timesOldestFirst[mid] ?? 0) <= timeSec) lo = mid
+    else hi = mid - 1
+  }
+  const i0 = lo
+  const i1 = Math.min(n - 1, i0 + 1)
+  const t0 = timesOldestFirst[i0] ?? timeSec
+  const t1 = timesOldestFirst[i1] ?? t0
+  const span = t1 - t0
+  const u = i0 === i1 || span <= 1e-6 ? 0 : clampUnit((timeSec - t0) / span, 0, 1)
+  const points = Math.min(buffer.points, out.length)
+  for (let p = 0; p < points; p++) {
+    const a = buffer.valueAt(i0, p)
+    const b = buffer.valueAt(i1, p)
+    const aOk = Number.isFinite(a)
+    const bOk = Number.isFinite(b)
+    if (aOk && bOk) out[p] = a + (b - a) * u
+    else if (aOk) out[p] = a
+    else if (bOk) out[p] = b
+    else out[p] = Number.NaN
+  }
+  for (let p = points; p < out.length; p++) out[p] = Number.NaN
+  return true
 }
 
 /**

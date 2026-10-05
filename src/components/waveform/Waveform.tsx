@@ -88,7 +88,7 @@ import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
 import { rulerMarks, rulerMinFracGap } from './rulerTicks'
 import { PhoneEqGraph } from '../mobile/PhoneEqGraph'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
-import { automationInsertTime, defaultSelectionFadeSeconds, focusLaneFraction, focusLanePolyline, focusLaneValue, segmentAtTime } from '../../app/focusWorkspace'
+import { automationInsertTime, defaultSelectionFadeSeconds, focusLaneFraction, focusLanePolyline, focusLaneValue, graphFocusWorkspace, segmentAtTime } from '../../app/focusWorkspace'
 import styles from './Waveform.module.css'
 
 type Props = {
@@ -1824,7 +1824,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               analyzerOpen={analyzerOpen}
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
-              onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus('fft') : undefined}
+              focusLabel={graphFocusWorkspace(shownViz) === 'eq' ? 'EQ' : 'FFT'}
+              onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus(graphFocusWorkspace(shownViz)) : undefined}
             />
           </div>
         ) : null}
