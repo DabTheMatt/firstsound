@@ -51,16 +51,12 @@ export function FftFocusTools() {
   const overlayValue = clampEqOverlayFocus(overlay, snap.chain)
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
 
-  if (prefs.viewMode === '3d') {
-    return (
-      <div className={styles.fftTools} data-fft-focus="">
-        <SpectralHistoryControls variant="focus" />
-      </div>
-    )
-  }
+  const spatial = prefs.viewMode === '3d'
 
   return (
     <div className={styles.fftTools} data-fft-focus="">
+      {spatial ? <SpectralHistoryControls variant="focus" /> : null}
+      {spatial ? null : <>
       {spectralBandsEnabled && listenBand ? (
         <span className={styles.fftNote}>
           {t.waveform.spectral.analyseBand}
@@ -165,8 +161,9 @@ export function FftFocusTools() {
           ))}
         </Select>
       ) : null}
-      <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
-      <div className={styles.fftIcons}>
+      </>}
+      <div className={styles.fftTail}>
+      {spatial ? null : <div className={styles.fftIcons}>
         <Icon
           pressed={prefs.eqFreqColors}
           label={prefs.eqFreqColors ? 'Frequency colors on' : 'Frequency colors off'}
@@ -230,6 +227,8 @@ export function FftFocusTools() {
             <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
           </svg>
         </Icon>
+      </div>}
+      <FftViewToggle variant="focus" mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
       </div>
     </div>
   )
