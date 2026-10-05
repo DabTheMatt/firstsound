@@ -41,31 +41,29 @@ export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Prop
     <div className={styles.console} aria-label="EQ control center">
       {many || onEnterFocus || onShowInspector ? (
       <div className={styles.consoleHead}>
-        {many ? (
-          <label className={styles.focus}>
-            EQ
-            <select
-              aria-label="EQ overlay"
-              value={focus}
-              onChange={(event) => {
-                setFocusRaw(event.target.value)
-                persistEqOverlayFocus(clampEqOverlayFocus(event.target.value, snap.chain))
-              }}
-            >
-              {eqOverlayOptions(snap.chain).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <span />
-        )}
         <span className={styles.headActions}>
           {onShowInspector ? <EqLayoutButton to="inspector" onClick={onShowInspector} /> : null}
-          {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
+          {many ? (
+            <label className={styles.focus}>
+              EQ
+              <select
+                aria-label="EQ overlay"
+                value={focus}
+                onChange={(event) => {
+                  setFocusRaw(event.target.value)
+                  persistEqOverlayFocus(clampEqOverlayFocus(event.target.value, snap.chain))
+                }}
+              >
+                {eqOverlayOptions(snap.chain).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </span>
+        {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
       </div>
       ) : null}
       <div className={styles.strips}>
