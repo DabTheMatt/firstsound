@@ -9,6 +9,7 @@ import {
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
 import {
+  SPECTRAL_COLOR_MODES,
   SPECTRAL_DENSITIES,
   SPECTRAL_HISTORY_SECONDS,
   requestSpectralHistoryClear,
@@ -17,6 +18,7 @@ import {
   spectralHistorySession,
   subscribeSpectralHistorySession,
   type SpectralCameraPreset,
+  type SpectralColorMode,
   type SpectralDensity,
   type SpectralDrawStyle,
 } from '../../audio/engine/spectralHistory'
@@ -27,6 +29,8 @@ import {
   type SpectrumLayer,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
+import focusStyles from '../mobile/FocusChrome.module.css'
+import spectrumStyles from './Spectrum.module.css'
 import styles from './SpectralHistory.module.css'
 
 function SpectrumHistoryIcon() {
@@ -62,15 +66,25 @@ function SpectrumHistoryIcon() {
   )
 }
 
-export function FftViewToggle({ mode, onChange }: { mode: '2d' | '3d'; onChange: (mode: '2d' | '3d') => void }) {
+export function FftViewToggle({
+  mode,
+  onChange,
+  variant = 'bar',
+}: {
+  mode: '2d' | '3d'
+  onChange: (mode: '2d' | '3d') => void
+  variant?: 'bar' | 'focus'
+}) {
+  const pill = variant === 'focus' ? focusStyles.fftField : spectrumStyles.bands
+  const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
   return (
-    <div className={styles.seg} role="group" aria-label="FFT view">
-      <button type="button" aria-pressed={mode === '2d'} onClick={() => onChange('2d')}>
+    <div className={pill} role="group" aria-label="FFT view">
+      <button type="button" className={choice} aria-pressed={mode === '2d'} onClick={() => onChange('2d')}>
         2D
       </button>
       <button
         type="button"
-        className={styles.toggle}
+        className={choice}
         aria-pressed={mode === '3d'}
         aria-label="Open 3D Spectral History."
         title="3D Spectral History"
@@ -94,7 +108,13 @@ const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'both', label: 'Both' },
 ]
 
-/** Primary 3D controls. Advanced analyzer settings stay behind More. */
+const COLOR_LABEL: Record<SpectralColorMode, string> = {
+  off: 'Off',
+  level: 'Level',
+  frequency: 'Frequency',
+}
+
+/** Primary 3D controls. The 2D/3D switch stays in the FFT chrome, not in this bar. */
 export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' | 'focus' }) {
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
@@ -106,6 +126,9 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
   const panelId = useId()
   const wrapRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const pill = variant === 'focus' ? focusStyles.fftField : spectrumStyles.bands
+  const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
+  const icon = variant === 'focus' ? focusStyles.hit : spectrumStyles.iconTap
 
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   useEffect(() => subscribeFreqScale(setScale), [])
@@ -222,14 +245,19 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           </button>
         ))}
       </div>
-      <label className={styles.check}>
-        <input
-          type="checkbox"
-          checked={prefs.levelColor}
-          onChange={(event) => patch({ levelColor: event.target.checked })}
-        />
-        Level color
-      </label>
+      <div className={styles.row}>
+        <span>Color</span>
+        {SPECTRAL_COLOR_MODES.map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={prefs.colorMode === mode}
+            onClick={() => patch({ colorMode: mode })}
+          >
+            {COLOR_LABEL[mode]}
+          </button>
+        ))}
+      </div>
       <label className={styles.check}>
         <input
           type="checkbox"
@@ -257,13 +285,13 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
 
   return (
     <div className={variant === 'focus' ? styles.focus : styles.bar} data-spectral-history="">
-      {variant === 'focus' ? <span className={styles.mark}>3D</span> : null}
-      <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
-      <div className={styles.history} role="group" aria-label="History">
+      <div className={pill} role="group" aria-label="History">
+        <span>History</span>
         {SPECTRAL_HISTORY_SECONDS.map((sec) => (
           <button
             key={sec}
             type="button"
+            className={choice}
             aria-pressed={prefs.historySec === sec}
             onClick={() => patch({ historySec: sec })}
           >
@@ -271,11 +299,13 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           </button>
         ))}
       </div>
-      <div className={styles.seg} role="group" aria-label="Signal">
+      <div className={pill} role="group" aria-label="Signal">
+        <span>Signal</span>
         {LAYERS.map((layer) => (
           <button
             key={layer.id}
             type="button"
+            className={choice}
             aria-pressed={prefs.historyLayer === layer.id}
             title={layer.id === 'pre' ? 'Before the effect chain' : layer.id === 'post' ? 'After the effect chain' : 'Source and output'}
             onClick={() => patch({ historyLayer: layer.id })}
@@ -284,11 +314,13 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
           </button>
         ))}
       </div>
-      <div className={styles.seg} role="group" aria-label="View">
+      <div className={pill} role="group" aria-label="View">
+        <span>View</span>
         {VIEWS.map((view) => (
           <button
             key={view.id}
             type="button"
+            className={choice}
             aria-pressed={prefs.cameraPreset === view.id}
             onClick={() => patch({ cameraPreset: view.id })}
           >
@@ -298,7 +330,7 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
       </div>
       <button
         type="button"
-        className={styles.freeze}
+        className={pill}
         aria-pressed={frozen}
         title="Freeze history. Audio keeps playing."
         onClick={() => setSpectralHistoryFrozen(!frozen)}
@@ -308,7 +340,7 @@ export function SpectralHistoryControls({ variant = 'bar' }: { variant?: 'bar' |
       <div className={styles.moreWrap} ref={wrapRef}>
         <button
           type="button"
-          className={styles.more}
+          className={icon}
           aria-expanded={open}
           aria-controls={panelId}
           title="3D settings"

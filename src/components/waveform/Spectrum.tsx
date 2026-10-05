@@ -454,7 +454,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             historySec: prefsNow.historySec,
             density: prefsNow.density,
             drawStyle: prefsNow.drawStyle,
-            levelColor: prefsNow.levelColor,
+            colorMode: prefsNow.colorMode,
             peakTrails: prefsNow.peakTrails,
             cameraPreset: prefsNow.cameraPreset,
             fall: prefsNow.fall,
@@ -1146,18 +1146,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
         <EnterFocusButton corner label="FFT" onClick={onEnterFocus} />
       ) : null}
-      {suppressAnalyzerChrome ? null : spatial ? (
-      <div className={styles.chrome}>
-        <SpectralHistoryControls />
-        <div className={styles.chromeRight}>
-          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
-        </div>
-      </div>
-      ) : (
+      {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
       >
         <div className={styles.chromeLeft}>
+          {spatial ? <SpectralHistoryControls /> : (
+          <>
           {compact ? (
             <button type="button" className={styles.analyzerClose} onClick={onAnalyzerClose}>
               ×
@@ -1398,13 +1393,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ))}
             </select>
           </label>
+          </>
+          )}
         </div>
         <div className={styles.chromeRight}>
-          <FftViewToggle
-            mode={prefs.viewMode}
-            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
-          />
-          {showResponseKey ? (
+          {spatial ? null : showResponseKey ? (
             <ul className={styles.curveKey} aria-label="Response curves">
               <li>
                 <i className={styles.eqSwatch} />
@@ -1416,6 +1409,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               </li>
             </ul>
           ) : null}
+          {spatial ? null : <>
           <button
             type="button"
             className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
@@ -1494,6 +1488,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               <rect x="6.5" y="11.5" width="8" height="2" rx="1" fill="currentColor" />
             </svg>
           </button>
+          </>}
+          <FftViewToggle
+            mode={prefs.viewMode}
+            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+          />
           {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label="FFT" onClick={onEnterFocus} /> : null}
         </div>
       </div>
@@ -1525,14 +1524,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) : null}
         {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (
           <div className={historyStyles.dock}>
-            {spatial ? (
-              <SpectralHistoryControls />
-            ) : (
-              <FftViewToggle
-                mode={prefs.viewMode}
-                onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
-              />
-            )}
+            <FftViewToggle
+              mode={prefs.viewMode}
+              onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+            />
+            {spatial ? <SpectralHistoryControls /> : null}
           </div>
         ) : null}
         <canvas

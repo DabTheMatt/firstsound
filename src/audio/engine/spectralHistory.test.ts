@@ -15,6 +15,7 @@ import {
   selectSpectralSlices,
   spectralAgeOpacity,
   spectralCameraEases,
+  clampSpectralColorMode,
   spectralCaptureInterval,
   spectralHistoryAriaLabel,
   spectralLevelColor,
@@ -356,7 +357,7 @@ describe('canvas history paint', () => {
       historySec: 5,
       density: 'auto',
       drawStyle: 'lines',
-      levelColor: false,
+      colorMode: 'off',
       peakTrails: false,
       cameraPreset: 'angled',
       fall: 'normal',
@@ -370,6 +371,7 @@ describe('canvas history paint', () => {
     expect(runtime.post.count).toBe(1)
     expect(runtime.hitCount).toBeGreaterThan(8)
     expect(calls).toContain('stroke')
+    expect(calls).toContain('fillText')
     expect(runtime.clock.now).toBeCloseTo(0.05)
     paintSpectralHistory(ctx, 900, 420, runtime, {
       dt: 1,
@@ -385,7 +387,7 @@ describe('canvas history paint', () => {
       historySec: 5,
       density: 'auto',
       drawStyle: 'lines',
-      levelColor: false,
+      colorMode: 'off',
       peakTrails: false,
       cameraPreset: 'angled',
       fall: 'normal',
@@ -413,7 +415,35 @@ describe('canvas history paint', () => {
       historySec: 5,
       density: 'auto',
       drawStyle: 'surface',
-      levelColor: true,
+      colorMode: 'level',
+      peakTrails: false,
+      cameraPreset: 'angled',
+      fall: 'normal',
+      range: 90,
+      scale: 'log',
+      colors: colors as ReturnType<typeof readThemeColors>,
+      mobile: false,
+      reducedMotion: true,
+      layer: 'post',
+    })
+    expect(calls).toContain('fill')
+    expect(calls).toContain('stroke')
+    calls.length = 0
+    paintSpectralHistory(ctx, 900, 420, runtime, {
+      dt: 0.05,
+      dpr: 1,
+      cssWidth: 900,
+      cssHeight: 420,
+      playing: true,
+      sampleRate: 44100,
+      preBins: null,
+      postBins: bins,
+      showPre: false,
+      showPost: true,
+      historySec: 5,
+      density: 'auto',
+      drawStyle: 'surface',
+      colorMode: 'frequency',
       peakTrails: false,
       cameraPreset: 'angled',
       fall: 'normal',
@@ -437,7 +467,9 @@ describe('spectrum prefs for 3D', () => {
     expect(prefs.historyLayer).toBe('post')
     expect(prefs.cameraPreset).toBe('angled')
     expect(prefs.density).toBe('auto')
-    expect(prefs.levelColor).toBe(false)
+    expect(prefs.colorMode).toBe('off')
+    expect(clampSpectralColorMode('frequency')).toBe('frequency')
+    expect(clampSpectralColorMode('nope', true)).toBe('level')
     expect(prefs.drawStyle).toBe('lines')
     expect(prefs.peakTrails).toBe(false)
     setSpectralHistoryFrozen(false)
@@ -461,6 +493,10 @@ describe('spectrum prefs for 3D', () => {
     expect(prefs.range).toBe(60)
     expect(prefs.viewMode).toBe('2d')
     expect(prefs.historyLayer).toBe('post')
+    store.set(SPECTRUM_PREF_KEY, JSON.stringify({ levelColor: true }))
+    expect(loadSpectrumPrefs().colorMode).toBe('level')
+    store.set(SPECTRUM_PREF_KEY, JSON.stringify({ colorMode: 'frequency', levelColor: true }))
+    expect(loadSpectrumPrefs().colorMode).toBe('frequency')
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: previous })
   })
 })

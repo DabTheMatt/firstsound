@@ -15,6 +15,7 @@ import {
 } from '../../audio/engine/spectrumBands'
 import { logSpectrumHz, sampleLogSpectrumDb } from '../../audio/engine/spectrumEnvelope'
 import { formatFreqTick } from '../../audio/engine/pitchScale'
+import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
 import { hzToX, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { measureSpectrumDb, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import {
@@ -42,6 +43,7 @@ import {
   SpectralHistoryClock,
   type SpectralCamera,
   type SpectralCameraPreset,
+  type SpectralColorMode,
   type SpectralDensity,
   type SpectralDrawStyle,
   type SpectralHistorySeconds,
@@ -109,6 +111,7 @@ export type SpectralHistoryRuntime = {
   trace: Float32Array
   floorXY: Float32Array
   levels: Float32Array
+  crestHz: Float32Array
   lastDrawMs: number
 }
 
@@ -139,6 +142,7 @@ export function createSpectralHistoryRuntime(): SpectralHistoryRuntime {
     trace: new Float32Array(320 * 2),
     floorXY: new Float32Array(320 * 2),
     levels: new Float32Array(320),
+    crestHz: new Float32Array(320),
     lastDrawMs: 0,
   }
 }
@@ -157,7 +161,7 @@ export type SpectralPaintInput = {
   historySec: SpectralHistorySeconds
   density: SpectralDensity
   drawStyle: SpectralDrawStyle
-  levelColor: boolean
+  colorMode: SpectralColorMode
   peakTrails: boolean
   cameraPreset: SpectralCameraPreset
   fall: SpectrumFallMode
@@ -192,6 +196,7 @@ function ensureLog(runtime: SpectralHistoryRuntime, points: number): void {
   if (runtime.trace.length < points * 2) runtime.trace = new Float32Array(points * 2)
   if (runtime.floorXY.length < points * 2) runtime.floorXY = new Float32Array(points * 2)
   if (runtime.levels.length < points) runtime.levels = new Float32Array(points)
+  if (runtime.crestHz.length < points) runtime.crestHz = new Float32Array(points)
   if (runtime.pre.points !== points) runtime.pre.resize(points)
   if (runtime.post.points !== points) runtime.post.resize(points)
 }
@@ -266,9 +271,17 @@ function pushHit(runtime: SpectralHistoryRuntime, x: number, y: number, hz: numb
   runtime.hitCount += 1
 }
 
-function ridgeColor(input: SpectralPaintInput, fallback: string, level: number): string {
-  if (!input.levelColor) return fallback
-  return spectralLevelColor(input.colors.ridgeCool, input.colors.ridgeMid, input.colors.ridgeWarm, level)
+function seriesColor(input: SpectralPaintInput, fallback: string, level: number, hz: number): string {
+  if (input.colorMode === 'frequency') return eqBandColorForHz(hz)
+  if (input.colorMode === 'level') {
+    return spectralLevelColor(
+      input.colors.eqCurve3 || input.colors.ridgeCool,
+      input.colors.eqCurve2 || input.colors.ridgeMid,
+      input.colors.eqCurve || input.colors.ridgeWarm,
+      level,
+    )
+  }
+  return fallback
 }
 
 function strokeSeries(
@@ -288,9 +301,11 @@ function strokeSeries(
   const points = values.length
   const stride = input.mobile || runtime.quality < 0.72 ? 2 : 1
   const alpha = spectralAgeOpacity(age01) * (dashed ? 0.72 : 1)
-  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (input.levelColor ? 1.35 : 1))
+  const colored = input.colorMode !== 'off'
+  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (colored ? 1.45 : 1))
   const surface = input.drawStyle === 'surface'
-  const fillAlpha = alpha * (0.1 + 0.42 * (1 - age01) ** 1.35)
+  const fillAlpha = alpha * 0.5 * (0.45 + 0.55 * (1 - age01))
+  const colorFill = alpha * 0.84 * (0.7 + 0.3 * (1 - age01))
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
@@ -299,17 +314,12 @@ function strokeSeries(
   const xs = runtime.trace
   const floors = runtime.floorXY
   const levels = runtime.levels
+  const hzs = runtime.crestHz
   let n = 0
-  let prevX = 0
-  let prevY = 0
-  let prevFx = 0
-  let prevFy = 0
-  let prevLevel = 0
-  let hasPrev = false
   const flushLine = () => {
     if (n < 1) return
-    if (surface && n >= 2 && !input.levelColor) {
-      ctx.fillStyle = colorWithAlpha(color, fillAlpha)
+    if (surface && n >= 2) {
+      ctx.fillStyle = colorWithAlpha(color, colored ? Math.min(0.28, fillAlpha) : fillAlpha)
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
       for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
@@ -318,7 +328,21 @@ function strokeSeries(
       ctx.closePath()
       ctx.fill()
     }
-    if (!input.levelColor) {
+    if (surface && colored && n >= 2) {
+      for (let p = 1; p < n; p++) {
+        const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
+        const hz = ((hzs[p - 1] ?? 0) + (hzs[p] ?? 0)) * 0.5
+        ctx.fillStyle = colorWithAlpha(seriesColor(input, color, level, hz), colorFill)
+        ctx.beginPath()
+        ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
+        ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
+        ctx.lineTo(floors[p * 2] ?? 0, floors[p * 2 + 1] ?? 0)
+        ctx.lineTo(floors[(p - 1) * 2] ?? 0, floors[(p - 1) * 2 + 1] ?? 0)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+    if (!colored) {
       ctx.strokeStyle = colorWithAlpha(color, alpha)
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
@@ -327,7 +351,8 @@ function strokeSeries(
     } else {
       for (let p = 1; p < n; p++) {
         const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
-        ctx.strokeStyle = colorWithAlpha(ridgeColor(input, color, level), alpha)
+        const hz = ((hzs[p - 1] ?? 0) + (hzs[p] ?? 0)) * 0.5
+        ctx.strokeStyle = colorWithAlpha(seriesColor(input, color, level, hz), Math.min(1, alpha + 0.2))
         ctx.beginPath()
         ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
         ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
@@ -335,7 +360,6 @@ function strokeSeries(
       }
     }
     n = 0
-    hasPrev = false
   }
 
   for (let i = 0; i < points; i += stride) {
@@ -352,33 +376,57 @@ function strokeSeries(
       const hz = runtime.hz[i] ?? 0
       if (hz > 0) pushHit(runtime, projected.x, projected.y, hz, db, ageSec)
     }
-    if (surface && input.levelColor && hasPrev) {
-      ctx.fillStyle = colorWithAlpha(ridgeColor(input, color, (prevLevel + level) * 0.5), fillAlpha)
-      ctx.beginPath()
-      ctx.moveTo(prevX, prevY)
-      ctx.lineTo(projected.x, projected.y)
-      ctx.lineTo(floor.x, floor.y)
-      ctx.lineTo(prevFx, prevFy)
-      ctx.closePath()
-      ctx.fill()
-    }
+    const hz = runtime.hz[i] ?? 0
     if (n * 2 + 1 < xs.length) {
       xs[n * 2] = projected.x
       xs[n * 2 + 1] = projected.y
       floors[n * 2] = floor.x
       floors[n * 2 + 1] = floor.y
       levels[n] = level
+      hzs[n] = hz
       n += 1
     }
-    prevX = projected.x
-    prevY = projected.y
-    prevFx = floor.x
-    prevFy = floor.y
-    prevLevel = level
-    hasPrev = true
   }
   flushLine()
   ctx.setLineDash([])
+}
+
+/** Time label kept inside the plot, along the left depth edge. Returns the chip top. */
+function paintTimeChip(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  plot: { left: number; top: number; right: number; bottom: number },
+  dpr: number,
+  fill: string,
+  ink: string,
+  ceiling: number,
+): number {
+  const padX = 5 * dpr
+  const height = 14 * dpr
+  const width = ctx.measureText(text).width + padX * 2
+  const gap = 2 * dpr
+  let left = x
+  let top = y - height / 2
+  const minLeft = plot.left + 4 * dpr
+  const maxLeft = Math.max(minLeft, plot.right - width - 4 * dpr)
+  left = Math.min(maxLeft, Math.max(minLeft, left))
+  const minTop = plot.top + 2 * dpr
+  const maxTop = Math.max(minTop, plot.bottom - height - 2 * dpr)
+  if (top + height > ceiling - gap) top = ceiling - gap - height
+  top = Math.min(maxTop, Math.max(minTop, top))
+  ctx.fillStyle = fill
+  ctx.beginPath()
+  const radius = Math.min(4 * dpr, height / 2)
+  if (typeof ctx.roundRect === 'function') ctx.roundRect(left, top, width, height, radius)
+  else ctx.rect(left, top, width, height)
+  ctx.fill()
+  ctx.fillStyle = ink
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, left + padX, top + height / 2)
+  return top
 }
 
 export function paintSpectralHistory(
@@ -561,12 +609,10 @@ export function paintSpectralHistory(
   ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'right'
-  const dbLabelY: number[] = []
   if (!tight && !topView) {
     for (const db of dbMarks) {
       const level = dbToSpectralLevel(db, floorDb)
       const at = projectSpectralPoint(0, level, 0, plot, viewCamera)
-      dbLabelY.push(at.y)
       ctx.fillText(db === 0 ? '0' : String(db), plot.left - 8 * input.dpr, at.y)
     }
   }
@@ -587,35 +633,25 @@ export function paintSpectralHistory(
     ctx.fillText(tick.text, tick.x, Math.min(plot.bottom + 2 * input.dpr, tick.y + 4 * input.dpr))
   }
 
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = colorWithAlpha(colors.textMuted, 0.9)
-  ctx.font = `${9 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
-  ctx.lineWidth = 3 * input.dpr
-  ctx.strokeStyle = colorWithAlpha(colors.bgApp || '#050505', 0.9)
-  for (const mark of timeLabels) {
-    const age = input.historySec <= 0 ? 0 : mark.ageSec / input.historySec
-    if (mark.ageSec <= 0.001) {
-      const front = projectSpectralPoint(0, 0, 0, plot, viewCamera)
-      ctx.textAlign = 'left'
-      ctx.strokeText('NOW', plot.left + 4 * input.dpr, front.y - 8 * input.dpr)
-      ctx.fillText('NOW', plot.left + 4 * input.dpr, front.y - 8 * input.dpr)
-      ctx.textAlign = 'right'
-      continue
-    }
-    const at = projectSpectralPoint(0.98, 0, age, plot, viewCamera)
-    if (dbLabelY.some((y) => Math.abs(y - at.y) < 11 * input.dpr)) continue
-    ctx.strokeText(mark.text, at.x, at.y)
-    ctx.fillText(mark.text, at.x, at.y)
-  }
-
   const source =
     input.layer === 'both' ? 'Source + Output' : input.layer === 'pre' ? 'Source' : 'Output'
-  ctx.textAlign = 'left'
+  ctx.textAlign = 'right'
   ctx.textBaseline = 'top'
   ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.72)
   ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
-  ctx.fillText(source, plot.left, plot.top)
+  ctx.fillText(source, plot.right - 4 * input.dpr, plot.top + 2 * input.dpr)
+
+  ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  const chipFill = colorWithAlpha(colors.bgApp || '#050505', 0.88)
+  const chipInk = colorWithAlpha(colors.textPrimary, 0.92)
+  let chipCeiling = plot.bottom
+  for (const mark of timeLabels) {
+    const age = input.historySec <= 0 ? 0 : mark.ageSec / input.historySec
+    const at = projectSpectralPoint(0, 0, age, plot, viewCamera)
+    chipCeiling = paintTimeChip(ctx, mark.text, at.x + 6 * input.dpr, at.y, plot, input.dpr, chipFill, chipInk, chipCeiling)
+  }
 
   const elapsed = performance.now() - started
   runtime.lastDrawMs = elapsed

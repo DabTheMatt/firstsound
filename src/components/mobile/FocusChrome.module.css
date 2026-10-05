@@ -451,6 +451,39 @@
   text-transform: none;
 }
 
+.fftField[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.fftChoice {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fftChoice[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+.fftTail {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-left: auto;
+  gap: 0;
+}
+
 .fftIcons {
   display: flex;
   align-items: center;

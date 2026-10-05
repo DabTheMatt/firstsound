@@ -25,6 +25,14 @@ export type SpectralDensity = (typeof SPECTRAL_DENSITIES)[number]
 export const SPECTRAL_DRAW_STYLES = ['lines', 'surface'] as const
 export type SpectralDrawStyle = (typeof SPECTRAL_DRAW_STYLES)[number]
 
+export const SPECTRAL_COLOR_MODES = ['off', 'level', 'frequency'] as const
+export type SpectralColorMode = (typeof SPECTRAL_COLOR_MODES)[number]
+
+export function clampSpectralColorMode(value: unknown, legacyLevel?: boolean): SpectralColorMode {
+  if (value === 'off' || value === 'level' || value === 'frequency') return value
+  return legacyLevel ? 'level' : 'off'
+}
+
 /** Restrained ticks. Not every grid line. */
 export const SPECTRAL_FREQ_TICKS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000] as const
 
@@ -270,9 +278,9 @@ export function spectralAgeWidth(age01: number): number {
  * The two ends are different hues so level color stays readable on gray themes.
  */
 export function spectralLevelColor(cool: string, mid: string, warm: string, level: number): string {
-  const t = clampUnit(level, 0, 1)
-  if (t < 0.5) return mixCssColor(cool, mid, t * 2)
-  return mixCssColor(mid, warm, (t - 0.5) * 2)
+  const shaped = clampUnit(level, 0, 1) ** 0.72
+  if (shaped < 0.5) return mixCssColor(cool, mid, shaped / 0.5)
+  return mixCssColor(mid, warm, (shaped - 0.5) / 0.5)
 }
 
 /**
