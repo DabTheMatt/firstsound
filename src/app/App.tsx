@@ -678,15 +678,20 @@ export default function App() {
   useLayoutEffect(() => {
     const col = waveColRef.current
     if (!col) return
-    if (!activeFocus || activeFocus === 'eq') {
-      col.style.setProperty('--focus-toolbar-height', '0px')
+    if (!activeFocus) {
+      col.style.removeProperty('--focus-toolbar-height')
       document.documentElement.style.removeProperty('--focus-chrome-height')
-      if (!activeFocus) col.style.removeProperty('--focus-toolbar-height')
       return
     }
     const node = col.querySelector<HTMLElement>('[data-focus-chrome]')
     if (!node) return
     const apply = () => {
+      if (activeFocus === 'eq') {
+        col.style.setProperty('--focus-toolbar-height', '0px')
+        const bottom = Math.ceil(node.getBoundingClientRect().bottom)
+        document.documentElement.style.setProperty('--focus-chrome-height', `${bottom}px`)
+        return
+      }
       const px = `${Math.ceil(node.getBoundingClientRect().height)}px`
       col.style.setProperty('--focus-toolbar-height', px)
       document.documentElement.style.setProperty('--focus-chrome-height', px)

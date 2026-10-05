@@ -118,8 +118,8 @@ const en: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Each EQ instance has its own bands. Band and comb gain run from −24 dB to +24 dB. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered over the grid when the filter type changes.',
-      'Focus lists the filters on the left of the graph. The knobs sit on the center of the screen and float over the grid. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, and the spectrum layer Before, After, or Both. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
+      'Each EQ instance has its own bands. Band and comb gain run from −24 dB to +24 dB. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay centered beside that list when the filter type changes.',
+      'Focus lists the filters on the left of the graph. The knobs sit centered over the graph, beside the list, and float over the grid. The filter type menu is in the band header, next to the band name. The pointer shows frequency first, then the note, for example 440 Hz · A4. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, and the spectrum layer Before, After, or Both. Guides use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
     ],
   },
   {
@@ -215,7 +215,7 @@ const en: ManualSection[] = [
     title: 'Focus mode',
     body: [
       'Focus mode fills the editor with one task: wave, FFT, EQ, or automation. Exit returns to the normal layout. In WAVE Focus, fade handles are inset below the toolbar.',
-      'EQ Focus knobs are the larger minimal variant. The indicator follows the effective value, including LFO motion, and takes its accent from the selected band.',
+      'EQ Focus knobs are the larger minimal variant. The indicator follows the effective value, including LFO motion. Knobs and their readouts stay neutral. Only the band name and number use the band color. The filter type menu sits in the band header, and the Hearing Access readout sits under the knobs so it does not cover them.',
     ],
   },
   {
@@ -301,7 +301,7 @@ const en: ManualSection[] = [
       'Monitoring assistance is a bounded low/mid/high emphasis on the speaker path only, after the safety gain and before the hardware output. It is not a hearing aid. It is not included in export. Exported audio is rendered by the offline engine, which never inserts this filter.',
       'Haptics are optional. FIELD treats vibration as available when the browser exposes it, and a Test pulse checks whether this device accepts one pattern. Unsupported browsers say so instead of pretending. Intensity is off, low, medium, or high. Pulses during playback need intensity above off. They are rate-limited. Frequency haptics are experimental and can be disabled.',
       'The visual mixing assistant lists technical conditions such as possible clipping, low-frequency energy, channel imbalance, low correlation, dynamic range, long silence, and DC offset. Show moves the playhead. It does not fix the audio.',
-      'In Focus mode Hearing Access stays a single readout on the active graph: the selected EQ band, waveform peak and scope, dominant spectrum frequency, or the automation parameter’s stored and effective values. The graph remains the main surface.',
+      'In Focus mode Hearing Access stays a single readout on the active graph: the selected EQ band, waveform peak and scope, dominant spectrum frequency, or the automation parameter’s stored and effective values. In EQ Focus that readout sits under the knobs. The graph remains the main surface.',
       'Limitations: Hearing Access provides visual, numerical, and optional tactile representations of measurable audio properties. It does not reproduce every perceptual aspect of hearing and does not guarantee that a mix will sound subjectively correct to every listener. Monitoring assistance is not a medical hearing device. Voice/background figures, when shown, are estimates and are omitted when the spectrum is a narrow tone or otherwise inconclusive.',
     ],
   },
@@ -413,8 +413,8 @@ const pl: ManualSection[] = [
     id: 'eq',
     title: 'EQ',
     body: [
-      'Każda instancja EQ ma własne pasma. Gain pasma i grzebienia sięga od −24 dB do +24 dB. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku siatki przy zmianie typu.',
-      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku ekranu i unoszą się nad siatką. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel oraz warstwę widma Before, After albo Both. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
+      'Każda instancja EQ ma własne pasma. Gain pasma i grzebienia sięga od −24 dB do +24 dB. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku obok tej listy przy zmianie typu.',
+      'Lista filtrów stoi po lewej stronie wykresu. Pokrętła są na środku wykresu, obok listy, i unoszą się nad siatką. Menu typu filtra jest w nagłówku pasma, przy nazwie. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel oraz warstwę widma Before, After albo Both. Prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
     ],
   },
   {
@@ -510,7 +510,7 @@ const pl: ManualSection[] = [
     title: 'Tryb Focus',
     body: [
       'Focus wypełnia edytor jednym zadaniem: fala, FFT, EQ albo automatyzacja. Wyjście wraca do zwykłego układu. W WAVE Focus uchwyty fade są odsunięte pod pasek narzędzi.',
-      'Pokrętła EQ Focus są większym, oszczędnym wariantem. Wskazówka śledzi wartość skuteczną, także przy LFO, a akcent bierze z wybranego pasma.',
+      'Pokrętła EQ Focus są większym, oszczędnym wariantem. Wskazówka śledzi wartość skuteczną, także przy LFO. Pokrętła i odczyty zostają neutralne. Kolor pasma ma tylko nazwa i numer. Menu typu filtra jest w nagłówku pasma, a odczyt Hearing Access stoi pod pokrętłami, więc ich nie zasłania.',
     ],
   },
   {
@@ -596,7 +596,7 @@ const pl: ManualSection[] = [
       'Monitoring assistance to ograniczone podbicie low/mid/high tylko na ścieżce odsłuchu, za safety gain i przed wyjściem sprzętowym. To nie jest aparat słuchowy. Nie wchodzi do eksportu. Eksport renderuje silnik offline, który tego filtra nie wstawia.',
       'Haptyka jest opcjonalna. FIELD uznaje wibrację za dostępną, gdy przeglądarka ją udostępnia, a Test pulse sprawdza, czy urządzenie przyjmuje jeden wzorzec. Przeglądarka bez wibracji mówi o tym wprost. Intensywność: off, low, medium, high. Impulsy w trakcie odtwarzania wymagają intensywności powyżej off. Mają limit częstości. Frequency haptics są eksperymentalne i można je wyłączyć.',
       'Visual mixing assistant wymienia warunki techniczne: możliwe clipping, energia niskich częstotliwości, nierównowaga kanałów, niska korelacja, zakres dynamiki, długa cisza i offset DC. Show przesuwa głowicę. Nie naprawia audio.',
-      'W trybie Focus Hearing Access zostaje jednym odczytem na aktywnym wykresie: wybrany pas EQ, szczyt i zakres fali, dominująca częstotliwość widma albo wartość zapisana i efektywna parametru automacji. Wykres pozostaje główną powierzchnią.',
+      'W trybie Focus Hearing Access zostaje jednym odczytem na aktywnym wykresie: wybrany pas EQ, szczyt i zakres fali, dominująca częstotliwość widma albo wartość zapisana i efektywna parametru automacji. W EQ Focus ten odczyt stoi pod pokrętłami. Wykres pozostaje główną powierzchnią.',
       'Ograniczenia: Hearing Access daje wizualną, liczbową i opcjonalnie dotykową reprezentację mierzalnych właściwości dźwięku. Nie odtwarza każdego percepcyjnego aspektu słyszenia i nie gwarantuje, że miks będzie subiektywnie poprawny dla każdego słuchacza. Monitoring assistance nie jest medycznym urządzeniem słuchowym. Liczby voice/background, jeśli się pojawią, są szacunkiem i są pomijane, gdy widmo jest wąskim tonem albo wynik jest niejednoznaczny.',
     ],
   },
