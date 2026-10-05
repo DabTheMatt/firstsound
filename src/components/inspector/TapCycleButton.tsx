@@ -5,10 +5,11 @@ import { addCycleTap, emptyTapCycle, type TapCycleState } from '../../audio/fx/t
 type Props = {
   onRate: (hz: number) => void
   className?: string
+  label?: string
 }
 
 /** Sets an existing LFO rate from tap intervals. Does not touch the oscillator. */
-export function TapCycleButton({ onRate, className }: Props) {
+export function TapCycleButton({ onRate, className, label = 'Tap cycle' }: Props) {
   const taps = useRef<TapCycleState>(emptyTapCycle())
   const [count, setCount] = useState(0)
 
@@ -26,7 +27,7 @@ export function TapCycleButton({ onRate, className }: Props) {
       title="Tap once per cycle. The gap sets the LFO rate, the same way tap tempo sets BPM."
       onClick={tap}
     >
-      Tap cycle{count > 0 ? ` · ${count}` : ''}
+      {label}{count > 0 ? ` · ${count}` : ''}
     </button>
   )
 }

@@ -14,6 +14,7 @@ import { useI18n } from '../../i18n'
 import { LfoShapeIcon } from '../controls/LfoShapePicker'
 import { useFxLfoConnect } from './FxLfoConnect'
 import { LfoConnectButton } from './LfoConnectButton'
+import { TapCycleButton } from './TapCycleButton'
 import styles from './LfoCenter.module.css'
 
 type Props = {
@@ -118,6 +119,11 @@ function KindBlock({
                   <em>{running && target ? `→ ${target}` : target ?? 'Unassigned'}</em>
                 </button>
                 <div className={styles.actions}>
+                  <TapCycleButton
+                    className={`${styles.ghost} ${styles.tap}`}
+                    label="Tap cycle"
+                    onRate={(hz) => engine.setFxLfo(kind, slot, { rateHz: hz })}
+                  />
                   <LfoConnectButton
                     kind={kind}
                     slot={slot}
