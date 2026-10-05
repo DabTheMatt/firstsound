@@ -358,6 +358,11 @@
   flex: 1;
 }
 
+.analyzerPanel {
+  min-width: 0;
+  padding: 4px 4px 16px;
+}
+
 .badge {
   margin-left: 6px;
   color: var(--accent-primary);
