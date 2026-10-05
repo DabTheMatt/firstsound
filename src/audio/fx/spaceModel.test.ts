@@ -107,6 +107,8 @@ describe('reverbTail', () => {
   it('freeze and reverse types change the tail', () => {
     const p = defaultParamValues()
     p.reverbWet = 50
+    p.reverbFreeze = 0
+    expect(reverbTail(p, 'infinite', 120).freeze).toBe(false)
     p.reverbFreeze = 1
     expect(reverbTail(p, 'infinite', 120).freeze).toBe(true)
     expect(reverbTail(p, 'reverse', 120).reverse).toBe(true)

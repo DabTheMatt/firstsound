@@ -148,6 +148,7 @@ const en: ManualSection[] = [
     body: [
       'Each reverb instance keeps its own size, decay, wet mix, and impulse response. The dry path and the reverberated path are separate, then summed.',
       'When Dry and Wet are linked they are one Mix. The percentages are that mix position: 35% Wet means Dry 65% and Wet 35%. FIELD applies an equal-power crossfade, dry = cos(mix × π/2) and wet = sin(mix × π/2), so the middle does not drop the way a straight linear blend does. The wet impulse is scaled once from its own energy, so a full-scale source mixed in does not slam the sum into clipping. A fixed ceiling after that sum catches the peaks equal-power mixing can still add. Neither step is a live loudness control, and neither keeps every source at the same loudness. Unlink Dry and Wet to set them as independent levels. The output can then get louder or quieter.',
+      'Reverb Randomize changes creative parameters such as Mix, decay, size, pre-delay, damping, and width. When Dry and Wet are linked, Randomize moves that one Mix percentage. The equal-power dry and wet gains are derived from Mix and are not drawn on their own. Chaos may pick more extreme settings, including a fully wet mix. It does not randomize the internal wet-return gain, impulse normalization, or whether the reverb is bypassed.',
     ],
   },
   {
@@ -178,7 +179,10 @@ const en: ManualSection[] = [
   {
     id: 'random',
     title: 'Random',
-    body: ['Random offsets parameters inside their allowed ranges. The safety limiter is excluded so Random cannot push it into an unsafe setting.'],
+    body: [
+      'Random offsets parameters inside their allowed ranges. The safety limiter is excluded so Random cannot push it into an unsafe setting.',
+      'On a linked reverb, Randomize changes Mix. Dry and Wet percentages stay one position, and the equal-power gains are calculated afterwards. Internal return gain is not a Random target.',
+    ],
   },
   {
     id: 'chaos',
@@ -186,6 +190,7 @@ const en: ManualSection[] = [
     body: [
       'Chaos is the button immediately left of Settings. Turning it on enables the chain safety limiter if that limiter was bypassed or missing. It does not add a second limiter, and it does not add makeup gain.',
       'If you bypass the limiter while Chaos stays on, FIELD leaves that choice until you leave Chaos and enter it again.',
+      'Chaos can randomize more extreme reverb settings than a normal Randomize pass. It still changes Mix as one control when Dry and Wet are linked, and it does not randomize internal gain staging or bypass the effect.',
     ],
   },
   {
@@ -428,6 +433,7 @@ const pl: ManualSection[] = [
     body: [
       'Każda instancja pogłosu trzyma własny rozmiar, wybrzmienie, miks wet i własną odpowiedź impulsową. Ścieżka dry i ścieżka pogłosu są osobne, a potem sumowane.',
       'Gdy Dry i Wet są zlinkowane, to jeden Mix. Procenty opisują pozycję miksu: 35% Wet oznacza Dry 65% i Wet 35%. FIELD stosuje crossfade o stałej mocy, dry = cos(mix × π/2) i wet = sin(mix × π/2), więc środek nie zapada się tak jak przy zwykłym liniowym blendzie. Odpowiedź impulsowa wet jest skalowana raz, według własnej energii, więc pełnoskalowe źródło wmiksowane w pogłos nie wbija sumy w clipping. Stały pułap za tą sumą łapie szczyty, które miks o stałej mocy nadal może dodać. Żaden z tych kroków nie jest żywym dopasowaniem głośności i żaden nie utrzymuje tej samej głośności dla każdego źródła. Odłącz Dry i Wet, żeby ustawić je jako niezależne poziomy. Wyjście może wtedy stać się głośniejsze albo cichsze.',
+      'Randomize pogłosu zmienia parametry kreatywne: Mix, wybrzmienie, rozmiar, pre-delay, tłumienie i szerokość. Gdy Dry i Wet są zlinkowane, Randomize rusza ten jeden procent Mix. Wzmocnienia dry i wet o stałej mocy wynikają z Mix i nie są losowane osobno. Chaos może wybrać bardziej skrajne ustawienia, także pełny wet. Nie losuje wewnętrznego wzmocnienia powrotu wet, normalizacji impulsu ani obejścia pogłosu.',
     ],
   },
   {
@@ -458,7 +464,10 @@ const pl: ManualSection[] = [
   {
     id: 'random',
     title: 'Random',
-    body: ['Random odchyla parametry w dozwolonych zakresach. Limiter bezpieczeństwa jest wyłączony z losowania, więc Random nie ustawi go niebezpiecznie.'],
+    body: [
+      'Random odchyla parametry w dozwolonych zakresach. Limiter bezpieczeństwa jest wyłączony z losowania, więc Random nie ustawi go niebezpiecznie.',
+      'Na zlinkowanym pogłosie Randomize zmienia Mix. Procenty Dry i Wet zostają jedną pozycją, a wzmocnienia o stałej mocy są liczone potem. Wewnętrzne wzmocnienie powrotu nie jest celem Random.',
+    ],
   },
   {
     id: 'chaos',
@@ -466,6 +475,7 @@ const pl: ManualSection[] = [
     body: [
       'Chaos jest przyciskiem bezpośrednio na lewo od Ustawień. Włączenie go uruchamia limiter bezpieczeństwa w łańcuchu, jeśli był ominięty albo go nie było. Nie dodaje drugiego limitera i nie podbija makeup.',
       'Jeśli ominiesz limiter, gdy Chaos nadal jest włączony, FIELD zostawia ten wybór, dopóki nie wyjdziesz z Chaos i nie wejdziesz ponownie.',
+      'Chaos może losować bardziej skrajny pogłos niż zwykłe Randomize. Przy zlinkowanych Dry i Wet nadal zmienia jeden Mix i nie losuje wewnętrznego gain staging ani obejścia efektu.',
     ],
   },
   {

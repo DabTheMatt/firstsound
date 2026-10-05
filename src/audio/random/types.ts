@@ -59,6 +59,11 @@ export type RandomMeta = {
   weights?: readonly number[]
   /** Topology or kernel changes. Auto Random cannot run faster than twice a second. */
   expensive?: boolean
+  /**
+   * Computed from another parameter. Chaos must not draw it on its own.
+   * Linked reverb Dry is the complement of Mix.
+   */
+  derived?: boolean
 }
 
 export type EqRandomCount = 'random' | 1 | 2 | 3 | 4 | 5 | 6
