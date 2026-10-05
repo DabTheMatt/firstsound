@@ -42,6 +42,7 @@ const en: ManualSection[] = [
     title: 'Loading audio',
     body: [
       'Load sample is the primary action. It opens a file picker. You can also drop a file onto the editor.',
+      'Four track squares sit beside the chain. An empty slot stays nearly invisible. Loading a sample lights that slot’s square in its color from the active theme. The first sample lights square 1. Empty slots do not keep a dimmer copy of that color.',
       'Safari on iPhone and iPad decodes WAV, AIFF, MP3, M4A/AAC, and CAF. OGG and WebM usually fail there.',
     ],
   },
@@ -321,6 +322,7 @@ const pl: ManualSection[] = [
     title: 'Wczytywanie audio',
     body: [
       'Wczytaj sample jest główną akcją. Otwiera wybór pliku. Plik można też upuścić na edytor.',
+      'Cztery kwadraty ścieżek stoją przy łańcuchu. Pusty slot zostaje prawie niewidoczny. Wczytanie sampla zapala kwadrat tego slotu kolorem ścieżki z palety aktywnego motywu. Pierwszy sample zapala kwadrat 1. Puste sloty nie trzymają przygaszonej wersji tego koloru.',
       'Safari na iPhonie i iPadzie dekoduje WAV, AIFF, MP3, M4A/AAC i CAF. OGG i WebM zwykle tam nie działają.',
     ],
   },
