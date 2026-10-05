@@ -175,26 +175,36 @@
 
 .eqCluster {
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
-  width: auto;
+  width: 100%;
   padding: 0;
   background: none;
   backdrop-filter: none;
+  pointer-events: none;
+}
+
+.eqDock {
+  width: 100%;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .eqLayout {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(168px, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   width: 100%;
+  padding: 0 8px 6px;
+  pointer-events: none;
 }
 
 .filterColumn {
-  position: absolute;
+  position: relative;
   z-index: 4;
-  top: 42px;
-  left: max(10px, env(safe-area-inset-left, 0px));
-  width: min(220px, 36vw);
+  width: auto;
+  min-width: 0;
   pointer-events: auto;
 }
 
@@ -275,36 +285,40 @@
 
 .eqWell {
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-}
-
-/* The top bar's middle column is not the screen center: the view switch is wider than the transport. */
-.chrome[data-focus-chrome='eq'] .eqWell {
-  position: absolute;
-  left: 50%;
-  top: 2px;
-  z-index: 3;
-  transform: translateX(-50%);
+  pointer-events: auto;
 }
 
 .eqHead {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 4px;
   min-height: 28px;
   max-width: 100%;
 }
 
-.eqName {
-  color: var(--text-muted);
+.eqName,
+.filterName {
+  color: var(--text-primary);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.eqMeta {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -322,26 +336,20 @@
   width: 92px;
   flex: 0 0 92px;
   min-width: 0;
+  --knob-arc: var(--text-primary);
+  --accent-primary: var(--text-primary);
   filter: drop-shadow(0 10px 16px color-mix(in srgb, black 42%, transparent));
 }
 
 @container focus (max-width: 760px) {
-  .chrome[data-focus-chrome='eq'] .eqWell {
-    position: relative;
-    left: auto;
-    top: auto;
-    transform: none;
-  }
-
   .filterColumn {
     position: relative;
-    top: auto;
-    left: auto;
     width: auto;
   }
 
   .eqLayout {
     display: block;
+    padding-inline: 0;
   }
 
   .filterBar {
@@ -368,30 +376,26 @@
 }
 
 .typeField {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  width: 72px;
-  flex: 0 0 72px;
-  gap: 1px;
-  color: var(--text-muted);
-  font-size: 8px;
+  width: auto;
+  flex: none;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.typeField span {
-  height: 14px;
-  line-height: 14px;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .typeField select {
   box-sizing: border-box;
-  width: 100%;
-  height: 36px;
-  margin-top: 4px;
-  padding: 0 18px 0 8px;
+  width: auto;
+  min-width: 72px;
+  height: 28px;
+  margin: 0;
+  padding: 0 22px 0 10px;
   border: 0;
   border-radius: 10px;
   appearance: none;
@@ -467,12 +471,6 @@
     width: 31%;
     flex: 1 1 31%;
     max-width: 88px;
-  }
-
-  .typeField {
-    flex: 1 1 100%;
-    width: auto;
-    max-width: 112px;
   }
 }
 

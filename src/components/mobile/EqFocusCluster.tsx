@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { EQ_FILTER_TYPES, EQ_MAX_BANDS, EQ_MAX_HZ, EQ_MIN_HZ, planEqBandInsert, slopeFromNormalized, slopeToNormalized, nearestFilterSlope, type EqFilterType } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
@@ -80,9 +80,12 @@ export function EqFocusCluster({ onSelectModule }: Props) {
               {t.focus.filters}
             </button>
             {active ? (
-              <span className={styles.eqName}>
-                {t.focus.band(index + 1, focusEqTypeLabel(active.type))} · {formatFocusHz(active.frequency)}
-              </span>
+              <>
+                <span className={styles.eqName} style={{ color: accent }}>
+                  {t.focus.bandName(index + 1)}
+                </span>
+                <span className={styles.eqMeta}>{formatFocusHz(active.frequency)}</span>
+              </>
             ) : null}
           </div>
           <ul className={styles.filterList} data-open={filtersOpen ? 'true' : 'false'} aria-label={t.focus.filters}>
@@ -99,7 +102,9 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                     onClick={() => selectRow(row)}
                   >
                     <i style={{ background: eqBandTone(row, readThemeColors()).curve }} />
-                    <span>EQ {row + 1}</span>
+                    <span className={styles.filterName} style={{ color: eqBandTone(row, readThemeColors()).curve }}>
+                      EQ {row + 1}
+                    </span>
                     <span>{formatFocusHz(item.frequency)}</span>
                     <span>{focusEqTypeLabel(item.type)}</span>
                   </button>
@@ -108,7 +113,7 @@ export function EqFocusCluster({ onSelectModule }: Props) {
             })}
           </ul>
         </div>
-        <div className={styles.eqWell}>
+        <div className={styles.eqWell} data-eq-well="">
       <div className={styles.eqHead}>
         <button
           type="button"
@@ -121,7 +126,29 @@ export function EqFocusCluster({ onSelectModule }: Props) {
           +
         </button>
         {active ? (
-          <span className={styles.eqName}>{t.focus.band(index + 1, focusEqTypeLabel(active.type))}</span>
+          <span className={styles.eqName} style={{ color: accent }}>
+            {t.focus.bandName(index + 1)}
+          </span>
+        ) : null}
+        {eq && active ? (
+          <label className={styles.typeField}>
+            <span className="sr-only">{t.mobile.type}</span>
+            <select
+              data-eq-type=""
+              aria-label={t.mobile.type}
+              value={active.type}
+              onChange={(event) => {
+                setType(event.target.value as EqFilterType)
+                event.currentTarget.blur()
+              }}
+            >
+              {focusEqTypeOptions().map((value) => (
+                <option key={value} value={value}>
+                  {EQ_FILTER_TYPES.find((item) => item.value === value)?.short ?? value}
+                </option>
+              ))}
+            </select>
+          </label>
         ) : null}
         <EffectRandomMenu type="eq" />
         {eq && active ? (
@@ -153,7 +180,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   normalized={toNormalized(active.frequency, PARAMS.eq1Freq)}
                   visualNormalized={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.freq] ?? active.frequency, PARAMS.eq1Freq) : undefined}
                   lfoRange={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.freq, toNormalized(active.frequency, PARAMS.eq1Freq)) : undefined}
-                  accent={accent}
                   instanceId={eq?.instanceId}
                   bandId={active.id}
                   includeUnscoped={shared}
@@ -183,7 +209,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   normalized={toNormalized(active.gain, PARAMS.eq1Gain)}
                   visualNormalized={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.gain] ?? active.gain, PARAMS.eq1Gain) : undefined}
                   lfoRange={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.gain, toNormalized(active.gain, PARAMS.eq1Gain)) : undefined}
-                  accent={accent}
                   instanceId={eq?.instanceId}
                   bandId={active.id}
                   includeUnscoped={shared}
@@ -213,7 +238,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   normalized={toNormalized(active.q, PARAMS.eq1Q)}
                   visualNormalized={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.q] ?? active.q, PARAMS.eq1Q) : undefined}
                   lfoRange={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.q, toNormalized(active.q, PARAMS.eq1Q)) : undefined}
-                  accent={accent}
                   instanceId={eq?.instanceId}
                   bandId={active.id}
                   includeUnscoped={shared}
@@ -252,24 +276,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
               />
             )
           })}
-          <label className={styles.typeField}>
-            <span>{t.mobile.type}</span>
-            <select
-              data-eq-type=""
-              aria-label={t.mobile.type}
-              value={active.type}
-              onChange={(event) => {
-                setType(event.target.value as EqFilterType)
-                event.currentTarget.blur()
-              }}
-            >
-              {focusEqTypeOptions().map((value) => (
-                <option key={value} value={value}>
-                  {EQ_FILTER_TYPES.find((item) => item.value === value)?.short ?? value}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
       ) : null}
         </div>
@@ -291,7 +297,6 @@ function EqKnob({
   now,
   paramId,
   afford = false,
-  accent,
   instanceId,
   bandId,
   includeUnscoped = true,
@@ -310,7 +315,6 @@ function EqKnob({
   now: number
   paramId?: ParamId
   afford?: boolean
-  accent?: string
   instanceId?: string
   bandId?: string
   includeUnscoped?: boolean
@@ -335,7 +339,7 @@ function EqKnob({
     />
   )
   return (
-    <div className={styles.eqKnob} data-eq-knob={field} style={{ '--knob-arc': accent } as CSSProperties}>
+    <div className={styles.eqKnob} data-eq-knob={field}>
       {paramId ? (
         <ModulationScopeProvider instanceId={instanceId} bandId={bandId} includeUnscoped={includeUnscoped}>
           <LfoParamShell id={paramId} afford={afford}>

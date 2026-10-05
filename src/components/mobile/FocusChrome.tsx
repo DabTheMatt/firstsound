@@ -122,7 +122,6 @@ export function FocusChrome({
           ) : null}
         </div>
         <div className={styles.workspace} data-focus-zone="workspace">
-          {workspace === 'eq' ? <EqFocusCluster onSelectModule={onSelectModule} /> : null}
           {workspace === 'fft' ? <FftFocusTools /> : null}
           {workspace === 'auto' ? (
             <AutoTools
@@ -160,6 +159,11 @@ export function FocusChrome({
           </button>
         </div>
       </div>
+      {workspace === 'eq' ? (
+        <div className={styles.eqDock}>
+          <EqFocusCluster onSelectModule={onSelectModule} />
+        </div>
+      ) : null}
     </div>
   )
 }
