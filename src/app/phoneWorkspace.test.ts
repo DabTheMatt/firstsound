@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   essentialParamIds,
   focusWorkspaceForViz,
+  graphFocusWorkspace,
   nextSheetLevel,
   phoneDisplayViz,
   phoneVizFromMode,
@@ -32,6 +33,13 @@ describe('focus workspace', () => {
     expect(focusWorkspaceForViz('eq-split')).toBe('eq')
     expect(focusWorkspaceForViz('spectrum')).toBe('fft')
     expect(focusWorkspaceForViz('automation')).toBe('auto')
+  })
+
+  it('opens EQ Focus from the EQ graph and FFT Focus from a bare spectrum', () => {
+    expect(graphFocusWorkspace('eq-split')).toBe('eq')
+    expect(graphFocusWorkspace('spectrum')).toBe('fft')
+    expect(graphFocusWorkspace('split')).toBe('fft')
+    expect(graphFocusWorkspace('waveform')).toBe('fft')
   })
 })
 

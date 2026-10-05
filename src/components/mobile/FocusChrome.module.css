@@ -345,7 +345,7 @@
 }
 
 .eqKnob svg > circle:first-of-type {
-  fill: #070707;
+  fill: rgb(42 44 46 / 72%);
 }
 
 .eqKnob svg > path {

@@ -58,6 +58,11 @@ export function focusWorkspaceForViz(viz: VizMode): FocusWorkspace {
   return 'wave'
 }
 
+/** Focus control drawn on the analyzer. The EQ graph opens EQ Focus, not FFT Focus. */
+export function graphFocusWorkspace(viz: VizMode): 'eq' | 'fft' {
+  return viz === 'eq-split' ? 'eq' : 'fft'
+}
+
 export function nextSheetLevel(level: PhoneSheetLevel): PhoneSheetLevel {
   if (level === 'collapsed') return 'medium'
   if (level === 'medium') return 'expanded'
