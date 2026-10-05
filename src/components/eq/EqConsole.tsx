@@ -39,16 +39,16 @@ export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Prop
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {onShowInspector ? (
+      {onShowInspector || onEnterFocus ? (
         <div className={styles.layoutFloat}>
-          <EqLayoutButton to="inspector" onClick={onShowInspector} />
+          {onShowInspector ? <EqLayoutButton to="inspector" onClick={onShowInspector} /> : null}
+          {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
         </div>
       ) : null}
-      {many || onEnterFocus ? (
+      {many ? (
       <div className={styles.consoleHead}>
         <span className={styles.headActions}>
-          {many ? (
-            <label className={styles.focus}>
+          <label className={styles.focus}>
               EQ
               <select
                 aria-label="EQ overlay"
@@ -63,11 +63,9 @@ export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Prop
                     {opt.label}
                   </option>
                 ))}
-              </select>
-            </label>
-          ) : null}
+            </select>
+          </label>
         </span>
-        {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
       </div>
       ) : null}
       <div className={styles.strips}>

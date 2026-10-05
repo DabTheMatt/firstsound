@@ -446,6 +446,9 @@
   z-index: 4;
   top: 6px;
   right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .miniRow {
