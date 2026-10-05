@@ -21,6 +21,7 @@ import {
   clampSpectralCamera,
   dbToSpectralLevel,
   defaultSpectralCamera,
+  interpolateSpectralFrame,
   projectSpectralPoint,
   selectSpectralSlices,
   spectralAgeOpacity,
@@ -30,8 +31,10 @@ import {
   spectralDbGuides,
   spectralFreqTicks,
   spectralHistorySession,
+  spectralLevelColor,
   spectralPeakHold,
   spectralPointCount,
+  spectralScrollAge,
   spectralSliceTarget,
   spectralTimeLabels,
   spectralVisibleFreqTicks,
@@ -44,7 +47,7 @@ import {
   type SpectralHistorySeconds,
 } from '../../audio/engine/spectralHistory'
 import type { SpectrumLayer } from '../../audio/engine/spectrumPrefs'
-import { colorWithAlpha, mixCssColor } from '../../theme/cssColor'
+import { colorWithAlpha } from '../../theme/cssColor'
 import type { ThemeColors } from '../../theme/theme'
 
 export type AnalyserScratch = {
@@ -86,6 +89,9 @@ export type SpectralHistoryRuntime = {
   preSmooth: SmoothSlot
   postSmooth: SmoothSlot
   log: Float32Array
+  preLive: Float32Array
+  postLive: Float32Array
+  column: Float32Array
   hz: Float32Array
   times: Float64Array
   peak: Float32Array
@@ -101,6 +107,8 @@ export type SpectralHistoryRuntime = {
   hits: Float32Array
   hitCount: number
   trace: Float32Array
+  floorXY: Float32Array
+  levels: Float32Array
   lastDrawMs: number
 }
 
@@ -111,7 +119,10 @@ export function createSpectralHistoryRuntime(): SpectralHistoryRuntime {
     clock: new SpectralHistoryClock(),
     preSmooth: { line: null, elapsed: null },
     postSmooth: { line: null, elapsed: null },
-    log: new Float32Array(320),
+    log: blankSpectrum(320),
+    preLive: blankSpectrum(320),
+    postLive: blankSpectrum(320),
+    column: blankSpectrum(320),
     hz: new Float32Array(320),
     times: new Float64Array(240),
     peak: new Float32Array(320),
@@ -126,6 +137,8 @@ export function createSpectralHistoryRuntime(): SpectralHistoryRuntime {
     hits: new Float32Array(24_000 * 5),
     hitCount: 0,
     trace: new Float32Array(320 * 2),
+    floorXY: new Float32Array(320 * 2),
+    levels: new Float32Array(320),
     lastDrawMs: 0,
   }
 }
@@ -156,11 +169,29 @@ export type SpectralPaintInput = {
   layer: SpectrumLayer
 }
 
+function blankSpectrum(points: number): Float32Array {
+  const values = new Float32Array(points)
+  values.fill(Number.NaN)
+  return values
+}
+
+function hasSpectrum(values: Float32Array): boolean {
+  for (let i = 0; i < values.length; i += 4) {
+    if (Number.isFinite(values[i] ?? Number.NaN)) return true
+  }
+  return false
+}
+
 function ensureLog(runtime: SpectralHistoryRuntime, points: number): void {
-  if (runtime.log.length !== points) runtime.log = new Float32Array(points)
+  if (runtime.log.length !== points) runtime.log = blankSpectrum(points)
+  if (runtime.preLive.length !== points) runtime.preLive = blankSpectrum(points)
+  if (runtime.postLive.length !== points) runtime.postLive = blankSpectrum(points)
+  if (runtime.column.length !== points) runtime.column = blankSpectrum(points)
   if (runtime.hz.length !== points) runtime.hz = new Float32Array(points)
   if (runtime.peak.length !== points) runtime.peak = new Float32Array(points)
   if (runtime.trace.length < points * 2) runtime.trace = new Float32Array(points * 2)
+  if (runtime.floorXY.length < points * 2) runtime.floorXY = new Float32Array(points * 2)
+  if (runtime.levels.length < points) runtime.levels = new Float32Array(points)
   if (runtime.pre.points !== points) runtime.pre.resize(points)
   if (runtime.post.points !== points) runtime.post.resize(points)
 }
@@ -197,12 +228,15 @@ function capture(
   input: SpectralPaintInput,
   minHz: number,
   maxHz: number,
+  live: Float32Array,
+  follow: boolean,
   store: boolean,
 ): void {
-  if (!bins || !input.playing) return
+  if (!bins || !input.playing || !follow) return
   const smoothed = smoothInto(slot, bins, input.fall, input.dt)
-  if (!store) return
   sampleLogSpectrumDb(smoothed, input.sampleRate, minHz, maxHz, runtime.log, input.scale)
+  live.set(runtime.log)
+  if (!store) return
   buffer.push(runtime.log, runtime.clock.now)
 }
 
@@ -232,11 +266,15 @@ function pushHit(runtime: SpectralHistoryRuntime, x: number, y: number, hz: numb
   runtime.hitCount += 1
 }
 
-function strokeRidge(
+function ridgeColor(input: SpectralPaintInput, fallback: string, level: number): string {
+  if (!input.levelColor) return fallback
+  return spectralLevelColor(input.colors.ridgeCool, input.colors.ridgeMid, input.colors.ridgeWarm, level)
+}
+
+function strokeSeries(
   ctx: CanvasRenderingContext2D,
   runtime: SpectralHistoryRuntime,
-  buffer: SpectralFrameBuffer,
-  frameIndex: number,
+  values: Float32Array,
   age01: number,
   ageSec: number,
   color: string,
@@ -247,69 +285,99 @@ function strokeRidge(
   dashed: boolean,
   recordHits: boolean,
 ): void {
-  const points = buffer.points
+  const points = values.length
   const stride = input.mobile || runtime.quality < 0.72 ? 2 : 1
   const alpha = spectralAgeOpacity(age01) * (dashed ? 0.72 : 1)
-  const width = Math.max(input.dpr * 0.7, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.8 : 1))
-  const surface = input.drawStyle === 'surface' && runtime.quality > 0.6 && !input.levelColor
+  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (input.levelColor ? 1.35 : 1))
+  const surface = input.drawStyle === 'surface'
+  const fillAlpha = alpha * (0.1 + 0.42 * (1 - age01) ** 1.35)
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
   ctx.setLineDash(dashed ? [4 * input.dpr, 3 * input.dpr] : [])
-  ctx.strokeStyle = colorWithAlpha(color, alpha)
-  ctx.fillStyle = colorWithAlpha(color, alpha * 0.08)
-  const trace = runtime.trace
-  let traceN = 0
-  let runFreq0 = 0
-  let runFreq1 = 0
-  const flush = () => {
-    if (traceN < 1) return
-    ctx.beginPath()
-    ctx.moveTo(trace[0] ?? 0, trace[1] ?? 0)
-    for (let p = 1; p < traceN; p++) ctx.lineTo(trace[p * 2] ?? 0, trace[p * 2 + 1] ?? 0)
-    ctx.stroke()
-    if (surface && traceN >= 2) {
-      const floorStart = projectSpectralPoint(runFreq0, 0, age01, plot, camera)
-      const floorEnd = projectSpectralPoint(runFreq1, 0, age01, plot, camera)
-      ctx.lineTo(floorEnd.x, floorEnd.y)
-      ctx.lineTo(floorStart.x, floorStart.y)
+
+  const xs = runtime.trace
+  const floors = runtime.floorXY
+  const levels = runtime.levels
+  let n = 0
+  let prevX = 0
+  let prevY = 0
+  let prevFx = 0
+  let prevFy = 0
+  let prevLevel = 0
+  let hasPrev = false
+  const flushLine = () => {
+    if (n < 1) return
+    if (surface && n >= 2 && !input.levelColor) {
+      ctx.fillStyle = colorWithAlpha(color, fillAlpha)
+      ctx.beginPath()
+      ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
+      for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
+      ctx.lineTo(floors[(n - 1) * 2] ?? 0, floors[(n - 1) * 2 + 1] ?? 0)
+      ctx.lineTo(floors[0] ?? 0, floors[1] ?? 0)
       ctx.closePath()
       ctx.fill()
     }
-    traceN = 0
+    if (!input.levelColor) {
+      ctx.strokeStyle = colorWithAlpha(color, alpha)
+      ctx.beginPath()
+      ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
+      for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
+      ctx.stroke()
+    } else {
+      for (let p = 1; p < n; p++) {
+        const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
+        ctx.strokeStyle = colorWithAlpha(ridgeColor(input, color, level), alpha)
+        ctx.beginPath()
+        ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
+        ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
+        ctx.stroke()
+      }
+    }
+    n = 0
+    hasPrev = false
   }
+
   for (let i = 0; i < points; i += stride) {
-    const db = buffer.valueAt(frameIndex, i)
+    const db = values[i] ?? Number.NaN
     if (!Number.isFinite(db)) {
-      if (input.levelColor) traceN = 0
-      else flush()
+      flushLine()
       continue
     }
     const level = dbToSpectralLevel(db, floorDb)
     const freq = points <= 1 ? 0 : i / (points - 1)
     const projected = projectSpectralPoint(freq, level, age01, plot, camera)
+    const floor = projectSpectralPoint(freq, 0, age01, plot, camera)
     if (recordHits) {
       const hz = runtime.hz[i] ?? 0
       if (hz > 0) pushHit(runtime, projected.x, projected.y, hz, db, ageSec)
     }
-    if (input.levelColor) {
-      ctx.strokeStyle = colorWithAlpha(mixCssColor(input.colors.textMuted, color, level), alpha)
+    if (surface && input.levelColor && hasPrev) {
+      ctx.fillStyle = colorWithAlpha(ridgeColor(input, color, (prevLevel + level) * 0.5), fillAlpha)
       ctx.beginPath()
-      if (traceN > 0) ctx.moveTo(trace[(traceN - 1) * 2] ?? projected.x, trace[(traceN - 1) * 2 + 1] ?? projected.y)
-      else ctx.moveTo(projected.x, projected.y)
+      ctx.moveTo(prevX, prevY)
       ctx.lineTo(projected.x, projected.y)
-      ctx.stroke()
+      ctx.lineTo(floor.x, floor.y)
+      ctx.lineTo(prevFx, prevFy)
+      ctx.closePath()
+      ctx.fill()
     }
-    if (traceN * 2 + 1 < trace.length) {
-      if (traceN === 0) runFreq0 = freq
-      runFreq1 = freq
-      trace[traceN * 2] = projected.x
-      trace[traceN * 2 + 1] = projected.y
-      traceN += 1
+    if (n * 2 + 1 < xs.length) {
+      xs[n * 2] = projected.x
+      xs[n * 2 + 1] = projected.y
+      floors[n * 2] = floor.x
+      floors[n * 2 + 1] = floor.y
+      levels[n] = level
+      n += 1
     }
+    prevX = projected.x
+    prevY = projected.y
+    prevFx = floor.x
+    prevFy = floor.y
+    prevLevel = level
+    hasPrev = true
   }
-  if (!input.levelColor) flush()
-  else traceN = 0
+  flushLine()
   ctx.setLineDash([])
 }
 
@@ -370,7 +438,7 @@ export function paintSpectralHistory(
     plotHeight: plotH,
     mobile: input.mobile,
     both,
-    quality: runtime.quality,
+    quality: 1,
   })
   const interval = spectralCaptureInterval(input.historySec, slices)
   const sr = input.sampleRate > 0 ? input.sampleRate : 44100
@@ -378,8 +446,9 @@ export function paintSpectralHistory(
   const minHz = SPECTRUM_AXIS_MIN_HZ
   writeHz(runtime, minHz, maxHz, input.scale)
   const store = runtime.clock.tick(input.dt, input.playing, session.frozen, interval)
-  if (input.showPre) capture(runtime, input.preBins, runtime.preSmooth, runtime.pre, input, minHz, maxHz, store)
-  if (input.showPost) capture(runtime, input.postBins, runtime.postSmooth, runtime.post, input, minHz, maxHz, store)
+  const follow = input.playing && !session.frozen
+  if (input.showPre) capture(runtime, input.preBins, runtime.preSmooth, runtime.pre, input, minHz, maxHz, runtime.preLive, follow, store && follow)
+  if (input.showPost) capture(runtime, input.postBins, runtime.postSmooth, runtime.post, input, minHz, maxHz, runtime.postLive, follow, store && follow)
 
   const floorDb = spectrumDisplayFloorDb(input.range)
   const colors = input.colors
@@ -423,20 +492,20 @@ export function paintSpectralHistory(
   }
 
   runtime.hitCount = 0
-  const drawBuffer = (buffer: SpectralFrameBuffer, color: string, dashed: boolean) => {
+  const liveFront = input.playing && !session.frozen
+  const drawBuffer = (buffer: SpectralFrameBuffer, live: Float32Array, color: string, dashed: boolean) => {
     const count = buffer.copyTimes(runtime.times)
-    const chosen = selectSpectralSlices(runtime.times, count, runtime.clock.now, input.historySec, slices)
-    for (let s = 0; s < chosen.length; s++) {
-      const index = chosen[s]!
-      const time = buffer.timeAt(index)
-      const ageSec = Math.max(0, runtime.clock.now - time)
+    const historySlices = Math.max(1, slices - (liveFront ? 1 : 0))
+    for (let s = historySlices - 1; s >= 0; s--) {
+      const ageSec = spectralScrollAge(s, historySlices, runtime.clock.now, input.historySec)
+      if (liveFront && ageSec < 1 / 120) continue
+      const time = runtime.clock.now - ageSec
+      if (!interpolateSpectralFrame(buffer, runtime.times, count, time, runtime.column)) continue
       const age01 = input.historySec <= 0 ? 0 : Math.min(1, ageSec / input.historySec)
-      const newest = s === chosen.length - 1
-      strokeRidge(
+      strokeSeries(
         ctx,
         runtime,
-        buffer,
-        index,
+        runtime.column,
         age01,
         ageSec,
         color,
@@ -445,10 +514,14 @@ export function paintSpectralHistory(
         viewCamera,
         input,
         dashed,
-        newest || s % 2 === 0,
+        s % 2 === 0,
       )
     }
-    if (input.peakTrails && chosen.length > 1) {
+    if (liveFront && hasSpectrum(live)) {
+      strokeSeries(ctx, runtime, live, 0, 0, color, floorDb, plot, viewCamera, input, dashed, true)
+    }
+    if (input.peakTrails && count > 1) {
+      const chosen = selectSpectralSlices(runtime.times, count, runtime.clock.now, input.historySec, slices)
       spectralPeakHold(buffer, chosen, runtime.peak)
       ctx.save()
       ctx.globalAlpha = 0.85
@@ -478,9 +551,9 @@ export function paintSpectralHistory(
     }
   }
 
-  if (input.showPre) drawBuffer(runtime.pre, colors.textMuted, both)
-  if (input.showPost) drawBuffer(runtime.post, colors.spectrumLine || colors.spectrum, false)
-  if (!input.showPre && !input.showPost) drawBuffer(runtime.post, colors.spectrumLine || colors.spectrum, false)
+  if (input.showPre) drawBuffer(runtime.pre, runtime.preLive, colors.textMuted, both)
+  if (input.showPost) drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
+  if (!input.showPre && !input.showPost) drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
 
   ctx.restore()
 
