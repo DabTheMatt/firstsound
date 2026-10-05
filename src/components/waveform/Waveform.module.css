@@ -68,7 +68,9 @@
 }
 
 .eqStage .spec,
-.split.eqStage .spec {
+.split.eqStage .spec,
+.fillGraph .spec,
+.split.fillGraph .spec {
   flex: 1 1 auto;
   min-height: 140px;
 }

@@ -28,6 +28,8 @@ type Props = {
   visualValueText?: string
   /** Stored (pre-LFO) readout shown between the dial and the live value. */
   baseValueText?: string
+  /** Keep the stored-value line even when it is blank, so neighboring knobs stay aligned. */
+  reserveBase?: boolean
   compact?: boolean
   /** Smaller dial that stays visually secondary to a compact knob. */
   mini?: boolean
@@ -89,6 +91,7 @@ export function ValueKnob({
   visualNormalized,
   visualValueText,
   baseValueText,
+  reserveBase = false,
   compact = false,
   mini = false,
   lfoRange,
@@ -452,7 +455,7 @@ export function ValueKnob({
         />
       ) : (
         <>
-          {focus || baseValueText ? (
+          {focus || reserveBase || baseValueText ? (
             <p className={styles.baseValue} title={baseValueText ? 'Stored value (LFO zero)' : undefined}>
               {baseValueText ?? '\u00a0'}
             </p>

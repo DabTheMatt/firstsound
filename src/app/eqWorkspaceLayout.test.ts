@@ -19,12 +19,12 @@ describe('eq workspace layout', () => {
     })
   })
 
-  it('defaults to strips and only accepts the inspector token', () => {
-    expect(parseEqWorkspaceLayout(null)).toBe('strips')
-    expect(parseEqWorkspaceLayout('both')).toBe('strips')
-    expect(parseEqWorkspaceLayout('inspector')).toBe('inspector')
-    expect(readStoredEqWorkspaceLayout()).toBe('strips')
-    persistEqWorkspaceLayout('inspector')
+  it('defaults to the inspector and only accepts the strips token', () => {
+    expect(parseEqWorkspaceLayout(null)).toBe('inspector')
+    expect(parseEqWorkspaceLayout('both')).toBe('inspector')
+    expect(parseEqWorkspaceLayout('strips')).toBe('strips')
     expect(readStoredEqWorkspaceLayout()).toBe('inspector')
+    persistEqWorkspaceLayout('strips')
+    expect(readStoredEqWorkspaceLayout()).toBe('strips')
   })
 })

@@ -45,7 +45,7 @@ const en: ManualSection[] = [
       'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the workspace header. Exit Focus returns the chrome without changing the sound, the selection, or the playhead.',
       'Workspace is experimental. Settings → Technical interface → Classic switches back immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
       'Hearing in Workspace keeps the selected effect in the context panel. The loudness words sit beside the output meter on the right. Analyzer settings open above the spectrum and list every analyzer option in that one window, including 3D history.',
-      'EQ in Workspace opens with the strip panel under the graph. Drag the bar between the graph and the strips to change that panel’s height. Strips and Inspector, in the workspace header, switch between that panel and the context inspector.',
+      'EQ in Workspace opens in the inspector. Filter strips sit there in one row: a type selector and small knobs. The graph uses the full height above the transport. An icon in the inspector opens vertical strips under the graph; drag the bar between them to change that panel’s height. An icon on the strip panel returns to the inspector. FIELD remembers that choice only for EQ. Adding or selecting another effect shows that effect’s inspector.',
     ],
   },
   {
@@ -352,7 +352,7 @@ const pl: ManualSection[] = [
       'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest w nagłówku obszaru. Wyjście przywraca ramkę i nie zmienia dźwięku, zaznaczenia ani głowicy.',
       'Workspace jest eksperymentalny. Ustawienia → Interfejs techniczny → Klasyczny wraca od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
       'Hearing w Workspace zostawia wybrany efekt w panelu kontekstu. Słowa głośności stoją obok wskaźnika wyjścia po prawej. Ustawienia analizatora otwierają się nad widmem i zbierają wszystkie opcje w jednym oknie, także historię 3D.',
-      'EQ w Workspace otwiera się z paskami pod wykresem. Przeciągnięcie belki między wykresem a paskami zmienia wysokość tego panelu. Paski i Inspektor w nagłówku obszaru przełączają ten panel z inspektorem kontekstu.',
+      'EQ w Workspace otwiera się w inspektorze. Paski filtrów stoją tam w jednym rzędzie: selektor typu i małe gałki. Wykres zajmuje całą wysokość nad transportem. Ikona w inspektorze otwiera pionowe paski pod wykresem; przeciągnięcie belki między nimi zmienia wysokość tego panelu. Ikona na panelu pasków wraca do inspektora. Ten wybór jest pamiętany tylko dla EQ. Dodanie albo zaznaczenie innego efektu pokazuje jego inspektor.',
     ],
   },
   {

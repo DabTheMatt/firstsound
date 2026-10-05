@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { EQ_FILTER_TYPES, type EqFilterType } from '../../audio/engine/eqBands'
 import { FILTER_ICON_PATH } from './eqFilterIcons'
 import styles from './EqConsole.module.css'
@@ -13,18 +14,36 @@ type Props = {
 
 export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, showBypass = true }: Props) {
   const [open, setOpen] = useState(false)
+  const [menuBox, setMenuBox] = useState<{ top: number; left: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLUListElement>(null)
   const current = EQ_FILTER_TYPES.find((t) => t.value === value) ?? EQ_FILTER_TYPES[0]!
 
   useEffect(() => {
     if (!open) return
+    const place = () => {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const menuHeight = 280
+      const below = rect.bottom + 4
+      const top = below + menuHeight > window.innerHeight && rect.top > menuHeight ? rect.top - menuHeight - 4 : below
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 188))
+      setMenuBox({ top, left })
+    }
+    place()
     const onPointer = (event: PointerEvent) => {
       const node = event.target as Node | null
-      if (!node || wrapRef.current?.contains(node)) return
+      if (!node || wrapRef.current?.contains(node) || menuRef.current?.contains(node)) return
       setOpen(false)
     }
     document.addEventListener('pointerdown', onPointer)
-    return () => document.removeEventListener('pointerdown', onPointer)
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
   }, [open])
 
   return (
@@ -57,26 +76,35 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
           </button>
         ) : null}
       </div>
-      {open ? (
-        <ul className={styles.typeMenu} role="listbox" aria-label="EQ filter type">
-          {EQ_FILTER_TYPES.map((opt) => (
-            <li key={opt.value} role="option" aria-selected={opt.value === value}>
-              <button
-                type="button"
-                className={opt.value === value ? styles.typeItemOn : ''}
-                onClick={() => {
-                  onChange(opt.value)
-                  setOpen(false)
-                }}
-              >
-                <EqFilterIcon type={opt.value} />
-                <span>{opt.short}</span>
-                <em>{opt.label}</em>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {open && menuBox
+        ? createPortal(
+            <ul
+              ref={menuRef}
+              className={`${styles.typeMenu} ${styles.typeMenuFixed}`}
+              role="listbox"
+              aria-label="EQ filter type"
+              style={{ top: menuBox.top, left: menuBox.left }}
+            >
+              {EQ_FILTER_TYPES.map((opt) => (
+                <li key={opt.value} role="option" aria-selected={opt.value === value}>
+                  <button
+                    type="button"
+                    className={opt.value === value ? styles.typeItemOn : ''}
+                    onClick={() => {
+                      onChange(opt.value)
+                      setOpen(false)
+                    }}
+                  >
+                    <EqFilterIcon type={opt.value} />
+                    <span>{opt.short}</span>
+                    <em>{opt.label}</em>
+                  </button>
+                </li>
+              ))}
+            </ul>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

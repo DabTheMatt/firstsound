@@ -27,7 +27,7 @@ import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShel
 import { ValueKnob } from '../controls/ValueKnob'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import { eqStripAccentVars } from './eqBandStyle'
-import { eqStripVisibleSlots, type EqStripSlot } from './eqStripSlots'
+import { eqStripParamSlots, type EqStripSlot } from './eqStripSlots'
 import styles from './EqConsole.module.css'
 
 type Props = {
@@ -37,9 +37,11 @@ type Props = {
   band: EqBand
   label: string
   selected?: boolean
+  /** One horizontal card: type selector and small knobs. Used in the EQ inspector. */
+  inline?: boolean
 }
 
-export function EqBandStrip({ snap, instanceId, index, band, label, selected = false }: Props) {
+export function EqBandStrip({ snap, instanceId, index, band, label, selected = false, inline = false }: Props) {
   const ids = EQ_BAND_LFO_IDS[index]
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
   const includeUnscoped = eqInstanceUsesSharedLfo(snap.chain, instanceId)
@@ -66,17 +68,191 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
     freqColors,
   }) as CSSProperties
   const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
+  const slots = eqStripParamSlots(band.type)
+
+  const knob = (slot: EqStripSlot, mini: boolean) => {
+    const size = mini ? { mini: true as const } : { compact: true as const }
+    if (slot === 'freq') {
+      return (
+        <ParamSlot id={ids?.freq} afford>
+          <ValueKnob
+            {...size}
+            reserveBase
+            label="Freq"
+            valueText={formatEqHz(freqLive != null ? fromNormalized(freqLive, PARAMS.eq1Freq) : band.frequency)}
+            baseValueText={freqLive != null ? formatEqHz(band.frequency) : undefined}
+            normalized={toNormalized(band.frequency, PARAMS.eq1Freq)}
+            lfoRange={freqLfo}
+            liveNormalized={freqLive}
+            min={EQ_MIN_HZ}
+            max={EQ_MAX_HZ}
+            now={band.frequency}
+            onChange={(n) => setBand({ frequency: fromNormalized(n, PARAMS.eq1Freq) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
+              if (next == null) return false
+              setBand({ frequency: next })
+              return true
+            }}
+          />
+        </ParamSlot>
+      )
+    }
+    if (slot === 'slope') {
+      return (
+        <ParamSlot afford={false}>
+          <ValueKnob
+            {...size}
+            reserveBase
+            label="Slope"
+            valueText={`${band.slope} dB`}
+            normalized={slopeToNormalized(band.slope)}
+            min={12}
+            max={96}
+            now={band.slope}
+            onChange={(n) => setBand({ slope: slopeFromNormalized(n) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 12, 96, 'dB')
+              if (next == null) return false
+              setBand({ slope: nearestFilterSlope(next) })
+              return true
+            }}
+          />
+        </ParamSlot>
+      )
+    }
+    if (slot === 'gain') {
+      return (
+        <ParamSlot id={ids?.gain} afford>
+          <ValueKnob
+            {...size}
+            reserveBase
+            label="Gain"
+            valueText={`${(gainLive != null ? fromNormalized(gainLive, PARAMS.eq1Gain) : band.gain).toFixed(1)} dB`}
+            baseValueText={gainLive != null ? `${band.gain.toFixed(1)} dB` : undefined}
+            normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
+            lfoRange={gainLfo}
+            liveNormalized={gainLive}
+            min={-18}
+            max={18}
+            now={band.gain}
+            onChange={(n) => setBand({ gain: fromNormalized(n, PARAMS.eq1Gain) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, -18, 18, 'dB')
+              if (next == null) return false
+              setBand({ gain: next })
+              return true
+            }}
+          />
+        </ParamSlot>
+      )
+    }
+    if (slot === 'width') {
+      return (
+        <ParamSlot id={ids?.q} afford>
+          <ValueKnob
+            {...size}
+            reserveBase
+            label="Width"
+            valueText={formatEqHz(bandwidthHz(band.frequency, band.q))}
+            normalized={widthToN(bandwidthHz(band.frequency, band.q))}
+            lfoRange={widthLfo}
+            liveNormalized={widthLive}
+            min={10}
+            max={10000}
+            now={bandwidthHz(band.frequency, band.q)}
+            onChange={(n) => setBand({ q: qFromBandwidth(band.frequency, nToWidth(n)) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 10, 10000, 'Hz')
+              if (next == null) return false
+              setBand({ q: qFromBandwidth(band.frequency, next) })
+              return true
+            }}
+          />
+        </ParamSlot>
+      )
+    }
+    if (slot === 'q') {
+      return (
+        <ParamSlot id={ids?.q} afford>
+          <ValueKnob
+            {...size}
+            reserveBase
+            label="Q"
+            valueText={(qLive != null ? fromNormalized(qLive, PARAMS.eq1Q) : band.q).toFixed(2)}
+            baseValueText={qLive != null ? band.q.toFixed(2) : undefined}
+            normalized={toNormalized(band.q, PARAMS.eq1Q)}
+            lfoRange={qLfo}
+            liveNormalized={qLive}
+            min={0.1}
+            max={20}
+            now={band.q}
+            onChange={(n) => setBand({ q: fromNormalized(n, PARAMS.eq1Q) })}
+            onTypedValue={(text) => {
+              const next = parseTypedRange(text, 0.1, 20)
+              if (next == null) return false
+              setBand({ q: next })
+              return true
+            }}
+          />
+        </ParamSlot>
+      )
+    }
+    return null
+  }
+
+  const typeMenu = (
+    <EqFilterTypeMenu
+      value={band.type}
+      showBypass={false}
+      onChange={(type) =>
+        setBand(
+          (type === 'highpass' || type === 'lowpass') && band.slope < 24
+            ? { type, slope: 48 }
+            : { type },
+        )
+      }
+    />
+  )
 
   return (
     <ModulationScopeProvider instanceId={instanceId} bandId={band.id} includeUnscoped={includeUnscoped}>
     <article
-      className={`${styles.strip} ${selected ? styles.stripOn : ''} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
+      className={`${inline ? styles.inlineStrip : styles.strip} ${selected ? styles.stripOn : ''} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
       style={accent}
       data-eq-strip=""
       data-eq-filter={band.type}
+      data-eq-inline={inline ? 'true' : 'false'}
       data-selected={selected ? 'true' : 'false'}
       onPointerDown={() => selectEqBand({ instanceId, index })}
     >
+      {inline ? (
+        <>
+          <header className={styles.inlineHead}>
+            <span className={styles.stripLabel}>{label}</span>
+            <button
+              type="button"
+              className={`${styles.power} ${styles.powerHeader} ${band.bypassed ? styles.powerOff : styles.powerOn}`}
+              aria-label={band.bypassed ? 'Enable filter' : 'Bypass filter'}
+              title={band.bypassed ? 'Enable' : 'Bypass'}
+              onClick={() => setBand({ bypassed: !band.bypassed })}
+            >
+              <PowerMark />
+            </button>
+          </header>
+          {typeMenu}
+          <div className={styles.inlineKnobs}>
+            {slots.map((slot) =>
+              slot === 'empty' ? null : (
+                <div key={slot} className={styles.inlineSlot}>
+                  {knob(slot, true)}
+                </div>
+              ),
+            )}
+          </div>
+        </>
+      ) : (
+        <>
       <header className={styles.stripHead}>
         <span className={styles.stripMeta}>
           <span className={styles.stripLabel}>{label}</span>
@@ -92,136 +268,16 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <PowerMark />
         </button>
       </header>
-      <div className={styles.typeRow}>
-        <EqFilterTypeMenu
-          value={band.type}
-          showBypass={false}
-          onChange={(type) =>
-            setBand(
-              (type === 'highpass' || type === 'lowpass') && band.slope < 24
-                ? { type, slope: 48 }
-                : { type },
-            )
-          }
-        />
-      </div>
+      <div className={styles.typeRow}>{typeMenu}</div>
       <div className={styles.params} data-eq-params="">
-        {eqStripVisibleSlots(band.type).map((slot) => (
+        {slots.map((slot) => (
           <KnobSlotFrame key={slot} slot={slot}>
-            {slot === 'freq' ? (
-              <ParamSlot id={ids?.freq} afford>
-                <ValueKnob
-                  compact
-                  label="Freq"
-                  valueText={formatEqHz(freqLive != null ? fromNormalized(freqLive, PARAMS.eq1Freq) : band.frequency)}
-                  baseValueText={freqLive != null ? formatEqHz(band.frequency) : undefined}
-                  normalized={toNormalized(band.frequency, PARAMS.eq1Freq)}
-                  lfoRange={freqLfo}
-                  liveNormalized={freqLive}
-                  min={EQ_MIN_HZ}
-                  max={EQ_MAX_HZ}
-                  now={band.frequency}
-                  onChange={(n) => setBand({ frequency: fromNormalized(n, PARAMS.eq1Freq) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
-                    if (next == null) return false
-                    setBand({ frequency: next })
-                    return true
-                  }}
-                />
-              </ParamSlot>
-            ) : null}
-            {slot === 'slope' ? (
-              <ParamSlot afford={false}>
-                <ValueKnob
-                  compact
-                  label="Slope"
-                  valueText={`${band.slope} dB`}
-                  normalized={slopeToNormalized(band.slope)}
-                  min={12}
-                  max={96}
-                  now={band.slope}
-                  onChange={(n) => setBand({ slope: slopeFromNormalized(n) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 12, 96, 'dB')
-                    if (next == null) return false
-                    setBand({ slope: nearestFilterSlope(next) })
-                    return true
-                  }}
-                />
-              </ParamSlot>
-            ) : null}
-            {slot === 'gain' ? (
-              <ParamSlot id={ids?.gain} afford>
-                <ValueKnob
-                  compact
-                  label="Gain"
-                  valueText={`${(gainLive != null ? fromNormalized(gainLive, PARAMS.eq1Gain) : band.gain).toFixed(1)} dB`}
-                  baseValueText={gainLive != null ? `${band.gain.toFixed(1)} dB` : undefined}
-                  normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
-                  lfoRange={gainLfo}
-                  liveNormalized={gainLive}
-                  min={-18}
-                  max={18}
-                  now={band.gain}
-                  onChange={(n) => setBand({ gain: fromNormalized(n, PARAMS.eq1Gain) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, -18, 18, 'dB')
-                    if (next == null) return false
-                    setBand({ gain: next })
-                    return true
-                  }}
-                />
-              </ParamSlot>
-            ) : null}
-            {slot === 'width' ? (
-              <ParamSlot id={ids?.q} afford>
-                <ValueKnob
-                  compact
-                  label="Width"
-                  valueText={formatEqHz(bandwidthHz(band.frequency, band.q))}
-                  normalized={widthToN(bandwidthHz(band.frequency, band.q))}
-                  lfoRange={widthLfo}
-                  liveNormalized={widthLive}
-                  min={10}
-                  max={10000}
-                  now={bandwidthHz(band.frequency, band.q)}
-                  onChange={(n) => setBand({ q: qFromBandwidth(band.frequency, nToWidth(n)) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 10, 10000, 'Hz')
-                    if (next == null) return false
-                    setBand({ q: qFromBandwidth(band.frequency, next) })
-                    return true
-                  }}
-                />
-              </ParamSlot>
-            ) : null}
-            {slot === 'q' ? (
-              <ParamSlot id={ids?.q} afford>
-                <ValueKnob
-                  compact
-                  label="Q"
-                  valueText={(qLive != null ? fromNormalized(qLive, PARAMS.eq1Q) : band.q).toFixed(2)}
-                  baseValueText={qLive != null ? band.q.toFixed(2) : undefined}
-                  normalized={toNormalized(band.q, PARAMS.eq1Q)}
-                  lfoRange={qLfo}
-                  liveNormalized={qLive}
-                  min={0.1}
-                  max={20}
-                  now={band.q}
-                  onChange={(n) => setBand({ q: fromNormalized(n, PARAMS.eq1Q) })}
-                  onTypedValue={(text) => {
-                    const next = parseTypedRange(text, 0.1, 20)
-                    if (next == null) return false
-                    setBand({ q: next })
-                    return true
-                  }}
-                />
-              </ParamSlot>
-            ) : null}
+            {knob(slot, false)}
           </KnobSlotFrame>
         ))}
       </div>
+        </>
+      )}
     </article>
     </ModulationScopeProvider>
   )

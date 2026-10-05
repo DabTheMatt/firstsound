@@ -155,6 +155,8 @@ type Props = {
   calmWorkspace?: FocusWorkspace | null
   /** Workspace EQ: show the resizable strip panel under the graph. */
   eqStrips?: boolean
+  /** Workspace EQ strips: return to the side inspector. */
+  onShowEqInspector?: () => void
 }
 
 export type WaveformHandle = {
@@ -286,6 +288,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onEnterFocus,
     calmWorkspace = null,
     eqStrips = false,
+    onShowEqInspector,
   },
   ref,
 ) {
@@ -1382,6 +1385,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const eqFocusClean = phoneEq || eqFocus
   const showEqConsole =
     !showArrangement && shownViz === 'eq-split' && !phone && !eqFocusClean && !hearingFocus && (!calm || eqStrips)
+  const fillEqGraph =
+    !showArrangement && shownViz === 'eq-split' && !showEqConsole && !phone && !eqFocusClean && !hearingFocus
   const calmEq = calm && calmWorkspace === 'eq'
   const calmFft = calm && calmWorkspace === 'fft'
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
@@ -1393,7 +1398,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       data-waveform-editor=""
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
-      <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''}`}>
+      <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''} ${fillEqGraph ? styles.fillGraph : ''}`}>
         <div
           ref={editorRef}
           className={styles.wrap}
@@ -1916,6 +1921,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               <EqConsole
                 onFocusModule={onSelectModule}
                 onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus('eq') : undefined}
+                onShowInspector={onShowEqInspector}
               />
             </div>
           </>

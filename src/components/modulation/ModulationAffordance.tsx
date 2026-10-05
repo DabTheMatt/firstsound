@@ -438,9 +438,11 @@ function ModulatePanel({
               aria-label="LFO rate"
               onChange={(event) => onRate(fromNormalized(Number(event.target.value), RATE_DEF))}
             />
-            <span>{rateText}</span>
+            <span className={styles.rateLine}>
+              <span>{rateText}</span>
+              <TapCycleButton className={styles.tapMini} onRate={onRate} />
+            </span>
           </label>
-          <TapCycleButton className={styles.ghost} onRate={onRate} />
           <label className={styles.field}>
             Depth
             <input

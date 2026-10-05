@@ -728,6 +728,10 @@
   gap: 22px;
 }
 
+.eqMini {
+  gap: 10px;
+}
+
 .eqViz {
   display: flex;
   flex-direction: column;

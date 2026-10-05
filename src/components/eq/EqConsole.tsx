@@ -13,16 +13,18 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { eqStripHeading } from './eqBandStyle'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
+import { EqLayoutButton } from './EqLayoutButton'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import styles from './EqConsole.module.css'
 
 type Props = {
   onFocusModule?: (instanceId: string) => void
   onEnterFocus?: () => void
+  onShowInspector?: () => void
 }
 
 /** Mixer-style EQ strips under the FFT: one column per enabled band. */
-export function EqConsole({ onFocusModule, onEnterFocus }: Props) {
+export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Props) {
   const snap = useEngine()
   const eqs = snap.chain.filter((m) => m.type === 'eq')
   const many = eqs.length > 1
@@ -37,7 +39,7 @@ export function EqConsole({ onFocusModule, onEnterFocus }: Props) {
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {many || onEnterFocus ? (
+      {many || onEnterFocus || onShowInspector ? (
       <div className={styles.consoleHead}>
         {many ? (
           <label className={styles.focus}>
@@ -60,7 +62,10 @@ export function EqConsole({ onFocusModule, onEnterFocus }: Props) {
         ) : (
           <span />
         )}
-        {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
+        <span className={styles.headActions}>
+          {onShowInspector ? <EqLayoutButton to="inspector" onClick={onShowInspector} /> : null}
+          {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
+        </span>
       </div>
       ) : null}
       <div className={styles.strips}>

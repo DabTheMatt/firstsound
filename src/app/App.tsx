@@ -852,7 +852,9 @@ export default function App() {
             (resolvedFocus.type === 'eq' && (snap.eqById[resolvedFocus.instanceId]?.comb ?? snap.comb).enabled ? 1 : 0),
         })
       : 0
-  const eqStrips = workspaceOn && workspaceId === 'eq' && eqLayout === 'strips'
+  const eqModuleSelected = resolvedFocus.kind === 'module' && resolvedFocus.type === 'eq'
+  const eqStrips = workspaceOn && !isPhoneLayout && workspaceId === 'eq' && eqLayout === 'strips' && eqModuleSelected
+  const eqMiniStrips = workspaceOn && !isPhoneLayout && workspaceId === 'eq' && eqModuleSelected && !eqStrips
   const showContext = workspaceOn ? contextLevel !== 'closed' && !activeFocus && !eqStrips : inspectorOpen
   const hearingHint =
     workspaceOn && workspaceId === 'hearing' && contextLevel === 'compact' ? (
@@ -901,6 +903,14 @@ export default function App() {
       compact={isPhoneLayout}
       disclosure={workspaceOn && contextLevel === 'compact' ? 'compact' : 'full'}
       hideEqPlot={workspaceOn && workspaceId === 'eq'}
+      eqMiniStrips={eqMiniStrips}
+      onShowEqStrips={
+        eqMiniStrips
+          ? () => {
+              setEqLayout('strips')
+            }
+          : undefined
+      }
       onHideInspector={workspaceOn ? undefined : dockRight ? hideInspector : undefined}
       onFine={(which, delta) => engine.setParam(which, snap.params[which] + delta)}
       edits={{
@@ -1412,11 +1422,6 @@ export default function App() {
               onWorkspace={activateWorkspace}
               contextClosed={contextLevel === 'closed' && !eqStrips}
               onOpenContext={() => setContextLevel('compact')}
-              eqLayout={workspaceId === 'eq' ? eqLayout : undefined}
-              onEqLayout={(next) => {
-                setEqLayout(next)
-                if (next === 'inspector' && contextLevel === 'closed') setContextLevel('compact')
-              }}
               onEnterFocus={() => {
                 if (workspaceId === 'hearing') enterHearingFocus()
                 else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
@@ -1662,6 +1667,14 @@ export default function App() {
               onEnterFocus={enterNamedFocus}
               calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
               eqStrips={eqStrips}
+              onShowEqInspector={
+                eqStrips
+                  ? () => {
+                      setEqLayout('inspector')
+                      if (contextLevel === 'closed') setContextLevel('compact')
+                    }
+                  : undefined
+              }
               onInspectEffect={(trackId, instanceId) => {
                 if (engine.getSnapshot().selectedTrackId !== trackId) {
                   intentRef.current = trackId

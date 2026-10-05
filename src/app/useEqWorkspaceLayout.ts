@@ -10,7 +10,7 @@ export function useEqWorkspaceLayout(): readonly [EqWorkspaceLayout, (next: EqWo
   const value = useSyncExternalStore(
     subscribeEqWorkspaceLayout,
     readStoredEqWorkspaceLayout,
-    () => 'strips' as const,
+    () => 'inspector' as const,
   )
   const setValue = useCallback((next: EqWorkspaceLayout) => {
     persistEqWorkspaceLayout(next)

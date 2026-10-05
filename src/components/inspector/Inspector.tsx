@@ -60,6 +60,9 @@ import { EqCurve } from './EqCurve'
 import { FilterInspector } from './FilterInspector'
 import { MidSideInspector } from './MidSideInspector'
 import { eqBandAccentVars } from '../eq/eqBandStyle'
+import { EqLayoutButton } from '../eq/EqLayoutButton'
+import { EqBandStrip } from '../eq/EqBandStrip'
+import eqStripStyles from '../eq/EqConsole.module.css'
 import { InspectorEye } from './InspectorEye'
 import { LimiterPlot } from './LimiterPlot'
 import { SpaceInspector } from './SpaceInspector'
@@ -108,6 +111,10 @@ type Props = {
   disclosure?: 'full' | 'compact'
   /** Workspace EQ graph already owns the plot. */
   hideEqPlot?: boolean
+  /** Workspace EQ inspector: one horizontal row of small filter strips. */
+  eqMiniStrips?: boolean
+  /** Opens the vertical strip panel. Shown on the EQ inspector. */
+  onShowEqStrips?: () => void
   onHideInspector?: () => void
   edits?: EditActions
 }
@@ -185,6 +192,8 @@ export function Inspector({
   detail = 'full',
   disclosure = 'full',
   hideEqPlot = false,
+  eqMiniStrips = false,
+  onShowEqStrips,
   onHideInspector,
   edits,
 }: Props) {
@@ -220,6 +229,8 @@ export function Inspector({
           detail={detail}
           disclosure={disclosure}
           hideEqPlot={hideEqPlot}
+          eqMiniStrips={eqMiniStrips}
+          onShowEqStrips={onShowEqStrips}
           onHideInspector={onHideInspector}
         />
       )}
@@ -517,6 +528,8 @@ function ModuleInspector({
   detail = 'full',
   disclosure = 'full',
   hideEqPlot = false,
+  eqMiniStrips = false,
+  onShowEqStrips,
   onHideInspector,
 }: {
   snap: EngineSnapshot
@@ -527,6 +540,8 @@ function ModuleInspector({
   detail?: 'essential' | 'full'
   disclosure?: 'full' | 'compact'
   hideEqPlot?: boolean
+  eqMiniStrips?: boolean
+  onShowEqStrips?: () => void
   onHideInspector?: () => void
 }) {
   const { t } = useI18n()
@@ -609,6 +624,7 @@ function ModuleInspector({
               {t.inspector.remove}
             </button>
           ) : null}
+          {type === 'eq' && onShowEqStrips ? <EqLayoutButton to="strips" onClick={onShowEqStrips} /> : null}
           {onHideInspector ? <InspectorEye open onClick={onHideInspector} /> : null}
         </div>
       </div>
@@ -768,6 +784,7 @@ function ModuleInspector({
           pane={pane}
           compact={disclosure === 'compact'}
           hidePlot={hideEqPlot || disclosure === 'compact'}
+          miniStrips={eqMiniStrips}
         />
       ) : null}
       {type === 'filter' ? <FilterInspector snap={snap} variant={variant} pane={pane} /> : null}
@@ -956,6 +973,7 @@ function EqEditor({
   pane,
   compact = false,
   hidePlot = false,
+  miniStrips = false,
 }: {
   snap: EngineSnapshot
   knobs: boolean
@@ -963,6 +981,7 @@ function EqEditor({
   pane: 'main' | 'advanced'
   compact?: boolean
   hidePlot?: boolean
+  miniStrips?: boolean
 }) {
   const [openBand, setOpenBand] = useState(0)
   const chooseBand = (index: number) => {
@@ -993,10 +1012,27 @@ function EqEditor({
   const eqLive = (id: ParamId | undefined) =>
     id ? liveControlNormalized(snap.liveParams[id], id, Boolean(eqKnobLfo(id, 0))) : undefined
   return (
-    <div className={styles.eq}>
+    <div className={miniStrips ? `${styles.eq} ${styles.eqMini}` : styles.eq}>
       {pane === 'main' ? (
         <>
-      {compact ? (
+      {miniStrips ? (
+        <div className={eqStripStyles.miniRow} aria-label="Filters">
+          {bands.map((band, index) =>
+            band.type === 'off' ? null : (
+              <EqBandStrip
+                key={eqStripKey(instanceId, band)}
+                snap={snap}
+                instanceId={instanceId}
+                index={index}
+                band={band}
+                label={`EQ ${index + 1}`}
+                inline
+                selected={openBand === index}
+              />
+            ),
+          )}
+        </div>
+      ) : compact ? (
         <ul className={styles.filterList} aria-label="Filters">
           {bands.map((band, index) => {
             const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.short ?? band.type
@@ -1073,7 +1109,7 @@ function EqEditor({
       )}
         </>
       )}
-      {bands.map((band, index) => (
+      {miniStrips ? null : bands.map((band, index) => (
         compact && index !== openBand ? null : (
         <details
           key={eqStripKey(instanceId, band)}

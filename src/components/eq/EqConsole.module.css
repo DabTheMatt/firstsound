@@ -63,7 +63,11 @@
 }
 
 .stripRow {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 116px;
+  grid-template-rows: auto auto auto auto auto;
+  row-gap: 4px;
   align-items: stretch;
   width: max-content;
   min-width: 100%;
@@ -71,13 +75,11 @@
 }
 
 .strip {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  align-self: flex-start;
-  justify-content: flex-start;
-  gap: 4px;
-  flex: 0 0 116px;
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 5;
+  align-self: stretch;
+  align-items: start;
   width: 116px;
   min-width: 116px;
   max-width: 116px;
@@ -253,14 +255,7 @@
 }
 
 .params {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 6px;
-  width: 100%;
-  flex: 0 0 auto;
-  height: auto;
+  display: contents;
 }
 
 .params > * {
@@ -410,4 +405,91 @@
 .typeItemOn {
   background: var(--accent-soft);
   color: var(--accent-primary);
+}
+
+.typeMenuFixed {
+  position: fixed;
+  z-index: 80;
+  margin: 0;
+}
+
+.layoutButton {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.layoutButton:hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.miniRow {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+}
+
+.inlineStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+  width: 176px;
+  padding: 6px 6px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-panel-elevated) 55%, transparent);
+  box-sizing: border-box;
+}
+
+.inlineHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.inlineHead .power {
+  position: static;
+}
+
+.inlineKnobs {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.inlineSlot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.inlineStrip .typeBtn {
+  min-height: 28px;
+  padding: 2px 4px;
 }
