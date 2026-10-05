@@ -10,9 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+# One Pages deployment at a time. Do not cancel the run that is already
+# building: a newer push waits, and only the latest queued run is kept.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
