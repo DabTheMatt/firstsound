@@ -418,6 +418,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       }
       const ctx = canvas.getContext('2d')
       if (ctx) {
+        try {
         const colors = readThemeColors()
         const prefsNow = prefsRef.current
         const focusPlot = phoneFocusRef.current
@@ -927,6 +928,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ? bottom - 4 * dpr
               : bottom + SPECTRUM_HZ_LABEL_OFFSET * dpr
           ctx.fillText(tick.label, tick.x, labelY)
+        }
+        } catch {
+          /* A bad frame must not stop the analyzer loop. */
         }
       }
       frame = requestAnimationFrame(tick)

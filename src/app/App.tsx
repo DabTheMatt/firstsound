@@ -851,7 +851,7 @@ export default function App() {
         })
       : 0
   const showContext = workspaceOn ? contextLevel !== 'closed' && !activeFocus : inspectorOpen
-  const inspector = showContext ? (
+  const hearingHint =
     workspaceOn && workspaceId === 'hearing' && contextLevel === 'compact' ? (
       <p className={ws.hearingNote}>
         {t.workspace.hearingNote}
@@ -866,7 +866,10 @@ export default function App() {
           {t.workspace.hearingQuick}
         </button>
       </p>
-    ) : resolvedFocus.kind === 'automation' ? (
+    ) : null
+  const inspector = showContext ? (
+    <>
+      {resolvedFocus.kind === 'automation' ? (
       <AutomationInspector
         sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
         compact={isPhoneLayout}
@@ -914,7 +917,9 @@ export default function App() {
         onInsert: insertSilence,
       }}
     />
-    )
+      )}
+      {hearingHint}
+    </>
   ) : null
   const contextBody =
     workspaceOn && inspector ? (
@@ -1300,6 +1305,7 @@ export default function App() {
         data-technical-ui={workspaceOn ? 'workspace' : 'classic'}
         data-context={workspaceOn ? contextLevel : undefined}
         data-context-place={workspaceContextBottom ? 'bottom' : undefined}
+        data-meter-words={workspaceOn && workspaceId === 'hearing' ? '' : undefined}
         data-focus={activeFocus ?? undefined}
         data-phone-viz={isPhoneLayout ? phoneDisplayViz(viz) : undefined}
         style={
@@ -1671,6 +1677,7 @@ export default function App() {
             channels={snap.channelLayout === 'mono' || snap.params.makeMono > 0.5 ? 1 : 2}
             range={meterRange}
             onRange={setMeterRange}
+            words={workspaceOn && workspaceId === 'hearing'}
           />
           )}
         </div>

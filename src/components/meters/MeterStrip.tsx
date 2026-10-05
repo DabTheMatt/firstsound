@@ -24,9 +24,19 @@ type Props = {
   onRange: (range: MeterRange) => void
   variant?: 'column' | 'inline'
   className?: string
+  /** Sideways zone names beside the numeric scale. They do not replace the numbers. */
+  words?: boolean
 }
 
-export function MeterStrip({ channels, range, onRange, variant = 'column', className }: Props) {
+const METER_WORDS: { db: number; label: string }[] = [
+  { db: -1, label: 'CLIP' },
+  { db: -8, label: 'VERY LOUD' },
+  { db: -20, label: 'LOUD' },
+  { db: -36, label: 'MEDIUM' },
+  { db: -52, label: 'QUIET' },
+]
+
+export function MeterStrip({ channels, range, onRange, variant = 'column', className, words = false }: Props) {
   const { t, locale } = useI18n()
   const snap = useEngine()
   const leftRef = useRef<HTMLDivElement>(null)
@@ -132,7 +142,7 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
   }
 
   return (
-    <div className={`${styles.strip} ${className ?? ''}`} role="region" aria-label={t.meters.strip}>
+    <div className={`${styles.strip} ${words ? styles.withWords : ''} ${className ?? ''}`} role="region" aria-label={t.meters.strip}>
       <div className={styles.clipRow}>
         <button
           type="button"
@@ -147,6 +157,15 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
         </button>
       </div>
       <div className={styles.body}>
+        {words ? (
+          <div className={styles.wordCol} aria-hidden="true">
+            {METER_WORDS.filter((mark) => mark.db >= minDb && mark.db <= 0).map((mark) => (
+              <span key={mark.label} className={styles.word} style={{ bottom: `${dbToMeterPct(mark.db, minDb)}%` }}>
+                {mark.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className={styles.scale} aria-hidden="true">
           <div
             className={styles.sweetBracket}

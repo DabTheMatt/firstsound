@@ -11,6 +11,16 @@ import { FftFocusTools } from '../mobile/FftFocusTools'
 import { FftViewToggle } from '../waveform/SpectralHistoryControls'
 import styles from './Workspace.module.css'
 
+function analyzerMenuStyle(anchor: HTMLButtonElement | null): { top: number; left: number } | undefined {
+  if (!anchor) return undefined
+  const rect = anchor.getBoundingClientRect()
+  const width = 320
+  return {
+    top: rect.bottom + 4,
+    left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+  }
+}
+
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'pre', label: 'Before' },
   { id: 'post', label: 'After' },
@@ -24,6 +34,7 @@ export function FftPrimaryBar() {
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
 
@@ -56,7 +67,7 @@ export function FftPrimaryBar() {
             type="button"
             className={prefs.layer === layer.id ? styles.segmentOn : styles.segmentOff}
             aria-pressed={prefs.layer === layer.id}
-            onClick={() => patch({ layer: layer.id })}
+            onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
           >
             {layer.label}
           </button>
@@ -64,6 +75,7 @@ export function FftPrimaryBar() {
       </div>
       <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
       <button
+        ref={anchorRef}
         type="button"
         className={styles.textButton}
         aria-expanded={open}
@@ -73,7 +85,13 @@ export function FftPrimaryBar() {
         {t.workspace.analyzerSettings}
       </button>
       {open ? (
-        <div className={styles.menu} id={menuId} role="dialog" aria-label={t.workspace.analyzerSettings}>
+        <div
+          className={`${styles.menu} ${styles.menuFixed}`}
+          id={menuId}
+          role="dialog"
+          aria-label={t.workspace.analyzerSettings}
+          style={analyzerMenuStyle(anchorRef.current)}
+        >
           <FftFocusTools />
         </div>
       ) : null}

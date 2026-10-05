@@ -18,6 +18,35 @@
   padding-left: 28px;
 }
 
+.withWords .clipRow {
+  padding-left: 44px;
+}
+
+.wordCol {
+  position: relative;
+  flex: none;
+  width: 14px;
+  min-height: 0;
+  overflow: visible;
+}
+
+.word {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: translateY(50%) rotate(180deg);
+  transform-origin: center;
+  pointer-events: none;
+}
+
 .clip {
   display: flex;
   flex-direction: column;

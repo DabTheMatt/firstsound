@@ -1187,8 +1187,12 @@
 
 .shell[data-technical-ui='workspace'].dock-right {
   --meter-col: 64px;
-  --inspector-col: 280px;
-  --editor-grid: minmax(0, 1fr) minmax(220px, 280px) var(--meter-col);
+  --inspector-col: 360px;
+  --editor-grid: minmax(0, 1fr) minmax(300px, 360px) var(--meter-col);
+}
+
+.shell[data-technical-ui='workspace'][data-meter-words].dock-right {
+  --meter-col: 86px;
 }
 
 .shell[data-technical-ui='workspace'][data-context='closed'].dock-right {
@@ -1239,11 +1243,22 @@
   grid-row: 5;
 }
 
+.shell[data-technical-ui='workspace'] .chrome {
+  z-index: 8;
+}
+
+.shell[data-technical-ui='workspace'].dock-right:not([data-workspace='focus']) .waveCol {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
 .shell[data-technical-ui='workspace'] .inspector {
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--bg-app);
   box-shadow: none;
+  z-index: 4;
 }
 
 .shell[data-technical-ui='workspace'].dock-right .inspector {

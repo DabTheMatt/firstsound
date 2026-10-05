@@ -1928,7 +1928,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         />
       ) : null}
       {spectralBandsEnabled && !sensory && !simple && !phone && !phoneFocus ? <SpectralMixer onCommit={onSpectralCommit} /> : null}
-      {hearingFocus ? <LoudnessMeter /> : null}
+      {hearingFocus && calmWorkspace !== 'hearing' ? <LoudnessMeter /> : null}
     </div>
   )
 })

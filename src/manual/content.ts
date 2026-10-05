@@ -44,6 +44,7 @@ const en: ManualSection[] = [
       'Technical has two presentations. Classic is the current layout. Workspace (Experimental) reorganizes the same Technical controls: a chain, one active workspace (Wave, EQ, FFT, Auto, or Hearing), contextual controls, and transport. It uses the same audio engine and the same features.',
       'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the workspace header. Exit Focus returns the chrome without changing the sound, the selection, or the playhead.',
       'Workspace is experimental. Settings → Technical interface → Classic switches back immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
+      'Hearing in Workspace keeps the selected effect in the context panel. The loudness words sit beside the output meter on the right. Analyzer settings open above the spectrum so they are not covered by that panel.',
     ],
   },
   {
@@ -348,6 +349,7 @@ const pl: ManualSection[] = [
       'Technical ma dwa układy. Klasyczny to dotychczasowy widok. Workspace (eksperymentalny) układa te same kontrolki inaczej: łańcuch, jeden aktywny obszar (Fala, EQ, FFT, Auto albo Hearing), kontrolki kontekstu i transport. Korzysta z tego samego silnika i tych samych funkcji.',
       'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest w nagłówku obszaru. Wyjście przywraca ramkę i nie zmienia dźwięku, zaznaczenia ani głowicy.',
       'Workspace jest eksperymentalny. Ustawienia → Interfejs techniczny → Klasyczny wraca od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
+      'Hearing w Workspace zostawia wybrany efekt w panelu kontekstu. Słowa głośności stoją obok wskaźnika wyjścia po prawej. Ustawienia analizatora otwierają się nad widmem, więc panel ich nie zasłania.',
     ],
   },
   {
