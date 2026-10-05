@@ -378,7 +378,7 @@ function renderSeeded(left: Float32Array, right: Float32Array, sr: number, seed:
 /** Display name for a generated buffer. Stable for a given seed. */
 export function demoSampleName(seed: number): string {
   const n = (Math.abs(Math.floor(seed)) % 900) + 100
-  return `FIELD Texture ${n}`
+  return `Texture ${n}`
 }
 
 /** Duration in seconds, uniformly inside 12–24 for this seed. */

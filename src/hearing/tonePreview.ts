@@ -1,13 +1,13 @@
 /**
- * A short sine at the detected frequency, on its own context.
- * It does not pass through the instrument output, so the mix gain cannot raise it.
+ * A short sine at the detected frequency.
+ * It uses the engine's AudioContext and connects to that destination,
+ * not the instrument mix, so the mix gain cannot raise it.
  * The ear is most sensitive around 2–5 kHz, and highs are easy to overdo,
  * so those bands are much quieter. A limiter is the second cap.
  */
 
 const ABSOLUTE_PEAK = 0.045
 
-let previewContext: AudioContext | null = null
 let active: { stop: () => void } | null = null
 
 /** Linear peak before the limiter. Never above ABSOLUTE_PEAK, and lower as frequency rises. */
@@ -22,15 +22,23 @@ export function previewPeakForHz(hz: number): number {
   return Math.min(ABSOLUTE_PEAK, Math.max(0.0015, gain))
 }
 
-/** Play a faded sine. A second click replaces the previous tone. */
-export function previewDetectedTone(hz: number): void {
-  if (typeof window === 'undefined' || typeof AudioContext === 'undefined') return
+/**
+ * Play a faded sine on the engine context.
+ * A second AudioContext stays silent once FIELD already owns the output,
+ * so the preview must use the context that is already running.
+ * It still connects straight to that context's destination, not the mix.
+ */
+export function previewDetectedTone(hz: number, context: AudioContext | null): void {
+  if (!context || typeof window === 'undefined') return
   const peak = previewPeakForHz(hz)
   if (!(peak > 0)) return
+  const start = () => startPreview(context, hz, peak)
+  if (context.state === 'running') start()
+  else void context.resume().then(start).catch(() => undefined)
+}
+
+function startPreview(ctx: AudioContext, hz: number, peak: number): void {
   const frequency = Math.min(14000, Math.max(40, hz))
-  if (!previewContext) previewContext = new AudioContext()
-  const ctx = previewContext
-  void ctx.resume()
   active?.stop()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
@@ -53,11 +61,14 @@ export function previewDetectedTone(hz: number): void {
   osc.start(now)
   osc.stop(now + 0.46)
   const stop = () => {
-    const at = ctx.currentTime
-    gain.gain.cancelScheduledValues(at)
-    gain.gain.setValueAtTime(gain.gain.value, at)
-    gain.gain.linearRampToValueAtTime(0, at + 0.03)
-    osc.stop(at + 0.04)
+    try {
+      const at = ctx.currentTime
+      gain.gain.cancelScheduledValues(at)
+      gain.gain.setValueAtTime(0, at)
+      osc.stop(at + 0.04)
+    } catch {
+      /* already stopped */
+    }
   }
   active = { stop }
   osc.onended = () => {

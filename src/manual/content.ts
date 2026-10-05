@@ -41,7 +41,7 @@ const en: ManualSection[] = [
     id: 'simple',
     title: 'Simple — Quick Editor',
     body: [
-      'Simple finishes a recording without a mixing desk. Load a sample, drag a selection, trim, then add a fade in and a fade out. Short, Medium, and Long are the only fade lengths. The curve is the same one Technical uses.',
+      'Simple finishes a recording without a mixing desk. Load a sample, drag a selection, trim, then add a fade in and a fade out. Those two controls are icons: a rising curve and a falling curve. Short, Medium, and Long are the only fade lengths. The curve is the same one Technical uses.',
       'Sound is one character at a time: Natural, More bass, Less bass, Brighter, Warmer, Less harsh, Clearer, or Softer. Amount scales that character from subtle to strong. Natural clears it. Even out raises the selection to a steady peak. Choosing a character again replaces the previous one.',
       'Effects holds Reverb and Delay. Each stays off until you enable it. Small, Medium, and Large are spaces. Short, Medium, and Long are echoes. Amount is how much of that effect you hear. It does not change tone.',
       'Original and After compare the loaded material with the current Simple result. Switching them does not clear your settings. Export writes that result, including trim, fades, tone, reverb, and delay.',
@@ -359,7 +359,7 @@ const pl: ManualSection[] = [
     id: 'simple',
     title: 'Simple — szybki edytor',
     body: [
-      'Simple wykańcza nagranie bez stołu mikserskiego. Wczytaj sample, przeciągnij zaznaczenie, przytnij, potem dodaj płynny początek i płynny koniec. Długości to tylko Krótki, Średni i Długi. Krzywa zanikania jest ta sama co w Technical.',
+      'Simple wykańcza nagranie bez stołu mikserskiego. Wczytaj sample, przeciągnij zaznaczenie, przytnij, potem dodaj płynny początek i płynny koniec. Te dwa sterowania to ikony: krzywa wznosząca i krzywa opadająca. Długości to tylko Krótki, Średni i Długi. Krzywa zanikania jest ta sama co w Technical.',
       'Brzmienie to jedna barwa naraz: Naturalnie, Więcej basu, Mniej basu, Jaśniej, Cieplej, Mniej ostro, Czyściej albo Miękcej. Ilość skaluje tę barwę od subtelnej do mocniejszej. Naturalnie ją zdejmuje. Wyrównaj podnosi zaznaczenie do równego szczytu. Wybranie innej barwy zastępuje poprzednią.',
       'Efekty to pogłos i opóźnienie. Każdy jest wyłączony, dopóki go nie włączysz. Mały, Średni i Duży to przestrzenie. Krótkie, Średnie i Długie to echa. Ilość mówi, jak słyszalny jest dany efekt. Nie zmienia barwy.',
       'Oryginał i Po porównują wczytany materiał z bieżącym wynikiem Simple. Przełączenie nie kasuje ustawień. Eksport zapisuje ten wynik: przycięcie, zaniki, barwę, pogłos i opóźnienie.',
