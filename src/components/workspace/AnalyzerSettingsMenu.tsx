@@ -58,8 +58,11 @@ const COLOR_LABEL: Record<SpectralColorMode, string> = {
   frequency: 'Frequency',
 }
 
-/** Analyzer options in the same fields other inspectors use. Layer stays on the FFT bar. */
-export function AnalyzerSettingsMenu() {
+/**
+ * Analyzer options in the same compact rows as the workspace bar.
+ * Layer and 2D / 3D stay on the FFT bar unless `showView` puts them in this menu.
+ */
+export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean }) {
   const { t } = useI18n()
   const snap = useEngine()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
@@ -84,6 +87,32 @@ export function AnalyzerSettingsMenu() {
 
   return (
     <div className={styles.analyzerMenu}>
+      {showView ? (
+        <>
+          <h2 className={styles.analyzerSection}>Graph</h2>
+          <div className={styles.analyzerRows}>
+            <ChoiceField
+              label="Layer"
+              value={prefs.layer}
+              options={[
+                { id: 'pre', label: 'Before' },
+                { id: 'post', label: 'After' },
+                { id: 'both', label: 'Both' },
+              ]}
+              onChange={(id) => patch({ layer: id, historyLayer: id })}
+            />
+            <ChoiceField
+              label="Mode"
+              value={prefs.viewMode}
+              options={[
+                { id: '2d', label: '2D' },
+                { id: '3d', label: '3D', title: '3D Spectral History' },
+              ]}
+              onChange={(id) => patch({ viewMode: id })}
+            />
+          </div>
+        </>
+      ) : null}
       <h2 className={styles.analyzerSection}>History</h2>
       <div className={styles.analyzerRows}>
         <ChoiceField
