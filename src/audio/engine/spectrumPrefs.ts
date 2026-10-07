@@ -152,12 +152,13 @@ export function patchSpectrumPrefs(patch: Partial<SpectrumPrefs>): SpectrumPrefs
   return next
 }
 
-/** How the 2D analyzer paints bars. Focus plots stay on the theme color. */
+/**
+ * How the 2D analyzer paints bars, including the EQ workspace graph.
+ * That graph is a focus plot, and it still follows Color and Regions.
+ */
 export function spectrumPaintColor(
   prefs: Pick<SpectrumPrefs, 'colorMode' | 'regionColors'>,
-  focusPlot: boolean,
 ): 'solid' | 'frequency' | 'level' {
-  if (focusPlot) return 'solid'
   if (prefs.colorMode === 'level') return 'level'
   if (prefs.colorMode === 'frequency' || prefs.regionColors) return 'frequency'
   return 'solid'

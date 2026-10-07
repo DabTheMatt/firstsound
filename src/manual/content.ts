@@ -55,7 +55,7 @@ const en: ManualSection[] = [
       'Technical has two presentations. Classic is the current layout. Workspace (Experimental) reorganizes the same Technical controls: a chain, one active workspace (Wave, EQ, FFT, Auto, or Hearing), contextual controls, and transport. It uses the same audio engine and the same features.',
       'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the workspace header. Exit Focus returns the chrome without changing the sound, the selection, or the playhead.',
       'Workspace is experimental. Settings → Technical interface → Classic switches back immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
-      'Workspace views change the picture only. Wave, FFT, Auto, and Hearing leave the inspector on the last selected effect. EQ does the same until an equalizer is in the chain, and then the EQ view shows the equalizer inspector. Analyzer settings stay on the FFT bar: Before, After, Both, 2D / 3D, and the settings menu. Color there is Off, Level, or Frequency, and it paints the 2D bars as well as the 3D ridges. Display rows for grid, scale, color, regions, bars, line, and legend stay on the EQ graph. Hearing keeps that same effect. The loudness words sit beside the output meter on the right.',
+      'Workspace views change the picture only. Wave, FFT, Auto, and Hearing leave the inspector on the last selected effect. EQ does the same until an equalizer is in the chain, and then the EQ view shows the equalizer inspector. Analyzer settings stay on the FFT bar: Before, After, Both, 2D / 3D, and the settings menu. Color there is Off, Level, or Frequency, and it paints the 2D bars as well as the 3D ridges. Display rows for grid, scale, color, regions, bars, line, and legend stay on the EQ graph. Color On there paints those bars in region hues. Color Off keeps the theme color. Hearing keeps that same effect. The loudness words sit beside the output meter on the right.',
       'EQ in Workspace opens in the inspector. Each filter is one full-width row: a type selector and the knobs that filter uses. Add band creates the next filter. The graph uses the full height above the transport. An icon in the inspector opens vertical strips under the graph; drag the bar between them to change that panel’s height. An icon at the corner of the strip panel returns to the inspector. FIELD remembers that choice only for EQ. Adding or selecting another effect shows that effect’s inspector.',
     ],
   },
@@ -282,6 +282,7 @@ const en: ManualSection[] = [
     body: [
       'Drag on the waveform to draw or resize a selection. Drag a fade handle at the top of a selection edge. Pinch to zoom. Drag the playhead to scrub.',
       'A finger or pencil drag on a knob changes that parameter. The page stays still while the contact is on the dial. Scroll from the panel around the knobs.',
+      'A finger or an Apple Pencil on the EQ or FFT graph does not zoom the page. Pinch still zooms the waveform.',
       'The phone transport uses large hit targets. Focus mode uses a full-height toolbar above the wave, not on top of the fade handles.',
     ],
   },
@@ -374,7 +375,7 @@ const pl: ManualSection[] = [
       'Technical ma dwa układy. Klasyczny to dotychczasowy widok. Workspace (eksperymentalny) układa te same kontrolki inaczej: łańcuch, jeden aktywny obszar (Fala, EQ, FFT, Auto albo Hearing), kontrolki kontekstu i transport. Korzysta z tego samego silnika i tych samych funkcji.',
       'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest w nagłówku obszaru. Wyjście przywraca ramkę i nie zmienia dźwięku, zaznaczenia ani głowicy.',
       'Workspace jest eksperymentalny. Ustawienia → Interfejs techniczny → Klasyczny wraca od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
-      'Widoki Workspace zmieniają tylko obraz. Fala, FFT, Auto i Hearing zostawiają inspektor na ostatnio wybranym efekcie. EQ robi to samo, dopóki korektora nie ma w łańcuchu — wtedy widok EQ pokazuje inspektor korektora. Ustawienia analizatora zostają na pasku FFT: Before, After, Both, 2D / 3D i menu ustawień. Kolor to Off, Level albo Frequency i maluje zarówno słupki 2D, jak i granie 3D. Rzędy wyświetlania — siatka, skala, kolor, regiony, słupki, linia i legenda — zostają na wykresie EQ. Hearing zostawia ten sam efekt. Słowa głośności stoją obok wskaźnika wyjścia po prawej.',
+      'Widoki Workspace zmieniają tylko obraz. Fala, FFT, Auto i Hearing zostawiają inspektor na ostatnio wybranym efekcie. EQ robi to samo, dopóki korektora nie ma w łańcuchu — wtedy widok EQ pokazuje inspektor korektora. Ustawienia analizatora zostają na pasku FFT: Before, After, Both, 2D / 3D i menu ustawień. Kolor to Off, Level albo Frequency i maluje zarówno słupki 2D, jak i granie 3D. Rzędy wyświetlania — siatka, skala, kolor, regiony, słupki, linia i legenda — zostają na wykresie EQ. Kolor On maluje tamte słupki barwami regionów. Kolor Off zostawia kolor motywu. Hearing zostawia ten sam efekt. Słowa głośności stoją obok wskaźnika wyjścia po prawej.',
       'EQ w Workspace otwiera się w inspektorze. Każdy filtr to jeden rząd na całą szerokość: selektor typu i gałki tego filtra. Dodaj pasmo tworzy kolejny filtr. Wykres zajmuje całą wysokość nad transportem. Ikona w inspektorze otwiera pionowe paski pod wykresem; przeciągnięcie belki między nimi zmienia wysokość tego panelu. Ikona w rogu panelu pasków wraca do inspektora. Ten wybór jest pamiętany tylko dla EQ. Dodanie albo zaznaczenie innego efektu pokazuje jego inspektor.',
     ],
   },
@@ -601,6 +602,7 @@ const pl: ManualSection[] = [
     body: [
       'Przeciągnij po fali, aby narysować albo zmienić zaznaczenie. Przeciągnij uchwyt fade u góry krawędzi. Uszczypnięcie przybliża. Przeciągnięcie głowicy przewija.',
       'Przeciągnięcie palcem albo piórkiem po gałce zmienia ten parametr. Ekran zostaje w miejscu, dopóki kontakt jest na gałce. Przewijanie zostaje na panelu wokół gałek.',
+      'Palec albo piórko na wykresie EQ albo FFT nie przybliża strony. Uszczypnięcie nadal przybliża falę.',
       'Transport telefonu ma duże cele. Focus używa pełnej wysokości paska nad falą, nie na uchwytach fade.',
     ],
   },

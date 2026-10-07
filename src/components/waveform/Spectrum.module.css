@@ -122,6 +122,8 @@
   overflow: hidden;
   background: var(--bg-app);
   border-radius: 8px;
+  /* A finger or pencil on the EQ/FFT graph must not zoom the page. */
+  touch-action: none;
 }
 
 .canvas {
@@ -132,6 +134,7 @@
   flex: 1 1 auto;
   background: transparent;
   border-radius: 8px;
+  touch-action: none;
 }
 
 .canvasSpatial {

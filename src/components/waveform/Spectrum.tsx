@@ -357,7 +357,19 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       camera.zoom = Math.min(1.4, Math.max(0.75, next))
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
-    return () => canvas.removeEventListener('wheel', onWheel)
+    const stage = canvas.parentElement
+    const blockGesture = (event: Event) => {
+      event.preventDefault()
+    }
+    stage?.addEventListener('gesturestart', blockGesture, { passive: false })
+    stage?.addEventListener('gesturechange', blockGesture, { passive: false })
+    stage?.addEventListener('gestureend', blockGesture, { passive: false })
+    return () => {
+      canvas.removeEventListener('wheel', onWheel)
+      stage?.removeEventListener('gesturestart', blockGesture)
+      stage?.removeEventListener('gesturechange', blockGesture)
+      stage?.removeEventListener('gestureend', blockGesture)
+    }
   }, [active])
 
   useEffect(() => {
@@ -490,7 +502,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         }
         const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
-        const paintColor = spectrumPaintColor(prefsNow, focusPlot)
+        const paintColor = spectrumPaintColor(prefsNow)
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
         const showLine = focusPlot ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
         const { bands, fall, range, resolution } = prefsNow
@@ -1532,7 +1544,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
-            {spectrumPaintColor(prefs, phoneFocus) === 'frequency' ? (
+            {spectrumPaintColor(prefs) === 'frequency' ? (
               <ul className={styles.regions}>
                 {SPECTRUM_REGIONS.map((region) => (
                   <li key={region.id}>
