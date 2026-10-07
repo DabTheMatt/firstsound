@@ -14,6 +14,10 @@ import {
   type FreqScaleKind,
 } from '../../audio/engine/freqScale'
 import {
+  SPECTRUM_RANGE_CHOICES,
+  clampSpectrumRange,
+} from '../../audio/engine/spectrumBands'
+import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
   subscribeSpectrumPrefs,
@@ -93,6 +97,20 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           </Choice>
         ))}
       </ChoiceRow>
+      {showLayer ? (
+        <ChoiceRow label="Range">
+          {SPECTRUM_RANGE_CHOICES.map((db) => (
+            <Choice
+              key={db}
+              pressed={prefs.range === db}
+              title={`${db} dB analyzer depth`}
+              onClick={() => patch({ range: clampSpectrumRange(db) })}
+            >
+              {db}
+            </Choice>
+          ))}
+        </ChoiceRow>
+      ) : null}
       <OnOff
         label="Color"
         title="Color the spectrum by frequency. Off uses one theme color."

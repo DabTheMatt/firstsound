@@ -17,9 +17,6 @@ export const SPECTRUM_PLOT_PAD_FOCUS = { left: 4, right: 4, top: 0, bottom: 22 }
 /** Air between the bottom of the EQ Focus knobs and the top of the plot. */
 export const SPECTRUM_FOCUS_KNOB_GAP = 16
 
-/** Right gutter so EQ Focus bars end before the 60 / 90 / 120 control. */
-export const SPECTRUM_FOCUS_RANGE_GUTTER = 56
-
 const FOCUS_KNOB_CLEARANCE_MAX = 320
 
 /** Pixels from the canvas top to just under the floating EQ Focus knobs. */
@@ -35,7 +32,7 @@ export function focusKnobClearancePx(
   return Math.min(FOCUS_KNOB_CLEARANCE_MAX, room, Math.max(0, raw))
 }
 
-/** Drop the focus plot below the knobs and leave room for the range rail. */
+/** Drop the focus plot below the knobs. */
 export function focusPlotPad(
   base: { left: number; right: number; top: number; bottom: number },
   clearancePx: number,
@@ -43,7 +40,6 @@ export function focusPlotPad(
   return {
     ...base,
     top: base.top + Math.max(0, clearancePx),
-    right: Math.max(base.right, SPECTRUM_FOCUS_RANGE_GUTTER),
   }
 }
 

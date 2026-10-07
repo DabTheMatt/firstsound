@@ -297,6 +297,8 @@
   max-width: calc(100% - 16px);
   min-height: 0;
   min-width: 0;
+  /* The center of the tab row is empty. Lift the dials to the graph menu’s top edge. */
+  margin-top: -23px;
   margin-inline: auto;
   display: flex;
   flex-direction: column;
