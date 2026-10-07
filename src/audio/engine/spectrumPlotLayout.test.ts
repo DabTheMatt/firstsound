@@ -60,7 +60,7 @@ describe('phone spectrum scale', () => {
     expect(focusKnobClearancePx(0, 400, 16, 200)).toBe(80)
     const cleared = focusPlotPad(SPECTRUM_PLOT_PAD_FOCUS, 156)
     expect(cleared.top).toBe(156)
-    expect(cleared.right).toBeGreaterThan(SPECTRUM_PLOT_PAD_FOCUS.right)
+    expect(cleared.right).toBe(SPECTRUM_PLOT_PAD_FOCUS.right)
     expect(cleared.bottom).toBe(SPECTRUM_PLOT_PAD_FOCUS.bottom)
     expect(phoneFrequencyTicks(390)).toContain(1000)
     expect(phoneFrequencyTicks(430).length).toBeGreaterThan(phoneFrequencyTicks(320).length)

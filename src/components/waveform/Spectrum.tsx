@@ -1605,21 +1605,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       </div>
       )}
       <div className={styles.stage}>
-        {knobLane ? (
-          <div className={styles.rangeRail} role="group" aria-label="Analyzer range">
-            {SPECTRUM_RANGE_CHOICES.map((db) => (
-              <button
-                key={db}
-                type="button"
-                aria-pressed={prefs.range === db}
-                onClick={() => patchSpectrumPrefs({ range: db })}
-              >
-                {db}
-              </button>
-            ))}
-            <span>dB</span>
-          </div>
-        ) : null}
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
@@ -1892,17 +1877,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 {focusEqTypeLabel(item.value)}
               </button>
             ))}
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.focusDelete}
-              onClick={() => {
-                engine.setEqBand(bandMenu.index, { type: 'off' }, bandMenu.instanceId)
-                setBandMenu(null)
-              }}
-            >
-              {t.mobile.deleteBand}
-            </button>
           </div>
         ) : null}
         {hover ? (
