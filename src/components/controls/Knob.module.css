@@ -238,14 +238,16 @@
 }
 
 @media (pointer: coarse) {
-  .knob,
-  .dial {
+  /* The label can still start a page scroll. The dial cannot: iPad, including
+     Apple Pencil, commits to panning at contact, and a later touch-action
+     change does not cancel that scroll. */
+  .knob {
     touch-action: pan-y;
   }
 
-  .knob[data-gesture='adjust'],
-  .knob[data-gesture='adjust'] .dial {
+  .dial {
     touch-action: none;
+    overscroll-behavior: none;
   }
 }
 

@@ -133,6 +133,16 @@ export function ValueKnob({
     valueRef.current = normalized
   }, [normalized])
 
+  useEffect(() => {
+    const node = dialRef.current
+    if (!node) return
+    const blockScroll = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault()
+    }
+    node.addEventListener('touchmove', blockScroll, { passive: false })
+    return () => node.removeEventListener('touchmove', blockScroll)
+  }, [])
+
   useFocusedWheel(
     dialRef,
     (event) => {
@@ -155,13 +165,20 @@ export function ValueKnob({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.currentTarget
-    if (isCoarsePointer(event.pointerType)) {
+    if (isCoarsePointer(event.pointerType) || event.pointerType === 'pen') {
+      event.preventDefault()
+      try {
+        target.setPointerCapture(event.pointerId)
+      } catch {
+        /* pointer already gone */
+      }
       const armed = document.activeElement === target
       let current = normalized
       const session = createCoarseGestureSession(
         { clientX: event.clientX, clientY: event.clientY, timeStamp: event.timeStamp },
         {
           armed,
+          exclusive: true,
           axis: 'either',
           onScroll: () => {
             if (armed) target.blur()
@@ -211,10 +228,6 @@ export function ValueKnob({
         session.end(upEvent.type === 'pointercancel' ? 'cancel' : 'up')
       }
       const move = (moveEvent: PointerEvent) => {
-        if (moveEvent.buttons === 0 && session.role === 'adjust') {
-          up(moveEvent)
-          return
-        }
         session.move({
           clientX: moveEvent.clientX,
           clientY: moveEvent.clientY,

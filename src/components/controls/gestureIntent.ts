@@ -24,11 +24,14 @@ export function classifyParameterGesture(input: {
   armed: boolean
   axis?: GestureAxis
   slop?: number
+  /** The control owns the contact. Past the slop, every direction edits. */
+  exclusive?: boolean
 }): GestureRole {
   const slop = input.slop ?? GESTURE_SLOP_PX
   const adx = Math.abs(input.dx)
   const ady = Math.abs(input.dy)
   if (adx < slop && ady < slop) return 'pending'
+  if (input.exclusive) return 'adjust'
 
   const vertical = ady >= adx
   const axis = input.axis ?? 'either'
@@ -61,6 +64,8 @@ export type CoarseGesturePoint = {
 
 export type CoarseGestureHandlers = {
   armed: boolean
+  /** Past the slop, the contact edits. It does not hand the gesture to scrolling. */
+  exclusive?: boolean
   axis?: GestureAxis
   onScroll?: () => void
   onAdjustStart?: (info: { fine: boolean; clientX: number; clientY: number }) => void
@@ -84,6 +89,7 @@ export function createCoarseGestureSession(start: CoarseGesturePoint, handlers: 
         dy: event.clientY - start.clientY,
         elapsedMs: event.timeStamp - start.timeStamp,
         armed: handlers.armed,
+        exclusive: handlers.exclusive,
         axis: handlers.axis,
       })
       if (next === 'pending') return role

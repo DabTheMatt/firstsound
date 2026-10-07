@@ -281,6 +281,7 @@ const en: ManualSection[] = [
     title: 'Mobile gestures',
     body: [
       'Drag on the waveform to draw or resize a selection. Drag a fade handle at the top of a selection edge. Pinch to zoom. Drag the playhead to scrub.',
+      'A finger or pencil drag on a knob changes that parameter. The page stays still while the contact is on the dial. Scroll from the panel around the knobs.',
       'The phone transport uses large hit targets. Focus mode uses a full-height toolbar above the wave, not on top of the fade handles.',
     ],
   },
@@ -599,6 +600,7 @@ const pl: ManualSection[] = [
     title: 'Gesty na telefonie',
     body: [
       'Przeciągnij po fali, aby narysować albo zmienić zaznaczenie. Przeciągnij uchwyt fade u góry krawędzi. Uszczypnięcie przybliża. Przeciągnięcie głowicy przewija.',
+      'Przeciągnięcie palcem albo piórkiem po gałce zmienia ten parametr. Ekran zostaje w miejscu, dopóki kontakt jest na gałce. Przewijanie zostaje na panelu wokół gałek.',
       'Transport telefonu ma duże cele. Focus używa pełnej wysokości paska nad falą, nie na uchwytach fade.',
     ],
   },

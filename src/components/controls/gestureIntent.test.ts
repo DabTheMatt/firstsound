@@ -15,6 +15,10 @@ describe('classifyParameterGesture', () => {
     expect(classifyParameterGesture({ dx: 2, dy: 28, elapsedMs: 40, armed: false })).toBe('scroll')
   })
 
+  it('lets an exclusive control edit on an unarmed vertical drag', () => {
+    expect(classifyParameterGesture({ dx: 2, dy: 28, elapsedMs: 30, armed: false, exclusive: true })).toBe('adjust')
+  })
+
   it('treats an unarmed horizontal drag as a parameter gesture', () => {
     expect(classifyParameterGesture({ dx: 24, dy: 4, elapsedMs: 80, armed: false })).toBe('adjust')
   })
@@ -50,6 +54,22 @@ describe('createCoarseGestureSession', () => {
     session.end('up')
     expect(session.role).toBe('scroll')
     expect(changes).toEqual([])
+  })
+
+  it('edits a knob drag without handing it to scrolling', () => {
+    const changes: number[] = []
+    const session = createCoarseGestureSession(
+      { clientX: 40, clientY: 80, timeStamp: 0 },
+      {
+        armed: false,
+        exclusive: true,
+        onAdjust: (info) => changes.push(info.dy),
+      },
+    )
+    session.move({ clientX: 42, clientY: 96, timeStamp: 30 })
+    session.move({ clientX: 43, clientY: 120, timeStamp: 70 })
+    expect(session.role).toBe('adjust')
+    expect(changes.some((delta) => delta < 0)).toBe(true)
   })
 
   it('arms on a tap and edits on the following drag', () => {
