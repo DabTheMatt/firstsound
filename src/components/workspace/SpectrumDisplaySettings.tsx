@@ -15,7 +15,7 @@ import {
 } from '../../audio/engine/freqScale'
 import {
   loadSpectrumPrefs,
-  persistSpectrumPrefs,
+  patchSpectrumPrefs,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -46,7 +46,7 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
   useEffect(() => subscribeFreqGridDensity(setGrid), [])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
 
   return (
@@ -93,7 +93,19 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           </Choice>
         ))}
       </ChoiceRow>
-      <OnOff label="Color" title="Color EQ nodes by frequency" on={prefs.eqFreqColors} onChange={(eqFreqColors) => patch({ eqFreqColors })} />
+      <OnOff
+        label="Color"
+        title="Color the spectrum by frequency. Off uses one theme color."
+        on={prefs.regionColors || prefs.colorMode !== 'off'}
+        onChange={(on) =>
+          patch(
+            on
+              ? { regionColors: true, colorMode: prefs.colorMode === 'level' ? 'level' : 'frequency' }
+              : { regionColors: false, colorMode: 'off' },
+          )
+        }
+      />
+      <OnOff label="Nodes" title="Color EQ nodes by frequency" on={prefs.eqFreqColors} onChange={(eqFreqColors) => patch({ eqFreqColors })} />
       <OnOff label="Regions" title="Color spectrum bands by region" on={prefs.regionColors} onChange={(regionColors) => patch({ regionColors })} />
       <OnOff label="Bars" title="Draw the spectrum columns" on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
       <OnOff label="Line" title="Draw the spectrum line" on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />

@@ -24,7 +24,7 @@ import {
 } from '../../audio/engine/spectralHistory'
 import {
   loadSpectrumPrefs,
-  persistSpectrumPrefs,
+  patchSpectrumPrefs,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -132,7 +132,7 @@ export function SpectralHistoryControls({
   }, [open])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
 
   const settings = (includeShared: boolean) => (
@@ -230,7 +230,12 @@ export function SpectralHistoryControls({
             key={mode}
             type="button"
             aria-pressed={prefs.colorMode === mode}
-            onClick={() => patch({ colorMode: mode })}
+            onClick={() =>
+              patch({
+                colorMode: mode,
+                regionColors: mode === 'off' ? false : mode === 'frequency' ? true : prefs.regionColors,
+              })
+            }
           >
             {COLOR_LABEL[mode]}
           </button>

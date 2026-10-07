@@ -14,7 +14,6 @@ import {
   routeReveal,
   routeTrackClick,
   routeTrackEdit,
-  routeViz,
   type TrackInspectorMemory,
 } from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
@@ -79,7 +78,6 @@ import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { ContextBar } from '../components/workspace/ContextBar'
 import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
-import { AnalyzerSettingsMenu } from '../components/workspace/AnalyzerSettingsMenu'
 import { FftPrimaryBar } from '../components/workspace/FftPrimaryBar'
 import { vizForWorkspace, workspaceFromViz, type TechnicalWorkspaceId } from '../components/workspace/workspaces'
 import { countHiddenActivity } from '../components/workspace/disclosure'
@@ -212,12 +210,14 @@ export default function App() {
   })
   const [inspectorMemory, setInspectorMemory] = useState<TrackInspectorMemory>({})
   const focusRef = useRef(focus)
+  const lastEffectRef = useRef<InspectorFocus>(focus)
   const memoryRef = useRef(inspectorMemory)
   const seenTrackRef = useRef(engine.getSnapshot().selectedTrackId)
   const intentRef = useRef<string | null>(null)
   useEffect(() => {
     focusRef.current = focus
     memoryRef.current = inspectorMemory
+    if (focus.kind === 'module') lastEffectRef.current = focus
   }, [focus, inspectorMemory])
   const [history, setHistory] = useState(() =>
     createHistory(
@@ -743,18 +743,40 @@ export default function App() {
     setFocusWorkspace(focusWorkspaceForViz(shown))
   }
 
+  const effectFocus = (): InspectorFocus => {
+    const chain = engine.getSnapshot().chain
+    const last = lastEffectRef.current
+    if (last.kind === 'module') {
+      const live = chain.find((item) => item.instanceId === last.instanceId)
+      if (live) {
+        return last.pane
+          ? { kind: 'module', instanceId: live.instanceId, type: live.type, pane: last.pane }
+          : { kind: 'module', instanceId: live.instanceId, type: live.type }
+      }
+    }
+    const gain = chain.find((item) => item.type === 'gain') ?? chain[0]
+    return { kind: 'module', instanceId: gain?.instanceId ?? 'gain-1', type: gain?.type ?? 'gain' }
+  }
+
+  /** Views change the picture. The inspector stays on the last effect, unless EQ is already in the chain. */
+  const commitViz = (next: VizMode) => {
+    if (next === 'eq-split') {
+      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+      if (eq) {
+        selectModule(eq.instanceId)
+        setViz('eq-split')
+        return
+      }
+    }
+    setViz(next)
+    if (focusRef.current.kind !== 'module') rememberFocus(effectFocus())
+  }
+
   const enterNamedFocus = (workspace: 'wave' | 'fft' | 'eq' | 'auto') => {
     setMenuOpen(false)
     setLfoCenterOpen(false)
     const nextViz = workspace === 'auto' ? 'automation' : workspace === 'eq' ? 'eq-split' : workspace === 'fft' ? 'spectrum' : 'waveform'
-    if (nextViz === 'eq-split') {
-      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-      if (eq) selectModule(eq.instanceId)
-    }
-    const routed = routeViz(nextViz, focus, inspectorOpen)
-    setViz(routed.viz)
-    rememberFocus(routed.focus)
-    setInspectorOpen(routed.inspectorOpen)
+    commitViz(nextViz)
     setFocusWorkspace(workspace)
   }
 
@@ -790,38 +812,21 @@ export default function App() {
         profile: current.enabled ? current.profile : 'visual',
         layers: current.enabled ? current.layers : layersForProfile('visual'),
       })
+      if (focusRef.current.kind !== 'module') rememberFocus(effectFocus())
       if (contextLevel === 'closed') setContextLevel('compact')
       return
     }
     setHearingBoard(false)
-    if (id === 'eq') {
-      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-      if (eq) selectModule(eq.instanceId)
-      else setViz('eq-split')
-      if (contextLevel === 'closed') setContextLevel('compact')
-      return
-    }
     const nextViz = vizForWorkspace(id)
     if (!nextViz) return
-    const routed = routeViz(nextViz, focus, true)
-    setViz(routed.viz)
-    rememberFocus(routed.focus)
+    commitViz(nextViz)
     setInspectorOpen(true)
     if (contextLevel === 'closed') setContextLevel('compact')
   }
 
   const focusViz = (next: VizMode) => {
-    if (next === 'eq-split') {
-      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-      if (eq) selectModule(eq.instanceId)
-    }
-    const routed = routeViz(next, focus, inspectorOpen)
-    setViz(routed.viz)
-    rememberFocus(routed.focus)
-    setInspectorOpen(routed.inspectorOpen)
-    if (focusWorkspace) {
-      setFocusWorkspace(focusWorkspaceForViz(routed.viz))
-    }
+    commitViz(next)
+    if (focusWorkspace) setFocusWorkspace(focusWorkspaceForViz(next))
   }
 
   const dockRight = mode === 'dock-right'
@@ -873,14 +878,9 @@ export default function App() {
         </button>
       </p>
     ) : null
-  const fftInspector = workspaceOn && workspaceId === 'fft'
   const inspector = showContext ? (
     <>
-      {fftInspector ? (
-        <div className={ws.analyzerPanel} data-fft-inspector="">
-          <AnalyzerSettingsMenu />
-        </div>
-      ) : resolvedFocus.kind === 'automation' ? (
+      {resolvedFocus.kind === 'automation' ? (
       <AutomationInspector
         sheet={sheet && !isPhoneLayout && activeSheetLevel !== 'expanded'}
         compact={isPhoneLayout}
@@ -1471,12 +1471,7 @@ export default function App() {
           tool={tool}
           onTool={selectTool}
           viz={viz}
-          onViz={(next) => {
-            const routed = routeViz(next, focus, inspectorOpen)
-            setViz(routed.viz)
-            rememberFocus(routed.focus)
-            setInspectorOpen(routed.inspectorOpen)
-          }}
+          onViz={commitViz}
           zoomLabel={zoomLabel}
           normalizeView={normalizeView}
           onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
@@ -1582,20 +1577,7 @@ export default function App() {
                 viz={viz}
                 arrangement={arrangement}
                 onArrangement={setArrangement}
-                onViz={(next) => {
-                  if (next === 'eq-split') {
-                    const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-                    if (eq) {
-                      selectModule(eq.instanceId)
-                      setViz('eq-split')
-                      return
-                    }
-                  }
-                  const routed = routeViz(next, focus, inspectorOpen)
-                  setViz(routed.viz)
-                  rememberFocus(routed.focus)
-                  setInspectorOpen(routed.inspectorOpen)
-                }}
+                onViz={commitViz}
                 onEnterFocus={enterFocus}
                 normalizeView={normalizeView}
                 onView={(action) => {

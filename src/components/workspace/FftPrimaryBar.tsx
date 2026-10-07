@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import {
   loadSpectrumPrefs,
-  persistSpectrumPrefs,
+  patchSpectrumPrefs,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -57,7 +57,7 @@ export function FftPrimaryBar() {
   }, [open])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
 
   return (

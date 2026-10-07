@@ -20,12 +20,12 @@ const filter: InspectorFocus = { kind: 'module', instanceId: 'filter-1', type: '
 const automation: InspectorFocus = { kind: 'automation' }
 
 describe('inspector routing', () => {
-  it('opens the automation inspector from AUTO without coupling it to later effect edits', () => {
-    const opened = routeViz('automation', delay, false)
+  it('keeps the effect inspector when AUTO is only a view', () => {
+    const opened = routeViz('automation', delay, true)
     expect(opened.viz).toBe('automation')
-    expect(opened.focus).toEqual(automation)
+    expect(opened.focus).toEqual(delay)
     expect(opened.inspectorOpen).toBe(true)
-    expect(inspectorPanel(opened.focus)).toBe('automation')
+    expect(inspectorPanel(opened.focus)).toBe('editor')
 
     const next = routeModule('delay-1', 'delay')
     expect(next.focus).toEqual(delay)
@@ -49,11 +49,11 @@ describe('inspector routing', () => {
     }
   })
 
-  it('returns to the automation inspector when AUTO is chosen again', () => {
+  it('leaves the selected effect in place when AUTO is chosen again', () => {
     const back = routeViz('automation', eq, false)
-    expect(back.focus).toEqual(automation)
-    expect(back.inspectorOpen).toBe(true)
-    expect(inspectorKey(back.focus)).toBe('automation')
+    expect(back.focus).toEqual(eq)
+    expect(back.inspectorOpen).toBe(false)
+    expect(inspectorKey(back.focus)).toBe('eq')
   })
 
   it('does not show the automation inspector merely because the automation view is active', () => {
@@ -74,9 +74,10 @@ describe('inspector routing', () => {
     expect(routeReveal(autoClosed.focus).focus).toEqual(automation)
   })
 
-  it('reopens the inspector when an effect or AUTO is chosen while collapsed', () => {
+  it('reopens the inspector when an effect is chosen while collapsed', () => {
     expect(routeModule('eq-1', 'eq').inspectorOpen).toBe(true)
-    expect(routeViz('automation', delay, false).inspectorOpen).toBe(true)
+    expect(routeViz('automation', delay, false).inspectorOpen).toBe(false)
+    expect(routeViz('spectrum', delay, true).focus).toEqual(delay)
   })
 
   it('keeps an optional advanced pane on the module focus', () => {

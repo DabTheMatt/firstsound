@@ -113,14 +113,13 @@ export function inspectorKey(focus: InspectorFocus): string {
   return focus.type
 }
 
-/** AUTO requests the automation inspector. Other views leave the inspector alone. */
+/** A view shows a different picture. It does not choose or reopen the inspector. */
 export function routeViz(
   viz: VizMode,
   focus: InspectorFocus,
   inspectorOpen: boolean,
 ): { viz: VizMode; focus: InspectorFocus; inspectorOpen: boolean } {
-  if (viz !== 'automation') return { viz, focus, inspectorOpen }
-  return { viz, focus: { kind: 'automation' }, inspectorOpen: true }
+  return { viz, focus, inspectorOpen }
 }
 
 /** Selecting a chain module selects that effect and opens its inspector. */

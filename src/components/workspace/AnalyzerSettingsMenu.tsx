@@ -35,7 +35,7 @@ import {
 } from '../../audio/engine/spectralHistory'
 import {
   loadSpectrumPrefs,
-  persistSpectrumPrefs,
+  patchSpectrumPrefs,
   subscribeSpectrumPrefs,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
@@ -78,7 +78,7 @@ export function AnalyzerSettingsMenu() {
   )
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
   const eqs = snap.chain.filter((mod) => mod.type === 'eq')
   const overlayValue = clampEqOverlayFocus(overlay, snap.chain)
@@ -135,7 +135,12 @@ export function AnalyzerSettingsMenu() {
           label="Color"
           value={prefs.colorMode}
           options={SPECTRAL_COLOR_MODES.map((mode) => ({ id: mode, label: COLOR_LABEL[mode] }))}
-          onChange={(id) => patch({ colorMode: id })}
+          onChange={(id) =>
+            patch({
+              colorMode: id,
+              regionColors: id === 'off' ? false : id === 'frequency' ? true : prefs.regionColors,
+            })
+          }
         />
         <ChoiceField
           label="Trails"

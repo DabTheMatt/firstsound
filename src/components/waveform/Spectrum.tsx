@@ -72,9 +72,11 @@ import {
 } from '../../audio/engine/eqOverlayFocus'
 import { fillSpectrumXY, spectrumCurvePointCount, strokeSpectrumXY, writeSpectrumCurve } from '../../audio/engine/spectrumEnvelope'
 import {
+  dbToSpectralLevel,
   formatSpectralReadout,
   spectralHistoryAriaLabel,
   spectralHistorySession,
+  spectralLevelColor,
   subscribeSpectralHistorySession,
 } from '../../audio/engine/spectralHistory'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
@@ -100,7 +102,7 @@ import {
 } from '../modulation/modulationModel'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
-import { loadSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { loadSpectrumPrefs, patchSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, spectrumPaintColor, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import {
   SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_HZ_LABEL_OFFSET,
@@ -327,7 +329,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
   useEffect(() => subscribeEqBandSelection(setSelectedBand), [])
 
-  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
+  useEffect(
+    () =>
+      subscribeSpectrumPrefs((next) => {
+        prefsRef.current = next
+        setPrefs((current) => (current === next ? current : next))
+      }),
+    [],
+  )
   useEffect(
     () =>
       subscribeSpectralHistorySession(() => {
@@ -357,9 +366,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
 
   useEffect(() => {
     prefsRef.current = prefs
-    spatialRef.current = prefs.viewMode === '3d' && !phoneEq && !phoneFocus
     persistSpectrumPrefs(prefs)
-  }, [prefs, phoneEq, phoneFocus])
+  }, [prefs])
+
+  useEffect(() => {
+    spatialRef.current = prefs.viewMode === '3d' && !phoneEq && !phoneFocus
+  }, [prefs.viewMode, phoneEq, phoneFocus])
 
   useEffect(() => {
     preFast.current = emptyBands(prefs.bands)
@@ -478,7 +490,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         }
         const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
-        const regionColors = focusPlot ? false : prefsNow.regionColors
+        const paintColor = spectrumPaintColor(prefsNow, focusPlot)
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
         const showLine = focusPlot ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
         const { bands, fall, range, resolution } = prefsNow
@@ -629,8 +641,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           const phoneDim = phoneEqRef.current ? 0.62 : 1
           const alpha = (style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42) * phoneDim
           const lineAlpha = (style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95) * phoneDim
-          const fill = regionColors ? undefined : colors.spectrum
-          const line = regionColors ? undefined : colors.spectrumLine
+          const fill = paintColor === 'solid' ? colors.spectrum : undefined
+          const line = paintColor === 'solid' ? colors.spectrumLine : undefined
           const dashed = style === 'pre' && layer === 'both'
           const peakStroke = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
           const slowStroke =
@@ -647,11 +659,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right, scale)
               const bandW = Math.max(1, x1 - x0)
               const center = bandCenterHz(edges, i)
-              const regionColor = eqBandColorForHz(center)
-              const barFill = fill ?? regionColor
-              const barLine = line ?? regionColor
               const bodyDb = alignedBandDb(bodySrc[i] ?? SPECTRUM_FLOOR_DB, 0)
               const capDb = alignedBandDb(capSrc[i] ?? SPECTRUM_FLOOR_DB, 0)
+              const regionColor = eqBandColorForHz(center)
+              const levelColor = spectralLevelColor(
+                colors.ridgeCool || colors.spectrum,
+                colors.eqCurve2 || colors.spectrum,
+                colors.ridgeWarm || colors.spectrumLine,
+                dbToSpectralLevel(bodyDb, dbFloor),
+              )
+              const barFill = paintColor === 'level' ? levelColor : (fill ?? regionColor)
+              const barLine = paintColor === 'level' ? levelColor : (line ?? regionColor)
               const bodyY = dbToY(bodyDb, top, bottom, dbFloor)
               const capY = dbToY(capDb, top, bottom, dbFloor)
               const bodyH = bottom - bodyY
@@ -1504,7 +1522,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         <div className={styles.viewAnchor}>
           <FftViewToggle
             mode={prefs.viewMode}
-            onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+            onChange={(viewMode) => patchSpectrumPrefs({ viewMode })}
           />
           {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label={focusLabel} onClick={onEnterFocus} /> : null}
         </div>
@@ -1514,7 +1532,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>
-            {prefs.regionColors ? (
+            {spectrumPaintColor(prefs, phoneFocus) === 'frequency' ? (
               <ul className={styles.regions}>
                 {SPECTRUM_REGIONS.map((region) => (
                   <li key={region.id}>
@@ -1539,7 +1557,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           <div className={historyStyles.dock}>
             <FftViewToggle
               mode={prefs.viewMode}
-              onChange={(viewMode) => persistSpectrumPrefs({ ...prefs, viewMode })}
+              onChange={(viewMode) => patchSpectrumPrefs({ viewMode })}
             />
             {spatial ? <SpectralHistoryControls /> : null}
           </div>

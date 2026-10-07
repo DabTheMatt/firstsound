@@ -145,6 +145,24 @@ export function persistSpectrumPrefs(prefs: SpectrumPrefs): void {
   for (const listener of listeners) listener(prefs)
 }
 
+/** Merge onto the latest stored prefs so one control cannot write a stale copy back. */
+export function patchSpectrumPrefs(patch: Partial<SpectrumPrefs>): SpectrumPrefs {
+  const next = { ...loadSpectrumPrefs(), ...patch }
+  persistSpectrumPrefs(next)
+  return next
+}
+
+/** How the 2D analyzer paints bars. Focus plots stay on the theme color. */
+export function spectrumPaintColor(
+  prefs: Pick<SpectrumPrefs, 'colorMode' | 'regionColors'>,
+  focusPlot: boolean,
+): 'solid' | 'frequency' | 'level' {
+  if (focusPlot) return 'solid'
+  if (prefs.colorMode === 'level') return 'level'
+  if (prefs.colorMode === 'frequency' || prefs.regionColors) return 'frequency'
+  return 'solid'
+}
+
 export function subscribeSpectrumPrefs(onChange: (prefs: SpectrumPrefs) => void): () => void {
   listeners.add(onChange)
   return () => listeners.delete(onChange)

@@ -6,7 +6,7 @@ import {
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
 import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
-import { loadSpectrumPrefs, persistSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { loadSpectrumPrefs, patchSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
 import styles from './MobileContext.module.css'
 
@@ -20,7 +20,7 @@ export function AnalyzerSettings() {
   useEffect(() => subscribeFreqScale(setScale), [])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
 
   return (

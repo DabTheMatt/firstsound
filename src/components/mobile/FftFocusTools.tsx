@@ -21,7 +21,7 @@ import {
 import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
 import {
   loadSpectrumPrefs,
-  persistSpectrumPrefs,
+  patchSpectrumPrefs,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -45,7 +45,7 @@ export function FftFocusTools() {
   useEffect(() => subscribeEqOverlayFocus(setOverlay), [])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
-    persistSpectrumPrefs({ ...prefs, ...next })
+    patchSpectrumPrefs(next)
   }
   const eqs = snap.chain.filter((mod) => mod.type === 'eq')
   const overlayValue = clampEqOverlayFocus(overlay, snap.chain)
