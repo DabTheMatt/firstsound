@@ -577,6 +577,49 @@
   top: 46px;
 }
 
+.rangeRail {
+  position: absolute;
+  z-index: 6;
+  right: 8px;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-app) 62%, transparent);
+  pointer-events: auto;
+}
+
+.rangeRail button {
+  min-width: 36px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.rangeRail button[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--bg-control);
+}
+
+.rangeRail span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .wrap:not(.phoneEq):not(.eqFocus) .focusReadout {
   top: auto;
   bottom: 22px;

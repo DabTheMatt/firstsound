@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
@@ -107,6 +107,8 @@ import {
   SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_HZ_LABEL_OFFSET,
   compactDbMarks,
+  focusKnobClearancePx,
+  focusPlotPad,
   spectrumPlotPad,
 } from '../../audio/engine/spectrumPlotLayout'
 import {
@@ -141,6 +143,8 @@ type Props = {
   phoneEq?: boolean
   /** Focused EQ editing. Presentation only: same canvas, tighter plot, no analyzer chrome. */
   phoneFocus?: boolean
+  /** EQ Focus floats knobs over the graph. The plot stops beneath them. */
+  knobLane?: boolean
   /** FFT Focus owns the analyzer controls in the shared header. */
   suppressAnalyzerChrome?: boolean
   /** Workspace FFT keeps display settings in the inspector, so the graph menu stays closed. */
@@ -153,6 +157,15 @@ type Props = {
   onEnterFocus?: () => void
   /** Name on the graph’s focus control. The EQ view asks for EQ Focus. */
   focusLabel?: string
+}
+
+function plotPadNow(
+  input: { compact?: boolean; focus?: boolean; phoneEq?: boolean },
+  lane: boolean,
+  clearance: number,
+) {
+  const base = spectrumPlotPad(input)
+  return lane ? focusPlotPad(base, clearance) : base
 }
 
 function emptyBands(n: number): Float32Array {
@@ -228,7 +241,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -249,11 +262,46 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const compactRef = useRef(compact)
   const phoneEqRef = useRef(phoneEq)
   const phoneFocusRef = useRef(phoneFocus)
+  const knobLaneRef = useRef(knobLane)
+  const knobClearanceRef = useRef(0)
+  const [knobClearance, setKnobClearance] = useState(0)
   useEffect(() => {
     compactRef.current = compact
     phoneEqRef.current = phoneEq
     phoneFocusRef.current = phoneFocus
-  }, [compact, phoneEq, phoneFocus])
+    knobLaneRef.current = knobLane
+  }, [compact, phoneEq, phoneFocus, knobLane])
+  useLayoutEffect(() => {
+    let frame = 0
+    const publish = (next: number) => {
+      if (next === knobClearanceRef.current) return
+      knobClearanceRef.current = next
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => setKnobClearance(next))
+    }
+    if (!knobLane) {
+      publish(0)
+      return () => cancelAnimationFrame(frame)
+    }
+    const measure = () => {
+      const canvas = canvasRef.current
+      const well = document.querySelector('[data-eq-well]')
+      if (!canvas || !(well instanceof HTMLElement)) return
+      const canvasRect = canvas.getBoundingClientRect()
+      publish(focusKnobClearancePx(canvasRect.top, well.getBoundingClientRect().bottom, undefined, canvasRect.height))
+    }
+    measure()
+    const well = document.querySelector('[data-eq-well]')
+    const obs = new ResizeObserver(measure)
+    if (well) obs.observe(well)
+    if (canvasRef.current) obs.observe(canvasRef.current)
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(frame)
+      obs.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [knobLane])
   const plotRef = useRef<HTMLDivElement>(null)
   const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const freqScaleRef = useRef(freqScale)
@@ -514,7 +562,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const maxHz = spectrumMaxHz(sr, SPECTRUM_AXIS_MAX_HZ)
         const minHz = SPECTRUM_AXIS_MIN_HZ
         const phoneScale = phoneEqRef.current && !focusPlot
-        const plotPad = spectrumPlotPad({ compact: compactRef.current, focus: focusPlot, phoneEq: phoneScale })
+        const plotPad = plotPadNow(
+          { compact: compactRef.current, focus: focusPlot, phoneEq: phoneScale },
+          knobLaneRef.current,
+          knobClearanceRef.current,
+        )
         const padL = plotPad.left * dpr
         const padR = plotPad.right * dpr
         const padT = plotPad.top * dpr
@@ -1066,11 +1118,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       const crect = canvas.getBoundingClientRect()
       const hx = event.clientX - crect.left
       const hy = event.clientY - crect.top
-      const pad = spectrumPlotPad({
-        compact: compactRef.current,
-        focus: phoneFocusRef.current,
-        phoneEq: phoneEqRef.current && !phoneFocusRef.current,
-      })
+      const pad = plotPadNow(
+        {
+          compact: compactRef.current,
+          focus: phoneFocusRef.current,
+          phoneEq: phoneEqRef.current && !phoneFocusRef.current,
+        },
+        knobLaneRef.current,
+        knobClearanceRef.current,
+      )
       const plotMax = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
       const hz = xToHz(hx, SPECTRUM_AXIS_MIN_HZ, plotMax, pad.left, crect.width - pad.right, freqScaleRef.current)
       setHover({ x: hx, y: hy, label: formatHoverFreq(hz), flip: hx > crect.width * 0.68, low: hy < 28 })
@@ -1091,7 +1147,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     const rect = canvas.getBoundingClientRect()
     const x = clientX - rect.left
     const y = clientY - rect.top
-    const pad = spectrumPlotPad({ compact, focus: phoneFocusRef.current, phoneEq: phoneEqRef.current && !phoneFocusRef.current })
+    const pad = plotPadNow(
+      { compact, focus: phoneFocusRef.current, phoneEq: phoneEqRef.current && !phoneFocusRef.current },
+      knobLaneRef.current,
+      knobClearanceRef.current,
+    )
     const left = pad.left
     const right = rect.width - pad.right
     const top = pad.top
@@ -1161,7 +1221,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   }
 
   if (!active) return null
-  const plotPad = spectrumPlotPad({ compact, focus: phoneFocus, phoneEq: phoneEq && !phoneFocus })
+  const plotPad = plotPadNow(
+    { compact, focus: phoneFocus, phoneEq: phoneEq && !phoneFocus },
+    knobLane,
+    knobClearance,
+  )
   const menuBand =
     bandMenu ? (snap.eqById[bandMenu.instanceId]?.bands ?? [])[bandMenu.index] : undefined
   const eqCurveOn = eqMods.some((mod) => {
@@ -1541,6 +1605,21 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       </div>
       )}
       <div className={styles.stage}>
+        {knobLane ? (
+          <div className={styles.rangeRail} role="group" aria-label="Analyzer range">
+            {SPECTRUM_RANGE_CHOICES.map((db) => (
+              <button
+                key={db}
+                type="button"
+                aria-pressed={prefs.range === db}
+                onClick={() => patchSpectrumPrefs({ range: db })}
+              >
+                {db}
+              </button>
+            ))}
+            <span>dB</span>
+          </div>
+        ) : null}
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
           <div className={styles.legendDock}>

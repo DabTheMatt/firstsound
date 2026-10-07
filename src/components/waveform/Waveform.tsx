@@ -1828,6 +1828,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               active={showSpec}
               compact={phone}
               phoneFocus={eqFocus || calmEq}
+              knobLane={eqFocus}
               suppressAnalyzerChrome={phoneFocus === 'fft' || calmFft || calmEq}
               hideGraphMenu={phoneFocus === 'fft' || calmFft}
               hideLegend={calmFft}

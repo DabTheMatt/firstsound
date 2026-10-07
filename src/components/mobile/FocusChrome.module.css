@@ -203,7 +203,8 @@
   z-index: 4;
   top: 0;
   left: max(8px, env(safe-area-inset-left, 0px));
-  width: min(220px, 32vw);
+  width: max-content;
+  max-width: min(240px, 42vw);
   min-width: 0;
   pointer-events: auto;
 }
@@ -232,9 +233,11 @@
 .filterList {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  width: max-content;
+  max-width: 100%;
   margin: 0;
-  padding: 6px 8px;
+  padding: 4px 6px;
   list-style: none;
   max-height: min(320px, 52vh);
   overflow: auto;
@@ -255,12 +258,13 @@
 .filterRow,
 .filterOn {
   display: grid;
-  grid-template-columns: 8px auto minmax(0, 1fr) auto;
+  grid-template-columns: 8px max-content max-content max-content;
   align-items: center;
   gap: 6px;
-  width: 100%;
-  min-height: 22px;
-  padding: 0 4px;
+  width: max-content;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 2px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -281,6 +285,11 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.filterRow span,
+.filterOn span {
+  white-space: nowrap;
 }
 
 .eqWell {
