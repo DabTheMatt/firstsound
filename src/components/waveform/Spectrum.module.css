@@ -459,9 +459,10 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border-default);
+  gap: 0;
+  min-width: 16rem;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
   border-radius: 8px;
   background: var(--bg-panel);
   color: var(--text-muted);

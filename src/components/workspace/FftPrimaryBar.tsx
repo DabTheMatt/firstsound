@@ -11,7 +11,7 @@ import { FftViewToggle } from '../waveform/SpectralHistoryControls'
 import { AnalyzerSettingsMenu } from './AnalyzerSettingsMenu'
 import styles from './Workspace.module.css'
 
-const ANALYZER_MENU_WIDTH = 440
+const ANALYZER_MENU_WIDTH = 360
 
 function analyzerMenuStyle(anchor: HTMLButtonElement | null): { top: number; left: number } | undefined {
   if (!anchor) return undefined

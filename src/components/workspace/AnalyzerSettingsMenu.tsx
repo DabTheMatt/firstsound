@@ -41,10 +41,8 @@ import {
 } from '../../audio/engine/spectrumPrefs'
 import { spectrumListenId } from '../../audio/spectral/bands'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
-import { Segmented } from '../controls/Segmented'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import panel from '../inspector/Inspector.module.css'
 import { SpectrumDisplaySettings } from './SpectrumDisplaySettings'
 import styles from './Workspace.module.css'
 
@@ -85,9 +83,9 @@ export function AnalyzerSettingsMenu() {
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
 
   return (
-    <div className={panel.panel}>
-      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>History</h2>
-      <div className={panel.stack}>
+    <div className={styles.analyzerMenu}>
+      <h2 className={styles.analyzerSection}>History</h2>
+      <div className={styles.analyzerRows}>
         <ChoiceField
           label="Time"
           value={String(prefs.historySec)}
@@ -111,8 +109,8 @@ export function AnalyzerSettingsMenu() {
         />
       </div>
 
-      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Picture</h2>
-      <div className={panel.stack}>
+      <h2 className={styles.analyzerSection}>Picture</h2>
+      <div className={styles.analyzerRows}>
         <ChoiceField
           label="Density"
           value={prefs.density}
@@ -151,10 +149,10 @@ export function AnalyzerSettingsMenu() {
           ]}
           onChange={(id) => patch({ peakTrails: id === 'on' })}
         />
-        <div className={panel.row}>
+        <div className={styles.analyzerActions}>
           <button
             type="button"
-            className={panel.ghost}
+            className={styles.analyzerChoice}
             onClick={() => {
               patch({ cameraPreset: 'angled' })
               requestSpectralViewReset()
@@ -162,14 +160,14 @@ export function AnalyzerSettingsMenu() {
           >
             Reset view
           </button>
-          <button type="button" className={panel.ghost} onClick={() => requestSpectralHistoryClear()}>
+          <button type="button" className={styles.analyzerChoice} onClick={() => requestSpectralHistoryClear()}>
             Clear history
           </button>
         </div>
       </div>
 
-      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Analyzer</h2>
-      <div className={panel.stack}>
+      <h2 className={styles.analyzerSection}>Analyzer</h2>
+      <div className={styles.analyzerRows}>
         {spectralBandsEnabled && listenBand ? (
           <p className={styles.analyzerNote}>{t.waveform.spectral.analyseBand}</p>
         ) : null}
@@ -249,7 +247,7 @@ export function AnalyzerSettingsMenu() {
         ) : null}
       </div>
 
-      <h2 className={`${panel.title} ${styles.analyzerHeading}`}>Display</h2>
+      <h2 className={styles.analyzerSection}>Display</h2>
       <SpectrumDisplaySettings />
     </div>
   )
@@ -267,15 +265,22 @@ function ChoiceField<T extends string>({
   onChange: (id: T) => void
 }) {
   return (
-    <div className={panel.field}>
-      {label}
-      <Segmented
-        label={label}
-        value={value}
-        wrap
-        options={options.map((opt) => ({ value: opt.id, label: opt.label, title: opt.title }))}
-        onChange={onChange}
-      />
+    <div className={styles.analyzerRow} role="group" aria-label={label}>
+      <span className={styles.analyzerLabel}>{label}</span>
+      <div className={styles.analyzerControl}>
+        {options.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            className={value === opt.id ? styles.analyzerOn : styles.analyzerChoice}
+            aria-pressed={value === opt.id}
+            title={opt.title}
+            onClick={() => onChange(opt.id)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -292,9 +297,9 @@ function SelectField({
   children: ReactNode
 }) {
   return (
-    <label className={panel.field}>
-      {label}
-      <select className={panel.select} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+    <label className={styles.analyzerRow}>
+      <span className={styles.analyzerLabel}>{label}</span>
+      <select className={styles.analyzerSelect} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
         {children}
       </select>
     </label>
