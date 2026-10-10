@@ -1248,7 +1248,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
+      {onEnterFocus && !phoneFocus && !suppressAnalyzerChrome ? (
         <EnterFocusButton corner label={focusLabel} onClick={onEnterFocus} />
       ) : null}
       {suppressAnalyzerChrome ? null : (
@@ -1600,7 +1600,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             mode={prefs.viewMode}
             onChange={(viewMode) => patchSpectrumPrefs({ viewMode })}
           />
-          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label={focusLabel} onClick={onEnterFocus} /> : null}
         </div>
       </div>
       )}

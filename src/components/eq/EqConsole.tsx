@@ -39,10 +39,10 @@ export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Prop
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {onShowInspector || onEnterFocus ? (
+      {onEnterFocus ? <EnterFocusButton corner label="EQ" onClick={onEnterFocus} /> : null}
+      {onShowInspector ? (
         <div className={styles.layoutFloat}>
-          {onShowInspector ? <EqLayoutButton to="inspector" onClick={onShowInspector} /> : null}
-          {onEnterFocus ? <EnterFocusButton label="EQ" onClick={onEnterFocus} /> : null}
+          <EqLayoutButton to="inspector" onClick={onShowInspector} />
         </div>
       ) : null}
       {many ? (

@@ -283,12 +283,15 @@
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   overflow: hidden;
+  --wave-ruler: 22px;
+  --wave-legend: 0px;
+  --wave-symbols: 0px;
 }
 
 .canvas {
   display: block;
   width: 100%;
-  height: calc(100% - 22px - var(--wave-legend, 0px));
+  height: calc(100% - var(--wave-ruler) - var(--wave-legend) - var(--wave-symbols));
 }
 
 .waveLegendPane {
@@ -312,29 +315,27 @@
   pointer-events: none;
 }
 
-.wavePane:has([data-enter-focus]) .monoBadge {
-  right: 44px;
-}
-
 .wavePane:has([data-enter-focus]) .trackTabs {
-  right: 44px;
+  left: 40px;
 }
 
 .wavePane:has([data-enter-focus]) .autoLegend {
-  max-width: calc(100% - 52px);
+  left: 40px;
+  max-width: calc(100% - 48px);
 }
 
 .fxCanvas {
   position: absolute;
-  inset: 0 0 22px 0;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: calc(100% - 22px);
+  height: calc(100% - var(--wave-ruler) - var(--wave-legend) - var(--wave-symbols));
   pointer-events: none;
 }
 
 .overlay {
   position: absolute;
-  inset: 0 0 calc(22px + var(--wave-legend, 0px)) 0;
+  inset: 0 0 calc(var(--wave-ruler) + var(--wave-legend) + var(--wave-symbols)) 0;
   touch-action: none;
   cursor: col-resize;
   --fade-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M5 24c7 0 8-14 22-16' fill='none' stroke='%23000' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M5 24c7 0 8-14 22-16' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 6 26, ew-resize;
@@ -457,7 +458,7 @@
 
 .bandLaneLabels {
   position: absolute;
-  inset: 0 0 22px 0;
+  inset: 0 0 calc(var(--wave-ruler) + var(--wave-legend) + var(--wave-symbols)) 0;
   display: flex;
   flex-direction: column;
   pointer-events: none;
@@ -809,8 +810,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--wave-legend, 0px);
-  height: 22px;
+  bottom: var(--wave-legend);
+  height: var(--wave-ruler);
   padding: 0;
   color: var(--text-muted);
   font-size: 10px;
@@ -844,18 +845,16 @@
   min-height: 0;
   border: 0;
   border-radius: 0;
+  --wave-ruler: 16px;
 }
 
 .phone .canvas {
   height: 100%;
 }
 
-.phone .waveLegendPane .canvas {
-  height: calc(100% - 16px - var(--wave-legend, 0px));
-}
-
-.phone .ruler {
-  height: 16px;
+.phone .waveLegendPane .canvas,
+.phone .waveSymbolPane .canvas {
+  height: calc(100% - var(--wave-ruler) - var(--wave-legend) - var(--wave-symbols));
 }
 
 .phone .tick {
@@ -880,7 +879,7 @@
 
 .empty {
   position: absolute;
-  inset: 0 0 22px 0;
+  inset: 0 0 calc(var(--wave-ruler) + var(--wave-legend) + var(--wave-symbols)) 0;
   display: flex;
   flex-direction: column;
   align-items: center;

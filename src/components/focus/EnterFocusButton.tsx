@@ -3,7 +3,7 @@ import styles from './EnterFocusButton.module.css'
 type Props = {
   label: string
   onClick: () => void
-  /** Pins the button to the top-right of the nearest positioned surface. */
+  /** Pins the button to the top-left corner of the nearest positioned surface. */
   corner?: boolean
   /** Overrides the default "{label} focus" name. Workspace uses Enter Focus Mode. */
   accessibleName?: string
