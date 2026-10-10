@@ -49,6 +49,25 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'guided-tasks',
+    title: 'Guided Tasks',
+    body: [
+      'Guided Tasks is Learn by doing. Open it from the menu, or from Guide me in Simple. It is a guidance layer over FIELD. It is not a fourth mode and it is not a separate editor. Simple, Technical, and Sensory stay as they are.',
+      'Start from what you want to do. Each step asks for one action in the real editor. A step finishes when that action happens. Next does not mark an editing step complete by itself. Informational steps use Next. Skip is only on steps that are optional. Show me where outlines the control. The rest of the interface stays usable.',
+      'The panel can sit docked, floating, or minimized. Minimize pauses the guidance and keeps the step. Playback and editing continue. Exit leaves the guide and remembers the task. Opening Guided Tasks again resumes it. Restart clears the guide only. It does not reload the sample, reset gain, or remove effects. Back shows the previous instruction and does not undo an edit.',
+      'If a task fits Simple or Technical better, FIELD asks before switching. The sound stays as it is. If Focus hides the control, the guide asks before leaving Focus. If no sample is loaded, load one or generate the existing demo sample. A sample that is already loaded is not replaced.',
+      'Why and Learn more open the same short explanations as Learn Audio. The first lines stay plain. A practical note and an optional technical note stay tucked away until you ask.',
+    ],
+  },
+  {
+    id: 'learn-audio',
+    title: 'Learn Audio',
+    body: [
+      'Learn Audio is the topic library. Open it from Guided Tasks. You can read it with no task running. The topics are waveform, amplitude, gain, decibels, clipping, selection, trim, fade, frequency, EQ, reverb, delay, pitch, speed, reverse, and export.',
+      'Waveform height is amplitude, not a full measure of loudness. Gain changes level. EQ changes frequency balance and does not remove all noise. Reverb adds reflected sound. Delay repeats the sound later. Speed, pitch, and reverse are different moves.',
+    ],
+  },
+  {
     id: 'technical-interface',
     title: 'Technical interface',
     body: [
@@ -366,6 +385,25 @@ const pl: ManualSection[] = [
       'Efekty to pogłos i opóźnienie. Każdy jest wyłączony, dopóki go nie włączysz. Mały, Średni i Duży to przestrzenie. Krótkie, Średnie i Długie to echa. Ilość mówi, jak słyszalny jest dany efekt. Nie zmienia barwy. Gdy opóźnienie jest włączone, fala rysuje blednący znacznik każdego odbicia.',
       'Oryginał i Po porównują wczytany materiał z bieżącym wynikiem Simple. Przełączenie nie kasuje ustawień. Eksport zapisuje ten wynik: przycięcie, zaniki, barwę, pogłos i opóźnienie. Z ogonem zostawia wybrzmienie delay i pogłosu. Bez ogona kończy się razem z samplem.',
       'Simple i Technical korzystają z jednego silnika audio. Barwa, pogłos albo opóźnienie ustawione tutaj to ta sama obróbka, którą Technical pokazuje dokładniej. Jeśli projekt ma już obróbkę, której Simple nie umie pokazać, zostawia ją i mówi, że aktywna jest zaawansowana obróbka. Resetuj zmiany czyści zaniki, barwę, pogłos i opóźnienie. Nie podmienia wczytanego pliku.',
+    ],
+  },
+  {
+    id: 'guided-tasks',
+    title: 'Zadania z przewodnikiem',
+    body: [
+      'Zadania z przewodnikiem to uczenie się przez działanie. Otwierasz je z menu albo przyciskiem Prowadź mnie w trybie Prostym. To warstwa prowadzenia nad FIELD. To nie jest czwarty tryb i nie jest osobny edytor. Prosty, Techniczny i Sensoryczny zostają, jakie są.',
+      'Zaczynasz od tego, co chcesz zrobić. Każdy krok prosi o jedną czynność w prawdziwym edytorze. Krok kończy się, gdy ta czynność się wydarzy. Dalej nie oznacza samo z siebie, że edycja jest gotowa. Kroki informacyjne używają Dalej. Pomiń jest tylko przy krokach opcjonalnych. Pokaż gdzie obrysowuje kontrolkę. Reszta interfejsu zostaje używalna.',
+      'Panel może być zadokowany, unoszony albo zminimalizowany. Minimalizacja zatrzymuje prowadzenie i zostawia krok. Odtwarzanie i edycja idą dalej. Wyjście zostawia przewodnik i pamięta zadanie. Ponowne otwarcie wznawia je. Ponowne rozpoczęcie czyści tylko przewodnik. Nie wczytuje sampla od nowa, nie zeruje gainu i nie usuwa efektów. Wstecz pokazuje poprzednią instrukcję i nie cofa edycji.',
+      'Jeśli zadanie lepiej pasuje do Prostego albo Technicznego, FIELD pyta przed przełączeniem. Dźwięk zostaje, jaki jest. Jeśli Focus chowa kontrolkę, przewodnik pyta, zanim wyjdzie z Focus. Gdy nie ma sampla, wczytaj go albo wygeneruj istniejącą próbkę demo. Wczytany sample nie jest podmieniany.',
+      'Dlaczego i Dowiedz się więcej otwierają te same krótkie wyjaśnienia co Poznaj dźwięk. Pierwsze zdania są zwykłe. Praktyczna uwaga i opcjonalna uwaga techniczna czekają, aż o nie poprosisz.',
+    ],
+  },
+  {
+    id: 'learn-audio',
+    title: 'Poznaj dźwięk',
+    body: [
+      'Poznaj dźwięk to biblioteka tematów. Otwierasz ją z Zadań z przewodnikiem. Możesz czytać bez uruchomionego zadania. Tematy to fala, amplituda, gain, decybele, przesterowanie, zaznaczenie, przycięcie, zanikanie, częstotliwość, EQ, pogłos, delay, wysokość, szybkość, odwrócenie i eksport.',
+      'Wysokość fali to amplituda, nie pełna miara głośności. Gain zmienia poziom. EQ zmienia balans częstotliwości i nie usuwa całego szumu. Pogłos dodaje dźwięk odbić. Delay powtarza dźwięk później. Szybkość, wysokość i odwrócenie to różne ruchy.',
     ],
   },
   {

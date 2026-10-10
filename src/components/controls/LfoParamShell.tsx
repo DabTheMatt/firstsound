@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { fxLfoIsActive, fxLfoKindForParam, isFxLfoTarget, lfoBinding } from '../../audio/fx/lfo'
 import type { ParamId } from '../../audio/parameters/types'
+import { guideTargetAttrs, guideTargetForParam } from '../../guide/targets'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useFxLfoConnect } from '../inspector/FxLfoConnect'
 import styles from './ParamControl.module.css'
@@ -72,6 +73,7 @@ export function LfoParamShell({ id, afford = true, fill = false, children }: Pro
     <div
       className={className}
       data-param-id={id}
+      {...guideTargetAttrs(guideTargetForParam(id))}
       data-lfo-pickable={pickable ? 'true' : 'false'}
       data-lfo-mapped={active ? 'true' : 'false'}
       data-modulation-active={active ? 'true' : 'false'}

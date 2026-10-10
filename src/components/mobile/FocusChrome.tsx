@@ -143,6 +143,8 @@ export function FocusChrome({
             title={playing ? t.transport.pause : t.transport.play}
             aria-pressed={playing}
             disabled={!canPlay}
+            data-guide-target="transport.play"
+            data-guide-rank="2"
             onClick={onTogglePlay}
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
@@ -433,6 +435,11 @@ function WaveTools({ edit }: { edit: WaveFocusActions }) {
   const { t } = useI18n()
   const [more, setMore] = useState(false)
   const menuId = useId()
+  useEffect(() => {
+    const openMore = () => setMore(true)
+    window.addEventListener('field-guide-open-more', openMore)
+    return () => window.removeEventListener('field-guide-open-more', openMore)
+  }, [])
   const selection = edit.canClear
 
   useEffect(() => {
@@ -485,10 +492,10 @@ function WaveTools({ edit }: { edit: WaveFocusActions }) {
           <Icon label={t.waveform.deleteSelection} disabled={!edit.canDelete} onClick={edit.onDelete}>
             <TrashIcon />
           </Icon>
-          <Icon label={t.waveform.fadeIn} onClick={edit.onFadeIn}>
+          <Icon label={t.waveform.fadeIn} guideTarget="edit.fadeIn" onClick={edit.onFadeIn}>
             <FadeInIcon />
           </Icon>
-          <Icon label={t.waveform.fadeOut} onClick={edit.onFadeOut}>
+          <Icon label={t.waveform.fadeOut} guideTarget="edit.fadeOut" onClick={edit.onFadeOut}>
             <FadeOutIcon />
           </Icon>
         </>
@@ -499,7 +506,7 @@ function WaveTools({ edit }: { edit: WaveFocusActions }) {
         </Icon>
         {more ? (
           <div className={styles.menu} id={menuId} role="menu" data-focus-popover="">
-            <button type="button" role="menuitem" onClick={() => { edit.onTrim(); setMore(false) }}>
+            <button type="button" role="menuitem" data-guide-target="edit.trim" data-guide-rank="2" onClick={() => { edit.onTrim(); setMore(false) }}>
               {t.waveform.trimTitle}
             </button>
             <button type="button" role="menuitem" disabled={!edit.canInsert} onClick={() => { edit.onInsertSilence(); setMore(false) }}>
@@ -520,12 +527,14 @@ function Icon({
   pressed,
   disabled,
   onClick,
+  guideTarget,
   children,
 }: {
   label: string
   pressed?: boolean
   disabled?: boolean
   onClick?: () => void
+  guideTarget?: string
   children: ReactNode
 }) {
   return (
@@ -536,6 +545,8 @@ function Icon({
       title={label}
       aria-pressed={pressed}
       disabled={disabled}
+      data-guide-target={guideTarget}
+      data-guide-rank={guideTarget ? '2' : undefined}
       onClick={onClick}
     >
       {children}

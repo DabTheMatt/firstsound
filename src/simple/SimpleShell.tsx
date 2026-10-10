@@ -11,6 +11,10 @@ import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
 import { useI18n } from '../i18n'
 import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
+import { guideChrome } from '../guide/copy'
+import { emitGuideEvent } from '../guide/events'
+import { dispatchGuide } from '../guide/store'
+import { guideTargetAttrs } from '../guide/targets'
 import { StableLabel } from '../components/header/StableLabel'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { Wordmark } from '../components/header/Wordmark'
@@ -112,6 +116,7 @@ export function SimpleShell({
   onMode,
 }: Props) {
   const { t, locale } = useI18n()
+  const guide = guideChrome(locale)
   const { mode: layoutMode } = useLayoutMode()
   const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const sidePanel = frame === 'desktop'
@@ -217,6 +222,19 @@ export function SimpleShell({
   }, [])
 
   useEffect(() => {
+    const onSection = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      if (detail === 'edit' || detail === 'sound' || detail === 'effects') setSection(detail)
+    }
+    window.addEventListener('field-guide-section', onSection)
+    return () => window.removeEventListener('field-guide-section', onSection)
+  }, [])
+
+  useEffect(() => {
+    window.dispatchEvent(new Event('field-guide-revealed'))
+  }, [section])
+
+  useEffect(() => {
     if (!status) return
     const id = window.setTimeout(() => setStatus(null), 3200)
     return () => window.clearTimeout(id)
@@ -292,6 +310,7 @@ export function SimpleShell({
   }
 
   const toggleCompare = (original: boolean) => {
+    emitGuideEvent('compare.used')
     if (original === listenOriginal) return
     if (original) {
       const shot = captureDsp(engine)
@@ -335,6 +354,7 @@ export function SimpleShell({
         const blob = encodeSimpleWav(prepared, saveBits)
         const filename = simpleExportFilename(saveName, 'wav')
         downloadBlob(filename, blob)
+        emitGuideEvent('export.completed')
         pushHearingAlert({
           id: 'export',
           title: 'EXPORT COMPLETE',
@@ -397,7 +417,7 @@ export function SimpleShell({
           <div className={styles.stack}>
             <section className={styles.group} aria-labelledby="simple-trim">
               <h2 id="simple-trim">{t.simple.trim}</h2>
-              <button type="button" className={styles.action} disabled={!snap.sampleLoaded || !hasSelection} onClick={onApplyTrim}>
+              <button type="button" className={styles.action} disabled={!snap.sampleLoaded || !hasSelection} {...guideTargetAttrs('edit.trim')} onClick={onApplyTrim}>
                 {t.simple.trimToSelection}
               </button>
               <p className={styles.meta}>{t.simple.length(formatSimpleSeconds(regionLen, locale))}</p>
@@ -426,6 +446,7 @@ export function SimpleShell({
             </section>
             <FadeGroup
               id="fade-in"
+              guideTarget="edit.fadeIn"
               side="in"
               label={t.simple.fadeIn}
               value={fadeInStep}
@@ -436,6 +457,7 @@ export function SimpleShell({
             />
             <FadeGroup
               id="fade-out"
+              guideTarget="edit.fadeOut"
               side="out"
               label={t.simple.fadeOut}
               value={fadeOutStep}
@@ -459,7 +481,7 @@ export function SimpleShell({
           <div className={styles.stack}>
             <div className={styles.group} role="radiogroup" aria-label={t.simple.sound}>
               <h2>{t.simple.toneGroup}</h2>
-              <div className={styles.choices}>
+              <div className={styles.choices} {...guideTargetAttrs('sound.warmth')}>
                 {TONE_CHARACTER_IDS.map((id) => (
                   <button
                     key={id}
@@ -477,7 +499,7 @@ export function SimpleShell({
                 ))}
               </div>
               <h2>{t.simple.clarity}</h2>
-              <div className={styles.choices}>
+              <div className={styles.choices} {...guideTargetAttrs('sound.clarity')}>
                 {CLARITY_IDS.map((id) => (
                   <button
                     key={id}
@@ -533,6 +555,7 @@ export function SimpleShell({
                 </span>
                 <input
                   type="range"
+                  {...guideTargetAttrs('input.gain')}
                   min={PARAMS.gain.min}
                   max={PARAMS.gain.max}
                   step={PARAMS.gain.step ?? 0.1}
@@ -556,6 +579,7 @@ export function SimpleShell({
         {section === 'effects' ? (
           <div className={styles.stack}>
             <EffectBlock
+              guideTarget="effect.reverb"
               title={t.simple.reverb}
               hint={t.simple.reverbHint}
               state={reverb.kind === 'off' ? 'off' : reverb.kind === 'custom' ? 'custom' : 'on'}
@@ -616,6 +640,7 @@ export function SimpleShell({
               ) : null}
             </EffectBlock>
             <EffectBlock
+              guideTarget="effect.delay"
               title={t.simple.delay}
               hint={t.simple.delayHint}
               state={delay.kind === 'off' ? 'off' : delay.kind === 'custom' ? 'custom' : 'on'}
@@ -689,6 +714,7 @@ export function SimpleShell({
         data-geometry="circle"
         disabled={!snap.sampleLoaded}
         aria-label={snap.playing ? t.simple.pause : t.simple.play}
+        {...guideTargetAttrs('transport.play')}
         onClick={() => void engine.unlock().then(() => engine.togglePlay())}
       >
         {snap.playing ? '❚❚' : '▶'}
@@ -696,7 +722,7 @@ export function SimpleShell({
       <p className={styles.clock} aria-live="off">
         {t.simple.clock(formatSimpleClock(now), formatSimpleClock(regionLen || snap.duration))}
       </p>
-      <div className={styles.compare} role="radiogroup" aria-label={t.simple.compare}>
+      <div className={styles.compare} role="radiogroup" aria-label={t.simple.compare} {...guideTargetAttrs('transport.compare')}>
         <button
           type="button"
           role="radio"
@@ -719,7 +745,7 @@ export function SimpleShell({
         </button>
       </div>
       {sidePanel ? (
-        <button type="button" className={styles.export} data-simple-export="" disabled={!snap.sampleLoaded} onClick={() => setSheet('save')}>
+        <button type="button" className={styles.export} data-simple-export="" {...guideTargetAttrs('export.open')} disabled={!snap.sampleLoaded} onClick={() => { emitGuideEvent('export.opened'); setSheet('save') }}>
           {t.transport.export}
         </button>
       ) : null}
@@ -769,6 +795,9 @@ export function SimpleShell({
           >
             ···
           </button>
+          <button type="button" className={styles.load} onClick={() => dispatchGuide({ type: 'open-library' })}>
+            {guide.guideMe}
+          </button>
         </header>
         <div className={styles.belowHeader}>
           <div className={styles.belowMain}>
@@ -805,10 +834,10 @@ export function SimpleShell({
                     fxMode={!listenOriginal && delay.kind !== 'off' ? 'delay' : null}
                   />
                 </div>
-                {hasSelection ? (
-                  <div className={styles.selection} role="region" aria-label={t.simple.selection}>
+                  {hasSelection ? (
+                  <div className={styles.selection} role="region" aria-label={t.simple.selection} {...guideTargetAttrs('waveform.selection')}>
                     <span className={styles.selectionLabel}>{t.simple.selection}</span>
-                    <button type="button" className={styles.chip} onClick={onApplyTrim}>
+                    <button type="button" className={styles.chip} {...guideTargetAttrs('edit.trim', '1')} onClick={onApplyTrim}>
                       {t.simple.trimToSelection}
                     </button>
                     <button type="button" className={styles.chip} aria-label={t.simple.fadeIn} onClick={() => quickFade('in')}>
@@ -828,7 +857,7 @@ export function SimpleShell({
             {transport}
             {sidePanel ? null : panel}
             {sidePanel ? null : (
-              <button type="button" className={styles.export} data-simple-export="" disabled={!snap.sampleLoaded} onClick={() => setSheet('save')}>
+              <button type="button" className={styles.export} data-simple-export="" {...guideTargetAttrs('export.open', '1')} disabled={!snap.sampleLoaded} onClick={() => { emitGuideEvent('export.opened'); setSheet('save') }}>
                 {t.transport.export}
               </button>
             )}
@@ -908,7 +937,7 @@ export function SimpleShell({
                     </label>
                   </>
                 ) : null}
-                <button type="submit" className={styles.export} disabled={saving}>
+                <button type="submit" className={styles.export} {...guideTargetAttrs('export.confirm')} disabled={saving}>
                   {saving ? t.export.rendering : t.transport.export}
                 </button>
               </form>
@@ -980,6 +1009,7 @@ function FadeGroup({
   aria,
   disabled,
   onChange,
+  guideTarget,
 }: {
   id: string
   side: 'in' | 'out'
@@ -989,9 +1019,10 @@ function FadeGroup({
   aria: (step: string) => string
   disabled: boolean
   onChange: (step: FadeStepId) => void
+  guideTarget?: 'edit.fadeIn' | 'edit.fadeOut'
 }) {
   return (
-    <section className={styles.group}>
+    <section className={styles.group} {...guideTargetAttrs(guideTarget ?? null)}>
       <h2 id={id} className={styles.fadeHead}>
         <FadeMark side={side} />
         <span className="sr-only">{label}</span>
@@ -1075,6 +1106,7 @@ function EffectBlock({
   onEnable,
   onDisable,
   children,
+  guideTarget,
 }: {
   title: string
   hint: string
@@ -1087,10 +1119,11 @@ function EffectBlock({
   onEnable: () => void
   onDisable: () => void
   children: ReactNode
+  guideTarget?: 'effect.reverb' | 'effect.delay'
 }) {
   const status = state === 'off' ? offLabel : state === 'custom' ? customLabel : onLabel
   return (
-    <section className={styles.effect}>
+    <section className={styles.effect} {...guideTargetAttrs(guideTarget ?? null)}>
       <div className={styles.effectHead}>
         <h2>{title}</h2>
         <span className={styles.effectState}>{status}</span>

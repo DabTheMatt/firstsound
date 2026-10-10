@@ -39,6 +39,8 @@ import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWavefor
 import type { WaveTool, VizMode } from '../../app/editorState'
 import { phoneDisplayViz, type FocusWorkspace } from '../../app/phoneWorkspace'
 import { engine, useEngine } from '../../hooks/useEngine'
+import { emitGuideEvent } from '../../guide/events'
+import { guideTargetAttrs } from '../../guide/targets'
 import { useI18n } from '../../i18n'
 import { placeAutomationLabels } from './automationLabelLayout'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
@@ -1406,6 +1408,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           role="region"
           aria-label="Waveform editor"
           tabIndex={sensory ? undefined : 0}
+          {...guideTargetAttrs('waveform.main')}
+          onPointerDown={() => emitGuideEvent('waveform.touched')}
           onKeyDown={onEditorKeyDown}
           style={
             hearingFocus
@@ -1730,11 +1734,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 <div className={styles.empty}>
                   <span>{emptyLabel ?? t.waveform.empty}</span>
                   {onLoadSample ? (
-                    <button type="button" className={`${styles.demo} ${styles.loadPrimary}`} onClick={onLoadSample}>
+                    <button type="button" className={`${styles.demo} ${styles.loadPrimary}`} {...guideTargetAttrs('sample.load')} onClick={onLoadSample}>
                       {t.header.loadSample}
                     </button>
                   ) : null}
-                  <button type="button" className={styles.demo} onClick={onLoadDemo}>
+                  <button type="button" className={styles.demo} {...guideTargetAttrs('sample.demo')} onClick={onLoadDemo}>
                     {t.waveform.loadDemo}
                   </button>
                 </div>

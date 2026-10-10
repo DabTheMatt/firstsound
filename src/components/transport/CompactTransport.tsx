@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
+import { guideTargetAttrs } from '../../guide/targets'
 import { useI18n } from '../../i18n'
 import { TransportButton } from '../controls/TransportButton'
 import { transportDensity, type TransportDensity } from './transportDensity'
@@ -170,6 +171,7 @@ export function CompactTransport({
           playing={playing}
           disabled={disabled}
           compact={minimal}
+          guideTarget="transport.play"
           onToggle={() => {
             void engine.unlock().then(() => engine.togglePlay())
           }}
@@ -241,7 +243,7 @@ type ExportProps = {
 export function TransportExportButton({ disabled, onExport }: ExportProps) {
   const { t } = useI18n()
   return (
-    <button type="button" className={styles.export} disabled={disabled} onClick={onExport}>
+    <button type="button" className={styles.export} {...guideTargetAttrs('export.open')} disabled={disabled} onClick={onExport}>
       {t.transport.export}
     </button>
   )

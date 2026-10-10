@@ -468,6 +468,7 @@ function IconButton({
       title={label}
       aria-pressed={pressed}
       disabled={disabled}
+      {...(command === 'trim' ? { 'data-guide-target': 'edit.trim', 'data-guide-rank': '2' } : {})}
       data-edit-command={group === 'edit' ? command : undefined}
       data-display-command={group === 'display' ? command : undefined}
       onClick={onClick}

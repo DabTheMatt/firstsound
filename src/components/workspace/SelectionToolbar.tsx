@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { guideTargetAttrs, guideTargetForAction } from '../../guide/targets'
 import { useI18n } from '../../i18n'
 import styles from './Workspace.module.css'
 
@@ -26,6 +27,12 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const openMore = () => setOpen(true)
+    window.addEventListener('field-guide-open-more', openMore)
+    return () => window.removeEventListener('field-guide-open-more', openMore)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -62,6 +69,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
               type="button"
               className={action.danger ? styles.dangerButton : styles.textButton}
               disabled={action.disabled}
+              {...guideTargetAttrs(guideTargetForAction(action.id))}
               onClick={action.onClick}
             >
               {action.label}
@@ -87,6 +95,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
               role="menuitem"
               className={styles.menuItem}
               disabled={action.disabled}
+              {...guideTargetAttrs(guideTargetForAction(action.id))}
               onClick={() => {
                 setOpen(false)
                 action.onClick()

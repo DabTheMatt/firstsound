@@ -3,6 +3,8 @@ import { formatTimecode } from '../../audio/engine/formatTime'
 import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
+import { emitGuideEvent } from '../../guide/events'
+import { guideTargetAttrs } from '../../guide/targets'
 import { engine } from '../../hooks/useEngine'
 import { pushHearingAlert } from '../../hearing/alerts'
 import { useI18n } from '../../i18n'
@@ -120,6 +122,7 @@ export function ExportDialog({ snap, onClose }: Props) {
           return
         }
         downloadBlob(result.filename, result.blob)
+        emitGuideEvent('export.completed')
         pushHearingAlert({
           id: 'export',
           title: 'EXPORT COMPLETE',
@@ -224,7 +227,7 @@ export function ExportDialog({ snap, onClose }: Props) {
           >
             {phaseLabel(t.export.exportSelection)}
           </button>
-          <button type="submit" className={styles.export} disabled={busy}>
+          <button type="submit" className={styles.export} {...guideTargetAttrs('export.confirm')} disabled={busy}>
             {phaseLabel(t.export.exportProject)}
           </button>
         </div>

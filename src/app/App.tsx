@@ -68,6 +68,11 @@ import { focusWorkspaceForViz, phoneDisplayViz, type FocusWorkspace } from './ph
 import { ThemePicker } from '../components/header/ThemePicker'
 import { SensoryShell } from '../sensory/components/SensoryShell'
 import { SimpleShell } from '../simple/SimpleShell'
+import { GuideLayer } from '../guide/GuideLayer'
+import { guideChrome } from '../guide/copy'
+import { emitGuideEvent } from '../guide/events'
+import { dispatchGuide, setGuideHost } from '../guide/store'
+import { moduleTypeForTarget, simpleSectionFor } from '../guide/targets'
 import { cloneSpectralState, spectralStatesEqual, type SpectralState } from '../audio/spectral/bands'
 import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../sensory/colorSound'
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
@@ -173,7 +178,7 @@ function histEqual(a: Hist, b: Hist): boolean {
 }
 
 export default function App() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { settings: a11y } = useA11ySettings()
   const [technicalUi, setTechnicalUi] = useTechnicalInterface()
   const [eqLayout, setEqLayout] = useEqWorkspaceLayout()
@@ -543,6 +548,11 @@ export default function App() {
     persistUiMode(mode)
     if (mode === 'sensory') prepareSensoryLayer()
     setUiMode(mode)
+  }
+
+  const openExport = () => {
+    emitGuideEvent('export.opened')
+    setExportOpen(true)
   }
 
   const rememberFocus = (next: InspectorFocus, trackId = engine.getSnapshot().selectedTrackId) => {
@@ -967,7 +977,7 @@ export default function App() {
             type="button"
             disabled={!snap.sampleLoaded}
             onClick={() => {
-              setExportOpen(true)
+              openExport()
               setMenuOpen(false)
             }}
           >
@@ -1087,6 +1097,15 @@ export default function App() {
           {t.settings.resetAll}
         </button>
         <ResetSessionButton label={t.header.resetTitle} onReset={resetSession} />
+        <button
+          type="button"
+          onClick={() => {
+            dispatchGuide({ type: 'open-library' })
+            setMenuOpen(false)
+          }}
+        >
+          {guideChrome(locale).title}
+        </button>
         <button type="button" onClick={() => { setManualOpen(true); setMenuOpen(false) }}>
           {t.header.manual}
         </button>
@@ -1111,7 +1130,7 @@ export default function App() {
         <A11ySettings />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
+    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, locale, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
   )
 
   const fileInputs = (
@@ -1173,6 +1192,43 @@ export default function App() {
       </div>
     </div>
   ) : null
+
+  useLayoutEffect(() => {
+    setGuideHost({
+      uiMode,
+      focusActive: Boolean(focusWorkspace),
+      menuOpen,
+      loadSample: () => sampleInput.current?.click(),
+      loadDemo: () => {
+        void engine.unlock().then(() => engine.loadDemoTone())
+      },
+      setMode: chooseMode,
+      exitFocus: () => setFocusWorkspace(null),
+      revealTarget: (id) => {
+        const section = simpleSectionFor(id)
+        if (section) window.dispatchEvent(new CustomEvent('field-guide-section', { detail: section }))
+        if (id === 'edit.trim' || id === 'edit.fadeIn' || id === 'edit.fadeOut') {
+          window.dispatchEvent(new Event('field-guide-open-more'))
+        }
+        const type = moduleTypeForTarget(id)
+        if (type && uiMode === 'technical') {
+          const mod = engine.getSnapshot().chain.find((item) => item.type === type)
+          if (mod) selectModule(mod.instanceId)
+        }
+        window.dispatchEvent(new Event('field-guide-revealed'))
+      },
+    })
+  })
+
+  const guide = (
+    <GuideLayer
+      fadeIn={edit.fadeIn}
+      fadeOut={edit.fadeOut}
+      exportOpen={exportOpen}
+      focusActive={Boolean(focusWorkspace)}
+      menuOpen={menuOpen}
+    />
+  )
 
   if (uiMode === null) {
     return (
@@ -1239,6 +1295,7 @@ export default function App() {
         />
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
+        {guide}
         <HearingAccessLayer surface="simple" />
       </>
     )
@@ -1287,6 +1344,7 @@ export default function App() {
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
         {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+        {guide}
         <HearingAccessLayer surface="sensory" />
       </>
     )
@@ -1721,7 +1779,7 @@ export default function App() {
             viewSpan={Math.max(0.001, snap.prep.windowEnd - snap.prep.windowStart)}
             moreOpen={false}
             onToggleMore={() => undefined}
-            onExport={() => setExportOpen(true)}
+            onExport={openExport}
             onDone={() => {
               engine.stopPreview()
               setEditMode(false)
@@ -1749,7 +1807,7 @@ export default function App() {
           {isPhoneLayout ? null : (
           <div className={styles.exportCol}>
             <HearingTransportButton hidden={activeFocus === 'hearing'} />
-            <TransportExportButton disabled={!snap.sampleLoaded} onExport={() => setExportOpen(true)} />
+            <TransportExportButton disabled={!snap.sampleLoaded} onExport={openExport} />
           </div>
           )}
         </div>
@@ -1776,6 +1834,7 @@ export default function App() {
         {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+      {guide}
       <HearingAccessLayer surface="technical" focus={activeFocus} onEnterFocus={enterHearingFocus} />
     </div>
     </FxLfoConnectProvider>

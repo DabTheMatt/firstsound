@@ -10,6 +10,7 @@ import {
 } from '../../audio/chain/chain'
 import { announce, useA11ySettings } from '../../a11y'
 import { onPointerReset } from '../../app/pointerSession'
+import { guideTargetAttrs, guideTargetForModule } from '../../guide/targets'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
@@ -193,6 +194,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
             <div
               className={`${styles.tile} ${selected ? styles.selected : ''} ${enabled ? styles.enabled : styles.bypassed} ${fixed ? styles.locked : styles.movable}`}
               title={fixed ? label : t.chain.dragHint}
+              {...guideTargetAttrs(guideTargetForModule(mod.type), '1')}
               onPointerEnter={() => markDrop(index)}
             >
               <button

@@ -1,3 +1,4 @@
+import { guideTargetAttrs } from '../../guide/targets'
 import { useI18n } from '../../i18n'
 import styles from './TransportButton.module.css'
 
@@ -7,15 +8,17 @@ type Props = {
   disabled?: boolean
   compact?: boolean
   prominent?: boolean
+  guideTarget?: 'transport.play'
 }
 
-export function TransportButton({ playing, onToggle, disabled, compact = false, prominent = false }: Props) {
+export function TransportButton({ playing, onToggle, disabled, compact = false, prominent = false, guideTarget }: Props) {
   const { t } = useI18n()
   return (
     <button
       type="button"
       className={`${styles.play} ${compact ? styles.compact : ''} ${prominent ? styles.prominent : ''}`}
       data-geometry="circle"
+      {...guideTargetAttrs(guideTarget ?? null)}
       onClick={onToggle}
       disabled={disabled}
       aria-label={playing ? t.transport.pause : t.transport.play}

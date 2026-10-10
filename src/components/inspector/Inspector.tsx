@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { guideTargetAttrs, guideTargetForModule } from '../../guide/targets'
 import { eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
@@ -572,7 +573,7 @@ function ModuleInspector({
     const ids = primaryParamIds(type)
     return (
       <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
-        <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact">
+        <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact" {...guideTargetAttrs(guideTargetForModule(type))}>
           <div className={styles.head}>
             <h2 className={styles.title} id={`module-${instanceId}-title`}>
               {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
@@ -598,7 +599,7 @@ function ModuleInspector({
   }
   return (
     <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
-    <section className={styles.module} aria-labelledby={`module-${instanceId}-title`}>
+    <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} {...guideTargetAttrs(guideTargetForModule(type))}>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
         <h2 className={styles.title} id={`module-${instanceId}-title`}>
@@ -640,6 +641,7 @@ function ModuleInspector({
         <>
           <Segmented
             label="Direction"
+            guideTarget="input.reverse"
             value={snap.direction}
             options={PLAYBACK_DIRECTIONS}
             wrap
