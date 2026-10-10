@@ -26,6 +26,8 @@ type Props = {
   modeSwitch?: ReactNode
   uiSwitch?: ReactNode
   zoned?: boolean
+  guideLabel?: string
+  onOpenGuide?: () => void
 }
 
 export function AppHeader({
@@ -42,6 +44,8 @@ export function AppHeader({
   modeSwitch,
   uiSwitch,
   zoned = false,
+  guideLabel,
+  onOpenGuide,
 }: Props) {
   const { t } = useI18n()
   const rate = snap.sampleRate ? `${Math.round(snap.sampleRate / 1000)} kHz` : '—'
@@ -147,6 +151,11 @@ export function AppHeader({
         </button>
         ) : null}
         <div className={styles.utilities}>
+          {onOpenGuide && guideLabel ? (
+            <button type="button" className={styles.guide} aria-label={guideLabel} onClick={onOpenGuide}>
+              {guideLabel}
+            </button>
+          ) : null}
           {uiSwitch}
           <ResetSessionButton onReset={onReset} label={t.header.resetAction} toolbar />
           <ChaosControl />

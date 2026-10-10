@@ -162,6 +162,11 @@
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
+.guideLink {
+  min-height: 44px;
+  padding: 0 10px;
+}
+
 .textButton:disabled,
 .dangerButton:disabled,
 .menuItem:disabled {

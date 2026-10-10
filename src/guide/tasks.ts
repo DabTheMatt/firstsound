@@ -1,4 +1,4 @@
-import type { GuideStep, GuideTask, Localized, StepCompletion } from './types'
+import type { GuideModule, GuideStep, GuideTask, Localized, StepCompletion, TechnicalFace } from './types'
 
 const text = (en: string, pl: string): Localized => ({ en, pl })
 
@@ -17,6 +17,10 @@ function step(
     advanced?: Localized | null
     success?: Localized | null
     tryThis?: Localized | null
+    modes?: 'simple' | 'technical'
+    module?: GuideModule | null
+    skipIfPresent?: boolean
+    technical?: TechnicalFace | null
   } = {},
 ): GuideStep {
   return {
@@ -33,6 +37,10 @@ function step(
     advanced: extras.advanced ?? null,
     success: extras.success ?? null,
     tryThis: extras.tryThis ?? null,
+    modes: extras.modes,
+    module: extras.module ?? null,
+    skipIfPresent: extras.skipIfPresent ?? false,
+    technical: extras.technical ?? null,
   }
 }
 
@@ -51,7 +59,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'basic',
     difficulty: 'easy',
     minutes: 3,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'waveform', 'trim'],
     topics: ['selection', 'trim', 'waveform'],
@@ -61,8 +69,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Zostaw fragment, którego chcesz, a resztę odetnij.',
     ),
     modeNote: text(
-      'Simple keeps Trim next to the waveform. Your sound stays as it is if you switch.',
-      'W Simple przycięcie jest przy fali. Po przełączeniu dźwięk zostaje, jaki jest.',
+      'Trim sits on the waveform in both Simple and Technical. Switching mode does not change the sound.',
+      'Przycięcie jest przy fali w Prostym i w Technicznym. Przełączenie trybu nie zmienia dźwięku.',
     ),
     steps: [
       play(
@@ -81,6 +89,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           topics: ['selection', 'waveform'],
           hint: text('The edges of the highlight are the start and the end.', 'Krawędzie zaznaczenia to początek i koniec.'),
           why: text('Trim uses this range. Nothing is deleted until you trim.', 'Przycięcie używa tego zakresu. Nic nie znika, dopóki nie przytniesz.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text(
+              'Drag across the waveform. Cover only the part you want to keep.',
+              'Przeciągnij po fali. Obejmij tylko fragment, który chcesz zostawić.',
+            ),
+          },
           more: text('You can drag the edges again if the range is too long or too short.', 'Możesz znowu pociągnąć krawędzie, jeśli zakres jest za długi albo za krótki.'),
           success: text('Done — a range is selected.', 'Gotowe — zakres jest zaznaczony.'),
         },
@@ -94,6 +109,12 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['trim.completed'] },
           topics: ['trim', 'selection'],
           why: text('Trimming is how a long recording becomes the piece you meant to keep.', 'Przycięcie zamienia długie nagranie w kawałek, który chciałeś zostawić.'),
+          technical: {
+            instruction: text(
+              'Press Trim on the waveform toolbar. FIELD keeps the selection and removes the audio outside it.',
+              'Naciśnij Przytnij na pasku fali. FIELD zostawia zaznaczenie i usuwa audio poza nim.',
+            ),
+          },
           more: text('What is trimming? It crops time. It does not change tone, reverb, or level.', 'Czym jest przycięcie? Obcina czas. Nie zmienia barwy, pogłosu ani poziomu.'),
           advanced: text('The working buffer is replaced by the rendered region. Undo can bring the previous buffer back.', 'Roboczy bufor zastępuje wyrenderowany region. Cofnięcie może przywrócić poprzedni bufor.'),
           success: text('Done — the recording is trimmed.', 'Gotowe — nagranie jest przycięte.'),
@@ -123,7 +144,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'basic',
     difficulty: 'easy',
     minutes: 4,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['waveform', 'fade', 'transport'],
     topics: ['fade', 'waveform'],
@@ -133,8 +154,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Złagodź krawędzie, żeby nagranie nie klikało.',
     ),
     modeNote: text(
-      'Simple shows fade in and fade out as curves beside the wave.',
-      'Simple pokazuje fade in i fade out jako krzywe obok fali.',
+      'Simple shows fade curves beside the wave. Technical uses the same fades on the selection toolbar.',
+      'Prosty pokazuje krzywe zaniku obok fali. Techniczny używa tych samych zaników na pasku zaznaczenia.',
     ),
     steps: [
       step(
@@ -145,6 +166,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'waveform.main',
           topics: ['fade', 'waveform'],
           why: text('A click is a sudden jump in the signal, often at a cut.', 'Klik to nagły skok sygnału, często na cięciu.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text(
+              'Find the start of the waveform. A steep edge can click when playback begins.',
+              'Znajdź początek fali. Stroma krawędź może kliknąć, gdy odtwarzanie rusza.',
+            ),
+          },
           more: text('The same thing can happen at the end if the wave stops in the middle of a swing.', 'To samo może stać się na końcu, gdy fala urywa się w połowie wychylenia.'),
         },
       ),
@@ -157,6 +185,12 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['fade.in'] },
           topics: ['fade'],
           why: text('Fade in rises from silence, so the start does not jump.', 'Fade in narasta od ciszy, więc początek nie skacze.'),
+          technical: {
+            instruction: text(
+              'On the selection toolbar, choose a fade in longer than none. Short is a good first try.',
+              'Na pasku zaznaczenia wybierz fade in dłuższy niż brak. Krótki to dobry pierwszy krok.',
+            ),
+          },
           success: text('Done — fade in is on.', 'Gotowe — fade in jest włączony.'),
           tryThis: text('If the start still feels abrupt, choose a longer curve and play it.', 'Jeśli początek nadal jest ostry, wybierz dłuższą krzywą i odtwórz.'),
         },
@@ -170,6 +204,12 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['fade.out'] },
           topics: ['fade'],
           why: text('Fade out falls to silence, so the ending does not stop dead.', 'Fade out opada do ciszy, więc koniec nie urywa się nagle.'),
+          technical: {
+            instruction: text(
+              'On the selection toolbar, choose a fade out at the end. Short or medium both work.',
+              'Na pasku zaznaczenia wybierz fade out na końcu. Krótki albo średni, oba są dobre.',
+            ),
+          },
           success: text('Done — fade out is on.', 'Gotowe — fade out jest włączony.'),
         },
       ),
@@ -182,6 +222,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['playback.started', 'compare.used'] },
           topics: ['fade'],
           success: text('Done — you compared the edge.', 'Gotowe — porównałeś krawędź.'),
+          technical: {
+            target: 'transport.play',
+            instruction: text(
+              'Press play and listen to the edges.',
+              'Naciśnij odtwarzanie i posłuchaj krawędzi.',
+            ),
+          },
         },
       ),
     ],
@@ -191,7 +238,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'basic',
     difficulty: 'easy',
     minutes: 3,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'gain'],
     topics: ['gain', 'decibels', 'clipping'],
@@ -201,8 +248,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Zrób nagranie ciszej albo głośniej za pomocą Gain.',
     ),
     modeNote: text(
-      'In Simple, Gain is under Sound, in Level. The guide will not move it for you.',
-      'W Simple Gain jest w Dźwięk, w sekcji Poziom. Prowadzenie samo go nie ruszy.',
+      'In Simple, Gain is under Sound. In Technical, select Input and use Gain. The guide will not move it for you.',
+      'W Prostym Gain jest w Dźwięk. W Technicznym wybierz Wejście i użyj Gain. Prowadzenie samo go nie ruszy.',
     ),
     steps: [
       play(
@@ -219,6 +266,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'input.gain',
           topics: ['gain', 'decibels'],
           why: text('Gain changes signal level. It is the direct volume control.', 'Gain zmienia poziom sygnału. To bezpośrednia kontrolka głośności.'),
+          technical: {
+            target: 'technical.inputGain',
+            instruction: text(
+              'Select Input in the effect chain, then find Gain.',
+              'Wybierz Wejście w łańcuchu efektów, potem znajdź Gain.',
+            ),
+          },
           more: text('dB is the scale. A higher number is louder. A lower number is quieter.', 'dB to skala. Wyższa liczba jest głośniejsza. Niższa jest cichsza.'),
         },
       ),
@@ -231,6 +285,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['gain.changed'] },
           topics: ['gain', 'decibels', 'clipping'],
           why: text('A small change is easier to judge than a huge one.', 'Małą zmianę łatwiej ocenić niż ogromną.'),
+          technical: {
+            target: 'technical.inputGain',
+            instruction: text(
+              'Move Gain a little. Louder or quieter is your choice. Do not push it until the sound breaks.',
+              'Przesuń Gain odrobinę. Głośniej albo ciszej, jak wolisz. Nie podnoś, aż dźwięk się złamie.',
+            ),
+          },
           more: text('If the top of the sound flattens or crackles, that is clipping. Ease the gain down. The spare room under the ceiling is headroom.', 'Jeśli szczyt dźwięku się spłaszcza albo trzeszczy, to przesterowanie. Zmniejsz gain. Zapas pod sufitem to headroom.'),
           advanced: text('Gain does not raise perceived loudness in a simple straight line. +6 dB is about twice the amplitude.', 'Gain nie podnosi odczuwanej głośności w prostej linii. +6 dB to około dwa razy większa amplituda.'),
           success: text('Done — Gain moved.', 'Gotowe — Gain się przesunął.'),
@@ -255,7 +316,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'basic',
     difficulty: 'moderate',
     minutes: 6,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['waveform', 'trim', 'fade', 'gain', 'export'],
     topics: ['selection', 'trim', 'fade', 'gain', 'export'],
@@ -279,6 +340,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           skippable: true,
           topics: ['selection'],
           hint: text('Skip this if the whole recording should stay.', 'Pomiń, jeśli ma zostać całe nagranie.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text('Drag the part that should be in the file.', 'Przeciągnij fragment, który ma być w pliku.'),
+          },
           success: text('Done — the region is set.', 'Gotowe — region jest ustawiony.'),
         },
       ),
@@ -292,6 +357,12 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           skippable: true,
           topics: ['trim'],
           hint: text('Skip if you already like the length.', 'Pomiń, jeśli długość już jest dobra.'),
+          technical: {
+            instruction: text(
+              'Press Trim on the waveform toolbar only if audio outside the selection should leave the file.',
+              'Naciśnij Przytnij na pasku fali tylko wtedy, gdy audio poza zaznaczeniem ma zniknąć z pliku.',
+            ),
+          },
           success: text('Done — trimmed.', 'Gotowe — przycięte.'),
         },
       ),
@@ -304,6 +375,12 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'all', actions: ['fade.in', 'fade.out'] },
           topics: ['fade'],
           hint: text('Set fade out as well. The outline moves there when fade in is done.', 'Ustaw też fade out. Obrys przejdzie tam, gdy fade in będzie gotowy.'),
+          technical: {
+            instruction: text(
+              'On the selection toolbar, add a fade in and a fade out so the file does not click.',
+              'Na pasku zaznaczenia dodaj fade in i fade out, żeby plik nie klikał.',
+            ),
+          },
           success: text('Done — both fades are in.', 'Gotowe — oba zaniki są.'),
         },
       ),
@@ -315,6 +392,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'input.gain',
           topics: ['gain', 'decibels', 'clipping'],
           why: text('Export keeps the level you hear. Clipping in the file stays in the file.', 'Eksport zachowuje poziom, który słyszysz. Przesterowanie w pliku zostaje w pliku.'),
+          technical: {
+            target: 'technical.inputGain',
+            instruction: text(
+              'Select Input, then look at Gain. If the recording is too quiet or too hot, move it a little.',
+              'Wybierz Wejście, potem spójrz na Gain. Jeśli nagranie jest za ciche albo za ostre, przesuń go odrobinę.',
+            ),
+          },
           more: text('Headroom is unused space before 0 dB. This step does not normalize the audio.', 'Headroom to wolne miejsce przed 0 dB. Ten krok nie normalizuje audio.'),
         },
       ),
@@ -327,6 +411,13 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['export.opened'] },
           topics: ['export'],
           success: text('Done — Export is open.', 'Gotowe — eksport jest otwarty.'),
+          technical: {
+            target: 'technical.export',
+            instruction: text(
+              'Press Export. The dialog is the existing FIELD export.',
+              'Naciśnij Eksport. Okno to istniejący eksport FIELD.',
+            ),
+          },
         },
       ),
       step(
@@ -348,7 +439,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'improve',
     difficulty: 'easy',
     minutes: 4,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'eq'],
     topics: ['frequency', 'eq'],
@@ -358,8 +449,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Przesuń barwę, żeby słowa było łatwiej usłyszeć.',
     ),
     modeNote: text(
-      'Simple has a Clearer sound character. It uses the existing EQ. It does not erase noise.',
-      'Simple ma charakter Wyraźniej. Używa istniejącego EQ. Nie wymazuje szumu.',
+      'Simple uses the Clearer character. Technical uses EQ in the effect chain. EQ changes balance. It does not erase noise.',
+      'Prosty używa charakteru Wyraźniej. Techniczny używa EQ w łańcuchu efektów. EQ zmienia balans. Nie wymazuje szumu.',
     ),
     steps: [
       play(
@@ -373,6 +464,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Find the clarity controls', 'Znajdź kontrolki wyrazistości'),
         text('Open Sound. Clearer is the character for speech. Softer is the opposite direction.', 'Otwórz Dźwięk. Wyraźniej to charakter do mowy. Miękko idzie w drugą stronę.'),
         {
+          modes: 'simple',
           target: 'sound.clarity',
           topics: ['eq', 'frequency'],
           why: text('Low rumble can mask words. A little presence helps consonants.', 'Niski pomruk może maskować słowa. Odrobina prezencji pomaga spółgłoskom.'),
@@ -381,8 +473,9 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'choose',
         text('Choose Clearer', 'Wybierz Wyraźniej'),
-        text('Select Clearer. In Technical, an EQ move that lifts presence does the same job.', 'Wybierz Wyraźniej. W Technical ruch EQ, który podnosi prezencję, robi tę samą robotę.'),
+        text('Select Clearer.', 'Wybierz Wyraźniej.'),
         {
+          modes: 'simple',
           target: 'sound.clarity',
           completion: { kind: 'any', actions: ['eq.clarity', 'eq.changed'] },
           topics: ['eq', 'frequency'],
@@ -390,6 +483,49 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           more: text('Low frequencies are the deep body. Mids carry the voice. Presence is the upper middle, where speech detail sits.', 'Niskie częstotliwości to głębokie ciało. Środek niesie głos. Prezencja to górny środek, gdzie siedzi szczegół mowy.'),
           advanced: text('The Clearer preset eases a low-mid band and lifts a band near 2.8 kHz. Amount scales that move.', 'Preset Wyraźniej ścisza pasmo niskiego środka i podnosi pasmo koło 2,8 kHz. Ilość skaluje ten ruch.'),
           success: text('Done — the tone shifted toward clarity.', 'Gotowe — barwa przesunęła się ku wyrazistości.'),
+        },
+      ),
+      step(
+        'tech-add',
+        text('Add EQ', 'Dodaj EQ'),
+        text('Click + in the effect chain and choose EQ.', 'Kliknij + w łańcuchu efektów i wybierz EQ.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          skipIfPresent: true,
+          target: 'technical.add.eq',
+          completion: { kind: 'any', actions: ['eq.added'] },
+          topics: ['eq', 'chain'],
+          why: text('EQ has to be in the chain before you can shape the voice.', 'EQ musi być w łańcuchu, zanim ukształtujesz głos.'),
+          success: text('Done — EQ is in the chain.', 'Gotowe — EQ jest w łańcuchu.'),
+        },
+      ),
+      step(
+        'tech-select',
+        text('Open EQ', 'Otwórz EQ'),
+        text('Select EQ in the effect chain. Its Inspector opens with the bands.', 'Wybierz EQ w łańcuchu efektów. Jego inspektor otwiera się z pasmami.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          target: 'technical.eq',
+          completion: { kind: 'any', actions: ['eq.selected'] },
+          topics: ['eq', 'chain'],
+          success: text('Done — EQ is selected.', 'Gotowe — EQ jest wybrane.'),
+        },
+      ),
+      step(
+        'tech-shape',
+        text('Lift the voice a little', 'Podnieś głos odrobinę'),
+        text('Raise one band a little, around the voice. EQ changes balance. It does not remove all noise.', 'Podnieś jedno pasmo odrobinę, w okolicy głosu. EQ zmienia balans. Nie usuwa całego szumu.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          target: 'technical.effectInspector',
+          completion: { kind: 'any', actions: ['eq.changed'] },
+          topics: ['eq', 'frequency', 'q'],
+          why: text('Frequency is where the band sits. Gain is how much it moves. Q is how wide it is.', 'Częstotliwość to miejsce pasma. Gain to, jak mocno się rusza. Q to jego szerokość.'),
+          more: text('A small lift is enough. You do not need an extreme setting.', 'Wystarczy małe podniesienie. Nie potrzebujesz skrajnego ustawienia.'),
+          success: text('Done — a band moved.', 'Gotowe — pasmo się ruszyło.'),
         },
       ),
       step(
@@ -402,6 +538,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           topics: ['eq'],
           success: text('Done — you compared the tone.', 'Gotowe — porównałeś barwę.'),
           tryThis: text('Switch to Original, listen, then back to After.', 'Przełącz na Oryginał, posłuchaj, potem wróć na Po.'),
+          technical: {
+            target: 'transport.play',
+            instruction: text('Press play and listen for the words.', 'Naciśnij odtwarzanie i słuchaj słów.'),
+          },
         },
       ),
     ],
@@ -411,7 +551,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'improve',
     difficulty: 'easy',
     minutes: 4,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'eq'],
     topics: ['frequency', 'eq'],
@@ -421,8 +561,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Przechyl barwę w ciemniejszą i okrąglejszą albo w jaśniejszą.',
     ),
     modeNote: text(
-      'Simple characters Warmer and Brighter are the easy path. Technical EQ is the same processor in more detail.',
-      'Charaktery Cieplej i Jaśniej w Simple to prosta droga. EQ w Technical to ten sam procesor, dokładniej.',
+      'Simple uses Warmer or Brighter. Technical uses EQ in the effect chain. A small tilt is enough.',
+      'Prosty używa Cieplej albo Jaśniej. Techniczny używa EQ w łańcuchu efektów. Wystarczy małe przechylenie.',
     ),
     steps: [
       play(
@@ -436,6 +576,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Find the tone controls', 'Znajdź kontrolki barwy'),
         text('Open Sound. Warmer adds body and eases the sharp top. Brighter adds treble.', 'Otwórz Dźwięk. Cieplej dodaje ciało i łagodzi ostrą górę. Jaśniej dodaje wysokie.'),
         {
+          modes: 'simple',
           target: 'sound.warmth',
           topics: ['frequency', 'eq'],
           why: text('Bass, midrange, and treble are the three broad ranges you are balancing.', 'Bas, środek i góra to trzy szerokie zakresy, które równoważysz.'),
@@ -444,13 +585,55 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'choose',
         text('Choose a character', 'Wybierz charakter'),
-        text('Pick Warmer or Brighter. Any real EQ move in Technical counts too.', 'Wybierz Cieplej albo Jaśniej. Prawdziwy ruch EQ w Technical też się liczy.'),
+        text('Pick Warmer or Brighter.', 'Wybierz Cieplej albo Jaśniej.'),
         {
+          modes: 'simple',
           target: 'sound.warmth',
           completion: { kind: 'any', actions: ['eq.tone', 'eq.changed'] },
           topics: ['eq', 'frequency'],
           success: text('Done — the balance changed.', 'Gotowe — balans się zmienił.'),
           tryThis: text('Try the other character too, then return to the one you prefer.', 'Spróbuj też drugiego charakteru, potem wróć do tego, który wolisz.'),
+        },
+      ),
+      step(
+        'tech-add',
+        text('Add EQ', 'Dodaj EQ'),
+        text('Click + in the effect chain and choose EQ.', 'Kliknij + w łańcuchu efektów i wybierz EQ.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          skipIfPresent: true,
+          target: 'technical.add.eq',
+          completion: { kind: 'any', actions: ['eq.added'] },
+          topics: ['eq', 'chain'],
+          success: text('Done — EQ is in the chain.', 'Gotowe — EQ jest w łańcuchu.'),
+        },
+      ),
+      step(
+        'tech-select',
+        text('Open EQ', 'Otwórz EQ'),
+        text('Select EQ in the effect chain.', 'Wybierz EQ w łańcuchu efektów.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          target: 'technical.eq',
+          completion: { kind: 'any', actions: ['eq.selected'] },
+          topics: ['eq', 'chain'],
+          success: text('Done — EQ is selected.', 'Gotowe — EQ jest wybrane.'),
+        },
+      ),
+      step(
+        'tech-shape',
+        text('Tilt the tone', 'Przechyl barwę'),
+        text('Raise a low band a little for warmth, or a high band a little for brightness. Any small move is enough.', 'Podnieś niskie pasmo odrobinę dla ciepła albo wysokie odrobinę dla jasności. Wystarczy mały ruch.'),
+        {
+          modes: 'technical',
+          module: 'eq',
+          target: 'technical.effectInspector',
+          completion: { kind: 'any', actions: ['eq.tone', 'eq.changed'] },
+          topics: ['eq', 'frequency'],
+          why: text('A low band adds body. A high band adds brightness. You do not need an extreme value.', 'Niskie pasmo dodaje ciało. Wysokie dodaje jasność. Nie potrzebujesz skrajnej wartości.'),
+          success: text('Done — the balance changed.', 'Gotowe — balans się zmienił.'),
         },
       ),
       step(
@@ -462,6 +645,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['compare.used', 'playback.started'] },
           topics: ['eq'],
           success: text('Done — you heard the difference.', 'Gotowe — usłyszałeś różnicę.'),
+          technical: {
+            target: 'transport.play',
+            instruction: text('Press play and listen to the new balance.', 'Naciśnij odtwarzanie i posłuchaj nowego balansu.'),
+          },
         },
       ),
     ],
@@ -471,7 +658,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'creative',
     difficulty: 'easy',
     minutes: 5,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'reverb'],
     topics: ['reverb'],
@@ -481,8 +668,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Umieść dźwięk w pomieszczeniu, używając pogłosu, który już jest w FIELD.',
     ),
     modeNote: text(
-      'Effects in Simple holds Reverb. It is the existing reverb, not a new one.',
-      'Efekty w Simple mają pogłos. To istniejący pogłos, nie nowy.',
+      'Simple turns on Reverb in Effects. Technical adds Reverb to the effect chain and opens its Inspector. The guide does not turn it up for you.',
+      'Prosty włącza pogłos w Efektach. Techniczny dodaje pogłos do łańcucha efektów i otwiera jego inspektor. Prowadzenie samo go nie podnosi.',
     ),
     steps: [
       play(
@@ -496,6 +683,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Find Reverb', 'Znajdź pogłos'),
         text('Open Effects and find Reverb.', 'Otwórz Efekty i znajdź pogłos.'),
         {
+          modes: 'simple',
           target: 'effect.reverb',
           topics: ['reverb'],
           why: text('Reverb is the room. Delay, next door, is a separate echo.', 'Pogłos to pomieszczenie. Delay obok to osobne echo.'),
@@ -506,6 +694,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Turn Reverb on', 'Włącz pogłos'),
         text('Enable Reverb. FIELD will not enable it for you.', 'Włącz pogłos. FIELD nie włączy go za ciebie.'),
         {
+          modes: 'simple',
           target: 'effect.reverb',
           completion: { kind: 'any', actions: ['reverb.enabled'] },
           topics: ['reverb'],
@@ -517,6 +706,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Choose a moderate room', 'Wybierz umiarkowany pokój'),
         text('Choose Medium. Small is closer. Large is a bigger hall. Medium is the moderate one.', 'Wybierz Średni. Mały jest bliżej. Duży to większa sala. Średni jest umiarkowany.'),
         {
+          modes: 'simple',
           target: 'effect.reverb',
           completion: { kind: 'any', actions: ['reverb.shaped'] },
           topics: ['reverb'],
@@ -530,12 +720,56 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Adjust the amount', 'Ustaw ilość'),
         text('Move Amount. More room, or less, until the dry sound is still clear.', 'Przesuń Ilość. Więcej pokoju albo mniej, aż suchy dźwięk nadal jest czysty.'),
         {
+          modes: 'simple',
           target: 'effect.reverb',
           completion: { kind: 'any', actions: ['reverb.amount'] },
           topics: ['reverb'],
           why: text('Amount is the wet and dry balance: how much room sits beside the original.', 'Ilość to balans wet i dry: ile pokoju stoi obok oryginału.'),
           success: text('Done — the amount changed.', 'Gotowe — ilość się zmieniła.'),
           tryThis: text('Raise the amount and listen. Then lower it and listen again.', 'Podnieś ilość i posłuchaj. Potem obniż i posłuchaj jeszcze raz.'),
+        },
+      ),
+      step(
+        'tech-add',
+        text('Add Reverb', 'Dodaj pogłos'),
+        text('Click + in the effect chain and choose Reverb.', 'Kliknij + w łańcuchu efektów i wybierz pogłos.'),
+        {
+          modes: 'technical',
+          module: 'reverb',
+          skipIfPresent: true,
+          target: 'technical.add.reverb',
+          completion: { kind: 'any', actions: ['reverb.added'] },
+          topics: ['reverb', 'chain'],
+          hint: text('Choose Reverb in the menu that opens.', 'Wybierz pogłos w menu, które się otworzy.'),
+          success: text('Done — Reverb is in the chain.', 'Gotowe — pogłos jest w łańcuchu.'),
+        },
+      ),
+      step(
+        'tech-select',
+        text('Open Reverb', 'Otwórz pogłos'),
+        text('Select Reverb in the effect chain.', 'Wybierz pogłos w łańcuchu efektów.'),
+        {
+          modes: 'technical',
+          module: 'reverb',
+          target: 'technical.reverb',
+          completion: { kind: 'any', actions: ['reverb.selected'] },
+          topics: ['reverb', 'chain'],
+          success: text('Done — Reverb is open.', 'Gotowe — pogłos jest otwarty.'),
+        },
+      ),
+      step(
+        'tech-wet',
+        text('Adjust the amount', 'Ustaw ilość'),
+        text('Turn Wet up a little. Keep the dry sound clear.', 'Podnieś Wet odrobinę. Zostaw suchy dźwięk czysty.'),
+        {
+          modes: 'technical',
+          module: 'reverb',
+          target: 'technical.reverbWet',
+          completion: { kind: 'any', actions: ['reverb.wet'] },
+          topics: ['reverb', 'wet'],
+          why: text('Wet is the room. Dry is the original. A small mix is enough.', 'Wet to pomieszczenie. Dry to oryginał. Wystarczy mały miks.'),
+          success: text('Done — Wet moved.', 'Gotowe — Wet się przesunął.'),
+          tryThis: text('Raise Wet and listen. Then lower it and listen again.', 'Podnieś Wet i posłuchaj. Potem obniż i posłuchaj jeszcze raz.'),
         },
       ),
       step(
@@ -547,6 +781,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['compare.used', 'playback.started'] },
           topics: ['reverb'],
           success: text('Done — you heard the space.', 'Gotowe — usłyszałeś przestrzeń.'),
+          technical: {
+            target: 'transport.play',
+            instruction: text('Press play and listen to the room.', 'Naciśnij odtwarzanie i posłuchaj pomieszczenia.'),
+          },
         },
       ),
     ],
@@ -556,7 +794,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
     category: 'creative',
     difficulty: 'easy',
     minutes: 5,
-    preferredMode: 'simple',
+    preferredMode: 'any',
     requiresSample: true,
     capabilities: ['transport', 'delay'],
     topics: ['delay'],
@@ -566,8 +804,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       'Dodaj powtórzenie delayem, który już jest w FIELD.',
     ),
     modeNote: text(
-      'Effects in Simple holds Delay. Enabling it does not change EQ or reverb.',
-      'Efekty w Simple mają Delay. Włączenie go nie zmienia EQ ani pogłosu.',
+      'Simple turns on Delay in Effects. Technical adds Delay to the effect chain. Time is the gap. Wet is how loud the repeats are.',
+      'Prosty włącza Delay w Efektach. Techniczny dodaje Delay do łańcucha efektów. Czas to odstęp. Wet to głośność powtórzeń.',
     ),
     steps: [
       play(
@@ -581,6 +819,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Find Delay', 'Znajdź Delay'),
         text('Open Effects and find Delay.', 'Otwórz Efekty i znajdź Delay.'),
         {
+          modes: 'simple',
           target: 'effect.delay',
           topics: ['delay'],
           why: text('Delay repeats. Reverb washes. They are different.', 'Delay powtarza. Pogłos rozmywa. To coś innego.'),
@@ -591,6 +830,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Turn Delay on', 'Włącz Delay'),
         text('Enable Delay.', 'Włącz Delay.'),
         {
+          modes: 'simple',
           target: 'effect.delay',
           completion: { kind: 'any', actions: ['delay.enabled'] },
           topics: ['delay'],
@@ -602,6 +842,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Choose a short or medium echo', 'Wybierz krótkie albo średnie echo'),
         text('Short is a quick repeat. Medium is a little longer. Long is optional. You do not need an extreme setting.', 'Krótki to szybkie powtórzenie. Średni jest trochę dłuższy. Długi jest opcjonalny. Nie potrzebujesz skrajnego ustawienia.'),
         {
+          modes: 'simple',
           target: 'effect.delay',
           completion: { kind: 'any', actions: ['delay.shaped'] },
           topics: ['delay'],
@@ -615,12 +856,68 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
         text('Adjust the amount', 'Ustaw ilość'),
         text('Move Amount until the repeat is audible and the original is still in front.', 'Przesuń Ilość, aż powtórzenie słychać, a oryginał nadal jest z przodu.'),
         {
+          modes: 'simple',
           target: 'effect.delay',
           completion: { kind: 'any', actions: ['delay.amount'] },
           topics: ['delay'],
           why: text('Amount is the mix: how loud the echoes are next to the dry sound.', 'Ilość to miks: jak głośne są echa obok suchego dźwięku.'),
           success: text('Done — the echo level changed.', 'Gotowe — poziom echa się zmienił.'),
           tryThis: text('Raise the amount, listen, then lower it and listen again.', 'Podnieś ilość, posłuchaj, potem obniż i posłuchaj jeszcze raz.'),
+        },
+      ),
+      step(
+        'tech-add',
+        text('Add Delay', 'Dodaj Delay'),
+        text('Click + in the effect chain and choose Delay.', 'Kliknij + w łańcuchu efektów i wybierz Delay.'),
+        {
+          modes: 'technical',
+          module: 'delay',
+          skipIfPresent: true,
+          target: 'technical.add.delay',
+          completion: { kind: 'any', actions: ['delay.added'] },
+          topics: ['delay', 'chain'],
+          hint: text('Choose Delay in the menu that opens.', 'Wybierz Delay w menu, które się otworzy.'),
+          success: text('Done — Delay is in the chain.', 'Gotowe — Delay jest w łańcuchu.'),
+        },
+      ),
+      step(
+        'tech-select',
+        text('Open Delay', 'Otwórz Delay'),
+        text('Select Delay in the effect chain.', 'Wybierz Delay w łańcuchu efektów.'),
+        {
+          modes: 'technical',
+          module: 'delay',
+          target: 'technical.delay',
+          completion: { kind: 'any', actions: ['delay.selected'] },
+          topics: ['delay', 'chain'],
+          success: text('Done — Delay is open.', 'Gotowe — Delay jest otwarty.'),
+        },
+      ),
+      step(
+        'tech-time',
+        text('Set the gap', 'Ustaw odstęp'),
+        text('Turn Time a little. That is how long the sound waits before it repeats.', 'Obróć Czas odrobinę. To, jak długo dźwięk czeka, zanim się powtórzy.'),
+        {
+          modes: 'technical',
+          module: 'delay',
+          target: 'technical.delayTime',
+          completion: { kind: 'any', actions: ['delay.time'] },
+          topics: ['delay'],
+          why: text('Delay time is the gap. Feedback is how many times the copy comes back. A small gap is enough.', 'Czas delay to odstęp. Feedback to, ile razy kopia wraca. Wystarczy mały odstęp.'),
+          success: text('Done — the gap changed.', 'Gotowe — odstęp się zmienił.'),
+        },
+      ),
+      step(
+        'tech-wet',
+        text('Adjust the amount', 'Ustaw ilość'),
+        text('Turn Wet up a little so the repeat is audible and the original stays in front.', 'Podnieś Wet odrobinę, żeby powtórzenie było słychać, a oryginał został z przodu.'),
+        {
+          modes: 'technical',
+          module: 'delay',
+          target: 'technical.delayWet',
+          completion: { kind: 'any', actions: ['delay.wet'] },
+          topics: ['delay', 'wet'],
+          success: text('Done — Wet moved.', 'Gotowe — Wet się przesunął.'),
         },
       ),
       step(
@@ -632,6 +929,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['compare.used', 'playback.started'] },
           topics: ['delay'],
           success: text('Done — you heard the repeats.', 'Gotowe — usłyszałeś powtórzenia.'),
+          technical: {
+            target: 'transport.play',
+            instruction: text('Press play and listen to the repeats.', 'Naciśnij odtwarzanie i posłuchaj powtórzeń.'),
+          },
         },
       ),
     ],
@@ -669,6 +970,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'input.speed',
           topics: ['speed'],
           why: text('Speed changes how fast the recording plays, and how long it lasts.', 'Szybkość zmienia, jak szybko nagranie gra i jak długo trwa.'),
+          technical: {
+            target: 'input.speed',
+            instruction: text('Select Input in the effect chain, then find Speed.', 'Wybierz Wejście w łańcuchu efektów, potem znajdź szybkość.'),
+          },
         },
       ),
       step(
@@ -680,6 +985,9 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['speed.changed'] },
           topics: ['speed'],
           success: text('Done — speed changed.', 'Gotowe — szybkość się zmieniła.'),
+          technical: {
+            instruction: text('Move Speed a little. A small step is enough. There is no target number.', 'Przesuń szybkość odrobinę. Mały krok wystarcza. Nie ma docelowej liczby.'),
+          },
           tryThis: text('Play it faster, then slower, and leave it where you like.', 'Odtwórz szybciej, potem wolniej i zostaw tam, gdzie ci pasuje.'),
         },
       ),
@@ -692,6 +1000,9 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['pitch.changed'] },
           topics: ['pitch', 'speed'],
           why: text('Pitch is how high the tone sits. Speed is how fast time passes.', 'Wysokość to, jak wysoko leży ton. Szybkość to, jak szybko płynie czas.'),
+          technical: {
+            instruction: text('Move Pitch up or down a little. Pitch moves the note. It is not the same as speed.', 'Przesuń wysokość trochę w górę albo w dół. Wysokość przesuwa nutę. To nie to samo co szybkość.'),
+          },
           success: text('Done — pitch changed.', 'Gotowe — wysokość się zmieniła.'),
         },
       ),
@@ -704,6 +1015,9 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['reverse.changed'] },
           topics: ['reverse'],
           why: text('Reverse flips time. Attacks trail off instead of striking.', 'Odwrócenie przewraca czas. Ataki wybrzmiewają zamiast uderzać.'),
+          technical: {
+            instruction: text('On Input, switch direction to reverse, then play. Switch back when you want forward again.', 'Na Wejściu przełącz kierunek na odwrócenie, potem odtwórz. Wróć, gdy znowu chcesz do przodu.'),
+          },
           success: text('Done — direction changed.', 'Gotowe — kierunek się zmienił.'),
         },
       ),
@@ -739,6 +1053,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'waveform.main',
           topics: ['waveform'],
           why: text('The horizontal axis is time, not pitch and not loudness.', 'Oś pozioma to czas, nie wysokość i nie głośność.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text('Look along the waveform. The left side is earlier. The right side is later.', 'Popatrz wzdłuż fali. Lewa strona jest wcześniej. Prawa jest później.'),
+          },
           more: text('A longer recording is a longer drawing, unless the view is zoomed.', 'Dłuższe nagranie to dłuższy rysunek, chyba że widok jest przybliżony.'),
         },
       ),
@@ -751,6 +1069,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['waveform.touched'] },
           topics: ['amplitude', 'waveform'],
           why: text('The vertical direction is how far the signal moves from silence.', 'Kierunek pionowy to, jak daleko sygnał odchodzi od ciszy.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text('Click the waveform. Tall parts swing further. Flat parts are quiet. Height is not the whole of loudness.', 'Kliknij falę. Wysokie fragmenty wychylają się dalej. Płaskie są ciche. Wysokość nie jest całą głośnością.'),
+          },
           advanced: text('Perceived loudness also depends on frequency and duration. Do not read the picture as a loudness meter.', 'Odczuwana głośność zależy też od częstotliwości i czasu. Nie czytaj rysunku jak miernika głośności.'),
           success: text('Done — you touched the waveform.', 'Gotowe — dotknąłeś fali.'),
         },
@@ -763,6 +1085,9 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           target: 'waveform.main',
           topics: ['waveform', 'amplitude'],
           why: text('Transients are short and tall. Quiet regions sit near the center line.', 'Transjenty są krótkie i wysokie. Ciche regiony leżą blisko linii środka.'),
+          technical: {
+            target: 'technical.waveform',
+          },
         },
       ),
       step(
@@ -774,6 +1099,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           completion: { kind: 'any', actions: ['selection.created'] },
           topics: ['selection'],
           success: text('Done — a selection exists.', 'Gotowe — zaznaczenie istnieje.'),
+          technical: {
+            target: 'technical.waveform',
+            instruction: text('Drag across a short piece of the waveform. That range is the selection.', 'Przeciągnij po krótkim kawałku fali. Ten zakres to zaznaczenie.'),
+          },
         },
       ),
       step(

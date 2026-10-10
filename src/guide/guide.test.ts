@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { blankSignal, diffGuideActions, projectSatisfies, type GuideSignal } from './actions'
+import { blankSignal, boundInstance, diffGuideActions, freshBindings, projectSatisfies, type GuideSignal } from './actions'
+import { visibleSteps } from './present'
 import { INITIAL_GUIDE_STATE, canAdvance, readiness, reduceGuide, type GuideState } from './session'
 import { AVAILABLE_CAPABILITIES, GUIDE_TASKS, taskAvailable, taskById } from './tasks'
 import { dockSlot } from './targets'
@@ -27,6 +28,8 @@ describe('guided task registry', () => {
       for (const topicId of task.topics) expect(topicById(topicId)).toBeTruthy()
       for (const step of task.steps) {
         if (step.target) expect(GUIDE_TARGETS).toContain(step.target)
+        if (step.technical?.target) expect(GUIDE_TARGETS).toContain(step.technical.target)
+        expect(new Set(task.steps.map((item) => item.id)).size).toBe(task.steps.length)
         for (const topicId of step.topics) expect(topicById(topicId)).toBeTruthy()
         for (const field of [step.title, step.instruction] as const) {
           expect(field.en.length).toBeGreaterThan(0)
@@ -171,6 +174,100 @@ describe('guide session', () => {
     expect(first.completion.kind).toBe('manual')
     expect(reduceGuide(state, { type: 'next', signal: null }).stepIndex).toBe(1)
     expect(reduceGuide(state, { type: 'skip', signal: null })).toBe(state)
+  })
+})
+
+describe('technical guided tasks', () => {
+  const task = () => taskById('add-space')!
+
+  function start(id: string, mode: 'simple' | 'technical' = 'technical'): GuideState {
+    return reduceGuide(INITIAL_GUIDE_STATE, {
+      type: 'start',
+      taskId: id,
+      env: { sampleLoaded: true, uiMode: mode },
+    })
+  }
+
+  it('starts Add space in Technical without asking to switch modes', () => {
+    const state = start('add-space', 'technical')
+    expect(state.view).toBe('task')
+    expect(state.stepIndex).toBe(0)
+  })
+
+  it('keeps Simple steps and adds Technical chain steps on the same task', () => {
+    const state = start('add-space', 'simple')
+    const signal = withSignal({})
+    expect(visibleSteps(task(), 'simple', signal, state).map((step) => step.id)).toEqual([
+      'listen',
+      'find',
+      'enable',
+      'space',
+      'amount',
+      'compare',
+    ])
+    expect(visibleSteps(task(), 'technical', signal, state).map((step) => step.id)).toEqual([
+      'listen',
+      'tech-add',
+      'tech-select',
+      'tech-wet',
+      'compare',
+    ])
+    expect(visibleSteps(task(), 'technical', withSignal({ reverbIds: 'reverb-1' }), state).map((step) => step.id)).toEqual([
+      'listen',
+      'tech-select',
+      'tech-wet',
+      'compare',
+    ])
+  })
+
+  it('retargets after a mode switch without clearing finished steps', () => {
+    let state = start('add-space', 'simple')
+    state = reduceGuide(state, { type: 'actions', actions: ['playback.started'] })
+    state = reduceGuide(state, { type: 'next', signal: withSignal({}), mode: 'simple' })
+    expect(task().steps[state.stepIndex]?.id).toBe('find')
+    const moved = reduceGuide(state, { type: 'retarget', mode: 'technical', signal: withSignal({}) })
+    expect(moved.taskId).toBe('add-space')
+    expect(moved.taskActions).toContain('playback.started')
+    expect(task().steps[moved.stepIndex]?.id).toBe('tech-add')
+    const present = reduceGuide(moved, {
+      type: 'retarget',
+      mode: 'technical',
+      signal: withSignal({ reverbIds: 'reverb-1' }),
+    })
+    expect(task().steps[present.stepIndex]?.id).toBe('tech-select')
+    expect(present.taskActions).toContain('playback.started')
+  })
+
+  it('binds one effect instance and refuses to guess between two', () => {
+    const blank = blankSignal()
+    expect(boundInstance('delay', withSignal({ delayIds: 'delay-1,delay-2' }), {})).toBeNull()
+    expect(boundInstance('delay', withSignal({ delayIds: 'delay-1' }), {})).toBe('delay-1')
+    expect(freshBindings(blank, withSignal({ delayIds: 'delay-1,delay-2' }), {}, new Set())).toBeNull()
+    expect(freshBindings(blank, withSignal({ delayIds: 'delay-1' }), {}, new Set())?.delay).toBe('delay-1')
+    expect(
+      freshBindings(withSignal({ delayIds: 'delay-1' }), withSignal({ delayIds: 'delay-1,delay-2' }), {}, new Set(['delay']))
+        ?.delay,
+    ).toBe('delay-2')
+    expect(
+      freshBindings(withSignal({ delayIds: 'delay-1' }), withSignal({ delayIds: 'delay-1,delay-2' }), { delay: 'delay-1' }, new Set())
+        ?.delay,
+    ).toBeUndefined()
+  })
+
+  it('detects chain, selection, wet, and band edits as real actions', () => {
+    const base = withSignal({})
+    expect(diffGuideActions(base, withSignal({ reverbIds: 'reverb-1' }))).toContain('reverb.added')
+    expect(
+      diffGuideActions(withSignal({ reverbIds: 'reverb-1' }), withSignal({ reverbIds: 'reverb-1', focusedId: 'reverb-1' })),
+    ).toContain('reverb.selected')
+    expect(diffGuideActions(base, withSignal({ reverbWet: 0.2 }))).toContain('reverb.wet')
+    expect(diffGuideActions(base, withSignal({ reverbWet: 0.2 }))).not.toContain('reverb.amount')
+    expect(diffGuideActions(base, withSignal({ delayTime: 420 }))).toContain('delay.time')
+    expect(diffGuideActions(base, withSignal({ eqShape: 'eq-1:2800:2.00:1.00:peaking' }))).toContain('eq.changed')
+    expect(projectSatisfies('reverb.added', withSignal({ reverbIds: 'reverb-1' }))).toBe(false)
+    expect(projectSatisfies('reverb.wet', withSignal({ reverbWet: 0.2 }))).toBe(true)
+    expect(projectSatisfies('reverb.selected', withSignal({ reverbIds: 'reverb-1', focusedId: 'reverb-1' }))).toBe(true)
+    expect(projectSatisfies('delay.time', withSignal({ delayTime: 800 }))).toBe(false)
   })
 })
 

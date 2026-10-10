@@ -1,8 +1,9 @@
-import { diffGuideActions, type GuideSignal } from './actions'
+import { blankSignal, diffGuideActions, freshBindings, type GuideSignal } from './actions'
+import { currentStep } from './session'
 import { reduceGuide, type GuideCommand, type GuideEnv, type GuideState } from './session'
 import { INITIAL_GUIDE_STATE } from './session'
 import { persistGuide, readPersistedGuide } from './storage'
-import type { GuideTargetId } from './types'
+import type { GuideModule, GuideTargetId } from './types'
 import type { UiMode } from '../modes/uiMode'
 
 export type GuideHost = {
@@ -13,7 +14,7 @@ export type GuideHost = {
   loadDemo: () => void
   setMode: (mode: UiMode) => void
   exitFocus: () => void
-  revealTarget: (id: GuideTargetId) => void
+  revealTarget: (id: GuideTargetId, instanceId?: string | null) => void
 }
 
 const defaultHost: GuideHost = {
@@ -65,16 +66,25 @@ export function setGuideHost(next: GuideHost): void {
   host = next
 }
 
+function addingModules(): ReadonlySet<GuideModule> {
+  const step = currentStep(state)
+  const adding = new Set<GuideModule>()
+  if (!step || step.completion.kind === 'manual' || !step.module) return adding
+  if (step.completion.actions.some((action) => action.endsWith('.added'))) adding.add(step.module)
+  return adding
+}
+
 export function noteGuideSignal(next: GuideSignal): void {
   const prev = signal
   signal = next
-  if (!prev) {
-    emit()
-    return
-  }
-  const actions = diffGuideActions(prev, next)
-  if (!actions.length) return
-  dispatchGuide({ type: 'actions', actions })
+  const binds = freshBindings(prev ?? blankSignal(), next, state.bindings, addingModules())
+  const actions = prev ? diffGuideActions(prev, next) : []
+  let nextState = state
+  if (binds) nextState = reduceGuide(nextState, { type: 'bind', bindings: binds })
+  if (actions.length) nextState = reduceGuide(nextState, { type: 'actions', actions })
+  if (nextState === state) return
+  state = nextState
+  emit()
 }
 
 export function guideEnv(): GuideEnv {

@@ -12,12 +12,35 @@ const PARAM_TARGET: Partial<Record<ParamId, GuideTargetId>> = {
   gain: 'input.gain',
   speed: 'input.speed',
   pitch: 'input.pitch',
+  reverbWet: 'technical.reverbWet',
+  delayWet: 'technical.delayWet',
+  delayTime: 'technical.delayTime',
 }
 
 const MODULE_TARGET: Record<string, GuideTargetId | undefined> = {
   eq: 'effect.eq',
   reverb: 'effect.reverb',
   delay: 'effect.delay',
+}
+
+const TECHNICAL_MODULE_TARGET: Record<string, GuideTargetId | undefined> = {
+  eq: 'technical.eq',
+  reverb: 'technical.reverb',
+  delay: 'technical.delay',
+  gain: 'technical.inputGain',
+}
+
+const ADD_TARGET: Record<string, GuideTargetId | undefined> = {
+  eq: 'technical.add.eq',
+  reverb: 'technical.add.reverb',
+  delay: 'technical.add.delay',
+}
+
+const TARGET_ALIAS: Partial<Record<GuideTargetId, GuideTargetId>> = {
+  'technical.waveform': 'waveform.main',
+  'technical.selection': 'waveform.selection',
+  'technical.export': 'export.open',
+  'technical.inputGain': 'input.gain',
 }
 
 const ACTION_TARGET: Record<string, GuideTargetId | undefined> = {
@@ -34,6 +57,14 @@ export function guideTargetForModule(type: string): GuideTargetId | null {
   return MODULE_TARGET[type] ?? null
 }
 
+export function technicalTargetForModule(type: string): GuideTargetId | null {
+  return TECHNICAL_MODULE_TARGET[type] ?? null
+}
+
+export function guideTargetForInsert(type: string): GuideTargetId | null {
+  return ADD_TARGET[type] ?? null
+}
+
 export function guideTargetForAction(id: string): GuideTargetId | null {
   return ACTION_TARGET[id] ?? null
 }
@@ -41,9 +72,18 @@ export function guideTargetForAction(id: string): GuideTargetId | null {
 export function guideTargetAttrs(
   id: GuideTargetId | null | undefined,
   rank: '1' | '2' = '2',
-): { 'data-guide-target'?: GuideTargetId; 'data-guide-rank'?: '1' | '2' } {
+  instanceId?: string | null,
+): {
+  'data-guide-target'?: GuideTargetId
+  'data-guide-rank'?: '1' | '2'
+  'data-guide-instance'?: string
+} {
   if (!id) return {}
-  return { 'data-guide-target': id, 'data-guide-rank': rank }
+  return {
+    'data-guide-target': id,
+    'data-guide-rank': rank,
+    ...(instanceId ? { 'data-guide-instance': instanceId } : {}),
+  }
 }
 
 /** Simple section that holds the control. Null when the control is always on screen. */
@@ -73,23 +113,44 @@ export function moduleTypeForTarget(target: GuideTargetId | null): 'gain' | 'eq'
     case 'input.speed':
     case 'input.pitch':
     case 'input.reverse':
+    case 'technical.inputGain':
       return 'gain'
     case 'effect.eq':
     case 'sound.clarity':
     case 'sound.warmth':
+    case 'technical.eq':
+    case 'technical.add.eq':
       return 'eq'
     case 'effect.reverb':
+    case 'technical.reverb':
+    case 'technical.reverbWet':
+    case 'technical.add.reverb':
       return 'reverb'
     case 'effect.delay':
+    case 'technical.delay':
+    case 'technical.delayWet':
+    case 'technical.delayTime':
+    case 'technical.add.delay':
       return 'delay'
     default:
       return null
   }
 }
 
+const FOCUS_VISIBLE = new Set<GuideTargetId>([
+  'waveform.main',
+  'waveform.selection',
+  'technical.waveform',
+  'technical.selection',
+  'transport.play',
+  'edit.trim',
+  'edit.fadeIn',
+  'edit.fadeOut',
+])
+
 export function targetHiddenInFocus(target: GuideTargetId | null): boolean {
   if (!target) return false
-  return target !== 'waveform.main' && target !== 'waveform.selection' && target !== 'transport.play'
+  return !FOCUS_VISIBLE.has(target)
 }
 
 type DockRect = { left: number; top: number; width: number; height: number }
@@ -145,9 +206,10 @@ export function dockSlot(
   return best
 }
 
-export function findGuideElement(id: GuideTargetId): HTMLElement | null {
+export function findGuideElement(id: GuideTargetId, instanceId?: string | null): HTMLElement | null {
   if (typeof document === 'undefined') return null
-  const nodes = [...document.querySelectorAll<HTMLElement>(`[data-guide-target="${id}"]`)]
+  const keys = [id, TARGET_ALIAS[id]].filter((key): key is GuideTargetId => Boolean(key))
+  const nodes = keys.flatMap((key) => [...document.querySelectorAll<HTMLElement>(`[data-guide-target="${key}"]`)])
   const ranked = nodes
     .map((node) => {
       const rect = node.getBoundingClientRect()
@@ -157,5 +219,12 @@ export function findGuideElement(id: GuideTargetId): HTMLElement | null {
     })
     .filter((item) => item.visible)
   ranked.sort((a, b) => b.rank - a.rank)
-  return ranked[0]?.node ?? null
+  if (instanceId) {
+    return ranked.find((item) => item.node.dataset.guideInstance === instanceId)?.node ?? null
+  }
+  const unscoped = ranked.filter((item) => !item.node.dataset.guideInstance)
+  if (unscoped.length) return unscoped[0]?.node ?? null
+  const instances = new Set(ranked.map((item) => item.node.dataset.guideInstance).filter(Boolean))
+  if (instances.size === 1) return ranked[0]?.node ?? null
+  return null
 }

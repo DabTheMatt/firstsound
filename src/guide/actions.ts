@@ -1,4 +1,4 @@
-import type { GuideAction } from './types'
+import type { GuideAction, GuideModule } from './types'
 
 /**
  * Plain facts the guide can see. Built from the engine snapshot and a few UI flags.
@@ -33,6 +33,15 @@ export type GuideSignal = {
   exportCompletedCount: number
   compareCount: number
   waveformTouches: number
+  reverbIds: string
+  delayIds: string
+  eqIds: string
+  focusedId: string
+  reverbWet: number
+  delayWet: number
+  delayTime: number
+  /** Fingerprint of EQ bands. A change is a real band edit, not a button click. */
+  eqShape: string
 }
 
 export const GAIN_DEFAULT = -3
@@ -69,7 +78,20 @@ export function blankSignal(): GuideSignal {
     exportCompletedCount: 0,
     compareCount: 0,
     waveformTouches: 0,
+    reverbIds: '',
+    delayIds: '',
+    eqIds: '',
+    focusedId: '',
+    reverbWet: 0,
+    delayWet: 0,
+    delayTime: 0,
+    eqShape: '',
   }
+}
+
+export function moduleIds(signal: GuideSignal, module: GuideModule): string[] {
+  const raw = module === 'reverb' ? signal.reverbIds : module === 'delay' ? signal.delayIds : module === 'eq' ? signal.eqIds : ''
+  return raw.split(',').filter(Boolean)
 }
 
 function near(a: number, b: number, epsilon: number): boolean {
@@ -102,7 +124,7 @@ export function diffGuideActions(prev: GuideSignal, next: GuideSignal): GuideAct
   if (next.toneId === 'warmer' || next.toneId === 'brighter' || next.toneId === 'moreBass' || next.toneId === 'lessBass' || next.toneId === 'lessHarsh') {
     if (prev.toneId !== next.toneId) actions.push('eq.tone')
   }
-  if (prev.toneId !== next.toneId || prev.eqFlat !== next.eqFlat) actions.push('eq.changed')
+  if (prev.toneId !== next.toneId || prev.eqFlat !== next.eqFlat || prev.eqShape !== next.eqShape) actions.push('eq.changed')
   if (!prev.reverbOn && next.reverbOn) actions.push('reverb.enabled')
   else if (next.reverbOn) {
     if (prev.reverbShape !== next.reverbShape) actions.push('reverb.shaped')
@@ -120,7 +142,30 @@ export function diffGuideActions(prev: GuideSignal, next: GuideSignal): GuideAct
   if (prev.reversed !== next.reversed) actions.push('reverse.changed')
   if (next.compareCount > prev.compareCount) actions.push('compare.used')
   if (next.waveformTouches > prev.waveformTouches) actions.push('waveform.touched')
+  if (appeared(prev.reverbIds, next.reverbIds)) actions.push('reverb.added')
+  if (appeared(prev.delayIds, next.delayIds)) actions.push('delay.added')
+  if (appeared(prev.eqIds, next.eqIds)) actions.push('eq.added')
+  if (focusedOnto(prev, next, 'reverb')) actions.push('reverb.selected')
+  if (focusedOnto(prev, next, 'delay')) actions.push('delay.selected')
+  if (focusedOnto(prev, next, 'eq')) actions.push('eq.selected')
+  if (!near(prev.reverbWet, next.reverbWet, 0.02) && next.reverbWet > 0.02) actions.push('reverb.wet')
+  if (!near(prev.delayWet, next.delayWet, 0.02) && next.delayWet > 0.02) actions.push('delay.wet')
+  if (!near(prev.delayTime, next.delayTime, 5)) actions.push('delay.time')
   return actions
+}
+
+function idList(raw: string): string[] {
+  return raw.split(',').filter(Boolean)
+}
+
+function appeared(prev: string, next: string): boolean {
+  const had = new Set(idList(prev))
+  return idList(next).some((id) => !had.has(id))
+}
+
+function focusedOnto(prev: GuideSignal, next: GuideSignal, module: GuideModule): boolean {
+  if (!next.focusedId || next.focusedId === prev.focusedId) return false
+  return moduleIds(next, module).includes(next.focusedId)
 }
 
 /**
@@ -172,8 +217,54 @@ export function projectSatisfies(action: GuideAction, signal: GuideSignal): bool
       return signal.reversed
     case 'compare.used':
     case 'waveform.touched':
+    case 'reverb.added':
+    case 'delay.added':
+    case 'eq.added':
+    case 'delay.time':
       return false
+    case 'reverb.selected':
+      return moduleIds(signal, 'reverb').includes(signal.focusedId)
+    case 'delay.selected':
+      return moduleIds(signal, 'delay').includes(signal.focusedId)
+    case 'eq.selected':
+      return moduleIds(signal, 'eq').includes(signal.focusedId)
+    case 'reverb.wet':
+      return signal.reverbWet > 0.02
+    case 'delay.wet':
+      return signal.delayWet > 0.02
     default:
       return false
   }
+}
+
+export type GuideBindings = Partial<Record<GuideModule, string>>
+
+/** Bind the instance the user just added or the only one of its type. Never guess among several. */
+export function freshBindings(
+  prev: GuideSignal,
+  next: GuideSignal,
+  bindings: GuideBindings,
+  adding: ReadonlySet<GuideModule>,
+): GuideBindings | null {
+  const out: GuideBindings = {}
+  for (const module of ['reverb', 'delay', 'eq', 'gain'] as const) {
+    const prevIds = module === 'gain' ? [] : moduleIds(prev, module)
+    const nextIds = module === 'gain' ? [] : moduleIds(next, module)
+    const had = new Set(prevIds)
+    const fresh = nextIds.filter((id) => !had.has(id))
+    if (fresh.length === 1 && (!bindings[module] || adding.has(module))) out[module] = fresh[0]
+    else if (!bindings[module] && nextIds.length === 1) out[module] = nextIds[0]
+    else if (!bindings[module] && next.focusedId && nextIds.includes(next.focusedId)) out[module] = next.focusedId
+  }
+  return Object.keys(out).length ? out : null
+}
+
+export function boundInstance(module: GuideModule | null | undefined, signal: GuideSignal, bindings: GuideBindings): string | null {
+  if (!module || module === 'gain') return null
+  const ids = moduleIds(signal, module)
+  const bound = bindings[module]
+  if (bound && ids.includes(bound)) return bound
+  if (ids.length === 1) return ids[0]!
+  if (signal.focusedId && ids.includes(signal.focusedId)) return signal.focusedId
+  return null
 }

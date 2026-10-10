@@ -277,6 +277,74 @@ export const LEARNING_TOPICS: readonly LearningTopic[] = [
       'Kierunek odwraca bieg głowicy przez bufor. Nie zmienia ustawień EQ, pogłosu ani delay.',
     ),
   },
+  {
+    id: 'chain',
+    category: 'edit',
+    title: text('Effect chain', 'Łańcuch efektów'),
+    summary: text(
+      'The effect chain is the path the sound takes. Input is first. Output is last. Effects sit between them.',
+      'Łańcuch efektów to droga dźwięku. Wejście jest pierwsze. Wyjście jest ostatnie. Efekty siedzą między nimi.',
+    ),
+    practical: text(
+      'Click + to add an effect. Select a tile to open its Inspector. Order matters: an effect later in the chain hears what came before it.',
+      'Kliknij +, żeby dodać efekt. Wybierz kafelek, żeby otworzyć jego inspektor. Kolejność ma znaczenie: późniejszy efekt słyszy to, co było wcześniej.',
+    ),
+    technical: text(
+      'Each tile is one module instance with a stable id. Two delays are two instances. The guide follows one id and does not edit the other.',
+      'Każdy kafelek to jedna instancja modułu ze stałym identyfikatorem. Dwa delaye to dwie instancje. Przewodnik idzie za jednym identyfikatorem i nie edytuje drugiego.',
+    ),
+  },
+  {
+    id: 'bypass',
+    category: 'edit',
+    title: text('Bypass', 'Bypass'),
+    summary: text(
+      'Bypass lets the sound pass that effect without using it. The effect stays in the chain.',
+      'Bypass przepuszcza dźwięk obok efektu. Efekt zostaje w łańcuchu.',
+    ),
+    practical: text(
+      'The power mark on a tile turns that effect off without deleting it. Turn it on again and the settings are still there.',
+      'Znaczek zasilania na kafelku wyłącza ten efekt bez usuwania go. Włączysz go znowu, a ustawienia nadal tam są.',
+    ),
+    technical: text(
+      'Bypass is not a parameter change. It does not remove the module, its automation, or its modulation.',
+      'Bypass nie jest zmianą parametru. Nie usuwa modułu, jego automatyzacji ani modulacji.',
+    ),
+  },
+  {
+    id: 'q',
+    category: 'tone',
+    title: text('Q', 'Q'),
+    summary: text(
+      'Q is how wide an EQ band is. A low Q is a broad slope. A high Q is a narrow notch or peak.',
+      'Q to szerokość pasma EQ. Niskie Q to szerokie zbocze. Wysokie Q to wąski dołek albo szczyt.',
+    ),
+    practical: text(
+      'Start with a moderate width. A very narrow band is easy to miss and easy to overdo.',
+      'Zacznij od umiarkowanej szerokości. Bardzo wąskie pasmo łatwo przeoczyć i łatwo przesadzić.',
+    ),
+    technical: text(
+      'Q is the filter quality factor. It sets bandwidth around the band frequency. Gain sets how far that band moves.',
+      'Q to dobroć filtra. Ustawia szerokość wokół częstotliwości pasma. Gain ustawia, jak daleko to pasmo się rusza.',
+    ),
+  },
+  {
+    id: 'wet',
+    category: 'space',
+    title: text('Wet and dry', 'Wet i dry'),
+    summary: text(
+      'Dry is the original sound. Wet is the effect. The mix is how much of each you hear.',
+      'Dry to oryginalny dźwięk. Wet to efekt. Miks to, ile słyszysz każdego z nich.',
+    ),
+    practical: text(
+      'Turn Wet up a little. If the original disappears, turn it back down. You do not need an extreme setting.',
+      'Podnieś Wet odrobinę. Jeśli oryginał znika, obniż go z powrotem. Nie potrzebujesz skrajnego ustawienia.',
+    ),
+    technical: text(
+      'Reverb and delay each have their own wet control. Raising wet does not change delay time, feedback, or the dry recording.',
+      'Pogłos i delay mają własne kontrolki wet. Podniesienie wet nie zmienia czasu delay, feedbacku ani suchego nagrania.',
+    ),
+  },
 ]
 
 const TOPIC_BY_ID = new Map(LEARNING_TOPICS.map((topic) => [topic.id, topic]))

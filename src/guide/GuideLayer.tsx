@@ -2,9 +2,11 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncEx
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
 import { useEngine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
+import { boundInstance, moduleIds } from './actions'
 import { guideChrome } from './copy'
 import { subscribeGuideEvents } from './events'
 import { signalFromSnapshot, type GuideContext } from './observe'
+import { moduleForTarget, presentStep, visiblePosition } from './present'
 import { canAdvance, currentStep, readiness } from './session'
 import { dispatchGuide, getGuideHost, getGuideState, guideEnv, noteGuideSignal, subscribeGuide } from './store'
 import { AVAILABLE_CAPABILITIES, taskAvailable, taskById, tasksInCategory } from './tasks'
@@ -19,6 +21,8 @@ type Props = {
   exportOpen: boolean
   focusActive: boolean
   menuOpen: boolean
+  focusedId: string
+  uiMode: 'simple' | 'technical' | 'sensory' | null
 }
 
 type Counts = {
@@ -59,45 +63,55 @@ export function GuideLayer(props: Props) {
       fadeOut: props.fadeOut,
       exportOpen: props.exportOpen,
       focusActive: props.focusActive,
-      uiMode: getGuideHost().uiMode,
+      uiMode: props.uiMode,
       menuOpen: props.menuOpen,
+      focusedId: props.focusedId,
       ...counts,
     }),
-    [props.fadeIn, props.fadeOut, props.exportOpen, props.focusActive, props.menuOpen, counts],
+    [props.fadeIn, props.fadeOut, props.exportOpen, props.focusActive, props.menuOpen, props.uiMode, props.focusedId, counts],
   )
   const signal = useMemo(() => signalFromSnapshot(snap, ctx), [snap, ctx])
 
   useEffect(() => {
     noteGuideSignal(signal)
-  }, [signal])
+    if (getGuideState().view === 'task' && props.uiMode) {
+      dispatchGuide({ type: 'retarget', mode: props.uiMode, signal })
+    }
+  }, [signal, props.uiMode])
 
   useEffect(() => {
     if (snap.sampleLoaded) dispatchGuide({ type: 'sample-arrived', env: guideEnv() })
   }, [snap.sampleLoaded])
 
   const task = taskById(state.taskId)
-  const step = currentStep(state)
-  const stepKey = step?.id ?? ''
+  const rawStep = currentStep(state)
+  const step = rawStep ? presentStep(rawStep, props.uiMode) : null
+  const stepKey = `${rawStep?.id ?? ''}:${props.uiMode ?? ''}`
+  const module = rawStep?.module ?? moduleForTarget(step?.target ?? null)
+  const instance = module ? boundInstance(module, signal, state.bindings) : null
+  const several = Boolean(module && module !== 'gain' && moduleIds(signal, module).length > 1 && !instance)
+  const place = task ? visiblePosition(task, state, props.uiMode, signal) : { index: 0, total: 1 }
+  const mode = props.uiMode ?? 'simple'
 
   useEffect(() => {
     if (!step?.target || state.panel === 'floating' || state.view !== 'task') return
-    const place = () => {
-      const el = findGuideElement(step.target!)
+    const placePanel = () => {
+      const el = locate(step.target!, instance, several)
       const rect = el?.getBoundingClientRect() ?? null
       dispatchGuide({ type: 'set-slot', slot: dockSlot(rect, window.innerHeight, window.innerWidth) })
     }
-    place()
-    window.addEventListener('field-guide-revealed', place)
-    return () => window.removeEventListener('field-guide-revealed', place)
-  }, [stepKey, state.panel, state.view, step?.target])
+    placePanel()
+    window.addEventListener('field-guide-revealed', placePanel)
+    return () => window.removeEventListener('field-guide-revealed', placePanel)
+  }, [stepKey, state.panel, state.view, step?.target, instance, several])
 
   useEffect(() => {
     if (!state.autoAdvance || state.view !== 'task' || !step) return
     if (readiness(step, state, signal) !== 'done') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const id = window.setTimeout(() => dispatchGuide({ type: 'next', signal }), 1600)
+    const id = window.setTimeout(() => dispatchGuide({ type: 'next', signal, mode }), 1600)
     return () => window.clearTimeout(id)
-  }, [state, step, signal])
+  }, [state, step, signal, mode])
 
   const [rect, setRect] = useState<DOMRect | null>(null)
   useLayoutEffect(() => {
@@ -107,11 +121,11 @@ export function GuideLayer(props: Props) {
       return
     }
     const measure = () => {
-      const el = findGuideElement(id)
+      const el = locate(id, instance, several)
       setRect(el ? el.getBoundingClientRect() : null)
     }
     measure()
-    const el = findGuideElement(id)
+    const el = locate(id, instance, several)
     const observer = new ResizeObserver(measure)
     if (el) observer.observe(el)
     window.addEventListener('resize', measure)
@@ -121,7 +135,7 @@ export function GuideLayer(props: Props) {
       window.removeEventListener('resize', measure)
       window.removeEventListener('field-guide-revealed', measure)
     }
-  }, [state.view, state.panel, step?.target, props.menuOpen, stepKey])
+  }, [state.view, state.panel, step?.target, props.menuOpen, stepKey, instance, several])
 
   useEffect(() => {
     if (state.view === 'closed' || state.panel === 'minimized' || props.menuOpen) return
@@ -146,7 +160,7 @@ export function GuideLayer(props: Props) {
       {minimized ? (
         <button type="button" className={styles.pill} onClick={() => dispatchGuide({ type: 'restore' })}>
           {chrome.restore}
-          {task && state.view === 'task' ? ` · ${chrome.step(state.stepIndex + 1, task.steps.length)}` : ''}
+          {task && state.view === 'task' ? ` · ${chrome.step(place.index + 1, place.total)}` : ''}
         </button>
       ) : (
         <div
@@ -195,23 +209,25 @@ export function GuideLayer(props: Props) {
           ) : null}
           {state.view === 'need-sound' ? <NeedSound chrome={chrome} /> : null}
           {state.view === 'mode-ask' && task ? <ModeAsk chrome={chrome} locale={locale} task={task} /> : null}
-          {state.view === 'focus-ask' ? <FocusAsk chrome={chrome} target={step?.target ?? null} /> : null}
+          {state.view === 'focus-ask' ? <FocusAsk chrome={chrome} target={step?.target ?? null} instance={instance} /> : null}
           {state.view === 'done' && task ? <Done chrome={chrome} locale={locale} task={task} /> : null}
           {state.view === 'task' && task && step ? (
             <TaskBody
-              key={step.id}
+              key={stepKey}
               chrome={chrome}
               locale={locale}
               task={task}
               step={step}
-              index={state.stepIndex}
+              index={place.index}
+              total={place.total}
               reason={readiness(step, state, signal)}
               advance={canAdvance(step, state, signal)}
               notice={state.notice === 'back-keeps-edits'}
               autoAdvance={state.autoAdvance}
-              signalReady={() => dispatchGuide({ type: 'next', signal })}
-              onSkip={() => dispatchGuide({ type: 'skip', signal })}
-              onBack={() => dispatchGuide({ type: 'back' })}
+              signalReady={() => dispatchGuide({ type: 'next', signal, mode })}
+              onSkip={() => dispatchGuide({ type: 'skip', signal, mode })}
+              onBack={() => dispatchGuide({ type: 'back', signal, mode })}
+              onShow={() => reveal(step.target!, instance)}
             />
           ) : null}
         </div>
@@ -426,7 +442,15 @@ function ModeAsk({
   )
 }
 
-function FocusAsk({ chrome, target }: { chrome: ReturnType<typeof guideChrome>; target: GuideTargetId | null }) {
+function FocusAsk({
+  chrome,
+  target,
+  instance,
+}: {
+  chrome: ReturnType<typeof guideChrome>
+  target: GuideTargetId | null
+  instance: string | null
+}) {
   return (
     <div className={styles.body}>
       <h2 tabIndex={-1} data-guide-focus="">{chrome.focusTitle}</h2>
@@ -441,7 +465,7 @@ function FocusAsk({ chrome, target }: { chrome: ReturnType<typeof guideChrome>; 
           onClick={() => {
             getGuideHost().exitFocus()
             dispatchGuide({ type: 'cancel-focus' })
-            if (target) window.setTimeout(() => reveal(target), 80)
+            if (target) window.setTimeout(() => reveal(target, instance), 80)
           }}
         >
           {chrome.focusReveal}
@@ -479,6 +503,7 @@ function TaskBody({
   task,
   step,
   index,
+  total,
   reason,
   advance,
   notice,
@@ -486,12 +511,14 @@ function TaskBody({
   signalReady,
   onSkip,
   onBack,
+  onShow,
 }: {
   chrome: ReturnType<typeof guideChrome>
   locale: 'en' | 'pl'
   task: GuideTask
   step: NonNullable<ReturnType<typeof currentStep>>
   index: number
+  total: number
   reason: ReturnType<typeof readiness>
   advance: boolean
   notice: boolean
@@ -499,10 +526,10 @@ function TaskBody({
   signalReady: () => void
   onSkip: () => void
   onBack: () => void
+  onShow: () => void
 }) {
   const [why, setWhy] = useState(false)
   const [more, setMore] = useState(false)
-  const total = task.steps.length
   const label = chrome.step(index + 1, total)
   const status = reason === 'done' ? step.success?.[locale] : reason === 'already' ? chrome.already : ''
   return (
@@ -529,7 +556,7 @@ function TaskBody({
       ) : null}
       <div className={styles.row}>
         {step.target ? (
-          <button type="button" className={styles.primary} onClick={() => reveal(step.target!)}>
+          <button type="button" className={styles.primary} onClick={onShow}>
             {chrome.showMe}
           </button>
         ) : null}
@@ -590,15 +617,24 @@ function TaskBody({
   )
 }
 
-function reveal(target: GuideTargetId): void {
+function locate(target: GuideTargetId, instance: string | null, several: boolean): HTMLElement | null {
+  if (several) return findGuideElement('technical.effectChain')
+  const direct = findGuideElement(target, instance)
+  if (direct) return direct
+  if (target.startsWith('technical.add')) return findGuideElement('technical.addEffect')
+  return null
+}
+
+function reveal(target: GuideTargetId, instance: string | null): void {
   const host = getGuideHost()
   if (host.focusActive && targetHiddenInFocus(target)) {
     dispatchGuide({ type: 'ask-focus' })
     return
   }
-  host.revealTarget(target)
+  host.revealTarget(target, instance)
   window.setTimeout(() => {
-    findGuideElement(target)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const node = findGuideElement(target, instance) ?? (target.startsWith('technical.add') ? findGuideElement('technical.addEffect') : null)
+    node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     window.dispatchEvent(new Event('field-guide-revealed'))
   }, 60)
 }

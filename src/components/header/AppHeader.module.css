@@ -58,6 +58,31 @@
   flex: none;
 }
 
+.guide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: none;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--toolbar-radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--toolbar-font);
+  letter-spacing: var(--toolbar-tracking);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.guide:hover,
+.guide:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-control-hover);
+}
+
 .minimal .utilities button {
   min-width: 44px;
   min-height: 44px;
@@ -403,6 +428,7 @@
   color: var(--text-primary);
 }
 
+:global([data-technical-ui='workspace']) .guide,
 :global([data-technical-ui='workspace']) .load,
 :global([data-technical-ui='workspace']) .settings,
 :global([data-technical-ui='workspace']) .lfo,

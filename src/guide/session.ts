@@ -1,6 +1,7 @@
-import { projectSatisfies, type GuideSignal } from './actions'
+import { projectSatisfies, type GuideBindings, type GuideSignal } from './actions'
+import { presentStep, visibleSteps } from './present'
 import { taskById } from './tasks'
-import type { GuideAction, GuidePanelMode, GuideSlot, GuideStep, GuideTask, GuideView } from './types'
+import type { GuideAction, GuideModule, GuidePanelMode, GuideSlot, GuideStep, GuideTask, GuideView } from './types'
 
 export type Readiness = 'waiting' | 'done' | 'already'
 
@@ -19,6 +20,8 @@ export type GuideState = {
   learnQuery: string
   learnTopicId: string | null
   notice: 'back-keeps-edits' | null
+  /** Effect instance the task is following. Not audio data. */
+  bindings: GuideBindings
 }
 
 export type GuideEnv = {
@@ -39,6 +42,7 @@ export const INITIAL_GUIDE_STATE: GuideState = {
   learnQuery: '',
   learnTopicId: null,
   notice: null,
+  bindings: {},
 }
 
 export type GuideCommand =
@@ -58,9 +62,11 @@ export type GuideCommand =
   | { type: 'ask-focus' }
   | { type: 'cancel-focus' }
   | { type: 'actions'; actions: readonly GuideAction[] }
-  | { type: 'next'; signal: GuideSignal | null }
-  | { type: 'back' }
-  | { type: 'skip'; signal: GuideSignal | null }
+  | { type: 'bind'; bindings: GuideBindings }
+  | { type: 'next'; signal: GuideSignal | null; mode?: GuideEnv['uiMode'] }
+  | { type: 'back'; mode?: GuideEnv['uiMode']; signal?: GuideSignal | null }
+  | { type: 'skip'; signal: GuideSignal | null; mode?: GuideEnv['uiMode'] }
+  | { type: 'retarget'; mode: GuideEnv['uiMode']; signal: GuideSignal | null }
   | { type: 'restart' }
   | { type: 'set-auto'; value: boolean }
   | { type: 'set-query'; query: string }
@@ -115,12 +121,17 @@ export function canAdvance(step: GuideStep, state: GuideState, signal: GuideSign
   return readiness(step, state, signal) !== 'waiting'
 }
 
-function advance(state: GuideState, task: GuideTask): GuideState {
-  const nextIndex = state.stepIndex + 1
-  if (nextIndex >= task.steps.length) {
+function shown(step: GuideStep, mode: GuideEnv['uiMode'] | undefined): GuideStep {
+  return presentStep(step, mode ?? 'simple')
+}
+
+function goToStep(state: GuideState, task: GuideTask, step: GuideStep | undefined, notice: GuideState['notice']): GuideState {
+  if (!step) {
     return { ...state, view: 'done', stepIndex: task.steps.length, stepActions: [], notice: null }
   }
-  return { ...state, view: 'task', stepIndex: nextIndex, stepActions: [], notice: null }
+  const index = task.steps.findIndex((item) => item.id === step.id)
+  if (index < 0) return state
+  return { ...state, view: 'task', stepIndex: index, stepActions: [], notice }
 }
 
 export function reduceGuide(state: GuideState, command: GuideCommand): GuideState {
@@ -156,6 +167,7 @@ export function reduceGuide(state: GuideState, command: GuideCommand): GuideStat
         stepActions: [],
         notice: null,
         panel: 'docked',
+        bindings: {},
       }
       if (task.requiresSample && !command.env.sampleLoaded) return { ...base, view: 'need-sound' }
       return routeAfterSample(base, command.env)
@@ -182,29 +194,50 @@ export function reduceGuide(state: GuideState, command: GuideCommand): GuideStat
         stepActions: latch(state.stepActions, command.actions),
       }
     }
+    case 'bind': {
+      const next = { ...state.bindings, ...command.bindings }
+      const same = (Object.keys(next) as GuideModule[]).every((key) => next[key] === state.bindings[key])
+      return same ? state : { ...state, bindings: next }
+    }
     case 'next': {
       const task = taskById(state.taskId)
       const step = currentStep(state)
       if (!task || !step || state.view !== 'task') return state
-      if (!canAdvance(step, state, command.signal)) return state
-      return advance(state, task)
+      const mode = command.mode ?? 'simple'
+      if (!canAdvance(shown(step, mode), state, command.signal)) return state
+      const visible = visibleSteps(task, mode, command.signal, state)
+      const pos = visible.findIndex((item) => item.id === step.id)
+      return goToStep(state, task, pos >= 0 ? visible[pos + 1] : visible[0], null)
     }
     case 'back': {
-      if ((state.view !== 'task' && state.view !== 'done') || state.stepIndex <= 0) return state
-      const index = state.view === 'done' ? Math.max(0, state.stepIndex - 1) : state.stepIndex - 1
-      return {
-        ...state,
-        view: 'task',
-        stepIndex: index,
-        stepActions: [],
-        notice: 'back-keeps-edits',
-      }
+      if (state.view !== 'task' && state.view !== 'done') return state
+      const task = taskById(state.taskId)
+      if (!task) return state
+      const mode = command.mode ?? 'simple'
+      const visible = visibleSteps(task, mode, command.signal ?? null, state)
+      const current = state.view === 'done' ? visible[visible.length - 1] : task.steps[state.stepIndex]
+      const pos = visible.findIndex((item) => item.id === current?.id)
+      if (pos <= 0) return state
+      return goToStep(state, task, visible[pos - 1], 'back-keeps-edits')
     }
     case 'skip': {
       const task = taskById(state.taskId)
       const step = currentStep(state)
-      if (!task || !step || state.view !== 'task' || !step.skippable) return state
-      return advance(state, task)
+      const mode = command.mode ?? 'simple'
+      if (!task || !step || state.view !== 'task' || !shown(step, mode).skippable) return state
+      const visible = visibleSteps(task, mode, command.signal, state)
+      const pos = visible.findIndex((item) => item.id === step.id)
+      return goToStep(state, task, pos >= 0 ? visible[pos + 1] : visible[0], null)
+    }
+    case 'retarget': {
+      if (state.view !== 'task') return state
+      const task = taskById(state.taskId)
+      if (!task) return state
+      const visible = visibleSteps(task, command.mode, command.signal, state)
+      const current = task.steps[state.stepIndex]
+      if (current && visible.some((item) => item.id === current.id)) return state
+      const waiting = visible.find((item) => readiness(shown(item, command.mode), state, command.signal) === 'waiting')
+      return goToStep(state, task, waiting ?? visible[visible.length - 1], null)
     }
     case 'restart':
       if (!state.taskId) return state
@@ -215,6 +248,7 @@ export function reduceGuide(state: GuideState, command: GuideCommand): GuideStat
         taskActions: [],
         stepActions: [],
         notice: null,
+        bindings: {},
         panel: state.panel === 'minimized' ? 'docked' : state.panel,
       }
     case 'set-auto':

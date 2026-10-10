@@ -1204,16 +1204,25 @@ export default function App() {
       },
       setMode: chooseMode,
       exitFocus: () => setFocusWorkspace(null),
-      revealTarget: (id) => {
+      revealTarget: (id, instanceId) => {
+        if (id === 'technical.addEffect' || id.startsWith('technical.add.')) {
+          window.dispatchEvent(new CustomEvent('field-guide-add', { detail: id }))
+          return
+        }
         const section = simpleSectionFor(id)
         if (section) window.dispatchEvent(new CustomEvent('field-guide-section', { detail: section }))
         if (id === 'edit.trim' || id === 'edit.fadeIn' || id === 'edit.fadeOut') {
           window.dispatchEvent(new Event('field-guide-open-more'))
         }
-        const type = moduleTypeForTarget(id)
-        if (type && uiMode === 'technical') {
-          const mod = engine.getSnapshot().chain.find((item) => item.type === type)
-          if (mod) selectModule(mod.instanceId)
+        if (uiMode === 'technical') {
+          const chain = engine.getSnapshot().chain
+          const bound = instanceId && chain.some((item) => item.instanceId === instanceId) ? instanceId : null
+          if (bound) selectModule(bound)
+          else if (!id.startsWith('technical.add')) {
+            const type = moduleTypeForTarget(id)
+            const matches = type ? chain.filter((item) => item.type === type) : []
+            if (matches.length === 1 && matches[0]) selectModule(matches[0].instanceId)
+          }
         }
         window.dispatchEvent(new Event('field-guide-revealed'))
       },
@@ -1227,6 +1236,8 @@ export default function App() {
       exportOpen={exportOpen}
       focusActive={Boolean(focusWorkspace)}
       menuOpen={menuOpen}
+      focusedId={resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : ''}
+      uiMode={uiMode}
     />
   )
 
@@ -1415,6 +1426,8 @@ export default function App() {
           uiSwitch={
             isPhoneLayout ? undefined : <TechnicalUiSwitch value={technicalUi} onChange={setTechnicalUi} />
           }
+          guideLabel={guideChrome(locale).guideMe}
+          onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
         />
         <div className={styles.stage}>
           <div className={styles.stageMain}>
@@ -1483,6 +1496,8 @@ export default function App() {
                 if (workspaceId === 'hearing') enterHearingFocus()
                 else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
               }}
+              guideLabel={guideChrome(locale).guideMe}
+              onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
             />
             {workspaceId === 'fft' ? <FftPrimaryBar /> : null}
             {workspaceId === 'wave' ? (

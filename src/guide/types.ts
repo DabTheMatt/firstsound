@@ -22,6 +22,23 @@ export const GUIDE_TARGETS = [
   'export.confirm',
   'sample.load',
   'sample.demo',
+  'technical.effectChain',
+  'technical.addEffect',
+  'technical.add.reverb',
+  'technical.add.delay',
+  'technical.add.eq',
+  'technical.effectInspector',
+  'technical.effectEnable',
+  'technical.inputGain',
+  'technical.eq',
+  'technical.reverb',
+  'technical.reverbWet',
+  'technical.delay',
+  'technical.delayWet',
+  'technical.delayTime',
+  'technical.waveform',
+  'technical.selection',
+  'technical.export',
 ] as const
 
 export type GuideTargetId = (typeof GUIDE_TARGETS)[number]
@@ -55,6 +72,15 @@ export type GuideAction =
   | 'reverse.changed'
   | 'compare.used'
   | 'waveform.touched'
+  | 'reverb.added'
+  | 'delay.added'
+  | 'eq.added'
+  | 'reverb.selected'
+  | 'delay.selected'
+  | 'eq.selected'
+  | 'reverb.wet'
+  | 'delay.wet'
+  | 'delay.time'
 
 export type StepCompletion =
   | { kind: 'manual' }
@@ -62,6 +88,18 @@ export type StepCompletion =
   | { kind: 'all'; actions: readonly GuideAction[] }
 
 export type Localized = Record<Locale, string>
+
+export type GuideModule = 'eq' | 'reverb' | 'delay' | 'gain'
+
+/** Shown instead of the base copy when the task is open in Technical. */
+export type TechnicalFace = {
+  target?: GuideTargetId | null
+  title?: Localized
+  instruction?: Localized
+  hint?: Localized | null
+  success?: Localized | null
+  completion?: StepCompletion
+}
 
 export type GuideStep = {
   id: string
@@ -77,6 +115,13 @@ export type GuideStep = {
   advanced: Localized | null
   success: Localized | null
   tryThis: Localized | null
+  /** Omit in the other mode. Absent means both Simple and Technical. */
+  modes?: 'simple' | 'technical'
+  /** Chain module this step is about. Used to bind one instance. */
+  module?: GuideModule | null
+  /** Hide the step when that module is already in the chain. */
+  skipIfPresent?: boolean
+  technical?: TechnicalFace | null
 }
 
 export type GuideTask = {

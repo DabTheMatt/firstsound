@@ -20,6 +20,7 @@ type PersistedGuide = {
   stepIndex: number
   taskActions: GuideAction[]
   autoAdvance: boolean
+  bindings?: GuideState['bindings']
 }
 
 export function persistGuide(state: GuideState): void {
@@ -32,6 +33,7 @@ export function persistGuide(state: GuideState): void {
     stepIndex: state.stepIndex,
     taskActions: state.taskActions,
     autoAdvance: state.autoAdvance,
+    bindings: state.bindings,
   }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -55,6 +57,7 @@ export function readPersistedGuide(): GuideState {
       stepIndex: typeof parsed.stepIndex === 'number' ? parsed.stepIndex : 0,
       taskActions: Array.isArray(parsed.taskActions) ? parsed.taskActions : [],
       autoAdvance: Boolean(parsed.autoAdvance),
+      bindings: parsed.bindings && typeof parsed.bindings === 'object' ? parsed.bindings : {},
     }
   } catch {
     return INITIAL_GUIDE_STATE

@@ -10,6 +10,8 @@ type Props = {
   contextClosed: boolean
   onOpenContext: () => void
   onEnterFocus: () => void
+  guideLabel?: string
+  onOpenGuide?: () => void
 }
 
 const LABEL: Record<TechnicalWorkspaceId, 'wave' | 'eq' | 'fft' | 'auto' | 'hearing'> = {
@@ -26,6 +28,8 @@ export function WorkspaceTabs({
   contextClosed,
   onOpenContext,
   onEnterFocus,
+  guideLabel,
+  onOpenGuide,
 }: Props) {
   const { t } = useI18n()
   return (
@@ -46,6 +50,11 @@ export function WorkspaceTabs({
         )
       })}
       <span className={styles.tabSpacer} />
+      {onOpenGuide && guideLabel ? (
+        <button type="button" className={`${styles.textButton} ${styles.guideLink}`} onClick={onOpenGuide}>
+          {guideLabel}
+        </button>
+      ) : null}
       {contextClosed ? (
         <button type="button" className={styles.textButton} onClick={onOpenContext}>
           {t.workspace.context}

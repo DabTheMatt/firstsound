@@ -73,7 +73,7 @@ export function LfoParamShell({ id, afford = true, fill = false, children }: Pro
     <div
       className={className}
       data-param-id={id}
-      {...guideTargetAttrs(guideTargetForParam(id))}
+      {...guideTargetAttrs(guideTargetForParam(id), '2', scope.instanceId)}
       data-lfo-pickable={pickable ? 'true' : 'false'}
       data-lfo-mapped={active ? 'true' : 'false'}
       data-modulation-active={active ? 'true' : 'false'}

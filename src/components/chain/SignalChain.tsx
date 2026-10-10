@@ -10,7 +10,7 @@ import {
 } from '../../audio/chain/chain'
 import { announce, useA11ySettings } from '../../a11y'
 import { onPointerReset } from '../../app/pointerSession'
-import { guideTargetAttrs, guideTargetForModule } from '../../guide/targets'
+import { guideTargetAttrs, guideTargetForInsert, technicalTargetForModule } from '../../guide/targets'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import styles from './SignalChain.module.css'
@@ -151,6 +151,26 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     setAddAt(afterIndex)
   }
 
+  useEffect(() => {
+    const onAdd = () => {
+      if (!canAdd) return
+      const button = document.querySelector<HTMLButtonElement>('[data-guide-target="technical.addEffect"]')
+      if (!button) return
+      const afterIndex = Math.max(0, chainRef.current.length - 2)
+      if (addAt === afterIndex) {
+        setAddAt(null)
+        setMenuPos(null)
+      } else {
+        const rect = button.getBoundingClientRect()
+        setMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
+        setAddAt(afterIndex)
+      }
+      window.setTimeout(() => window.dispatchEvent(new Event('field-guide-revealed')), 40)
+    }
+    window.addEventListener('field-guide-add', onAdd)
+    return () => window.removeEventListener('field-guide-add', onAdd)
+  }, [canAdd, addAt])
+
   const insert = (type: ModuleType) => {
     if (addAt == null) return
     const id = engine.insertModule(type, addAt)
@@ -162,6 +182,8 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     <nav
       className={`${styles.chain} ${reorder ? styles.reordering : ''} ${minimal ? styles.minimal : ''} ${quiet ? styles.quiet : ''}`}
       aria-label={t.chain.aria}
+      data-guide-target="technical.effectChain"
+      data-guide-rank="1"
     >
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
@@ -181,6 +203,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   aria-haspopup="menu"
                   title={t.chain.addAfter(moduleLabel(prev, chain, t.modules))}
                   disabled={!canAdd}
+                  {...guideTargetAttrs('technical.addEffect', '1')}
                   onPointerEnter={() => markDrop(index)}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -194,7 +217,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
             <div
               className={`${styles.tile} ${selected ? styles.selected : ''} ${enabled ? styles.enabled : styles.bypassed} ${fixed ? styles.locked : styles.movable}`}
               title={fixed ? label : t.chain.dragHint}
-              {...guideTargetAttrs(guideTargetForModule(mod.type), '1')}
+              {...guideTargetAttrs(technicalTargetForModule(mod.type), '1', mod.instanceId)}
               onPointerEnter={() => markDrop(index)}
             >
               <button
@@ -293,6 +316,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   aria-label={mod.bypassed ? t.chain.bypassOn(moduleName(mod.type)) : t.chain.bypassOff(moduleName(mod.type))}
                   aria-pressed={mod.bypassed}
                   title={mod.bypassed ? t.chain.enableShort : t.chain.bypassShort}
+                  {...guideTargetAttrs('technical.effectEnable', '1', mod.instanceId)}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -328,6 +352,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
           aria-label={t.chain.addEffect}
           title={t.chain.addEffect}
           disabled={!canAdd}
+          {...guideTargetAttrs('technical.addEffect', '1')}
           onClick={(event) => openInsert(Math.max(0, chain.length - 2), event.currentTarget)}
         >
           +
@@ -344,6 +369,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                     type="button"
                     role="menuitem"
                     className={styles.menuItem}
+                    {...guideTargetAttrs(guideTargetForInsert(type), '2')}
                     onClick={() => insert(type)}
                   >
                     {t.modules[type]}

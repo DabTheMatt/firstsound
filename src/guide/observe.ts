@@ -14,6 +14,7 @@ export type GuideContext = {
   focusActive: boolean
   uiMode: 'simple' | 'technical' | 'sensory' | null
   menuOpen: boolean
+  focusedId: string
 }
 
 export const EMPTY_GUIDE_CONTEXT: GuideContext = {
@@ -27,6 +28,7 @@ export const EMPTY_GUIDE_CONTEXT: GuideContext = {
   focusActive: false,
   uiMode: null,
   menuOpen: false,
+  focusedId: '',
 }
 
 function moduleBypassed(snap: EngineSnapshot, type: 'eq' | 'reverb' | 'delay'): boolean {
@@ -92,5 +94,33 @@ export function signalFromSnapshot(snap: EngineSnapshot, ctx: GuideContext): Gui
     exportCompletedCount: ctx.exportCompletedCount,
     compareCount: ctx.compareCount,
     waveformTouches: ctx.waveformTouches,
+    reverbIds: idsOf(snap.chain, 'reverb'),
+    delayIds: idsOf(snap.chain, 'delay'),
+    eqIds: idsOf(snap.chain, 'eq'),
+    focusedId: ctx.focusedId,
+    reverbWet: snap.params.reverbWet / 100,
+    delayWet: snap.params.delayWet / 100,
+    delayTime: snap.params.delayTime,
+    eqShape: eqShape(snap),
   }
+}
+
+function eqShape(snap: EngineSnapshot): string {
+  let shared = false
+  return snap.chain
+    .filter((item) => item.type === 'eq')
+    .map((item) => {
+      const own = snap.eqById[item.instanceId]?.bands
+      const bands = own ?? (shared ? [] : snap.eqBands)
+      if (!own) shared = true
+      const body = bands
+        .map((band) => `${Math.round(band.frequency)}:${band.gain.toFixed(2)}:${band.q.toFixed(2)}:${band.type}`)
+        .join(',')
+      return `${item.instanceId}:${body}`
+    })
+    .join(';')
+}
+
+function idsOf(chain: EngineSnapshot['chain'], type: 'reverb' | 'delay' | 'eq'): string {
+  return chain.filter((item) => item.type === type).map((item) => item.instanceId).join(',')
 }
