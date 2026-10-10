@@ -190,6 +190,7 @@ export default function App() {
   const workspaceOn = technicalUi === 'workspace' && !isPhoneLayout
   const [menuOpen, setMenuOpen] = useState(false)
   const menuOpenRef = useRef(false)
+  const [settingsPage, setSettingsPage] = useState<'menu' | 'access'>('menu')
   const [libraryTick, setLibraryTick] = useState(0)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -570,6 +571,7 @@ export default function App() {
       closeSettings(true)
       return
     }
+    setSettingsPage('menu')
     rememberTrigger('settings')
     menuOpenRef.current = true
     setMenuOpen(true)
@@ -1023,6 +1025,9 @@ export default function App() {
             {t.header.settings}
           </h2>
           <p className={styles.hint}>{t.settings.hint}</p>
+          <button type="button" onClick={() => setSettingsPage('access')}>
+            {t.a11y.open}
+          </button>
           <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
           </button>
@@ -1189,7 +1194,6 @@ export default function App() {
           {t.settings.redo}
         </button>
         <TechnicalInterfaceSetting value={technicalUi} onChange={setTechnicalUi} />
-        <A11ySettings />
       </div>
     ),
     [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, locale, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
@@ -1250,15 +1254,15 @@ export default function App() {
         onClick={() => closeSettings(true)}
       />
       <div
-        className={styles.settingsFly}
+        className={`${styles.settingsFly} ${settingsPage === 'access' ? styles.settingsAccess : ''}`}
         ref={settingsRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="settings-title"
+        aria-labelledby={settingsPage === 'access' ? 'field-access-title' : 'settings-title'}
         data-settings-dialog=""
         onKeyDown={(event) => trapTab(event)}
       >
-        {actions}
+        {settingsPage === 'access' ? <A11ySettings onBack={() => setSettingsPage('menu')} /> : actions}
       </div>
     </div>
   ) : null
@@ -1266,7 +1270,7 @@ export default function App() {
   useEffect(() => {
     if (!menuOpen) return
     focusInitial(settingsRef.current)
-  }, [menuOpen])
+  }, [menuOpen, settingsPage])
 
   useLayoutEffect(() => {
     setGuideHost({
@@ -1558,10 +1562,6 @@ export default function App() {
               onWorkspace={activateWorkspace}
               contextClosed={contextLevel === 'closed' && !eqStrips}
               onOpenContext={() => setContextLevel('compact')}
-              onEnterFocus={() => {
-                if (workspaceId === 'hearing') enterHearingFocus()
-                else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
-              }}
               guideLabel={guideChrome(locale).guideMe}
               onOpenGuide={() => {
             rememberTrigger('guide')
@@ -1583,9 +1583,6 @@ export default function App() {
                   { id: 'delete', label: t.waveform.deleteSelectionCaption, disabled: !snap.canDeleteSelection, danger: true, onClick: deleteSelection },
                   { id: 'fade-in', label: t.waveform.fadeIn, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('in') },
                   { id: 'fade-out', label: t.waveform.fadeOut, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('out') },
-                ]}
-                more={[
-                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
                   { id: 'trim', label: t.waveform.trim, disabled: !snap.sampleLoaded, onClick: () => {
                     void engine.trimPlayRegion().then((ok) => {
                       if (!ok) return
@@ -1594,6 +1591,9 @@ export default function App() {
                       commit()
                     })
                   } },
+                ]}
+                more={[
+                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
                   { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
                   { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
                   { id: 'undo', label: t.waveform.undo, disabled: history.past.length === 0, onClick: () => applyHistory(undoHistory(history)) },
@@ -1653,7 +1653,6 @@ export default function App() {
           }}
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
-          onToggleWorkspace={enterFocus}
           hearingFocus={activeFocus === 'hearing'}
           onHearingFocus={enterHearingFocus}
           arrangement={arrangement}
@@ -1788,6 +1787,8 @@ export default function App() {
               onSelectTrack={followTrack}
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
               onEnterFocus={enterNamedFocus}
+              onExitFocus={() => setFocusWorkspace(null)}
+              onEnterHearing={enterHearingFocus}
               calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
               eqStrips={eqStrips}
               onShowEqInspector={

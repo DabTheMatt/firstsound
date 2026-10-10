@@ -1,9 +1,22 @@
 .editor {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.editor:has([data-enter-focus='corner-right']) .trackTabs {
+  right: 44px;
+}
+
+.editor:has([data-enter-focus='corner-right']) .autoLegend {
+  max-width: calc(100% - 52px);
+}
+
+.editor:has([data-enter-focus='corner-right']) .monoBadge {
+  right: 44px;
 }
 
 .editor[data-calm] .stage {

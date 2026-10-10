@@ -14,17 +14,15 @@ import { eqStripHeading } from './eqBandStyle'
 import { EqBandStrip } from './EqBandStrip'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
 import { EqLayoutButton } from './EqLayoutButton'
-import { EnterFocusButton } from '../focus/EnterFocusButton'
 import styles from './EqConsole.module.css'
 
 type Props = {
   onFocusModule?: (instanceId: string) => void
-  onEnterFocus?: () => void
   onShowInspector?: () => void
 }
 
 /** Mixer-style EQ strips under the FFT: one column per enabled band. */
-export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Props) {
+export function EqConsole({ onFocusModule, onShowInspector }: Props) {
   const snap = useEngine()
   const eqs = snap.chain.filter((m) => m.type === 'eq')
   const many = eqs.length > 1
@@ -39,7 +37,6 @@ export function EqConsole({ onFocusModule, onEnterFocus, onShowInspector }: Prop
 
   return (
     <div className={styles.console} aria-label="EQ control center">
-      {onEnterFocus ? <EnterFocusButton corner label="EQ" onClick={onEnterFocus} /> : null}
       {onShowInspector ? (
         <div className={styles.layoutFloat}>
           <EqLayoutButton to="inspector" onClick={onShowInspector} />

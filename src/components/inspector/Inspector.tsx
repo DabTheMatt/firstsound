@@ -591,7 +591,9 @@ function ModuleInspector({
           </div>
           {ids.length ? params([...ids]) : null}
           {type === 'output' ? (
-            <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
+            <div className={styles.centerControl}>
+              <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
+            </div>
           ) : null}
         </section>
       </ModulationScopeProvider>
@@ -860,7 +862,9 @@ function ModuleInspector({
       {type === 'output' ? (
         <>
           {params(OUT_IDS)}
-          <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
+          <div className={styles.centerControl}>
+            <Toggle pressed={snap.muted} label={t.inspector.mute} onToggle={() => engine.setMuted(!snap.muted)} />
+          </div>
         </>
       ) : null}
     </section>

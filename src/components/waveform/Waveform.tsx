@@ -87,6 +87,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { largerControlsEnabled } from '../../a11y/settings'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
@@ -153,6 +154,10 @@ type Props = {
   onInspectEffect?: (trackId: string, instanceId: string) => void
   /** Opens Focus for the view this surface is showing. */
   onEnterFocus?: (workspace: 'wave' | 'fft' | 'eq' | 'auto') => void
+  /** Leaves Focus. The same icon slot as enter, on every view that has Focus. */
+  onExitFocus?: () => void
+  /** Hearing workspace uses its own Focus, not Wave Focus. */
+  onEnterHearing?: () => void
   /**
    * Experimental Technical workspace. Presentation only: which surface is dominant.
    * Null keeps the classic stack. Does not change playback or the audio graph.
@@ -291,6 +296,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     onEditTrack,
     onInspectEffect,
     onEnterFocus,
+    onExitFocus,
+    onEnterHearing,
     calmWorkspace = null,
     eqStrips = false,
     onShowEqInspector,
@@ -894,7 +901,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const startX = timeToFrac(start, viewRef.current) * width
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
-    const hit = simple ? handlePx.current : selectionBoundaryHitPx(event.pointerType)
+    const hit = simple ? handlePx.current : selectionBoundaryHitPx(event.pointerType, largerControlsEnabled())
     const y = event.clientY - rect.top
 
     if (viz === 'automation') {
@@ -1076,8 +1083,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         endX,
         fadeInX: startX,
         fadeOutX: endX,
-        hitPx: selectionBoundaryHitPx(event.pointerType),
+        hitPx: selectionBoundaryHitPx(event.pointerType, largerControlsEnabled()),
         coarse,
+        larger: largerControlsEnabled(),
         transient: false,
       })
       const cursor = kind === 'fadeIn' || kind === 'fadeOut' ? 'fade' : kind === 'start' || kind === 'end' ? 'edge' : kind === 'move' ? 'move' : ''
@@ -1398,6 +1406,24 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const calmFft = calm && calmWorkspace === 'fft'
   const zoomed = duration > 0 && view.end - view.start < duration * 0.92
   const splitStage = !eqFocus && (viz === 'split' || viz === 'eq-split')
+  const pictureFocusExit = phoneFocus === 'wave' || phoneFocus === 'auto' || phoneFocus === 'hearing'
+  const pictureFocusEnter =
+    !pictureFocusExit &&
+    (calmWorkspace === 'hearing' ? Boolean(onEnterHearing) : Boolean(onEnterFocus) && phoneFocus == null)
+  const pictureFocusButton =
+    !phone && !showSpec && !showArrangement && (pictureFocusExit || pictureFocusEnter) ? (
+      <EnterFocusButton
+        corner="right"
+        exit={pictureFocusExit}
+        label={pictureFocusExit ? t.focus.exit : t.focus.enter}
+        accessibleName={pictureFocusExit ? t.focus.exit : t.focus.enter}
+        onClick={() => {
+          if (pictureFocusExit) onExitFocus?.()
+          else if (calmWorkspace === 'hearing') onEnterHearing?.()
+          else onEnterFocus?.(automationView ? 'auto' : 'wave')
+        }}
+      />
+    ) : null
 
     return (
     <div
@@ -1405,6 +1431,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       data-waveform-editor=""
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
+      {pictureFocusButton}
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''} ${fillEqGraph ? styles.fillGraph : ''}`}>
         <div
           ref={editorRef}
@@ -1533,7 +1560,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         const fadeLabel = edge === 'start' ? t.waveform.fadeIn : t.waveform.fadeOut
                         const edgeLabel = edge === 'start' ? t.waveform.regionStart : t.waveform.regionEnd
                         return (
-                          <div key={edge} className={styles.boundaryHit} data-edge={edge} style={{ left: `${left}%` }}>
+                          <div key={edge} className={styles.boundaryHit} data-boundary-hit="" data-edge={edge} style={{ left: `${left}%` }}>
                             <div
                               className={`${styles.boundaryFade} ${showFadeAffordances ? styles.boundaryFadeFocus : ''}`}
                               data-edge={edge}
@@ -1676,6 +1703,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               key={node.id}
                               points={points}
                               data-auto-segment={node.id}
+                              data-auto-hit=""
                               className={styles.autoHit}
                               vectorEffect="non-scaling-stroke"
                             />
@@ -1760,13 +1788,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 </div>
               )}
             </div>
-            {onEnterFocus && !phoneFocus && !calm ? (
-              <EnterFocusButton
-                corner
-                label={automationView ? 'Automation' : 'Wave'}
-                onClick={() => onEnterFocus(automationView ? 'auto' : 'wave')}
-              />
-            ) : null}
             <div className={styles.ruler} hidden={sensory || simple}>
               {loaded
                 ? ticks.map((mark) => (
@@ -1857,7 +1878,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               onAnalyzerClose={onAnalyzerClose}
               onGraphEdit={onGraphEdit}
               focusLabel={graphFocusWorkspace(shownViz) === 'eq' ? 'EQ' : 'FFT'}
-              onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus(graphFocusWorkspace(shownViz)) : undefined}
+              onEnterFocus={
+                onEnterFocus && phoneFocus == null
+                  ? () => onEnterFocus(graphFocusWorkspace(shownViz))
+                  : undefined
+              }
+              onExitFocus={phoneFocus === 'eq' || phoneFocus === 'fft' ? onExitFocus : undefined}
             />
           </div>
         ) : null}
@@ -1943,7 +1969,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             >
               <EqConsole
                 onFocusModule={onSelectModule}
-                onEnterFocus={onEnterFocus && !phoneFocus ? () => onEnterFocus('eq') : undefined}
                 onShowInspector={onShowEqInspector}
               />
             </div>

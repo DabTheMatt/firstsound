@@ -1,4 +1,9 @@
-export const TECHNICAL_INTERFACE_KEY = 'field.technicalInterface'
+/**
+ * Choice of Technical presentation.
+ * The previous key, `field.technicalInterface`, stored Classic while Classic was the default.
+ * This key starts empty, so a refresh opens Workspace until Classic is chosen again.
+ */
+export const TECHNICAL_INTERFACE_KEY = 'field.technicalUi'
 
 /** Presentation variant of Technical mode. Not an audio mode. */
 export const TECHNICAL_INTERFACES = ['classic', 'workspace'] as const

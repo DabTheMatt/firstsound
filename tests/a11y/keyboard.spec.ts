@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, loadDemo, openSettings } from './support'
+import { boot, loadDemo, openAccess } from './support'
 
 test.describe('keyboard and focus', () => {
   test('tabs between controls and reverses with Shift+Tab', async ({ page }) => {
@@ -29,10 +29,10 @@ test.describe('keyboard and focus', () => {
     await expect(settings).toBeFocused()
   })
 
-  test('Space activates a checkbox and does not start playback', async ({ page }) => {
+  test('Space activates a switch and does not start playback', async ({ page }) => {
     await boot(page)
-    await openSettings(page)
-    const motion = page.getByRole('checkbox', { name: 'Reduce motion' })
+    await openAccess(page)
+    const motion = page.getByRole('switch', { name: 'Reduced Motion' })
     await motion.focus()
     await page.keyboard.press('Space')
     await expect(motion).toBeChecked()

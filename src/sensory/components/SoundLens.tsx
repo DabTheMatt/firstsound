@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
-import { effectiveMotionReduced } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { lensDisplayX, lensEdgeBulge, lensSourceX, lensSphereScale } from '../visualization/lensWarp'
 import { rgbCss, type SensoryVisualState } from '../visualization/sensoryVisualState'
@@ -106,7 +106,7 @@ export function SoundLens({
           }
           energy = Math.min(1, Math.sqrt(acc / bins.length) * 3)
         }
-        const reduced = effectiveMotionReduced()
+        const reduced = effectiveReducedMotion()
         const wobble = reduced ? 0 : visual.motion * 8 * dpr * Math.sin(performance.now() / 380)
         const amp = r * (0.58 + visual.mass * 0.2) * (0.86 + energy * 0.28)
         const step = Math.max(1, Math.floor(dpr))

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
-import { effectiveMotionReduced } from '../../a11y'
 import { engine } from '../../hooks/useEngine'
 import { parseCssColor } from '../../theme/cssColor'
 import { readThemeColors, subscribeThemeChange } from '../../theme'
@@ -156,10 +156,10 @@ export function SoundRange({
         frame = requestAnimationFrame(tick)
         return
       }
+      const reduced = effectiveReducedMotion()
       const dt = lastStamp === 0 ? 16 : Math.min(100, now - lastStamp)
       lastStamp = now
       const snap = engine.getSnapshot()
-      const reduced = effectiveMotionReduced()
       motionRef.current = approachMotionGain(motionRef.current, snap.playing, dt, reduced)
       let measured = STILL_DEPTH_ENERGY
       if (snap.playing) {

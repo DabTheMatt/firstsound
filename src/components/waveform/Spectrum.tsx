@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { effectiveMotionReduced } from '../../a11y'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
@@ -165,6 +165,8 @@ type Props = {
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
   onEnterFocus?: () => void
+  /** Leaves Focus from the same slot as enter. */
+  onExitFocus?: () => void
   /** Name on the graph’s focus control. The EQ view asks for EQ Focus. */
   focusLabel?: string
 }
@@ -258,7 +260,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, eqGainGrid = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, eqGainGrid = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, onExitFocus, focusLabel = 'FFT' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -514,7 +516,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         return
       }
       const live = engine.getSnapshot()
-      const holdPicture = graphSnapshotFrozen()
       const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -552,13 +553,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             if (showPost) postBins = readAnalyserSpectrumBins(engine.getAnalyser('post'), postScratch)
           }
           const cssW = rect.width
-          const reduced = effectiveMotionReduced()
+          const reduced = effectiveReducedMotion()
           paintSpectralHistory(ctx, width, height, historyRef.current, {
             dt: Math.min(1, elapsed),
             dpr,
             cssWidth: cssW,
             cssHeight: rect.height,
-            playing: live.playing && !holdPicture,
+            playing: live.playing,
             sampleRate: sr,
             preBins,
             postBins,
@@ -737,7 +738,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) => {
           if (!peaks) return
           const barKey = style === 'pre' ? 'pre' : 'post'
-          if (!holdPicture) followBandsOverTime(
+          followBandsOverTime(
             fast,
             peaks,
             ballistics.peak.attack,
@@ -745,7 +746,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             dt,
             releaseHold(`${barKey}Fast`, fast.length, ballistics.peak),
           )
-          if (!holdPicture) followBandsOverTime(
+          followBandsOverTime(
             slow,
             peaks,
             ballistics.slow.attack,
@@ -885,7 +886,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const lineRelease = ballistics.peak.release
         const slowAttack = ballistics.slow.attack
         const slowRelease = ballistics.slow.release
-        if (!holdPicture && !listenId && showPre && preScratch.bins) {
+        if (!listenId && showPre && preScratch.bins) {
           preLineFast = followSpectrumLine(
             preLineFast,
             preScratch.bins,
@@ -903,7 +904,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             releaseHold('preLineSlow', preScratch.bins.length, ballistics.slow),
           )
         }
-        if (!holdPicture && !listenId && showPost && postScratch.bins) {
+        if (!listenId && showPost && postScratch.bins) {
           const followedFast = followSpectrumLine(
             postLineFast,
             postScratch.bins,
@@ -952,7 +953,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               automation: live.automation,
               live: curveLive,
               timeSec: live.transportSec,
-              playing: live.playing && !holdPicture,
+              playing: live.playing,
               modulate: modulateCurve,
             },
             dragNow?.instanceId === mod.instanceId ? dragNow.index : null,
@@ -1295,6 +1296,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   )
   const showResponseKey = !phoneFocus && shouldShowResponseLegend(eqCurveOn, filterCurveOn)
   const spatial = prefs.viewMode === '3d' && !phoneEq && !phoneFocus
+  const focusControl =
+    compact || phoneEq ? null : onExitFocus ? (
+      <EnterFocusButton exit label={t.focus.exit} accessibleName={t.focus.exit} onClick={onExitFocus} />
+    ) : onEnterFocus ? (
+      <EnterFocusButton label={focusLabel} accessibleName={t.focus.enter} onClick={onEnterFocus} />
+    ) : null
   return (
     <div
       className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${phoneFocus ? styles.eqFocus : ''} ${analyzerOpen && !phoneEq && !phoneFocus ? styles.analyzerOpen : ''}`}
@@ -1305,9 +1312,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {onEnterFocus && hideGraphMenu && !phoneFocus && !suppressAnalyzerChrome ? (
-        <EnterFocusButton corner label={focusLabel} onClick={onEnterFocus} />
-      ) : null}
+      {focusControl && (spatial || hideGraphMenu) ? <div className={styles.focusDock}>{focusControl}</div> : null}
       {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
@@ -1949,22 +1954,20 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) : null}
         {spatial || hideGraphMenu ? null : (
         <div className={styles.graphMenu} ref={graphMenuRef}>
-          {onEnterFocus && !phoneFocus ? (
-            <EnterFocusButton label={focusLabel} onClick={onEnterFocus} />
-          ) : null}
           <div className={styles.graphMenuBar}>
+            {focusControl}
             <button
               type="button"
               className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
               aria-pressed={snapshotOn}
-              aria-label={snapshotOn ? 'Play on from here' : 'Pause and hold'}
-              title={snapshotOn ? 'Play on from this place' : 'Loop this fragment and hold the FFT and EQ graphs'}
+              aria-label={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
+              title={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
               onClick={(event) => {
                 holdGraphSnapshot(!snapshotOn)
                 event.currentTarget.blur()
               }}
             >
-              {snapshotOn ? 'Holding' : 'Pause and hold'}
+              {t.waveform.hold}
             </button>
             <button
               type="button"

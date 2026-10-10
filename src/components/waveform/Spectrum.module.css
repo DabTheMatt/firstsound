@@ -431,6 +431,14 @@
   transform: translate(calc(-100% - 12px), 8px);
 }
 
+.focusDock {
+  position: absolute;
+  z-index: 5;
+  top: 6px;
+  right: 8px;
+  pointer-events: auto;
+}
+
 .graphMenu {
   position: absolute;
   z-index: 5;
@@ -624,7 +632,8 @@
   letter-spacing: 0.04em;
 }
 
-.eqFocus .graphMenu {
+.eqFocus .graphMenu,
+.eqFocus .focusDock {
   top: 52px;
 }
 

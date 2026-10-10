@@ -71,25 +71,26 @@ export const SELECTION_FADE_FRACTION = 1 / 8
  * Height of the fade hit zone. Touch grows it a little so a finger can land
  * on it, without taking the resize zone below.
  */
-export function selectionFadeZonePx(height: number, coarse = false): number {
+export function selectionFadeZonePx(height: number, coarse = false, larger = false): number {
   const h = Math.max(0, height)
   const fraction = h * SELECTION_FADE_FRACTION
-  if (!coarse) return fraction
-  return Math.min(h * 0.34, Math.max(fraction, Math.min(36, h)))
+  if (coarse) return Math.min(h * 0.34, Math.max(fraction, Math.min(36, h)))
+  if (larger) return Math.min(h * 0.28, Math.max(fraction, Math.min(44, h)))
+  return fraction
 }
 
-export function selectionBoundaryZone(y: number, height: number, coarse = false): 'fade' | 'edge' {
+export function selectionBoundaryZone(y: number, height: number, coarse = false, larger = false): 'fade' | 'edge' {
   if (!(height > 0)) return 'edge'
-  return y <= selectionFadeZonePx(height, coarse) ? 'fade' : 'edge'
+  return y <= selectionFadeZonePx(height, coarse, larger) ? 'fade' : 'edge'
 }
 
 /**
  * Radius around the selection line. Touch is a 44px-wide target; the line
  * itself stays about 1.5px.
  */
-export function selectionBoundaryHitPx(pointerType: string): number {
+export function selectionBoundaryHitPx(pointerType: string, larger = false): number {
   if (pointerType === 'touch' || pointerType === 'pen') return 22
-  return 10
+  return larger ? 22 : 10
 }
 
 /**
@@ -114,12 +115,13 @@ export function resolveWaveformDrag(opts: {
   edge?: 'start' | 'end'
   boundaryZone?: 'fade' | 'edge'
   coarse?: boolean
+  larger?: boolean
   transient?: boolean
 }): WaveformDragKind {
   if (opts.altOrMiddle) return 'pan'
   const height = opts.height ?? 0
   const zone =
-    opts.boundaryZone ?? (height > 0 ? selectionBoundaryZone(opts.y, height, opts.coarse) : 'edge')
+    opts.boundaryZone ?? (height > 0 ? selectionBoundaryZone(opts.y, height, opts.coarse, opts.larger) : 'edge')
   const nearStart = height > 0 && Math.abs(opts.x - opts.startX) <= opts.hitPx
   const nearEnd = height > 0 && Math.abs(opts.x - opts.endX) <= opts.hitPx
   let edge = opts.edge

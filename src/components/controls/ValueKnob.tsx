@@ -371,6 +371,7 @@ export function ValueKnob({
         role="slider"
         tabIndex={0}
         className={styles.dial}
+        data-knob=""
         aria-labelledby={labelId}
         aria-describedby={description ? descId : undefined}
         aria-valuemin={min}
@@ -402,8 +403,8 @@ export function ValueKnob({
             cy={cy}
             r={31}
             fill="none"
-            stroke="var(--accent-primary)"
-            strokeWidth="1.5"
+            stroke="var(--focus-ring, var(--accent-primary))"
+            strokeWidth="2"
           />
           <path
             d={track}

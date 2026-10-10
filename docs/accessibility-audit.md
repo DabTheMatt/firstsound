@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-10
 
-Tested application version: 0.20.1
+Tested application version: 0.21.2
 
 This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim. Automated checks cannot prove WCAG 2.2 Level AA.
 
@@ -53,7 +53,7 @@ Browser zoom at 200% and reflow under OS text-spacing overrides were not execute
 
 No rule was disabled. No blanket exclusion was added for canvas, SVG, or a workspace.
 
-## Findings fixed in 0.20.1
+## Findings fixed in 0.21.2
 
 | ID | Severity | WCAG | Component | What changed |
 | --- | --- | --- | --- | --- |
@@ -65,7 +65,7 @@ No rule was disabled. No blanket exclusion was added for canvas, SVG, or a works
 | F6 | MEDIUM | 4.1.2 | Transient markers | Markers were `role="slider"` without a value or keyboard access. They are `aria-hidden`. |
 | F7 | HIGH | 4.1.2 | Guided Tasks progress | The progressbar had a value but no accessible name. It is named by the visible step label. |
 | F8 | MEDIUM | 2.4.11, 1.4.10 | Header at 320×568 and 1280×800 | Settings was clipped. The phone header scrolls sideways. At 1280 the bar tightens padding before Settings crosses the edge. |
-| F9 | HIGH | 2.1.4, 3.2.2 | Space shortcut | Space still toggles transport, including on a focused button outside a dialog. It does not fire while typing, on a checkbox or radio, or inside a dialog, menu, or alertdialog. Settings can turn transport shortcuts off. |
+| F9 | HIGH | 2.1.4, 3.2.2 | Space shortcut | Space still toggles transport, including on a focused button outside a dialog. It does not fire while typing, on a checkbox, radio, or switch, or inside a dialog, menu, or alertdialog. Settings can turn transport shortcuts off. |
 | F10 | MEDIUM | 2.4.3 | Dialogs and Guided Tasks | Settings, Manual, and Export move focus in and return it to the trigger. Escape minimizes Guided Tasks even after Show me where moves attention. Focus is not moved on every tutorial step. |
 | F11 | MEDIUM | 2.2.2, 2.3.1 | Reduced motion | The FIELD switch and `prefers-reduced-motion` both reduce decorative motion, including Sensory scenes and spectral camera glide. Meters, waveform, and spectrum still draw. Audio processing is unchanged. |
 | F12 | LOW | 1.4.3 | Light themes | `color-scheme` follows the theme (Warm Paper, Manga, Light Studio) instead of forcing dark. |
@@ -145,9 +145,9 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 
 Checked independently and together, including after reload:
 
-- Reduce motion → `data-reduce-motion`
-- Enhanced focus → `data-focus="enhanced"` (ring at least 2px on Studio Dark, Soft Slate, Warm Paper, Dusk)
-- Larger interface → `data-ui-scale="large"`
+- Reduced Motion → `data-reduce-motion`
+- Enhanced Focus Visibility → `data-focus="enhanced"` (ring at least 2px on Studio Dark, Soft Slate, Warm Paper, Dusk)
+- Larger Controls → `data-ui-scale="large"`
 
 Playback kept the Pause control while the three switches were turned on. The OS reduced-motion emulation and the FIELD switch were both checked. Sensory canvas stayed on screen.
 
@@ -155,7 +155,7 @@ Playback kept the Pause control while the three switches were turned on. The OS 
 
 - Tab and Shift+Tab
 - Enter opens Settings; Escape returns focus to Settings
-- Space checks Reduce motion and does not start playback
+- Space turns on the Reduced Motion switch and does not start playback
 - Space types into the Export name field and does not toggle transport; Escape returns focus to Export
 - Mode radios keep focus
 - Enter Focus and Exit Focus move focus to the matching control

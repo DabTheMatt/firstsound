@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, loadDemo, openSettings } from './support'
+import { boot, controlsOutsideViewport, loadDemo, openAccess } from './support'
 
 const ALL_ON = {
   reduceMotion: true,
@@ -14,14 +14,14 @@ const ALL_ON = {
 test.describe('FIELD ACCESS preferences', () => {
   test('applies each preference on its own', async ({ page }) => {
     await boot(page)
-    await openSettings(page)
-    await page.getByRole('checkbox', { name: 'Reduce motion' }).check()
+    await openAccess(page)
+    await page.getByRole('switch', { name: 'Reduced Motion' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
-    await page.getByRole('checkbox', { name: 'Reduce motion' }).uncheck()
-    await page.getByRole('checkbox', { name: 'Enhanced focus' }).check()
+    await page.getByRole('switch', { name: 'Reduced Motion' }).uncheck()
+    await page.getByRole('switch', { name: 'Enhanced Focus Visibility' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
-    await page.getByRole('checkbox', { name: 'Enhanced focus' }).uncheck()
-    await page.getByRole('checkbox', { name: 'Larger interface' }).check()
+    await page.getByRole('switch', { name: 'Enhanced Focus Visibility' }).uncheck()
+    await page.getByRole('switch', { name: 'Larger Controls' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
   })
 
@@ -46,22 +46,25 @@ test.describe('FIELD ACCESS preferences', () => {
     await loadDemo(page)
     await page.getByRole('button', { name: 'Play', exact: true }).first().click()
     await expect(page.getByRole('button', { name: 'Pause', exact: true }).first()).toBeVisible()
-    await openSettings(page)
-    await page.getByRole('checkbox', { name: 'Reduce motion' }).check()
-    await page.getByRole('checkbox', { name: 'Enhanced focus' }).check()
-    await page.getByRole('checkbox', { name: 'Larger interface' }).check()
+    await openAccess(page)
+    await page.getByRole('switch', { name: 'Reduced Motion' }).check()
+    await page.getByRole('switch', { name: 'Enhanced Focus Visibility' }).check()
+    await page.getByRole('switch', { name: 'Larger Controls' }).check()
     await expect(page.getByRole('button', { name: 'Pause', exact: true }).first()).toBeVisible()
   })
 
   test('follows the operating-system reduced-motion preference and the FIELD switch', async ({ page }) => {
     await boot(page, { mode: 'sensory', reducedMotion: 'reduce' })
-    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
     const os = await page.evaluate(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
     expect(os).toBe(true)
     const transition = await page.locator('button').first().evaluate((el) => getComputedStyle(el).transitionProperty)
     expect(transition).toBe('none')
     await page.getByRole('button', { name: 'Menu', exact: true }).click()
-    await page.getByRole('checkbox', { name: 'Reduce motion' }).check()
+    await page.getByRole('button', { name: 'Accessibility', exact: true }).click()
+    const motion = page.getByRole('switch', { name: 'Reduced Motion' })
+    await expect(motion).not.toBeChecked()
+    await motion.check()
     await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
     await expect(page.locator('canvas').first()).toBeVisible()
   })

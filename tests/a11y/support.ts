@@ -57,6 +57,12 @@ export async function openSettings(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
 }
 
+export async function openAccess(page: Page): Promise<void> {
+  await openSettings(page)
+  await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Accessibility', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'FIELD ACCESS' })).toBeVisible()
+}
+
 export async function loadDemo(page: Page): Promise<void> {
   await openSettings(page)
   const dialog = page.getByRole('dialog', { name: 'Settings' })

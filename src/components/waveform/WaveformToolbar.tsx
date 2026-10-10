@@ -38,7 +38,6 @@ type Props = {
   autoFade?: boolean
   normalizeView: boolean
   minimal?: boolean
-  onToggleWorkspace?: () => void
   hearingFocus?: boolean
   onHearingFocus?: () => void
   arrangement?: 'single' | 'multi'
@@ -136,7 +135,6 @@ export function WaveformToolbar({
   autoFade = false,
   normalizeView,
   minimal = false,
-  onToggleWorkspace,
   hearingFocus = false,
   onHearingFocus,
   arrangement = 'single',
@@ -411,11 +409,6 @@ export function WaveformToolbar({
             <HearingFocusIcon />
           </IconButton>
         ) : null}
-        {onToggleWorkspace ? (
-          <IconButton label={t.focus.enter} caption={t.focus.caption} onClick={onToggleWorkspace}>
-            <FocusIcon />
-          </IconButton>
-        ) : null}
         </div>
       </div>
     </div>
@@ -428,14 +421,6 @@ function HearingFocusIcon() {
       <path d="M5.2 8.2a2.8 2.8 0 0 1 5.6 0c0 1.7-1.6 2-1.6 3.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M8 12.2v.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M2.2 13.2V8.2M3.8 13.2V6.2M5.4 13.2V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function FocusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-      <path d="M3 6.5V3.5H6M10 3.5h3V6.5M13 9.5v3H10M6 12.5H3V9.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }

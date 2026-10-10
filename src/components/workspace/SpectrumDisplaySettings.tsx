@@ -50,7 +50,7 @@ const HINTS = {
   line: 'Spectrum outline drawn over the columns.',
   legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
   guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
-  snapshot: 'Loops a short fragment of the sample and holds the FFT and EQ graphs, so you can hear what you are looking at. Press again to play on from that place.',
+  snapshot: 'Loops a short fragment of the sample. The FFT and EQ graphs keep drawing that loop, including each repeat. Press again to play on from that place.',
 } as const
 
 type Props = {

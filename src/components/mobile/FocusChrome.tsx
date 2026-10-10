@@ -149,16 +149,18 @@ export function FocusChrome({
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button
-            type="button"
-            className={styles.hit}
-            data-focus-exit=""
-            aria-label={t.focus.exit}
-            title={t.focus.exit}
-            onClick={onExit}
-          >
-            <ExitFocusIcon />
-          </button>
+          {touch ? (
+            <button
+              type="button"
+              className={styles.hit}
+              data-focus-exit=""
+              aria-label={t.focus.exit}
+              title={t.focus.exit}
+              onClick={onExit}
+            >
+              <ExitFocusIcon />
+            </button>
+          ) : null}
         </div>
       </div>
       {workspace === 'eq' ? (

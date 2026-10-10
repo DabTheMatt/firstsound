@@ -74,8 +74,8 @@ const en: ManualSection[] = [
     title: 'Technical interface',
     body: [
       'Technical has two presentations. Workspace is the default. Classic is the earlier layout. Workspace reorganizes the same Technical controls: a chain, one active workspace (Wave, EQ, FFT, Auto, or Hearing), contextual controls, and transport. It uses the same audio engine and the same features.',
-      'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the workspace header. Exit Focus returns the chrome without changing the sound, the selection, or the playhead. FFT Focus shows the spectrum. Analyzer settings open from a control on that bar and close again over the graph.',
-      'Workspace opens unless Classic was saved in this browser. Settings → Technical interface switches between them immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
+      'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the icon at the top-right of Wave, Auto, and Hearing, and to the left of Hold on EQ and FFT. Exit Focus uses that same icon and returns the chrome without changing the sound, the selection, or the playhead. FFT Focus shows the spectrum. Analyzer settings open from a control on that bar and close again over the graph.',
+      'Workspace opens on a refresh. A Classic choice saved while Classic was the default is left behind. Settings → Technical interface switches between them immediately, and a Classic choice made from here is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
       'Workspace views change the picture only. Wave, FFT, Auto, and Hearing leave the inspector on the last selected effect. EQ shows the equalizer inspector while that picture is open, when an equalizer is in the chain. Leaving EQ, including for Wave, shows the inspector that was open before that picture. Choosing another effect while EQ is open keeps that effect. Analyzer settings stay on the FFT bar: Before, After, Both, 2D / 3D, and the settings menu. That menu uses the same compact rows as the workspace bar: a short label and the choices beside it. Color there is Off, Level, or Frequency, and it paints the 2D bars as well as the 3D ridges. Display rows for grid, scale, color, regions, bars, line, and legend stay on the EQ graph and use those same rows. Color On there paints those bars in region hues. Color Off keeps the theme color. Hearing keeps that same effect. The loudness words sit beside the output meter on the right.',
       'EQ in Workspace opens in the inspector. Each filter is one full-width row: a type selector and the knobs that filter uses. Add band creates the next filter. The graph uses the full height above the transport. An icon in the inspector opens vertical strips under the graph; drag the bar between them to change that panel’s height. An icon at the corner of the strip panel returns to the inspector. FIELD remembers that choice only for EQ. Adding or selecting another effect shows that effect’s inspector.',
     ],
@@ -84,7 +84,7 @@ const en: ManualSection[] = [
     id: 'load',
     title: 'Loading audio',
     body: [
-      'Load sample is the primary action. It opens a file picker. You can also drop a file onto the editor.',
+      'Load sample sits in the header, immediately to the right of the loaded name. The name keeps a fixed width, so the button stays in the same place when the name changes. It opens a file picker. You can also drop a file onto the editor.',
       'Four track squares sit beside the chain. An empty slot stays nearly invisible. Loading a sample lights that slot’s square in its color from the active theme. The first sample lights square 1. Empty slots do not keep a dimmer copy of that color.',
       'Safari on iPhone and iPad decodes WAV, AIFF, MP3, M4A/AAC, and CAF. OGG and WebM usually fail there.',
     ],
@@ -119,7 +119,7 @@ const en: ManualSection[] = [
     id: 'selection',
     title: 'Selection',
     body: [
-      'Sel start and Sel end move the playhead to the selection edges. Copy, cut, paste, delete, mute, trim, and insert silence use the current selection.',
+      'Sel start and Sel end move the playhead to the selection edges. Copy, cut, paste, delete, mute, trim, and insert silence use the current selection. Trim is on the Wave bar, beside fade out.',
       'Loop plays the selection when Loop is on.',
     ],
   },
@@ -163,9 +163,9 @@ const en: ManualSection[] = [
     title: 'EQ',
     body: [
       'Each EQ instance has its own bands. Band and comb gain run from −24 dB to +24 dB. Focus lists every active band on the left of the graph: color, name, frequency, and type. Choosing a row or a graph node selects the same band. The knobs stay on the center of the graph when the filter type changes. The list does not shift them.',
-      'Focus lists the filters on the left of the graph, with the type beside the frequency. The knobs sit on the center of the screen and float over the grid. The plot stops under those knobs, so a bar at the top of the scale ends before them. Range, in the graph menu, is 60, 90, or 120 dB. It is how far down the spectrum bars reach. It does not scale the EQ curve. The knobs sit level with the top of that menu. The focus control sits above the ••• menu when that menu is on the graph. The filter type menu is in the band header, next to the band name. The pointer shows frequency first, then the note, for example 440 Hz · A4. The focus control on the EQ graph opens EQ Focus. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, the spectrum layer Before, After, or Both, and frequency color on or off. Hover a setting name to read what it does. Freq nodes colors each EQ handle by the region it sits in. Regions tints the spectrum columns. Legend draws that color key at the lower left of the EQ graph. Guides, when on, add a landmark under the pointer: kick boom near 80–100 Hz, voice around 1 kHz, snare crack around 2–5 kHz, air above 12 kHz. Those notes follow Sound On Sound (Senior and White, Using EQ, August 2001) and the iZotope EQ cheat sheet. They are places to listen, not rules. Frequency guide lines use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
+      'Focus lists the filters on the left of the graph, with the type beside the frequency. The knobs sit on the center of the screen and float over the grid. The plot stops under those knobs, so a bar at the top of the scale ends before them. Range, in the graph menu, is 60, 90, or 120 dB. It is how far down the spectrum bars reach. It does not scale the EQ curve. The knobs sit level with the top of that menu. The focus control sits to the left of Hold on the EQ and FFT graph. On Wave, Auto, and Hearing it sits at the top-right of that view. The same icon leaves Focus. The filter type menu is in the band header, next to the band name. The pointer shows frequency first, then the note, for example 440 Hz · A4. The focus control on the EQ graph opens EQ Focus. The graph menu sets grid density 6, 12, or 24, the axis scale Lin, Log, or Mel, the spectrum layer Before, After, or Both, and frequency color on or off. Hover a setting name to read what it does. Freq nodes colors each EQ handle by the region it sits in. Regions tints the spectrum columns. Legend draws that color key at the lower left of the EQ graph. Guides, when on, add a landmark under the pointer: kick boom near 80–100 Hz, voice around 1 kHz, snare crack around 2–5 kHz, air above 12 kHz. Those notes follow Sound On Sound (Senior and White, Using EQ, August 2001) and the iZotope EQ cheat sheet. They are places to listen, not rules. Frequency guide lines use the usual round frequencies on a logarithmic axis unless Lin is selected, and the numbers sit under the axis line.',
       'The horizontal lines on the EQ graph are filter gain, every 6 dB from −24 to +24. They use the same light grid as the spectrum. In EQ Focus the lines fade out toward the knobs, so the graph does not end on a hard edge. A bell at +24 dB peaks on the +24 line. The stroke stays inside the chart, so the top is not sliced flat. A flat stretch sitting on that +24 line means the filters together go past +24 dB, so the drawing stops at the chart. It is not a sign that the audio is distorting. Each band’s own gain still stops at +24 dB. Spectrum bars use the separate Range scale, with 0 dB at the top of their scale.',
-      'Pause and hold, beside the graph menu, loops the short fragment that has already reached the playhead — the sound on the frozen FFT and EQ graph — and holds those drawings where they are. It does not loop the slice that has not appeared yet. The spectrum does not fall to silence while the hold is on. Press the button again to play on from that place. Stop clears the hold. Click anywhere outside the ••• menu to close it.',
+      'Hold, to the right of the focus icon on the EQ and FFT graph, loops the short fragment that has already reached the playhead. The FFT and EQ graph keeps drawing that loop, including each time it repeats. It does not loop the slice that has not appeared yet. Press Hold again to play on from that place. Stop clears the hold. Click anywhere outside the ••• menu to close it.',
     ],
   },
   {
@@ -312,13 +312,15 @@ const en: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Accessibility',
+    title: 'FIELD ACCESS',
     body: [
-      'FIELD ACCESS is the Accessibility section in Settings. The same center is available in Simple, Technical, and Sensory. Three preferences are stored in this browser: Reduce motion, Enhanced focus, and Larger interface. Changing them does not restart playback and does not change the audio engine.',
-      'Reduce motion turns off decorative transitions. The operating-system preference prefers-reduced-motion does the same. Either one is enough. The waveform, meters, and spectrum stay visible, because they show the audio. Sensory scenes drop decorative pulse when motion is reduced. Spectral history skips camera glide and still draws the measurement.',
-      'Enhanced focus draws a thicker focus ring. Larger interface raises shared control targets toward 44 pixels. It does not redesign the layout.',
-      'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes and radios. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
-      'Screen reader support is partial. Buttons, knobs, sliders, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
+      'FIELD ACCESS is Settings → Accessibility. The same preferences apply in Simple, Technical, and Sensory, and they stay in place through Focus mode, Guided Tasks, and theme changes. Changing them does not restart playback and does not change the audio engine.',
+      'Reduced Motion reduces decorative animation, panel entrances, parallax, and glow. The playhead, waveform, meters, EQ curve, FFT, selection, and automation stay visible, with less extra motion. Sensory scenes drop decorative pulse. Spectral history skips camera glide and still draws the measurement. If the device asks for reduced motion, FIELD follows that even when the switch is off. The switch does not override the device. The sound does not change.',
+      'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
+      'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
+      'Choices are saved in this browser and survive reload and Reset application. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project.',
+      'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
+      'Screen reader support is partial. Buttons, knobs, sliders, switches, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
       'Known limits: dragging a waveform selection, fade handles, and automation points still needs a pointer. EQ numeric controls and graph-node arrow keys cover frequency, gain, and Q. A complete keyboard waveform is not finished. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
     ],
   },
@@ -326,7 +328,7 @@ const en: ManualSection[] = [
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state.',
+      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state. It does not clear FIELD ACCESS preferences.',
       'If the session already has work, FIELD asks you to confirm. An empty session resets immediately.',
     ],
   },
@@ -423,8 +425,8 @@ const pl: ManualSection[] = [
     title: 'Interfejs techniczny',
     body: [
       'Technical ma dwa układy. Workspace jest domyślny. Klasyczny to wcześniejszy widok. Workspace układa te same kontrolki inaczej: łańcuch, jeden aktywny obszar (Fala, EQ, FFT, Auto albo Hearing), kontrolki kontekstu i transport. Korzysta z tego samego silnika i tych samych funkcji.',
-      'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest w nagłówku obszaru. Wyjście przywraca ramkę i nie zmienia dźwięku, zaznaczenia ani głowicy. FFT Focus pokazuje widmo. Ustawienia analizatora otwierają się z kontrolki na tym pasku i zamykają się nad wykresem.',
-      'Workspace otwiera się, dopóki w tej przeglądarce nie zapisano Klasycznego. Ustawienia → Interfejs techniczny przełącza je od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
+      'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest ikoną w prawym górnym rogu Fali, Auto i Hearing oraz na lewo od Hold na EQ i FFT. Wyjście używa tej samej ikony i przywraca ramkę, nie zmieniając dźwięku, zaznaczenia ani głowicy. FFT Focus pokazuje widmo. Ustawienia analizatora otwierają się z kontrolki na tym pasku i zamykają się nad wykresem.',
+      'Odświeżenie otwiera Workspace. Wybór Klasycznego zapisany, gdy Klasyczny był domyślny, nie jest już brany pod uwagę. Ustawienia → Interfejs techniczny przełącza je od razu, a Klasyczny wybrany tutaj zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
       'Widoki Workspace zmieniają tylko obraz. Fala, FFT, Auto i Hearing zostawiają inspektor na ostatnio wybranym efekcie. EQ pokazuje inspektor korektora, gdy ten obraz jest otwarty i korektor jest w łańcuchu. Wyjście z EQ, także na Falę, pokazuje inspektor, który był otwarty przed tym obrazem. Wybranie innego efektu przy otwartym EQ zostawia ten efekt. Ustawienia analizatora zostają na pasku FFT: Before, After, Both, 2D / 3D i menu ustawień. To menu używa tych samych zwartych rzędów co pasek Workspace: krótka etykieta i wybory obok niej. Kolor to Off, Level albo Frequency i maluje zarówno słupki 2D, jak i granie 3D. Rzędy wyświetlania — siatka, skala, kolor, regiony, słupki, linia i legenda — zostają na wykresie EQ i korzystają z tych samych rzędów. Kolor On maluje tamte słupki barwami regionów. Kolor Off zostawia kolor motywu. Hearing zostawia ten sam efekt. Słowa głośności stoją obok wskaźnika wyjścia po prawej.',
       'EQ w Workspace otwiera się w inspektorze. Każdy filtr to jeden rząd na całą szerokość: selektor typu i gałki tego filtra. Dodaj pasmo tworzy kolejny filtr. Wykres zajmuje całą wysokość nad transportem. Ikona w inspektorze otwiera pionowe paski pod wykresem; przeciągnięcie belki między nimi zmienia wysokość tego panelu. Ikona w rogu panelu pasków wraca do inspektora. Ten wybór jest pamiętany tylko dla EQ. Dodanie albo zaznaczenie innego efektu pokazuje jego inspektor.',
     ],
@@ -433,7 +435,7 @@ const pl: ManualSection[] = [
     id: 'load',
     title: 'Wczytywanie audio',
     body: [
-      'Wczytaj sample jest główną akcją. Otwiera wybór pliku. Plik można też upuścić na edytor.',
+      'Wczytaj sample stoi w nagłówku, tuż na prawo od nazwy wczytanego dźwięku. Nazwa ma stałą szerokość, więc przycisk zostaje w tym samym miejscu, gdy nazwa się zmienia. Otwiera wybór pliku. Plik można też upuścić na edytor.',
       'Cztery kwadraty ścieżek stoją przy łańcuchu. Pusty slot zostaje prawie niewidoczny. Wczytanie sampla zapala kwadrat tego slotu kolorem ścieżki z palety aktywnego motywu. Pierwszy sample zapala kwadrat 1. Puste sloty nie trzymają przygaszonej wersji tego koloru.',
       'Safari na iPhonie i iPadzie dekoduje WAV, AIFF, MP3, M4A/AAC i CAF. OGG i WebM zwykle tam nie działają.',
     ],
@@ -468,7 +470,7 @@ const pl: ManualSection[] = [
     id: 'selection',
     title: 'Zaznaczenie',
     body: [
-      'Sel start i Sel end stawiają głowicę na krawędziach zaznaczenia. Kopiuj, wytnij, wklej, usuń, wycisz, przytnij i wstaw ciszę używają bieżącego zaznaczenia.',
+      'Sel start i Sel end stawiają głowicę na krawędziach zaznaczenia. Kopiuj, wytnij, wklej, usuń, wycisz, przytnij i wstaw ciszę używają bieżącego zaznaczenia. Przytnij stoi na belce Fali, obok fade out.',
       'Loop odtwarza zaznaczenie, gdy pętla jest włączona.',
     ],
   },
@@ -512,9 +514,9 @@ const pl: ManualSection[] = [
     title: 'EQ',
     body: [
       'Każda instancja EQ ma własne pasma. Gain pasma i grzebienia sięga od −24 dB do +24 dB. Focus pokazuje listę aktywnych filtrów po lewej stronie wykresu: kolor, nazwę, częstotliwość i typ. Wiersz i węzeł na wykresie wybierają to samo pasmo. Pokrętła zostają na środku wykresu przy zmianie typu. Lista ich nie przesuwa.',
-      'Lista filtrów stoi po lewej stronie wykresu, a typ jest obok częstotliwości. Pokrętła są na środku ekranu i unoszą się nad siatką. Wykres kończy się pod tymi gałkami, więc słupek na szczycie skali staje przed nimi. Zakres w menu wykresu to 60, 90 albo 120 dB. To głębokość słupków widma, a nie skala krzywej EQ. Gałki są na wysokości górnej krawędzi tego menu. Ikona focus stoi nad menu •••, gdy to menu jest na wykresie. Menu typu filtra jest w nagłówku pasma, przy nazwie. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Przycisk focus na wykresie EQ otwiera EQ Focus. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel, warstwę widma Before, After albo Both oraz kolor częstotliwości włącza albo wyłącza. Najechanie na nazwę ustawienia pokazuje, co ono robi. Freq nodes koloruje uchwyty EQ według regionu częstotliwości. Regions barwi słupki widma. Legend rysuje ten klucz kolorów w lewym dolnym rogu wykresu EQ. Guides, gdy są włączone, dopisują punkt odniesienia pod wskaźnikiem: boom stopy koło 80–100 Hz, głos koło 1 kHz, trzask werbla koło 2–5 kHz, powietrze powyżej 12 kHz. Te opisy idą za Sound On Sound (Senior i White, Using EQ, sierpień 2001) oraz ściągą EQ iZotope. To miejsca do słuchania, nie reguły. Pionowe prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
+      'Lista filtrów stoi po lewej stronie wykresu, a typ jest obok częstotliwości. Pokrętła są na środku ekranu i unoszą się nad siatką. Wykres kończy się pod tymi gałkami, więc słupek na szczycie skali staje przed nimi. Zakres w menu wykresu to 60, 90 albo 120 dB. To głębokość słupków widma, a nie skala krzywej EQ. Gałki są na wysokości górnej krawędzi tego menu. Ikona focus stoi na lewo od Hold na wykresie EQ i FFT. Na Fali, Auto i Hearing stoi w prawym górnym rogu tego widoku. Ta sama ikona wychodzi z Focus. Menu typu filtra jest w nagłówku pasma, przy nazwie. Wskaźnik pokazuje najpierw częstotliwość, potem nutę, na przykład 440 Hz · A4. Przycisk focus na wykresie EQ otwiera EQ Focus. Menu wykresu ustawia gęstość 6, 12 albo 24, skalę Lin, Log albo Mel, warstwę widma Before, After albo Both oraz kolor częstotliwości włącza albo wyłącza. Najechanie na nazwę ustawienia pokazuje, co ono robi. Freq nodes koloruje uchwyty EQ według regionu częstotliwości. Regions barwi słupki widma. Legend rysuje ten klucz kolorów w lewym dolnym rogu wykresu EQ. Guides, gdy są włączone, dopisują punkt odniesienia pod wskaźnikiem: boom stopy koło 80–100 Hz, głos koło 1 kHz, trzask werbla koło 2–5 kHz, powietrze powyżej 12 kHz. Te opisy idą za Sound On Sound (Senior i White, Using EQ, sierpień 2001) oraz ściągą EQ iZotope. To miejsca do słuchania, nie reguły. Pionowe prowadnice używają zwykłych okrągłych częstotliwości i leżą logarytmicznie, dopóki nie wybierzesz Lin. Liczby stoją pod poziomą osią.',
       'Poziome linie na wykresie EQ to wzmocnienie filtra, co 6 dB od −24 do +24. Mają ten sam lekki rysunek co siatka widma. W EQ Focus linie zanikają w stronę gałek, więc wykres nie kończy się twardą krawędzią. Bell na +24 dB szczytuje na linii +24. Kreska mieści się w wykresie, więc czubek nie jest ścinany na płasko. Płaski odcinek leżący na linii +24 oznacza, że filtry razem wychodzą poza +24 dB i rysunek staje na granicy wykresu. To nie jest znak, że dźwięk się przesterowuje. Gain pojedynczego pasma i tak kończy się na +24 dB. Słupki widma mają osobną skalę Range, z 0 dB na szczycie tej skali.',
-      'Pause and hold, obok menu wykresu, zapętla krótki fragment, który już doszedł do głowicy — dźwięk z zatrzymanego FFT i EQ — i zostawia te wykresy w miejscu. Nie zapętla odcinka, który jeszcze się nie pojawił. Widmo nie opada do ciszy, dopóki zatrzymanie trwa. Drugie wciśnięcie odtwarza dalej od tego miejsca. Stop zdejmuje zatrzymanie. Kliknięcie poza menu ••• je zamyka.',
+      'Hold, na prawo od ikony focus na wykresie EQ i FFT, zapętla krótki fragment, który już doszedł do głowicy. Wykres FFT i EQ dalej rysuje tę pętlę, także przy każdym powtórzeniu. Nie zapętla odcinka, który jeszcze się nie pojawił. Drugie wciśnięcie Hold odtwarza dalej od tego miejsca. Stop zdejmuje zatrzymanie. Kliknięcie poza menu ••• je zamyka.',
     ],
   },
   {
@@ -661,13 +663,15 @@ const pl: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Dostępność',
+    title: 'FIELD ACCESS',
     body: [
-      'FIELD ACCESS to sekcja Dostępność w Ustawieniach. To samo centrum jest w trybie Prostym, Technicznym i Sensorycznym. Trzy preferencje zostają w tej przeglądarce: Ogranicz animacje, Wzmocniony fokus i Większy interfejs. Ich zmiana nie restartuje odtwarzania i nie zmienia silnika audio.',
-      'Ogranicz animacje wyłącza ozdobne przejścia. Preferencja systemu prefers-reduced-motion robi to samo. Wystarczy jedna z nich. Fala, mierniki i widmo zostają, bo pokazują dźwięk. Sceny sensoryczne gaszą ozdobny puls, gdy ruch jest ograniczony. Historia widmowa pomija ślizg kamery i nadal rysuje pomiar.',
-      'Wzmocniony fokus rysuje grubszy pierścień fokusu. Większy interfejs podnosi wspólne cele kontrolek w stronę 44 pikseli. Nie przebudowuje układu.',
-      'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
-      'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
+      'FIELD ACCESS jest w Ustawienia → Dostępność. Te same preferencje działają w trybie Prostym, Technicznym i Sensorycznym oraz zostają przy Focus, zadaniach z przewodnikiem i zmianie motywu. Ich zmiana nie restartuje odtwarzania i nie zmienia silnika audio.',
+      'Ogranicz ruch zmniejsza dekoracyjne animacje, wejścia paneli, parallaksę i poświatę. Głowica, fala, mierniki, krzywa EQ, FFT, zaznaczenie i automatyzacja zostają widoczne, z mniejszą ilością zbędnego ruchu. Sceny sensoryczne gaszą ozdobny puls. Historia widmowa pomija ślizg kamery i nadal rysuje pomiar. Gdy urządzenie prosi o ograniczenie ruchu, FIELD to respektuje nawet przy wyłączonym przełączniku. Przełącznik nie nadpisuje urządzenia. Dźwięk się nie zmienia.',
+      'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
+      'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
+      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
+      'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
+      'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, przełączniki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
       'Znane ograniczenia: przeciąganie zaznaczenia fali, uchwytów fade i punktów automatyzacji nadal wymaga wskaźnika. Liczbowe kontrolki EQ i strzałki na węźle wykresu obejmują częstotliwość, wzmocnienie i Q. Pełna klawiaturowa fala nie jest gotowa. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
     ],
   },
@@ -675,7 +679,7 @@ const pl: ManualSection[] = [
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji.',
+      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji. Nie kasuje preferencji FIELD ACCESS.',
       'Gdy w sesji jest już praca, FIELD prosi o potwierdzenie. Pusta sesja resetuje się od razu.',
     ],
   },

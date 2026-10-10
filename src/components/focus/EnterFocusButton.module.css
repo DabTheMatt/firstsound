@@ -23,3 +23,10 @@
   left: 8px;
   z-index: 20;
 }
+
+.cornerRight {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 24;
+}

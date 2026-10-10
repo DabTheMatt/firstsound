@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, expectNoAxeViolations, loadDemo, openSettings } from './support'
+import { boot, expectNoAxeViolations, loadDemo, openAccess, openSettings } from './support'
 
 test.describe('axe states', () => {
   test('scans the initial technical workspace', async ({ page }) => {
@@ -24,11 +24,10 @@ test.describe('axe states', () => {
 
   test('scans Settings and the Accessibility Center', async ({ page }) => {
     await boot(page)
-    await openSettings(page)
-    await expect(page.getByRole('heading', { name: 'Accessibility' })).toBeVisible()
-    await expect(page.getByRole('checkbox', { name: 'Reduce motion' })).toBeVisible()
-    await expect(page.getByRole('checkbox', { name: 'Enhanced focus' })).toBeVisible()
-    await expect(page.getByRole('checkbox', { name: 'Larger interface' })).toBeVisible()
+    await openAccess(page)
+    await expect(page.getByRole('switch', { name: 'Reduced Motion' })).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Enhanced Focus Visibility' })).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Larger Controls' })).toBeVisible()
     await expectNoAxeViolations(page)
   })
 

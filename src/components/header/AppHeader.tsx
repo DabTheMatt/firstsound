@@ -72,13 +72,15 @@ export function AppHeader({
         >
           {snap.fileName || t.header.untitled}
         </button>
+        {minimal ? null : (
+          <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
+            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
+          </button>
+        )}
       </div>
       {minimal ? null : (
       <div className={styles.tools}>
         <ThemePicker compact={false} />
-        <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
-          <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
-        </button>
         <button
           type="button"
           className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}
