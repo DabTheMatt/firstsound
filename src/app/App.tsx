@@ -23,6 +23,7 @@ import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
 import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
 import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
+import { focusInitial, focusSelector, rememberTrigger, restoreTrigger, trapTab } from '../a11y/dialogFocus'
 import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
 import { layersForProfile, persistHearingSettings, readStoredHearingSettings } from '../hearing/settings'
 import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
@@ -188,6 +189,7 @@ export default function App() {
   const isPhoneLayout = mode === 'sheet'
   const workspaceOn = technicalUi === 'workspace' && !isPhoneLayout
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuOpenRef = useRef(false)
   const [libraryTick, setLibraryTick] = useState(0)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -292,12 +294,14 @@ export default function App() {
   }, [edit.fadeIn, edit.fadeOut, edit.fadeCurve, edit.fadeInBend, edit.fadeOutBend])
 
   useEffect(() => {
+    menuOpenRef.current = menuOpen
     if (!menuOpen) return
     const onPointer = (event: PointerEvent) => {
       const node = event.target as Node | null
       if (!node) return
       if (settingsRef.current?.contains(node)) return
       if (node instanceof Element && node.closest('[data-settings-toggle]')) return
+      if (menuOpenRef.current) restoreTrigger('settings')
       setMenuOpen(false)
     }
     document.addEventListener('pointerdown', onPointer)
@@ -308,6 +312,7 @@ export default function App() {
     const clickGuard = createSpaceActivationGuard()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (menuOpenRef.current) restoreTrigger('settings')
         setMenuOpen(false)
         setLfoCenterOpen(false)
         return
@@ -550,11 +555,40 @@ export default function App() {
     persistUiMode(mode)
     if (mode === 'sensory') prepareSensoryLayer()
     setUiMode(mode)
+    focusSelector(`[data-mode-option="${mode}"]`)
+  }
+
+  const closeSettings = (restore: boolean) => {
+    const wasOpen = menuOpenRef.current
+    menuOpenRef.current = false
+    setMenuOpen(false)
+    if (restore && wasOpen) restoreTrigger('settings')
+  }
+
+  const toggleSettings = () => {
+    if (menuOpenRef.current) {
+      closeSettings(true)
+      return
+    }
+    rememberTrigger('settings')
+    menuOpenRef.current = true
+    setMenuOpen(true)
   }
 
   const openExport = () => {
+    rememberTrigger('export')
     emitGuideEvent('export.opened')
     setExportOpen(true)
+  }
+
+  const closeExport = () => {
+    setExportOpen(false)
+    restoreTrigger('export', '[data-export-open]')
+  }
+
+  const leaveFocus = () => {
+    setFocusWorkspace(null)
+    focusSelector('[data-enter-focus]')
   }
 
   const rememberFocus = (next: InspectorFocus, trackId = engine.getSnapshot().selectedTrackId) => {
@@ -754,6 +788,7 @@ export default function App() {
     setLfoCenterOpen(false)
     const shown = isPhoneLayout ? phoneDisplayViz(viz) : viz
     setFocusWorkspace(focusWorkspaceForViz(shown))
+    focusSelector('[data-focus-exit]')
   }
 
   const effectFocus = (): InspectorFocus => {
@@ -802,13 +837,14 @@ export default function App() {
     const nextViz = workspace === 'auto' ? 'automation' : workspace === 'eq' ? 'eq-split' : workspace === 'fft' ? 'spectrum' : 'waveform'
     commitViz(nextViz)
     setFocusWorkspace(workspace)
+    focusSelector('[data-focus-exit]')
   }
 
   const enterHearingFocus = () => {
     setMenuOpen(false)
     setLfoCenterOpen(false)
     if (focusWorkspace === 'hearing') {
-      setFocusWorkspace(null)
+      leaveFocus()
       return
     }
     const current = readStoredHearingSettings()
@@ -821,6 +857,7 @@ export default function App() {
     })
     setInspectorOpen(false)
     setFocusWorkspace('hearing')
+    focusSelector('[data-focus-exit]')
   }
 
   const workspaceId = workspaceFromViz(viz, hearingBoard)
@@ -982,6 +1019,9 @@ export default function App() {
   const actions = useMemo(
     () => (
       <div className={styles.moreMenu}>
+          <h2 id="settings-title" className={styles.settingsTitle} tabIndex={-1} data-dialog-initial="">
+            {t.header.settings}
+          </h2>
           <p className={styles.hint}>{t.settings.hint}</p>
           <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
@@ -992,7 +1032,7 @@ export default function App() {
             disabled={!snap.sampleLoaded}
             onClick={() => {
               openExport()
-              setMenuOpen(false)
+              closeSettings(false)
             }}
           >
             {t.transport.export}
@@ -1114,13 +1154,21 @@ export default function App() {
         <button
           type="button"
           onClick={() => {
+            rememberTrigger('guide', document.querySelector('[data-settings-toggle]'))
             dispatchGuide({ type: 'open-library' })
-            setMenuOpen(false)
+            closeSettings(false)
           }}
         >
           {guideChrome(locale).title}
         </button>
-        <button type="button" onClick={() => { setManualOpen(true); setMenuOpen(false) }}>
+        <button
+          type="button"
+          onClick={() => {
+            rememberTrigger('manual', document.querySelector('[data-settings-toggle]'))
+            setManualOpen(true)
+            closeSettings(false)
+          }}
+        >
           {t.header.manual}
         </button>
         <p className={styles.hint}>FIELD v{FIELD_VERSION}</p>
@@ -1199,13 +1247,26 @@ export default function App() {
         type="button"
         className={styles.settingsScrim}
         aria-label={t.settings.close}
-        onClick={() => setMenuOpen(false)}
+        onClick={() => closeSettings(true)}
       />
-      <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
+      <div
+        className={styles.settingsFly}
+        ref={settingsRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        data-settings-dialog=""
+        onKeyDown={(event) => trapTab(event)}
+      >
         {actions}
       </div>
     </div>
   ) : null
+
+  useEffect(() => {
+    if (!menuOpen) return
+    focusInitial(settingsRef.current)
+  }, [menuOpen])
 
   useLayoutEffect(() => {
     setGuideHost({
@@ -1217,7 +1278,7 @@ export default function App() {
         void engine.unlock().then(() => engine.loadDemoTone())
       },
       setMode: chooseMode,
-      exitFocus: () => setFocusWorkspace(null),
+      exitFocus: () => leaveFocus(),
       revealTarget: (id, instanceId) => {
         if (id === 'technical.addEffect' || id.startsWith('technical.add.')) {
           window.dispatchEvent(new CustomEvent('field-guide-add', { detail: id }))
@@ -1265,7 +1326,7 @@ export default function App() {
           edit={edit}
           waveRef={waveRef}
           menuOpen={moreOpen}
-          onToggleMenu={() => setMenuOpen((v) => !v)}
+          onToggleMenu={toggleSettings}
           menu={settingsMenu}
           dragging={dragging}
           onDragOver={() => setDragging(true)}
@@ -1307,7 +1368,7 @@ export default function App() {
           onMode={chooseMode}
         />
         {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
+        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
         {guide}
         <HearingAccessLayer surface="simple" />
       </>
@@ -1324,7 +1385,7 @@ export default function App() {
           edit={edit}
           waveRef={waveRef}
           menuOpen={moreOpen}
-          onToggleMenu={() => setMenuOpen((v) => !v)}
+          onToggleMenu={toggleSettings}
           menu={settingsMenu}
           dragging={dragging}
           onDragOver={() => setDragging(true)}
@@ -1355,8 +1416,8 @@ export default function App() {
           sampleInput={null}
         />
         {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
-        {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
         {guide}
         <HearingAccessLayer surface="sensory" />
       </>
@@ -1403,7 +1464,7 @@ export default function App() {
           settingsOpen={moreOpen}
           lfoCenterOpen={lfoCenterOpen}
           onToggleSettings={() => {
-            setMenuOpen((v) => !v)
+            toggleSettings()
             setLfoCenterOpen(false)
           }}
           onToggleLfoCenter={() => {
@@ -1429,7 +1490,10 @@ export default function App() {
             isPhoneLayout ? undefined : <TechnicalUiSwitch value={technicalUi} onChange={setTechnicalUi} />
           }
           guideLabel={guideChrome(locale).guideMe}
-          onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
+          onOpenGuide={() => {
+            rememberTrigger('guide')
+            dispatchGuide({ type: 'open-library' })
+          }}
         />
         <div className={styles.stage}>
           <div className={styles.stageMain}>
@@ -1499,7 +1563,10 @@ export default function App() {
                 else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
               }}
               guideLabel={guideChrome(locale).guideMe}
-              onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
+              onOpenGuide={() => {
+            rememberTrigger('guide')
+            dispatchGuide({ type: 'open-library' })
+          }}
             />
             {workspaceId === 'fft' ? <FftPrimaryBar /> : null}
             {workspaceId === 'wave' ? (
@@ -1605,7 +1672,7 @@ export default function App() {
                 onTogglePlay={() => {
                   void engine.unlock().then(() => engine.togglePlay())
                 }}
-                onExit={() => setFocusWorkspace(null)}
+                onExit={() => leaveFocus()}
                 onSelectModule={selectModule}
                 autoFocus={autoFocus}
                 onAutoFocus={setAutoFocus}
@@ -1848,9 +1915,9 @@ export default function App() {
         </div>
 
         {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
+        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
       </main>
-      {exportOpen ? <ExportDialog snap={snap} onClose={() => setExportOpen(false)} /> : null}
+      {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
       {guide}
       <HearingAccessLayer surface="technical" focus={activeFocus} onEnterFocus={enterHearingFocus} />
     </div>

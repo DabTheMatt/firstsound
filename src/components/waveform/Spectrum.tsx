@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { effectiveMotionReduced } from '../../a11y'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
@@ -123,6 +124,7 @@ import {
   eqDragMode,
   focusEqTypePatch,
   nextQArmed,
+  eqNodeValueText,
   nudgeFocusEq,
   qFromVertical,
   type EqDragMode,
@@ -550,7 +552,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             if (showPost) postBins = readAnalyserSpectrumBins(engine.getAnalyser('post'), postScratch)
           }
           const cssW = rect.width
-          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          const reduced = effectiveMotionReduced()
           paintSpectralHistory(ctx, width, height, historyRef.current, {
             dt: Math.min(1, elapsed),
             dpr,
@@ -1882,7 +1884,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   } as CSSProperties
                 }
                 title={`${eqName} band ${index + 1} ${band.type}`}
-                aria-label={`${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)}`}
+                aria-label={`${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)}, ${eqNodeValueText(band)}`}
                 onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
                 onDoubleClick={(event) => event.stopPropagation()}
                 onPointerMove={onNodePointerMove}
@@ -1890,15 +1892,18 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 onPointerCancel={endNodePointer}
                 onLostPointerCapture={endNodePointer}
                 onKeyDown={(event) => {
-                  if (!phoneFocus) return
                   if (event.key === 'Enter') {
                     event.preventDefault()
-                    setBandMenu({ instanceId: mod.instanceId, index })
+                    event.stopPropagation()
+                    selectEqBand({ instanceId: mod.instanceId, index })
+                    if (phoneFocus) setBandMenu({ instanceId: mod.instanceId, index })
                     return
                   }
                   const patch = nudgeFocusEq(band, event.key, event.shiftKey)
                   if (!patch) return
                   event.preventDefault()
+                  event.stopPropagation()
+                  selectEqBand({ instanceId: mod.instanceId, index })
                   engine.setEqBand(index, patch, mod.instanceId)
                 }}
               >

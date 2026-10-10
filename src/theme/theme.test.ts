@@ -9,7 +9,7 @@ import {
   userThemeId,
   userThemePreference,
 } from './tokens'
-import { customColorsFromComputed, eqBandTone, eqTone } from './theme'
+import { customColorsFromComputed, customMutedColor, eqBandTone, eqTone, themeColorScheme } from './theme'
 import { colorWithAlpha, mixCssColor, parseCssColor, toCssHex } from './cssColor'
 
 function contrast(a: string, b: string): number {
@@ -49,6 +49,19 @@ describe('theme tokens', () => {
     expect(parseThemePreference('warm-paper')).toBe('warm-paper')
     expect(THEME_IDS).toContain('soft-slate')
     expect(THEME_IDS).toContain('warm-paper')
+    expect(themeColorScheme('warm-paper')).toBe('light')
+    expect(themeColorScheme('manga')).toBe('light')
+    expect(themeColorScheme('light-studio')).toBe('light')
+    expect(themeColorScheme('studio-dark')).toBe('dark')
+    expect(themeColorScheme('dusk')).toBe('dark')
+    expect(themeColorScheme('soft-slate')).toBe('dark')
+  })
+
+  it('keeps custom muted text above the AA contrast floor', () => {
+    const dark = customMutedColor('#e8e6df', '#151616')
+    const paper = customMutedColor('#202321', '#f4efe6')
+    expect(contrast(dark, '#292c2d')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(paper, '#f8f8f5')).toBeGreaterThanOrEqual(4.5)
   })
 
   it('keeps eyes-friendly text and borders readable', () => {

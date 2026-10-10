@@ -9,7 +9,7 @@ import {
 import { AXIS_LFO_BY_ID, axisLfoActive, resolvedAxisLfo } from '../mapping/axisLfos'
 import type { SensoryAxisId } from '../sensoryParameters'
 import type { SensoryValues } from '../sensoryState'
-import { applySliderKey, formatPercentValue, sensoryDescription } from '../../a11y'
+import { applySliderKey, formatPercentValue, sensoryDescription, useReducedMotion } from '../../a11y'
 import { useI18n } from '../../i18n'
 import {
   amountToT,
@@ -59,10 +59,7 @@ export function ParameterStrings({
   const valuesRef = useRef(values)
   const drag = useRef<{ pointerId: number; id: SensoryAxisId } | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
-  const reduced = useMemo(() => {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  }, [])
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     valuesRef.current = values

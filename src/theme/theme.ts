@@ -20,6 +20,13 @@ import {
   type ThemePreference,
 } from './tokens'
 
+/** How far custom muted text moves toward the canvas. 0.34 still clears 4.5:1 on panel and control surfaces. */
+export const CUSTOM_MUTED_TOWARD_CANVAS = 0.34
+
+export function customMutedColor(text: string, canvas: string): string {
+  return mixCssColor(text, canvas, CUSTOM_MUTED_TOWARD_CANVAS)
+}
+
 export type ThemeColors = {
   waveform: string
   waveformSecondary: string
@@ -178,7 +185,7 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--border-strong', mixCssColor(custom.bgPanel, text, 0.38))
   root.style.setProperty('--text-primary', text)
   root.style.setProperty('--text-secondary', mixCssColor(text, custom.bgApp, 0.28))
-  root.style.setProperty('--text-muted', mixCssColor(text, custom.bgApp, 0.48))
+  root.style.setProperty('--text-muted', customMutedColor(text, custom.bgApp))
   root.style.setProperty('--text-disabled', mixCssColor(text, custom.bgApp, 0.64))
   root.style.setProperty('--text-on-accent', isDarkColor(custom.accent) ? ink : paper)
   root.style.setProperty('--accent-primary', custom.accent)
@@ -209,13 +216,19 @@ function applyCustomCss(root: HTMLElement, custom: CustomThemeColors): void {
   root.style.setProperty('--ridge-cool', custom.spectrum)
 }
 
+const LIGHT_SCHEME_THEMES = new Set<ThemeId>(['light-studio', 'manga', 'warm-paper'])
+
+/** Light themes keep native controls on a light color scheme. Inline style must not override that. */
+export function themeColorScheme(theme: ThemeId, customBackground?: string): 'light' | 'dark' {
+  if (theme === 'custom') return customBackground && isDarkColor(customBackground) ? 'dark' : 'light'
+  return LIGHT_SCHEME_THEMES.has(theme) ? 'light' : 'dark'
+}
+
 export function applyResolvedTheme(theme: ThemeId): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   root.dataset.theme = theme
-  const dark =
-    theme === 'light-studio' ? false : theme === 'custom' ? isDarkColor(currentCustom.bgApp) : true
-  root.style.colorScheme = dark ? 'dark' : 'light'
+  root.style.colorScheme = themeColorScheme(theme, theme === 'custom' ? currentCustom.bgApp : undefined)
   if (theme === 'custom') applyCustomCss(root, currentCustom)
   else clearCustomCss(root)
   invalidateThemeColors()

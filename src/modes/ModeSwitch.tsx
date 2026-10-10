@@ -28,6 +28,7 @@ export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }
           type="button"
           role="radio"
           aria-checked={mode === id}
+          data-mode-option={id}
           className={`${styles.opt} ${mode === id ? styles.on : ''}`}
           data-geometry={variant === 'editorial' ? undefined : 'pill'}
           onClick={() => onChange(id)}

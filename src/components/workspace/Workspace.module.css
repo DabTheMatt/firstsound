@@ -115,6 +115,13 @@
   min-width: 0;
 }
 
+.tablist {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 .tab,
 .tabOn {
   margin: 0;

@@ -240,6 +240,9 @@ export type Messages = {
   }
   waveform: {
     empty: string
+    editorAria: string
+    editorEmpty: string
+    editorSummary: (duration: string, playhead: string, selectionStart: string, selectionEnd: string) => string
     loadDemo: string
     edit: string
     trim: string
@@ -1003,6 +1006,10 @@ export const EN: Messages = {
   },
   waveform: {
     empty: 'Load a sample to begin',
+    editorAria: 'Waveform editor',
+    editorEmpty: 'Waveform editor. No sample loaded.',
+    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
+      `Duration ${duration}. Playhead ${playhead}. Selection from ${selectionStart} to ${selectionEnd}. Arrow keys move the playhead.`,
     loadDemo: 'Generate demo sample',
     edit: 'Edit',
     trim: 'Trim',
@@ -1588,7 +1595,8 @@ export const EN: Messages = {
     sr: 'Screen reader optimizations',
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
-    shortcutsHelp: 'When on, Space always plays or pauses, even if a button such as Load sample has focus. Tab is never captured.',
+    shortcutsHelp:
+      'When on, Space plays or pauses, including when a button outside a dialog has focus. Space still types in text fields and still toggles checkboxes and radios. Open dialogs keep Space for their own controls. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -1596,7 +1604,7 @@ export const EN: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maximum',
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
-    shortcutSpace: 'Space: play or pause (always, except while typing)',
+    shortcutSpace: 'Space: play or pause, except while typing, on a checkbox or radio, or inside a dialog',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
   },
@@ -1870,6 +1878,10 @@ export const PL: Messages = {
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
+    editorAria: 'Edytor fali',
+    editorEmpty: 'Edytor fali. Brak wczytanego sampla.',
+    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
+      `Czas ${duration}. Głowica ${playhead}. Zaznaczenie od ${selectionStart} do ${selectionEnd}. Strzałki przesuwają głowicę.`,
     loadDemo: 'Wygeneruj sample demo',
     edit: 'Edycja',
     trim: 'Przytnij',
@@ -2455,7 +2467,8 @@ export const PL: Messages = {
     sr: 'Optymalizacje czytnika ekranu',
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',
-    shortcutsHelp: 'Gdy włączone, spacja zawsze odtwarza lub pauzuje, nawet gdy fokus jest na przycisku takim jak Wczytaj sample. Tab nigdy nie jest przechwytywany.',
+    shortcutsHelp:
+      'Gdy włączone, spacja odtwarza albo pauzuje, także gdy fokus jest na przycisku poza oknem dialogowym. W polu tekstowym spacja pisze, a na polu wyboru i przełączniku zmienia stan. Otwarte okno dialogowe zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
     shortcutsTitle: 'Skróty klawiszowe',
     shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
     shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
@@ -2463,7 +2476,7 @@ export const PL: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maksimum',
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
-    shortcutSpace: 'Spacja: odtwarzanie lub pauza (zawsze, poza pisaniem w polu tekstowym)',
+    shortcutSpace: 'Spacja: odtwarzanie lub pauza, poza pisaniem, polem wyboru i otwartym oknem dialogowym',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
   },

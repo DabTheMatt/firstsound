@@ -93,7 +93,20 @@ function applyLowVisionInline(root: HTMLElement, on: boolean): void {
   }
 }
 
+let appliedSettings: A11ySettings = { ...DEFAULT_A11Y_SETTINGS }
+
+/** Last settings written onto the document. Animation loops read this instead of localStorage. */
+export function appliedA11ySettings(): A11ySettings {
+  return appliedSettings
+}
+
+/** FIELD preference or the operating-system preference, whichever asks for less motion. */
+export function effectiveMotionReduced(): boolean {
+  return appliedSettings.reduceMotion || systemPrefersReducedMotion()
+}
+
 export function applyA11yDom(settings: A11ySettings): void {
+  appliedSettings = settings
   if (typeof document === 'undefined') return
   const root = document.documentElement
   applyLowVisionInline(root, settings.lowVision)

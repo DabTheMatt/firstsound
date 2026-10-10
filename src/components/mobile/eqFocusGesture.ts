@@ -41,6 +41,14 @@ function clampDb(db: number): number {
   return Math.min(SPECTRUM_EQ_MAX_DB, Math.max(SPECTRUM_EQ_MIN_DB, db))
 }
 
+/** Spoken frequency, gain, and Q for an EQ graph node. Uses the stored band, not live modulation. */
+export function eqNodeValueText(band: EqBand): string {
+  const hz =
+    band.frequency >= 1000 ? `${(band.frequency / 1000).toFixed(2)} kilohertz` : `${Math.round(band.frequency)} hertz`
+  const gain = bandUsesGain(band.type) ? `${band.gain.toFixed(1)} decibels` : 'gain not used'
+  return `${hz}, ${gain}, Q ${band.q.toFixed(2)}`
+}
+
 /** Keyboard nudge for a focused EQ node. Shift adjusts Q. */
 export function nudgeFocusEq(band: EqBand, key: string, shift: boolean): Partial<EqBand> | null {
   const step = 2 ** (1 / 12)

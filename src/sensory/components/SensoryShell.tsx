@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
@@ -14,6 +14,7 @@ import type { SensoryAxisId } from '../sensoryParameters'
 import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
 import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
+import { useReducedMotion } from '../../a11y'
 import { useI18n } from '../../i18n'
 import type { ColorSound } from '../colorSound'
 import type { SensoryValues } from '../sensoryState'
@@ -98,10 +99,7 @@ export function SensoryShell({
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
   const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
-  const reduced = useMemo(() => {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  }, [])
+  const reduced = useReducedMotion()
   const visual = sensoryVisualState(values, reduced, feelingId)
   const cssVars = visualCssVars(visual)
   const activeId = feelingId

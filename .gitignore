@@ -25,3 +25,8 @@ dist-ssr
 # local agent test dumps
 FIELD_APP_TEST_REPORT.md
 field_test_screenshots/
+
+# browser accessibility runs
+/test-results/
+/playwright-report/
+/blob-report/

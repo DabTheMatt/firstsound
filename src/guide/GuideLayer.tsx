@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
+import { peekTrigger, restoreTrigger } from '../a11y/dialogFocus'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
 import { useEngine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
@@ -46,6 +47,7 @@ export function GuideLayer(props: Props) {
   const state = useSyncExternalStore(subscribeGuide, getGuideState, getGuideState)
   const [counts, setCounts] = useState<Counts>(ZERO_COUNTS)
   const panelRef = useRef<HTMLDivElement>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
   useEffect(() => subscribeGuideEvents((event) => {
@@ -138,9 +140,46 @@ export function GuideLayer(props: Props) {
   }, [state.view, state.panel, step?.target, props.menuOpen, stepKey, instance, several])
 
   useEffect(() => {
-    if (state.view === 'closed' || state.panel === 'minimized' || props.menuOpen) return
+    if (state.view === 'closed') {
+      returnFocus.current = null
+      restoreTrigger('guide', '[data-settings-toggle]')
+      return
+    }
+    if (state.panel === 'minimized') {
+      document.querySelector<HTMLElement>('[data-guide-restore]')?.focus()
+      return
+    }
+    if (props.menuOpen) return
+    const saved = peekTrigger('guide')
+    const active = document.activeElement
+    if (saved) returnFocus.current = saved
+    else if (active instanceof HTMLElement && !panelRef.current?.contains(active)) returnFocus.current = active
     const node = panelRef.current?.querySelector<HTMLElement>('[data-guide-focus]')
     node?.focus()
+  }, [state.view, state.panel, props.menuOpen])
+
+  useEffect(() => {
+    if (state.view !== 'task') return
+    const root = panelRef.current
+    if (!root) return
+    const active = document.activeElement
+    if (active instanceof HTMLElement && root.contains(active)) return
+    if (active === document.body || active === document.documentElement || active == null) {
+      root.querySelector<HTMLElement>('h2[data-guide-focus]')?.focus()
+    }
+  }, [stepKey, state.view])
+
+  useEffect(() => {
+    if (state.view === 'closed' || state.panel === 'minimized' || props.menuOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return
+      const target = event.target
+      if (target instanceof Element && target.closest('[role="menu"]')) return
+      dispatchGuide({ type: 'minimize' })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [state.view, state.panel, props.menuOpen])
 
   if (state.view === 'closed' || props.menuOpen) return null
@@ -158,7 +197,7 @@ export function GuideLayer(props: Props) {
         />
       ) : null}
       {minimized ? (
-        <button type="button" className={styles.pill} onClick={() => dispatchGuide({ type: 'restore' })}>
+        <button type="button" className={styles.pill} data-guide-restore="" onClick={() => dispatchGuide({ type: 'restore' })}>
           {chrome.restore}
           {task && state.view === 'task' ? ` · ${chrome.step(place.index + 1, place.total)}` : ''}
         </button>
@@ -530,19 +569,20 @@ function TaskBody({
 }) {
   const [why, setWhy] = useState(false)
   const [more, setMore] = useState(false)
+  const stepLabelId = useId()
   const label = chrome.step(index + 1, total)
   const status = reason === 'done' ? step.success?.[locale] : reason === 'already' ? chrome.already : ''
   return (
     <div className={styles.body}>
       <p className={styles.taskName}>{task.title[locale]}</p>
-      <p className={styles.stepLabel}>{label}</p>
+      <p className={styles.stepLabel} id={stepLabelId}>{label}</p>
       <div
         className={styles.track}
         role="progressbar"
+        aria-labelledby={stepLabelId}
         aria-valuemin={1}
         aria-valuemax={total}
         aria-valuenow={index + 1}
-        aria-valuetext={label}
       >
         <span style={{ width: `${((index + 1) / total) * 100}%` }} />
       </div>

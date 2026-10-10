@@ -294,7 +294,7 @@ const en: ManualSection[] = [
     id: 'keys',
     title: 'Keyboard shortcuts',
     body: [
-      'Space plays or pauses, except while typing. Escape closes menus and dialogs.',
+      'Space plays or pauses, except while typing, on a checkbox or radio, or inside a dialog. A focused button outside a dialog still uses Space for transport. Enter activates that button. Escape closes menus and dialogs and returns focus to the control that opened them.',
       'Ctrl+Z or Cmd+Z undoes. Shift+Ctrl+Z or Shift+Cmd+Z redoes.',
       'Tab moves between controls. Arrow keys change a focused knob or slider. Shift+Arrow is a finer step. Home and End jump to the ends. Page Up and Page Down take a larger step. Delete or Backspace resets the focused parameter.',
       'Transport shortcuts can be turned off in Settings.',
@@ -314,7 +314,12 @@ const en: ManualSection[] = [
     id: 'a11y',
     title: 'Accessibility',
     body: [
-      'Settings includes larger interface, stronger focus, tooltips, reduced motion, screen-reader optimizations, and Hearing Access. Controls keep names and keyboard access.',
+      'FIELD ACCESS is the Accessibility section in Settings. The same center is available in Simple, Technical, and Sensory. Three preferences are stored in this browser: Reduce motion, Enhanced focus, and Larger interface. Changing them does not restart playback and does not change the audio engine.',
+      'Reduce motion turns off decorative transitions. The operating-system preference prefers-reduced-motion does the same. Either one is enough. The waveform, meters, and spectrum stay visible, because they show the audio. Sensory scenes drop decorative pulse when motion is reduced. Spectral history skips camera glide and still draws the measurement.',
+      'Enhanced focus draws a thicker focus ring. Larger interface raises shared control targets toward 44 pixels. It does not redesign the layout.',
+      'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes and radios. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
+      'Screen reader support is partial. Buttons, knobs, sliders, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
+      'Known limits: dragging a waveform selection, fade handles, and automation points still needs a pointer. EQ numeric controls and graph-node arrow keys cover frequency, gain, and Q. A complete keyboard waveform is not finished. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
     ],
   },
   {
@@ -638,7 +643,7 @@ const pl: ManualSection[] = [
     id: 'keys',
     title: 'Skróty klawiszowe',
     body: [
-      'Spacja odtwarza albo pauzuje, poza pisaniem. Escape zamyka menu i okna.',
+      'Spacja odtwarza albo pauzuje, poza pisaniem, polem wyboru i otwartym oknem dialogowym. Przycisk poza oknem nadal używa spacji do transportu. Enter aktywuje ten przycisk. Escape zamyka menu i okna i wraca fokus do kontrolki, która je otworzyła.',
       'Ctrl+Z albo Cmd+Z cofa. Shift+Ctrl+Z albo Shift+Cmd+Z ponawia.',
       'Tab przechodzi między kontrolkami. Strzałki zmieniają gałkę albo suwak w fokusie. Shift+strzałka to mniejszy krok. Home i End skaczą na krańce. Page Up i Page Down robią większy krok. Delete albo Backspace resetuje parametr w fokusie.',
       'Skróty transportu można wyłączyć w Ustawieniach.',
@@ -658,7 +663,12 @@ const pl: ManualSection[] = [
     id: 'a11y',
     title: 'Dostępność',
     body: [
-      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu, optymalizacje czytnika ekranu i Hearing Access. Kontrolki zachowują nazwy i obsługę klawiaturą.',
+      'FIELD ACCESS to sekcja Dostępność w Ustawieniach. To samo centrum jest w trybie Prostym, Technicznym i Sensorycznym. Trzy preferencje zostają w tej przeglądarce: Ogranicz animacje, Wzmocniony fokus i Większy interfejs. Ich zmiana nie restartuje odtwarzania i nie zmienia silnika audio.',
+      'Ogranicz animacje wyłącza ozdobne przejścia. Preferencja systemu prefers-reduced-motion robi to samo. Wystarczy jedna z nich. Fala, mierniki i widmo zostają, bo pokazują dźwięk. Sceny sensoryczne gaszą ozdobny puls, gdy ruch jest ograniczony. Historia widmowa pomija ślizg kamery i nadal rysuje pomiar.',
+      'Wzmocniony fokus rysuje grubszy pierścień fokusu. Większy interfejs podnosi wspólne cele kontrolek w stronę 44 pikseli. Nie przebudowuje układu.',
+      'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
+      'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
+      'Znane ograniczenia: przeciąganie zaznaczenia fali, uchwytów fade i punktów automatyzacji nadal wymaga wskaźnika. Liczbowe kontrolki EQ i strzałki na węźle wykresu obejmują częstotliwość, wzmocnienie i Q. Pełna klawiaturowa fala nie jest gotowa. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
     ],
   },
   {

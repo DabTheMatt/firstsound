@@ -946,6 +946,14 @@
   max-width: min(480px, 100%);
 }
 
+.settingsTitle {
+  margin: 8px 10px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .moreMenu {
   display: flex;
   flex-direction: column;

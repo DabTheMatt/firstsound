@@ -18,8 +18,11 @@ Live (po merge na `main` i włączeniu Pages): **https://dabthematt.github.io/fi
 ```bash
 npm install
 npm test
+npm run test:a11y
 npm run dev
 ```
+
+`npm run test:a11y` uruchamia testy dostępności (axe-core + Playwright, Chromium). Przy pierwszym uruchomieniu lokalnie zainstaluj przeglądarkę: `npx playwright install chromium`. Polecenie kończy się kodem różnym od zera, gdy test nie przejdzie. Nie zastępuje `npm test`.
 
 Aplikacja: **http://localhost:5199/**
 

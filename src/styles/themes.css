@@ -17,7 +17,7 @@
 
   --text-primary: #e8e6df;
   --text-secondary: #aaa9a4;
-  --text-muted: #737570;
+  --text-muted: #939591;
   --text-disabled: #50524f;
   --text-on-accent: #151616;
 
@@ -90,7 +90,7 @@
 
   --text-primary: #e6edf3;
   --text-secondary: #a8b4bf;
-  --text-muted: #6f7d89;
+  --text-muted: #8a959f;
   --text-disabled: #48535e;
   --text-on-accent: #0d1117;
 
@@ -142,7 +142,7 @@
 
   --text-primary: #efe4d2;
   --text-secondary: #bbaa96;
-  --text-muted: #817264;
+  --text-muted: #9e9288;
   --text-disabled: #5b5047;
   --text-on-accent: #181411;
 
@@ -194,7 +194,7 @@
 
   --text-primary: #e3e9e4;
   --text-secondary: #a5b0a8;
-  --text-muted: #707e74;
+  --text-muted: #8e9991;
   --text-disabled: #4c5850;
   --text-on-accent: #101512;
 
@@ -246,7 +246,7 @@
 
   --text-primary: #202321;
   --text-secondary: #555a56;
-  --text-muted: #7d827e;
+  --text-muted: #5b5f5c;
   --text-disabled: #aaaca8;
   --text-on-accent: #f8f8f5;
 
@@ -300,7 +300,7 @@
 
   --text-primary: #e7e9e8;
   --text-secondary: #969c99;
-  --text-muted: #606663;
+  --text-muted: #818684;
   --text-disabled: #3c4140;
   --text-on-accent: #050606;
 
@@ -352,7 +352,7 @@
 
   --text-primary: #ebe6e1;
   --text-secondary: #c9c2bc;
-  --text-muted: #9d968f;
+  --text-muted: #a9a39d;
   --text-disabled: #6d675f;
   --text-on-accent: #241e28;
 
@@ -404,7 +404,7 @@
 
   --text-primary: #f3efe8;
   --text-secondary: #d2cdc4;
-  --text-muted: #a8a297;
+  --text-muted: #afaaa0;
   --text-disabled: #6f6a64;
   --text-on-accent: #1a2128;
 
@@ -456,12 +456,20 @@
 
   --text-primary: #2a261f;
   --text-secondary: #4a433a;
-  --text-muted: #6a6156;
+  --text-muted: #61594f;
   --text-disabled: #8d8478;
   --text-on-accent: #f4efe6;
 
-  --accent-primary: #8d6b2f;
-  --accent-primary-hover: #745722;
+  --accent-primary: #6e5425;
+  --accent-primary-hover: #5a4318;
+  --track-amber: #73511e;
+  --track-orange: #973c1c;
+  --track-magenta: #a22a64;
+  --track-violet: #6546ac;
+  --track-blue: #2955ae;
+  --track-cyan: #176272;
+  --track-green: #20653b;
+  --track-neutral: #595a59;
   --accent-secondary: #4d6578;
   --accent-soft: rgba(141, 107, 47, 0.14);
 

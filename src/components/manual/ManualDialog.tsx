@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { focusInitial, trapTab } from '../../a11y/dialogFocus'
 import { FIELD_VERSION } from '../../version'
 import { useI18n } from '../../i18n'
 import { MANUAL } from '../../manual/content'
@@ -11,6 +12,7 @@ type Props = {
 export function ManualDialog({ onClose }: Props) {
   const { locale } = useI18n()
   const copy = MANUAL[locale]
+  const panelRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(copy.sections[0]?.id ?? '')
   const needle = query.trim().toLowerCase()
@@ -23,12 +25,32 @@ export function ManualDialog({ onClose }: Props) {
   }, [copy.sections, needle])
   const current = sections.find((section) => section.id === active) ?? sections[0]
 
+  useEffect(() => {
+    focusInitial(panelRef.current)
+  }, [])
+
   return (
     <div className={styles.layer} role="presentation">
       <button type="button" className={styles.scrim} aria-label={copy.close} onClick={onClose} />
-      <div className={styles.panel} role="dialog" aria-modal="true" aria-label={copy.title}>
+      <div
+        ref={panelRef}
+        className={styles.panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={copy.title}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.stopPropagation()
+            onClose()
+            return
+          }
+          trapTab(event)
+        }}
+      >
         <header className={styles.head}>
-          <h2>FIELD v{FIELD_VERSION}</h2>
+          <h2 tabIndex={-1} data-dialog-initial="">
+            FIELD v{FIELD_VERSION}
+          </h2>
           <button type="button" onClick={onClose} aria-label={copy.close}>
             ×
           </button>

@@ -173,7 +173,7 @@
   border: 1px solid var(--danger);
   border-radius: 999px;
   background: transparent;
-  color: var(--danger);
+  color: var(--text-primary);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -323,7 +323,7 @@
 }
 
 /* Sample rate and runtime yield space before Load Sample, Theme, or Record can clip. */
-@container app-header (max-width: 1180px) {
+@container app-header (max-width: 1320px) {
   .tools,
   .trailing {
     gap: 4px;
@@ -336,7 +336,7 @@
   }
 }
 
-@container app-header (max-width: 1180px) {
+@container app-header (max-width: 1320px) {
   .meta {
     display: none;
   }
@@ -388,6 +388,9 @@
     min-height: 32px;
     max-height: 32px;
     row-gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
   }
 
 .header.minimal .file,
@@ -472,7 +475,7 @@
 :global([data-technical-ui='workspace']) .rec,
 :global([data-technical-ui='workspace']) .rec:hover,
 :global([data-technical-ui='workspace']) .rec:focus-visible {
-  color: var(--danger);
+  color: var(--text-primary);
 }
 
 :global([data-technical-ui='workspace']) .rec:hover,
@@ -484,7 +487,7 @@
   width: 6px;
   height: 6px;
   border: 0;
-  background: currentColor;
+  background: var(--danger);
 }
 
 :global([data-technical-ui='workspace']) .recOn,
@@ -492,7 +495,7 @@
 :global([data-technical-ui='workspace']) .recOn:focus-visible {
   border: 0;
   background: color-mix(in srgb, var(--danger) 18%, transparent);
-  color: var(--danger);
+  color: var(--text-primary);
   box-shadow: none;
 }
 
