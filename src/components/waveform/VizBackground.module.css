@@ -8,7 +8,7 @@
 }
 
 .plotInset {
-  bottom: 22px;
+  bottom: calc(var(--wave-ruler, 22px) + var(--wave-legend, 0px) + var(--wave-symbols, 0px));
 }
 
 .image {

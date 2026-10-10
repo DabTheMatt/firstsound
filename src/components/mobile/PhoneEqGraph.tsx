@@ -21,8 +21,8 @@ export function PhoneEqGraph({ instanceId, onSelectModule, phoneFocus = false, o
 
   return (
     <div className={styles.stage} data-phone-eq="">
-      {onEnterFocus && !phoneFocus ? <EnterFocusButton corner label="EQ" onClick={onEnterFocus} /> : null}
       <Spectrum active phoneEq phoneFocus={phoneFocus} knobLane={phoneFocus} />
+      {onEnterFocus && !phoneFocus ? <EnterFocusButton corner label="EQ" onClick={onEnterFocus} /> : null}
       {eq ? null : (
         <button
           type="button"
