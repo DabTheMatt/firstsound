@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { parseUiMode, UI_MODES } from './uiMode'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { initialUiMode, parseUiMode, UI_MODE_STORAGE_KEY, UI_MODES } from './uiMode'
 
 describe('UI_MODES', () => {
   it('lists Simple, Technical, then Sensory', () => {
@@ -18,5 +18,24 @@ describe('parseUiMode', () => {
     expect(parseUiMode('beginner')).toBeNull()
     expect(parseUiMode('')).toBeNull()
     expect(parseUiMode(null)).toBeNull()
+  })
+})
+
+describe('initialUiMode', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('opens Technical when nothing is stored', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null })
+    expect(initialUiMode()).toBe('technical')
+  })
+
+  it('keeps a saved Simple or Sensory choice', () => {
+    const mem = new Map<string, string>([[UI_MODE_STORAGE_KEY, 'sensory']])
+    vi.stubGlobal('localStorage', { getItem: (key: string) => mem.get(key) ?? null })
+    expect(initialUiMode()).toBe('sensory')
+    mem.set(UI_MODE_STORAGE_KEY, 'simple')
+    expect(initialUiMode()).toBe('simple')
   })
 })

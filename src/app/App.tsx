@@ -10,10 +10,12 @@ import {
   focusFromContext,
   inspectorKey,
   routeCollapse,
+  routeEqView,
   routeModule,
   routeReveal,
   routeTrackClick,
   routeTrackEdit,
+  type EqViewHold,
   type TrackInspectorMemory,
 } from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
@@ -45,9 +47,8 @@ import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
-import { ModeGate } from '../modes/ModeGate'
 import { ModeSwitch } from '../modes/ModeSwitch'
-import { persistUiMode, readStoredUiMode, type UiMode } from '../modes/uiMode'
+import { initialUiMode, persistUiMode, type UiMode } from '../modes/uiMode'
 import { useI18n } from '../i18n'
 import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
@@ -216,6 +217,7 @@ export default function App() {
   })
   const [inspectorMemory, setInspectorMemory] = useState<TrackInspectorMemory>({})
   const focusRef = useRef(focus)
+  const eqViewHoldRef = useRef<EqViewHold | null>(null)
   const lastEffectRef = useRef<InspectorFocus>(focus)
   const memoryRef = useRef(inspectorMemory)
   const seenTrackRef = useRef(engine.getSnapshot().selectedTrackId)
@@ -236,7 +238,7 @@ export default function App() {
       }, engine.getSnapshot().spectral),
     ),
   )
-  const [uiMode, setUiMode] = useState<UiMode | null>(() => readStoredUiMode())
+  const [uiMode, setUiMode] = useState<UiMode>(() => initialUiMode())
   const [sensory, setSensory] = useState(defaultSensoryValues)
   const [colorSound, setColorSound] = useState<ColorSound>(NEUTRAL_COLOR_SOUND)
   const [moodLabel, setMoodLabel] = useState<string | null>(null)
@@ -610,6 +612,7 @@ export default function App() {
   }, [snap.selectedTrackId])
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
+    eqViewHoldRef.current = null
     engine.focusEffect(instanceId)
     const live = engine.getSnapshot().chain
     const mod = live.find((m) => m.instanceId === instanceId)
@@ -769,18 +772,29 @@ export default function App() {
     return { kind: 'module', instanceId: gain?.instanceId ?? 'gain-1', type: gain?.type ?? 'gain' }
   }
 
-  /** Views change the picture. The inspector stays on the last effect, unless EQ is already in the chain. */
+  /**
+   * Views change the picture. EQ may show the equalizer while that picture is open.
+   * Wave and the other pictures restore the inspector that was open before EQ.
+   */
   const commitViz = (next: VizMode) => {
-    if (next === 'eq-split') {
-      const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
-      if (eq) {
-        selectModule(eq.instanceId)
-        setViz('eq-split')
-        return
-      }
+    const eq = engine.getSnapshot().chain.find((item) => item.type === 'eq')
+    const routed = routeEqView(next, viz, focusRef.current, eqViewHoldRef.current, eq?.instanceId ?? null)
+    const enteringEq =
+      routed.viz === 'eq-split' &&
+      routed.focus.kind === 'module' &&
+      routed.focus.type === 'eq' &&
+      (focusRef.current.kind !== 'module' || focusRef.current.instanceId !== routed.focus.instanceId)
+    if (enteringEq && routed.focus.kind === 'module') {
+      const hold = routed.hold
+      selectModule(routed.focus.instanceId)
+      eqViewHoldRef.current = hold
+      setViz('eq-split')
+      return
     }
-    setViz(next)
-    if (focusRef.current.kind !== 'module') rememberFocus(effectFocus())
+    eqViewHoldRef.current = routed.hold
+    setViz(routed.viz)
+    if (routed.focus !== focusRef.current) rememberFocus(routed.focus)
+    else if (focusRef.current.kind !== 'module') rememberFocus(effectFocus())
   }
 
   const enterNamedFocus = (workspace: 'wave' | 'fft' | 'eq' | 'auto') => {
@@ -1248,18 +1262,6 @@ export default function App() {
       uiMode={uiMode}
     />
   )
-
-  if (uiMode === null) {
-    return (
-      <>
-        <SkipLink />
-        <LiveAnnouncer />
-        <ModeGate onChoose={chooseMode} />
-        {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => setManualOpen(false)} /> : null}
-      </>
-    )
-  }
 
   if (uiMode === 'simple') {
     return (

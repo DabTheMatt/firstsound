@@ -6,14 +6,16 @@ export const TECHNICAL_INTERFACES = ['classic', 'workspace'] as const
 export type TechnicalInterface = (typeof TECHNICAL_INTERFACES)[number]
 
 export function parseTechnicalInterface(raw: string | null | undefined): TechnicalInterface {
-  return raw === 'workspace' ? 'workspace' : 'classic'
+  if (raw === 'classic') return 'classic'
+  if (raw == null || raw === '' || raw === 'workspace') return 'workspace'
+  return 'classic'
 }
 
 export function readStoredTechnicalInterface(): TechnicalInterface {
   try {
     return parseTechnicalInterface(localStorage.getItem(TECHNICAL_INTERFACE_KEY))
   } catch {
-    return 'classic'
+    return 'workspace'
   }
 }
 

@@ -122,6 +122,37 @@ export function routeViz(
   return { viz, focus, inspectorOpen }
 }
 
+/**
+ * EQ view may show the equalizer inspector while that picture is open.
+ * Leaving it, including for Wave, restores the inspector that was open before.
+ */
+export type EqViewHold = {
+  focus: InspectorFocus
+  eqId: string
+}
+
+export function routeEqView(
+  next: VizMode,
+  current: VizMode,
+  focus: InspectorFocus,
+  hold: EqViewHold | null,
+  eqId: string | null,
+): { viz: VizMode; focus: InspectorFocus; hold: EqViewHold | null } {
+  if (next === 'eq-split' && eqId) {
+    const already = focus.kind === 'module' && focus.instanceId === eqId
+    return {
+      viz: next,
+      focus: already ? focus : { kind: 'module', instanceId: eqId, type: 'eq' },
+      hold: already ? hold : { focus, eqId },
+    }
+  }
+  if (current === 'eq-split' && next !== current) {
+    const restore = hold != null && focus.kind === 'module' && focus.instanceId === hold.eqId
+    return { viz: next, focus: restore ? hold.focus : focus, hold: null }
+  }
+  return { viz: next, focus, hold }
+}
+
 /** Selecting a chain module selects that effect and opens its inspector. */
 export function routeModule(
   instanceId: string,

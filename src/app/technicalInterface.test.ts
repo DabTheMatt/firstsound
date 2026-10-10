@@ -14,8 +14,10 @@ describe('technical interface preference', () => {
     vi.unstubAllGlobals()
   })
 
-  it('stays classic unless the stored value is workspace', () => {
-    expect(parseTechnicalInterface(null)).toBe('classic')
+  it('opens Workspace unless Classic was stored', () => {
+    expect(parseTechnicalInterface(null)).toBe('workspace')
+    expect(parseTechnicalInterface(undefined)).toBe('workspace')
+    expect(parseTechnicalInterface('')).toBe('workspace')
     expect(parseTechnicalInterface('classic')).toBe('classic')
     expect(parseTechnicalInterface('experimental')).toBe('classic')
     expect(parseTechnicalInterface('workspace')).toBe('workspace')

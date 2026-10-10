@@ -752,7 +752,7 @@ function SoundSection(props: {
       <div className={styles.sectionTitle}>
         <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
         <InfoTip label="More about Sound">
-          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. Tags wrap on one height, with room for another row and no scrollbar. Original and heard levels share one bar per band.
+          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. The tag list keeps four rows reserved, so extra tags do not move the lines under them. There is no scrollbar. Original and heard levels share one bar per band.
         </InfoTip>
       </div>
       {props.summary && props.surface === 'simple' ? (

@@ -564,8 +564,10 @@
   display: inline-flex;
   align-items: center;
   height: 100%;
+  min-height: 0;
   max-height: 100%;
   border: 0;
+  border-radius: 0;
   padding: 0;
   background: transparent;
   color: inherit;
@@ -585,9 +587,17 @@
 }
 
 .tagBar .chips {
-  flex: 1 1 auto;
+  --hearing-tag-row: 20px;
+  --hearing-tag-gap: 4px;
+  --hearing-tag-rows: 4;
+  flex: 0 0 auto;
   width: 100%;
   min-width: 0;
+  gap: var(--hearing-tag-gap);
+  height: calc(
+    var(--hearing-tag-rows) * var(--hearing-tag-row) + (var(--hearing-tag-rows) - 1) * var(--hearing-tag-gap)
+  );
+  overflow: hidden;
 }
 
 .toneSensitivity {

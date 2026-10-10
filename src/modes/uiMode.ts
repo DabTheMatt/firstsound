@@ -9,6 +9,13 @@ export function parseUiMode(raw: string | null | undefined): UiMode | null {
   return null
 }
 
+/** First launch, and any visit with no saved choice, opens Technical. */
+export const DEFAULT_UI_MODE: UiMode = 'technical'
+
+export function initialUiMode(): UiMode {
+  return readStoredUiMode() ?? DEFAULT_UI_MODE
+}
+
 export function readStoredUiMode(): UiMode | null {
   try {
     return parseUiMode(localStorage.getItem(UI_MODE_STORAGE_KEY))
