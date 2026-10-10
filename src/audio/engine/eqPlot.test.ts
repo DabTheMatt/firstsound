@@ -19,6 +19,9 @@ import {
   nodeDisplayDb,
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
+  eqGainGridDb,
+  eqResponsePlot,
+  formatEqGainGridLabel,
   spectrumEqOverlayY,
   xToFreq,
   yToDb,
@@ -64,6 +67,22 @@ describe('eq plot mapping', () => {
     const hp: EqBand = { type: 'highpass', frequency: 120, gain: 0, q: Math.SQRT1_2, slope: 12 }
     expect(eqNodePlotDb([hp], hp.frequency, 48000)).toBeCloseTo(-3, 0)
     expect(eqNodePlotDb([hp], hp.frequency, 48000)).toBeLessThan(0)
+  })
+
+  it('keeps a +24 dB peak inside the clip and labels the gain grid', () => {
+    const outer = { left: 0, right: 400, top: 10, bottom: 310 }
+    const box = eqResponsePlot(outer)
+    expect(box.top).toBeGreaterThan(outer.top)
+    expect(box.bottom).toBeLessThan(outer.bottom)
+    expect(spectrumEqOverlayY(24, box.top, box.bottom)).toBe(box.top)
+    expect(spectrumEqOverlayY(48, box.top, box.bottom)).toBe(box.top)
+    expect(spectrumEqOverlayY(0, box.top, box.bottom)).toBeCloseTo((box.top + box.bottom) / 2)
+    expect(eqGainGridDb(240)).toEqual([24, 18, 12, 6, 0, -6, -12, -18, -24])
+    expect(eqGainGridDb(120)).toEqual([24, 18, 12, 6, 0, -6, -12, -18, -24])
+    expect(eqGainGridDb(80)).toEqual([24, 12, 0, -12, -24])
+    expect(formatEqGainGridLabel(12)).toBe('+12')
+    expect(formatEqGainGridLabel(-12)).toBe('−12')
+    expect(formatEqGainGridLabel(0)).toBe('0')
   })
 
   it('clamps a high-shelf stopband into the FFT overlay range', () => {

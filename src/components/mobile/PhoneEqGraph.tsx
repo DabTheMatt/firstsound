@@ -1,7 +1,6 @@
 import { selectEqBand } from '../../audio/engine/eqBandSelection'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
-import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { Spectrum } from '../waveform/Spectrum'
 import styles from './PhoneEqGraph.module.css'
 
@@ -21,8 +20,14 @@ export function PhoneEqGraph({ instanceId, onSelectModule, phoneFocus = false, o
 
   return (
     <div className={styles.stage} data-phone-eq="">
-      {onEnterFocus && !phoneFocus ? <EnterFocusButton corner label="EQ" onClick={onEnterFocus} /> : null}
-      <Spectrum active phoneEq phoneFocus={phoneFocus} knobLane={phoneFocus} />
+      <Spectrum
+        active
+        phoneEq
+        phoneFocus={phoneFocus}
+        knobLane={phoneFocus}
+        focusLabel="EQ"
+        onEnterFocus={onEnterFocus}
+      />
       {eq ? null : (
         <button
           type="button"

@@ -7,8 +7,12 @@ import {
   bellFromPlotPoint,
   displayFrequencies,
   eqBandDragPatch,
+  EQ_CURVE_INSET_PX,
+  eqGainGridDb,
   eqNodePlotDb,
   eqResponseCurveStyle,
+  eqResponsePlot,
+  formatEqGainGridLabel,
   freqToX,
   spectrumEqOverlayY,
   layoutMagnitudeCurve,
@@ -20,6 +24,8 @@ import {
   yToDb as eqYToDb,
 } from '../../audio/engine/eqPlot'
 import { eqGraphLayers } from '../../audio/engine/eqFocusGraph'
+import { formatFrequencyLandmark } from '../../audio/engine/freqLandmarks'
+import { graphSnapshotFrozen, setGraphSnapshot, subscribeGraphSnapshot } from '../../audio/engine/graphSnapshot'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { bandIsActive, EQ_FILTER_TYPES, eqStripKey } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
@@ -122,7 +128,7 @@ import {
   type EqDragMode,
 } from '../mobile/eqFocusGesture'
 import { focusEqTypeLabel } from '../mobile/focusReadout'
-import { SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
+import { GuidesRow, holdGraphSnapshot, SnapshotRow, SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
 import { VizBackground } from './VizBackground'
 import { FftViewToggle, SpectralHistoryControls } from './SpectralHistoryControls'
 import {
@@ -151,12 +157,21 @@ type Props = {
   hideGraphMenu?: boolean
   /** Experimental FFT workspace keeps the plot clear of the legend. */
   hideLegend?: boolean
+  /** Horizontal lines are EQ gain, −24 to +24, instead of the spectrum depth scale. */
+  eqGainGrid?: boolean
   analyzerOpen?: boolean
   onAnalyzerClose?: () => void
   onGraphEdit?: () => void
   onEnterFocus?: () => void
   /** Name on the graph’s focus control. The EQ view asks for EQ Focus. */
   focusLabel?: string
+}
+
+function pointerLabel(hz: number, guides: boolean): string {
+  const freq = formatHoverFreq(hz)
+  if (!guides) return freq
+  const mark = formatFrequencyLandmark(hz)
+  return mark ? `${freq}\n${mark}` : freq
 }
 
 function plotPadNow(
@@ -241,7 +256,7 @@ function readTimePeaks(
 }
 
 /** Banded FFT observer — never sits in the processing chain. */
-export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
+export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, eqGainGrid = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, focusLabel = 'FFT' }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
@@ -263,6 +278,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const phoneEqRef = useRef(phoneEq)
   const phoneFocusRef = useRef(phoneFocus)
   const knobLaneRef = useRef(knobLane)
+  const eqGainGridRef = useRef(eqGainGrid)
   const knobClearanceRef = useRef(0)
   const [knobClearance, setKnobClearance] = useState(0)
   useEffect(() => {
@@ -270,7 +286,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     phoneEqRef.current = phoneEq
     phoneFocusRef.current = phoneFocus
     knobLaneRef.current = knobLane
-  }, [compact, phoneEq, phoneFocus, knobLane])
+    eqGainGridRef.current = eqGainGrid
+  }, [compact, phoneEq, phoneFocus, knobLane, eqGainGrid])
   useLayoutEffect(() => {
     let frame = 0
     const publish = (next: number) => {
@@ -308,6 +325,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const [gridDensity, setGridDensity] = useState<FreqGridDensity>(() => loadFreqGridDensity())
   const gridDensityRef = useRef(gridDensity)
   const [gridOpen, setGridOpen] = useState(false)
+  const [snapshotOn, setSnapshotOn] = useState(() => graphSnapshotFrozen())
+  useEffect(() => subscribeGraphSnapshot(setSnapshotOn), [])
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [historyFrozen, setHistoryFrozen] = useState(() => spectralHistorySession().frozen)
   const [eqFocusRaw, setEqFocusRaw] = useState<string>(() => loadEqOverlayFocus())
@@ -482,6 +501,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         return
       }
       const live = engine.getSnapshot()
+      if (graphSnapshotFrozen() && live.playing) setGraphSnapshot(false)
+      const holdPicture = graphSnapshotFrozen()
       const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -525,7 +546,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             dpr,
             cssWidth: cssW,
             cssHeight: rect.height,
-            playing: live.playing,
+            playing: live.playing && !holdPicture,
             sampleRate: sr,
             preBins,
             postBins,
@@ -581,8 +602,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const dbFloor = spectrumDisplayFloorDb(range)
         const tight = compactRef.current || focusPlot
         const dbMarks = tight ? compactDbMarks(dbFloor) : spectrumDbScaleMarks(dbFloor, plotH / dpr)
+        const responsePlot = eqResponsePlot(
+          { left, right, top, bottom },
+          EQ_CURVE_INSET_PX * dpr,
+        )
 
-        const eqZeroY = spectrumEqOverlayY(0, top, bottom, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
+        const eqZeroY = spectrumEqOverlayY(0, responsePlot.top, responsePlot.bottom, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
         const fadeAboveZero = (y: number) => {
           if (!focusPlot || y >= eqZeroY) return 1
           const span = Math.max(1, eqZeroY - top)
@@ -594,17 +619,36 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         ctx.textAlign = tight || phoneScale ? 'left' : 'right'
         ctx.textBaseline = 'middle'
-        for (const db of dbMarks) {
-          const y = dbToY(db, top, bottom, dbFloor)
-          const fade = fadeAboveZero(y)
-          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, (db === 0 || db === -6 || db === -12 ? 1 : 0.75) * fade)
-          ctx.lineWidth = dpr * (db === 0 || db === -6 || db === -12 ? 0.7 : 0.45)
+        const gainGrid = focusPlot || phoneEqRef.current || eqGainGridRef.current
+        if (!gainGrid) {
+          for (const db of dbMarks) {
+            const y = dbToY(db, top, bottom, dbFloor)
+            const fade = fadeAboveZero(y)
+            ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, (db === 0 || db === -6 || db === -12 ? 1 : 0.75) * fade)
+            ctx.lineWidth = dpr * (db === 0 || db === -6 || db === -12 ? 0.7 : 0.45)
+            ctx.beginPath()
+            ctx.moveTo(left, y)
+            ctx.lineTo(right, y)
+            ctx.stroke()
+            ctx.fillStyle = colorWithAlpha(colors.textMuted, (tight ? 0.55 : 1) * fade)
+            ctx.fillText(`${db}`, tight ? left + 4 * dpr : phoneScale ? 2 * dpr : left - 5 * dpr, y)
+          }
+        }
+        const gainMarks = gainGrid ? eqGainGridDb((responsePlot.bottom - responsePlot.top) / dpr) : []
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.font = `${9 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        for (const db of gainMarks) {
+          const y = spectrumEqOverlayY(db, responsePlot.top, responsePlot.bottom)
+          const major = db === 0 || Math.abs(db) === 24
+          ctx.strokeStyle = colorWithAlpha(colors.textMuted, major ? 0.9 : 0.42)
+          ctx.lineWidth = dpr * (major ? 1.05 : 0.65)
           ctx.beginPath()
-          ctx.moveTo(left, y)
-          ctx.lineTo(right, y)
+          ctx.moveTo(responsePlot.left, y)
+          ctx.lineTo(responsePlot.right, y)
           ctx.stroke()
-          ctx.fillStyle = colorWithAlpha(colors.textMuted, (tight ? 0.55 : 1) * fade)
-          ctx.fillText(`${db}`, tight ? left + 4 * dpr : phoneScale ? 2 * dpr : left - 5 * dpr, y)
+          ctx.fillStyle = colorWithAlpha(db === 0 ? colors.textPrimary : colors.textMuted, 0.92)
+          ctx.fillText(formatEqGainGridLabel(db), responsePlot.left + 4 * dpr, y)
         }
         if (!tight && !phoneScale) {
           ctx.textAlign = 'left'
@@ -679,7 +723,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) => {
           if (!peaks) return
           const barKey = style === 'pre' ? 'pre' : 'post'
-          followBandsOverTime(
+          if (!holdPicture) followBandsOverTime(
             fast,
             peaks,
             ballistics.peak.attack,
@@ -687,7 +731,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             dt,
             releaseHold(`${barKey}Fast`, fast.length, ballistics.peak),
           )
-          followBandsOverTime(
+          if (!holdPicture) followBandsOverTime(
             slow,
             peaks,
             ballistics.slow.attack,
@@ -827,7 +871,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const lineRelease = ballistics.peak.release
         const slowAttack = ballistics.slow.attack
         const slowRelease = ballistics.slow.release
-        if (!listenId && showPre && preScratch.bins) {
+        if (!holdPicture && !listenId && showPre && preScratch.bins) {
           preLineFast = followSpectrumLine(
             preLineFast,
             preScratch.bins,
@@ -845,7 +889,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             releaseHold('preLineSlow', preScratch.bins.length, ballistics.slow),
           )
         }
-        if (!listenId && showPost && postScratch.bins) {
+        if (!holdPicture && !listenId && showPost && postScratch.bins) {
           const followedFast = followSpectrumLine(
             postLineFast,
             postScratch.bins,
@@ -876,7 +920,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const eqs = live.chain.filter((m) => m.type === 'eq')
         const overlayFocus = eqFocusRef.current
         const freqs = displayFrequencies(responseSampleCount(plotW), minHz, maxHz, scale)
-        const responsePlot = { left, right, top, bottom }
         for (let ei = 0; ei < eqs.length; ei++) {
           const mod = eqs[ei]
           if (!mod) continue
@@ -895,7 +938,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               automation: live.automation,
               live: curveLive,
               timeSec: live.transportSec,
-              playing: live.playing,
+              playing: live.playing && !holdPicture,
               modulate: modulateCurve,
             },
             dragNow?.instanceId === mod.instanceId ? dragNow.index : null,
@@ -1129,7 +1172,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       )
       const plotMax = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
       const hz = xToHz(hx, SPECTRUM_AXIS_MIN_HZ, plotMax, pad.left, crect.width - pad.right, freqScaleRef.current)
-      setHover({ x: hx, y: hy, label: formatHoverFreq(hz), flip: hx > crect.width * 0.68, low: hy < 28 })
+      setHover({ x: hx, y: hy, label: pointerLabel(hz, prefsRef.current.freqGuide), flip: hx > crect.width * 0.68, low: hy < 28 })
     }
     if (phoneFocusRef.current && d.mode === 'q') {
       engine.setEqBand(d.index, { q: qFromVertical(d.q0, d.y0 - event.clientY) }, d.instanceId)
@@ -1154,8 +1197,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     )
     const left = pad.left
     const right = rect.width - pad.right
-    const top = pad.top
-    const bottom = rect.height - pad.bottom
+    const top = pad.top + EQ_CURVE_INSET_PX
+    const bottom = rect.height - pad.bottom - EQ_CURVE_INSET_PX
     if (x < left || x > right || y < top || y > bottom) return
     const live = engine.getSnapshot()
     const plotMax = spectrumMaxHz(live.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
@@ -1248,7 +1291,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {onEnterFocus && (compact || phoneEq) && !phoneFocus && !suppressAnalyzerChrome ? (
+      {onEnterFocus && hideGraphMenu && !phoneFocus && !suppressAnalyzerChrome ? (
         <EnterFocusButton corner label={focusLabel} onClick={onEnterFocus} />
       ) : null}
       {suppressAnalyzerChrome ? null : (
@@ -1600,13 +1643,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             mode={prefs.viewMode}
             onChange={(viewMode) => patchSpectrumPrefs({ viewMode })}
           />
-          {onEnterFocus && !compact && !phoneEq ? <EnterFocusButton label={focusLabel} onClick={onEnterFocus} /> : null}
         </div>
       </div>
       )}
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen) ? (
+        {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen || phoneEq || phoneFocus) ? (
           <div className={styles.legendDock}>
             {spectrumPaintColor(prefs) === 'frequency' ? (
               <ul className={styles.regions}>
@@ -1627,6 +1669,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 {prefs.layer === 'both' ? <li>Before / after</li> : null}
               </ul>
             )}
+            {prefs.freqGuide ? <p className={styles.guideNote}>Hover a frequency for a landmark</p> : null}
           </div>
         ) : null}
         {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (
@@ -1749,7 +1792,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               return
             }
             const hz = xToHz(x, SPECTRUM_AXIS_MIN_HZ, maxHz, left, right, freqScaleRef.current)
-            setHover({ x, y, label: formatHoverFreq(hz), flip: x > rect.width * 0.68, low: y < 28 })
+            setHover({ x, y, label: pointerLabel(hz, prefs.freqGuide), flip: x > rect.width * 0.68, low: y < 28 })
           }}
           onPointerCancel={() => {
             spatialGesture.current = null
@@ -1766,8 +1809,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           style={{
             left: plotPad.left,
             right: plotPad.right,
-            top: plotPad.top,
-            bottom: plotPad.bottom,
+            top: plotPad.top + EQ_CURVE_INSET_PX,
+            bottom: plotPad.bottom + EQ_CURVE_INSET_PX,
           }}
         >
           {spatial || (compact && !phoneEq)
@@ -1889,18 +1932,36 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ) : null}
         {spatial || hideGraphMenu ? null : (
         <div className={styles.graphMenu}>
-          <button
-            type="button"
-            className={styles.graphMenuButton}
-            aria-expanded={gridOpen}
-            aria-label="Graph settings"
-            onClick={(event) => {
-              setGridOpen((open) => !open)
-              event.currentTarget.blur()
-            }}
-          >
-            •••
-          </button>
+          {onEnterFocus && !phoneFocus ? (
+            <EnterFocusButton label={focusLabel} onClick={onEnterFocus} />
+          ) : null}
+          <div className={styles.graphMenuBar}>
+            <button
+              type="button"
+              className={`${styles.graphMenuButton} ${snapshotOn ? styles.snapshotOn : ''}`}
+              aria-pressed={snapshotOn}
+              aria-label={snapshotOn ? 'Release snapshot' : 'Snapshot'}
+              title={snapshotOn ? 'Release the held FFT and EQ graphs' : 'Pause playback and hold the FFT and EQ graphs'}
+              onClick={(event) => {
+                holdGraphSnapshot(!snapshotOn)
+                event.currentTarget.blur()
+              }}
+            >
+              {snapshotOn ? 'Held' : 'Snap'}
+            </button>
+            <button
+              type="button"
+              className={styles.graphMenuButton}
+              aria-expanded={gridOpen}
+              aria-label="Graph settings"
+              onClick={(event) => {
+                setGridOpen((open) => !open)
+                event.currentTarget.blur()
+              }}
+            >
+              •••
+            </button>
+          </div>
           {gridOpen ? (
             <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
               {phoneFocus ? (
@@ -1908,7 +1969,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               ) : (
               <>
               <div className={styles.graphMenuRow}>
-                <span>Grid</span>
+                <span title="Vertical guides. 6, 12, or 24 frequency lines across the graph.">Grid</span>
                 {([6, 12, 24] as const).map((density) => (
                   <button
                     key={density}
@@ -1925,7 +1986,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 ))}
               </div>
               <div className={styles.graphMenuRow}>
-                <span>Scale</span>
+                <span title="How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.">Scale</span>
                 {FREQ_SCALE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -1941,6 +2002,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   </button>
                 ))}
               </div>
+              <GuidesRow />
+              <SnapshotRow />
               </>
               )}
             </div>

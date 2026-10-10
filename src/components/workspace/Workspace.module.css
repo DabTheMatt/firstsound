@@ -445,18 +445,50 @@
 
 .displayRow {
   display: grid;
-  grid-template-columns: 4.4rem minmax(0, 1fr);
+  grid-template-columns: 5.6rem minmax(0, 1fr);
   align-items: center;
   gap: 4px;
   min-height: 26px;
 }
 
 .displayLabel {
+  position: relative;
   color: var(--text-muted);
   font-size: 10px;
   font-weight: var(--ws-bar-weight, 500);
   letter-spacing: var(--ws-bar-track, 0.08em);
   text-transform: uppercase;
+  line-height: 1.15;
+  cursor: help;
+}
+
+.displayHint {
+  display: none;
+  position: absolute;
+  z-index: 8;
+  right: calc(100% + 10px);
+  top: 50%;
+  width: 15rem;
+  padding: 6px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-align: left;
+  text-transform: none;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 35%, transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.displayRow:hover .displayHint,
+.displayLabel:focus .displayHint,
+.displayLabel:focus-visible .displayHint {
+  display: block;
 }
 
 .displayChoices {

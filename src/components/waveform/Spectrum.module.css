@@ -79,8 +79,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 4px 8px;
-  padding: 2px 132px 4px 8px;
+  padding: 2px 96px 4px 8px;
   pointer-events: none;
+}
+
+.wrap:has([data-enter-focus='corner']) .chrome {
+  padding-left: 44px;
 }
 
 .viewAnchor {
@@ -277,8 +281,10 @@
 
 .legendDock {
   position: absolute;
-  top: 8px;
+  top: auto;
+  left: auto;
   right: 12px;
+  bottom: 46px;
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -326,7 +332,7 @@
   position: absolute;
   z-index: 3;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .node {
@@ -401,6 +407,7 @@
   z-index: 4;
   pointer-events: none;
   transform: translate(12px, -50%);
+  max-width: 16rem;
   padding: 3px 7px;
   border-radius: 6px;
   border: 1px solid var(--border-default);
@@ -436,6 +443,12 @@
   pointer-events: auto;
 }
 
+.graphMenuBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .graphMenuButton {
   min-width: 28px;
   height: 22px;
@@ -455,12 +468,17 @@
   outline: none;
 }
 
+.snapshotOn {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
 .graphMenuPanel {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  min-width: 16rem;
+  min-width: 18.5rem;
   padding: 4px 6px;
   border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
   border-radius: 8px;
@@ -524,6 +542,11 @@
   pointer-events: none;
 }
 
+.compact:has([data-enter-focus='corner']) .chrome,
+.compact.analyzerOpen:has([data-enter-focus='corner']) .chrome {
+  left: 44px;
+}
+
 .compact .viewAnchor {
   display: none;
 }
@@ -567,14 +590,35 @@
 }
 
 .phoneEq .chrome,
-.phoneEq .legendDock,
-.eqFocus .chrome,
-.eqFocus .legendDock {
+.eqFocus .chrome {
   display: none;
 }
 
+.eqFocus .legendDock,
+.phoneEq .legendDock,
+.compact.eqFocus .legendDock,
+.compact.phoneEq .legendDock {
+  display: flex;
+  top: auto;
+  right: auto;
+  bottom: 28px;
+  left: 8px;
+  align-items: flex-start;
+}
+
+.guideNote {
+  margin: 0;
+  max-width: 14rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-app) 78%, transparent);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 .eqFocus .graphMenu {
-  top: 46px;
+  top: 52px;
 }
 
 .wrap:not(.phoneEq):not(.eqFocus) .focusReadout {

@@ -514,7 +514,10 @@ export function HearingAccessLayer({
             title={narrow ? undefined : 'Drag to move this panel. Dock returns it to the corner.'}
             onPointerDown={onHeaderPointerDown}
           >
-            <h2>Hearing Access</h2>
+            <div className={styles.headLead}>
+              {onEnterFocus && focus !== 'hearing' ? <EnterFocusButton label="Hearing Access" onClick={onEnterFocus} /> : null}
+              <h2>Hearing Access</h2>
+            </div>
             <div className={styles.tools}>
               {dockedPoint && !narrow ? (
                 <button type="button" onClick={() => patch({ panelLeft: null, panelTop: null })}>
@@ -524,7 +527,6 @@ export function HearingAccessLayer({
               <button type="button" onClick={() => patch(nextPanelSize(settings.panelWidth))}>
                 {settings.panelWidth >= 640 ? 'Restore' : 'Enlarge'}
               </button>
-              {onEnterFocus && focus !== 'hearing' ? <EnterFocusButton label="Hearing Access" onClick={onEnterFocus} /> : null}
               <button type="button" onClick={() => patch({ panelOpen: false })}>
                 Close
               </button>
