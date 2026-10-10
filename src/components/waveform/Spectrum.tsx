@@ -1315,12 +1315,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {focusControl || showFftMenu ? (
-        <div className={styles.focusDock}>
-          {focusControl}
-          {showFftMenu ? <FftPrimaryBar /> : null}
-        </div>
-      ) : null}
+      {focusControl ? <div className={styles.focusDock}>{focusControl}</div> : null}
+      {showFftMenu ? <FftPrimaryBar /> : null}
       {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}

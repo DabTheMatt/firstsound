@@ -210,19 +210,27 @@
   overflow: visible;
 }
 
-.editBarPin {
-  padding-right: 40px;
-}
-
-.cornerMore {
-  position: absolute;
-  top: 40px;
-  right: 8px;
-  z-index: 6;
-}
-
-.cornerMenu {
+.viewMore {
   position: relative;
+  flex: none;
+}
+
+.viewBar {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 44px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 2px 8px;
+  pointer-events: none;
+}
+
+.viewBar > * {
+  pointer-events: auto;
 }
 
 .zoom {

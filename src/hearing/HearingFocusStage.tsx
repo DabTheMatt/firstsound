@@ -18,13 +18,16 @@ import { useHearingSettings } from './useHearingSettings'
 import styles from './HearingAccessLayer.module.css'
 
 const zoomButton = {
-  minHeight: 32,
-  padding: '0 10px',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: 8,
-  background: 'var(--bg-control)',
-  color: 'var(--text-primary)',
-} as const
+  minHeight: 28,
+  padding: '0 8px',
+  border: 0,
+  borderRadius: 6,
+  background: 'transparent',
+  color: 'var(--text-secondary)',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase' as const,
+  fontSize: 11,
+}
 
 function useHearingView() {
   const [value, setValue] = useState(getHearingView)

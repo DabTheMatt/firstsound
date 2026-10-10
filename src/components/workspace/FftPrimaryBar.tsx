@@ -7,7 +7,6 @@ import {
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
-import { FftViewToggle } from '../waveform/SpectralHistoryControls'
 import { AnalyzerSettingsMenu } from './AnalyzerSettingsMenu'
 import styles from './Workspace.module.css'
 
@@ -17,7 +16,7 @@ const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'both', label: 'Both' },
 ]
 
-/** Primary FFT controls. Analyzer configuration stays one action away. */
+/** Layer and 2D / 3D stay on the bar. The rest opens from ••• at the end. */
 export function FftPrimaryBar() {
   const { t } = useI18n()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
@@ -48,36 +47,57 @@ export function FftPrimaryBar() {
   }
 
   return (
-    <div className={styles.cornerMenu} ref={rootRef} data-fft-primary="">
-      <button
-        type="button"
-        className={styles.textButton}
-        aria-expanded={open}
-        aria-controls={menuId}
-        aria-label={t.workspace.moreEdit}
-        onClick={() => setOpen((value) => !value)}
-      >
-        •••
-      </button>
-      {open ? (
-        <div className={styles.menu} id={menuId} role="menu" aria-label={t.workspace.analyzerSettings}>
-          <div className={styles.segment} role="group" aria-label={t.workspace.analyzerLayer}>
-            {LAYERS.map((layer) => (
-              <button
-                key={layer.id}
-                type="button"
-                className={prefs.layer === layer.id ? styles.segmentOn : styles.segmentOff}
-                aria-pressed={prefs.layer === layer.id}
-                onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
-              >
-                {layer.label}
-              </button>
-            ))}
+    <div className={styles.viewBar} ref={rootRef} data-fft-primary="">
+      <div className={styles.segment} role="group" aria-label={t.workspace.analyzerLayer}>
+        {LAYERS.map((layer) => (
+          <button
+            key={layer.id}
+            type="button"
+            className={prefs.layer === layer.id ? styles.segmentOn : styles.textButton}
+            aria-pressed={prefs.layer === layer.id}
+            onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
+          >
+            {layer.label}
+          </button>
+        ))}
+      </div>
+      <div className={styles.segment} role="group" aria-label="FFT view">
+        <button
+          type="button"
+          className={prefs.viewMode === '2d' ? styles.segmentOn : styles.textButton}
+          aria-pressed={prefs.viewMode === '2d'}
+          onClick={() => patch({ viewMode: '2d' })}
+        >
+          2D
+        </button>
+        <button
+          type="button"
+          className={prefs.viewMode === '3d' ? styles.segmentOn : styles.textButton}
+          aria-pressed={prefs.viewMode === '3d'}
+          aria-label="3D"
+          title="3D Spectral History"
+          onClick={() => patch({ viewMode: '3d' })}
+        >
+          3D
+        </button>
+      </div>
+      <div className={styles.viewMore} data-view-more="">
+        <button
+          type="button"
+          className={styles.textButton}
+          aria-expanded={open}
+          aria-controls={menuId}
+          aria-label={t.workspace.moreEdit}
+          onClick={() => setOpen((value) => !value)}
+        >
+          •••
+        </button>
+        {open ? (
+          <div className={styles.menu} id={menuId} role="menu" aria-label={t.workspace.analyzerSettings}>
+            <AnalyzerSettingsMenu />
           </div>
-          <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
-          <AnalyzerSettingsMenu />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   )
 }

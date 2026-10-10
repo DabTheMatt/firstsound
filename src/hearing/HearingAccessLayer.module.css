@@ -528,26 +528,33 @@
   color: var(--text-primary);
 }
 
-.chips li[data-tag='bass-heavy'] { border-color: var(--hearing-bass); }
-.chips li[data-tag='midrange-dominant'] { border-color: var(--hearing-mid); }
-.chips li[data-tag='high-band'] { border-color: var(--hearing-high); }
-.chips li[data-tag='air'] { border-color: var(--hearing-air); }
+:global([data-technical-ui='workspace']) .chips li {
+  border: 0;
+  border-radius: 0;
+  padding: 0 2px;
+  color: var(--text-secondary);
+}
+
+.chips li[data-tag='bass-heavy'] { border-color: var(--hearing-bass); color: var(--hearing-bass); }
+.chips li[data-tag='midrange-dominant'] { border-color: var(--hearing-mid); color: var(--hearing-mid); }
+.chips li[data-tag='high-band'] { border-color: var(--hearing-high); color: var(--hearing-high); }
+.chips li[data-tag='air'] { border-color: var(--hearing-air); color: var(--hearing-air); }
 .chips li[data-tag='wide'],
-.chips li[data-tag='imbalance'] { border-color: var(--accent-primary); }
+.chips li[data-tag='imbalance'] { border-color: var(--accent-primary); color: var(--accent-primary); }
 .chips li[data-tag='strong-transients'],
 .chips li[data-tag='clipped'],
-.chips li[data-tag='near-full-scale'] { border-color: var(--playhead); }
+.chips li[data-tag='near-full-scale'] { border-color: var(--playhead); color: var(--playhead); }
 .chips li[data-tag='low-correlation'],
-.chips li[data-tag='dc-offset'] { border-color: var(--warning); }
-.chips li[data-tag='tone'] { border-color: var(--accent-secondary); }
+.chips li[data-tag='dc-offset'] { border-color: var(--warning); color: var(--warning); }
+.chips li[data-tag='tone'] { border-color: var(--accent-secondary); color: var(--accent-secondary); }
 .chips li[data-tag='tonal'],
 .chips li[data-tag='harmonic'],
-.chips li[data-tag='sustained'] { border-color: var(--hearing-mid); }
-.chips li[data-tag='bright'] { border-color: var(--hearing-high); }
-.chips li[data-tag='dull'] { border-color: var(--hearing-bass); }
-.chips li[data-tag='percussive'] { border-color: var(--playhead); }
+.chips li[data-tag='sustained'] { border-color: var(--hearing-mid); color: var(--hearing-mid); }
+.chips li[data-tag='bright'] { border-color: var(--hearing-high); color: var(--hearing-high); }
+.chips li[data-tag='dull'] { border-color: var(--hearing-bass); color: var(--hearing-bass); }
+.chips li[data-tag='percussive'] { border-color: var(--playhead); color: var(--playhead); }
 .chips li[data-tag='noise-like'],
-.chips li[data-tag='inharmonic'] { border-color: var(--warning); }
+.chips li[data-tag='inharmonic'] { border-color: var(--warning); color: var(--warning); }
 
 .chips button {
   display: inline-flex;
@@ -688,8 +695,8 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--text-primary);
   font-family: Georgia, serif;
@@ -732,10 +739,10 @@
   height: 100%;
   max-width: none;
   display: block;
-  background: var(--bg-control);
+  background: transparent;
   color: var(--text-primary);
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border-radius: 0;
+  border: 0;
 }
 
 .focusStage {
@@ -784,11 +791,11 @@
   width: 112px;
   flex: none;
   min-height: 0;
-  margin: 8px 8px 8px 12px;
+  margin: 40px 8px 8px 12px;
   padding: 6px 6px 8px;
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--bg-panel);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .loudnessRail strong {
@@ -854,7 +861,7 @@
 .loudnessLane {
   position: relative;
   flex: 1 1 0;
-  border-radius: 7px;
+  border-radius: 0;
   overflow: hidden;
   background:
     repeating-linear-gradient(
@@ -913,8 +920,8 @@
   margin: 0;
   padding: 0 8px;
   overflow-x: auto;
-  background: var(--bg-panel);
-  border-top: 1px solid var(--border-subtle);
+  background: transparent;
+  border-top: 0;
   color: var(--text-muted);
   font-size: 10px;
   letter-spacing: 0.03em;
@@ -946,10 +953,10 @@
   flex: none;
   min-height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--bg-control);
-  color: var(--text-primary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 10px;
   letter-spacing: 0.04em;
 }

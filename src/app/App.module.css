@@ -254,19 +254,10 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 6;
+  z-index: 40;
   flex: none;
   height: auto;
   min-height: 0;
-}
-
-.waveCol[data-focus-workspace='eq'] {
-  padding-top: 0;
-}
-
-.shell[data-workspace='focus'] .waveCol[data-focus-workspace='eq'] > [data-focus-chrome] {
-  bottom: auto;
-  height: auto;
 }
 
 .inspector {

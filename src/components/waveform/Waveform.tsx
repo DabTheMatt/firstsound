@@ -1467,16 +1467,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 )
               : t.waveform.editorEmpty}
           </p>
-          {automationView ? (
-            <div className={styles.autoBar}>
-              <span className={styles.autoTrack} title={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? ''}>
-                {`T${Math.max(1, snap.tracks.findIndex((track) => track.id === snap.selectedTrackId) + 1)}`}
-              </span>
-              <span className={styles.autoParam} title={activeTitle}>
-                {activeTitle}
-              </span>
-            </div>
-          ) : null}
           <div
             className={`${styles.wavePane} ${showWaveLegend ? styles.waveLegendPane : ''} ${showWaveSymbols ? styles.waveSymbolPane : ''} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}
             style={showWaveSymbols ? { ['--wave-symbols' as string]: `${SYMBOL_STRIP_HEIGHT}px` } : undefined}
@@ -1518,7 +1508,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             {loaded && (snap.channelLayout === 'mono' || snap.params.makeMono > 0.5) ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
-            {automationView ? (
+            {automationView && !hearingFocus ? (
               <div className={styles.autoLegend} aria-hidden="true">
                 {automationLanes.map((lane) => {
                   const active = lane.paramId === snap.automation.selectedParamId
