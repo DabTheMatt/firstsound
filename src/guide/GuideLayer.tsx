@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
+import { effectiveReducedMotion } from '../a11y/settings'
 import { useEngine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
 import { boundInstance, moduleIds } from './actions'
@@ -108,7 +109,7 @@ export function GuideLayer(props: Props) {
   useEffect(() => {
     if (!state.autoAdvance || state.view !== 'task' || !step) return
     if (readiness(step, state, signal) !== 'done') return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (effectiveReducedMotion()) return
     const id = window.setTimeout(() => dispatchGuide({ type: 'next', signal, mode }), 1600)
     return () => window.clearTimeout(id)
   }, [state, step, signal, mode])

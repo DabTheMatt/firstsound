@@ -1,4 +1,5 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
@@ -143,7 +144,6 @@ export function SoundRange({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
     let lastPaint = 0
     let lastStamp = 0
@@ -156,6 +156,7 @@ export function SoundRange({
         frame = requestAnimationFrame(tick)
         return
       }
+      const reduced = effectiveReducedMotion()
       const dt = lastStamp === 0 ? 16 : Math.min(100, now - lastStamp)
       lastStamp = now
       const snap = engine.getSnapshot()

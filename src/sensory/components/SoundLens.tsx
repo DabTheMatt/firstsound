@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
@@ -35,7 +36,6 @@ export function SoundLens({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
     let lastPaint = 0
     let timeBuf: Uint8Array | null = null
@@ -106,6 +106,7 @@ export function SoundLens({
           }
           energy = Math.min(1, Math.sqrt(acc / bins.length) * 3)
         }
+        const reduced = effectiveReducedMotion()
         const wobble = reduced ? 0 : visual.motion * 8 * dpr * Math.sin(performance.now() / 380)
         const amp = r * (0.58 + visual.mass * 0.2) * (0.86 + energy * 0.28)
         const step = Math.max(1, Math.floor(dpr))

@@ -75,7 +75,7 @@ const en: ManualSection[] = [
     body: [
       'Technical has two presentations. Workspace is the default. Classic is the earlier layout. Workspace reorganizes the same Technical controls: a chain, one active workspace (Wave, EQ, FFT, Auto, or Hearing), contextual controls, and transport. It uses the same audio engine and the same features.',
       'Focus Mode is that same workspace without the surrounding chrome. Enter Focus from the icon at the top-right of Wave, Auto, and Hearing, and to the left of Hold on EQ and FFT. Exit Focus uses that same icon and returns the chrome without changing the sound, the selection, or the playhead. FFT Focus shows the spectrum. Analyzer settings open from a control on that bar and close again over the graph.',
-      'Workspace opens unless Classic was saved in this browser. Settings → Technical interface switches between them immediately. The choice is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
+      'Workspace opens on a refresh. A Classic choice saved while Classic was the default is left behind. Settings → Technical interface switches between them immediately, and a Classic choice made from here is saved in this browser. It does not add another mode beside Simple, Technical, and Sensory.',
       'Workspace views change the picture only. Wave, FFT, Auto, and Hearing leave the inspector on the last selected effect. EQ shows the equalizer inspector while that picture is open, when an equalizer is in the chain. Leaving EQ, including for Wave, shows the inspector that was open before that picture. Choosing another effect while EQ is open keeps that effect. Analyzer settings stay on the FFT bar: Before, After, Both, 2D / 3D, and the settings menu. That menu uses the same compact rows as the workspace bar: a short label and the choices beside it. Color there is Off, Level, or Frequency, and it paints the 2D bars as well as the 3D ridges. Display rows for grid, scale, color, regions, bars, line, and legend stay on the EQ graph and use those same rows. Color On there paints those bars in region hues. Color Off keeps the theme color. Hearing keeps that same effect. The loudness words sit beside the output meter on the right.',
       'EQ in Workspace opens in the inspector. Each filter is one full-width row: a type selector and the knobs that filter uses. Add band creates the next filter. The graph uses the full height above the transport. An icon in the inspector opens vertical strips under the graph; drag the bar between them to change that panel’s height. An icon at the corner of the strip panel returns to the inspector. FIELD remembers that choice only for EQ. Adding or selecting another effect shows that effect’s inspector.',
     ],
@@ -312,16 +312,20 @@ const en: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Accessibility',
+    title: 'FIELD ACCESS',
     body: [
-      'Settings includes larger interface, stronger focus, tooltips, reduced motion, screen-reader optimizations, and Hearing Access. Controls keep names and keyboard access.',
+      'FIELD ACCESS is Settings → Accessibility. The same preferences apply in Simple, Technical, and Sensory, and they stay in place through Focus mode, Guided Tasks, and theme changes.',
+      'Reduced Motion reduces decorative animation, panel entrances, parallax, and glow. The playhead, waveform, meters, EQ curve, FFT, selection, and automation stay visible, with less extra motion. If the device asks for reduced motion, FIELD follows that even when the switch is off. The switch does not override the device. The sound does not change.',
+      'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
+      'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
+      'Choices are saved in this browser and survive reload and Reset application. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project.',
     ],
   },
   {
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state.',
+      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state. It does not clear FIELD ACCESS preferences.',
       'If the session already has work, FIELD asks you to confirm. An empty session resets immediately.',
     ],
   },
@@ -419,7 +423,7 @@ const pl: ManualSection[] = [
     body: [
       'Technical ma dwa układy. Workspace jest domyślny. Klasyczny to wcześniejszy widok. Workspace układa te same kontrolki inaczej: łańcuch, jeden aktywny obszar (Fala, EQ, FFT, Auto albo Hearing), kontrolki kontekstu i transport. Korzysta z tego samego silnika i tych samych funkcji.',
       'Tryb Focus to ten sam obszar bez otaczającej ramki. Wejście jest ikoną w prawym górnym rogu Fali, Auto i Hearing oraz na lewo od Hold na EQ i FFT. Wyjście używa tej samej ikony i przywraca ramkę, nie zmieniając dźwięku, zaznaczenia ani głowicy. FFT Focus pokazuje widmo. Ustawienia analizatora otwierają się z kontrolki na tym pasku i zamykają się nad wykresem.',
-      'Workspace otwiera się, dopóki w tej przeglądarce nie zapisano Klasycznego. Ustawienia → Interfejs techniczny przełącza je od razu. Wybór zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
+      'Odświeżenie otwiera Workspace. Wybór Klasycznego zapisany, gdy Klasyczny był domyślny, nie jest już brany pod uwagę. Ustawienia → Interfejs techniczny przełącza je od razu, a Klasyczny wybrany tutaj zostaje w tej przeglądarce. To nie jest kolejny tryb obok Prostego, Technical i Sensorycznego.',
       'Widoki Workspace zmieniają tylko obraz. Fala, FFT, Auto i Hearing zostawiają inspektor na ostatnio wybranym efekcie. EQ pokazuje inspektor korektora, gdy ten obraz jest otwarty i korektor jest w łańcuchu. Wyjście z EQ, także na Falę, pokazuje inspektor, który był otwarty przed tym obrazem. Wybranie innego efektu przy otwartym EQ zostawia ten efekt. Ustawienia analizatora zostają na pasku FFT: Before, After, Both, 2D / 3D i menu ustawień. To menu używa tych samych zwartych rzędów co pasek Workspace: krótka etykieta i wybory obok niej. Kolor to Off, Level albo Frequency i maluje zarówno słupki 2D, jak i granie 3D. Rzędy wyświetlania — siatka, skala, kolor, regiony, słupki, linia i legenda — zostają na wykresie EQ i korzystają z tych samych rzędów. Kolor On maluje tamte słupki barwami regionów. Kolor Off zostawia kolor motywu. Hearing zostawia ten sam efekt. Słowa głośności stoją obok wskaźnika wyjścia po prawej.',
       'EQ w Workspace otwiera się w inspektorze. Każdy filtr to jeden rząd na całą szerokość: selektor typu i gałki tego filtra. Dodaj pasmo tworzy kolejny filtr. Wykres zajmuje całą wysokość nad transportem. Ikona w inspektorze otwiera pionowe paski pod wykresem; przeciągnięcie belki między nimi zmienia wysokość tego panelu. Ikona w rogu panelu pasków wraca do inspektora. Ten wybór jest pamiętany tylko dla EQ. Dodanie albo zaznaczenie innego efektu pokazuje jego inspektor.',
     ],
@@ -656,16 +660,20 @@ const pl: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Dostępność',
+    title: 'FIELD ACCESS',
     body: [
-      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu, optymalizacje czytnika ekranu i Hearing Access. Kontrolki zachowują nazwy i obsługę klawiaturą.',
+      'FIELD ACCESS jest w Ustawienia → Dostępność. Te same preferencje działają w trybie Prostym, Technicznym i Sensorycznym oraz zostają przy Focus, zadaniach z przewodnikiem i zmianie motywu.',
+      'Ogranicz ruch zmniejsza dekoracyjne animacje, wejścia paneli, parallaksę i poświatę. Głowica, fala, mierniki, krzywa EQ, FFT, zaznaczenie i automatyzacja zostają widoczne, z mniejszą ilością zbędnego ruchu. Gdy urządzenie prosi o ograniczenie ruchu, FIELD to respektuje nawet przy wyłączonym przełączniku. Przełącznik nie nadpisuje urządzenia. Dźwięk się nie zmienia.',
+      'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
+      'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
+      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
     ],
   },
   {
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji.',
+      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji. Nie kasuje preferencji FIELD ACCESS.',
       'Gdy w sesji jest już praca, FIELD prosi o potwierdzenie. Pusta sesja resetuje się od razu.',
     ],
   },
