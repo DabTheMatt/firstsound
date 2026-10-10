@@ -28,6 +28,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const { t, moduleName } = useI18n()
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
+  const showMoves = settings.lowVision || settings.dragFreeEditing
   const [reorder, setReorder] = useState(false)
   const [gapAt, setGapAt] = useState<number | null>(null)
   const [addAt, setAddAt] = useState<number | null>(null)
@@ -78,6 +79,15 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
     if (!other) return
     const vars = [moduleName(mod.type), moduleName(other.type)] as const
     announce(dir < 0 ? t.chain.movedBefore(vars[0], vars[1]) : t.chain.movedAfter(vars[0], vars[1]))
+  }
+
+  const moveLabel = (index: number, dir: -1 | 1) => {
+    const mod = chain[index]
+    const other = chain[index + dir]
+    if (!mod || !other || isFixedType(other.type)) return dir < 0 ? t.chain.moveEarlier : t.chain.moveLater
+    const name = moduleLabel(mod, chain, t.modules)
+    const otherName = moduleLabel(other, chain, t.modules)
+    return dir < 0 ? t.chain.moveBefore(name, otherName) : t.chain.moveAfter(name, otherName)
   }
 
   const markDrop = (index: number) => {
@@ -281,12 +291,12 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
               {lowVision && !fixed ? (
                 <span className={styles.stateTag}>{mod.bypassed ? t.chain.bypassedTag : t.inspector.active}</span>
               ) : null}
-              {lowVision && !fixed ? (
+              {showMoves && !fixed ? (
                 <div className={styles.moves}>
                   <button
                     type="button"
                     className={styles.move}
-                    aria-label={t.chain.moveEarlier}
+                    aria-label={moveLabel(index, -1)}
                     disabled={index <= 1}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -298,7 +308,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                   <button
                     type="button"
                     className={styles.move}
-                    aria-label={t.chain.moveLater}
+                    aria-label={moveLabel(index, 1)}
                     disabled={index >= chain.length - 2}
                     onClick={(event) => {
                       event.stopPropagation()

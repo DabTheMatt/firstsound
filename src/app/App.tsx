@@ -44,6 +44,7 @@ import { HearingTransportButton } from '../hearing/HearingTransportButton'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
+import { DragFreeDock, dragFreeSurface } from '../edit/dragFree/DragFreeDock'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
@@ -1750,6 +1751,28 @@ export default function App() {
                 }
                 selectModule(instanceId)
               }}
+            />
+            <DragFreeDock
+              surface={dragFreeSurface({
+                focus: activeFocus,
+                workspace: workspaceOn ? workspaceId : '',
+                viz,
+              })}
+              fadeIn={edit.fadeIn}
+              fadeOut={edit.fadeOut}
+              onFades={(patch) => setEdit((e) => ({ ...e, ...patch, fadeAuto: false }))}
+              onFadesCommit={commit}
+              onRegionCommit={commit}
+              onAutomationCommit={commit}
+              onTrim={() => {
+                void engine.trimPlayRegion().then((ok) => {
+                  if (!ok) return
+                  setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                  waveRef.current?.fitSample()
+                  commit()
+                })
+              }}
+              onDspGesture={(before, after) => setHistory((h) => commitDspGesture(h, before, after, histEqual))}
             />
           </div>
           {dockRight && showContext && !activeFocus && !workspaceContextBottom ? (

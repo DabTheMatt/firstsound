@@ -1,0 +1,130 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.row,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.button,
+.apply {
+  min-height: var(--hit-min);
+  min-width: var(--hit-min);
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.button:disabled,
+.apply:disabled {
+  color: var(--text-disabled);
+}
+
+.button[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  background: var(--bg-control-active);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.note,
+.error,
+.live {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.error {
+  color: var(--text-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel-elevated);
+}
+
+@media (max-width: 430px) {
+  .dialog {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 8px;
+    background: var(--bg-panel);
+  }
+}
+
+@media (pointer: coarse) {
+  .button,
+  .apply,
+  .field input,
+  .field select {
+    min-height: 44px;
+  }
+}

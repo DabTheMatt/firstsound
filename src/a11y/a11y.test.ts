@@ -92,6 +92,7 @@ describe('a11y settings and i18n', () => {
   it('parses stored accessibility flags', () => {
     expect(parseA11ySettings({ reduceMotion: true, extra: 1 }).reduceMotion).toBe(true)
     expect(parseA11ySettings(null).shortcutsEnabled).toBe(true)
+    expect(parseA11ySettings(null).dragFreeEditing).toBe(false)
     expect(parseA11ySettings(null).lowVision).toBe(false)
   })
 
@@ -106,6 +107,11 @@ describe('a11y settings and i18n', () => {
     expect(PL.a11y.larger).toContain('Większe')
     expect(PL.a11y.restore).toContain('dostępności')
     expect(EN.a11y.reducedMotionSystem.toLowerCase()).toContain('device')
+    expect(EN.a11y.dragFree).toBe('Drag-Free Editing')
+    expect(EN.a11y.dragFreeHelp).toContain('buttons and exact values')
+    expect(PL.a11y.dragFree).toBe('Edytowanie bez przeciągania')
+    expect(PL.a11y.dragFreeHelp).toContain('bez przeciągania')
+    expect(EN.chain.moveBefore('Reverb', 'Delay')).toBe('Move Reverb before Delay')
     expect(EN.chain.movedBefore('Delay', 'Reverb')).toBe('Delay moved before Reverb.')
   })
 

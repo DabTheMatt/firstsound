@@ -82,7 +82,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'select',
         text('Select the part you want to keep', 'Zaznacz fragment, który zostaje'),
-        text('Drag across the waveform. Cover only the part you want to keep.', 'Przeciągnij po fali. Obejmij tylko fragment, który chcesz zostawić.'),
+        text('Drag across the waveform, or set the start and end with Edit times. Cover only the part you want to keep.', 'Przeciągnij po fali albo ustaw początek i koniec przez Edytuj czasy. Obejmij tylko fragment, który chcesz zostawić.'),
         {
           target: 'waveform.main',
           completion: { kind: 'any', actions: ['selection.created'] },
@@ -92,8 +92,8 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           technical: {
             target: 'technical.waveform',
             instruction: text(
-              'Drag across the waveform. Cover only the part you want to keep.',
-              'Przeciągnij po fali. Obejmij tylko fragment, który chcesz zostawić.',
+              'Drag across the waveform, or set the start and end with Edit times. Cover only the part you want to keep.',
+              'Przeciągnij po fali albo ustaw początek i koniec przez Edytuj czasy. Obejmij tylko fragment, który chcesz zostawić.',
             ),
           },
           more: text('You can drag the edges again if the range is too long or too short.', 'Możesz znowu pociągnąć krawędzie, jeśli zakres jest za długi albo za krótki.'),
@@ -333,7 +333,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'select',
         text('Select the useful region', 'Zaznacz potrzebny region'),
-        text('Drag the part that should be in the file.', 'Przeciągnij fragment, który ma być w pliku.'),
+        text('Drag the part that should be in the file, or set the start and end with Edit times.', 'Przeciągnij fragment, który ma być w pliku, albo ustaw początek i koniec przez Edytuj czasy.'),
         {
           target: 'waveform.main',
           completion: { kind: 'any', actions: ['selection.created'] },
@@ -342,7 +342,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           hint: text('Skip this if the whole recording should stay.', 'Pomiń, jeśli ma zostać całe nagranie.'),
           technical: {
             target: 'technical.waveform',
-            instruction: text('Drag the part that should be in the file.', 'Przeciągnij fragment, który ma być w pliku.'),
+            instruction: text('Drag the part that should be in the file, or set the start and end with Edit times.', 'Przeciągnij fragment, który ma być w pliku, albo ustaw początek i koniec przez Edytuj czasy.'),
           },
           success: text('Done — the region is set.', 'Gotowe — region jest ustawiony.'),
         },
@@ -1093,7 +1093,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'selection',
         text('Make a selection', 'Zrób zaznaczenie'),
-        text('Drag across a short piece of the waveform. That range is the selection.', 'Przeciągnij po krótkim kawałku fali. Ten zakres to zaznaczenie.'),
+        text('Drag across a short piece of the waveform, or set the start and end with Edit times. That range is the selection.', 'Przeciągnij po krótkim kawałku fali albo ustaw początek i koniec przez Edytuj czasy. Ten zakres to zaznaczenie.'),
         {
           target: 'waveform.main',
           completion: { kind: 'any', actions: ['selection.created'] },
@@ -1101,7 +1101,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           success: text('Done — a selection exists.', 'Gotowe — zaznaczenie istnieje.'),
           technical: {
             target: 'technical.waveform',
-            instruction: text('Drag across a short piece of the waveform. That range is the selection.', 'Przeciągnij po krótkim kawałku fali. Ten zakres to zaznaczenie.'),
+            instruction: text('Drag across a short piece of the waveform, or set the start and end with Edit times. That range is the selection.', 'Przeciągnij po krótkim kawałku fali albo ustaw początek i koniec przez Edytuj czasy. Ten zakres to zaznaczenie.'),
           },
         },
       ),

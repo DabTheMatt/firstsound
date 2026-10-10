@@ -21,6 +21,7 @@ import {
 import { TrackColorPicker } from './TrackColorPicker'
 import { TrackMixer, TrackStrip } from './TrackMixer'
 import { MixerView } from './MixerView'
+import { DragFreeLoop } from '../../edit/dragFree/DragFreeLoop'
 import { AUDIO_FILE_ACCEPT } from '../../features/sample/files'
 import { loadAudioFileIntoTrack, releaseFileInput } from '../../features/sample/loadTrack'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -720,6 +721,15 @@ function TrackLane({
         </div>
       ) : null}
       </div>
+      {loaded && track.loop ? (
+        <DragFreeLoop
+          trackId={track.id}
+          selected={selected}
+          duration={engine.getTrackBuffer(track.id)?.duration ?? 0}
+          loopStart={loopBounds(engine.getTrackBuffer(track.id)?.duration ?? 0, track.loopStart, track.loopEnd).start}
+          loopEnd={loopBounds(engine.getTrackBuffer(track.id)?.duration ?? 0, track.loopStart, track.loopEnd).end}
+        />
+      ) : null}
       {loaded && !phone ? <TrackStrip track={track} tracks={tracks} selected={selected} /> : null}
     </article>
   )

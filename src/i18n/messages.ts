@@ -406,6 +406,8 @@ export type Messages = {
     killTitle: (name: string) => string
     moveEarlier: string
     moveLater: string
+    moveBefore: (moved: string, other: string) => string
+    moveAfter: (moved: string, other: string) => string
     movedBefore: (moved: string, other: string) => string
     movedAfter: (moved: string, other: string) => string
     bypassOn: (name: string) => string
@@ -751,6 +753,84 @@ export type Messages = {
     shortcutSpace: string
     shortcutEsc: string
     skipToMain: string
+    dragFree: string
+    dragFreeHelp: string
+  }
+  dragFree: {
+    selection: string
+    start: string
+    end: string
+    setStart: string
+    setEnd: string
+    editTimes: string
+    clear: string
+    apply: string
+    cancel: string
+    goToTime: string
+    go: string
+    stepBack: string
+    stepForward: string
+    toStart: string
+    toEnd: string
+    preview: string
+    trim: string
+    trimWarn: string
+    trimApply: string
+    fadeIn: string
+    fadeOut: string
+    fadeLess: string
+    fadeMore: string
+    duration: string
+    loop: string
+    setLoopStart: string
+    setLoopEnd: string
+    editLoop: string
+    eqBands: string
+    editBand: string
+    frequency: string
+    gain: string
+    q: string
+    filterType: string
+    chooseType: string
+    bypass: string
+    enable: string
+    noEq: string
+    noBands: string
+    automation: string
+    editPoint: string
+    addPoint: string
+    deletePoint: string
+    pointTime: string
+    pointValue: string
+    noLane: string
+    noPoints: string
+    timeNote: string
+    noSample: string
+    errFormat: string
+    errNegative: string
+    errPast: string
+    errOrder: string
+    errShort: string
+    errFade: string
+    errRange: string
+    appliedSelection: string
+    appliedPlayhead: string
+    appliedFade: string
+    appliedTrim: string
+    appliedLoop: string
+    appliedBand: string
+    appliedPoint: string
+    deletedPoint: string
+    nudgedPoint: string
+    cleared: string
+    selectionStartSr: (time: string) => string
+    selectionEndSr: (time: string) => string
+    playheadSr: (time: string) => string
+    bandSr: (n: number, type: string) => string
+    freqSr: (n: number, value: string) => string
+    pointSr: (n: number, time: string) => string
+    valueSr: (n: number, value: string) => string
+    sensoryExact: string
   }
 }
 
@@ -1188,6 +1268,8 @@ export const EN: Messages = {
     killTitle: (name) => `Kill ${name} tails`,
     moveEarlier: 'Move earlier in the signal chain',
     moveLater: 'Move later in the signal chain',
+    moveBefore: (moved, other) => `Move ${moved} before ${other}`,
+    moveAfter: (moved, other) => `Move ${moved} after ${other}`,
     movedBefore: (moved, other) => `${moved} moved before ${other}.`,
     movedAfter: (moved, other) => `${moved} moved after ${other}.`,
     bypassOn: (name) => `${name} bypass, on`,
@@ -1637,6 +1719,84 @@ export const EN: Messages = {
     shortcutSpace: 'Space: play or pause (always, except while typing)',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
+    dragFree: 'Drag-Free Editing',
+    dragFreeHelp: 'Edit audio using buttons and exact values instead of dragging.',
+  },
+  dragFree: {
+    selection: 'Selection',
+    start: 'Start',
+    end: 'End',
+    setStart: 'Set start',
+    setEnd: 'Set end',
+    editTimes: 'Edit times',
+    clear: 'Clear',
+    apply: 'Apply',
+    cancel: 'Cancel',
+    goToTime: 'Go to time',
+    go: 'Go',
+    stepBack: 'Move playhead backward 100 milliseconds',
+    stepForward: 'Move playhead forward 100 milliseconds',
+    toStart: 'Go to selection start',
+    toEnd: 'Go to selection end',
+    preview: 'Preview',
+    trim: 'Trim',
+    trimWarn: 'Trim keeps the selection and removes the audio outside it. You can undo this.',
+    trimApply: 'Trim selection',
+    fadeIn: 'Fade in',
+    fadeOut: 'Fade out',
+    fadeLess: 'Shorter by 50 milliseconds',
+    fadeMore: 'Longer by 50 milliseconds',
+    duration: 'Duration',
+    loop: 'Loop',
+    setLoopStart: 'Set loop start',
+    setLoopEnd: 'Set loop end',
+    editLoop: 'Edit loop times',
+    eqBands: 'EQ bands',
+    editBand: 'Edit selected band',
+    frequency: 'Frequency',
+    gain: 'Gain',
+    q: 'Q',
+    filterType: 'Filter type',
+    chooseType: 'Choose a type',
+    bypass: 'Bypass',
+    enable: 'Enable',
+    noEq: 'Add an EQ to edit bands.',
+    noBands: 'No active EQ bands yet.',
+    automation: 'Automation',
+    editPoint: 'Edit point',
+    addPoint: 'Add point at playhead',
+    deletePoint: 'Delete point',
+    pointTime: 'Time',
+    pointValue: 'Value',
+    noLane: 'Choose an automated parameter first.',
+    noPoints: 'This parameter has no points yet.',
+    timeNote: 'Times are minutes, seconds, and milliseconds. Sample edits keep FIELD’s existing rounding.',
+    noSample: 'Load a sample to edit times.',
+    errFormat: 'Enter a time like 01:23.450.',
+    errNegative: 'Time cannot be negative.',
+    errPast: 'That time is past the end of the audio.',
+    errOrder: 'The start has to be earlier than the end.',
+    errShort: 'The range has to be at least 50 milliseconds.',
+    errFade: 'The fade cannot be longer than the selection.',
+    errRange: 'That value is outside the range for this control.',
+    appliedSelection: 'Selection updated.',
+    appliedPlayhead: 'Playhead moved.',
+    appliedFade: 'Fade updated.',
+    appliedTrim: 'Trim applied.',
+    appliedLoop: 'Loop updated.',
+    appliedBand: 'EQ band updated.',
+    appliedPoint: 'Automation point updated.',
+    deletedPoint: 'Automation point deleted.',
+    nudgedPoint: 'That time was already used, so the point moved to the nearest free time.',
+    cleared: 'Selection cleared.',
+    selectionStartSr: (time) => `Selection start, ${time}.`,
+    selectionEndSr: (time) => `Selection end, ${time}.`,
+    playheadSr: (time) => `Playhead, ${time}.`,
+    bandSr: (n, type) => `EQ band ${n}, ${type}.`,
+    freqSr: (n, value) => `EQ band ${n}, frequency, ${value}.`,
+    pointSr: (n, time) => `Automation point ${n}, time, ${time}.`,
+    valueSr: (n, value) => `Automation point ${n}, value, ${value}.`,
+    sensoryExact: 'Exact value',
   },
 }
 
@@ -2074,6 +2234,8 @@ export const PL: Messages = {
     killTitle: (name) => `Utnij ogony ${name}`,
     moveEarlier: 'Przesuń wcześniej w torze',
     moveLater: 'Przesuń później w torze',
+    moveBefore: (moved, other) => `Przenieś ${moved} przed ${other}`,
+    moveAfter: (moved, other) => `Przenieś ${moved} za ${other}`,
     movedBefore: (moved, other) => `${moved} przeniesiono przed ${other}.`,
     movedAfter: (moved, other) => `${moved} przeniesiono za ${other}.`,
     bypassOn: (name) => `${name} bypass, włączony`,
@@ -2523,6 +2685,84 @@ export const PL: Messages = {
     shortcutSpace: 'Spacja: odtwarzanie lub pauza (zawsze, poza pisaniem w polu tekstowym)',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
+    dragFree: 'Edytowanie bez przeciągania',
+    dragFreeHelp: 'Edytuj dźwięk za pomocą przycisków i dokładnych wartości, bez przeciągania.',
+  },
+  dragFree: {
+    selection: 'Zaznaczenie',
+    start: 'Początek',
+    end: 'Koniec',
+    setStart: 'Ustaw początek',
+    setEnd: 'Ustaw koniec',
+    editTimes: 'Edytuj czasy',
+    clear: 'Wyczyść',
+    apply: 'Zastosuj',
+    cancel: 'Anuluj',
+    goToTime: 'Idź do czasu',
+    go: 'Idź',
+    stepBack: 'Cofnij głowicę o 100 milisekund',
+    stepForward: 'Przesuń głowicę o 100 milisekund',
+    toStart: 'Idź na początek zaznaczenia',
+    toEnd: 'Idź na koniec zaznaczenia',
+    preview: 'Odsłuch',
+    trim: 'Przytnij',
+    trimWarn: 'Przycięcie zostawia zaznaczenie i usuwa dźwięk poza nim. Można to cofnąć.',
+    trimApply: 'Przytnij zaznaczenie',
+    fadeIn: 'Płynny początek',
+    fadeOut: 'Płynny koniec',
+    fadeLess: 'Krócej o 50 milisekund',
+    fadeMore: 'Dłużej o 50 milisekund',
+    duration: 'Czas trwania',
+    loop: 'Pętla',
+    setLoopStart: 'Ustaw początek pętli',
+    setLoopEnd: 'Ustaw koniec pętli',
+    editLoop: 'Edytuj czasy pętli',
+    eqBands: 'Pasma EQ',
+    editBand: 'Edytuj wybrane pasmo',
+    frequency: 'Częstotliwość',
+    gain: 'Wzmocnienie',
+    q: 'Q',
+    filterType: 'Typ filtra',
+    chooseType: 'Wybierz typ',
+    bypass: 'Omijaj',
+    enable: 'Włącz',
+    noEq: 'Dodaj EQ, aby edytować pasma.',
+    noBands: 'Nie ma jeszcze aktywnych pasm EQ.',
+    automation: 'Automatyzacja',
+    editPoint: 'Edytuj punkt',
+    addPoint: 'Dodaj punkt przy głowicy',
+    deletePoint: 'Usuń punkt',
+    pointTime: 'Czas',
+    pointValue: 'Wartość',
+    noLane: 'Najpierw wybierz parametr z automatyzacją.',
+    noPoints: 'Ten parametr nie ma jeszcze punktów.',
+    timeNote: 'Czas to minuty, sekundy i milisekundy. Edycja sampla zostawia dotychczasowe zaokrąglenie FIELD.',
+    noSample: 'Wczytaj sample, aby edytować czasy.',
+    errFormat: 'Wpisz czas, na przykład 01:23.450.',
+    errNegative: 'Czas nie może być ujemny.',
+    errPast: 'Ten czas jest za końcem nagrania.',
+    errOrder: 'Początek musi być wcześniej niż koniec.',
+    errShort: 'Zakres musi mieć co najmniej 50 milisekund.',
+    errFade: 'Zanik nie może być dłuższy niż zaznaczenie.',
+    errRange: 'Ta wartość jest poza zakresem tej kontrolki.',
+    appliedSelection: 'Zaznaczenie zaktualizowane.',
+    appliedPlayhead: 'Głowica przesunięta.',
+    appliedFade: 'Zanik zaktualizowany.',
+    appliedTrim: 'Przycięto.',
+    appliedLoop: 'Pętla zaktualizowana.',
+    appliedBand: 'Pasmo EQ zaktualizowane.',
+    appliedPoint: 'Punkt automatyzacji zaktualizowany.',
+    deletedPoint: 'Punkt automatyzacji usunięty.',
+    nudgedPoint: 'Ten czas był już zajęty, więc punkt przesunął się na najbliższy wolny czas.',
+    cleared: 'Zaznaczenie wyczyszczone.',
+    selectionStartSr: (time) => `Początek zaznaczenia, ${time}.`,
+    selectionEndSr: (time) => `Koniec zaznaczenia, ${time}.`,
+    playheadSr: (time) => `Głowica, ${time}.`,
+    bandSr: (n, type) => `Pasmo EQ ${n}, ${type}.`,
+    freqSr: (n, value) => `Pasmo EQ ${n}, częstotliwość, ${value}.`,
+    pointSr: (n, time) => `Punkt automatyzacji ${n}, czas, ${time}.`,
+    valueSr: (n, value) => `Punkt automatyzacji ${n}, wartość, ${value}.`,
+    sensoryExact: 'Dokładna wartość',
   },
 }
 

@@ -322,6 +322,20 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'drag-free',
+    title: 'Drag-free editing',
+    body: [
+      'Drag-free editing is in Settings → Accessibility → Interaction. It is off until you turn it on. Turning it on shows buttons and exact values beside the controls you can already drag. Dragging still works.',
+      'On the waveform, Set start and Set end use the playhead. Edit times takes a clock such as 01:23.450. Clear removes the highlight and leaves the audio. Go to time, and the 100 millisecond steps, move the playhead. Preview plays the selection. Trim asks first, then keeps the selection and removes the audio outside it. Undo can bring that audio back. Changing a time does not trim by itself.',
+      'Fade in and fade out take a duration in milliseconds, or steps of 50 milliseconds. The fade cannot be longer than the selection. The curve stays the one already chosen.',
+      'EQ bands lists every band slot by its own identity, including a slot that is still off. Choose a filter type to turn that slot on. Frequency, gain, Q, filter type, and bypass then edit that same band. A deleted band is not replaced by the next one.',
+      'Automation lists the points on the parameter you already selected. You can type a time, type the parameter’s own value, delete a point, or add a point at the playhead. The value you type is the same amount the knob shows, not a hidden 0–1 number.',
+      'In the effect chain, each movable effect has move buttons. Input and Output stay fixed. Moving an effect keeps its settings. The sound can change because the order changed.',
+      'When a track is looping, Set loop start, Set loop end, and Edit loop times use that loop. Simple and Sensory do not add a separate loop if the view does not have one.',
+      'The same editors are available in Simple, Technical, and Sensory where that edit already exists, including Focus mode. Tab, Shift+Tab, Enter, Space, and Escape work on the new controls. Times are minutes, seconds, and milliseconds. FIELD still rounds sample edits the way it did before. The clock does not mean every millisecond is its own sample.',
+    ],
+  },
+  {
     id: 'reset',
     title: 'Reset',
     body: [
@@ -667,6 +681,20 @@ const pl: ManualSection[] = [
       'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
       'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
       'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
+    ],
+  },
+  {
+    id: 'drag-free',
+    title: 'Edytowanie bez przeciągania',
+    body: [
+      'Edytowanie bez przeciągania jest w Ustawienia → Dostępność → Interakcja. Jest wyłączone, dopóki go nie włączysz. Po włączeniu obok dotychczasowego przeciągania pojawiają się przyciski i dokładne wartości. Przeciąganie nadal działa.',
+      'Na fali Ustaw początek i Ustaw koniec biorą miejsce głowicy. Edytuj czasy przyjmuje zapis taki jak 01:23.450. Wyczyść zdejmuje zaznaczenie i zostawia dźwięk. Idź do czasu oraz kroki co 100 milisekund przesuwają głowicę. Odsłuch gra zaznaczenie. Przytnij najpierw pyta, potem zostawia zaznaczenie i usuwa dźwięk poza nim. Cofnięcie może przywrócić to audio. Sama zmiana czasu nie przycina.',
+      'Płynny początek i płynny koniec przyjmują czas w milisekundach albo kroki co 50 milisekund. Zanik nie może być dłuższy niż zaznaczenie. Krzywa zostaje ta, która już jest wybrana.',
+      'Pasma EQ wymieniają każdy slot pasma po jego własnej tożsamości, także slot, który jest jeszcze wyłączony. Wybór typu filtra włącza ten slot. Częstotliwość, wzmocnienie, Q, typ filtra i ominięcie edytują potem to samo pasmo. Usunięte pasmo nie jest zastępowane następnym.',
+      'Automatyzacja wymienia punkty parametru, który już jest wybrany. Można wpisać czas, wpisać wartość tego parametru, usunąć punkt albo dodać punkt przy głowicy. Wpisana wartość jest tą samą wielkością, którą pokazuje gałka, a nie ukrytą liczbą od 0 do 1.',
+      'W łańcuchu efektów każdy przesuwalny efekt ma przyciski ruchu. Wejście i wyjście zostają na miejscu. Przesunięcie zachowuje ustawienia efektu. Dźwięk może się zmienić, bo zmieniła się kolejność.',
+      'Gdy ścieżka jest w pętli, Ustaw początek pętli, Ustaw koniec pętli i Edytuj czasy pętli używają tej pętli. Prosty i Sensoryczny nie dokładają osobnej pętli, jeśli widok jej nie ma.',
+      'Te same edytory są w Prostym, Technicznym i Sensorycznym tam, gdzie dana edycja już istnieje, także w trybie Focus. Tab, Shift+Tab, Enter, Spacja i Escape działają na nowych kontrolkach. Czas to minuty, sekundy i milisekundy. FIELD nadal zaokrągla edycję sampli tak jak wcześniej. Zegar nie oznacza, że każda milisekunda jest osobną próbką.',
     ],
   },
   {

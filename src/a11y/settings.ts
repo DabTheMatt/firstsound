@@ -11,6 +11,8 @@ export type A11ySettings = {
   showDescriptions: boolean
   screenReaderOptimizations: boolean
   shortcutsEnabled: boolean
+  /** Shows non-dragging editors. Does not turn off existing keyboard access. */
+  dragFreeEditing: boolean
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -21,6 +23,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   showDescriptions: true,
   screenReaderOptimizations: false,
   shortcutsEnabled: true,
+  dragFreeEditing: false,
 }
 
 export function parseA11ySettings(raw: unknown): A11ySettings {
@@ -126,6 +129,7 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.a11yTips = settings.showDescriptions ? 'on' : 'off'
   root.dataset.srOpt = settings.screenReaderOptimizations ? 'on' : 'off'
   root.dataset.shortcuts = settings.shortcutsEnabled ? 'on' : 'off'
+  root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
 }
 
 export function systemPrefersReducedMotion(): boolean {

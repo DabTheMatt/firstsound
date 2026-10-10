@@ -27,6 +27,8 @@ import { ParameterStrings } from './ParameterStrings'
 import { PlaybackFeel } from './PlaybackFeel'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
+import { DragFreeWave } from '../../edit/dragFree/DragFreeWave'
+import { SensoryExact } from './SensoryExact'
 import { SoundRange } from './SoundRange'
 import styles from './SensoryShell.module.css'
 
@@ -208,6 +210,25 @@ export function SensoryShell({
         onLoadDemo={onLoadDemo}
         onRegionCommit={onRegionCommit}
       />
+      <DragFreeWave
+        fadeIn={0}
+        fadeOut={0}
+        showTrim={false}
+        showFades={false}
+        onFades={() => undefined}
+        onFadesCommit={() => undefined}
+        onRegionCommit={onRegionCommit}
+      />
+      <SensoryExact
+        axisId={activeId}
+        value={activeId ? values[activeId] : 0}
+        onChange={(next) => {
+          if (!activeId) return
+          onMoodLabel(null)
+          onValues({ ...values, [activeId]: next })
+        }}
+        onCommit={onCommitSensory}
+      />
 
       <ParameterStrings
         values={values}
@@ -220,7 +241,7 @@ export function SensoryShell({
         }}
         onEditing={(id) => {
           setEditingId(id)
-          if (!id) setFeelingId(null)
+          if (!id && !a11y.dragFreeEditing) setFeelingId(null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
@@ -240,7 +261,7 @@ export function SensoryShell({
         onEditing={(id) => {
           const next = id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null
           setEditingId(next)
-          if (!next) setFeelingId(null)
+          if (!next && !a11y.dragFreeEditing) setFeelingId(null)
         }}
         onValues={(next) => {
           onMoodLabel(null)

@@ -9,6 +9,7 @@ import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
+import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
 import { useI18n } from '../i18n'
 import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
 import { guideChrome } from '../guide/copy'
@@ -444,6 +445,14 @@ export function SimpleShell({
                 </div>
               ) : null}
             </section>
+            <DragFreeWave
+              fadeIn={edit.fadeIn}
+              fadeOut={edit.fadeOut}
+              onFades={(patch) => onFades({ ...patch, fadeAuto: false })}
+              onFadesCommit={onFadesCommit}
+              onRegionCommit={onRegionCommit}
+              onTrim={onApplyTrim}
+            />
             <FadeGroup
               id="fade-in"
               guideTarget="edit.fadeIn"

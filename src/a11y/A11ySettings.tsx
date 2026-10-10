@@ -117,6 +117,14 @@ export function A11ySettings({ onBack }: Props) {
           offLabel={a.off}
           onChange={(largerInterface) => setSettings({ largerInterface })}
         />
+        <PreferenceSwitch
+          checked={settings.dragFreeEditing}
+          label={a.dragFree}
+          description={a.dragFreeHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(dragFreeEditing) => setSettings({ dragFreeEditing })}
+        />
       </div>
 
       <p className={styles.saved}>{a.saved}</p>
