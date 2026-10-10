@@ -468,6 +468,13 @@
   outline: none;
 }
 
+.holdButton {
+  padding: 0 8px;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .snapshotOn {
   color: var(--text-primary);
   border-color: var(--accent-primary);

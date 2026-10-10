@@ -25,7 +25,7 @@ import {
 } from '../../audio/engine/eqPlot'
 import { eqGraphLayers } from '../../audio/engine/eqFocusGraph'
 import { formatFrequencyLandmark } from '../../audio/engine/freqLandmarks'
-import { graphSnapshotFrozen, setGraphSnapshot, subscribeGraphSnapshot } from '../../audio/engine/graphSnapshot'
+import { graphSnapshotFrozen, subscribeGraphSnapshot } from '../../audio/engine/graphSnapshot'
 import { eqMagnitudeDb } from '../../audio/engine/eqResponse'
 import { bandIsActive, EQ_FILTER_TYPES, eqStripKey } from '../../audio/engine/eqBands'
 import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
@@ -325,6 +325,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   const [gridDensity, setGridDensity] = useState<FreqGridDensity>(() => loadFreqGridDensity())
   const gridDensityRef = useRef(gridDensity)
   const [gridOpen, setGridOpen] = useState(false)
+  const graphMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!gridOpen) return
+    const close = (event: PointerEvent) => {
+      const root = graphMenuRef.current
+      if (root && event.target instanceof Node && root.contains(event.target)) return
+      setGridOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [gridOpen])
   const [snapshotOn, setSnapshotOn] = useState(() => graphSnapshotFrozen())
   useEffect(() => subscribeGraphSnapshot(setSnapshotOn), [])
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
@@ -501,7 +512,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         return
       }
       const live = engine.getSnapshot()
-      if (graphSnapshotFrozen() && live.playing) setGraphSnapshot(false)
       const holdPicture = graphSnapshotFrozen()
       const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
@@ -637,17 +647,19 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const gainMarks = gainGrid ? eqGainGridDb((responsePlot.bottom - responsePlot.top) / dpr) : []
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
-        ctx.font = `${9 * dpr}px ui-sans-serif, system-ui, sans-serif`
+        ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         for (const db of gainMarks) {
           const y = spectrumEqOverlayY(db, responsePlot.top, responsePlot.bottom)
-          const major = db === 0 || Math.abs(db) === 24
-          ctx.strokeStyle = colorWithAlpha(colors.textMuted, major ? 0.9 : 0.42)
-          ctx.lineWidth = dpr * (major ? 1.05 : 0.65)
+          const fade = fadeAboveZero(y)
+          if (fade < 0.08) continue
+          const strong = db === 0
+          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, (strong ? 1 : 0.75) * fade)
+          ctx.lineWidth = dpr * (strong ? 0.7 : 0.45)
           ctx.beginPath()
           ctx.moveTo(responsePlot.left, y)
           ctx.lineTo(responsePlot.right, y)
           ctx.stroke()
-          ctx.fillStyle = colorWithAlpha(db === 0 ? colors.textPrimary : colors.textMuted, 0.92)
+          ctx.fillStyle = colorWithAlpha(colors.textMuted, (tight ? 0.55 : 0.85) * fade)
           ctx.fillText(formatEqGainGridLabel(db), responsePlot.left + 4 * dpr, y)
         }
         if (!tight && !phoneScale) {
@@ -1931,23 +1943,23 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </div>
         ) : null}
         {spatial || hideGraphMenu ? null : (
-        <div className={styles.graphMenu}>
+        <div className={styles.graphMenu} ref={graphMenuRef}>
           {onEnterFocus && !phoneFocus ? (
             <EnterFocusButton label={focusLabel} onClick={onEnterFocus} />
           ) : null}
           <div className={styles.graphMenuBar}>
             <button
               type="button"
-              className={`${styles.graphMenuButton} ${snapshotOn ? styles.snapshotOn : ''}`}
+              className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
               aria-pressed={snapshotOn}
-              aria-label={snapshotOn ? 'Release snapshot' : 'Snapshot'}
-              title={snapshotOn ? 'Release the held FFT and EQ graphs' : 'Pause playback and hold the FFT and EQ graphs'}
+              aria-label={snapshotOn ? 'Play on from here' : 'Pause and hold'}
+              title={snapshotOn ? 'Play on from this place' : 'Loop this fragment and hold the FFT and EQ graphs'}
               onClick={(event) => {
                 holdGraphSnapshot(!snapshotOn)
                 event.currentTarget.blur()
               }}
             >
-              {snapshotOn ? 'Held' : 'Snap'}
+              {snapshotOn ? 'Holding' : 'Pause and hold'}
             </button>
             <button
               type="button"

@@ -50,7 +50,7 @@ const HINTS = {
   line: 'Spectrum outline drawn over the columns.',
   legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
   guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
-  snapshot: 'Pauses playback and holds the FFT and EQ graphs where they are, so you can look at them. Play lets them move again.',
+  snapshot: 'Loops a short fragment of the sample and holds the FFT and EQ graphs, so you can hear what you are looking at. Press again to play on from that place.',
 } as const
 
 type Props = {
@@ -175,7 +175,7 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
 /** One-click hold, shared by the graph menu button and the settings row. */
 export function holdGraphSnapshot(on: boolean): void {
   setGraphSnapshot(on)
-  if (on) engine.pause()
+  engine.holdAudition(on)
 }
 
 export function GuidesRow() {
@@ -196,7 +196,7 @@ export function SnapshotRow() {
   useEffect(() => subscribeGraphSnapshot(setOn), [])
   return (
     <OnOff
-      label="Snapshot"
+      label="Hold"
       hint={HINTS.snapshot}
       on={on}
       onChange={(next) => {
