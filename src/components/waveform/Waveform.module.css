@@ -326,8 +326,10 @@
 
 .fxCanvas {
   position: absolute;
-  inset: 0 0 calc(var(--wave-ruler) + var(--wave-legend) + var(--wave-symbols)) 0;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: calc(100% - var(--wave-ruler) - var(--wave-legend) - var(--wave-symbols));
   pointer-events: none;
 }
 
