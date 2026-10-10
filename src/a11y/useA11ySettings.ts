@@ -5,6 +5,7 @@ import {
   migrateLegacyLowVisionTheme,
   persistA11ySettings,
   readStoredA11ySettings,
+  systemPrefersReducedMotion,
   type A11ySettings,
 } from './settings'
 
@@ -38,7 +39,10 @@ export function bootstrapA11y(): A11ySettings {
   })
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const onMotion = () => applyA11yDom(readStoredA11ySettings())
+    const onMotion = () => {
+      applyA11yDom(readStoredA11ySettings())
+      document.dispatchEvent(new CustomEvent(CHANGE))
+    }
     mq.addEventListener('change', onMotion)
   }
   if (typeof document !== 'undefined') {
@@ -54,12 +58,21 @@ export function bootstrapA11y(): A11ySettings {
 
 export function useA11ySettings(): {
   settings: A11ySettings
+  systemReducedMotion: boolean
   setSettings: (patch: Partial<A11ySettings>) => void
 } {
   const [settings, setState] = useState<A11ySettings>(() => readStoredA11ySettings())
-  useEffect(() => subscribeA11y(() => setState(readStoredA11ySettings())), [])
+  const [systemReducedMotion, setSystem] = useState(systemPrefersReducedMotion)
+  useEffect(
+    () =>
+      subscribeA11y(() => {
+        setState(readStoredA11ySettings())
+        setSystem(systemPrefersReducedMotion())
+      }),
+    [],
+  )
   const setSettings = (patch: Partial<A11ySettings>) => {
     setState(persistAndApplyA11y({ ...readStoredA11ySettings(), ...patch }))
   }
-  return { settings, setSettings }
+  return { settings, systemReducedMotion, setSettings }
 }

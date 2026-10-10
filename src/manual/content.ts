@@ -312,16 +312,20 @@ const en: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Accessibility',
+    title: 'FIELD ACCESS',
     body: [
-      'Settings includes larger interface, stronger focus, tooltips, reduced motion, screen-reader optimizations, and Hearing Access. Controls keep names and keyboard access.',
+      'FIELD ACCESS is Settings → Accessibility. The same preferences apply in Simple, Technical, and Sensory, and they stay in place through Focus mode, Guided Tasks, and theme changes.',
+      'Reduced Motion reduces decorative animation, panel entrances, parallax, and glow. The playhead, waveform, meters, EQ curve, FFT, selection, and automation stay visible, with less extra motion. If the device asks for reduced motion, FIELD follows that even when the switch is off. The switch does not override the device. The sound does not change.',
+      'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
+      'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
+      'Choices are saved in this browser and survive reload and Reset application. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project.',
     ],
   },
   {
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state.',
+      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state. It does not clear FIELD ACCESS preferences.',
       'If the session already has work, FIELD asks you to confirm. An empty session resets immediately.',
     ],
   },
@@ -656,16 +660,20 @@ const pl: ManualSection[] = [
   },
   {
     id: 'a11y',
-    title: 'Dostępność',
+    title: 'FIELD ACCESS',
     body: [
-      'Ustawienia zawierają większy interfejs, mocniejszy fokus, podpowiedzi, ograniczenie ruchu, optymalizacje czytnika ekranu i Hearing Access. Kontrolki zachowują nazwy i obsługę klawiaturą.',
+      'FIELD ACCESS jest w Ustawienia → Dostępność. Te same preferencje działają w trybie Prostym, Technicznym i Sensorycznym oraz zostają przy Focus, zadaniach z przewodnikiem i zmianie motywu.',
+      'Ogranicz ruch zmniejsza dekoracyjne animacje, wejścia paneli, parallaksę i poświatę. Głowica, fala, mierniki, krzywa EQ, FFT, zaznaczenie i automatyzacja zostają widoczne, z mniejszą ilością zbędnego ruchu. Gdy urządzenie prosi o ograniczenie ruchu, FIELD to respektuje nawet przy wyłączonym przełączniku. Przełącznik nie nadpisuje urządzenia. Dźwięk się nie zmienia.',
+      'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
+      'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
+      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
     ],
   },
   {
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji.',
+      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji. Nie kasuje preferencji FIELD ACCESS.',
       'Gdy w sesji jest już praca, FIELD prosi o potwierdzenie. Pusta sesja resetuje się od razu.',
     ],
   },

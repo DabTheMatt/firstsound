@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useA11ySettings } from '../../a11y'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
@@ -98,10 +99,8 @@ export function SensoryShell({
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
   const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
-  const reduced = useMemo(() => {
-    if (typeof window === 'undefined') return false
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  }, [])
+  const { settings: a11y, systemReducedMotion } = useA11ySettings()
+  const reduced = a11y.reduceMotion || systemReducedMotion
   const visual = sensoryVisualState(values, reduced, feelingId)
   const cssVars = visualCssVars(visual)
   const activeId = feelingId

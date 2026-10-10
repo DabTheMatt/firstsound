@@ -187,6 +187,7 @@ export default function App() {
   const isPhoneLayout = mode === 'sheet'
   const workspaceOn = technicalUi === 'workspace' && !isPhoneLayout
   const [menuOpen, setMenuOpen] = useState(false)
+  const [settingsPage, setSettingsPage] = useState<'menu' | 'access'>('menu')
   const [libraryTick, setLibraryTick] = useState(0)
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -969,6 +970,9 @@ export default function App() {
     () => (
       <div className={styles.moreMenu}>
           <p className={styles.hint}>{t.settings.hint}</p>
+          <button type="button" onClick={() => setSettingsPage('access')}>
+            {t.a11y.open}
+          </button>
           <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
           </button>
@@ -1127,7 +1131,6 @@ export default function App() {
           {t.settings.redo}
         </button>
         <TechnicalInterfaceSetting value={technicalUi} onChange={setTechnicalUi} />
-        <A11ySettings />
       </div>
     ),
     [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, locale, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
@@ -1187,8 +1190,13 @@ export default function App() {
         aria-label={t.settings.close}
         onClick={() => setMenuOpen(false)}
       />
-      <div className={styles.settingsFly} ref={settingsRef} role="dialog" aria-label={t.header.settings}>
-        {actions}
+      <div
+        className={`${styles.settingsFly} ${settingsPage === 'access' ? styles.settingsAccess : ''}`}
+        ref={settingsRef}
+        role="dialog"
+        aria-label={settingsPage === 'access' ? t.a11y.accessTitle : t.header.settings}
+      >
+        {settingsPage === 'access' ? <A11ySettings onBack={() => setSettingsPage('menu')} /> : actions}
       </div>
     </div>
   ) : null
@@ -1263,7 +1271,10 @@ export default function App() {
           edit={edit}
           waveRef={waveRef}
           menuOpen={moreOpen}
-          onToggleMenu={() => setMenuOpen((v) => !v)}
+          onToggleMenu={() => {
+            setSettingsPage('menu')
+            setMenuOpen((open) => !open)
+          }}
           menu={settingsMenu}
           dragging={dragging}
           onDragOver={() => setDragging(true)}
@@ -1322,7 +1333,10 @@ export default function App() {
           edit={edit}
           waveRef={waveRef}
           menuOpen={moreOpen}
-          onToggleMenu={() => setMenuOpen((v) => !v)}
+          onToggleMenu={() => {
+            setSettingsPage('menu')
+            setMenuOpen((open) => !open)
+          }}
           menu={settingsMenu}
           dragging={dragging}
           onDragOver={() => setDragging(true)}
@@ -1401,7 +1415,8 @@ export default function App() {
           settingsOpen={moreOpen}
           lfoCenterOpen={lfoCenterOpen}
           onToggleSettings={() => {
-            setMenuOpen((v) => !v)
+            setSettingsPage('menu')
+            setMenuOpen((open) => !open)
             setLfoCenterOpen(false)
           }}
           onToggleLfoCenter={() => {

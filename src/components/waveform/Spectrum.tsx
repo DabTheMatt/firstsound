@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { effectiveReducedMotion } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
@@ -550,7 +551,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             if (showPost) postBins = readAnalyserSpectrumBins(engine.getAnalyser('post'), postScratch)
           }
           const cssW = rect.width
-          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          const reduced = effectiveReducedMotion()
           paintSpectralHistory(ctx, width, height, historyRef.current, {
             dt: Math.min(1, elapsed),
             dpr,

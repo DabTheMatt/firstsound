@@ -1,3 +1,6 @@
+/** Versioned store. Legacy `field.a11y` is read once and kept in sync. */
+export const A11Y_STORAGE_KEY_V1 = 'field.accessibility.v1'
+
 export const A11Y_STORAGE_KEY = 'field.a11y'
 
 export type A11ySettings = {
@@ -30,18 +33,35 @@ export function parseA11ySettings(raw: unknown): A11ySettings {
   return next
 }
 
-export function readStoredA11ySettings(): A11ySettings {
+function readStorageKey(key: string): A11ySettings | undefined {
+  if (typeof localStorage === 'undefined') return undefined
   try {
-    const raw = localStorage.getItem(A11Y_STORAGE_KEY)
-    return parseA11ySettings(raw ? JSON.parse(raw) : null)
+    const raw = localStorage.getItem(key)
+    if (raw == null) return undefined
+    return parseA11ySettings(JSON.parse(raw))
   } catch {
     return { ...DEFAULT_A11Y_SETTINGS }
   }
 }
 
+export function readStoredA11ySettings(): A11ySettings {
+  const current = readStorageKey(A11Y_STORAGE_KEY_V1)
+  if (current) return current
+  const legacy = readStorageKey(A11Y_STORAGE_KEY)
+  if (legacy) return legacy
+  return { ...DEFAULT_A11Y_SETTINGS }
+}
+
 export function persistA11ySettings(settings: A11ySettings): void {
+  if (typeof localStorage === 'undefined') return
+  const body = JSON.stringify(settings)
   try {
-    localStorage.setItem(A11Y_STORAGE_KEY, JSON.stringify(settings))
+    localStorage.setItem(A11Y_STORAGE_KEY_V1, JSON.stringify({ ...settings, version: 1 }))
+  } catch {
+    /* private mode */
+  }
+  try {
+    localStorage.setItem(A11Y_STORAGE_KEY, body)
   } catch {
     /* private mode */
   }
@@ -97,8 +117,10 @@ export function applyA11yDom(settings: A11ySettings): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   applyLowVisionInline(root, settings.lowVision)
+  const reduced = motionReduced(settings)
   root.dataset.lowVision = settings.lowVision ? 'on' : 'off'
-  root.dataset.reduceMotion = settings.reduceMotion ? 'on' : 'off'
+  root.dataset.reduceMotion = reduced ? 'on' : 'off'
+  root.dataset.reducedMotion = reduced ? 'true' : 'false'
   root.dataset.uiScale = settings.largerInterface ? 'large' : 'normal'
   root.dataset.focus = settings.enhancedFocus ? 'enhanced' : 'default'
   root.dataset.a11yTips = settings.showDescriptions ? 'on' : 'off'
@@ -111,6 +133,22 @@ export function systemPrefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-export function motionReduced(settings: A11ySettings): boolean {
-  return settings.reduceMotion || systemPrefersReducedMotion()
+/** User preference or the operating-system request. The toggle cannot override the system. */
+export function motionReduced(settings: A11ySettings, system = systemPrefersReducedMotion()): boolean {
+  return settings.reduceMotion || system
+}
+
+/** DOM attribute written by `applyA11yDom`, so canvas loops share one answer. */
+export function effectiveReducedMotion(): boolean {
+  if (typeof document !== 'undefined') {
+    const flag = document.documentElement.dataset.reduceMotion
+    if (flag === 'on') return true
+    if (flag === 'off') return false
+  }
+  return motionReduced(readStoredA11ySettings())
+}
+
+export function largerControlsEnabled(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.documentElement.dataset.uiScale === 'large'
 }

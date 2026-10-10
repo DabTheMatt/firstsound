@@ -939,6 +939,12 @@
   scrollbar-gutter: stable;
 }
 
+.settingsAccess {
+  width: min(400px, 100%);
+  max-width: min(400px, 100%);
+  min-width: 0;
+}
+
 .lfoFly {
   left: 0;
   right: auto;

@@ -183,13 +183,16 @@
 }
 
 .dial:focus,
-.dial:focus-visible,
-:global(html[data-focus='enhanced']) .dial:focus,
-:global(html[data-focus='enhanced']) .dial:focus-visible,
-:global(html[data-low-vision='on']) .dial:focus,
-:global(html[data-low-vision='on']) .dial:focus-visible {
+:global(html[data-low-vision='on']) .dial:focus {
   outline: none;
   outline-offset: 0;
+}
+
+:global(html[data-ui-scale='large']) .dial::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 
 .focusRing {

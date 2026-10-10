@@ -1,8 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
 import { applySliderKey, isSpaceKey, isTypingFromTag, isTransportShortcutTarget } from './keyboard'
-import { parseA11ySettings } from './settings'
+import {
+  A11Y_STORAGE_KEY,
+  A11Y_STORAGE_KEY_V1,
+  DEFAULT_A11Y_SETTINGS,
+  motionReduced,
+  parseA11ySettings,
+  persistA11ySettings,
+  readStoredA11ySettings,
+} from './settings'
 import { formatAccessibleValue } from './valueText'
 import { SENSORY_AXIS_IDS } from '../sensory/sensoryParameters'
 import { EN, PL } from '../i18n/messages'
@@ -91,6 +99,13 @@ describe('a11y settings and i18n', () => {
     expect(PL.a11y.skipToMain).toContain('Przejdź')
     expect(EN.a11y.theme).toContain('Low Vision')
     expect(PL.a11y.theme).toContain('słabowidzący')
+    expect(EN.a11y.accessTitle).toBe('FIELD ACCESS')
+    expect(PL.a11y.accessTitle).toBe('FIELD ACCESS')
+    expect(PL.a11y.reduceMotion).toContain('Ogranicz ruch')
+    expect(PL.a11y.focus).toContain('fokus')
+    expect(PL.a11y.larger).toContain('Większe')
+    expect(PL.a11y.restore).toContain('dostępności')
+    expect(EN.a11y.reducedMotionSystem.toLowerCase()).toContain('device')
     expect(EN.chain.movedBefore('Delay', 'Reverb')).toBe('Delay moved before Reverb.')
   })
 
@@ -100,5 +115,47 @@ describe('a11y settings and i18n', () => {
     expect(parseThemePreference('low-vision')).toBe('studio-dark')
     expect(THEME_IDS).not.toContain('low-vision')
     expect(parseA11ySettings({ lowVision: true }).lowVision).toBe(true)
+  })
+
+  it('ignores invalid values and unknown keys', () => {
+    const parsed = parseA11ySettings({
+      reduceMotion: 'yes',
+      enhancedFocus: true,
+      largerInterface: 1,
+      extra: true,
+      version: 1,
+    })
+    expect(parsed.reduceMotion).toBe(false)
+    expect(parsed.enhancedFocus).toBe(true)
+    expect(parsed.largerInterface).toBe(false)
+    expect(parsed.shortcutsEnabled).toBe(true)
+    expect('extra' in parsed).toBe(false)
+  })
+
+  it('treats system reduced motion as effective even when the toggle is off', () => {
+    expect(motionReduced({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false }, true)).toBe(true)
+    expect(motionReduced({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false }, false)).toBe(false)
+    expect(motionReduced({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true }, false)).toBe(true)
+  })
+
+  it('stores a versioned payload and falls back from corrupt JSON', () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value)
+      },
+    })
+    persistA11ySettings({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true })
+    const raw = store.get(A11Y_STORAGE_KEY_V1)
+    expect(raw).toBeTruthy()
+    expect(JSON.parse(raw ?? '{}').version).toBe(1)
+    expect(readStoredA11ySettings().reduceMotion).toBe(true)
+    store.set(A11Y_STORAGE_KEY_V1, '{')
+    expect(readStoredA11ySettings().reduceMotion).toBe(false)
+    store.delete(A11Y_STORAGE_KEY_V1)
+    store.set(A11Y_STORAGE_KEY, JSON.stringify({ largerInterface: true, nope: 4 }))
+    expect(readStoredA11ySettings().largerInterface).toBe(true)
+    vi.unstubAllGlobals()
   })
 })

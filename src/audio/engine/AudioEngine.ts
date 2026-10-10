@@ -4145,6 +4145,7 @@ export class AudioEngine {
   /**
    * Return the session to a clean initial project without creating a new
    * AudioContext and without reloading the page.
+   * Accessibility preferences stay in their own storage and are not cleared here.
    */
   resetSession(): void {
     this.stop()

@@ -85,6 +85,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { largerControlsEnabled } from '../../a11y/settings'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
@@ -891,7 +892,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     const startX = timeToFrac(start, viewRef.current) * width
     const endX = timeToFrac(end, viewRef.current) * width
     const t = fracToTime(x / width, viewRef.current)
-    const hit = simple ? handlePx.current : selectionBoundaryHitPx(event.pointerType)
+    const hit = simple ? handlePx.current : selectionBoundaryHitPx(event.pointerType, largerControlsEnabled())
     const y = event.clientY - rect.top
 
     if (viz === 'automation') {
@@ -1073,8 +1074,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         endX,
         fadeInX: startX,
         fadeOutX: endX,
-        hitPx: selectionBoundaryHitPx(event.pointerType),
+        hitPx: selectionBoundaryHitPx(event.pointerType, largerControlsEnabled()),
         coarse,
+        larger: largerControlsEnabled(),
         transient: false,
       })
       const cursor = kind === 'fadeIn' || kind === 'fadeOut' ? 'fade' : kind === 'start' || kind === 'end' ? 'edge' : kind === 'move' ? 'move' : ''
@@ -1519,7 +1521,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                         const fadeLabel = edge === 'start' ? t.waveform.fadeIn : t.waveform.fadeOut
                         const edgeLabel = edge === 'start' ? t.waveform.regionStart : t.waveform.regionEnd
                         return (
-                          <div key={edge} className={styles.boundaryHit} data-edge={edge} style={{ left: `${left}%` }}>
+                          <div key={edge} className={styles.boundaryHit} data-boundary-hit="" data-edge={edge} style={{ left: `${left}%` }}>
                             <div
                               className={`${styles.boundaryFade} ${showFadeAffordances ? styles.boundaryFadeFocus : ''}`}
                               data-edge={edge}
@@ -1664,6 +1666,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               key={node.id}
                               points={points}
                               data-auto-segment={node.id}
+                              data-auto-hit=""
                               className={styles.autoHit}
                               vectorEffect="non-scaling-stroke"
                             />

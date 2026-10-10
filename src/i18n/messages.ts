@@ -713,10 +713,26 @@ export type Messages = {
   }
   a11y: {
     title: string
+    open: string
+    back: string
+    accessTitle: string
+    accessSubtitle: string
+    visualComfort: string
+    interaction: string
     theme: string
     reduceMotion: string
+    reducedMotionHelp: string
+    reducedMotionSystem: string
     larger: string
+    largerHelp: string
     focus: string
+    focusHelp: string
+    on: string
+    off: string
+    saved: string
+    restore: string
+    restored: string
+    more: string
     tips: string
     sr: string
     srHelp: string
@@ -1580,10 +1596,26 @@ export const EN: Messages = {
   },
   a11y: {
     title: 'Accessibility',
+    open: 'Accessibility',
+    back: 'Back',
+    accessTitle: 'FIELD ACCESS',
+    accessSubtitle: 'Make FIELD work your way.',
+    visualComfort: 'Visual comfort',
+    interaction: 'Interaction',
     theme: 'High Contrast / Low Vision Theme',
-    reduceMotion: 'Reduce motion',
-    larger: 'Larger interface',
-    focus: 'Enhanced focus',
+    reduceMotion: 'Reduced Motion',
+    reducedMotionHelp: 'Reduce unnecessary animations.',
+    reducedMotionSystem: "Your device's reduced-motion setting is also respected.",
+    larger: 'Larger Controls',
+    largerHelp: 'Make interactive controls easier to use.',
+    focus: 'Enhanced Focus Visibility',
+    focusHelp: 'Make keyboard focus easier to see.',
+    on: 'On',
+    off: 'Off',
+    saved: 'Your preferences are saved automatically.',
+    restore: 'Restore accessibility defaults',
+    restored: 'Accessibility defaults restored.',
+    more: 'More accessibility options',
     tips: 'Tooltips / parameter descriptions',
     sr: 'Screen reader optimizations',
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
@@ -2447,10 +2479,26 @@ export const PL: Messages = {
   },
   a11y: {
     title: 'Dostępność',
+    open: 'Dostępność',
+    back: 'Wstecz',
+    accessTitle: 'FIELD ACCESS',
+    accessSubtitle: 'Dostosuj FIELD do swoich potrzeb.',
+    visualComfort: 'Komfort widzenia',
+    interaction: 'Interakcja',
     theme: 'Wysoki kontrast / słabowidzący',
-    reduceMotion: 'Ogranicz animacje',
-    larger: 'Większy interfejs',
-    focus: 'Wzmocniony fokus',
+    reduceMotion: 'Ogranicz ruch',
+    reducedMotionHelp: 'Ogranicza zbędne animacje.',
+    reducedMotionSystem: 'Ustawienie ograniczenia ruchu w urządzeniu też jest respektowane.',
+    larger: 'Większe elementy sterujące',
+    largerHelp: 'Ułatwia korzystanie z elementów sterujących.',
+    focus: 'Wyraźniejszy fokus klawiatury',
+    focusHelp: 'Ułatwia zobaczenie fokusu klawiatury.',
+    on: 'Wł.',
+    off: 'Wył.',
+    saved: 'Ustawienia zapisują się automatycznie.',
+    restore: 'Przywróć domyślne ustawienia dostępności',
+    restored: 'Przywrócono domyślne ustawienia dostępności.',
+    more: 'Więcej opcji dostępności',
     tips: 'Podpowiedzi / opisy parametrów',
     sr: 'Optymalizacje czytnika ekranu',
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',

@@ -18,6 +18,8 @@ import {
   DEFAULT_A11Y_SETTINGS,
   parseA11ySettings,
   motionReduced,
+  effectiveReducedMotion,
+  largerControlsEnabled,
   type A11ySettings as A11ySettingsState,
 } from './settings'
 
@@ -44,6 +46,8 @@ export {
   DEFAULT_A11Y_SETTINGS,
   parseA11ySettings,
   motionReduced,
+  effectiveReducedMotion,
+  largerControlsEnabled,
 }
 
 export type { A11ySettingsState }

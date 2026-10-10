@@ -141,8 +141,11 @@ describe('resolveWaveformDrag', () => {
 
   it('gives touch a wider target than the selection line', () => {
     expect(selectionBoundaryHitPx('mouse') * 2).toBeGreaterThan(2)
+    expect(selectionBoundaryHitPx('mouse', true) * 2).toBe(44)
     expect(selectionBoundaryHitPx('touch') * 2).toBeGreaterThanOrEqual(44)
+    expect(selectionBoundaryHitPx('touch', true)).toBe(selectionBoundaryHitPx('touch'))
     expect(selectionFadeZonePx(400, true)).toBeGreaterThanOrEqual(36)
+    expect(selectionFadeZonePx(200, false, true)).toBeGreaterThan(selectionFadeZonePx(200, false))
   })
 })
 
