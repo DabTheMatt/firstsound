@@ -76,6 +76,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
             </button>
           ))
         : null}
+      <div className={styles.viewMore} data-view-more="">
       <button
         type="button"
         className={styles.textButton}
@@ -106,6 +107,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
           ))}
         </div>
       ) : null}
+      </div>
     </div>
   )
 }

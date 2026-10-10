@@ -74,14 +74,26 @@
             oxide: 1,
             forest: 1,
             'light-studio': 1,
-            dusk: 1,
             oled: 1,
+            dusk: 1,
+            'pop-art': 1,
+            classic: 1,
+            energetic: 1,
+            'chaos-theory': 1,
+            neon: 1,
+            manga: 1,
+            'black-white': 1,
+            noire: 1,
+            oscilloscope: 1,
+            'soft-slate': 1,
+            'warm-paper': 1,
+            custom: 1,
           }
           if (!known[theme]) theme = 'studio-dark'
+          var light = theme === 'light-studio' || theme === 'manga' || theme === 'warm-paper'
           document.documentElement.setAttribute('data-theme', theme)
           document.documentElement.setAttribute('data-low-vision', lowVision ? 'on' : 'off')
-          document.documentElement.style.colorScheme =
-            theme === 'light-studio' ? 'light' : 'dark'
+          document.documentElement.style.colorScheme = light ? 'light' : 'dark'
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'studio-dark')
         }

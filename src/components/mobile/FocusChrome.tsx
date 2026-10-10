@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { isTypingTarget } from '../../a11y/keyboard'
 import {
   EMPTY_AUTOMATION_FOCUS,
@@ -112,7 +112,7 @@ export function FocusChrome({
 
   return (
     <div className={styles.chrome} data-focus-chrome={workspace} style={track ? trackAccentStyle(track.color) : undefined}>
-      <div className={styles.top}>
+      <div className={styles.top} data-focus-top="">
         <div className={styles.identity} data-focus-zone="identity" data-focus-track={track?.id}>
           {onViz ? <WorkspaceSwitch workspace={workspace} onViz={onViz} onHearing={onHearing} /> : <span className={styles.title}>{title}</span>}
           {track ? (
@@ -135,20 +135,8 @@ export function FocusChrome({
           {workspace === 'wave' ? <WaveTools edit={edit} /> : null}
         </div>
         <div className={styles.actions} data-focus-zone="actions">
-          {workspace === 'fft' ? <FftFocusTools /> : null}
-          <button
-            type="button"
-            className={styles.hit}
-            aria-label={playing ? t.transport.pause : t.transport.play}
-            title={playing ? t.transport.pause : t.transport.play}
-            aria-pressed={playing}
-            disabled={!canPlay}
-            data-guide-target="transport.play"
-            data-guide-rank="2"
-            onClick={onTogglePlay}
-          >
-            {playing ? <PauseIcon /> : <PlayIcon />}
-          </button>
+          {workspace === 'fft' && touch ? <FftFocusTools /> : null}
+          <FocusTransport playing={playing} canPlay={canPlay} loop={snap.loop} onTogglePlay={onTogglePlay} />
           {touch ? (
             <button
               type="button"
@@ -168,6 +156,70 @@ export function FocusChrome({
           <EqFocusCluster onSelectModule={onSelectModule} />
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function FocusTransport({
+  playing,
+  canPlay,
+  loop,
+  onTogglePlay,
+}: {
+  playing: boolean
+  canPlay: boolean
+  loop: boolean
+  onTogglePlay: () => void
+}) {
+  const { t } = useI18n()
+  const playheadRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    let frame = 0
+    const tick = () => {
+      if (playheadRef.current) playheadRef.current.textContent = formatTimecode(engine.getSourcePlayheadSeconds())
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  return (
+    <div className={styles.transport} data-focus-transport="">
+      <button
+        type="button"
+        className={styles.hit}
+        aria-label={playing ? t.transport.pause : t.transport.play}
+        title={playing ? t.transport.pause : t.transport.play}
+        aria-pressed={playing}
+        disabled={!canPlay}
+        data-guide-target="transport.play"
+        data-guide-rank="2"
+        onClick={onTogglePlay}
+      >
+        {playing ? <PauseIcon /> : <PlayIcon />}
+      </button>
+      <button
+        type="button"
+        className={styles.hit}
+        aria-label={t.transport.stop}
+        title={t.transport.stop}
+        disabled={!canPlay}
+        onClick={() => engine.stop()}
+      >
+        <StopIcon />
+      </button>
+      <button
+        type="button"
+        className={`${styles.hit} ${styles.transportWord}`}
+        aria-pressed={loop}
+        aria-label={t.transport.loop}
+        title={t.transport.loop}
+        onClick={() => engine.setLoop(!loop)}
+      >
+        {t.transport.loop}
+      </button>
+      <span className={styles.transportTime} ref={playheadRef}>
+        {formatTimecode(0)}
+      </span>
     </div>
   )
 }
@@ -591,6 +643,14 @@ function PauseIcon() {
   return (
     <Svg>
       <path d="M4.5 3.5h2.2v9H4.5zm4.8 0h2.2v9H9.3z" fill="currentColor" />
+    </Svg>
+  )
+}
+
+function StopIcon() {
+  return (
+    <Svg>
+      <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
     </Svg>
   )
 }

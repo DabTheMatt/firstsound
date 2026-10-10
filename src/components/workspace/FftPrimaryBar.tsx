@@ -7,21 +7,8 @@ import {
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
-import { FftViewToggle } from '../waveform/SpectralHistoryControls'
 import { AnalyzerSettingsMenu } from './AnalyzerSettingsMenu'
 import styles from './Workspace.module.css'
-
-const ANALYZER_MENU_WIDTH = 360
-
-function analyzerMenuStyle(anchor: HTMLButtonElement | null): { top: number; left: number } | undefined {
-  if (!anchor) return undefined
-  const rect = anchor.getBoundingClientRect()
-  const width = Math.min(ANALYZER_MENU_WIDTH, window.innerWidth - 16)
-  return {
-    top: rect.bottom + 4,
-    left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
-  }
-}
 
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'pre', label: 'Before' },
@@ -29,14 +16,13 @@ const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'both', label: 'Both' },
 ]
 
-/** Primary FFT controls. Analyzer configuration stays one action away. */
+/** Layer and 2D / 3D stay on the bar. The rest opens from ••• at the end. */
 export function FftPrimaryBar() {
   const { t } = useI18n()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
-  const anchorRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
 
@@ -61,13 +47,13 @@ export function FftPrimaryBar() {
   }
 
   return (
-    <div className={styles.editBar} ref={rootRef} data-fft-primary="">
+    <div className={styles.viewBar} ref={rootRef} data-fft-primary="">
       <div className={styles.segment} role="group" aria-label={t.workspace.analyzerLayer}>
         {LAYERS.map((layer) => (
           <button
             key={layer.id}
             type="button"
-            className={prefs.layer === layer.id ? styles.segmentOn : styles.segmentOff}
+            className={prefs.layer === layer.id ? styles.segmentOn : styles.textButton}
             aria-pressed={prefs.layer === layer.id}
             onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
           >
@@ -75,28 +61,43 @@ export function FftPrimaryBar() {
           </button>
         ))}
       </div>
-      <FftViewToggle mode={prefs.viewMode} onChange={(viewMode) => patch({ viewMode })} />
-      <button
-        ref={anchorRef}
-        type="button"
-        className={styles.textButton}
-        aria-expanded={open}
-        aria-controls={menuId}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {t.workspace.analyzerSettings}
-      </button>
-      {open ? (
-        <div
-          className={`${styles.menu} ${styles.menuFixed}`}
-          id={menuId}
-          role="dialog"
-          aria-label={t.workspace.analyzerSettings}
-          style={analyzerMenuStyle(anchorRef.current)}
+      <div className={styles.segment} role="group" aria-label="FFT view">
+        <button
+          type="button"
+          className={prefs.viewMode === '2d' ? styles.segmentOn : styles.textButton}
+          aria-pressed={prefs.viewMode === '2d'}
+          onClick={() => patch({ viewMode: '2d' })}
         >
-          <AnalyzerSettingsMenu />
-        </div>
-      ) : null}
+          2D
+        </button>
+        <button
+          type="button"
+          className={prefs.viewMode === '3d' ? styles.segmentOn : styles.textButton}
+          aria-pressed={prefs.viewMode === '3d'}
+          aria-label="3D"
+          title="3D Spectral History"
+          onClick={() => patch({ viewMode: '3d' })}
+        >
+          3D
+        </button>
+      </div>
+      <div className={styles.viewMore} data-view-more="">
+        <button
+          type="button"
+          className={styles.textButton}
+          aria-expanded={open}
+          aria-controls={menuId}
+          aria-label={t.workspace.moreEdit}
+          onClick={() => setOpen((value) => !value)}
+        >
+          •••
+        </button>
+        {open ? (
+          <div className={styles.menu} id={menuId} role="menu" aria-label={t.workspace.analyzerSettings}>
+            <AnalyzerSettingsMenu />
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

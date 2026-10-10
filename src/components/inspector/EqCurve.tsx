@@ -25,6 +25,7 @@ import { eqNodeAnchorBands, eqNodeMotion } from '../modulation/modulationModel'
 import { bandPeakDb, logBandEdgesHz, spectrumMaxHz } from '../../audio/engine/spectrumBands'
 import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } from '../../audio/engine/spectrumFft'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
+import { eqNodeValueText, nudgeFocusEq } from '../mobile/eqFocusGesture'
 import { engine } from '../../hooks/useEngine'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
@@ -292,7 +293,22 @@ export function EqCurve({
               ['--eq-curve' as string]: tone.curve,
               ['--eq-node-selected' as string]: tone.node,
             }}
-            aria-label={`EQ band ${index + 1} ${band.type}`}
+            aria-label={`EQ band ${index + 1} ${band.type}, ${eqNodeValueText(band)}`}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                event.stopPropagation()
+                onSelectBand?.(index)
+                return
+              }
+              const patch = nudgeFocusEq(band, event.key, event.shiftKey)
+              if (!patch) return
+              event.preventDefault()
+              event.stopPropagation()
+              onSelectBand?.(index)
+              onDragBand?.(index, patch)
+              onInteract?.()
+            }}
             onPointerDown={(event) => onNodePointerDown(index, event)}
             onPointerMove={onNodePointerMove}
             onPointerUp={onNodePointerUp}

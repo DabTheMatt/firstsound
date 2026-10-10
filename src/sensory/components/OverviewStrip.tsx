@@ -246,6 +246,7 @@ export function OverviewStrip({ duration, loaded, contentRev, onRegionCommit }: 
     <div
       ref={wrapRef}
       className={styles.wrap}
+      role="group"
       aria-label={t.sensory.overviewDrag}
       data-overview=""
       data-region-start={snap.params.start}

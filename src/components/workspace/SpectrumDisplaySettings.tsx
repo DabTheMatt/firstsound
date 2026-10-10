@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { FloatingTip } from '../../a11y/FloatingTip'
 import {
   FREQ_GRID_DENSITIES,
   loadFreqGridDensity,
@@ -81,7 +82,6 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           <Choice
             key={density}
             pressed={grid === density}
-            title={HINTS.grid}
             onClick={() => {
               setGrid(density)
               persistFreqGridDensity(density)
@@ -97,7 +97,6 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
             <Choice
               key={layer.id}
               pressed={prefs.layer === layer.id}
-              title={HINTS.layer}
               onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
             >
               {layer.label}
@@ -110,7 +109,6 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           <Choice
             key={opt.value}
             pressed={scale === opt.value}
-            title={opt.title || HINTS.scale}
             onClick={() => {
               setScale(opt.value)
               persistFreqScale(opt.value)
@@ -126,7 +124,6 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
             <Choice
               key={db}
               pressed={prefs.range === db}
-              title={HINTS.range}
               onClick={() => patch({ range: clampSpectrumRange(db) })}
             >
               {db}
@@ -220,10 +217,10 @@ function OnOff({
 }) {
   return (
     <ChoiceRow label={label} hint={hint}>
-      <Choice pressed={!on} title={hint} onClick={() => onChange(false)}>
+      <Choice pressed={!on} onClick={() => onChange(false)}>
         Off
       </Choice>
-      <Choice pressed={on} title={hint} onClick={() => onChange(true)}>
+      <Choice pressed={on} onClick={() => onChange(true)}>
         On
       </Choice>
     </ChoiceRow>
@@ -231,15 +228,26 @@ function OnOff({
 }
 
 function ChoiceRow({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
-  const tipId = useId()
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
   return (
-    <div className={styles.displayRow} role="group" aria-label={label}>
-      <span className={styles.displayLabel} tabIndex={0} aria-describedby={tipId}>
+    <div
+      className={styles.displayRow}
+      role="group"
+      aria-label={label}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span
+        ref={labelRef}
+        className={styles.displayLabel}
+        tabIndex={0}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
         {label}
-        <span className={styles.displayHint} id={tipId} role="tooltip">
-          {hint}
-        </span>
       </span>
+      {open ? <FloatingTip anchorRef={labelRef} text={hint} /> : null}
       <div className={styles.displayChoices}>{children}</div>
     </div>
   )

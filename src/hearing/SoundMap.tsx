@@ -157,7 +157,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       role="img"
       aria-label="Sound map. Rows are labeled frequency regions and sit edge to edge. Color follows the theme and is paired with the label. Attacks are thin vertical lines at the time they happen. The waveform level strip can show several triangles for one attack. Choose a line to mark it on the waveform. Reverb wet smears the rows forward and dulls the high rows."
       onClick={(event) => pickTransient(event.clientX)}
-      style={{ width: '100%', height: 184, color: 'var(--text-primary)', background: 'var(--bg-app)', cursor: onTransient && transients.length ? 'pointer' : undefined }}
+      style={{ width: '100%', height: 184, color: 'var(--text-primary)', background: 'transparent', cursor: onTransient && transients.length ? 'pointer' : undefined }}
     />
   )
 }

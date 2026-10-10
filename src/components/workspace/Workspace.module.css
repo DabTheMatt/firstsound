@@ -110,8 +110,15 @@
 .tabs {
   display: flex;
   align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  min-width: 0;
+}
+
+.tablist {
+  display: flex;
+  align-items: center;
   gap: 4px;
-  min-height: var(--control-standard, 32px);
   min-width: 0;
 }
 
@@ -201,6 +208,29 @@
   min-width: 0;
   flex-wrap: nowrap;
   overflow: visible;
+}
+
+.viewMore {
+  position: relative;
+  flex: none;
+}
+
+.viewBar {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 44px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 2px 8px;
+  pointer-events: none;
+}
+
+.viewBar > * {
+  pointer-events: auto;
 }
 
 .zoom {

@@ -13,10 +13,12 @@ import {
 } from './keyboard'
 import { formatAccessibleValue, formatPercentValue } from './valueText'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS, paramDescription, sensoryDescription } from './descriptions'
-import { bootstrapA11y, useA11ySettings } from './useA11ySettings'
+import { bootstrapA11y, useA11ySettings, useReducedMotion } from './useA11ySettings'
 import {
   DEFAULT_A11Y_SETTINGS,
   parseA11ySettings,
+  appliedA11ySettings,
+  effectiveMotionReduced,
   motionReduced,
   effectiveReducedMotion,
   largerControlsEnabled,
@@ -43,8 +45,11 @@ export {
   sensoryDescription,
   bootstrapA11y,
   useA11ySettings,
+  useReducedMotion,
   DEFAULT_A11Y_SETTINGS,
   parseA11ySettings,
+  appliedA11ySettings,
+  effectiveMotionReduced,
   motionReduced,
   effectiveReducedMotion,
   largerControlsEnabled,

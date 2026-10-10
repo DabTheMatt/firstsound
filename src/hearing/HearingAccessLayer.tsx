@@ -440,15 +440,8 @@ export function HearingAccessLayer({
     window.addEventListener('pointerup', up)
   }
 
-  const focusText = focusLine(focus, analysis, eq, snap)
-
   return (
     <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface}>
-      {focusText && focus !== 'hearing' && focus !== 'eq' ? (
-        <p className={styles.focusChip} title={focusText}>
-          {focusText}
-        </p>
-      ) : null}
       <div className={styles.alerts} aria-live="polite">
         {alerts.map((alert) => (
           <button key={alert.id} type="button" className={alert.tone === 'warn' ? styles.warn : styles.badge} onClick={() => dismissHearingAlert(alert.id)}>
@@ -653,36 +646,6 @@ function HapticsSection({
       )}
     </div>
   )
-}
-
-function focusLine(
-  focus: FocusWorkspace | null,
-  analysis: BufferAnalysis | null,
-  eq: ReturnType<typeof selectedEq>,
-  snap: ReturnType<typeof useEngine>,
-): string | null {
-  if (!focus) return null
-  if (focus === 'eq') {
-    if (!eq) return 'EQ · select a band'
-    const span = eq.region ? ` · ${Math.round(eq.region.lo)}–${Math.round(eq.region.hi)} Hz` : ''
-    return `EQ ${eq.readout.index + 1} · ${eq.readout.frequencyLabel} · ${eq.readout.note} · ${eq.readout.region} · ${eq.readout.gainDb.toFixed(1)} dB · Q ${eq.readout.q.toFixed(2)}${span}`
-  }
-  if (focus === 'auto') {
-    const id = snap.automation.selectedParamId
-    const stored = snap.params[id]
-    const liveValue = snap.liveParams[id]
-    return `${PARAMS[id]?.label ?? id} · stored ${stored.toFixed(2)} · effective ${liveValue.toFixed(2)}`
-  }
-  if (focus === 'fft') {
-    if (!analysis) return 'FFT · no sample'
-    const top = [...analysis.bands].sort((a, b) => b.share - a.share)[0]
-    const tone = analysis.dominantHz ? `${Math.round(analysis.dominantHz)} Hz · ${analysis.dominantNote}` : 'no dominant tone'
-    const region = top ? `${top.label} ${Math.round(top.share * 100)}%` : ''
-    return `FFT · ${tone}${region ? ` · ${region}` : ''}`
-  }
-  if (!analysis) return 'WAVE · no sample'
-  const level = analysis.peakDbfs === null ? 'silence' : `peak ${analysis.peakDbfs.toFixed(1)} dBFS`
-  return `WAVE · ${scopeLabel(analysis.scope)} · ${level}`
 }
 
 function useSyncHearing(): HearingView {

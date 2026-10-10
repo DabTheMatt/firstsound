@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { FloatingTip } from './FloatingTip'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './ControlTooltip.module.css'
 
@@ -9,6 +10,7 @@ type Props = {
 
 export function ControlTooltip({ text, children }: Props) {
   const id = useId()
+  const anchorRef = useRef<HTMLDivElement>(null)
   const { settings } = useA11ySettings()
   const [open, setOpen] = useState(false)
 
@@ -23,6 +25,7 @@ export function ControlTooltip({ text, children }: Props) {
 
   return (
     <div
+      ref={anchorRef}
       className={styles.wrap}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -36,11 +39,7 @@ export function ControlTooltip({ text, children }: Props) {
       <p id={id} className="sr-only">
         {text}
       </p>
-      {settings.showDescriptions && open ? (
-        <span className={styles.tip} role="tooltip">
-          {text}
-        </span>
-      ) : null}
+      {settings.showDescriptions && open ? <FloatingTip anchorRef={anchorRef} text={text} /> : null}
     </div>
   )
 }

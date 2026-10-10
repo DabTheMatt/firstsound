@@ -76,3 +76,18 @@ export function useA11ySettings(): {
   }
   return { settings, systemReducedMotion, setSettings }
 }
+
+/** FIELD Reduce motion, or the operating-system preference. Either one is enough. */
+export function useReducedMotion(): boolean {
+  const { settings } = useA11ySettings()
+  const [systemReduced, setSystemReduced] = useState(systemPrefersReducedMotion)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = () => setSystemReduced(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return settings.reduceMotion || systemReduced
+}

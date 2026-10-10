@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { effectiveReducedMotion } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
+import { FftPrimaryBar } from '../workspace/FftPrimaryBar'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
@@ -124,6 +125,7 @@ import {
   eqDragMode,
   focusEqTypePatch,
   nextQArmed,
+  eqNodeValueText,
   nudgeFocusEq,
   qFromVertical,
   type EqDragMode,
@@ -1301,6 +1303,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     ) : onEnterFocus ? (
       <EnterFocusButton label={focusLabel} accessibleName={t.focus.enter} onClick={onEnterFocus} />
     ) : null
+  const showGraphTools = !spatial && !hideGraphMenu
+  const showFftMenu = hideGraphMenu && !compact && !phoneEq
   return (
     <div
       className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${phoneFocus ? styles.eqFocus : ''} ${analyzerOpen && !phoneEq && !phoneFocus ? styles.analyzerOpen : ''}`}
@@ -1311,7 +1315,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {focusControl && (spatial || hideGraphMenu) ? <div className={styles.focusDock}>{focusControl}</div> : null}
+      {focusControl ? <div className={styles.focusDock}>{focusControl}</div> : null}
+      {showFftMenu ? <FftPrimaryBar /> : null}
       {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
@@ -1888,7 +1893,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   } as CSSProperties
                 }
                 title={`${eqName} band ${index + 1} ${band.type}`}
-                aria-label={`${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)}`}
+                aria-label={`${eqName} band ${index + 1} ${focusEqTypeLabel(band.type)}, ${eqNodeValueText(band)}`}
                 onPointerDown={(event) => onNodePointerDown(mod.instanceId, index, event)}
                 onDoubleClick={(event) => event.stopPropagation()}
                 onPointerMove={onNodePointerMove}
@@ -1896,15 +1901,18 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 onPointerCancel={endNodePointer}
                 onLostPointerCapture={endNodePointer}
                 onKeyDown={(event) => {
-                  if (!phoneFocus) return
                   if (event.key === 'Enter') {
                     event.preventDefault()
-                    setBandMenu({ instanceId: mod.instanceId, index })
+                    event.stopPropagation()
+                    selectEqBand({ instanceId: mod.instanceId, index })
+                    if (phoneFocus) setBandMenu({ instanceId: mod.instanceId, index })
                     return
                   }
                   const patch = nudgeFocusEq(band, event.key, event.shiftKey)
                   if (!patch) return
                   event.preventDefault()
+                  event.stopPropagation()
+                  selectEqBand({ instanceId: mod.instanceId, index })
                   engine.setEqBand(index, patch, mod.instanceId)
                 }}
               >
@@ -1948,10 +1956,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {hover.label}
           </div>
         ) : null}
-        {spatial || hideGraphMenu ? null : (
+        {showGraphTools ? (
         <div className={styles.graphMenu} ref={graphMenuRef}>
           <div className={styles.graphMenuBar}>
-            {focusControl}
             <button
               type="button"
               className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
@@ -2025,7 +2032,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             </div>
           ) : null}
         </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

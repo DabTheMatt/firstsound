@@ -99,9 +99,46 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return isTypingFromTag(target.tagName, type, target.isContentEditable)
 }
 
-/** Space always toggles play/pause unless the user is typing in a text field. */
+const SPACE_OWNING_ROLES = new Set([
+  'checkbox',
+  'radio',
+  'switch',
+  'menuitemcheckbox',
+  'menuitemradio',
+])
+
+/**
+ * Space is the activation key for these controls, and dialogs keep Space
+ * for their own widgets. Transport must not steal it.
+ */
+export function transportSpaceSuppressed(input: {
+  tagName: string
+  inputType?: string
+  role?: string | null
+  editable?: boolean
+  inDialog?: boolean
+}): boolean {
+  if (input.inDialog) return true
+  if (isTypingFromTag(input.tagName, input.inputType ?? '', input.editable ?? false)) return true
+  const tag = input.tagName.toUpperCase()
+  if (tag === 'SELECT' || tag === 'SUMMARY') return true
+  const type = (input.inputType ?? '').toLowerCase()
+  if (tag === 'INPUT' && (type === 'checkbox' || type === 'radio')) return true
+  if (input.role && SPACE_OWNING_ROLES.has(input.role)) return true
+  return false
+}
+
+/** Space toggles play/pause except while typing, on a checkbox or radio, or inside a dialog. */
 export function isTransportShortcutTarget(target: EventTarget | null): boolean {
-  return !isTypingTarget(target)
+  if (!target || !(target instanceof HTMLElement)) return !isTypingTarget(target)
+  const inDialog = Boolean(target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]'))
+  return !transportSpaceSuppressed({
+    tagName: target.tagName,
+    inputType: target instanceof HTMLInputElement ? target.type : '',
+    role: target.getAttribute('role'),
+    editable: target.isContentEditable,
+    inDialog,
+  })
 }
 
 export function scrollFocusedIntoView(target: EventTarget | null): void {

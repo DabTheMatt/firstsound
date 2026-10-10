@@ -17,6 +17,11 @@
   color: var(--accent-primary);
 }
 
+:global([data-technical-ui='workspace']) .button {
+  border: 0;
+  background: transparent;
+}
+
 .corner {
   position: absolute;
   top: 8px;
@@ -26,7 +31,7 @@
 
 .cornerRight {
   position: absolute;
-  top: 8px;
+  top: 6px;
   right: 8px;
   z-index: 24;
 }

@@ -2,6 +2,7 @@ import {
   forwardRef,
   useCallback,
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
@@ -9,6 +10,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax, computeMinMaxCached, mipsCovering, mixToMono } from '../../audio/engine/peaks'
@@ -33,6 +35,7 @@ import {
   type AutomationEditFocus,
 } from '../../audio/automation/automation'
 import { isTypingTarget } from '../../a11y/keyboard'
+import { formatTimecode } from '../../audio/engine/formatTime'
 import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
@@ -165,6 +168,8 @@ type Props = {
   eqStrips?: boolean
   /** Workspace EQ strips: return to the side inspector. */
   onShowEqInspector?: () => void
+  /** Wave workspace commands. Lives inside the picture so every view starts at the same edge. */
+  workspaceBar?: ReactNode
 }
 
 export type WaveformHandle = {
@@ -299,10 +304,12 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     calmWorkspace = null,
     eqStrips = false,
     onShowEqInspector,
+    workspaceBar = null,
   },
   ref,
 ) {
   const { t, paramLabel } = useI18n()
+  const waveStatusId = useId()
   const sensory = appearance === 'sensory'
   const simple = appearance === 'simple'
   const snap = useEngine()
@@ -1428,6 +1435,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       data-waveform-editor=""
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
+      {workspaceBar}
       {pictureFocusButton}
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''} ${fillEqGraph ? styles.fillGraph : ''}`}>
         <div
@@ -1435,7 +1443,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           className={styles.wrap}
           hidden={!showWave || showArrangement}
           role="region"
-          aria-label="Waveform editor"
+          aria-label={loaded && duration > 0 ? t.waveform.editorAria : t.waveform.editorEmpty}
+          aria-describedby={loaded && duration > 0 ? waveStatusId : undefined}
           tabIndex={sensory ? undefined : 0}
           {...guideTargetAttrs('waveform.main')}
           onPointerDown={() => emitGuideEvent('waveform.touched')}
@@ -1448,16 +1457,16 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 : undefined
           }
         >
-          {automationView ? (
-            <div className={styles.autoBar}>
-              <span className={styles.autoTrack} title={snap.tracks.find((track) => track.id === snap.selectedTrackId)?.name ?? ''}>
-                {`T${Math.max(1, snap.tracks.findIndex((track) => track.id === snap.selectedTrackId) + 1)}`}
-              </span>
-              <span className={styles.autoParam} title={activeTitle}>
-                {activeTitle}
-              </span>
-            </div>
-          ) : null}
+          <p id={waveStatusId} className="sr-only">
+            {loaded && duration > 0
+              ? t.waveform.editorSummary(
+                  formatTimecode(duration),
+                  formatTimecode(engine.getSourcePlayheadSeconds()),
+                  formatTimecode(start),
+                  formatTimecode(end),
+                )
+              : t.waveform.editorEmpty}
+          </p>
           <div
             className={`${styles.wavePane} ${showWaveLegend ? styles.waveLegendPane : ''} ${showWaveSymbols ? styles.waveSymbolPane : ''} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}
             style={showWaveSymbols ? { ['--wave-symbols' as string]: `${SYMBOL_STRIP_HEIGHT}px` } : undefined}
@@ -1499,7 +1508,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             {loaded && (snap.channelLayout === 'mono' || snap.params.makeMono > 0.5) ? (
               <span className={styles.monoBadge}>{t.waveform.mono}</span>
             ) : null}
-            {automationView ? (
+            {automationView && !hearingFocus ? (
               <div className={styles.autoLegend} aria-hidden="true">
                 {automationLanes.map((lane) => {
                   const active = lane.paramId === snap.automation.selectedParamId
@@ -1552,7 +1561,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               data-edge={edge}
                               data-boundary-zone="fade"
                               title={fadeLabel}
-                              aria-label={fadeLabel}
                             >
                               {showFadeAffordances ? (
                                 <span
@@ -1569,7 +1577,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               data-edge={edge}
                               data-boundary-zone="edge"
                               title={edgeLabel}
-                              aria-label={edgeLabel}
                             />
                           </div>
                         )
@@ -1756,8 +1763,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                             className={styles.transient}
                             data-transient={i}
                             style={{ left: `${left}%` }}
-                            role="slider"
-                            aria-label={`Transient ${i + 1}`}
+                            aria-hidden="true"
                           />
                         )
                       })

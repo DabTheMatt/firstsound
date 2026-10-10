@@ -19,7 +19,12 @@ function percent(value: number, max: number): number {
   return Math.round((Math.min(max, Math.max(0, value)) / max) * 100)
 }
 
-export function BackgroundControl() {
+type Props = {
+  /** Text label for the workspace bar. Classic keeps the icon. */
+  appearance?: 'icon' | 'text'
+}
+
+export function BackgroundControl({ appearance = 'icon' }: Props) {
   const { t } = useI18n()
   const state = useSyncExternalStore(subscribeVizBackground, getVizBackground, getVizBackground)
   const [open, setOpen] = useState(false)
@@ -79,15 +84,24 @@ export function BackgroundControl() {
       <button
         ref={triggerRef}
         type="button"
-        className={`${barStyles.iconBtn} ${state.imageUrl ? barStyles.active : ''}`}
+        className={
+          appearance === 'text'
+            ? `${styles.textTrigger} ${state.imageUrl ? styles.textOn : ''}`
+            : `${barStyles.iconBtn} ${state.imageUrl ? barStyles.active : ''}`
+        }
         aria-label={copy.background}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={copy.background}
         onClick={() => setOpen((value) => !value)}
       >
-        <ImageIcon />
-        <span className={barStyles.caption}>{copy.backgroundCaption}</span>
+        {appearance === 'text' ? (
+          copy.backgroundCaption
+        ) : (
+          <>
+            <ImageIcon />
+            <span className={barStyles.caption}>{copy.backgroundCaption}</span>
+          </>
+        )}
       </button>
       {open && menuPos
         ? createPortal(

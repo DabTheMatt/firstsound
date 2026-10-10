@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { focusInitial, trapTab } from '../../a11y/dialogFocus'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
@@ -44,6 +45,7 @@ export function ExportDialog({ snap, onClose }: Props) {
   const [phase, setPhase] = useState<'idle' | 'preparing' | 'rendering' | 'encoding' | 'error'>('idle')
   const [error, setError] = useState('')
   const busyRef = useRef(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const aliveRef = useRef(true)
   const busy = phase === 'preparing' || phase === 'rendering' || phase === 'encoding'
   const exportClock = useMemo(
@@ -65,6 +67,10 @@ export function ExportDialog({ snap, onClose }: Props) {
     return Math.max(0, range.end - range.start)
   }, [prep, exportClock])
   const originalHz = snap.sourceSampleRate
+
+  useEffect(() => {
+    focusInitial(dialogRef.current)
+  }, [])
 
   useEffect(() => {
     aliveRef.current = true
@@ -146,11 +152,13 @@ export function ExportDialog({ snap, onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       className={styles.backdrop}
       role="dialog"
       aria-modal="true"
       aria-labelledby="export-title"
       aria-busy={busy}
+      onKeyDown={(event) => trapTab(event)}
       onClick={() => {
         if (!busy) onClose()
       }}
@@ -163,10 +171,12 @@ export function ExportDialog({ snap, onClose }: Props) {
           exportNow('project')
         }}
       >
-        <h2 id="export-title">{t.export.title}</h2>
+        <h2 id="export-title" tabIndex={-1}>
+          {t.export.title}
+        </h2>
         <label className={styles.field}>
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} />
+          <input data-dialog-initial="" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label className={styles.field}>
           Format

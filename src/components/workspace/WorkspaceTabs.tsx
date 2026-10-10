@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n'
+import { BackgroundControl } from '../waveform/BackgroundControl'
 import { TECHNICAL_WORKSPACES, type TechnicalWorkspaceId } from './workspaces'
 import styles from './Workspace.module.css'
 
@@ -29,7 +30,8 @@ export function WorkspaceTabs({
 }: Props) {
   const { t } = useI18n()
   return (
-    <div className={styles.tabs} role="tablist" aria-label={t.workspace.workspaces}>
+    <div className={styles.tabs}>
+      <div className={styles.tablist} role="tablist" aria-label={t.workspace.workspaces}>
       {TECHNICAL_WORKSPACES.map((id) => {
         const on = id === workspace
         return (
@@ -45,15 +47,17 @@ export function WorkspaceTabs({
           </button>
         )
       })}
+      </div>
       <span className={styles.tabSpacer} />
-      {onOpenGuide && guideLabel ? (
-        <button type="button" className={`${styles.textButton} ${styles.guideLink}`} onClick={onOpenGuide}>
-          {guideLabel}
-        </button>
-      ) : null}
+      <BackgroundControl appearance="text" />
       {contextClosed ? (
         <button type="button" className={styles.textButton} onClick={onOpenContext}>
           {t.workspace.context}
+        </button>
+      ) : null}
+      {onOpenGuide && guideLabel ? (
+        <button type="button" className={`${styles.textButton} ${styles.guideLink}`} onClick={onOpenGuide}>
+          {guideLabel}
         </button>
       ) : null}
     </div>

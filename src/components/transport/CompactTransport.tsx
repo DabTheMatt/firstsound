@@ -243,7 +243,7 @@ type ExportProps = {
 export function TransportExportButton({ disabled, onExport }: ExportProps) {
   const { t } = useI18n()
   return (
-    <button type="button" className={styles.export} {...guideTargetAttrs('export.open')} disabled={disabled} onClick={onExport}>
+    <button type="button" className={styles.export} data-export-open="" {...guideTargetAttrs('export.open')} disabled={disabled} onClick={onExport}>
       {t.transport.export}
     </button>
   )

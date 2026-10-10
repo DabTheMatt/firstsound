@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
-import { applySliderKey, isSpaceKey, isTypingFromTag, isTransportShortcutTarget } from './keyboard'
+import { applySliderKey, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, transportSpaceSuppressed } from './keyboard'
 import {
   A11Y_STORAGE_KEY,
   A11Y_STORAGE_KEY_V1,
+  applyA11yDom,
   DEFAULT_A11Y_SETTINGS,
+  effectiveMotionReduced,
   motionReduced,
   parseA11ySettings,
   persistA11ySettings,
@@ -75,6 +77,16 @@ describe('slider keyboard', () => {
     expect(isTypingFromTag('TEXTAREA')).toBe(true)
     expect(isTypingFromTag('DIV', '', true)).toBe(true)
   })
+
+  it('keeps Space for checkboxes, radios, and dialogs', () => {
+    expect(transportSpaceSuppressed({ tagName: 'BUTTON' })).toBe(false)
+    expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'checkbox' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'radio' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'text' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'DIV', role: 'switch' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'BUTTON', inDialog: true })).toBe(true)
+    expect(isTransportShortcutTarget(null)).toBe(true)
+  })
 })
 
 describe('accessible value text', () => {
@@ -91,6 +103,10 @@ describe('accessible value text', () => {
 describe('a11y settings and i18n', () => {
   it('parses stored accessibility flags', () => {
     expect(parseA11ySettings({ reduceMotion: true, extra: 1 }).reduceMotion).toBe(true)
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true })
+    expect(effectiveMotionReduced()).toBe(true)
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false })
+    expect(effectiveMotionReduced()).toBe(false)
     expect(parseA11ySettings(null).shortcutsEnabled).toBe(true)
     expect(parseA11ySettings(null).dragFreeEditing).toBe(false)
     expect(parseA11ySettings(null).lowVision).toBe(false)
