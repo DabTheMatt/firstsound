@@ -105,8 +105,39 @@ export function spectrumEqOverlayY(
 ): number {
   const span = maxDb - minDb
   if (!(span > 0) || !Number.isFinite(db)) return bottom
-  const y = top + ((maxDb - db) / span) * (bottom - top)
+  const y = top + ((maxDb - clampEqOverlayDb(db, minDb, maxDb)) / span) * (bottom - top)
   return Math.min(bottom, Math.max(top, y))
+}
+
+/**
+ * CSS pixels kept inside the clip so a curve that reaches ±24 dB is stroked
+ * in full. Without this, the peak sits on the clip edge and the cap is cut
+ * into a flat line. That flat line is the chart ceiling, not distortion.
+ */
+export const EQ_CURVE_INSET_PX = 8
+
+export type EqPlotBox = { left: number; right: number; top: number; bottom: number }
+
+/** Same box, pulled in so ±24 dB is a grid line and not the clip boundary. */
+export function eqResponsePlot(outer: EqPlotBox, insetPx = EQ_CURVE_INSET_PX): EqPlotBox {
+  const inset = Math.max(0, insetPx)
+  const top = outer.top + inset
+  const bottom = outer.bottom - inset
+  if (!(bottom > top + 8)) return outer
+  return { ...outer, top, bottom }
+}
+
+/** Horizontal gain lines for the EQ curve. Short plots keep the 12 dB marks. */
+export function eqGainGridDb(plotHeightPx: number): number[] {
+  const full = [24, 18, 12, 6, 0, -6, -12, -18, -24]
+  if (plotHeightPx >= 110) return full
+  return full.filter((db) => db % 12 === 0)
+}
+
+export function formatEqGainGridLabel(db: number): string {
+  if (db === 0) return '0'
+  const sign = db > 0 ? '+' : '−'
+  return `${sign}${Math.abs(db)}`
 }
 
 export type MagnitudeVertex = { x: number; y: number; hz: number; db: number }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import {
   FREQ_GRID_DENSITIES,
   loadFreqGridDensity,
@@ -14,6 +14,11 @@ import {
   type FreqScaleKind,
 } from '../../audio/engine/freqScale'
 import {
+  graphSnapshotFrozen,
+  setGraphSnapshot,
+  subscribeGraphSnapshot,
+} from '../../audio/engine/graphSnapshot'
+import {
   SPECTRUM_RANGE_CHOICES,
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
@@ -24,6 +29,7 @@ import {
   type SpectrumLayer,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
+import { engine } from '../../hooks/useEngine'
 import styles from './Workspace.module.css'
 
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
@@ -31,6 +37,21 @@ const LAYERS: { id: SpectrumLayer; label: string }[] = [
   { id: 'post', label: 'After' },
   { id: 'both', label: 'Both' },
 ]
+
+const HINTS = {
+  grid: 'Vertical guides. 6, 12, or 24 frequency lines across the graph.',
+  layer: 'Which spectrum to draw. Before is the input of the chain. After is the output. Both draws them together.',
+  scale: 'How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.',
+  range: 'How far down the spectrum bars reach, from 0 dB. The EQ curve keeps its own scale, from −24 dB to +24 dB.',
+  color: 'Paints the spectrum by frequency. Off uses one theme color.',
+  nodes: 'Frequency-colored nodes. Each EQ handle takes the color of the frequency region it sits in.',
+  regions: 'Region colors. Tints each spectrum column by sub, bass, mids, presence, or air. Off uses one color, unless Color is set to level.',
+  bars: 'Spectrum columns. Off leaves the outline, when Line is on.',
+  line: 'Spectrum outline drawn over the columns.',
+  legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
+  guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
+  snapshot: 'Pauses playback and holds the FFT and EQ graphs where they are, so you can look at them. Play lets them move again.',
+} as const
 
 type Props = {
   /** EQ graph has no Before / After / Both bar, so the row lives with the other display settings. */
@@ -55,11 +76,12 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
 
   return (
     <div className={styles.displayRows}>
-      <ChoiceRow label="Grid">
+      <ChoiceRow label="Grid" hint={HINTS.grid}>
         {FREQ_GRID_DENSITIES.map((density) => (
           <Choice
             key={density}
             pressed={grid === density}
+            title={HINTS.grid}
             onClick={() => {
               setGrid(density)
               persistFreqGridDensity(density)
@@ -70,11 +92,12 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
         ))}
       </ChoiceRow>
       {showLayer ? (
-        <ChoiceRow label="Layer">
+        <ChoiceRow label="Layer" hint={HINTS.layer}>
           {LAYERS.map((layer) => (
             <Choice
               key={layer.id}
               pressed={prefs.layer === layer.id}
+              title={HINTS.layer}
               onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
             >
               {layer.label}
@@ -82,12 +105,12 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           ))}
         </ChoiceRow>
       ) : null}
-      <ChoiceRow label="Scale">
+      <ChoiceRow label="Scale" hint={HINTS.scale}>
         {FREQ_SCALE_OPTIONS.map((opt) => (
           <Choice
             key={opt.value}
             pressed={scale === opt.value}
-            title={opt.title}
+            title={opt.title || HINTS.scale}
             onClick={() => {
               setScale(opt.value)
               persistFreqScale(opt.value)
@@ -98,12 +121,12 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
         ))}
       </ChoiceRow>
       {showLayer ? (
-        <ChoiceRow label="Range">
+        <ChoiceRow label="Range" hint={HINTS.range}>
           {SPECTRUM_RANGE_CHOICES.map((db) => (
             <Choice
               key={db}
               pressed={prefs.range === db}
-              title={`${db} dB analyzer depth`}
+              title={HINTS.range}
               onClick={() => patch({ range: clampSpectrumRange(db) })}
             >
               {db}
@@ -113,7 +136,7 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
       ) : null}
       <OnOff
         label="Color"
-        title="Color the spectrum by frequency. Off uses one theme color."
+        hint={HINTS.color}
         on={prefs.regionColors || prefs.colorMode !== 'off'}
         onChange={(on) =>
           patch(
@@ -123,42 +146,100 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           )
         }
       />
-      <OnOff label="Nodes" title="Color EQ nodes by frequency" on={prefs.eqFreqColors} onChange={(eqFreqColors) => patch({ eqFreqColors })} />
-      <OnOff label="Regions" title="Color spectrum bands by region" on={prefs.regionColors} onChange={(regionColors) => patch({ regionColors })} />
-      <OnOff label="Bars" title="Draw the spectrum columns" on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
-      <OnOff label="Line" title="Draw the spectrum line" on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
-      <OnOff label="Legend" title="Show the spectrum legend" on={prefs.legendOpen} onChange={(legendOpen) => patch({ legendOpen })} />
+      <OnOff
+        label="Freq nodes"
+        hint={HINTS.nodes}
+        on={prefs.eqFreqColors}
+        onChange={(eqFreqColors) => patch({ eqFreqColors })}
+      />
+      <OnOff
+        label="Regions"
+        hint={HINTS.regions}
+        on={prefs.regionColors}
+        onChange={(regionColors) => patch({ regionColors })}
+      />
+      <OnOff label="Bars" hint={HINTS.bars} on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
+      <OnOff label="Line" hint={HINTS.line} on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
+      <OnOff
+        label="Legend"
+        hint={HINTS.legend}
+        on={prefs.legendOpen}
+        onChange={(legendOpen) => patch({ legendOpen })}
+      />
+      <GuidesRow />
+      <SnapshotRow />
     </div>
+  )
+}
+
+/** One-click hold, shared by the graph menu button and the settings row. */
+export function holdGraphSnapshot(on: boolean): void {
+  setGraphSnapshot(on)
+  if (on) engine.pause()
+}
+
+export function GuidesRow() {
+  const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
+  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
+  return (
+    <OnOff
+      label="Guides"
+      hint={HINTS.guides}
+      on={prefs.freqGuide}
+      onChange={(freqGuide) => patchSpectrumPrefs({ freqGuide })}
+    />
+  )
+}
+
+export function SnapshotRow() {
+  const [on, setOn] = useState(() => graphSnapshotFrozen())
+  useEffect(() => subscribeGraphSnapshot(setOn), [])
+  return (
+    <OnOff
+      label="Snapshot"
+      hint={HINTS.snapshot}
+      on={on}
+      onChange={(next) => {
+        setOn(next)
+        holdGraphSnapshot(next)
+      }}
+    />
   )
 }
 
 function OnOff({
   label,
-  title,
+  hint,
   on,
   onChange,
 }: {
   label: string
-  title: string
+  hint: string
   on: boolean
   onChange: (next: boolean) => void
 }) {
   return (
-    <ChoiceRow label={label}>
-      <Choice pressed={!on} title={title} onClick={() => onChange(false)}>
+    <ChoiceRow label={label} hint={hint}>
+      <Choice pressed={!on} title={hint} onClick={() => onChange(false)}>
         Off
       </Choice>
-      <Choice pressed={on} title={title} onClick={() => onChange(true)}>
+      <Choice pressed={on} title={hint} onClick={() => onChange(true)}>
         On
       </Choice>
     </ChoiceRow>
   )
 }
 
-function ChoiceRow({ label, children }: { label: string; children: ReactNode }) {
+function ChoiceRow({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
+  const tipId = useId()
   return (
     <div className={styles.displayRow} role="group" aria-label={label}>
-      <span className={styles.displayLabel}>{label}</span>
+      <span className={styles.displayLabel} tabIndex={0} aria-describedby={tipId}>
+        {label}
+        <span className={styles.displayHint} id={tipId} role="tooltip">
+          {hint}
+        </span>
+      </span>
       <div className={styles.displayChoices}>{children}</div>
     </div>
   )

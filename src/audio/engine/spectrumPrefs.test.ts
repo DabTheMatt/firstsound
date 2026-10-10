@@ -16,4 +16,8 @@ describe('spectrum paint color', () => {
   it('stays solid when color and regions are off', () => {
     expect(spectrumPaintColor({ colorMode: 'off', regionColors: false })).toBe('solid')
   })
+
+  it('leaves frequency landmarks off until the graph menu turns them on', () => {
+    expect(defaultSpectrumPrefs().freqGuide).toBe(false)
+  })
 })

@@ -57,6 +57,8 @@ export type SpectrumPrefs = {
   regionColors: boolean
   eqFreqColors: boolean
   legendOpen: boolean
+  /** Hover text for kick, voice, snare, air, and the other frequency landmarks. */
+  freqGuide: boolean
   showBars: boolean
   showLine: boolean
   follow: SpectrumFollowMode
@@ -85,6 +87,7 @@ const DEFAULT_PREFS: SpectrumPrefs = {
   regionColors: true,
   eqFreqColors: false,
   legendOpen: true,
+  freqGuide: false,
   showBars: true,
   showLine: true,
   follow: 'peak',
@@ -118,6 +121,7 @@ export function loadSpectrumPrefs(): SpectrumPrefs {
       regionColors: raw?.regionColors !== false,
       eqFreqColors: raw?.eqFreqColors === true,
       legendOpen: raw?.legendOpen !== false,
+      freqGuide: raw?.freqGuide === true,
       showBars: raw?.showBars !== false,
       showLine: raw?.showLine !== false,
       follow: clampSpectrumFollowMode(raw?.follow),
