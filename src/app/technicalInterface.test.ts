@@ -48,4 +48,16 @@ describe('technical interface preference', () => {
     expect(seen).toEqual(['workspace', 'classic'])
     stop()
   })
+
+  it('opens Workspace when only the previous Classic default is stored', () => {
+    const mem = new Map<string, string>([['field.technicalInterface', 'classic']])
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => mem.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        mem.set(key, value)
+      },
+    })
+    expect(TECHNICAL_INTERFACE_KEY).toBe('field.technicalUi')
+    expect(readStoredTechnicalInterface()).toBe('workspace')
+  })
 })
