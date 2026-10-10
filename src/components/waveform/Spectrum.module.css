@@ -79,8 +79,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 4px 8px;
-  padding: 2px 132px 4px 8px;
+  padding: 2px 96px 4px 8px;
   pointer-events: none;
+}
+
+.wrap:has([data-enter-focus='corner']) .chrome {
+  padding-left: 44px;
 }
 
 .viewAnchor {
@@ -536,6 +540,11 @@
   right: 6px;
   z-index: 6;
   pointer-events: none;
+}
+
+.compact:has([data-enter-focus='corner']) .chrome,
+.compact.analyzerOpen:has([data-enter-focus='corner']) .chrome {
+  left: 44px;
 }
 
 .compact .viewAnchor {

@@ -9,6 +9,7 @@ import {
 } from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
+import { SYMBOL_STRIP_HEIGHT, symbolBarRect, symbolGlyphBaseline, waveSymbolsVisible } from './waveSymbols'
 import styles from './HearingAccessLayer.module.css'
 
 type Props = {
@@ -35,11 +36,11 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
     const paint = () => {
       const canvas = ref.current
       if (!canvas) return
-      const show = settings.enabled && settings.showWaveSymbols && (settings.layers.dynamicsMap || settings.layers.events)
+      const show = waveSymbolsVisible(settings)
       canvas.hidden = !show
       if (!show) return
       const width = canvas.clientWidth || 300
-      const height = 18
+      const height = SYMBOL_STRIP_HEIGHT
       const ratio = Math.min(2, window.devicePixelRatio || 1)
       canvas.width = Math.floor(width * ratio)
       canvas.height = Math.floor(height * ratio)
@@ -49,10 +50,11 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
       ctx.clearRect(0, 0, width, height)
       const ink = getComputedStyle(canvas).color || '#fff'
       ctx.fillStyle = ink
-      ctx.font = '9px sans-serif'
+      ctx.font = '10px sans-serif'
       const span = Math.max(0.0001, viewEnd - viewStart)
       const hearing = getHearingView()
       const analysis = hearing.analysis
+      const glyphY = symbolGlyphBaseline()
       if (settings.layers.dynamicsMap && analysis) {
         analysis.dynamics.forEach((bucket) => {
           if (bucket.time < viewStart || bucket.time > viewEnd) return
@@ -60,9 +62,11 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
           const cell = width / Math.max(1, analysis.dynamics.length)
           ctx.globalAlpha = bucket.clip ? 0.95 : 0.4
           const level = bucket.peakDb === null ? 0 : Math.max(0, Math.min(1, (bucket.peakDb + 60) / 60))
-          ctx.fillRect(x, height - 3 - level * 12, Math.max(1, cell), 2 + level * 10)
-          if (bucket.clip) ctx.fillText('!', x, 8)
-          else if (bucket.transient) ctx.fillText('▲', x, 8)
+          const bar = symbolBarRect(level)
+          ctx.fillRect(x, bar.y, Math.max(1, cell), bar.height)
+          ctx.globalAlpha = 1
+          if (bucket.clip) ctx.fillText('!', x, glyphY)
+          else if (bucket.transient) ctx.fillText('▲', x, glyphY)
         })
       }
       if (settings.layers.events) {
@@ -70,13 +74,13 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
         for (const event of hearing.events) {
           if (event.time < viewStart || event.time > viewEnd) continue
           const x = ((event.time - viewStart) / span) * width
-          ctx.fillText(SHAPE[event.kind] ?? '•', x, 9)
+          ctx.fillText(SHAPE[event.kind] ?? '•', x, glyphY)
         }
       }
     }
     paint()
     return subscribeHearingView(paint)
-  }, [viewStart, viewEnd, settings.enabled, settings.showWaveSymbols, settings.layers.dynamicsMap, settings.layers.events])
+  }, [viewStart, viewEnd, settings])
 
   if (!settings.enabled) return null
 
@@ -89,11 +93,11 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: 'calc(22px + var(--wave-legend, 0px))',
-          height: 18,
+          bottom: 'calc(var(--wave-ruler, 22px) + var(--wave-legend, 0px))',
+          height: SYMBOL_STRIP_HEIGHT,
           width: '100%',
           pointerEvents: 'none',
-          zIndex: 4,
+          zIndex: 2,
           color: 'var(--text-primary)',
         }}
       />
@@ -177,7 +181,7 @@ export function HearingRevealMark({ viewStart, viewEnd }: Props) {
         style={{
           position: 'absolute',
           top: 8,
-          bottom: 28,
+          bottom: 'calc(var(--wave-ruler, 22px) + var(--wave-legend, 0px) + var(--wave-symbols, 0px))',
           left: `${left}%`,
           width: 1,
           background: 'var(--playhead)',
@@ -212,7 +216,7 @@ export function HearingRevealMark({ viewStart, viewEnd }: Props) {
       style={{
         position: 'absolute',
         top: 8,
-        bottom: 28,
+        bottom: 'calc(var(--wave-ruler, 22px) + var(--wave-legend, 0px) + var(--wave-symbols, 0px))',
         left: `${left}%`,
         width: `${width}%`,
         border: '1px solid var(--text-primary)',

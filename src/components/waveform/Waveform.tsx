@@ -47,6 +47,7 @@ import { Overview } from './Overview'
 import { Spectrum } from './Spectrum'
 import { HearingFocusStage } from '../../hearing/HearingFocusStage'
 import { HearingRevealMark, HearingWaveLegend, HearingWaveOverlay } from '../../hearing/HearingWaveOverlay'
+import { SYMBOL_STRIP_HEIGHT, waveSymbolsVisible } from '../../hearing/waveSymbols'
 import { useHearingSettings } from '../../hearing/useHearingSettings'
 import { LoudnessMeter } from '../../hearing/LoudnessMeter'
 import { bindWaveZoom, getHearingReveal, subscribeHearingReveal } from '../../hearing/reveal'
@@ -1325,6 +1326,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const hearingFocus = phoneFocus === 'hearing' || (calm && calmWorkspace === 'hearing')
   const { settings: hearingSettings } = useHearingSettings()
   const showWaveLegend = (hearingFocus || hearingSettings.enabled) && !sensory && !simple
+  const showWaveSymbols = waveSymbolsVisible(hearingSettings)
   const showWave = hearingFocus || phoneFocus === 'wave' || viz === 'waveform' || viz === 'split' || viz === 'automation'
   const automationView = viz === 'automation' && !sensory && !simple
   const automationLanes = automationView ? automatedLanes(snap.automation) : []
@@ -1425,7 +1427,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               </span>
             </div>
           ) : null}
-          <div className={`${styles.wavePane} ${showWaveLegend ? styles.waveLegendPane : ''} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}>
+          <div
+            className={`${styles.wavePane} ${showWaveLegend ? styles.waveLegendPane : ''} ${showWaveSymbols ? styles.waveSymbolPane : ''} ${mixDim && arrangement !== 'multi' && !sensory && !simple ? styles.waveDim : ''}`}
+            style={showWaveSymbols ? { ['--wave-symbols' as string]: `${SYMBOL_STRIP_HEIGHT}px` } : undefined}
+          >
             {sensory ? null : <VizBackground inset={simple ? 'fill' : 'plot'} />}
             {!automationView && !sensory && !simple && arrangement !== 'multi' && snap.tracks.filter(trackHasAudio).length > 1 ? (
               <div className={styles.trackTabs} role="tablist" aria-label={t.waveform.tracksAria}>
@@ -1740,6 +1745,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 </div>
               )}
             </div>
+            {onEnterFocus && !phoneFocus && !calm ? (
+              <EnterFocusButton
+                corner
+                label={automationView ? 'Automation' : 'Wave'}
+                onClick={() => onEnterFocus(automationView ? 'auto' : 'wave')}
+              />
+            ) : null}
             <div className={styles.ruler} hidden={sensory || simple}>
               {loaded
                 ? ticks.map((mark) => (
@@ -1766,13 +1778,6 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
               view={view}
               contentRev={contentRev}
               onScrub={setView}
-            />
-          ) : null}
-          {onEnterFocus && !phoneFocus && !calm ? (
-            <EnterFocusButton
-              corner
-              label={automationView ? 'Automation' : 'Wave'}
-              onClick={() => onEnterFocus(automationView ? 'auto' : 'wave')}
             />
           ) : null}
         </div>
