@@ -399,6 +399,8 @@ import {
   stretchLookahead,
   stretchSchedule,
 } from './stretch'
+import { auditionWindow } from './auditionHold'
+import { setGraphSnapshot } from './graphSnapshot'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
 export type EqModuleState = RackEqState
@@ -726,6 +728,8 @@ export class AudioEngine {
   private fileName = ''
   private playing = false
   private loop = true
+  /** Temporary fragment loop for Pause and hold. Null when the transport is normal. */
+  private audition: { start: number; end: number; resumeAt: number; loop: boolean } | null = null
   private engineMode: EngineMode = 'playback'
   private direction: PlaybackDirection = 'forward'
   private audioStatus: AudioStatus = 'idle'
@@ -1678,6 +1682,7 @@ export class AudioEngine {
 
   stop(): void {
     this.clearScrubRestart()
+    this.releaseAudition(false)
     this.stopVoices()
     this.playing = false
     this.lfoWallMs = 0
@@ -1738,6 +1743,44 @@ export class AudioEngine {
     this.playFullSample = true
     this.playOffset = 0
     this.params.position = applyParamValue(0, PARAMS.position)
+    void this.play()
+  }
+
+  /**
+   * Pause and hold. On: loop a short fragment around the playhead and leave
+   * the caller's graph freeze in place. Off: play forward from that place.
+   * The selection and the stored loop flag are put back.
+   */
+  holdAudition(on: boolean): void {
+    if (!on) {
+      this.releaseAudition(true)
+      return
+    }
+    if (this.audition) return
+    const duration = this.buffer?.duration ?? 0
+    const head = this.playing ? this.getPlayheadSeconds() : this.playOffset
+    const window = auditionWindow(head, duration)
+    if (!window) return
+    this.audition = {
+      start: window.start,
+      end: window.end,
+      resumeAt: window.resumeAt,
+      loop: this.loop,
+    }
+    this.loop = true
+    this.playFullSample = false
+    this.playOffset = window.start
+    void this.play()
+  }
+
+  private releaseAudition(resume: boolean): void {
+    const held = this.audition
+    if (!held) return
+    this.audition = null
+    this.loop = held.loop
+    setGraphSnapshot(false)
+    if (!resume) return
+    this.playOffset = held.resumeAt
     void this.play()
   }
 
@@ -5405,6 +5448,7 @@ export class AudioEngine {
 
   /** Selection, or the whole file when playing from the sample start. */
   private playbackRegion(duration: number) {
+    if (this.audition) return { start: this.audition.start, end: this.audition.end }
     if (this.playFullSample) return { start: 0, end: Math.max(duration, MIN_REGION) }
     return this.region(duration)
   }

@@ -1,7 +1,7 @@
 /**
  * Holds the FFT and EQ drawings where they are.
- * Playback pause is the caller's job: this flag only freezes the picture.
- * It is not stored. Play clears it.
+ * Pause and hold also loops a short sample fragment; this flag only freezes the picture.
+ * It is not stored. Pressing the button again, or Stop, clears it.
  */
 
 let frozen = false
