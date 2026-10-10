@@ -12,6 +12,8 @@ import {
   smoothTowardLinear,
   smoothTowardLog,
   speedSmoothTau,
+  audibleStretchTime,
+  containStretchTime,
   stretchLookahead,
   stretchSchedule,
   stretchSlew,
@@ -202,5 +204,47 @@ describe('hannCurve', () => {
   it('scales peak gain', () => {
     const curve = scaledHannCurve(0.4, 16)
     expect(Math.max(...curve)).toBeCloseTo(0.4)
+  })
+})
+
+describe('audibleStretchTime', () => {
+  const grain = (
+    startWhen: number,
+    origin: number,
+    grainSec = 0.08,
+    speed = 1,
+    dir = 1,
+  ) => ({ startWhen, grainSec, origin, speed, dir })
+
+  it('stays on the peaking grain when lookahead has already wrapped the loop', () => {
+    const now = 0.05
+    const grains = [
+      grain(0, 1.92),
+      grain(0.02, 1.94),
+      grain(0.04, 1.96),
+      grain(0.06, 0.0),
+      grain(0.08, 0.02),
+    ]
+    expect(audibleStretchTime(grains, now, 0)).toBeCloseTo(1.96)
+  })
+
+  it('ignores a grain that has started but has not peaked yet', () => {
+    const grains = [grain(0, 1.9), grain(0.02, 0.0)]
+    expect(audibleStretchTime(grains, 0.03, 9)).toBeCloseTo(1.93)
+  })
+
+  it('uses the earliest started grain before any window has peaked', () => {
+    const grains = [grain(0, 0.4), grain(0.02, 0.42), grain(0.08, 0.5)]
+    expect(audibleStretchTime(grains, 0.01, 9)).toBeCloseTo(0.41)
+  })
+
+  it('falls back when every grain is still in the future', () => {
+    expect(audibleStretchTime([grain(0.1, 0.2)], 0.0, 0.4)).toBeCloseTo(0.4)
+  })
+
+  it('contains a loop wrap without leaving the region', () => {
+    expect(containStretchTime(2.02, 0, 2, true, false)).toBeCloseTo(0.02)
+    expect(containStretchTime(1.96, 0, 2, true, false)).toBeCloseTo(1.96)
+    expect(containStretchTime(2.02, 0, 2, false, false)).toBeCloseTo(2)
   })
 })

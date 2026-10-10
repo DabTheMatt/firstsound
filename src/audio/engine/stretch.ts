@@ -286,3 +286,96 @@ export function stretchLookahead(hopSec: number): number {
   // several grains onto one sample.
   return Math.max(0.08, hopSec * 2.4)
 }
+
+/** One stretch grain already handed to the audio clock. */
+export type AudibleStretchGrain = {
+  /** AudioContext time when this grain starts. */
+  startWhen: number
+  grainSec: number
+  /** Source playhead at `startWhen`, before the hop advance. */
+  origin: number
+  /** Transport rate. Pitch lives inside the grain and does not move this. */
+  speed: number
+  /** +1 forward, −1 reverse. */
+  dir: number
+}
+
+/** Hann peak. The EQ follows this grain, not the one still in its attack. */
+export function stretchGrainPeakWhen(grain: AudibleStretchGrain): number {
+  return grain.startWhen + Math.max(0, grain.grainSec) * 0.5
+}
+
+function grainTravel(grain: AudibleStretchGrain, intoSec: number): number {
+  const into = Math.max(0, intoSec)
+  const speed = Math.max(0, grain.speed)
+  const dir = grain.dir < 0 ? -1 : 1
+  return grain.origin + into * speed * dir
+}
+
+/**
+ * Source time of the grain the output is actually playing.
+ * Lookahead schedules the next slice — including a loop wrap — before it
+ * is loud. Pause and the held playhead must stay on the peaking grain,
+ * which is the spectrum on the EQ, not that queued slice.
+ */
+export function audibleStretchTime(
+  grains: readonly AudibleStretchGrain[],
+  now: number,
+  fallback: number,
+): number {
+  let peaking: AudibleStretchGrain | null = null
+  let peakingAt = Number.NEGATIVE_INFINITY
+  for (const grain of grains) {
+    const peak = stretchGrainPeakWhen(grain)
+    if (peak > now + 1e-4) continue
+    if (peak < peakingAt) continue
+    peaking = grain
+    peakingAt = peak
+  }
+  if (peaking) return grainTravel(peaking, Math.max(0, peaking.grainSec) * 0.5)
+  let earliest: AudibleStretchGrain | null = null
+  let earliestAt = Number.POSITIVE_INFINITY
+  for (const grain of grains) {
+    if (grain.startWhen > now + 1e-4) continue
+    if (grain.startWhen >= earliestAt) continue
+    earliest = grain
+    earliestAt = grain.startWhen
+  }
+  if (!earliest) return fallback
+  return grainTravel(earliest, Math.max(0, now - earliest.startWhen))
+}
+
+/**
+ * Fold a source time into the playing region.
+ * Does not touch the scheduler direction — playhead reads must not flip it.
+ */
+export function containStretchTime(
+  time: number,
+  start: number,
+  end: number,
+  loop: boolean,
+  pingpong: boolean,
+): number {
+  const lo = Math.min(start, end)
+  const hi = Math.max(start, end)
+  const span = Math.max(hi - lo, 1e-6)
+  if (!Number.isFinite(time)) return lo
+  if (pingpong) {
+    let h = time
+    for (let i = 0; i < 8; i++) {
+      if (h > hi) h = hi - (h - hi)
+      else if (h < lo) h = lo + (lo - h)
+      else break
+    }
+    return Math.min(hi, Math.max(lo, h))
+  }
+  if (loop) {
+    if (time >= hi) return lo + ((time - lo) % span)
+    if (time < lo) {
+      const back = (lo - time) % span
+      return hi - (back === 0 ? span : back)
+    }
+    return time
+  }
+  return Math.min(hi, Math.max(lo, time))
+}

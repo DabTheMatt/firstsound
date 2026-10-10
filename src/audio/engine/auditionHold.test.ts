@@ -4,17 +4,18 @@ import { AudioEngine } from './AudioEngine'
 import { auditionWindow } from './auditionHold'
 
 describe('audition window', () => {
-  it('starts at the playhead and keeps a short fragment', () => {
+  it('ends at the playhead so the loop is the sound already on the EQ', () => {
     const window = auditionWindow(3, 10)
-    expect(window).toEqual({ start: 3, end: 4.25, resumeAt: 3 })
+    expect(window).toEqual({ start: 1.75, end: 3, resumeAt: 2.98 })
   })
 
-  it('slides back at the end of the sample and still resumes inside the fragment', () => {
+  it('stays on the sounded fragment at the end of the sample', () => {
     const window = auditionWindow(9.9, 10)
-    expect(window?.start).toBeCloseTo(8.75)
-    expect(window?.end).toBeCloseTo(10)
+    expect(window?.start).toBeCloseTo(8.65)
+    expect(window?.end).toBeCloseTo(9.9)
     expect(window?.resumeAt).toBeGreaterThan(window!.start)
-    expect(window?.resumeAt).toBeLessThan(window!.end)
+    expect(window?.resumeAt).toBeLessThanOrEqual(window!.end)
+    expect(window?.end).toBeLessThan(10)
   })
 
   it('uses the whole sample when it is shorter than the fragment', () => {
@@ -40,7 +41,7 @@ describe('pause and hold', () => {
     engine.setLoop(false)
     const start = engine.getSnapshot().params.start
     engine.holdAudition(true)
-    expect(engine.getPlayheadSeconds()).toBeCloseTo(3, 1)
+    expect(engine.getPlayheadSeconds()).toBeCloseTo(1.75, 1)
     expect(engine.getSnapshot().loop).toBe(true)
     expect(engine.getSnapshot().params.start).toBe(start)
     engine.holdAudition(false)
