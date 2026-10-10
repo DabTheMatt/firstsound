@@ -5,9 +5,11 @@ export const AUDITION_SPAN_SEC = 1.25
 export const AUDITION_MIN_SEC = 0.28
 
 /**
- * A short window that contains `playheadSec`.
- * Near the end of the sample the window slides back so the fragment still has length.
- * The playhead stays inside the window.
+ * A short window of what has already reached the playhead.
+ * The frozen EQ shows that moment, so the loop ends there instead of
+ * playing the slice that has not appeared yet.
+ * Near the start of the sample the window slides forward only far enough
+ * to stay a fragment. The playhead stays inside the window.
  */
 export function auditionWindow(
   playheadSec: number,
@@ -17,10 +19,10 @@ export function auditionWindow(
   if (!(durationSec > 0) || !Number.isFinite(durationSec) || !Number.isFinite(playheadSec)) return null
   const span = Math.min(durationSec, Math.max(AUDITION_MIN_SEC, spanSec))
   const head = Math.min(durationSec, Math.max(0, playheadSec))
-  let start = head
-  let end = Math.min(durationSec, start + span)
-  if (end - start < span - 1e-4) start = Math.max(0, end - span)
+  let end = head
+  let start = Math.max(0, end - span)
+  if (end - start < span - 1e-4) end = Math.min(durationSec, start + span)
   if (!(end > start + 1e-3)) return null
-  const resumeAt = Math.min(end - 0.02, Math.max(start, head))
+  const resumeAt = Math.min(Math.max(start, end - 0.02), Math.max(start, head))
   return { start, end, resumeAt }
 }

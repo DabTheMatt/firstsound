@@ -395,9 +395,13 @@ import {
 } from './resample'
 import {
   advanceStretchControl,
+  audibleStretchTime,
+  containStretchTime,
   smoothTowardLogDt,
+  stretchGrainPeakWhen,
   stretchLookahead,
   stretchSchedule,
+  type AudibleStretchGrain,
 } from './stretch'
 import { auditionWindow } from './auditionHold'
 import { setGraphSnapshot } from './graphSnapshot'
@@ -573,6 +577,18 @@ type ActiveVoice = {
   span: number
   duration: number
   pingPong: boolean
+}
+
+type LeadStretchGrain = AudibleStretchGrain & {
+  src: AudioBufferSourceNode
+  gain: GainNode
+}
+
+type CloudGrain = {
+  src: AudioBufferSourceNode
+  gain: GainNode
+  startWhen: number
+  dur: number
 }
 
 type Slot = ChainSlot
@@ -784,6 +800,10 @@ export class AudioEngine {
   private nextGrainTime = 0
   private schedulerId = 0
   private stretchHead = 0
+  /** Lead stretch grains. The scheduler head runs ahead of these. */
+  private leadStretchGrains: LeadStretchGrain[] = []
+  /** Granular-cloud grains. Future ones are not the sound on the EQ. */
+  private cloudGrains: CloudGrain[] = []
   private stretchDir = 1
   private stretchSpeed = 1
   private stretchPitch = 0
@@ -1466,9 +1486,11 @@ export class AudioEngine {
       const p = clamp(this.params.position / 100 + this.motionOffset(this.ctx.currentTime) * 0.5, 0, 1)
       return start + p * (end - start)
     }
-    // Stretch scheduler owns the head — don't reconstruct from wall clock.
+    // The stretch scheduler queues the next slice, including a loop wrap.
+    // The playhead stays on the grain that is already loud — the one the EQ shows.
     if (this.schedulerId && this.engineMode === 'playback') {
-      return clamp(this.stretchHead, start, end)
+      const heard = audibleStretchTime(this.leadStretchGrains, this.ctx.currentTime, this.stretchHead)
+      return containStretchTime(heard, start, end, this.loop, this.direction === 'pingpong')
     }
     const tempo = Math.max(0.01, speed)
     const elapsed = (this.ctx.currentTime - this.playCtxTime) * tempo
@@ -1747,8 +1769,9 @@ export class AudioEngine {
   }
 
   /**
-   * Pause and hold. On: loop a short fragment around the playhead and leave
-   * the caller's graph freeze in place. Off: play forward from that place.
+   * Pause and hold. On: loop the fragment that has already reached the
+   * playhead — the sound on the frozen EQ — and leave the graph freeze in
+   * place. Off: play forward from that place.
    * The selection and the stored loop flag are put back.
    */
   holdAudition(on: boolean): void {
@@ -7084,6 +7107,7 @@ export class AudioEngine {
     if (!this.ctx) return
     const live = this.liveParams()
     this.nextGrainTime = this.ctx.currentTime
+    this.leadStretchGrains = []
     this.stretchHead = this.playOffset
     this.stretchDir = this.direction === 'reverse' ? -1 : 1
     const speed = Math.max(PARAMS.speed.min, seed?.speed ?? live.speed)
@@ -7143,6 +7167,7 @@ export class AudioEngine {
       live.pitch,
     )
     const horizon = ctx.currentTime + stretchLookahead(horizonBase.hopSec)
+    this.retireLeadStretch(ctx.currentTime)
     const { start, end } = this.playbackRegion(duration)
     const span = Math.max(end - start, MIN_REGION)
     const reverse = this.direction === 'reverse'
@@ -7225,11 +7250,103 @@ export class AudioEngine {
       src.buffer = grainBuf
       const lead = this.leadInput()
       if (!lead) return
-      src.connect(lead)
-      src.start(t, 0, grainDur)
-      src.stop(t + grainDur + 0.02)
+      const gain = ctx.createGain()
+      gain.gain.value = 1
+      src.connect(gain)
+      gain.connect(lead)
+      const origin = this.stretchHead
+      const dir = this.stretchDir < 0 ? -1 : 1
+      try {
+        src.start(t, 0, grainDur)
+        src.stop(t + grainDur + 0.02)
+      } catch {
+        try {
+          src.disconnect()
+        } catch {
+          /* start rejected */
+        }
+        try {
+          gain.disconnect()
+        } catch {
+          /* start rejected */
+        }
+        return
+      }
+      this.leadStretchGrains.push({
+        src,
+        gain,
+        startWhen: t,
+        grainSec: grainDur,
+        origin,
+        speed: step.hopSec > 0 ? step.sourceAdvance / step.hopSec : Math.max(step.speed, PARAMS.speed.min),
+        dir,
+      })
       this.stretchHead += step.sourceAdvance * this.stretchDir
       this.nextGrainTime += step.hopSec
+    }
+  }
+
+  private retireLeadStretch(now: number): void {
+    const live: LeadStretchGrain[] = []
+    for (const grain of this.leadStretchGrains) {
+      if (grain.startWhen + grain.grainSec + 0.03 >= now) {
+        live.push(grain)
+        continue
+      }
+      try {
+        grain.src.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+      try {
+        grain.gain.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+    this.leadStretchGrains = live
+  }
+
+  /** Drop grains that have not peaked. Fade the one the EQ is showing. */
+  private stopLeadStretch(fadeSec: number): void {
+    const now = this.ctx?.currentTime ?? 0
+    const grains = this.leadStretchGrains.splice(0, this.leadStretchGrains.length)
+    const fade = fadeSec > 0.0005 ? fadeSec : this.ctx ? antiClickSeconds(this.ctx.sampleRate, 1) : 0
+    for (const grain of grains) {
+      const peaked = grain.startWhen <= now + 0.0005 && stretchGrainPeakWhen(grain) <= now + 0.0005
+      if (!this.ctx || !peaked || fade <= 0) {
+        this.disconnectLeadStretch(grain, true)
+        continue
+      }
+      try {
+        rampGainLinear(grain.gain.gain, 0, now, fade)
+        grain.src.stop(now + fade)
+      } catch {
+        this.disconnectLeadStretch(grain, true)
+        continue
+      }
+      const pending = grain
+      hostSetTimeout(() => this.disconnectLeadStretch(pending, false), fade * 1000 + 40)
+    }
+  }
+
+  private disconnectLeadStretch(grain: LeadStretchGrain, stop: boolean): void {
+    if (stop) {
+      try {
+        grain.src.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
+    try {
+      grain.src.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    try {
+      grain.gain.disconnect()
+    } catch {
+      /* already disconnected */
     }
   }
 
@@ -7257,6 +7374,7 @@ export class AudioEngine {
     this.advanceMotion()
 
     if (this.nextGrainTime < ctx.currentTime) this.nextGrainTime = ctx.currentTime
+    this.retireCloudGrains(ctx.currentTime)
 
     while (this.nextGrainTime < horizon) {
       const t = this.nextGrainTime
@@ -7313,7 +7431,78 @@ export class AudioEngine {
         src.start(t, grainOffset, dur)
       }
       src.stop(t + dur + 0.02)
+      this.cloudGrains.push({ src, gain, startWhen: t, dur })
       this.nextGrainTime += interval
+    }
+  }
+
+  private retireCloudGrains(now: number): void {
+    const live: CloudGrain[] = []
+    for (const grain of this.cloudGrains) {
+      if (grain.startWhen + grain.dur + 0.03 >= now) {
+        live.push(grain)
+        continue
+      }
+      try {
+        grain.src.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+      try {
+        grain.gain.disconnect()
+      } catch {
+        /* already disconnected */
+      }
+    }
+    this.cloudGrains = live
+  }
+
+  private stopCloudGrains(fadeSec: number): void {
+    const now = this.ctx?.currentTime ?? 0
+    const grains = this.cloudGrains.splice(0, this.cloudGrains.length)
+    const fade = fadeSec > 0.0005 ? fadeSec : this.ctx ? antiClickSeconds(this.ctx.sampleRate, 1) : 0
+    for (const grain of grains) {
+      const sounding = grain.startWhen <= now + 0.0005
+      if (!this.ctx || !sounding || fade <= 0) {
+        try {
+          grain.src.stop()
+        } catch {
+          /* already stopped */
+        }
+        try {
+          grain.src.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        try {
+          grain.gain.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        continue
+      }
+      try {
+        rampGainLinear(grain.gain.gain, 0, now, fade)
+        grain.src.stop(now + fade)
+      } catch {
+        try {
+          grain.src.stop()
+        } catch {
+          /* already stopped */
+        }
+      }
+      hostSetTimeout(() => {
+        try {
+          grain.src.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+        try {
+          grain.gain.disconnect()
+        } catch {
+          /* already disconnected */
+        }
+      }, fade * 1000 + 40)
     }
   }
 
@@ -7330,6 +7519,8 @@ export class AudioEngine {
     this.loopScheduling = false
     this.loopOverlapSec = 0
     this.usingProjectTransport = false
+    this.stopLeadStretch(fadeSec)
+    this.stopCloudGrains(fadeSec)
     this.releaseVoices(Boolean(this.ctx), fadeSec)
     this.stopCompanionVoices()
     this.stopProjectVoices(fadeSec)
