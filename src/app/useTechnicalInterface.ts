@@ -10,7 +10,7 @@ export function useTechnicalInterface(): readonly [TechnicalInterface, (next: Te
   const value = useSyncExternalStore(
     subscribeTechnicalInterface,
     readStoredTechnicalInterface,
-    () => 'classic' as const,
+    () => 'workspace' as const,
   )
   const setValue = useCallback((next: TechnicalInterface) => {
     persistTechnicalInterface(next)

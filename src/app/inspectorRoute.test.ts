@@ -8,6 +8,7 @@ import {
   inspectorPanel,
   routeCollapse,
   routeModule,
+  routeEqView,
   routeReveal,
   routeTrackClick,
   routeTrackEdit,
@@ -127,6 +128,33 @@ describe('inspector routing', () => {
       instanceId: 'gain-1',
       type: 'gain',
     })
+  })
+
+  it('restores the inspector that was open before EQ when Wave is chosen', () => {
+    const opened = routeEqView('eq-split', 'waveform', delay, null, 'eq-1')
+    expect(opened.viz).toBe('eq-split')
+    expect(opened.focus).toEqual(eq)
+    expect(opened.hold).toEqual({ focus: delay, eqId: 'eq-1' })
+
+    const wave = routeEqView('waveform', 'eq-split', opened.focus, opened.hold, 'eq-1')
+    expect(wave.viz).toBe('waveform')
+    expect(wave.focus).toEqual(delay)
+    expect(wave.hold).toBeNull()
+  })
+
+  it('keeps an equalizer the user already had open when leaving EQ for Wave', () => {
+    const opened = routeEqView('eq-split', 'waveform', eq, null, 'eq-1')
+    expect(opened.focus).toEqual(eq)
+    expect(opened.hold).toBeNull()
+    const wave = routeEqView('waveform', 'eq-split', opened.focus, opened.hold, 'eq-1')
+    expect(wave.focus).toEqual(eq)
+  })
+
+  it('keeps an effect chosen while the EQ picture is open', () => {
+    const opened = routeEqView('eq-split', 'waveform', delay, null, 'eq-1')
+    const wave = routeEqView('waveform', 'eq-split', filter, opened.hold, 'eq-1')
+    expect(wave.focus).toEqual(filter)
+    expect(wave.hold).toBeNull()
   })
 
   it('routes EDIT to the wave editor for the clicked track', () => {
