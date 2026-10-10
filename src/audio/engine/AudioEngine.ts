@@ -744,7 +744,7 @@ export class AudioEngine {
   private fileName = ''
   private playing = false
   private loop = true
-  /** Temporary fragment loop for Pause and hold. Null when the transport is normal. */
+  /** Temporary fragment loop for Hold. Null when the transport is normal. */
   private audition: { start: number; end: number; resumeAt: number; loop: boolean } | null = null
   private engineMode: EngineMode = 'playback'
   private direction: PlaybackDirection = 'forward'
@@ -1769,9 +1769,8 @@ export class AudioEngine {
   }
 
   /**
-   * Pause and hold. On: loop the fragment that has already reached the
-   * playhead — the sound on the frozen EQ — and leave the graph freeze in
-   * place. Off: play forward from that place.
+   * Hold. On: loop the fragment that has already reached the playhead.
+   * The FFT and EQ graphs keep drawing that loop. Off: play forward from that place.
    * The selection and the stored loop flag are put back.
    */
   holdAudition(on: boolean): void {

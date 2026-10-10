@@ -110,9 +110,10 @@
 }
 
 .file {
-  min-width: 0;
-  flex: 1 1 0;
-  width: 0;
+  width: 11rem;
+  min-width: 11rem;
+  max-width: 11rem;
+  flex: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

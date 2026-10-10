@@ -1,4 +1,4 @@
-/** How long Pause and hold repeats, so the frozen graph stays audible. */
+/** How long Hold repeats, so the looping fragment stays audible on the graph. */
 export const AUDITION_SPAN_SEC = 1.25
 
 /** Shorter than this and the loop is a click, not a fragment you can hear. */
@@ -6,7 +6,7 @@ export const AUDITION_MIN_SEC = 0.28
 
 /**
  * A short window of what has already reached the playhead.
- * The frozen EQ shows that moment, so the loop ends there instead of
+ * The graph is drawing that moment, so the loop ends there instead of
  * playing the slice that has not appeared yet.
  * Near the start of the sample the window slides forward only far enough
  * to stay a fragment. The playhead stays inside the window.

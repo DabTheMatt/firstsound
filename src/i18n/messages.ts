@@ -294,6 +294,9 @@ export type Messages = {
     fadeOut: string
     autoFade: string
     autoFadeTitle: string
+    hold: string
+    holdOn: string
+    holdOff: string
     regionStart: string
     regionEnd: string
     tracksAria: string
@@ -1057,6 +1060,9 @@ export const EN: Messages = {
     fadeOut: 'Fade out',
     autoFade: 'Auto',
     autoFadeTitle: 'Auto fade — 10 ms fade-in and fade-out',
+    hold: 'Hold',
+    holdOn: 'Hold is looping this fragment. The FFT and EQ graph follows the loop. Press to play on.',
+    holdOff: 'Loop the fragment at the playhead. The FFT and EQ graph follows that loop.',
     regionStart: 'Region start',
     regionEnd: 'Region end',
     tracksAria: 'Tracks',
@@ -1924,6 +1930,9 @@ export const PL: Messages = {
     fadeOut: 'Fade out',
     autoFade: 'Auto',
     autoFadeTitle: 'Auto fade — 10 ms fade-in and fade-out',
+    hold: 'Hold',
+    holdOn: 'Hold zapętla ten fragment. Wykres FFT i EQ podąża za pętlą. Naciśnij, aby grać dalej.',
+    holdOff: 'Zapętla fragment przy głowicy. Wykres FFT i EQ podąża za tą pętlą.',
     regionStart: 'Początek regionu',
     regionEnd: 'Koniec regionu',
     tracksAria: 'Ślady',

@@ -1494,10 +1494,6 @@ export default function App() {
               onWorkspace={activateWorkspace}
               contextClosed={contextLevel === 'closed' && !eqStrips}
               onOpenContext={() => setContextLevel('compact')}
-              onEnterFocus={() => {
-                if (workspaceId === 'hearing') enterHearingFocus()
-                else enterNamedFocus(workspaceId === 'eq' ? 'eq' : workspaceId === 'fft' ? 'fft' : workspaceId === 'auto' ? 'auto' : 'wave')
-              }}
               guideLabel={guideChrome(locale).guideMe}
               onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
             />
@@ -1516,9 +1512,6 @@ export default function App() {
                   { id: 'delete', label: t.waveform.deleteSelectionCaption, disabled: !snap.canDeleteSelection, danger: true, onClick: deleteSelection },
                   { id: 'fade-in', label: t.waveform.fadeIn, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('in') },
                   { id: 'fade-out', label: t.waveform.fadeOut, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('out') },
-                ]}
-                more={[
-                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
                   { id: 'trim', label: t.waveform.trim, disabled: !snap.sampleLoaded, onClick: () => {
                     void engine.trimPlayRegion().then((ok) => {
                       if (!ok) return
@@ -1527,6 +1520,9 @@ export default function App() {
                       commit()
                     })
                   } },
+                ]}
+                more={[
+                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
                   { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
                   { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
                   { id: 'undo', label: t.waveform.undo, disabled: history.past.length === 0, onClick: () => applyHistory(undoHistory(history)) },
@@ -1586,7 +1582,6 @@ export default function App() {
           }}
           autoFade={edit.fadeAuto && edit.fadeIn === 0.01 && edit.fadeOut === 0.01}
           minimal={isPhoneLayout}
-          onToggleWorkspace={enterFocus}
           hearingFocus={activeFocus === 'hearing'}
           onHearingFocus={enterHearingFocus}
           arrangement={arrangement}
@@ -1721,6 +1716,8 @@ export default function App() {
               onSelectTrack={followTrack}
               onEditTrack={(trackId) => followTrack(trackId, 'edit')}
               onEnterFocus={enterNamedFocus}
+              onExitFocus={() => setFocusWorkspace(null)}
+              onEnterHearing={enterHearingFocus}
               calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
               eqStrips={eqStrips}
               onShowEqInspector={

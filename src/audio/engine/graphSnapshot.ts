@@ -1,6 +1,6 @@
 /**
- * Holds the FFT and EQ drawings where they are.
- * Pause and hold also loops a short sample fragment; this flag only freezes the picture.
+ * Hold is on. The button loops a short sample fragment, and the FFT and EQ
+ * graphs keep drawing that loop. This flag only remembers the button.
  * It is not stored. Pressing the button again, or Stop, clears it.
  */
 

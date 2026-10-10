@@ -1,6 +1,4 @@
-import type { FocusWorkspace } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
-import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { TECHNICAL_WORKSPACES, type TechnicalWorkspaceId } from './workspaces'
 import styles from './Workspace.module.css'
 
@@ -9,7 +7,6 @@ type Props = {
   onWorkspace: (id: TechnicalWorkspaceId) => void
   contextClosed: boolean
   onOpenContext: () => void
-  onEnterFocus: () => void
   guideLabel?: string
   onOpenGuide?: () => void
 }
@@ -27,7 +24,6 @@ export function WorkspaceTabs({
   onWorkspace,
   contextClosed,
   onOpenContext,
-  onEnterFocus,
   guideLabel,
   onOpenGuide,
 }: Props) {
@@ -60,7 +56,6 @@ export function WorkspaceTabs({
           {t.workspace.context}
         </button>
       ) : null}
-      <EnterFocusButton label={t.focus[LABEL[workspace as FocusWorkspace]]} accessibleName={t.focus.enter} onClick={onEnterFocus} />
     </div>
   )
 }
