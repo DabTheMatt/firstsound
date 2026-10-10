@@ -40,17 +40,6 @@
   max-height: calc(100vh - 80px);
 }
 
-.focusChip {
-  max-width: min(420px, calc(100vw - 24px));
-  margin: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-panel);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
 .launcher,
 .panel,
 .sheet,

@@ -19,10 +19,12 @@ type Props = {
   onFit: () => void
   primary: Action[]
   more: Action[]
+  /** Puts ••• under the focus icon instead of on the button row. */
+  pinMore?: boolean
 }
 
 /** Selection-aware edit commands. Shortcuts stay on the existing key handlers. */
-export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onFit, primary, more }: Props) {
+export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onFit, primary, more, pinMore = false }: Props) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const menuId = useId()
@@ -51,7 +53,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
   }, [open])
 
   return (
-    <div className={styles.editBar} ref={rootRef} data-selection-toolbar={selected ? 'selection' : 'wave'}>
+    <div className={`${styles.editBar} ${pinMore ? styles.editBarPin : ''}`} ref={rootRef} data-selection-toolbar={selected ? 'selection' : 'wave'}>
       <button type="button" className={styles.textButton} onClick={onZoomOut} aria-label={t.waveform.zoomOut}>
         −
       </button>
@@ -76,6 +78,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
             </button>
           ))
         : null}
+      <div className={pinMore ? styles.cornerMore : undefined} data-corner-more={pinMore ? '' : undefined}>
       <button
         type="button"
         className={styles.textButton}
@@ -106,6 +109,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
           ))}
         </div>
       ) : null}
+      </div>
     </div>
   )
 }

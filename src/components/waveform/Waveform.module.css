@@ -7,6 +7,20 @@
   min-height: 0;
 }
 
+.editor > [data-selection-toolbar] {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.editor > [data-selection-toolbar] button,
+.editor > [data-selection-toolbar] [data-corner-more] {
+  pointer-events: auto;
+}
+
 .editor:has([data-enter-focus='corner-right']) .trackTabs {
   right: 44px;
 }
@@ -914,13 +928,18 @@
 }
 
 .autoBar {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  left: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  flex: none;
   min-height: 28px;
-  padding: 2px 8px 4px;
+  padding: 2px 44px 4px 8px;
+  pointer-events: none;
 }
 
 .autoTrack {

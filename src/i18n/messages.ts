@@ -1634,7 +1634,7 @@ export const EN: Messages = {
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
     shortcutsHelp:
-      'When on, Space plays or pauses, including when a button outside a dialog has focus. Space still types in text fields and still toggles checkboxes and radios. Open dialogs keep Space for their own controls. Tab is never captured.',
+      'When on, Space plays or pauses, including when a button outside a dialog has focus. Space still types in text fields and still toggles checkboxes, radios, and switches. Open dialogs keep Space for their own controls. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -1642,7 +1642,8 @@ export const EN: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maximum',
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
-    shortcutSpace: 'Space: play or pause, except while typing, on a checkbox or radio, or inside a dialog',
+    shortcutSpace:
+      'Space: play or pause, except while typing, on a checkbox, radio, or switch, or inside a dialog. While Hold is on, Space clears Hold.',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
   },
@@ -2533,7 +2534,8 @@ export const PL: Messages = {
     shortcutHomeEnd: 'Home / End: minimum / maksimum',
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
-    shortcutSpace: 'Spacja: odtwarzanie lub pauza, poza pisaniem, polem wyboru i otwartym oknem dialogowym',
+    shortcutSpace:
+      'Spacja: odtwarzanie lub pauza, poza pisaniem, polem wyboru, przełącznikiem i otwartym oknem dialogowym. Gdy Hold jest włączony, spacja kasuje Hold.',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
   },

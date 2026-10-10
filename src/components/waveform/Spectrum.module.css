@@ -433,16 +433,24 @@
 
 .focusDock {
   position: absolute;
-  z-index: 5;
+  z-index: 6;
   top: 6px;
   right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.focusDock > * {
   pointer-events: auto;
 }
 
 .graphMenu {
   position: absolute;
   z-index: 5;
-  top: 6px;
+  top: 40px;
   right: 8px;
   display: flex;
   flex-direction: column;
@@ -471,9 +479,13 @@
   line-height: 1;
 }
 
-.graphMenuButton:focus,
-.graphMenuButton:focus-visible {
+.graphMenuButton:focus {
   outline: none;
+}
+
+.graphMenuButton:focus-visible {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .holdButton {
@@ -522,9 +534,13 @@
   font-size: 10px;
 }
 
-.graphMenuRow button:focus,
-.graphMenuRow button:focus-visible {
+.graphMenuRow button:focus {
   outline: none;
+}
+
+.graphMenuRow button:focus-visible {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .graphMenuRow button[aria-pressed='true'] {
@@ -632,10 +648,6 @@
   letter-spacing: 0.04em;
 }
 
-.eqFocus .graphMenu,
-.eqFocus .focusDock {
-  top: 52px;
-}
 
 .wrap:not(.phoneEq):not(.eqFocus) .focusReadout {
   top: auto;

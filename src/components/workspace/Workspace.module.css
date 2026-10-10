@@ -110,8 +110,8 @@
 .tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-height: var(--control-standard, 32px);
+  gap: 2px;
+  min-height: 28px;
   min-width: 0;
 }
 
@@ -208,6 +208,21 @@
   min-width: 0;
   flex-wrap: nowrap;
   overflow: visible;
+}
+
+.editBarPin {
+  padding-right: 40px;
+}
+
+.cornerMore {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  z-index: 6;
+}
+
+.cornerMenu {
+  position: relative;
 }
 
 .zoom {

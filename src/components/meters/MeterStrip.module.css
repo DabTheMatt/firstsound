@@ -18,8 +18,24 @@
   padding-left: 28px;
 }
 
+.withWords {
+  overflow: visible;
+}
+
 .withWords .clipRow {
-  padding-left: 44px;
+  padding-left: 28px;
+}
+
+.withWords .body {
+  position: relative;
+}
+
+.withWords .wordCol {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -16px;
+  z-index: 2;
 }
 
 .wordCol {

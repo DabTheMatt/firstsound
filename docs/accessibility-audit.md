@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-10
 
-Tested application version: 0.21.2
+Tested application version: 0.21.3
 
 This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim. Automated checks cannot prove WCAG 2.2 Level AA.
 
@@ -53,7 +53,7 @@ Browser zoom at 200% and reflow under OS text-spacing overrides were not execute
 
 No rule was disabled. No blanket exclusion was added for canvas, SVG, or a workspace.
 
-## Findings fixed in 0.21.2
+## Findings fixed in 0.21.3
 
 | ID | Severity | WCAG | Component | What changed |
 | --- | --- | --- | --- | --- |
@@ -69,6 +69,7 @@ No rule was disabled. No blanket exclusion was added for canvas, SVG, or a works
 | F10 | MEDIUM | 2.4.3 | Dialogs and Guided Tasks | Settings, Manual, and Export move focus in and return it to the trigger. Escape minimizes Guided Tasks even after Show me where moves attention. Focus is not moved on every tutorial step. |
 | F11 | MEDIUM | 2.2.2, 2.3.1 | Reduced motion | The FIELD switch and `prefers-reduced-motion` both reduce decorative motion, including Sensory scenes and spectral camera glide. Meters, waveform, and spectrum still draw. Audio processing is unchanged. |
 | F12 | LOW | 1.4.3 | Light themes | `color-scheme` follows the theme (Warm Paper, Manga, Light Studio) instead of forcing dark. |
+| F13 | HIGH | 2.5.8, 2.4.7 | EQ Focus transport | Play sat under the corner Exit Focus control (visible hit about 36×6). Transport in EQ Focus is inset so the corner control and the Hold / graph menu keep that corner. Graph menu buttons use the shared focus outline again. |
 
 Reproduction for F1 before the fix: open Technical on Studio Dark and run axe. Inactive tabs and knob labels reported `#737570` on `#151616` at 3.89:1.
 
