@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { effectiveReducedMotion } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
+import { FftPrimaryBar } from '../workspace/FftPrimaryBar'
 import { eqColorIndex, moduleLabel } from '../../audio/chain/chain'
 import { combAsEqBands } from '../../audio/engine/comb'
 import {
@@ -1301,6 +1302,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     ) : onEnterFocus ? (
       <EnterFocusButton label={focusLabel} accessibleName={t.focus.enter} onClick={onEnterFocus} />
     ) : null
+  const showGraphTools = !spatial && !hideGraphMenu
+  const showFftMenu = hideGraphMenu && !compact && !phoneEq
   return (
     <div
       className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${phoneFocus ? styles.eqFocus : ''} ${analyzerOpen && !phoneEq && !phoneFocus ? styles.analyzerOpen : ''}`}
@@ -1311,7 +1314,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {focusControl && (spatial || hideGraphMenu) ? <div className={styles.focusDock}>{focusControl}</div> : null}
+      {focusControl || showFftMenu ? (
+        <div className={styles.focusDock}>
+          {focusControl}
+          {showFftMenu ? <FftPrimaryBar /> : null}
+        </div>
+      ) : null}
       {suppressAnalyzerChrome ? null : (
       <div
         className={styles.chrome}
@@ -1948,10 +1956,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {hover.label}
           </div>
         ) : null}
-        {spatial || hideGraphMenu ? null : (
+        {showGraphTools ? (
         <div className={styles.graphMenu} ref={graphMenuRef}>
           <div className={styles.graphMenuBar}>
-            {focusControl}
             <button
               type="button"
               className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
@@ -2025,7 +2032,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             </div>
           ) : null}
         </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

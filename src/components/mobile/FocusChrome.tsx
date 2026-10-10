@@ -135,7 +135,7 @@ export function FocusChrome({
           {workspace === 'wave' ? <WaveTools edit={edit} /> : null}
         </div>
         <div className={styles.actions} data-focus-zone="actions">
-          {workspace === 'fft' ? <FftFocusTools /> : null}
+          {workspace === 'fft' && touch ? <FftFocusTools /> : null}
           <button
             type="button"
             className={styles.hit}

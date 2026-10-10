@@ -17,10 +17,10 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: 'identity workspace actions';
   align-items: start;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
-  padding: 2px max(4px, env(safe-area-inset-right, 0px)) 4px max(4px, env(safe-area-inset-left, 0px));
+  padding: 0 max(4px, env(safe-area-inset-right, 0px)) 0 max(4px, env(safe-area-inset-left, 0px));
   pointer-events: none;
 }
 

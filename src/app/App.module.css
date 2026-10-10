@@ -48,10 +48,10 @@
   width: 100%;
   min-height: 0;
   background: var(--bg-app);
-  padding: 4px 10px 6px;
+  padding: 2px 8px 4px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   overflow: hidden;
   position: relative;
 }
@@ -73,7 +73,7 @@
 .chrome {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
   flex: none;
   min-width: 0;
   padding-bottom: 0;
@@ -85,10 +85,10 @@
   display: grid;
   grid-template-columns: 180px auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px 10px;
+  gap: 6px 8px;
   min-width: 0;
-  min-height: 44px;
-  padding: 4px;
+  min-height: 34px;
+  padding: 0 6px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-panel);
@@ -1214,7 +1214,7 @@
   --ws-bar-track: 0.08em;
   --ws-bar-hover: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --ws-bar-on: color-mix(in srgb, var(--text-primary) 16%, transparent);
-  gap: 8px;
+  gap: 4px;
   background: var(--surface-app);
 }
 
@@ -1222,10 +1222,6 @@
   --meter-col: 64px;
   --inspector-col: 360px;
   --editor-grid: minmax(0, 1fr) minmax(300px, 360px) var(--meter-col);
-}
-
-.shell[data-technical-ui='workspace'][data-meter-words].dock-right {
-  --meter-col: 86px;
 }
 
 .shell[data-technical-ui='workspace'][data-context='closed'].dock-right {

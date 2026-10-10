@@ -84,7 +84,8 @@ import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { ContextBar } from '../components/workspace/ContextBar'
 import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
-import { FftPrimaryBar } from '../components/workspace/FftPrimaryBar'
+import { graphSnapshotFrozen } from '../audio/engine/graphSnapshot'
+import { holdGraphSnapshot } from '../components/workspace/SpectrumDisplaySettings'
 import { vizForWorkspace, workspaceFromViz, type TechnicalWorkspaceId } from '../components/workspace/workspaces'
 import { countHiddenActivity } from '../components/workspace/disclosure'
 import { parameterModulationState } from '../components/modulation/modulationModel'
@@ -319,6 +320,10 @@ export default function App() {
         event.preventDefault()
         event.stopImmediatePropagation()
         if (event.repeat) return
+        if (graphSnapshotFrozen()) {
+          holdGraphSnapshot(false)
+          return
+        }
         clickGuard.arm()
         void engine.unlock()
         engine.togglePlay()
@@ -1512,45 +1517,6 @@ export default function App() {
               guideLabel={guideChrome(locale).guideMe}
               onOpenGuide={() => dispatchGuide({ type: 'open-library' })}
             />
-            {workspaceId === 'fft' ? <FftPrimaryBar /> : null}
-            {workspaceId === 'wave' ? (
-              <SelectionToolbar
-                selected={snap.canClearSelection}
-                zoomLabel={zoomLabel}
-                onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
-                onZoomOut={() => waveRef.current?.zoomBy(1.4)}
-                onFit={() => waveRef.current?.fitSample()}
-                primary={[
-                  { id: 'cut', label: t.waveform.cutCaption, disabled: !snap.canCutSelection, onClick: cutSelection },
-                  { id: 'copy', label: t.waveform.copyCaption, disabled: !snap.canCopySelection, onClick: copySelection },
-                  { id: 'mute', label: t.waveform.muteSelectionCaption, disabled: !snap.canMuteSelection, onClick: muteSelection },
-                  { id: 'delete', label: t.waveform.deleteSelectionCaption, disabled: !snap.canDeleteSelection, danger: true, onClick: deleteSelection },
-                  { id: 'fade-in', label: t.waveform.fadeIn, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('in') },
-                  { id: 'fade-out', label: t.waveform.fadeOut, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('out') },
-                  { id: 'trim', label: t.waveform.trim, disabled: !snap.sampleLoaded, onClick: () => {
-                    void engine.trimPlayRegion().then((ok) => {
-                      if (!ok) return
-                      setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
-                      waveRef.current?.fitSample()
-                      commit()
-                    })
-                  } },
-                ]}
-                more={[
-                  { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
-                  { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
-                  { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
-                  { id: 'undo', label: t.waveform.undo, disabled: history.past.length === 0, onClick: () => applyHistory(undoHistory(history)) },
-                  { id: 'redo', label: t.waveform.redo, disabled: history.future.length === 0, onClick: () => applyHistory(redoHistory(history)) },
-                  { id: 'norm', label: t.waveform.normalizeView, onClick: () => setNormalizeView((value) => !value) },
-                  { id: 'auto-fade', label: t.waveform.autoFadeTitle, onClick: () => {
-                    setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
-                    commit()
-                  } },
-                  { id: 'arrange', label: arrangement === 'multi' ? t.waveform.wave : t.waveform.multi, onClick: () => setArrangement((value) => (value === 'multi' ? 'single' : 'multi')) },
-                ]}
-              />
-            ) : null}
           </div>
         ) : (
         <WaveformToolbar
@@ -1734,6 +1700,47 @@ export default function App() {
               onExitFocus={() => setFocusWorkspace(null)}
               onEnterHearing={enterHearingFocus}
               calmWorkspace={workspaceOn && !activeFocus ? workspaceId : null}
+              workspaceBar={
+                workspaceOn && workspaceId === 'wave' && !activeFocus ? (
+                  <SelectionToolbar
+                    pinMore
+                    selected={snap.canClearSelection}
+                    zoomLabel={zoomLabel}
+                    onZoomIn={() => waveRef.current?.zoomBy(1 / 1.4)}
+                    onZoomOut={() => waveRef.current?.zoomBy(1.4)}
+                    onFit={() => waveRef.current?.fitSample()}
+                    primary={[
+                      { id: 'cut', label: t.waveform.cutCaption, disabled: !snap.canCutSelection, onClick: cutSelection },
+                      { id: 'copy', label: t.waveform.copyCaption, disabled: !snap.canCopySelection, onClick: copySelection },
+                      { id: 'mute', label: t.waveform.muteSelectionCaption, disabled: !snap.canMuteSelection, onClick: muteSelection },
+                      { id: 'delete', label: t.waveform.deleteSelectionCaption, disabled: !snap.canDeleteSelection, danger: true, onClick: deleteSelection },
+                      { id: 'fade-in', label: t.waveform.fadeIn, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('in') },
+                      { id: 'fade-out', label: t.waveform.fadeOut, disabled: !snap.canClearSelection, onClick: () => waveRef.current?.applyFade('out') },
+                      { id: 'trim', label: t.waveform.trim, disabled: !snap.sampleLoaded, onClick: () => {
+                        void engine.trimPlayRegion().then((ok) => {
+                          if (!ok) return
+                          setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                          waveRef.current?.fitSample()
+                          commit()
+                        })
+                      } },
+                    ]}
+                    more={[
+                      { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
+                      { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
+                      { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
+                      { id: 'undo', label: t.waveform.undo, disabled: history.past.length === 0, onClick: () => applyHistory(undoHistory(history)) },
+                      { id: 'redo', label: t.waveform.redo, disabled: history.future.length === 0, onClick: () => applyHistory(redoHistory(history)) },
+                      { id: 'norm', label: t.waveform.normalizeView, onClick: () => setNormalizeView((value) => !value) },
+                      { id: 'auto-fade', label: t.waveform.autoFadeTitle, onClick: () => {
+                        setEdit((e) => ({ ...e, fadeIn: 0.01, fadeOut: 0.01, fadeAuto: true }))
+                        commit()
+                      } },
+                      { id: 'arrange', label: arrangement === 'multi' ? t.waveform.wave : t.waveform.multi, onClick: () => setArrangement((value) => (value === 'multi' ? 'single' : 'multi')) },
+                    ]}
+                  />
+                ) : null
+              }
               eqStrips={eqStrips}
               onShowEqInspector={
                 eqStrips

@@ -9,6 +9,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react'
 import { fadeBendFromMidGain, fadeGain, type FadeCurve } from '../../audio/engine/fades'
 import { computeMinMax, computeMinMaxCached, mipsCovering, mixToMono } from '../../audio/engine/peaks'
@@ -165,6 +166,8 @@ type Props = {
   eqStrips?: boolean
   /** Workspace EQ strips: return to the side inspector. */
   onShowEqInspector?: () => void
+  /** Wave workspace commands. Lives inside the picture so every view starts at the same edge. */
+  workspaceBar?: ReactNode
 }
 
 export type WaveformHandle = {
@@ -299,6 +302,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     calmWorkspace = null,
     eqStrips = false,
     onShowEqInspector,
+    workspaceBar = null,
   },
   ref,
 ) {
@@ -1428,6 +1432,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       data-waveform-editor=""
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
+      {workspaceBar}
       {pictureFocusButton}
       <div className={`${styles.stage} ${splitStage ? styles.split : ''} ${showEqConsole ? styles.eqStage : ''} ${fillEqGraph ? styles.fillGraph : ''}`}>
         <div
