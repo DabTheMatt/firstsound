@@ -1,4 +1,5 @@
 import { useI18n } from '../../i18n'
+import { BackgroundControl } from '../waveform/BackgroundControl'
 import { TECHNICAL_WORKSPACES, type TechnicalWorkspaceId } from './workspaces'
 import styles from './Workspace.module.css'
 
@@ -48,14 +49,15 @@ export function WorkspaceTabs({
       })}
       </div>
       <span className={styles.tabSpacer} />
-      {onOpenGuide && guideLabel ? (
-        <button type="button" className={`${styles.textButton} ${styles.guideLink}`} onClick={onOpenGuide}>
-          {guideLabel}
-        </button>
-      ) : null}
+      <BackgroundControl appearance="text" />
       {contextClosed ? (
         <button type="button" className={styles.textButton} onClick={onOpenContext}>
           {t.workspace.context}
+        </button>
+      ) : null}
+      {onOpenGuide && guideLabel ? (
+        <button type="button" className={`${styles.textButton} ${styles.guideLink}`} onClick={onOpenGuide}>
+          {guideLabel}
         </button>
       ) : null}
     </div>

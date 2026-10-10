@@ -301,11 +301,12 @@ function strokeSeries(
   const points = values.length
   const stride = input.mobile || runtime.quality < 0.72 ? 2 : 1
   const alpha = spectralAgeOpacity(age01) * (dashed ? 0.72 : 1)
-  const colored = input.colorMode !== 'off'
-  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (colored ? 1.45 : 1))
+  // The rear layer in Both stays a muted line so it does not share the front rainbow.
+  const colored = input.colorMode !== 'off' && !dashed
+  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (colored ? 1.15 : 1))
   const surface = input.drawStyle === 'surface'
-  const fillAlpha = alpha * 0.5 * (0.45 + 0.55 * (1 - age01))
-  const colorFill = alpha * 0.84 * (0.7 + 0.3 * (1 - age01))
+  const fillAlpha = alpha * 0.16 * (0.4 + 0.6 * (1 - age01))
+  const colorFill = alpha * 0.2 * (0.45 + 0.55 * (1 - age01))
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
@@ -342,17 +343,27 @@ function strokeSeries(
         ctx.fill()
       }
     }
-    if (!colored) {
-      ctx.strokeStyle = colorWithAlpha(color, alpha)
+    const trace = () => {
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
       for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
+    }
+    if (n >= 2) {
+      ctx.strokeStyle = colorWithAlpha(input.colors.bgApp, colored ? 0.85 : 0.4)
+      ctx.lineWidth = width + input.dpr * 1.8
+      trace()
+      ctx.stroke()
+      ctx.lineWidth = width
+    }
+    if (!colored) {
+      ctx.strokeStyle = colorWithAlpha(color, alpha)
+      trace()
       ctx.stroke()
     } else {
       for (let p = 1; p < n; p++) {
         const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
         const hz = ((hzs[p - 1] ?? 0) + (hzs[p] ?? 0)) * 0.5
-        ctx.strokeStyle = colorWithAlpha(seriesColor(input, color, level, hz), Math.min(1, alpha + 0.2))
+        ctx.strokeStyle = colorWithAlpha(seriesColor(input, color, level, hz), Math.min(1, alpha + 0.35))
         ctx.beginPath()
         ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
         ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)

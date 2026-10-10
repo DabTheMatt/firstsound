@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { onPointerReset } from '../../app/pointerSession'
 import { createPortal } from 'react-dom'
+import { FloatingTip } from '../../a11y/FloatingTip'
 import { applySliderKey } from '../../a11y/keyboard'
 import { focusParameterControl, useFocusedWheel } from './focusedWheel'
 import { createCoarseGestureSession, fineDragSpan, isCoarsePointer } from './gestureIntent'
@@ -347,7 +348,6 @@ export function ValueKnob({
       <div
         ref={rootRef}
         className={`${styles.knob} ${focus ? styles.focus : ''} ${dialOnly ? styles.dialOnly : mini ? styles.mini : compact ? styles.compact : ''} ${adjusting ? styles.adjusting : ''}`}
-        title={description}
         onMouseEnter={() => setTipOpen(true)}
         onMouseLeave={() => setTipOpen(false)}
       >
@@ -360,11 +360,7 @@ export function ValueKnob({
           {description}
         </p>
       ) : null}
-      {description && tipOpen ? (
-        <span className={styles.tip} role="tooltip">
-          {description}
-        </span>
-      ) : null}
+      {description && tipOpen ? <FloatingTip anchorRef={rootRef} text={description} /> : null}
       <div className={styles.dialWrap}>
       <div
         ref={dialRef}
