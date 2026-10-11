@@ -114,11 +114,11 @@
 }
 
 .transport .hit[data-loop] {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .transport .hit[data-loop][aria-pressed='true'] {
-  color: var(--accent-primary);
+  color: var(--text-secondary);
 }
 
 .transport .hit[data-loop]:focus,
