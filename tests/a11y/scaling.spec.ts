@@ -49,7 +49,7 @@ test.describe('interface and text scaling', () => {
   test('keeps the waveform playhead fraction when the layout scale changes', async ({ page }) => {
     await boot(page)
     await loadDemo(page)
-    const editor = page.getByRole('region', { name: 'Waveform editor', exact: true })
+    const editor = page.getByRole('region', { name: /^Waveform,/ })
     await editor.focus()
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
