@@ -87,6 +87,32 @@
   color: var(--text-primary);
 }
 
+:global(html[data-high-visibility='on']) .panel,
+:global(html[data-high-visibility='on']) .field input,
+:global(html[data-high-visibility='on']) .field select,
+:global(html[data-high-visibility='on']) .button,
+:global(html[data-high-visibility='on']) .apply {
+  border-width: var(--field-control-border-width);
+  border-color: var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .button:disabled,
+:global(html[data-high-visibility='on']) .apply:disabled {
+  border-style: dashed;
+  color: var(--text-disabled);
+  opacity: 1;
+}
+
+:global(html[data-high-visibility='on']) .button[aria-pressed='true'] {
+  box-shadow: inset 0 -3px 0 var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .error {
+  border-left: 3px solid var(--text-primary);
+  padding-left: 8px;
+  font-weight: 650;
+}
+
 .list {
   display: flex;
   flex-direction: column;

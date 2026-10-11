@@ -87,6 +87,7 @@ function FeelAxis({
     <div
       className={styles.field}
       role="slider"
+      data-sensory-edit=""
       tabIndex={disabled ? -1 : 0}
       aria-label={aria}
       aria-valuemin={-100}

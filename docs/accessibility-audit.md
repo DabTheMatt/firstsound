@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.26.0
+Tested application version: 0.27.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -139,7 +139,7 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 | 20B Screen Reader Support | AT testing and announcement tuning |
 | 20C Accessible Waveform | Shipped in 0.26.0. Canvas handles remain pointer targets (R1). Detection is approximate. |
 | 22A Interface Scaling | Reflow at 320px and 200% zoom without a scrolling header |
-| 22B High Visibility | Broader than the current low-vision preference and the contrast token pass |
+| 22B High Visibility | Shipped in 0.27.0 as an opt-in visual layer. See the 22B section. It is not a WCAG conformance claim. |
 | 22C Sensory Comfort | Further Sensory motion and flash review beyond the reduced-motion switch |
 
 ## FIELD ACCESS preferences
@@ -149,6 +149,7 @@ Checked independently and together, including after reload:
 - Reduced Motion → `data-reduce-motion`
 - Enhanced Focus Visibility → `data-focus="enhanced"` (ring at least 2px on Studio Dark, Soft Slate, Warm Paper, Dusk)
 - Larger Controls → `data-ui-scale="large"`
+- High Visibility Controls → `data-high-visibility` (off until turned on)
 - Accessible Waveform Navigation → `data-wave-nav` (off until turned on; keyboard and screen reader access to the waveform stay available either way)
 
 Playback kept the Pause control while the three switches were turned on. The OS reduced-motion emulation and the FIELD switch were both checked. Sensory canvas stayed on screen.
@@ -183,3 +184,40 @@ Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS s
 ## DSP
 
 No DSP, routing, effect, modulation, automation, offline render, or export signal-processing code was changed. EQ arrow keys call the existing parameter API. Reduced motion only skips decorative animation.
+
+## FIELD ACCESS 22B — high visibility controls (0.27.0)
+
+High Visibility Controls is Settings → Accessibility → Visual comfort. The stored flag is `highVisibility` on the existing FIELD ACCESS record. Default is off. `data-high-visibility` is `on` or `off`. Restore accessibility defaults sets it back to off. Reset application does not clear the record.
+
+What got clearer, using shape, weight, or a label as well as color:
+
+- Switches, pressed toggles, the transport circle, knobs (edge, needle, dashed modulation arc), and slider tracks with a thumb at the value
+- Drag-free inputs, step buttons, disabled buttons, and error text
+- Playhead: thicker line, theme text color, top triangle. The time stays the center of the line (`translateX(-50%)`). The line does not receive pointer events
+- Selection: square caps and an inset edge. Trim uses a bracket. Fade in and fade out keep separate dash patterns. Loop edges, where a track loop exists, use a diamond and a dashed line
+- EQ nodes: band number, circle when idle, rounded square when selected, dashed when bypassed. The response keeps its theme color with a light text-colored halo on the selected curve. The 0 dB line is dashed and labeled. Frequency and gain mapping is unchanged
+- Automation: circle versus diamond, dashed inactive lane. Interpolation is unchanged
+- Effect chain: Active / Bypassed text, dashed bypass, solid selected bar. Move buttons keep their existing behavior
+- Meters: scale marks, channel letters, square clip light plus the existing Clip label. The clip latch is still the meter’s own detection
+- FFT: slightly stronger axis and 0 dB lines. Spectral drawing is otherwise the same
+- Hearing Access: existing symbols, plus a square behind a clip mark and stronger tag text
+- Sensory: a quiet inset edge on editable controls. The scene is not turned into a technical graph
+- Guided Tasks: a static dashed outline, separate from the keyboard focus ring. No flash. Reduced Motion still strips animation
+- Focus Mode, Simple, Technical, and Sensory share the same flag
+
+Contrast check that was run: theme text color against the app canvas for Studio Dark (`#e8e6df` / `#151616`), Soft Slate (`#e6edf3` / `#0d1117`), Warm Paper (`#2a261f` / `#f4efe6`), and Dusk (`#ebe6e1` / `#241e28`). Each pair is above 4.5:1, which also clears the 3:1 non-text floor for edges painted in the text color. This is not a full WCAG 2.2 AA audit. Canvas antialiasing, mixed fills, and custom themes still need a person to look at them.
+
+Manual review still required:
+
+- Screen readers were not run (VoiceOver, TalkBack, NVDA, JAWS). Semantics were checked in the DOM: new marks are either `aria-hidden` or they repeat a state the control already exposes
+- Interface percentage and text percentage from task 22A are not in this build. Larger Controls (`data-ui-scale="large"`) was the scale that exists. It was combined with High Visibility at 320, 375, 390, and 430 CSS pixels
+- A person should still look at Warm Paper and Dusk with a bypassed EQ band, a selected automation point, and a clipping meter, because automated contrast does not see every canvas pixel
+
+Known visual limits:
+
+- Some icon-only buttons stay icon-only. They keep an accessible name, a stronger boundary, and a distinct glyph. A text label was not added where it would break the circular transport
+- Fade handles on the canvas are still pointer targets. The keyboard path remains the drag-free editors
+- Close EQ nodes can sit near each other. Visual rings stay about 1.5px so the hit target is not grown again on top of Larger Controls
+- Guided highlight and keyboard focus can appear at the same time. The tutorial mark is dashed. The focus ring stays the focus ring
+
+DSP modifications: none.

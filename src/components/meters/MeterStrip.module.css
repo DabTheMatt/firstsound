@@ -373,3 +373,28 @@
   background: var(--text-primary);
   opacity: 0;
 }
+
+:global(html[data-high-visibility='on']) .tick,
+:global(html[data-high-visibility='on']) .lane span,
+:global(html[data-high-visibility='on']) .word {
+  color: var(--text-secondary);
+}
+
+:global(html[data-high-visibility='on']) .tick::after,
+:global(html[data-high-visibility='on']) .hashMajor,
+:global(html[data-high-visibility='on']) .hashMinor {
+  background: var(--text-primary);
+  height: var(--field-meter-marker-width);
+}
+
+:global(html[data-high-visibility='on']) .hold {
+  height: var(--field-meter-marker-width);
+}
+
+:global(html[data-high-visibility='on']) .inlineHold {
+  width: var(--field-meter-marker-width);
+}
+
+:global(html[data-high-visibility='on']) .lane {
+  border-color: var(--text-secondary);
+}

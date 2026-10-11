@@ -66,6 +66,7 @@ export function LensSpanRing({ amount, duration, onChange, onCommit }: Props) {
       viewBox="0 0 100 100"
       aria-label="How much sample the lens holds, five seconds to two minutes"
       role="slider"
+      data-sensory-edit=""
       tabIndex={0}
       aria-valuemin={5}
       aria-valuemax={120}

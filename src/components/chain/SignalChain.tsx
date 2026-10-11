@@ -29,7 +29,7 @@ type Props = {
 export function SignalChain({ chain, selectedId, onSelect, touch, minimal = false, quiet = false }: Props) {
   const { t, moduleName } = useI18n()
   const { settings } = useA11ySettings()
-  const lowVision = settings.lowVision
+  const showState = settings.lowVision || settings.highVisibility
   const showMoves = settings.lowVision || assistedEditorsEnabled(settings)
   const [reorder, setReorder] = useState(false)
   const [gapAt, setGapAt] = useState<number | null>(null)
@@ -233,6 +233,8 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
               </span>
             ) : null}
             <div
+              data-effect-state={enabled ? 'active' : 'bypassed'}
+              data-selected={selected ? 'true' : 'false'}
               className={`${styles.tile} ${selected ? styles.selected : ''} ${enabled ? styles.enabled : styles.bypassed} ${fixed ? styles.locked : styles.movable}`}
               title={fixed ? label : t.chain.dragHint}
               {...guideTargetAttrs(technicalTargetForModule(mod.type), '1', mod.instanceId)}
@@ -311,7 +313,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
               >
                 {label}
               </button>
-              {lowVision && !fixed ? (
+              {showState && !fixed ? (
                 <span className={styles.stateTag}>{mod.bypassed ? t.chain.bypassedTag : t.inspector.active}</span>
               ) : null}
               {showMoves && !fixed ? (

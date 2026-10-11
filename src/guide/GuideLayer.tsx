@@ -193,6 +193,7 @@ export function GuideLayer(props: Props) {
       {showHighlight ? (
         <div
           className={styles.glow}
+          data-guide-highlight=""
           style={{ top: rect.top - 4, left: rect.left - 4, width: rect.width + 8, height: rect.height + 8 }}
           aria-hidden="true"
         />

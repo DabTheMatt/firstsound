@@ -203,6 +203,7 @@ export function ColorSoundPad({ color, onChange, onCommit }: Props) {
         className={styles.field}
         tabIndex={0}
         role="slider"
+        data-sensory-edit=""
         aria-label={t.sensory.colorSoundAria}
         aria-valuemin={0}
         aria-valuemax={100}

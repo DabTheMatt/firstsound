@@ -89,6 +89,14 @@ export function A11ySettings({ onBack }: Props) {
       <div>
         <h3 className={styles.group}>{a.visualComfort}</h3>
         <PreferenceSwitch
+          checked={settings.highVisibility}
+          label={a.highVisibility}
+          description={a.highVisibilityHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(highVisibility) => setSettings({ highVisibility })}
+        />
+        <PreferenceSwitch
           checked={settings.reduceMotion}
           label={a.reduceMotion}
           description={a.reducedMotionHelp}

@@ -113,13 +113,14 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
         <button
           type="button"
           className={`${styles.clip} ${styles.inlineClip} ${clipped ? styles.clipOn : ''}`}
+          data-meter-clip={clipped ? 'on' : 'off'}
           aria-pressed={clipped}
           aria-label={t.meters.clipState(clipped ? t.meters.clipOn : t.meters.clipOff)}
           title={t.meters.resetClipTitle}
           onClick={() => setClipped(false)}
         >
-          <span className={styles.led} aria-hidden="true" />
-          <span className={styles.clipLabel}>{t.meters.clip}</span>
+          <span className={styles.led} data-meter-led="" aria-hidden="true" />
+          <span className={styles.clipLabel} data-meter-clip-label="">{t.meters.clip}</span>
         </button>
         <div className={styles.inlineLane} aria-hidden="true">
           <span>{stereo ? 'L' : 'M'}</span>
@@ -147,13 +148,14 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
         <button
           type="button"
           className={`${styles.clip} ${clipped ? styles.clipOn : ''}`}
+          data-meter-clip={clipped ? 'on' : 'off'}
           aria-pressed={clipped}
           aria-label={t.meters.clipState(clipped ? t.meters.clipOn : t.meters.clipOff)}
           title={t.meters.resetClipTitle}
           onClick={() => setClipped(false)}
         >
-          <span className={styles.led} aria-hidden="true" />
-          <span className={styles.clipLabel}>{t.meters.clip}</span>
+          <span className={styles.led} data-meter-led="" aria-hidden="true" />
+          <span className={styles.clipLabel} data-meter-clip-label="">{t.meters.clip}</span>
         </button>
       </div>
       <div className={styles.body}>

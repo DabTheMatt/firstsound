@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { highVisibilityEnabled } from '../a11y/settings'
 import { engine, useEngine } from '../hooks/useEngine'
 import {
   getHearingReveal,
@@ -49,8 +50,9 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
       ctx.clearRect(0, 0, width, height)
       const ink = getComputedStyle(canvas).color || '#fff'
+      const hv = highVisibilityEnabled()
       ctx.fillStyle = ink
-      ctx.font = '10px sans-serif'
+      ctx.font = hv ? '12px sans-serif' : '10px sans-serif'
       const span = Math.max(0.0001, viewEnd - viewStart)
       const hearing = getHearingView()
       const analysis = hearing.analysis
@@ -65,8 +67,14 @@ export function HearingWaveOverlay({ viewStart, viewEnd }: Props) {
           const bar = symbolBarRect(level)
           ctx.fillRect(x, bar.y, Math.max(1, cell), bar.height)
           ctx.globalAlpha = 1
-          if (bucket.clip) ctx.fillText('!', x, glyphY)
-          else if (bucket.transient) ctx.fillText('▲', x, glyphY)
+          if (bucket.clip) {
+            if (hv) {
+              ctx.strokeStyle = ink
+              ctx.lineWidth = 1.5
+              ctx.strokeRect(x - 1, glyphY - 11, 12, 12)
+            }
+            ctx.fillText('!', x + (hv ? 2 : 0), glyphY)
+          } else if (bucket.transient) ctx.fillText('▲', x, glyphY)
         })
       }
       if (settings.layers.events) {
@@ -125,7 +133,7 @@ export function HearingWaveLegend() {
   }
   const toggleLine = () => setTransientLineVisible(!lineShown)
   return (
-    <div className={styles.waveLegend}>
+    <div className={styles.waveLegend} data-hearing-legend="">
       <span className={styles.waveLegendTransient}>transient</span>
       <span>▲ attack</span>
       <span>! clip</span>

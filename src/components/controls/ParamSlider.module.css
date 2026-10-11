@@ -172,3 +172,30 @@
   pointer-events: none;
   min-width: 2px;
 }
+
+:global(html[data-high-visibility='on']) .track {
+  border: var(--field-control-border-width) solid var(--text-secondary);
+}
+
+:global(html[data-high-visibility='on']) .fill {
+  background: var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .fill::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 8px;
+  height: 14px;
+  transform: translate(50%, -50%);
+  border-radius: 2px;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--bg-app);
+  pointer-events: none;
+}
+
+:global(html[data-high-visibility='on']) .label,
+:global(html[data-high-visibility='on']) .value {
+  color: var(--text-primary);
+}

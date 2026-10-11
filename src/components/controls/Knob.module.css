@@ -212,6 +212,26 @@
   stroke-width: 2.75px;
 }
 
+:global(html[data-high-visibility='on']) .face {
+  stroke: var(--text-primary);
+  stroke-width: 1.5px;
+}
+
+:global(html[data-high-visibility='on']) .needle {
+  stroke-width: 3px;
+}
+
+:global(html[data-high-visibility='on']) .modArc {
+  opacity: 0.9;
+  stroke-width: 2px;
+  stroke-dasharray: 3 2;
+}
+
+:global(html[data-high-visibility='on']) .value {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
 @media (forced-colors: active) {
   .dial:focus-visible {
     outline: 3px solid Highlight;

@@ -89,7 +89,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
-import { largerControlsEnabled } from '../../a11y/settings'
+import { highVisibilityEnabled, largerControlsEnabled } from '../../a11y/settings'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { SpectralMixer, spectralBandCopy } from './SpectralMixer'
@@ -614,10 +614,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         const span = Math.max(0.0001, view.end - view.start)
         const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
           if (!(to > from + 1e-6)) return
+          const hv = highVisibilityEnabled()
           ctx.beginPath()
-          ctx.strokeStyle = colors.envelope
-          ctx.lineWidth = Math.max(1, dpr)
-          ctx.setLineDash([3 * dpr, 3 * dpr])
+          ctx.strokeStyle = hv ? colors.textPrimary : colors.envelope
+          ctx.lineWidth = Math.max(hv ? 2 : 1, dpr)
+          ctx.setLineDash(side === 'in' ? [hv ? 7 * dpr : 3 * dpr, 3 * dpr] : [hv ? 2 * dpr : 3 * dpr, 3 * dpr])
           const n = Math.max(20, Math.floor(((to - from) / span) * width))
           for (let i = 0; i <= n; i++) {
             const u = i / n
@@ -702,9 +703,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       const strokeFade = (from: number, to: number, side: 'in' | 'out', bend: number) => {
         if (!(to > from + 1e-6)) return
         ctx.beginPath()
-        ctx.strokeStyle = colors.envelope
-        ctx.lineWidth = Math.max(1, dpr)
-        ctx.setLineDash([3 * dpr, 3 * dpr])
+        const hv = highVisibilityEnabled()
+        ctx.strokeStyle = hv ? colors.textPrimary : colors.envelope
+        ctx.lineWidth = Math.max(hv ? 2 : 1, dpr)
+        ctx.setLineDash(side === 'in' ? [hv ? 7 * dpr : 3 * dpr, 3 * dpr] : [hv ? 2 * dpr : 3 * dpr, 3 * dpr])
         const n = Math.max(20, Math.floor(((to - from) / span) * width))
         for (let i = 0; i <= n; i++) {
           const u = i / n
@@ -853,7 +855,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       pointers.current.clear()
       setPanning(false)
       setFadeDrag(null)
-      if (overlayRef.current) delete overlayRef.current.dataset.cursor
+      if (overlayRef.current) {
+        delete overlayRef.current.dataset.cursor
+        delete overlayRef.current.dataset.regionEdit
+      }
     })
   }, [])
 
@@ -1085,6 +1090,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       pointerType: event.pointerType,
       transientIndex,
     }
+    if (overlayRef.current) {
+      if (mode === 'start' || mode === 'end' || mode === 'move') overlayRef.current.dataset.regionEdit = 'editing'
+      else if (mode === 'fadeIn' || mode === 'fadeOut' || mode === 'fadeInShape' || mode === 'fadeOutShape') overlayRef.current.dataset.regionEdit = 'fade'
+      else delete overlayRef.current.dataset.regionEdit
+    }
     setPanning(mode === 'pan')
   }
 
@@ -1187,6 +1197,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
         return
       }
       drag.current.mode = 'select'
+      if (overlayRef.current) overlayRef.current.dataset.regionEdit = 'editing'
       onGraphEdit?.()
       const spanSel = selectionFromAnchor(originT, next)
       engine.setRegion(spanSel.start, spanSel.end)
@@ -1253,7 +1264,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       drag.current = null
       setPanning(false)
       setFadeDrag(null)
-      if (overlayRef.current) overlayRef.current.dataset.cursor = ''
+      if (overlayRef.current) {
+        overlayRef.current.dataset.cursor = ''
+        delete overlayRef.current.dataset.regionEdit
+      }
       if (mode === 'transient' && transientIndex != null) {
         const to = engine.getSnapshot().transients[transientIndex] ?? originT
         engine.commitTransientWarp(transientIndex, originT, to)
@@ -1567,6 +1581,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
             <canvas ref={fxCanvasRef} className={styles.fxCanvas} hidden={sensory || (simple && !fxMode)} aria-hidden="true" />
             <div
               ref={overlayRef}
+              data-wave-overlay=""
               className={`${styles.overlay} ${automationView ? styles.autoOverlay : ''} ${panning ? `${styles.overlayPan} ${styles.grabbing}` : ''}`}
               onPointerDown={loaded ? onPointerDown : undefined}
               onPointerMove={loaded ? onPointerMove : undefined}
@@ -1578,6 +1593,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                 <>
                   <div
                     className={styles.regionFrame}
+                    data-region-frame=""
                     style={{ left: `${regionLeft}%`, width: `${Math.max(0, regionRight - regionLeft)}%` }}
                   />
                   {!sensory && !simple ? (
@@ -1672,7 +1688,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       />
                     </>
                   )}
-                  <div ref={playheadRef} className={styles.playhead} />
+                  <div ref={playheadRef} className={styles.playhead} data-playhead="" />
                   {fadeDrag ? (
                     <div className={styles.fadeHint} data-fade-hint={fadeDrag}>
                       {t.focus.fadeMs(
@@ -1711,6 +1727,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                               key={lane.paramId}
                               points={points}
                               fill="none"
+                              data-auto-lane={active ? 'on' : 'off'}
                               stroke={color}
                               strokeWidth={active && phoneFocus === 'auto' ? 2 : 1}
                               strokeOpacity={active ? 1 : phoneFocus === 'auto' ? 0.12 : 0.28}

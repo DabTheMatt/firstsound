@@ -17,6 +17,8 @@ export type A11ySettings = {
   keyboardFirst: boolean
   /** Shows landmark and time tools. Keyboard and screen reader access stay on when this is off. */
   accessibleWaveform: boolean
+  /** Stronger outlines, shapes, and labels for controls. Off until the user turns it on. */
+  highVisibility: boolean
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -30,6 +32,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   dragFreeEditing: false,
   keyboardFirst: false,
   accessibleWaveform: false,
+  highVisibility: false,
 }
 
 export function parseA11ySettings(raw: unknown): A11ySettings {
@@ -151,6 +154,7 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
   root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
+  root.dataset.highVisibility = settings.highVisibility ? 'on' : 'off'
 }
 
 /** Drag-free editors and chain move buttons. Either preference is enough. */
@@ -181,4 +185,10 @@ export function effectiveReducedMotion(): boolean {
 export function largerControlsEnabled(): boolean {
   if (typeof document === 'undefined') return false
   return document.documentElement.dataset.uiScale === 'large'
+}
+
+/** DOM flag written by `applyA11yDom`. Canvas painters read this; it does not change parameters. */
+export function highVisibilityEnabled(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.documentElement.dataset.highVisibility === 'on'
 }

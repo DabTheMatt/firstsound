@@ -392,7 +392,7 @@ export function ValueKnob({
           }}
         />
         <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
-          <circle cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
+          <circle className={styles.face} cx={cx} cy={cy} r={r} fill="var(--bg-control)" />
           <circle
             className={styles.focusRing}
             cx={cx}
@@ -424,6 +424,7 @@ export function ValueKnob({
               d={rangeArc}
               fill="none"
               stroke="var(--knob-arc, var(--accent-secondary))"
+              className={styles.modArc}
               strokeWidth="1.15"
               strokeLinecap="round"
               opacity="0.45"
@@ -433,6 +434,7 @@ export function ValueKnob({
             <circle cx={marker.x} cy={marker.y} r="2.4" fill="var(--text-muted)" />
           ) : null}
           <line
+            className={styles.needle}
             x1={cx}
             y1={cy}
             x2={needle.x}

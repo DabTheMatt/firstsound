@@ -204,6 +204,7 @@ export function ParameterStrings({
                   y2={geom.y2}
                   tabIndex={0}
                   role="slider"
+                  data-sensory-edit=""
                   aria-label={lfoOn ? `${copy.aria} ${t.sensory.lfoConnected}` : copy.aria}
                   aria-valuemin={0}
                   aria-valuemax={100}
