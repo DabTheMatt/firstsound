@@ -74,4 +74,14 @@ describe('presentParamLabel', () => {
     }
     expect(overflow).toEqual([])
   })
+
+  it('shortens the main Polish knobs only when text scale no longer fits', () => {
+    expect(presentParamLabel('Wzmocnienie').text).toBe('Wzmocnienie')
+    expect(presentParamLabel('Prędkość').text).toBe('Prędkość')
+    expect(presentParamLabel('Wysokość').text).toBe('Wysokość')
+    expect(presentParamLabel('Wzmocnienie', PARAM_LABEL_MIN_PX, 2).text).toBe('WZM.')
+    expect(presentParamLabel('Prędkość', PARAM_LABEL_MIN_PX, 2).text).toBe('PRĘDK.')
+    expect(presentParamLabel('Wysokość', PARAM_LABEL_MIN_PX, 2).text).toBe('WYS.')
+    expect(presentParamLabel('Wzmocnienie kompensacyjne', PARAM_LABEL_MIN_PX, 2).text).toBe('WZM. KOMP.')
+  })
 })

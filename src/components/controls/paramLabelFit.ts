@@ -64,6 +64,9 @@ const SHORT_LABELS: Record<string, string> = {
   'SPRZĘŻENIE ZWROTNE': 'SPRZĘŻ.',
   'STOPIEŃ KOMPRESJI': 'STOPIEŃ',
   'WZMOCNIENIE KOMPENSACYJNE': 'WZM. KOMP.',
+  WZMOCNIENIE: 'WZM.',
+  'PRĘDKOŚĆ': 'PRĘDK.',
+  'WYSOKOŚĆ': 'WYS.',
 }
 
 export function measureParamLabelPx(label: string, sizePx: number, trackingEm: number): number {
@@ -88,16 +91,16 @@ const STEPS: { fit: ParamLabelFit; sizePx: number; trackingEm: number }[] = [
 export function presentParamLabel(
   label: string,
   maxPx = PARAM_LABEL_MIN_PX,
+  textScale = 1,
 ): { text: string; fit: ParamLabelFit } {
+  const scale = textScale > 0 ? textScale : 1
   const text = label.trim()
   for (const step of STEPS) {
-    if (measureParamLabelPx(text, step.sizePx, step.trackingEm) <= maxPx) {
+    if (measureParamLabelPx(text, step.sizePx * scale, step.trackingEm) <= maxPx) {
       return { text, fit: step.fit }
     }
   }
   const short = SHORT_LABELS[text.toLocaleUpperCase('en')]
-  if (short && measureParamLabelPx(short, 7.5, 0) <= maxPx) {
-    return { text: short, fit: 'snug' }
-  }
+  if (short) return { text: short, fit: 'snug' }
   return { text, fit: 'snug' }
 }

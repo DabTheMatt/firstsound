@@ -15,6 +15,22 @@ import {
   polar,
 } from './knobGeom'
 import { presentParamLabel } from './paramLabelFit'
+
+function useTextScale(): number {
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const read = () => {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--field-text-scale').trim()
+      const next = Number.parseFloat(raw)
+      setScale(Number.isFinite(next) && next > 0 ? next : 1)
+    }
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'data-text-scale'] })
+    return () => observer.disconnect()
+  }, [])
+  return scale
+}
 import { useI18n } from '../../i18n'
 import { useModulationParamId } from './LfoParamShell'
 import { ParamActionPair } from '../random/ParamActionPair'
@@ -336,7 +352,8 @@ export function ValueKnob({
   const rangeArc = lfoRange ? arcPath(cx, cy, rangeR, rangeStartDeg, rangeEndDeg) : ''
   const marker =
     markerNormalized == null ? null : polar(cx, cy, r + 6, knobAngleDeg(markerNormalized))
-  const caption = presentParamLabel(label)
+  const textScale = useTextScale()
+  const caption = presentParamLabel(label, undefined, textScale)
   const captionClass =
     caption.fit === 'tight'
       ? styles.labelFitTight
