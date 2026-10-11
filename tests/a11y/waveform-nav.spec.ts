@@ -1,21 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { boot, loadDemo } from './support'
-
-const WAVE_NAV = {
-  reduceMotion: false,
-  enhancedFocus: false,
-  largerInterface: false,
-  lowVision: false,
-  showDescriptions: true,
-  screenReaderOptimizations: false,
-  shortcutsEnabled: true,
-  dragFreeEditing: false,
-  keyboardFirst: false,
-  accessibleWaveform: true,
-}
+import { boot, loadDemo, prepareAccess } from './support'
 
 test.describe('accessible waveform navigation', () => {
-  test('keeps keyboard access when the preference is off and remembers it when turned on', async ({ page }) => {
+  test('keeps keyboard access when the preference is off and clears it on reload', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'off')
     await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toHaveCount(0)
@@ -31,12 +18,13 @@ test.describe('accessible waveform navigation', () => {
     await page.keyboard.press('Escape')
     await page.reload()
     await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'on')
-    await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'off')
+    await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toHaveCount(0)
   })
 
   test('edits a selection from the keyboard without a click', async ({ page }) => {
-    await boot(page, { a11y: WAVE_NAV })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Accessible Waveform Navigation'] })
     await loadDemo(page)
     const region = page.getByRole('region', { name: /^Waveform,/ })
     const described = await region.evaluate((el) => {
@@ -86,7 +74,8 @@ test.describe('accessible waveform navigation', () => {
   })
 
   test('offers navigation in simple and sensory without a second waveform', async ({ page }) => {
-    await boot(page, { mode: 'simple', a11y: WAVE_NAV })
+    await boot(page, { mode: 'simple' })
+    await prepareAccess(page, { switches: ['Accessible Waveform Navigation'] })
     await loadDemo(page)
     await page.getByRole('button', { name: 'Open waveform navigation' }).focus()
     await page.keyboard.press('Enter')
@@ -95,7 +84,8 @@ test.describe('accessible waveform navigation', () => {
     await expect(simple.getByRole('button', { name: 'Fade in', exact: true })).toBeVisible()
     await expect(simple.getByRole('button', { name: 'Inspect signal', exact: true })).toHaveCount(0)
 
-    await boot(page, { mode: 'sensory', a11y: WAVE_NAV })
+    await boot(page, { mode: 'sensory' })
+    await prepareAccess(page, { switches: ['Accessible Waveform Navigation'] })
     const menu = page.getByRole('button', { name: 'Menu', exact: true })
     await menu.focus()
     await page.keyboard.press('Enter')

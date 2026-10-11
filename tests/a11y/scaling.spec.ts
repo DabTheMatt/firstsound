@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, loadDemo, openAccess } from './support'
+import { boot, controlsOutsideViewport, loadDemo, openAccess, prepareAccess } from './support'
 
 test.describe('interface and text scaling', () => {
   test('keeps the two sizes independent and restores defaults', async ({ page }) => {
@@ -20,12 +20,10 @@ test.describe('interface and text scaling', () => {
     expect(scales).toEqual({ interfaceScale: '1.25', textScale: '2' })
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '125')
-    await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.interfaceScale).toBe(1.25)
-    expect(stored.textScale).toBe(2)
-    expect(stored.version).toBe(1)
+    await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '100')
+    await expect(page.locator('html')).toHaveAttribute('data-text-scale', '100')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
     await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '100')
@@ -68,7 +66,8 @@ test.describe('interface and text scaling', () => {
 
   test('keeps scaling controls reachable at the maximum sizes', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
-    await boot(page, { a11y: { interfaceScale: 1.5, textScale: 2, largerInterface: true } })
+    await boot(page)
+    await prepareAccess(page, { interfaceScale: 150, textScale: 200, switches: ['Larger Controls'] })
     await openAccess(page)
     const dialog = page.getByRole('dialog', { name: 'FIELD ACCESS' })
     await expect(dialog.getByRole('slider', { name: 'Interface Size' })).toBeVisible()
@@ -86,7 +85,8 @@ test.describe('interface and text scaling', () => {
 
   test('keeps sensory labels below the header at maximum sizes', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
-    await boot(page, { mode: 'sensory', a11y: { interfaceScale: 1.5, textScale: 2 } })
+    await boot(page, { mode: 'sensory' })
+    await prepareAccess(page, { interfaceScale: 150, textScale: 200 })
     const overlap = await page.evaluate(() => {
       const header = document.querySelector('[data-region="sensory"] header')
       const rails = [...document.querySelectorAll('[data-region="sensory"] [class*="rail"]')]
@@ -100,7 +100,8 @@ test.describe('interface and text scaling', () => {
 
   test('grows the play control with the text and keeps it level with Loop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
-    await boot(page, { a11y: { interfaceScale: 1.5, textScale: 2 } })
+    await boot(page)
+    await prepareAccess(page, { interfaceScale: 150, textScale: 200 })
     const box = await page.evaluate(() => {
       const play = document.querySelector('[data-guide-target="transport.play"]')
       const loop = document.querySelector('[aria-label="Loop selection"]')
@@ -121,7 +122,8 @@ test.describe('interface and text scaling', () => {
   })
 
   test('reset application restores interface and text size', async ({ page }) => {
-    await boot(page, { a11y: { interfaceScale: 1.5, textScale: 2 } })
+    await boot(page)
+    await prepareAccess(page, { interfaceScale: 150, textScale: 200 })
     await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
     await page.getByRole('button', { name: 'Reset application' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '100')
@@ -130,7 +132,8 @@ test.describe('interface and text scaling', () => {
 
   test('stays inside a narrow viewport at maximum text size', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await boot(page, { a11y: { interfaceScale: 1.25, textScale: 2 } })
+    await boot(page)
+    await prepareAccess(page, { interfaceScale: 125, textScale: 200 })
     await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
     expect(await controlsOutsideViewport(page)).toEqual([])
     await openAccess(page)

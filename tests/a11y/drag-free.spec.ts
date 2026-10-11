@@ -1,19 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { boot, loadDemo } from './support'
-
-const DRAG_FREE = {
-  reduceMotion: false,
-  enhancedFocus: false,
-  largerInterface: false,
-  lowVision: false,
-  showDescriptions: true,
-  screenReaderOptimizations: false,
-  shortcutsEnabled: true,
-  dragFreeEditing: true,
-}
+import { boot, loadDemo, prepareAccess } from './support'
 
 test.describe('drag-free editing', () => {
-  test('keeps the preference off until the keyboard turns it on', async ({ page }) => {
+  test('keeps the preference off until the keyboard turns it on, then clears it on reload', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-drag-free', 'off')
     await page.getByRole('button', { name: 'Settings', exact: true }).focus()
@@ -29,11 +18,12 @@ test.describe('drag-free editing', () => {
     await page.keyboard.press('Escape')
     await page.reload()
     await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-drag-free', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-drag-free', 'off')
   })
 
   test('edits a selection from the keyboard and cancels trim', async ({ page }) => {
-    await boot(page, { a11y: DRAG_FREE })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Drag-Free Editing'] })
     await loadDemo(page)
     const panel = page.locator('[data-drag-free="wave"]')
     await panel.scrollIntoViewIfNeeded()
@@ -62,7 +52,8 @@ test.describe('drag-free editing', () => {
   })
 
   test('turns an EQ slot on from the keyboard', async ({ page }) => {
-    await boot(page, { a11y: DRAG_FREE })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Drag-Free Editing'] })
     await loadDemo(page)
     await page.getByRole('tab', { name: 'EQ', exact: true }).click()
     const eq = page.locator('[data-drag-free="eq"]')
@@ -87,7 +78,8 @@ test.describe('drag-free editing', () => {
   })
 
   test('adds and edits an automation point from the keyboard', async ({ page }) => {
-    await boot(page, { a11y: DRAG_FREE })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Drag-Free Editing'] })
     await loadDemo(page)
     await page.getByRole('tab', { name: 'Auto', exact: true }).click()
     const auto = page.locator('[data-drag-free="automation"]')
@@ -108,7 +100,8 @@ test.describe('drag-free editing', () => {
   })
 
   test('moves an effect with the keyboard', async ({ page }) => {
-    await boot(page, { a11y: DRAG_FREE })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Drag-Free Editing'] })
     await loadDemo(page)
     await page.getByRole('button', { name: /Add effect|Add after/ }).first().click()
     await page.getByRole('menuitem', { name: 'Delay', exact: true }).click()

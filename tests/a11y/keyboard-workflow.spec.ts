@@ -73,7 +73,7 @@ test.describe('keyboard-only editing', () => {
     else await expect(exporter).toBeVisible()
   })
 
-  test('persists Keyboard-First and keeps keyboard access when it is off', async ({ page }) => {
+  test('clears Keyboard-First on reload and keeps keyboard access when it is off', async ({ page }) => {
     await boot(page)
     await openAccess(page)
     const pref = page.getByRole('switch', { name: 'Keyboard-First' })
@@ -85,9 +85,13 @@ test.describe('keyboard-only editing', () => {
     await page.keyboard.press('Escape')
     await page.reload()
     await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-keyboard-first', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-keyboard-first', 'off')
     await openAccess(page)
     const again = page.getByRole('switch', { name: 'Keyboard-First' })
+    await expect(again).not.toBeChecked()
+    await again.focus()
+    await page.keyboard.press('Space')
+    await expect(again).toBeChecked()
     await again.focus()
     await page.keyboard.press('Space')
     await expect(again).not.toBeChecked()

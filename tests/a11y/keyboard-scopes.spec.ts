@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { boot } from './support'
+import { boot, prepareAccess } from './support'
 
 async function loadDemoKeys(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Settings', exact: true }).focus()
@@ -12,21 +12,10 @@ async function loadDemoKeys(page: Page): Promise<void> {
   await expect(dialog).toBeHidden()
 }
 
-const KEYBOARD_FIRST = {
-  reduceMotion: false,
-  enhancedFocus: false,
-  largerInterface: false,
-  lowVision: false,
-  showDescriptions: true,
-  screenReaderOptimizations: false,
-  shortcutsEnabled: true,
-  dragFreeEditing: false,
-  keyboardFirst: true,
-}
-
 test.describe('keyboard scopes', () => {
   test('navigates workspaces, the chain, EQ, and automation from the keyboard', async ({ page }) => {
-    await boot(page, { a11y: KEYBOARD_FIRST })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Keyboard-First'] })
     await loadDemoKeys(page)
     await page.keyboard.press('Control+Shift+KeyK')
     const nav = page.getByRole('dialog', { name: 'Workspace navigation' })
@@ -68,7 +57,8 @@ test.describe('keyboard scopes', () => {
   })
 
   test('edits a sensory parameter from the keyboard', async ({ page }) => {
-    await boot(page, { mode: 'sensory', a11y: KEYBOARD_FIRST })
+    await boot(page, { mode: 'sensory' })
+    await prepareAccess(page, { switches: ['Keyboard-First'] })
     await page.getByRole('button', { name: 'Menu', exact: true }).focus()
     await page.keyboard.press('Enter')
     const menu = page.getByRole('dialog')

@@ -255,6 +255,10 @@ export default function App() {
   const [manualOpen, setManualOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [keysOpen, setKeysOpen] = useState(false)
+  const navOpenRef = useRef(false)
+  const keysOpenRef = useRef(false)
+  navOpenRef.current = navOpen
+  keysOpenRef.current = keysOpen
   const [focus, setFocus] = useState<InspectorFocus>({
     kind: 'module',
     instanceId: 'gain-1',
@@ -358,6 +362,20 @@ export default function App() {
     const onKey = (event: KeyboardEvent) => {
       if (isImeEvent(event)) return
       if (event.key === 'Escape') {
+        if (keysOpenRef.current) {
+          keysOpenRef.current = false
+          setKeysOpen(false)
+          closeKeyboardHelp()
+          event.preventDefault()
+          return
+        }
+        if (navOpenRef.current) {
+          navOpenRef.current = false
+          setNavOpen(false)
+          closeWorkspaceNav()
+          event.preventDefault()
+          return
+        }
         if (menuOpenRef.current) restoreTrigger('settings')
         setMenuOpen(false)
         setLfoCenterOpen(false)

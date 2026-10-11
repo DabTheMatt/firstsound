@@ -1,15 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, loadDemo, openAccess } from './support'
-
-const ALL_ON = {
-  reduceMotion: true,
-  enhancedFocus: true,
-  largerInterface: true,
-  lowVision: false,
-  showDescriptions: true,
-  screenReaderOptimizations: false,
-  shortcutsEnabled: true,
-}
+import { boot, controlsOutsideViewport, loadDemo, openAccess, prepareAccess } from './support'
 
 test.describe('FIELD ACCESS preferences', () => {
   test('applies each preference on its own', async ({ page }) => {
@@ -25,20 +15,19 @@ test.describe('FIELD ACCESS preferences', () => {
     await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
   })
 
-  test('combines the three preferences and keeps them after reload', async ({ page }) => {
-    await boot(page, { a11y: ALL_ON })
+  test('combines the three preferences for this page and clears them on reload', async ({ page }) => {
+    await boot(page)
+    await prepareAccess(page, { switches: ['Reduced Motion', 'Enhanced Focus Visibility', 'Larger Controls'] })
     await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
     await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
     await page.reload()
     await page.getByRole('radiogroup', { name: 'Interface mode' }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
-    await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.a11y') || '{}'))
-    expect(stored.reduceMotion).toBe(true)
-    expect(stored.enhancedFocus).toBe(true)
-    expect(stored.largerInterface).toBe(true)
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-focus', 'default')
+    await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'normal')
+    const stored = await page.evaluate(() => localStorage.getItem('field.a11y'))
+    expect(stored).toBeNull()
   })
 
   test('does not stop playback when a preference changes', async ({ page }) => {
@@ -71,7 +60,8 @@ test.describe('FIELD ACCESS preferences', () => {
 
   test('keeps a keyboard focus ring in representative themes', async ({ page }) => {
     for (const theme of ['studio-dark', 'soft-slate', 'warm-paper', 'dusk'] as const) {
-      await boot(page, { theme, a11y: { ...ALL_ON, reduceMotion: false } })
+      await boot(page, { theme })
+      await prepareAccess(page, { switches: ['Enhanced Focus Visibility', 'Larger Controls'] })
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
       await page.getByRole('button', { name: 'Settings', exact: true }).focus()
       await page.keyboard.press('Shift+Tab')
@@ -89,7 +79,8 @@ test.describe('FIELD ACCESS preferences', () => {
 
   test('larger controls do not push primary actions off a narrow viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await boot(page, { a11y: ALL_ON })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Reduced Motion', 'Enhanced Focus Visibility', 'Larger Controls'] })
     await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
     expect(await controlsOutsideViewport(page)).toEqual([])
   })

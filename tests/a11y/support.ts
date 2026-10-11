@@ -61,9 +61,43 @@ export async function openSettings(page: Page): Promise<void> {
 }
 
 export async function openAccess(page: Page): Promise<void> {
-  await openSettings(page)
-  await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Accessibility', exact: true }).click()
+  const settings = page.getByRole('button', { name: 'Settings', exact: true })
+  if (await settings.count()) await settings.click()
+  else await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await page.getByRole('button', { name: 'Accessibility', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'FIELD ACCESS' })).toBeVisible()
+}
+
+/** Choices last for this page. A reload starts from the defaults. */
+export async function prepareAccess(
+  page: Page,
+  prep: {
+    interfaceScale?: number
+    textScale?: number
+    switches?: readonly string[]
+    radios?: readonly string[]
+    checks?: readonly string[]
+  } = {},
+): Promise<void> {
+  await openAccess(page)
+  if (prep.interfaceScale) await page.getByRole('button', { name: `Interface Size ${prep.interfaceScale}%` }).click()
+  if (prep.textScale) await page.getByRole('button', { name: `Text Size ${prep.textScale}%` }).click()
+  for (const name of prep.switches ?? []) {
+    const toggle = page.getByRole('switch', { name, exact: true })
+    if (!(await toggle.isChecked())) await toggle.check()
+  }
+  for (const name of prep.radios ?? []) {
+    await page.getByRole('radio', { name, exact: true }).check()
+  }
+  if (prep.checks?.length) {
+    await page.getByText('More accessibility options', { exact: true }).click()
+    for (const name of prep.checks) {
+      const box = page.getByRole('checkbox', { name, exact: true })
+      if (!(await box.isChecked())) await box.check()
+    }
+  }
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('heading', { name: 'FIELD ACCESS' })).toBeHidden()
 }
 
 export async function loadDemo(page: Page): Promise<void> {

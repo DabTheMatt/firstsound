@@ -1,21 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, loadDemo, openAccess } from './support'
-
-const CALM = {
-  sensoryComfort: true,
-  visualActivity: 'low',
-  reduceDecorativeMotion: true,
-  calmMeters: true,
-  calmSpectrum: true,
-  reduceVisualEffects: true,
-  quietNotifications: true,
-  reduceMotion: false,
-  enhancedFocus: true,
-  lowVision: true,
-  highVisibility: true,
-  interfaceScale: 1.5,
-  textScale: 2,
-}
+import { boot, loadDemo, openAccess, prepareAccess } from './support'
 
 test.describe('sensory comfort', () => {
   test('toggles the master, keeps choices, and restores defaults', async ({ page }) => {
@@ -26,24 +10,23 @@ test.describe('sensory comfort', () => {
     await expect(master).not.toBeChecked()
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-calm-meters', 'off')
-    await expect(dialog.getByRole('radio', { name: 'Low' })).toBeDisabled()
+    await expect(dialog.getByRole('radio', { name: 'Low' })).toBeEnabled()
     await master.check()
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-visual-activity', 'low')
-    await expect(page.locator('html')).toHaveAttribute('data-decorative-motion', 'reduce')
-    await expect(page.locator('html')).toHaveAttribute('data-calm-meters', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-visual-effects', 'reduce')
-    await expect(page.locator('html')).toHaveAttribute('data-quiet-notices', 'on')
-    await dialog.getByRole('switch', { name: 'Calm Meters' }).uncheck()
-    await dialog.getByRole('radio', { name: 'Standard' }).check()
-    await expect(page.locator('html')).toHaveAttribute('data-calm-meters', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-visual-activity', 'standard')
+    await expect(page.locator('html')).toHaveAttribute('data-decorative-motion', 'full')
+    await expect(page.locator('html')).toHaveAttribute('data-calm-meters', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-visual-effects', 'full')
+    await expect(page.locator('html')).toHaveAttribute('data-quiet-notices', 'off')
+    await dialog.getByRole('switch', { name: 'Calm Spectrum' }).check()
+    await dialog.getByRole('radio', { name: 'Low' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-visual-activity', 'low')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-calm-meters', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'off')
     await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'off')
@@ -80,7 +63,23 @@ test.describe('sensory comfort', () => {
 
   test('keeps focus, high visibility, and large type with sensory comfort', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await boot(page, { theme: 'warm-paper', a11y: CALM })
+    await boot(page, { theme: 'warm-paper' })
+    await prepareAccess(page, {
+      interfaceScale: 150,
+      textScale: 200,
+      switches: [
+        'Sensory Comfort',
+        'Reduce Decorative Motion',
+        'Calm Meters',
+        'Calm Spectrum',
+        'Reduce Visual Effects',
+        'Quiet Notifications',
+        'Enhanced Focus Visibility',
+        'High Visibility Controls',
+      ],
+      radios: ['Low'],
+      checks: ['High Contrast / Low Vision Theme'],
+    })
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm-paper')
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
@@ -108,7 +107,8 @@ test.describe('sensory comfort', () => {
   test('fits the comfort controls on narrow phones', async ({ page }) => {
     for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 700 })
-      await boot(page, { a11y: { sensoryComfort: true, textScale: 2, interfaceScale: 1.5 } })
+      await boot(page)
+      await prepareAccess(page, { interfaceScale: 150, textScale: 200, switches: ['Sensory Comfort'] })
       await openAccess(page)
       const dialog = page.getByRole('dialog', { name: 'FIELD ACCESS' })
       const master = dialog.getByRole('switch', { name: 'Sensory Comfort' })

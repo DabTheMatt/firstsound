@@ -1,13 +1,11 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess } from './support'
+import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess, prepareAccess } from './support'
 
 mkdirSync('/opt/cursor/artifacts', { recursive: true })
 
-const HV = { highVisibility: true }
-
 test.describe('high visibility controls', () => {
-  test('is off until turned on, then survives reload and restore', async ({ page }) => {
+  test('is off until turned on, clears on reload, and restores from the accessibility defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     await openAccess(page)
@@ -18,10 +16,11 @@ test.describe('high visibility controls', () => {
     await page.screenshot({ path: '/opt/cursor/artifacts/hv-access-on.png' })
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.highVisibility).toBe(true)
+    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
     await openAccess(page)
+    await page.getByRole('switch', { name: 'High Visibility Controls', exact: true }).check()
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     await expectNoAxeViolations(page)
@@ -29,7 +28,8 @@ test.describe('high visibility controls', () => {
 
   test('keeps a keyboard focus ring on representative themes', async ({ page }) => {
     for (const theme of ['studio-dark', 'soft-slate', 'warm-paper', 'dusk'] as const) {
-      await boot(page, { theme, a11y: HV })
+      await boot(page, { theme })
+      await prepareAccess(page, { switches: ['High Visibility Controls'] })
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
       await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
       await page.getByRole('button', { name: 'Settings', exact: true }).focus()
@@ -45,7 +45,8 @@ test.describe('high visibility controls', () => {
   })
 
   test('thickens the playhead without moving its time anchor', async ({ page }) => {
-    await boot(page, { a11y: HV })
+    await boot(page)
+    await prepareAccess(page, { switches: ['High Visibility Controls'] })
     await loadDemo(page)
     const playhead = page.locator('[data-playhead]').first()
     await expect(playhead).toBeVisible()
@@ -68,7 +69,8 @@ test.describe('high visibility controls', () => {
   test('does not overflow a narrow screen with larger controls', async ({ page }) => {
     for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 700 })
-      await boot(page, { a11y: { highVisibility: true, largerInterface: true } })
+      await boot(page)
+      await prepareAccess(page, { switches: ['High Visibility Controls', 'Larger Controls'] })
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow, String(width)).toBeLessThanOrEqual(1)
       const outside = await controlsOutsideViewport(page)
@@ -87,7 +89,12 @@ test.describe('high visibility controls', () => {
     ] as const
     for (const pair of pairs) {
       await page.setViewportSize({ width: 390, height: 844 })
-      await boot(page, { a11y: { highVisibility: true, ...pair } })
+      await boot(page)
+      await prepareAccess(page, {
+        interfaceScale: pair.interfaceScale * 100,
+        textScale: pair.textScale * 100,
+        switches: ['High Visibility Controls'],
+      })
       await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
       await expect(page.locator('html')).toHaveAttribute('data-interface-scale', String(pair.interfaceScale * 100))
       await expect(page.locator('html')).toHaveAttribute('data-text-scale', String(pair.textScale * 100))
@@ -104,11 +111,14 @@ test.describe('high visibility controls', () => {
   })
 
   test('scans Simple, Sensory, and Focus with high visibility on', async ({ page }) => {
-    await boot(page, { mode: 'simple', a11y: HV })
+    await boot(page, { mode: 'simple' })
+    await prepareAccess(page, { switches: ['High Visibility Controls'] })
     await expectNoAxeViolations(page)
-    await boot(page, { mode: 'sensory', a11y: HV })
+    await boot(page, { mode: 'sensory' })
+    await prepareAccess(page, { switches: ['High Visibility Controls'] })
     await expectNoAxeViolations(page)
-    await boot(page, { a11y: HV })
+    await boot(page)
+    await prepareAccess(page, { switches: ['High Visibility Controls'] })
     await loadDemo(page)
     await page.getByRole('tab', { name: 'EQ', exact: true }).click()
     await page.getByRole('button', { name: 'Enter Focus Mode' }).click()

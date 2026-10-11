@@ -1,15 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess, VIEWPORTS } from './support'
-
-const ON = {
-  predictableLayout: true,
-  stablePanels: true,
-  rememberWorkspaceLayout: true,
-  reduceLayoutMovement: true,
-}
+import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess, prepareAccess, VIEWPORTS } from './support'
 
 test.describe('predictable layout', () => {
-  test('is off until turned on, then survives reload and accessibility restore', async ({ page }) => {
+  test('is off until turned on, clears on reload, and restores from the accessibility defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
@@ -20,23 +13,30 @@ test.describe('predictable layout', () => {
     await expect(page.getByText('Keep tools and panels in consistent locations while you work.')).toBeVisible()
     await toggle.check()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'off')
+    await page.getByRole('switch', { name: 'Stable Panels', exact: true }).check()
+    await page.getByRole('switch', { name: 'Remember Workspace Layout', exact: true }).check()
+    await page.getByRole('switch', { name: 'Reduce Layout Movement', exact: true }).check()
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'on')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
-    expect(stored.stablePanels).toBe(true)
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
     await openAccess(page)
+    await page.getByRole('switch', { name: 'Predictable Layout', exact: true }).check()
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     await expectNoAxeViolations(page)
   })
 
   test('keeps workspace order, transport, and focus while editing', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
     await loadDemo(page)
     const tabs = page.getByRole('tablist', { name: 'Technical workspaces' }).getByRole('tab')
     await expect(tabs).toHaveText(['Wave', 'EQ', 'FFT', 'Auto', 'Hearing'])
@@ -60,23 +60,23 @@ test.describe('predictable layout', () => {
   })
 
   test('remembers the workspace and restores the default layout without clearing audio prefs', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Predictable Layout', 'Remember Workspace Layout'] })
     await page.getByRole('tab', { name: 'FFT' }).click()
     await expect
       .poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('field.layout.v1') || '{}').technicalWorkspace))
       .toBe('fft')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.getByRole('tab', { name: 'FFT' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Wave' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     const memory = await page.evaluate(() => JSON.parse(localStorage.getItem('field.layout.v1') || '{}'))
     expect(memory.technicalWorkspace).toBe('fft')
     expect(memory.gain).toBeUndefined()
     await openAccess(page)
     await page.getByRole('button', { name: 'Restore workspace layout' }).click()
     await expect(page.getByRole('tab', { name: 'Wave' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(kept.predictableLayout).toBe(true)
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
   })
 
   test('does not stop playback when the preference or workspace changes', async ({ page }) => {
@@ -92,9 +92,17 @@ test.describe('predictable layout', () => {
   })
 
   test('keeps essential controls reachable across viewports and text scales', async ({ page }) => {
+    test.setTimeout(180_000)
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
-      await boot(page, { a11y: { ...ON, interfaceScale: 1.5, textScale: 2 } })
+      await boot(page)
+      await prepareAccess(page, {
+        interfaceScale: 150,
+        textScale: 200,
+        switches: ['Predictable Layout', 'Stable Panels', 'Remember Workspace Layout', 'Reduce Layout Movement'],
+      })
+      await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '150')
+      await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
       await expect(page.getByRole('button', { name: /^(Settings|Menu)$/ }).first()).toBeVisible()
       expect(await controlsOutsideViewport(page), `${viewport.width}x${viewport.height}`).toEqual([])
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
@@ -103,7 +111,7 @@ test.describe('predictable layout', () => {
   })
 
   test('restores settings focus and does not hide controls from the accessibility tree', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
     const settings = page.getByRole('button', { name: 'Settings', exact: true })
     await settings.focus()
     await settings.click()
@@ -125,7 +133,8 @@ test.describe('predictable layout', () => {
 
   test('keeps the preference reachable when the page is zoomed', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await boot(page, { a11y: { ...ON, interfaceScale: 1.25, textScale: 1.5 } })
+    await boot(page)
+    await prepareAccess(page, { interfaceScale: 125, textScale: 150, switches: ['Predictable Layout'] })
     await page.evaluate(() => {
       document.documentElement.style.zoom = '1.5'
     })
@@ -138,12 +147,13 @@ test.describe('predictable layout', () => {
   })
 
   test('reset all leaves the accessibility preference in place', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
+    await prepareAccess(page, { switches: ['Predictable Layout'] })
     await openAccess(page)
     await page.getByRole('button', { name: 'Back', exact: true }).click()
     await page.getByRole('button', { name: 'Reset all' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
   })
 })

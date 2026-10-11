@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { boot, loadDemo } from './support'
+import { boot, loadDemo, prepareAccess } from './support'
 
 mkdirSync('/opt/cursor/artifacts', { recursive: true })
 
@@ -122,10 +122,8 @@ test.describe('audio markers popover', () => {
 
   test('draws a high-visibility outline without animation', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await boot(page, {
-      mode: 'technical',
-      a11y: { highVisibility: true, interfaceScale: 1.5, textScale: 2 },
-    })
+    await boot(page, { mode: 'technical' })
+    await prepareAccess(page, { interfaceScale: 150, textScale: 200, switches: ['High Visibility Controls'] })
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
     await loadDemo(page)
     await openMarkers(page)

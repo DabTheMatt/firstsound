@@ -1,15 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess } from './support'
-
-const ON = {
-  attentionFocus: true,
-  attentionStrength: 'clear',
-  attentionHighlight: true,
-  attentionReduce: true,
-}
+import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess, prepareAccess } from './support'
 
 test.describe('attention focus', () => {
-  test('is off until turned on, then survives reload and restore', async ({ page }) => {
+  test('is off until turned on, clears on reload, and restores from the accessibility defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
@@ -19,18 +12,20 @@ test.describe('attention focus', () => {
     await expect(page.getByRole('heading', { name: 'Cognitive & attention' })).toBeVisible()
     await toggle.check()
     await page.getByRole('radio', { name: 'Clear' }).check()
+    await page.getByRole('switch', { name: 'Highlight Related Controls', exact: true }).check()
+    await page.getByRole('switch', { name: 'Reduce Unrelated Emphasis', exact: true }).check()
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'clear')
     await expect(page.locator('html')).toHaveAttribute('data-attention-highlight', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-attention-reduce', 'on')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-attention', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'clear')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.attentionFocus).toBe(true)
-    expect(stored.attentionStrength).toBe('clear')
+    await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
     await openAccess(page)
+    await page.getByRole('switch', { name: 'Attention Focus', exact: true }).check()
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
@@ -38,7 +33,11 @@ test.describe('attention focus', () => {
   })
 
   test('keeps keyboard focus visible and does not trap or hide controls', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
+    await prepareAccess(page, {
+      switches: ['Attention Focus', 'Highlight Related Controls', 'Reduce Unrelated Emphasis'],
+      radios: ['Clear'],
+    })
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'on')
     const settings = page.getByRole('button', { name: 'Settings', exact: true })
     await settings.focus()
@@ -102,7 +101,13 @@ test.describe('attention focus', () => {
 
   test('does not cover primary controls on a narrow viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await boot(page, { a11y: { ...ON, interfaceScale: 1.5, textScale: 2 } })
+    await boot(page)
+    await prepareAccess(page, {
+      interfaceScale: 150,
+      textScale: 200,
+      switches: ['Attention Focus', 'Highlight Related Controls', 'Reduce Unrelated Emphasis'],
+      radios: ['Clear'],
+    })
     await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
     expect(await controlsOutsideViewport(page)).toEqual([])
     const overlay = await page.evaluate(() => {
@@ -116,7 +121,11 @@ test.describe('attention focus', () => {
   })
 
   test('marks the waveform region without hiding transport', async ({ page }) => {
-    await boot(page, { a11y: ON })
+    await boot(page)
+    await prepareAccess(page, {
+      switches: ['Attention Focus', 'Highlight Related Controls', 'Reduce Unrelated Emphasis'],
+      radios: ['Clear'],
+    })
     await loadDemo(page)
     await expect(page.locator('[data-attention-region="waveform"]')).toHaveAttribute('data-attention-live', 'true')
     await expect(page.locator('[data-transport]').first()).toBeVisible()

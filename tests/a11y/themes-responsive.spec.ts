@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, expectNoAxeViolations, REPRESENTATIVE_THEMES, VIEWPORTS } from './support'
+import { boot, controlsOutsideViewport, expectNoAxeViolations, prepareAccess, REPRESENTATIVE_THEMES, VIEWPORTS } from './support'
 
 test.describe('themes and reflow', () => {
   for (const theme of REPRESENTATIVE_THEMES) {
@@ -14,7 +14,11 @@ test.describe('themes and reflow', () => {
   }
 
   test('scans the high-contrast low vision preference', async ({ page }) => {
-    await boot(page, { a11y: { lowVision: true, enhancedFocus: true, largerInterface: true } })
+    await boot(page)
+    await prepareAccess(page, {
+      switches: ['Enhanced Focus Visibility', 'Larger Controls'],
+      checks: ['High Contrast / Low Vision Theme'],
+    })
     await expect(page.locator('html')).toHaveAttribute('data-low-vision', 'on')
     await expectNoAxeViolations(page)
   })
