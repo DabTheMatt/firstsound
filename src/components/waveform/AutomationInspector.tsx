@@ -143,6 +143,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
       className={`${inspectorStyles.panel} ${sheet ? inspectorStyles.sheet : ''} ${compact ? inspectorStyles.compact : ''}`}
       style={inspectorAccentStyle(snap)}
       data-automation-inspector="true"
+      data-attention-region="automation"
       data-inspector-context={inspectorContextId({ kind: 'automation' })}
       data-inspector-track={snap.selectedTrackId}
     >

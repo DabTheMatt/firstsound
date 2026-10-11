@@ -202,6 +202,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
       aria-label={t.chain.aria}
       data-guide-target="technical.effectChain"
       data-guide-rank="1"
+      data-attention-region="chain"
     >
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)
@@ -234,6 +235,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
             ) : null}
             <div
               data-effect-state={enabled ? 'active' : 'bypassed'}
+              data-effect-id={mod.instanceId}
               data-selected={selected ? 'true' : 'false'}
               className={`${styles.tile} ${selected ? styles.selected : ''} ${enabled ? styles.enabled : styles.bypassed} ${fixed ? styles.locked : styles.movable}`}
               title={fixed ? label : t.chain.dragHint}

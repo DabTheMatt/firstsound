@@ -1,0 +1,93 @@
+/* Attention Focus. Presentation only. Does not block pointer or keyboard events. */
+
+:root {
+  --field-attention-outline: color-mix(in srgb, var(--accent-primary) 70%, var(--text-primary));
+  --field-attention-background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  --field-attention-border: color-mix(in srgb, var(--accent-primary) 48%, var(--border-strong));
+  --field-attention-muted-border: color-mix(in srgb, var(--border-default) 42%, var(--bg-panel));
+  --field-attention-strength: 0.55;
+}
+
+html[data-attention-strength='clear'] {
+  --field-attention-outline: color-mix(in srgb, var(--accent-primary) 40%, var(--text-primary));
+  --field-attention-background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  --field-attention-border: color-mix(in srgb, var(--accent-primary) 28%, var(--text-primary));
+  --field-attention-muted-border: color-mix(in srgb, var(--border-subtle) 70%, var(--bg-panel));
+  --field-attention-strength: 1;
+}
+
+html[data-attention='on'] [data-attention-hit='true'],
+html[data-attention='on'] [data-attention-region] {
+  transition: none;
+}
+
+html[data-attention='on'][data-attention-highlight='on'] [data-attention-hit='true']:not([data-attention-region]) {
+  box-shadow: 0 0 0 1px var(--field-attention-outline);
+  background-color: color-mix(in srgb, var(--field-attention-background) calc(var(--field-attention-strength) * 100%), transparent);
+}
+
+html[data-attention='on'][data-attention-highlight='on'] [data-attention-region][data-attention-hit='true'] {
+  box-shadow: 0 0 0 1px var(--field-attention-outline);
+  background-color: transparent;
+}
+
+html[data-attention='on'][data-attention-highlight='on'][data-attention-strength='clear'] [data-attention-hit='true']:not([data-attention-region]) {
+  box-shadow: 0 0 0 2px var(--field-attention-outline);
+}
+
+html[data-attention='on'][data-attention-highlight='on'][data-attention-strength='clear'] [data-attention-region][data-attention-hit='true'] {
+  box-shadow: 0 0 0 2px var(--field-attention-outline);
+}
+
+/* High Visibility keeps its own outlines. Attention adds only a quiet wash. */
+html[data-high-visibility='on'][data-attention='on'] [data-attention-hit='true'] {
+  box-shadow: none;
+  background-color: color-mix(in srgb, var(--field-attention-background) 80%, transparent);
+}
+
+html[data-attention='on'][data-attention-reduce='on']:not([data-high-visibility='on']) [data-attention-region]:not([data-attention-live='true']):not(:focus-within) {
+  border-color: var(--field-attention-muted-border);
+  box-shadow: none;
+}
+
+html[data-attention='on'][data-attention-reduce='on'] [data-attention-region]:not([data-attention-live='true']):not(:focus-within) {
+  box-shadow: none;
+}
+
+/* Unrelated effect tiles and EQ nodes lose decorative glow only. Text stays. */
+html[data-attention='on'][data-attention-reduce='on'][data-attention-context='effect'] [data-effect-id]:not([data-attention-hit='true']),
+html[data-attention='on'][data-attention-reduce='on'][data-attention-context='eq'] [data-eq-node]:not([data-attention-hit='true']),
+html[data-attention='on'][data-attention-reduce='on'][data-attention-context='eq'] [data-eq-strip]:not([data-attention-hit='true']) {
+  box-shadow: none;
+}
+
+html[data-attention='on'] [data-meter-clip='on'],
+html[data-attention='on'] [role='alert'],
+html[data-attention='on'] [data-critical],
+html[data-attention='on'] [data-transport] {
+  opacity: 1;
+  filter: none;
+}
+
+html[data-attention='on']:not([data-focus='enhanced']):not([data-high-visibility='on']) :focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring) !important;
+  outline-offset: var(--focus-ring-offset) !important;
+}
+
+html[data-attention='on'] :focus-visible {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+html[data-attention='on'] [data-assisted-editor]:focus-within,
+html[data-attention='on'] [data-drag-free]:focus-within {
+  box-shadow: 0 0 0 1px var(--field-attention-outline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-attention='on'] [data-attention-hit='true'],
+  html[data-attention='on'] [data-attention-region] {
+    transition: none;
+    animation: none;
+  }
+}

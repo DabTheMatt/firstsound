@@ -271,7 +271,7 @@ export function EqCurve({
   }
 
   return (
-    <div ref={wrapRef} className={`${styles.wrap} ${fill || layout === 'fill' ? styles.fill : ''}`}>
+    <div ref={wrapRef} className={`${styles.wrap} ${fill || layout === 'fill' ? styles.fill : ''}`} data-attention-region="eq">
       <canvas ref={canvasRef} className={styles.canvas} aria-label="EQ correction curve" />
       {bands.map((band, index) => {
         if (band.type === 'off') return null
@@ -309,6 +309,7 @@ export function EqCurve({
             type="button"
             data-eq-node=""
             data-band={index + 1}
+            data-band-id={band.id ?? ''}
             data-selected={selected ? 'true' : 'false'}
             data-bypassed={band.bypassed ? 'true' : 'false'}
             data-q-live={motion.qLive ? 'true' : 'false'}

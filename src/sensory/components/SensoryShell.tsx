@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useA11ySettings } from '../../a11y'
+import { patchAttentionSignals } from '../../a11y/attention/signals'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
@@ -107,6 +108,10 @@ export function SensoryShell({
   const visual = sensoryVisualState(values, reduced, feelingId)
   const cssVars = visualCssVars(visual)
   const activeId = feelingId
+  useEffect(() => {
+    patchAttentionSignals({ sensoryAxisId: editingId ?? feelingId })
+    return () => patchAttentionSignals({ sensoryAxisId: null })
+  }, [editingId, feelingId])
   const sceneClass =
     scene === 'mirror' ? styles.mirror : scene === 'canyon' ? styles.canyon : scene === 'gleam' ? styles.gleam : ''
 
@@ -137,6 +142,7 @@ export function SensoryShell({
     <div
       className={`${styles.page} ${styles.rangePage} ${sceneClass} ${dragging ? styles.drop : ''}`}
       data-region="sensory"
+      data-attention-region="sensory"
       style={{ ...cssVars, '--sensory-chrome-top': `${overlayTop}px` } as CSSProperties}
       onDragOver={(event) => {
         event.preventDefault()

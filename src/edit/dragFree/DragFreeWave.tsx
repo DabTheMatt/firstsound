@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { patchAttentionSignals } from '../../a11y/attention/signals'
 import { announce } from '../../a11y/liveRegion'
 import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
@@ -74,6 +75,12 @@ function DragFreeWaveBody({
   const copy = t.dragFree
   const titleId = useId()
   const [section, setSection] = useState<Section>(null)
+  useEffect(() => {
+    patchAttentionSignals({
+      dragSection: section === 'trim' || section === 'times' || section === 'playhead' ? section : null,
+    })
+    return () => patchAttentionSignals({ dragSection: null })
+  }, [section])
   const [error, setError] = useState<EditError | null>(null)
   const [startDraft, setStartDraft] = useState('')
   const [endDraft, setEndDraft] = useState('')
@@ -252,7 +259,7 @@ function DragFreeWaveBody({
                   : null
 
   return (
-    <section className={styles.panel} aria-labelledby={titleId} data-drag-free="wave">
+    <section className={styles.panel} aria-labelledby={titleId} data-drag-free="wave" data-drag-free-section={section ?? 'idle'}>
       <h2 id={titleId} className={styles.note}>
         {copy.selection}
       </h2>

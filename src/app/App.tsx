@@ -30,6 +30,7 @@ import { WorkspaceNav, closeWorkspaceNav } from '../a11y/shortcuts/WorkspaceNav'
 import { forgetTrigger } from '../a11y/dialogFocus'
 import { validateSelection } from '../edit/dragFree/edits'
 import { A11ySettings, DEFAULT_A11Y_SETTINGS, LiveAnnouncer, SkipLink, announce, persistAndApplyA11y, scrollFocusedIntoView, useA11ySettings } from '../a11y'
+import { useAttentionFocus } from '../a11y/attention/useAttentionFocus'
 import { focusInitial, focusSelector, rememberTrigger, restoreTrigger, trapTab } from '../a11y/dialogFocus'
 import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
 import { layersForProfile, persistHearingSettings, readStoredHearingSettings } from '../hearing/settings'
@@ -1492,6 +1493,23 @@ export default function App() {
       ) : null}
     </>
   )
+
+  useAttentionFocus({
+    uiMode,
+    workspace: uiMode === 'sensory' ? 'sensory' : uiMode === 'simple' ? 'simple' : (focusWorkspace ?? workspaceId),
+    exportOpen,
+    settingsOpen: menuOpen,
+    manualOpen,
+    navOpen,
+    keysOpen,
+    lfoOpen: lfoCenterOpen,
+    selectionActive: snap.canClearSelection,
+    inspectorKind: resolvedFocus.kind === 'automation' ? 'automation' : resolvedFocus.kind === 'tool' ? 'tool' : 'module',
+    effectId: resolvedFocus.kind === 'module' ? resolvedFocus.instanceId : null,
+    effectType: resolvedFocus.kind === 'module' ? resolvedFocus.type : null,
+    automationPointId: autoFocus.nodeId,
+    automationLaneId: snap.automation.selectedParamId,
+  })
 
   if (uiMode === 'simple') {
     return (

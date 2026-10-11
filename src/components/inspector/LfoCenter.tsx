@@ -44,7 +44,7 @@ export function LfoCenter({ snap, onReveal }: Props) {
     return FX_LFO_KINDS.indexOf(a) - FX_LFO_KINDS.indexOf(b)
   })
   return (
-    <div className={styles.panel} role="dialog" aria-label={t.header.lfoCenter}>
+    <div className={styles.panel} role="dialog" aria-label={t.header.lfoCenter} data-lfo-center="">
       <header className={styles.head}>
         <h2 className={styles.title}>{t.lfo.center}</h2>
         <p className={styles.lead}>{t.lfo.lead(FX_LFO_SLOTS)}</p>

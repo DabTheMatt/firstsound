@@ -321,6 +321,7 @@ const en: ManualSection[] = [
       'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
       'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
       'High Visibility Controls is in Settings → Accessibility → Visual comfort. It is off until you turn it on. It makes important controls, selections, and editing handles easier to see. The sound does not change.',
+      'Attention Focus is in Settings → Accessibility → Cognitive & attention. It is off until you turn it on. It highlights the controls that belong to the edit you are doing, and it can quiet decorative contrast elsewhere. It does not hide controls, and it does not change the sound. See Attention Focus.',
       'Interface Size and Text Size are in the same visual section. They are separate from each other and from Larger Controls. See Interface & text scaling.',
       'Choices are saved in this browser and survive reload. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project. Reset application, in the top bar, also returns these preferences, including Interface Size, Text Size, and High Visibility, to their defaults.',
       'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
@@ -352,6 +353,18 @@ const en: ManualSection[] = [
       'Guided Tasks draws a dashed outline around the step it is showing. That outline is not the keyboard focus ring, and it does not flash. Reduced Motion stays in charge of animation. High Visibility does not add pulsing handles.',
       'The choice is saved in this browser. It survives reload and mode changes. Restore accessibility defaults turns High Visibility off and leaves the audio project alone. Reset application returns High Visibility to off together with the other accessibility preferences, and it also clears the session.',
       'It works with the themes you already have, including Studio Dark, Soft Slate, Warm Paper, and Dusk. Edges use the theme’s text color so they stay visible on dark and light backgrounds. It also works with Interface Size, Text Size, and Larger Controls. Handles grow a little on screen. Their click area does not stack on top of the neighbor.',
+    ],
+  },
+  {
+    id: 'attention-focus',
+    title: 'Attention Focus',
+    body: [
+      'Attention Focus is in Settings → Accessibility → Cognitive & attention. It is off until you turn it on. Turn it on when you want FIELD to point at the controls that belong to the edit you are doing. Other controls stay where they are. You can still click them, and you can still reach them with Tab.',
+      'Focus Strength is Subtle or Clear. Subtle is a small difference. Clear is easier to see. Neither one hides text, and neither one flashes.',
+      'Highlight Related Controls draws a quiet mark on the waveform, the selection, a fade, a trim, the selected EQ band, the selected effect, an automation point, or the Guided Tasks step you are on. Reduce Unrelated Emphasis quiets decorative borders and glow around areas that are not part of that edit. Essential words stay readable. Warnings, clip lights, and the Play control stay easy to see.',
+      'Attention Focus is not Focus Mode. Focus Mode changes which workspace is on screen. Attention Focus only changes emphasis. You can use both. FIELD does not turn Focus Mode on for you.',
+      'When a Guided Tasks step is open, that step is the mark FIELD uses. Show me where still works the same way. Finishing a step still depends on the edit you actually make, not on the highlight.',
+      'The choice is saved in this browser. It survives reload and mode changes. Restore accessibility defaults turns Attention Focus off and leaves the audio project alone. Changing it does not restart playback.',
     ],
   },
   {
@@ -745,6 +758,7 @@ const pl: ManualSection[] = [
       'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
       'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
       'Zwiększona widoczność kontrolek jest w Ustawienia → Dostępność → Komfort widzenia. Jest wyłączona, dopóki jej nie włączysz. Poprawia widoczność kontrolek, zaznaczeń i uchwytów edycyjnych. Dźwięk się nie zmienia.',
+      'Koncentracja uwagi jest w Ustawienia → Dostępność → Poznanie i uwaga. Jest wyłączona, dopóki jej nie włączysz. Wyróżnia kontrolki związane z czynnością, którą właśnie wykonujesz, i może ściszyć dekoracyjny kontrast gdzie indziej. Nie ukrywa kontrolek i nie zmienia dźwięku. Patrz Koncentracja uwagi.',
       'Rozmiar interfejsu i Rozmiar tekstu są w tej samej sekcji widzenia. Są osobne od siebie i od większych elementów sterujących. Patrz Rozmiar interfejsu i tekstu.',
       'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu. Reset aplikacji na górnym pasku też wraca z tymi preferencjami, w tym z Rozmiarem interfejsu, Rozmiarem tekstu i zwiększoną widocznością, do wartości domyślnych.',
       'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
@@ -776,6 +790,18 @@ const pl: ManualSection[] = [
       'Zadania z przewodnikiem rysują kreskowany obrys wokół kroku, który pokazują. Ten obrys nie jest pierścieniem fokusu klawiatury i nie miga. Ograniczenie ruchu nadal decyduje o animacji. Zwiększona widoczność nie dodaje pulsujących uchwytów.',
       'Wybór zapisuje się w tej przeglądarce. Przeżywa odświeżenie i zmianę trybu. Przywróć domyślne ustawienia dostępności wyłącza zwiększoną widoczność i zostawia projekt audio. Reset aplikacji wyłącza zwiększoną widoczność razem z pozostałymi preferencjami dostępności i dodatkowo czyści sesję.',
       'Działa z motywami, które już masz, w tym Studio Dark, Soft Slate, Warm Paper i Dusk. Krawędzie biorą kolor tekstu motywu, więc zostają widoczne na ciemnym i jasnym tle. Działa też z Rozmiarem interfejsu, Rozmiarem tekstu i większymi elementami sterującymi. Uchwyty rosną trochę na ekranie. Ich obszar kliknięcia nie nakłada się na sąsiada.',
+    ],
+  },
+  {
+    id: 'attention-focus',
+    title: 'Koncentracja uwagi',
+    body: [
+      'Koncentracja uwagi jest w Ustawienia → Dostępność → Poznanie i uwaga. Jest wyłączona, dopóki jej nie włączysz. Włącz ją, gdy FIELD ma wskazać kontrolki związane z czynnością, którą właśnie wykonujesz. Pozostałe kontrolki zostają na miejscu. Nadal można je kliknąć i nadal da się do nich dojść Tabem.',
+      'Siła wyróżnienia to Subtelna albo Wyraźna. Subtelna jest małą różnicą. Wyraźna jest łatwiejsza do zobaczenia. Żadna nie ukrywa tekstu i żadna nie miga.',
+      'Wyróżniaj powiązane kontrolki rysuje cichy znak przy fali, zaznaczeniu, zaniku, przycięciu, wybranym paśmie EQ, wybranym efekcie, punkcie automatyzacji albo kroku zadań z przewodnikiem. Ścisz niepowiązane elementy uspokaja dekoracyjne krawędzie i poświatę poza tą czynnością. Ważne słowa zostają czytelne. Ostrzeżenia, lampka przesteru i przycisk odtwarzania zostają łatwe do zobaczenia.',
+      'Koncentracja uwagi to nie jest tryb Focus. Focus zmienia, który obszar jest na ekranie. Koncentracja uwagi zmienia tylko wyróżnienie. Można używać obu. FIELD sam nie włącza trybu Focus.',
+      'Gdy krok zadań z przewodnikiem jest otwarty, ten krok jest znakiem, którego FIELD używa. Pokaż gdzie działa tak samo jak wcześniej. Ukończenie kroku nadal zależy od edycji, którą naprawdę zrobisz, a nie od podświetlenia.',
+      'Wybór zapisuje się w tej przeglądarce. Przeżywa odświeżenie i zmianę trybu. Przywróć domyślne ustawienia dostępności wyłącza koncentrację uwagi i zostawia projekt audio. Zmiana nie restartuje odtwarzania.',
     ],
   },
   {

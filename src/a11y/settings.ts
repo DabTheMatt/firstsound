@@ -34,7 +34,17 @@ export type A11ySettings = {
   accessibleWaveform: boolean
   /** Stronger outlines, shapes, and labels for controls. Off until the user turns it on. */
   highVisibility: boolean
+  /** Visual emphasis for the current edit. Off until the user turns it on. */
+  attentionFocus: boolean
+  /** How strong the emphasis is. Ignored while attentionFocus is off. */
+  attentionStrength: AttentionStrength
+  /** Outline the controls that belong to the current edit. */
+  attentionHighlight: boolean
+  /** Quiet decorative contrast outside the current edit. Text contrast stays. */
+  attentionReduce: boolean
 }
+
+export type AttentionStrength = 'subtle' | 'clear'
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   lowVision: false,
@@ -50,6 +60,10 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   textScale: 1,
   accessibleWaveform: false,
   highVisibility: false,
+  attentionFocus: false,
+  attentionStrength: 'subtle',
+  attentionHighlight: true,
+  attentionReduce: true,
 }
 
 const BOOLEAN_KEYS = [
@@ -64,7 +78,14 @@ const BOOLEAN_KEYS = [
   'keyboardFirst',
   'accessibleWaveform',
   'highVisibility',
+  'attentionFocus',
+  'attentionHighlight',
+  'attentionReduce',
 ] as const satisfies readonly (keyof A11ySettings)[]
+
+function readStrength(raw: unknown): AttentionStrength {
+  return raw === 'clear' ? 'clear' : 'subtle'
+}
 
 /** Snap to the 5% grid and keep the value inside the supported range. */
 export function clampScale(value: number, min: number, max: number): number {
@@ -88,6 +109,7 @@ export function parseA11ySettings(raw: unknown): A11ySettings {
   }
   if ('interfaceScale' in rec) next.interfaceScale = readScale(rec.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
   if ('textScale' in rec) next.textScale = readScale(rec.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
+  if ('attentionStrength' in rec) next.attentionStrength = readStrength(rec.attentionStrength)
   return next
 }
 
@@ -209,6 +231,10 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
   root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
   root.dataset.highVisibility = settings.highVisibility ? 'on' : 'off'
+  root.dataset.attention = settings.attentionFocus ? 'on' : 'off'
+  root.dataset.attentionStrength = settings.attentionStrength === 'clear' ? 'clear' : 'subtle'
+  root.dataset.attentionHighlight = settings.attentionHighlight ? 'on' : 'off'
+  root.dataset.attentionReduce = settings.attentionReduce ? 'on' : 'off'
   const interfaceScale = clampScale(settings.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
   const textScale = clampScale(settings.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
   root.style.setProperty('--field-interface-scale', formatScale(interfaceScale))

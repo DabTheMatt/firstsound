@@ -53,7 +53,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
   }, [open])
 
   return (
-    <div className={styles.editBar} ref={rootRef} data-selection-toolbar={selected ? 'selection' : 'wave'}>
+    <div className={styles.editBar} ref={rootRef} data-attention-region="selection" data-selection-toolbar={selected ? 'selection' : 'wave'}>
       <button type="button" className={styles.textButton} onClick={onZoomOut} aria-label={t.waveform.zoomOut}>
         −
       </button>

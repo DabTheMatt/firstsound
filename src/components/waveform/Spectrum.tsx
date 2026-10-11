@@ -1374,6 +1374,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     <div
       className={`${styles.wrap} ${compact ? styles.compact : ''} ${phoneEq ? styles.phoneEq : ''} ${phoneFocus ? styles.eqFocus : ''} ${analyzerOpen && !phoneEq && !phoneFocus ? styles.analyzerOpen : ''}`}
       role="region"
+      data-attention-region="fft"
       aria-label={
         prefs.viewMode === '3d' && !phoneEq && !phoneFocus
           ? spectralHistoryAriaLabel(prefs.historySec, historyFrozen)
@@ -2035,6 +2036,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 type="button"
                 data-eq-node=""
                 data-band={index + 1}
+                data-band-id={band.id ?? ''}
+                data-eq-instance={mod.instanceId}
                 data-selected={selected ? 'true' : 'false'}
                 data-bypassed={dim ? 'true' : 'false'}
                 data-q-live={motion.qLive ? 'true' : 'false'}

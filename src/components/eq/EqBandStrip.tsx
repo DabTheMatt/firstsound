@@ -223,6 +223,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
       className={`${inline ? styles.inlineStrip : styles.strip} ${selected ? styles.stripOn : ''} ${band.type === 'off' || band.bypassed ? styles.stripOff : ''}`}
       style={accent}
       data-eq-strip=""
+      data-band-id={band.id ?? ''}
+      data-eq-instance={instanceId}
       data-eq-filter={band.type}
       data-eq-inline={inline ? 'true' : 'false'}
       data-selected={selected ? 'true' : 'false'}

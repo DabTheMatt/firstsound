@@ -443,8 +443,8 @@ export function HearingAccessLayer({
   }
 
   return (
-    <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface}>
-      <div className={styles.alerts} aria-live="polite">
+    <div className={focus ? `${styles.host} ${styles.hostFocus} ${styles.palette}` : `${styles.host} ${styles.palette}`} data-surface={surface} data-attention-region="hearing">
+      <div className={styles.alerts} aria-live="polite" data-critical="">
         {alerts.map((alert) => (
           <button key={alert.id} type="button" className={alert.tone === 'warn' ? styles.warn : styles.badge} onClick={() => dismissHearingAlert(alert.id)}>
             <strong>{alert.title}</strong>

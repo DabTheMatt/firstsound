@@ -14,6 +14,7 @@ import {
   clampScale,
   scalePercent,
   type A11ySettings as A11yState,
+  type AttentionStrength,
 } from './settings'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
@@ -136,6 +137,45 @@ function ScalePreference({ label, description, value, min, max, presets, onChang
   )
 }
 
+function StrengthChoice({
+  label,
+  description,
+  value,
+  subtle,
+  clear,
+  onChange,
+}: {
+  label: string
+  description: string
+  value: AttentionStrength
+  subtle: string
+  clear: string
+  onChange: (next: AttentionStrength) => void
+}) {
+  const labelId = useId()
+  const helpId = useId()
+  return (
+    <div className={styles.option}>
+      <div className={styles.copy}>
+        <span id={labelId} className={styles.optionLabel}>
+          {label}
+        </span>
+        <p id={helpId} className={styles.help}>
+          {description}
+        </p>
+      </div>
+      <div className={styles.choices} role="radiogroup" aria-labelledby={labelId} aria-describedby={helpId}>
+        <button type="button" className={styles.choice} role="radio" aria-checked={value === 'subtle'} onClick={() => onChange('subtle')}>
+          {subtle}
+        </button>
+        <button type="button" className={styles.choice} role="radio" aria-checked={value === 'clear'} onClick={() => onChange('clear')}>
+          {clear}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 type Props = {
   onBack: () => void
 }
@@ -199,6 +239,42 @@ export function A11ySettings({ onBack }: Props) {
           onLabel={a.on}
           offLabel={a.off}
           onChange={(reduceMotion) => setSettings({ reduceMotion })}
+        />
+      </div>
+
+      <div>
+        <h3 className={styles.group}>{a.cognitive}</h3>
+        <PreferenceSwitch
+          checked={settings.attentionFocus}
+          label={a.attentionFocus}
+          description={a.attentionFocusHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(attentionFocus) => setSettings({ attentionFocus })}
+        />
+        <StrengthChoice
+          label={a.attentionStrength}
+          description={`${a.attentionSubtle} / ${a.attentionClear}`}
+          value={settings.attentionStrength}
+          subtle={a.attentionSubtle}
+          clear={a.attentionClear}
+          onChange={(attentionStrength) => setSettings({ attentionStrength })}
+        />
+        <PreferenceSwitch
+          checked={settings.attentionHighlight}
+          label={a.attentionHighlight}
+          description={a.attentionHighlightHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(attentionHighlight) => setSettings({ attentionHighlight })}
+        />
+        <PreferenceSwitch
+          checked={settings.attentionReduce}
+          label={a.attentionReduce}
+          description={a.attentionReduceHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(attentionReduce) => setSettings({ attentionReduce })}
         />
       </div>
 

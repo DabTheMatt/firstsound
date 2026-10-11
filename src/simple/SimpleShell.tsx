@@ -13,6 +13,7 @@ import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
 import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
 import { radioGroupKey, tabListKey } from '../a11y/keyboard'
 import { focusInitial, trapTab } from '../a11y/dialogFocus'
+import { patchAttentionSignals } from '../a11y/attention/signals'
 import { useI18n } from '../i18n'
 import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
 import { guideChrome } from '../guide/copy'
@@ -127,6 +128,10 @@ export function SimpleShell({
   const [section, setSection] = useState<Section>('edit')
   const [sheet, setSheet] = useState<Sheet>('none')
   const sheetTrigger = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    patchAttentionSignals({ simpleExport: sheet === 'save' })
+    return () => patchAttentionSignals({ simpleExport: false })
+  }, [sheet])
   useEffect(() => {
     if (sheet === 'none') {
       const node = sheetTrigger.current
@@ -927,6 +932,7 @@ export function SimpleShell({
             role="dialog"
             aria-modal="true"
             aria-labelledby="simple-sheet-title"
+            data-export-dialog={sheet === 'save' ? '' : undefined}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {

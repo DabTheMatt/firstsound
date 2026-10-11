@@ -341,7 +341,7 @@ function ToolInspector({
         </p>
       ) : null}
       {knobs ? (
-        <div className={styles.knobs}>
+        <div className={styles.knobs} data-fade-controls="">
           <ValueKnob
             label={t.inspector.fadeIn}
             valueText={`${Math.round(edit.fadeIn * 1000)} ms`}
@@ -617,7 +617,7 @@ function ModuleInspector({
     const ids = primaryParamIds(type)
     return (
       <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
-        <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact" {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
+        <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact" data-attention-region="inspector" {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
           <div className={styles.head}>
             <h2 className={styles.title} id={`module-${instanceId}-title`}>
               {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
@@ -646,7 +646,7 @@ function ModuleInspector({
   }
   return (
     <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
-    <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
+    <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-attention-region="inspector" {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
         <h2 className={styles.title} id={`module-${instanceId}-title`}>

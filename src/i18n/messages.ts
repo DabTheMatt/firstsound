@@ -751,6 +751,16 @@ export type Messages = {
     focusHelp: string
     highVisibility: string
     highVisibilityHelp: string
+    cognitive: string
+    attentionFocus: string
+    attentionFocusHelp: string
+    attentionStrength: string
+    attentionSubtle: string
+    attentionClear: string
+    attentionHighlight: string
+    attentionHighlightHelp: string
+    attentionReduce: string
+    attentionReduceHelp: string
     on: string
     off: string
     saved: string
@@ -1779,6 +1789,16 @@ export const EN: Messages = {
     focusHelp: 'Make keyboard focus easier to see.',
     highVisibility: 'High Visibility Controls',
     highVisibilityHelp: 'Make important controls, selections and editing handles easier to see.',
+    cognitive: 'Cognitive & attention',
+    attentionFocus: 'Attention Focus',
+    attentionFocusHelp: 'Highlight controls related to your current editing activity.',
+    attentionStrength: 'Focus Strength',
+    attentionSubtle: 'Subtle',
+    attentionClear: 'Clear',
+    attentionHighlight: 'Highlight Related Controls',
+    attentionHighlightHelp: 'Mark the controls that belong to this edit.',
+    attentionReduce: 'Reduce Unrelated Emphasis',
+    attentionReduceHelp: 'Quiet decorative contrast around other areas. Text stays readable.',
     on: 'On',
     off: 'Off',
     saved: 'Your preferences are saved automatically.',
@@ -2835,6 +2855,16 @@ export const PL: Messages = {
     focusHelp: 'Ułatwia zobaczenie fokusu klawiatury.',
     highVisibility: 'Zwiększona widoczność kontrolek',
     highVisibilityHelp: 'Popraw widoczność kontrolek, zaznaczeń i uchwytów edycyjnych.',
+    cognitive: 'Poznanie i uwaga',
+    attentionFocus: 'Koncentracja uwagi',
+    attentionFocusHelp: 'Wyróżniaj elementy związane z aktualnie wykonywaną czynnością.',
+    attentionStrength: 'Siła wyróżnienia',
+    attentionSubtle: 'Subtelna',
+    attentionClear: 'Wyraźna',
+    attentionHighlight: 'Wyróżniaj powiązane kontrolki',
+    attentionHighlightHelp: 'Oznacz kontrolki, które należą do tej edycji.',
+    attentionReduce: 'Ścisz niepowiązane elementy',
+    attentionReduceHelp: 'Ścisz dekoracyjny kontrast wokół pozostałych obszarów. Tekst zostaje czytelny.',
     on: 'Wł.',
     off: 'Wył.',
     saved: 'Ustawienia zapisują się automatycznie.',

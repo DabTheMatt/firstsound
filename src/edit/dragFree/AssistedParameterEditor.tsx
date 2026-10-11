@@ -56,7 +56,7 @@ export function AssistedParameterEditor({ label, def, range, value, spoken, disa
   }
 
   return (
-    <div className={styles.field}>
+    <div className={styles.field} data-assisted-editor="">
       <label htmlFor={inputId}>{label}</label>
       <input
         id={inputId}

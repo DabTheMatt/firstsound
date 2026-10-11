@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.28.0
+Tested application version: 0.29.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -219,5 +219,31 @@ Known visual limits:
 - Fade handles on the canvas are still pointer targets. The keyboard path remains the drag-free editors
 - Close EQ nodes can sit near each other. Visual rings stay about 1.5px so the hit target is not grown again on top of Larger Controls
 - Guided highlight and keyboard focus can appear at the same time. The tutorial mark is dashed. The focus ring stays the focus ring
+
+DSP modifications: none.
+
+## FIELD ACCESS 21A — attention focus (0.29.0)
+
+Attention Focus is Settings → Accessibility → Cognitive & attention. The stored fields are `attentionFocus`, `attentionStrength` (`subtle` or `clear`), `attentionHighlight`, and `attentionReduce` on the existing FIELD ACCESS record. Defaults: off, subtle, highlight on, reduce on. `data-attention` is `on` or `off`. Restore accessibility defaults returns all four. Reset application still restores the whole FIELD ACCESS record, including Attention Focus, together with Interface Size and High Visibility. Reload and mode changes keep the record. Loading a sample and Reset all do not write the accessibility record.
+
+The context is derived from the dialog that is open, the Guided Tasks step, an explicit trim or fade, then the selected effect instance, EQ band id, or automation point id, then the workspace. It is not a second editing state. Stable effect instance ids and EQ band ids decide which control is marked. A second Reverb or a second band is not marked.
+
+What the emphasis does:
+
+- A static outline, and a light wash on the specific control. Large surfaces such as the waveform get an outline only, so the audio drawing is not covered
+- Unrelated regions can lose decorative border contrast and glow. Text color is not changed. Opacity is not set to 0. `pointer-events`, `inert`, and `aria-hidden` are not applied
+- Keyboard focus keeps the existing focus ring. High Visibility keeps its outlines. Reduced Motion and `prefers-reduced-motion` get no attention animation
+- Transport, clip lights, and alerts stay full strength
+- Focus Mode is unchanged. Guided Tasks keeps its own highlight. Attention Focus can add a static mark on the same target. Task completion is still the guide reducer
+
+Implemented contexts: waveform, selection, trim, fade, EQ band, effect instance, automation point, LFO center and modulation editor, FFT, Hearing Access, Sensory axis, export dialog, settings and other modal dialogs, Guided Tasks target, drag-free numeric editors.
+
+Remaining limitations:
+
+- This is not a WCAG 2.2 AA conformance claim. Automated axe coverage is the existing suite plus the Attention Focus cases. No NVDA, VoiceOver, JAWS, or TalkBack session was run
+- Contrast was checked by keeping text color and not painting a solid plate over text. A person should still look at Clear emphasis on Warm Paper and Dusk
+- Narrow viewports were checked in the automated suite at 320, 375, 390, and 430 CSS pixels. That is emulation, not a physical phone
+- Canvas fade handles remain pointer targets. The keyboard path is still the drag-free editors
+- Reset application continues to restore FIELD ACCESS defaults. That matches the 22A and 22B contract and is covered by the scaling test
 
 DSP modifications: none.

@@ -38,6 +38,7 @@ export function ManualDialog({ onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={copy.title}
+        data-manual-dialog=""
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
             event.stopPropagation()

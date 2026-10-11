@@ -89,6 +89,7 @@ import {
   selectionBoundaryHitPx,
   selectionFromAnchor,
 } from './handleLayout'
+import { patchAttentionSignals } from '../../a11y/attention/signals'
 import { highVisibilityEnabled, largerControlsEnabled } from '../../a11y/settings'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
@@ -329,6 +330,10 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   const [panning, setPanning] = useState(false)
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null)
   const [fadeDrag, setFadeDrag] = useState<'in' | 'out' | null>(null)
+  useEffect(() => {
+    patchAttentionSignals({ fadeDrag })
+    return () => patchAttentionSignals({ fadeDrag: null })
+  }, [fadeDrag])
   const addAutomationNodeRef = useRef<() => void>(() => undefined)
   const deleteAutomationNodeRef = useRef<() => void>(() => undefined)
   const applyFadeRef = useRef<(side: 'in' | 'out') => void>(() => undefined)
@@ -1469,6 +1474,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
       className={`${styles.editor} ${hearingFocus ? styles.hearingEditor : ''} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
       data-region="waveform"
+      data-attention-region="waveform"
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
       {workspaceBar}

@@ -165,6 +165,7 @@ export function ExportDialog({ snap, onClose }: Props) {
     >
       <form
         className={styles.panel}
+        data-export-dialog=""
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
