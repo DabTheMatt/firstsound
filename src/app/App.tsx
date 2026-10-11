@@ -19,6 +19,16 @@ import {
   type TrackInspectorMemory,
 } from './inspectorRoute'
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
+import {
+  cloneMarkerSource,
+  cloneMarkers,
+  markerSourcesEqual,
+  markersEqual,
+  nextMarkerName,
+  type AudioMarker,
+  type MarkerSource,
+} from '../audio/markers/markers'
+import { setMarkerPanelOpen } from '../audio/markers/panel'
 import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
 import { accessibilityOwnsSpace, createSpaceActivationGuard, isImeEvent, isSpaceKey, isTypingTarget, spaceTogglesTransport } from './keys'
@@ -29,6 +39,7 @@ import { KeyboardHelp, closeKeyboardHelp } from '../a11y/shortcuts/KeyboardHelp'
 import { WorkspaceNav, closeWorkspaceNav } from '../a11y/shortcuts/WorkspaceNav'
 import { forgetTrigger } from '../a11y/dialogFocus'
 import { validateSelection } from '../edit/dragFree/edits'
+import { speakEditTime } from '../edit/dragFree/timeEntry'
 import { A11ySettings, DEFAULT_A11Y_SETTINGS, LiveAnnouncer, SkipLink, announce, persistAndApplyA11y, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { useAttentionFocus } from '../a11y/attention/useAttentionFocus'
 import { focusInitial, focusSelector, rememberTrigger, restoreTrigger, trapTab } from '../a11y/dialogFocus'
@@ -54,6 +65,7 @@ import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
+import { MarkerPanel } from '../components/markers/MarkerPanel'
 import { DragFreeDock, dragFreeSurface } from '../edit/dragFree/DragFreeDock'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
@@ -130,6 +142,8 @@ type Hist = {
   automation: AutomationDocument
   pcm?: SamplePcmSnapshot
   spectral?: SpectralState
+  markers: AudioMarker[]
+  markerSource: MarkerSource | null
 }
 
 function cloneDsp(dsp: DspSnapshot): DspSnapshot {
@@ -149,6 +163,8 @@ function histKey(
   automation: AutomationDocument,
   extra?: Pick<Hist, 'layer' | 'sensory' | 'colorSound' | 'dsp' | 'sensoryBase'>,
   spectral?: SpectralState,
+  markers: readonly AudioMarker[] = [],
+  markerSource: MarkerSource | null = null,
 ): Hist {
   return {
     start,
@@ -166,12 +182,15 @@ function histKey(
     sensoryBase: extra?.sensoryBase ? cloneDsp(extra.sensoryBase) : undefined,
     automation: cloneAutomation(automation),
     spectral: spectral ? cloneSpectralState(spectral) : undefined,
+    markers: cloneMarkers(markers),
+    markerSource: cloneMarkerSource(markerSource),
   }
 }
 
 function histEqual(a: Hist, b: Hist): boolean {
   if ((a.pcm?.id ?? null) !== (b.pcm?.id ?? null)) return false
   if (!automationEqual(a.automation, b.automation)) return false
+  if (!markersEqual(a.markers, b.markers) || !markerSourcesEqual(a.markerSource, b.markerSource)) return false
   if (
     a.start !== b.start ||
     a.end !== b.end ||
@@ -276,6 +295,7 @@ export default function App() {
   const uiModeRef = useRef(uiMode)
   const historyRef = useRef(history)
   const restorePresentRef = useRef<(present: Hist) => void>(() => {})
+  const markerShortcutRef = useRef<(id: string) => void>(() => {})
   useEffect(() => {
     editRef.current = edit
   }, [edit])
@@ -406,6 +426,16 @@ export default function App() {
         event.preventDefault()
         rememberTrigger('keyboard-help')
         setKeysOpen(true)
+        return
+      }
+      if (
+        matched.id === 'markers.add' ||
+        matched.id === 'markers.previous' ||
+        matched.id === 'markers.next' ||
+        matched.id === 'markers.open'
+      ) {
+        event.preventDefault()
+        markerShortcutRef.current(matched.id)
       }
     }
     const onKeyUp = (event: KeyboardEvent) => {
@@ -469,7 +499,21 @@ export default function App() {
           ? { layer: resolved, dsp: captureDsp(engine), sensoryBase: cloneDsp(sensoryBaseRef.current) }
           : { layer: 'region' }
     setHistory((h) =>
-      commitHistory(h, histKey(current.params.start, current.params.end, current.chain, e, current.automation, extra, current.spectral), histEqual),
+      commitHistory(
+        h,
+        histKey(
+          current.params.start,
+          current.params.end,
+          current.chain,
+          e,
+          current.automation,
+          extra,
+          current.spectral,
+          current.userMarkers,
+          current.markerSource,
+        ),
+        histEqual,
+      ),
     )
   }, [])
 
@@ -492,6 +536,8 @@ export default function App() {
         start: before.start,
         end: before.end,
         automation: cloneAutomation(before.automation),
+        markers: cloneMarkers(before.markers ?? h.present.markers),
+        markerSource: before.markerSource === undefined ? h.present.markerSource : before.markerSource,
         pcm: snapshotFromCapture(before, nextSamplePcmId()),
       }
       const next: Hist = {
@@ -505,6 +551,8 @@ export default function App() {
         fadeInBend: e.fadeInBend,
         fadeOutBend: e.fadeOutBend,
         automation: cloneAutomation(after.automation),
+        markers: cloneMarkers(after.markers ?? stamped.markers),
+        markerSource: after.markerSource === undefined ? stamped.markerSource : after.markerSource,
         pcm: snapshotFromCapture(after, nextSamplePcmId()),
       }
       return commitHistory({ ...h, present: stamped }, next, histEqual)
@@ -591,9 +639,43 @@ export default function App() {
     }
     if (present.sensoryBase) sensoryBaseRef.current = cloneDsp(present.sensoryBase)
     if (present.spectral) engine.replaceSpectral(present.spectral)
+    engine.replaceUserMarkers(present.markers ?? [], present.markerSource ?? null)
   }
   useEffect(() => {
     restorePresentRef.current = restorePresent
+    markerShortcutRef.current = (id: string) => {
+      if (id === 'markers.open') {
+        setMarkerPanelOpen(true)
+        return
+      }
+      const snapNow = engine.getSnapshot()
+      if (!snapNow.sampleLoaded || !(snapNow.duration > 0)) {
+        announce(t.markers.needAudio)
+        setMarkerPanelOpen(true)
+        return
+      }
+      if (id === 'markers.add') {
+        const name = nextMarkerName(snapNow.userMarkers, t.markers.defaultName)
+        const result = engine.addUserMarker(engine.getSourcePlayheadSeconds(), name)
+        if (!result.ok) {
+          announce(result.error === 'name' ? t.markers.needName : result.error === 'missing' ? t.markers.needAudio : t.dragFree.errPast)
+          return
+        }
+        commit()
+        const marker = engine.getSnapshot().userMarkers.find((item) => item.id === result.id)
+        announce(t.markers.added(marker?.name ?? name, speakEditTime(marker?.timeSeconds ?? 0, locale)))
+        setMarkerPanelOpen(true, result.id)
+        return
+      }
+      const direction = id === 'markers.previous' ? -1 : 1
+      const marker = engine.goToNeighborMarker(direction)
+      if (!marker) {
+        announce(t.markers.none)
+        return
+      }
+      const phrase = direction < 0 ? t.markers.previous : t.markers.next
+      announce(phrase(marker.name, speakEditTime(marker.timeSeconds, locale)))
+    }
   })
 
   const applySensoryValues = (next: SensoryValues) => {
@@ -2067,6 +2149,7 @@ export default function App() {
               }}
               onDspGesture={(before, after) => setHistory((h) => commitDspGesture(h, before, after, histEqual))}
             />
+            <MarkerPanel mode="technical" onCommit={commit} />
             <AccessibleWaveform
               mode="technical"
               onRegionCommit={commit}

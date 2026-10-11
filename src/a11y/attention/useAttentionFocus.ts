@@ -113,6 +113,7 @@ export function useAttentionFocus(props: Props): void {
         lfoEditing: props.lfoOpen || lfoFocus,
         sensoryAxisId: signals.sensoryAxisId,
         assistedOpen: false,
+        markerEditing: signals.markerEditing,
       }),
     [
       props.uiMode,
@@ -132,6 +133,7 @@ export function useAttentionFocus(props: Props): void {
       eqPick?.instanceId,
       lfoFocus,
       signals.sensoryAxisId,
+      signals.markerEditing,
     ],
   )
 

@@ -38,6 +38,7 @@ import { isTypingTarget } from '../../a11y/keyboard'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { kilohertzLabel } from '../../a11y/waveform/time'
 import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
+import { WaveformMarkers } from '../markers/WaveformMarkers'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
 import type { WaveTool, VizMode } from '../../app/editorState'
@@ -1694,6 +1695,9 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                       />
                     </>
                   )}
+                  {!sensory ? (
+                    <WaveformMarkers view={view} markers={snap.userMarkers} selectedId={snap.selectedMarkerId} />
+                  ) : null}
                   <div ref={playheadRef} className={styles.playhead} data-playhead="" />
                   {fadeDrag ? (
                     <div className={styles.fadeHint} data-fade-hint={fadeDrag}>

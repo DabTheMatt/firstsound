@@ -30,6 +30,7 @@ import { PlaybackFeel } from './PlaybackFeel'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
 import { AccessibleWaveform } from '../../a11y/waveform/AccessibleWaveform'
+import { MarkerPanel } from '../../components/markers/MarkerPanel'
 import { DragFreeWave } from '../../edit/dragFree/DragFreeWave'
 import { SensoryExact } from './SensoryExact'
 import { SoundRange } from './SoundRange'
@@ -184,6 +185,7 @@ export function SensoryShell({
           >
             {t.sensory.strings}
           </button>
+          <MarkerPanel mode="sensory" onCommit={onRegionCommit} />
           <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
           <button type="button" className={styles.loadBtn} data-load-sample="" onClick={onLoadSample}>
             <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />

@@ -8,6 +8,7 @@ export type AttentionSignals = {
   dragSection: AttentionDragSection
   sensoryAxisId: string | null
   simpleExport: boolean
+  markerEditing: boolean
 }
 
 const EMPTY: AttentionSignals = {
@@ -15,6 +16,7 @@ const EMPTY: AttentionSignals = {
   dragSection: null,
   sensoryAxisId: null,
   simpleExport: false,
+  markerEditing: false,
 }
 
 let current: AttentionSignals = { ...EMPTY }
@@ -30,7 +32,8 @@ export function patchAttentionSignals(patch: Partial<AttentionSignals>): void {
     next.fadeDrag === current.fadeDrag &&
     next.dragSection === current.dragSection &&
     next.sensoryAxisId === current.sensoryAxisId &&
-    next.simpleExport === current.simpleExport
+    next.simpleExport === current.simpleExport &&
+    next.markerEditing === current.markerEditing
   ) {
     return
   }

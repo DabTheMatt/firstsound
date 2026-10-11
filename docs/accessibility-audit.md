@@ -2,9 +2,9 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.31.0
+Tested application version: 0.32.0
 
-The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
+The 0.21.3 baseline below is kept. FIELD ACCESS 20C and 23A are recorded in their own sections. This is still not a WCAG conformance claim.
 
 This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim. Automated checks cannot prove WCAG 2.2 Level AA.
 
@@ -311,5 +311,40 @@ Remaining motion and visual limits:
 - This section is not a WCAG 2.2 AA conformance claim.
 
 Sensory Comfort works with the High Visibility layer from 22B. It does not replace those tokens, the focus ring, or the stronger control edges.
+
+DSP modifications: none.
+
+## FIELD ACCESS 23A — audio landmarks and markers (0.32.0)
+
+User markers are named points stored on the engine snapshot, the project preset, and the existing undo history. They are not a second waveform and not a second playhead. Detected silence, transients, and level changes stay in the Accessible Waveform 20C scan. Technical can save one detected place as a marker. The scan is not copied into a new analysis pipeline, and it does not create markers by itself.
+
+Keyboard, from the shared shortcut registry:
+
+- Ctrl+Shift+E or Cmd+Shift+E adds a marker at the playhead
+- Ctrl+Shift+Up / Ctrl+Shift+Down go to the previous and next marker without wrapping
+- Ctrl+Shift+U opens the marker list
+- Tab, Enter, and Escape operate the list and the name, description, and time fields
+- Shortcuts do not fire while a text field is focused
+
+Screen reader behavior in the implementation: each list row exposes the marker name and spoken time, and Go, Rename, and Delete are named buttons. Description is behind Show description. An explicit jump announces the name and time through the existing live region. Playback does not announce markers. Waveform diamonds are hidden from the accessibility tree so sample peaks are not turned into nodes. The list keeps every marker.
+
+What was exercised here:
+
+- Unit tests for add, rename, description, time, delete, duplicate times, invalid times, boundaries, stable ids, undo/redo, preset parse, a different audio file, timeline remap, and the shared time-to-fraction mapping
+- Playwright `tests/a11y/markers.spec.ts` in headless Chromium: add, rename, description, typed time, go to marker, playhead alignment under 3px, selection style unchanged, add during playback without leaving Pause, undo of delete, Simple without detected-place wording, Sensory entry in the header, a 320px sheet, High Visibility outline, reduced motion, Interface Size 150%, and Text Size 200%
+- Keyboard-only operation uses the list buttons and typed time. A manual pass with a screen reader was not run
+- High Visibility outlines the diamond and the selected row. Marker drawing has no pulse or flash. Reduced motion has no marker animation to remove
+- The marker sheet is fixed, like Accessible Waveform navigation, so opening it does not reflow the inspector. Attention Focus marks the editor, the selected row, and the time, name, and description fields, and leaves transport in the live set
+
+Known limitations:
+
+- Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 23A
+- Physical iPhone was not used. The sheet uses safe-area padding, 44px targets, and a scrollable list. A 320×568 Chromium viewport was checked. That is not a device lab
+- Browser zoom was not given a separate session. Interface Size 150% and Text Size 200% were applied in the Playwright marker spec. Marker position is a percentage of the same viewport fraction as the playhead, so it does not keep a second pixel map
+- Preset markers apply only when the loaded file name, sample rate, and duration match. They are not restored onto a different recording. Unsaved markers are not restored by reloading the page
+- Trim and Use as sample clear markers instead of sliding them onto the new buffer
+- This section is not a WCAG 2.2 AA conformance claim
+
+Relationship to 20C: structural and detected landmarks stay in Accessible Waveform navigation. User markers are a separate list. Previous landmark and Previous marker are different actions.
 
 DSP modifications: none.

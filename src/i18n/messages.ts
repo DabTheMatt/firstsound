@@ -932,6 +932,46 @@ export type Messages = {
     valueSr: (n: number, value: string) => string
     sensoryExact: string
   }
+  markers: {
+    open: string
+    close: string
+    add: string
+    go: string
+    edit: string
+    remove: string
+    save: string
+    cancel: string
+    name: string
+    description: string
+    showDescription: string
+    hideDescription: string
+    time: string
+    empty: string
+    needAudio: string
+    needName: string
+    list: string
+    suggestions: string
+    suggestionsHelp: string
+    saveDetected: string
+    noSuggestions: string
+    analysing: string
+    previousAction: string
+    nextAction: string
+    defaultName: (index: number) => string
+    pointLabel: (name: string, time: string) => string
+    goTo: (name: string) => string
+    editNamed: (name: string) => string
+    deleteNamed: (name: string) => string
+    added: (name: string, time: string) => string
+    renamed: (name: string) => string
+    described: (name: string) => string
+    retimed: (name: string, time: string) => string
+    deleted: (name: string) => string
+    previous: (name: string, time: string) => string
+    next: (name: string, time: string) => string
+    none: string
+    savedDetected: (name: string, time: string) => string
+  }
 }
 
 export const EN: Messages = {
@@ -1889,6 +1929,46 @@ export const EN: Messages = {
     quietNotifications: 'Quiet Notifications',
     quietNotificationsHelp: 'Fewer informational notices. Errors and clipping stay visible.',
   },
+  markers: {
+    open: 'Markers',
+    close: 'Close markers',
+    add: 'Add',
+    go: 'Go to',
+    edit: 'Rename',
+    remove: 'Delete',
+    save: 'Save marker',
+    cancel: 'Cancel',
+    name: 'Name',
+    description: 'Description',
+    showDescription: 'Show description',
+    hideDescription: 'Hide description',
+    time: 'Time',
+    empty: 'No markers yet.',
+    needAudio: 'Load audio before adding a marker.',
+    needName: 'Enter a marker name.',
+    list: 'Markers',
+    suggestions: 'Detected places',
+    suggestionsHelp: 'These are suggestions from the existing landmark scan. They stay suggestions until you save one as a marker.',
+    saveDetected: 'Save as marker',
+    noSuggestions: 'No detected places.',
+    analysing: 'Looking for places.',
+    previousAction: 'Previous marker',
+    nextAction: 'Next marker',
+    defaultName: (index) => `Marker ${index}`,
+    pointLabel: (name, time) => `Marker: ${name}, ${time}.`,
+    goTo: (name) => `Go to marker: ${name}`,
+    editNamed: (name) => `Edit marker: ${name}`,
+    deleteNamed: (name) => `Delete marker: ${name}`,
+    added: (name, time) => `Added marker: ${name}, ${time}.`,
+    renamed: (name) => `Marker name: ${name}.`,
+    described: (name) => `Marker description saved for ${name}.`,
+    retimed: (name, time) => `Marker time: ${name}, ${time}.`,
+    deleted: (name) => `Deleted marker: ${name}.`,
+    previous: (name, time) => `Previous marker: ${name}, ${time}.`,
+    next: (name, time) => `Next marker: ${name}, ${time}.`,
+    none: 'No marker in that direction.',
+    savedDetected: (name, time) => `Saved as marker: ${name}, ${time}.`,
+  },
   keyboard: {
     open: 'Keyboard shortcuts',
     jump: 'Workspace navigation',
@@ -1949,6 +2029,10 @@ export const EN: Messages = {
       'auto.delete': 'Delete the selected automation point',
       'guide.minimize': 'Minimize guided tasks',
       'modal.close': 'Close the dialog',
+      'markers.add': 'Add a marker at the playhead',
+      'markers.previous': 'Go to the previous marker',
+      'markers.next': 'Go to the next marker',
+      'markers.open': 'Open markers',
     },
   },
   dragFree: {
@@ -2984,6 +3068,46 @@ export const PL: Messages = {
     quietNotifications: 'Ciche powiadomienia',
     quietNotificationsHelp: 'Mniej komunikatów informacyjnych. Błędy i przesterowanie zostają widoczne.',
   },
+  markers: {
+    open: 'Znaczniki',
+    close: 'Zamknij znaczniki',
+    add: 'Dodaj',
+    go: 'Idź',
+    edit: 'Zmień nazwę',
+    remove: 'Usuń',
+    save: 'Zapisz znacznik',
+    cancel: 'Anuluj',
+    name: 'Nazwa',
+    description: 'Opis',
+    showDescription: 'Pokaż opis',
+    hideDescription: 'Ukryj opis',
+    time: 'Czas',
+    empty: 'Nie ma jeszcze znaczników.',
+    needAudio: 'Wczytaj nagranie, zanim dodasz znacznik.',
+    needName: 'Wpisz nazwę znacznika.',
+    list: 'Znaczniki',
+    suggestions: 'Wykryte miejsca',
+    suggestionsHelp: 'To propozycje z istniejącego skanu punktów. Zostają propozycjami, dopóki nie zapiszesz jednej jako znacznik.',
+    saveDetected: 'Zapisz jako znacznik',
+    noSuggestions: 'Brak wykrytych miejsc.',
+    analysing: 'Szukam miejsc.',
+    previousAction: 'Poprzedni znacznik',
+    nextAction: 'Następny znacznik',
+    defaultName: (index) => `Znacznik ${index}`,
+    pointLabel: (name, time) => `Znacznik: ${name}, ${time}.`,
+    goTo: (name) => `Idź do znacznika: ${name}`,
+    editNamed: (name) => `Zmień znacznik: ${name}`,
+    deleteNamed: (name) => `Usuń znacznik: ${name}`,
+    added: (name, time) => `Dodano znacznik: ${name}, ${time}.`,
+    renamed: (name) => `Nazwa znacznika: ${name}.`,
+    described: (name) => `Zapisano opis znacznika ${name}.`,
+    retimed: (name, time) => `Czas znacznika: ${name}, ${time}.`,
+    deleted: (name) => `Usunięto znacznik: ${name}.`,
+    previous: (name, time) => `Poprzedni znacznik: ${name}, ${time}.`,
+    next: (name, time) => `Następny znacznik: ${name}, ${time}.`,
+    none: 'Nie ma znacznika w tę stronę.',
+    savedDetected: (name, time) => `Zapisano jako znacznik: ${name}, ${time}.`,
+  },
   keyboard: {
     open: 'Skróty klawiszowe',
     jump: 'Nawigacja po obszarze',
@@ -3044,6 +3168,10 @@ export const PL: Messages = {
       'auto.delete': 'Usuń wybrany punkt automatyzacji',
       'guide.minimize': 'Zminimalizuj zadania z przewodnikiem',
       'modal.close': 'Zamknij okno',
+      'markers.add': 'Dodaj znacznik w miejscu głowicy',
+      'markers.previous': 'Idź do poprzedniego znacznika',
+      'markers.next': 'Idź do następnego znacznika',
+      'markers.open': 'Otwórz znaczniki',
     },
   },
   dragFree: {

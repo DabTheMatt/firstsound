@@ -284,4 +284,9 @@ export type PresetV1 = {
   automation?: unknown
   /** Optional Random / Chaos configuration. Events do not start until transport plays. */
   random?: unknown
+  /**
+   * Named positions for the audio that was loaded when they were saved.
+   * Absent on presets saved before user markers. Not applied to a different file.
+   */
+  markers?: unknown
 }

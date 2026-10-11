@@ -10,6 +10,7 @@ import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
 import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
+import { MarkerPanel } from '../components/markers/MarkerPanel'
 import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
 import { radioGroupKey, tabListKey } from '../a11y/keyboard'
 import { focusInitial, trapTab } from '../a11y/dialogFocus'
@@ -473,6 +474,7 @@ export function SimpleShell({
               onRegionCommit={onRegionCommit}
               onTrim={onApplyTrim}
             />
+            <MarkerPanel mode="simple" onCommit={onRegionCommit} />
             <AccessibleWaveform
               mode="simple"
               onRegionCommit={onRegionCommit}

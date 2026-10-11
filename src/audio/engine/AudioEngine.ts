@@ -275,6 +275,23 @@ import {
   type TimelineEdit,
 } from './sampleEdit'
 import {
+  appendMarker,
+  cloneMarker,
+  cloneMarkerSource,
+  cloneMarkers,
+  createMarkerId,
+  editMarker,
+  markerSourcesCompatible,
+  neighborMarker,
+  parseMarkerDocument,
+  remapUserMarkers,
+  removeMarker,
+  type AudioMarker,
+  type MarkerDocument,
+  type MarkerSource,
+  type MarkerTimeError,
+} from '../markers/markers'
+import {
   applyIdentityBiquad,
   cloneEqBands,
   ensureBandStages,
@@ -509,6 +526,9 @@ export type EngineSnapshot = {
   masterMix: number
   transients: number[]
   showTransients: boolean
+  userMarkers: AudioMarker[]
+  markerSource: MarkerSource | null
+  selectedMarkerId: string | null
   tempoSource: 'default' | 'detected' | 'tapped' | 'manual'
   tapCount: number
   tempoNotice: string | null
@@ -838,6 +858,10 @@ export class AudioEngine {
   private variationSeq = 0
   private transients: number[] = []
   private showTransients = false
+  private userMarkers: AudioMarker[] = []
+  private markerSource: MarkerSource | null = null
+  private selectedMarkerId: string | null = null
+  private pendingMarkerImport: MarkerDocument | null = null
   private tempoSource: EngineSnapshot['tempoSource'] = 'default'
   private tapTempoState: TapTempoState = emptyTapTempo()
   private tempoNotice: string | null = null
@@ -4183,6 +4207,10 @@ export class AudioEngine {
     this.mono = null
     this.fileName = ''
     this.playOffset = 0
+    this.userMarkers = []
+    this.markerSource = null
+    this.selectedMarkerId = null
+    this.pendingMarkerImport = null
     this.randomWarned = false
     this.randomPrompt = false
     this.randomPendingId = null
@@ -4707,6 +4735,102 @@ export class AudioEngine {
     this.applyLoadedBuffer(buffer, true, 'inset', this.selectedTrackId)
   }
 
+  addUserMarker(
+    timeSeconds: number,
+    name: string,
+    description?: string,
+  ): { ok: true; id: string } | { ok: false; error: MarkerTimeError } {
+    const duration = this.buffer?.duration ?? 0
+    const result = appendMarker(this.userMarkers, { timeSeconds, name, description }, duration)
+    if (!result.ok) return result
+    this.userMarkers = result.markers
+    this.selectedMarkerId = result.id
+    this.emit()
+    return { ok: true, id: result.id }
+  }
+
+  updateUserMarker(
+    id: string,
+    patch: { timeSeconds?: number; name?: string; description?: string },
+  ): { ok: true; id: string } | { ok: false; error: MarkerTimeError } {
+    const duration = this.buffer?.duration ?? 0
+    const result = editMarker(this.userMarkers, id, patch, duration)
+    if (!result.ok) return result
+    this.userMarkers = result.markers
+    this.selectedMarkerId = id
+    this.emit()
+    return { ok: true, id }
+  }
+
+  deleteUserMarker(id: string): boolean {
+    const next = removeMarker(this.userMarkers, id)
+    if (!next) return false
+    this.userMarkers = next
+    if (this.selectedMarkerId === id) this.selectedMarkerId = null
+    this.emit()
+    return true
+  }
+
+  selectUserMarker(id: string | null): void {
+    if (id != null && !this.userMarkers.some((marker) => marker.id === id)) return
+    if (this.selectedMarkerId === id) return
+    this.selectedMarkerId = id
+    this.emit()
+  }
+
+  /** Move the existing playhead. Does not rebuild the graph or change DSP. */
+  goToUserMarker(id: string): AudioMarker | null {
+    const marker = this.userMarkers.find((item) => item.id === id)
+    if (!marker) return null
+    this.selectedMarkerId = id
+    this.seekSeconds(marker.timeSeconds, 'sample')
+    return cloneMarker(marker)
+  }
+
+  goToNeighborMarker(direction: -1 | 1): AudioMarker | null {
+    const marker = neighborMarker(
+      this.userMarkers,
+      this.getSourcePlayheadSeconds(),
+      direction,
+      this.selectedMarkerId,
+    )
+    if (!marker) return null
+    return this.goToUserMarker(marker.id)
+  }
+
+  replaceUserMarkers(markers: readonly AudioMarker[], source: MarkerSource | null): void {
+    this.userMarkers = cloneMarkers(markers)
+    this.markerSource = cloneMarkerSource(source)
+    if (this.selectedMarkerId && !this.userMarkers.some((marker) => marker.id === this.selectedMarkerId)) {
+      this.selectedMarkerId = null
+    }
+    this.emit()
+  }
+
+  private rebindMarkerSource(fileName: string, sampleRate: number, duration: number): void {
+    const source: MarkerSource = {
+      id: createMarkerId(),
+      fileName,
+      sampleRate,
+      duration,
+    }
+    const pending = this.pendingMarkerImport
+    this.pendingMarkerImport = null
+    this.selectedMarkerId = null
+    if (pending && markerSourcesCompatible(pending.source, source)) {
+      this.markerSource = { ...pending.source, duration: source.duration, sampleRate: source.sampleRate, fileName: source.fileName }
+      this.userMarkers = cloneMarkers(pending.markers)
+      return
+    }
+    this.markerSource = source
+    this.userMarkers = []
+  }
+
+  private rememberMarkerDuration(duration: number): void {
+    if (!this.markerSource) return
+    this.markerSource = { ...this.markerSource, duration }
+  }
+
   toPreset(): PresetV1 {
     return {
       instrument: 'field',
@@ -4732,6 +4856,9 @@ export class AudioEngine {
       selectedTrackId: this.selectedTrackId,
       masterMix: this.masterMix,
       trackRacks: this.serializedRacks(),
+      markers: this.markerSource
+        ? { source: { ...this.markerSource }, markers: cloneMarkers(this.userMarkers) }
+        : undefined,
     }
   }
 
@@ -4855,6 +4982,23 @@ export class AudioEngine {
     this.adoptPresetRacks(preset, legacyHost)
     this.adoptMixerBases()
     if (typeof preset.masterMix === 'number') this.masterMix = clampMix(preset.masterMix)
+    if (preset.markers != null) {
+      const parsed = parseMarkerDocument(preset.markers)
+      if (parsed) {
+        if (this.markerSource && markerSourcesCompatible(parsed.source, this.markerSource)) {
+          this.userMarkers = cloneMarkers(parsed.markers)
+          this.markerSource = {
+            ...this.markerSource,
+            id: parsed.source.id,
+            fileName: parsed.source.fileName || this.markerSource.fileName,
+          }
+          this.selectedMarkerId = null
+          this.pendingMarkerImport = null
+        } else if (!this.markerSource) {
+          this.pendingMarkerImport = parsed
+        }
+      }
+    }
     const selected = selectedTrack(this.tracks, this.selectedTrackId)
     if (selected && selected.end > selected.start) {
       const trackRegion = clampRegion(selected.start, selected.end, duration, MIN_REGION)
@@ -4961,6 +5105,8 @@ export class AudioEngine {
       start: this.params.start,
       end: this.params.end,
       automation: this.automation,
+      markers: cloneMarkers(this.userMarkers),
+      markerSource: cloneMarkerSource(this.markerSource),
     })
   }
 
@@ -4977,6 +5123,13 @@ export class AudioEngine {
     this.playOffset = Math.min(duration, Math.max(0, snap.playhead))
     this.transients = snap.transients.slice()
     this.showTransients = this.transients.length > 0
+    if (snap.markers) {
+      this.userMarkers = cloneMarkers(snap.markers)
+      if (this.selectedMarkerId && !this.userMarkers.some((marker) => marker.id === this.selectedMarkerId)) {
+        this.selectedMarkerId = null
+      }
+    }
+    if (snap.markerSource) this.markerSource = cloneMarkerSource(snap.markerSource)
     this.emit()
   }
 
@@ -5248,6 +5401,7 @@ export class AudioEngine {
       ...(sampleName ? { stereoDisplay: 'combined' as const } : {}),
       ...(named ? { name: named.name, nameLocked: named.nameLocked } : {}),
     })
+    if (bindEditor) this.rebindMarkerSource(fileName ?? '', buffer.sampleRate, buffer.duration)
     this.bufferRev++
     this.applyLiveAudio()
     this.emit()
@@ -5317,6 +5471,11 @@ export class AudioEngine {
     this.playOffset = mapPlayhead(previousPlayhead, edit, duration)
     this.automation = mapAutomation(this.automation, edit)
     this.transients = mapMarkerTimes(this.transients, edit)
+    this.userMarkers = remapUserMarkers(this.userMarkers, edit)
+    this.rememberMarkerDuration(duration)
+    if (this.selectedMarkerId && !this.userMarkers.some((marker) => marker.id === this.selectedMarkerId)) {
+      this.selectedMarkerId = null
+    }
     this.showTransients = this.transients.length > 0
     if (!this.prepApplied) {
       const window = mapRange(this.prep.windowStart, this.prep.windowEnd, edit)
@@ -8426,6 +8585,9 @@ export class AudioEngine {
       masterMix: this.masterMix,
       transients: this.transients.slice(),
       showTransients: this.showTransients,
+      userMarkers: cloneMarkers(this.userMarkers),
+      markerSource: cloneMarkerSource(this.markerSource),
+      selectedMarkerId: this.selectedMarkerId,
       tempoSource: this.tempoSource,
       tapCount: this.tapTempoState.times.length,
       tempoNotice: this.tempoNotice,

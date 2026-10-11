@@ -1,4 +1,5 @@
 import { cloneAutomation, type AutomationDocument, type AutomationNode } from '../automation/automation'
+import type { AudioMarker, MarkerSource } from '../markers/types'
 import { resampleChannels } from '../samplePrep/resample'
 import { duplicateMonoToStereo, mixChannelsToMono } from './channelLayout'
 
@@ -11,6 +12,8 @@ export type SamplePcmSnapshot = {
   channels: Float32Array[]
   playhead: number
   transients: number[]
+  markers?: AudioMarker[]
+  markerSource?: MarkerSource | null
 }
 
 export type SampleEditCapture = {
@@ -21,6 +24,8 @@ export type SampleEditCapture = {
   start: number
   end: number
   automation: AutomationDocument
+  markers?: AudioMarker[]
+  markerSource?: MarkerSource | null
 }
 
 export type TimelineEdit =
@@ -407,6 +412,8 @@ export function snapshotFromCapture(capture: SampleEditCapture, id = nextSampleP
     channels: capture.channels.map(copyChannel),
     playhead: capture.playhead,
     transients: capture.transients.slice(),
+    markers: (capture.markers ?? []).map((marker) => ({ ...marker })),
+    markerSource: capture.markerSource ? { ...capture.markerSource } : null,
   }
 }
 
@@ -419,6 +426,8 @@ export function cloneCapture(capture: SampleEditCapture): SampleEditCapture {
     start: capture.start,
     end: capture.end,
     automation: cloneAutomation(capture.automation),
+    markers: (capture.markers ?? []).map((marker) => ({ ...marker })),
+    markerSource: capture.markerSource ? { ...capture.markerSource } : null,
   }
 }
 

@@ -1,0 +1,141 @@
+.wrap {
+  margin: 8px 0;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.sensoryEntry {
+  margin: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+.toggle,
+.button {
+  min-height: var(--hit-min);
+  min-width: var(--hit-min);
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.button:disabled,
+.toggle:disabled {
+  color: var(--text-disabled);
+}
+
+.panel {
+  position: fixed;
+  z-index: 47;
+  left: 50%;
+  bottom: calc(max(64px, var(--transport-h, 48px)) + 8px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(920px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-panel);
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 800px) {
+  .panel {
+    max-height: min(60vh, 480px);
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selected {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+}
+
+.note,
+.error {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  color: var(--text-primary);
+}
+
+.editor,
+.suggestions,
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.input {
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 1rem;
+}
+
+textarea.input {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .button,
+  .toggle,
+  .selected {
+    transition: none;
+    animation: none;
+  }
+}

@@ -18,6 +18,7 @@ export type AttentionKind =
   | 'fft'
   | 'hearing'
   | 'sensory'
+  | 'marker'
   | 'waveform'
 
 export type AttentionModal = 'export' | 'settings' | 'manual' | 'nav' | 'keys' | 'trim' | 'assisted' | null
@@ -42,6 +43,7 @@ export type AttentionInput = {
   lfoEditing: boolean
   sensoryAxisId: string | null
   assistedOpen: boolean
+  markerEditing?: boolean
 }
 
 export type AttentionContext = {
@@ -96,6 +98,8 @@ export function getAttentionContext(input: AttentionInput): AttentionContext {
   if (input.operation === 'trim') return shell(input, 'trim')
   if (input.operation === 'fade-in' || input.operation === 'fade-out') return shell(input, 'fade')
   if (input.operation === 'selection') return shell(input, 'selection')
+
+  if (input.markerEditing) return shell(input, 'marker')
 
   if (input.lfoEditing) return shell(input, 'lfo')
 

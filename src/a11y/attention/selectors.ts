@@ -111,6 +111,17 @@ export function attentionSelectors(ctx: AttentionContext): AttentionMarks {
       if (laneId) hit.push(`[data-automation-lane="${laneId}"]`)
       hit.push('[data-drag-free="automation"]')
       break
+    case 'marker':
+      addRegions(['waveform'])
+      hit.push(
+        '[data-marker-editor]',
+        '[data-marker-selected="true"]',
+        '[data-marker-time]',
+        '[data-marker-name]',
+        '[data-marker-description]',
+      )
+      live.push('[data-marker-panel]', '[data-marker-editor]')
+      break
     case 'lfo':
       addRegions(['inspector'])
       hit.push('[data-lfo-center]', '[data-modulation-editor]', '[data-modulation-sheet]')

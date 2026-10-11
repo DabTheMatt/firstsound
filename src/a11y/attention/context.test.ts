@@ -26,6 +26,14 @@ function input(patch: Partial<AttentionInput> = {}): AttentionInput {
 }
 
 describe('attention context priority', () => {
+  it('emphasizes an open marker editor and keeps transport live', () => {
+    const ctx = getAttentionContext(input({ markerEditing: true, selectionActive: true }))
+    expect(ctx.kind).toBe('marker')
+    const marks = attentionSelectors(ctx)
+    expect(marks.hit.join(' ')).toContain('data-marker-editor')
+    expect(marks.live.join(' ')).toContain('data-transport')
+  })
+
   it('stays on the waveform when only the input module is selected', () => {
     expect(getAttentionContext(input()).kind).toBe('waveform')
   })
