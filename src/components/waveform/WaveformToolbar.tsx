@@ -3,6 +3,7 @@ import { trackAccentStyle } from '../../audio/mix/tracks'
 import { useEngine } from '../../hooks/useEngine'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import { useI18n } from '../../i18n'
+import { MarkerTrigger } from '../markers/MarkerPanel'
 import { BackgroundControl } from './BackgroundControl'
 import styles from './WaveformToolbar.module.css'
 
@@ -255,6 +256,7 @@ export function WaveformToolbar({
                 : null,
             ]}
           />
+          <MarkerTrigger />
         </div>
       </div>
       <div className={`${styles.cluster} ${styles.display}`} data-command-group="display">
