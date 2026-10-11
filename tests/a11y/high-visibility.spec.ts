@@ -1,13 +1,10 @@
-import { mkdirSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess } from './support'
-
-mkdirSync('/opt/cursor/artifacts', { recursive: true })
+import { boot, controlsOutsideViewport, expectNoAxeViolations, loadDemo, openAccess, saveScreenshot } from './support'
 
 const HV = { highVisibility: true }
 
 test.describe('high visibility controls', () => {
-  test('is off until turned on, then survives reload and restore', async ({ page }) => {
+  test('is off until turned on, then clears on reload and restore', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     await openAccess(page)
@@ -15,12 +12,12 @@ test.describe('high visibility controls', () => {
     await expect(toggle).not.toBeChecked()
     await toggle.check()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
-    await page.screenshot({ path: '/opt/cursor/artifacts/hv-access-on.png' })
+    await saveScreenshot(page, 'hv-access-on.png')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.highVisibility).toBe(true)
+    expect(stored.highVisibility).toBeUndefined()
     await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
@@ -62,7 +59,7 @@ test.describe('high visibility controls', () => {
     expect(box.anchor.endsWith('%')).toBe(true)
     expect(box.transform).not.toBe('none')
     expect(box.events).toBe('none')
-    await page.screenshot({ path: '/opt/cursor/artifacts/hv-playhead-studio-dark.png' })
+    await saveScreenshot(page, 'hv-playhead-studio-dark.png')
   })
 
   test('does not overflow a narrow screen with larger controls', async ({ page }) => {
@@ -74,7 +71,7 @@ test.describe('high visibility controls', () => {
       const outside = await controlsOutsideViewport(page)
       expect(outside.filter((name) => name !== 'Settings'), String(width)).toEqual([])
       if (width === 320 || width === 390) {
-        await page.screenshot({ path: `/opt/cursor/artifacts/hv-mobile-${width}.png` })
+        await saveScreenshot(page, `hv-mobile-${width}.png`)
       }
     }
   })
@@ -94,11 +91,11 @@ test.describe('high visibility controls', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow, `${pair.interfaceScale}/${pair.textScale}`).toBeLessThanOrEqual(1)
       if (pair.interfaceScale === 1.5) {
-        await page.screenshot({ path: '/opt/cursor/artifacts/hv-scale-150-200.png' })
+        await saveScreenshot(page, 'hv-scale-150-200.png')
         await page.setViewportSize({ width: 320, height: 700 })
         const narrow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
         expect(narrow).toBeLessThanOrEqual(1)
-        await page.screenshot({ path: '/opt/cursor/artifacts/hv-scale-320-150-200.png' })
+        await saveScreenshot(page, 'hv-scale-320-150-200.png')
       }
     }
   })

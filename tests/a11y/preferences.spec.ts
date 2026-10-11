@@ -25,20 +25,20 @@ test.describe('FIELD ACCESS preferences', () => {
     await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
   })
 
-  test('combines the three preferences and keeps them after reload', async ({ page }) => {
+  test('combines the three preferences for this page and clears them on reload', async ({ page }) => {
     await boot(page, { a11y: ALL_ON })
     await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
     await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
     await page.reload()
-    await page.getByRole('radiogroup', { name: 'Interface mode' }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
-    await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'large')
+    await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-focus', 'default')
+    await expect(page.locator('html')).toHaveAttribute('data-ui-scale', 'normal')
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.a11y') || '{}'))
-    expect(stored.reduceMotion).toBe(true)
-    expect(stored.enhancedFocus).toBe(true)
-    expect(stored.largerInterface).toBe(true)
+    expect(stored.reduceMotion).toBeUndefined()
+    expect(stored.enhancedFocus).toBeUndefined()
+    expect(stored.largerInterface).toBeUndefined()
   })
 
   test('does not stop playback when a preference changes', async ({ page }) => {

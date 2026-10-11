@@ -1,5 +1,36 @@
+import { mkdirSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
+
+declare global {
+  interface Window {
+    __FIELD_APPLY_A11Y__?: (patch: Record<string, boolean | number | string>) => void
+  }
+}
+
+let artifactDir: string | undefined
+
+function artifactDirectory(): string | null {
+  if (artifactDir !== undefined) return artifactDir || null
+  artifactDir = ''
+  for (const candidate of ['/opt/cursor/artifacts', 'test-results/artifacts']) {
+    try {
+      mkdirSync(candidate, { recursive: true })
+      artifactDir = candidate
+      return candidate
+    } catch {
+      /* This runner cannot create that directory. */
+    }
+  }
+  return null
+}
+
+/** Saves a visual check when a writable artifacts directory exists. */
+export async function saveScreenshot(page: Page, name: string): Promise<void> {
+  const dir = artifactDirectory()
+  if (!dir) return
+  await page.screenshot({ path: `${dir}/${name}` })
+}
 
 export const REPRESENTATIVE_THEMES = ['studio-dark', 'soft-slate', 'warm-paper', 'dusk'] as const
 
@@ -28,15 +59,20 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
     localStorage.setItem('firstsound.uiMode', state.mode ?? 'technical')
     localStorage.setItem('field.theme', state.theme ?? 'studio-dark')
     localStorage.setItem('field.technicalInterface', 'workspace')
-    if (state.a11y) {
-      localStorage.removeItem('field.accessibility.v1')
-      localStorage.setItem('field.a11y', JSON.stringify(state.a11y))
-    }
   }, init)
   await page.goto('/')
   await page.locator('#root').waitFor()
   // Phone layouts hide the mode radiogroup. Settings (Technical) or Menu (Sensory) is always present.
   await page.getByRole('button', { name: /^(Settings|Menu|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
+  if (init.a11y) {
+    // Accessibility choices stay in this page. A reload starts from the off defaults.
+    await page.waitForFunction(() => typeof window.__FIELD_APPLY_A11Y__ === 'function')
+    await page.evaluate((patch) => {
+      const apply = window.__FIELD_APPLY_A11Y__
+      if (!apply) throw new Error('FIELD accessibility test hook is missing')
+      apply(patch)
+    }, init.a11y)
+  }
 }
 
 /** axe WCAG tags. A clean result is not a conformance claim. */

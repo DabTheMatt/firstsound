@@ -13,6 +13,20 @@ import {
 
 const CHANGE = 'field-a11y-change'
 
+declare global {
+  interface Window {
+    /** Dev-only. Playwright applies a session patch after load. Production builds omit it. */
+    __FIELD_APPLY_A11Y__?: (patch: Partial<A11ySettings>) => void
+  }
+}
+
+function installA11yDevHook(): void {
+  if (typeof window === 'undefined' || !import.meta.env?.DEV) return
+  window.__FIELD_APPLY_A11Y__ = (patch) => {
+    persistAndApplyA11y({ ...readStoredA11ySettings(), ...patch })
+  }
+}
+
 export function subscribeA11y(onChange: () => void): () => void {
   const handler = () => onChange()
   document.addEventListener(CHANGE, handler)
@@ -36,6 +50,7 @@ export function persistAndApplyA11y(next: A11ySettings): A11ySettings {
 export function bootstrapA11y(): A11ySettings {
   migrateLegacyLowVisionTheme()
   const settings = persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS })
+  installA11yDevHook()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onMotion = () => {

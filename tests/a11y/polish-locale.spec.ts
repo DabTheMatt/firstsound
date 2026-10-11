@@ -1,7 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { boot, controlsOutsideViewport, REPRESENTATIVE_THEMES } from './support'
-
-const ARTIFACTS = '/opt/cursor/artifacts'
+import { boot, controlsOutsideViewport, REPRESENTATIVE_THEMES, saveScreenshot } from './support'
 const PHONE = [
   { width: 320, height: 568 },
   { width: 375, height: 667 },
@@ -30,7 +28,7 @@ test.describe('Polish locale layout', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await boot(page, { mode: 'technical', locale: 'en' })
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
-    await page.screenshot({ path: `${ARTIFACTS}/en-technical-desktop.png` })
+    await saveScreenshot(page, 'en-technical-desktop.png')
     const before = await geometry(page)
 
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -45,7 +43,7 @@ test.describe('Polish locale layout', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('radio', { name: 'Techniczny', exact: true })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'Przebieg', exact: true })).toBeVisible()
-    await page.screenshot({ path: `${ARTIFACTS}/pl-technical-desktop.png` })
+    await saveScreenshot(page, 'pl-technical-desktop.png')
     const after = await geometry(page)
     expect(after.lang).toBe('pl')
     expect(Math.abs(after.headerH - before.headerH)).toBeLessThanOrEqual(2)
@@ -62,7 +60,7 @@ test.describe('Polish locale layout', () => {
     await page.getByRole('button', { name: 'Ustawienia', exact: true }).click()
     await expect(page.getByRole('radio', { name: 'Polski', exact: true })).toBeVisible()
     await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeVisible()
-    await page.screenshot({ path: `${ARTIFACTS}/pl-settings-language.png` })
+    await saveScreenshot(page, 'pl-settings-language.png')
   })
 
   for (const viewport of PHONE) {
@@ -75,7 +73,7 @@ test.describe('Polish locale layout', () => {
       const outside = await controlsOutsideViewport(page)
       expect(outside, outside.join(', ')).toEqual([])
       if (viewport.width === 320 || viewport.width === 390 || viewport.width === 768) {
-        await page.screenshot({ path: `${ARTIFACTS}/pl-${viewport.width}.png` })
+        await saveScreenshot(page, `pl-${viewport.width}.png`)
       }
     })
   }
@@ -89,7 +87,7 @@ test.describe('Polish locale layout', () => {
       const outside = await controlsOutsideViewport(page)
       expect(outside, outside.join(', ')).toEqual([])
       if (theme === 'warm-paper' || theme === 'dusk') {
-        await page.screenshot({ path: `${ARTIFACTS}/pl-theme-${theme}.png` })
+        await saveScreenshot(page, `pl-theme-${theme}.png`)
       }
     })
   }
@@ -102,7 +100,7 @@ test.describe('Polish locale layout', () => {
     expect(outside, outside.join(', ')).toEqual([])
     const box = await geometry(page)
     expect(box.scrollW).toBeLessThanOrEqual(box.innerW + 1)
-    await page.screenshot({ path: `${ARTIFACTS}/pl-scale-150-text-200.png` })
+    await saveScreenshot(page, 'pl-scale-150-text-200.png')
   })
 
   test('opens Polish settings, accessibility, and markers', async ({ page }) => {
@@ -110,11 +108,11 @@ test.describe('Polish locale layout', () => {
     await boot(page, { locale: 'pl' })
     await page.getByRole('button', { name: 'Ustawienia', exact: true }).click()
     await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeVisible()
-    await page.screenshot({ path: `${ARTIFACTS}/pl-settings.png` })
+    await saveScreenshot(page, 'pl-settings.png')
     await page.getByRole('button', { name: 'Dostępność', exact: true }).click()
     await expect(page.getByText('Zwiększona widoczność kontrolek')).toBeVisible()
     await expect(page.getByText('Ogranicz ruch', { exact: true })).toBeVisible()
-    await page.screenshot({ path: `${ARTIFACTS}/pl-a11y.png` })
+    await saveScreenshot(page, 'pl-a11y.png')
     await page.keyboard.press('Escape')
     const markers = page.getByRole('button', { name: 'Znaczniki', exact: true })
     if (await markers.count()) {
@@ -129,7 +127,7 @@ test.describe('Polish locale layout', () => {
         return button.right > panel.right + 1 || button.left < panel.left - 1
       })
       expect(clipped).toBe(false)
-      await page.screenshot({ path: `${ARTIFACTS}/pl-markers.png` })
+      await saveScreenshot(page, 'pl-markers.png')
     }
   })
 })

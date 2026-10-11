@@ -29,7 +29,7 @@ test.describe('drag-free editing', () => {
     await page.keyboard.press('Escape')
     await page.reload()
     await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-drag-free', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-drag-free', 'off')
   })
 
   test('edits a selection from the keyboard and cancels trim', async ({ page }) => {

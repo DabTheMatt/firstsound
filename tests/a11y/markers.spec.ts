@@ -1,8 +1,5 @@
-import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { boot, loadDemo } from './support'
-
-mkdirSync('/opt/cursor/artifacts', { recursive: true })
+import { boot, loadDemo, saveScreenshot } from './support'
 
 async function openMarkers(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Markers, / }).click()
@@ -48,7 +45,7 @@ test.describe('audio markers popover', () => {
     await page.getByRole('textbox', { name: 'Time' }).fill('00:01.000')
     await page.getByRole('button', { name: 'Save marker' }).click()
     await expect(page.getByRole('button', { name: 'Marker: Bass entrance, 1 seconds.' })).toBeVisible()
-    await page.screenshot({ path: '/opt/cursor/artifacts/markers-popover.png' })
+    await saveScreenshot(page, 'markers-popover.png')
 
     await page.getByRole('button', { name: 'Marker: Bass entrance, 1 seconds.' }).click()
     const selectionAfter = await page.locator('[data-region-frame]').getAttribute('style')
@@ -63,7 +60,7 @@ test.describe('audio markers popover', () => {
     })).toBeLessThan(3)
 
     await closeMarkers(page)
-    await page.screenshot({ path: '/opt/cursor/artifacts/markers-waveform.png' })
+    await saveScreenshot(page, 'markers-waveform.png')
     await expect(page.locator('[data-user-marker]')).toHaveCount(1)
 
     await page.getByRole('button', { name: 'Play', exact: true }).first().click()
@@ -117,7 +114,7 @@ test.describe('audio markers popover', () => {
       if (transport && box) expect(box.y + box.height).toBeLessThanOrEqual(transport.y + 2)
       await page.keyboard.press('Escape')
     }
-    await page.screenshot({ path: '/opt/cursor/artifacts/markers-narrow.png' })
+    await saveScreenshot(page, 'markers-narrow.png')
   })
 
   test('draws a high-visibility outline without animation', async ({ page }) => {
@@ -145,6 +142,6 @@ test.describe('audio markers popover', () => {
     expect(paint.animation === 'none' || paint.animation === '').toBe(true)
     const motion = await page.locator('[data-marker-popover]').evaluate((node) => getComputedStyle(node).animationName)
     expect(motion === 'none' || motion === '').toBe(true)
-    await page.screenshot({ path: '/opt/cursor/artifacts/markers-high-visibility.png' })
+    await saveScreenshot(page, 'markers-high-visibility.png')
   })
 })

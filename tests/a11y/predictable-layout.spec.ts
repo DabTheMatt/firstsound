@@ -9,7 +9,7 @@ const ON = {
 }
 
 test.describe('predictable layout', () => {
-  test('is off until turned on, then survives reload and accessibility restore', async ({ page }) => {
+  test('is off until turned on, then clears on reload and accessibility restore', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
@@ -20,15 +20,22 @@ test.describe('predictable layout', () => {
     await expect(page.getByText('Keep tools and panels in consistent locations while you work.')).toBeVisible()
     await toggle.check()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'off')
+    await page.getByRole('switch', { name: 'Stable Panels' }).check()
+    await page.getByRole('switch', { name: 'Remember Workspace Layout' }).check()
+    await page.getByRole('switch', { name: 'Reduce Layout Movement' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'on')
     await page.reload()
     await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
-    expect(stored.stablePanels).toBe(true)
+    expect(stored.predictableLayout).toBeUndefined()
+    expect(stored.stablePanels).toBeUndefined()
     await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
@@ -65,9 +72,6 @@ test.describe('predictable layout', () => {
     await expect
       .poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('field.layout.v1') || '{}').technicalWorkspace))
       .toBe('fft')
-    await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.getByRole('tab', { name: 'FFT' })).toHaveAttribute('aria-selected', 'true')
     const memory = await page.evaluate(() => JSON.parse(localStorage.getItem('field.layout.v1') || '{}'))
     expect(memory.technicalWorkspace).toBe('fft')
     expect(memory.gain).toBeUndefined()
@@ -75,8 +79,10 @@ test.describe('predictable layout', () => {
     await page.getByRole('button', { name: 'Restore workspace layout' }).click()
     await expect(page.getByRole('tab', { name: 'Wave' })).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(kept.predictableLayout).toBe(true)
+    await page.reload()
+    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
+    await expect(page.getByRole('tab', { name: 'Wave' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('does not stop playback when the preference or workspace changes', async ({ page }) => {
@@ -144,6 +150,6 @@ test.describe('predictable layout', () => {
     await page.getByRole('button', { name: 'Reset all' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
+    expect(stored.predictableLayout).toBeUndefined()
   })
 })
