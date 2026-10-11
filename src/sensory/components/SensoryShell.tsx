@@ -137,7 +137,7 @@ export function SensoryShell({
     <div
       className={`${styles.page} ${styles.rangePage} ${sceneClass} ${dragging ? styles.drop : ''}`}
       data-region="sensory"
-      style={cssVars as CSSProperties}
+      style={{ ...cssVars, '--sensory-chrome-top': `${overlayTop}px` } as CSSProperties}
       onDragOver={(event) => {
         event.preventDefault()
         onDragOver()

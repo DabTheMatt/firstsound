@@ -84,6 +84,20 @@ test.describe('interface and text scaling', () => {
     expect(overflow).toBe(false)
   })
 
+  test('keeps sensory labels below the header at maximum sizes', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await boot(page, { mode: 'sensory', a11y: { interfaceScale: 1.5, textScale: 2 } })
+    const overlap = await page.evaluate(() => {
+      const header = document.querySelector('[data-region="sensory"] header')
+      const rails = [...document.querySelectorAll('[data-region="sensory"] [class*="rail"]')]
+      if (!header || rails.length === 0) return 'missing'
+      const headerBottom = header.getBoundingClientRect().bottom
+      const covered = rails.filter((rail) => rail.getBoundingClientRect().top + 1 < headerBottom)
+      return covered.length === 0 ? 'ok' : 'covered'
+    })
+    expect(overlap).toBe('ok')
+  })
+
   test('stays inside a narrow viewport at maximum text size', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await boot(page, { a11y: { interfaceScale: 1.25, textScale: 2 } })

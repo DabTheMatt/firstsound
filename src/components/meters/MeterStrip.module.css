@@ -365,14 +365,20 @@
   background: var(--accent-primary);
 }
 
+:global(html[data-text-room='max']) .withWords .body {
+  padding-left: max(22px, calc(var(--type-8) + 12px));
+}
+
 :global(html[data-text-room='max']) .withWords .wordCol {
-  position: relative;
-  left: auto;
-  width: max(14px, calc(var(--type-8) + 6px));
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: max(16px, var(--type-8));
 }
 
 :global(html[data-text-room='max']) .withWords .clipRow {
-  padding-left: 0;
+  padding-left: max(22px, calc(var(--type-8) + 12px));
 }
 
 .inlineHold {

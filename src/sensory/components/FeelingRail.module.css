@@ -1,6 +1,6 @@
 .rail {
   position: absolute;
-  top: 88px;
+  top: max(88px, calc(var(--sensory-chrome-top, 0px) + 8px));
   bottom: 96px;
   z-index: 6;
   display: flex;
@@ -419,7 +419,7 @@
 
 @media (max-width: 720px) {
   .rail {
-    top: 80px;
+    top: max(80px, calc(var(--sensory-chrome-top, 0px) + 8px));
     bottom: 88px;
   }
 
