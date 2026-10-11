@@ -15,7 +15,9 @@ const CHANGE = 'field-a11y-change'
 
 declare global {
   interface Window {
-    /** Dev-only. Playwright applies a session patch after load. Production builds omit it. */
+    /** Set before boot by the accessibility tests. Read once, then dropped. */
+    __FIELD_A11Y_BOOT__?: Partial<A11ySettings>
+    /** Dev-only. Playwright can patch the open page. Production builds omit it. */
     __FIELD_APPLY_A11Y__?: (patch: Partial<A11ySettings>) => void
   }
 }
@@ -49,7 +51,9 @@ export function persistAndApplyA11y(next: A11ySettings): A11ySettings {
 
 export function bootstrapA11y(): A11ySettings {
   migrateLegacyLowVisionTheme()
-  const settings = persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS })
+  const boot = typeof window === 'undefined' ? undefined : window.__FIELD_A11Y_BOOT__
+  if (typeof window !== 'undefined') delete window.__FIELD_A11Y_BOOT__
+  const settings = persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS, ...boot })
   installA11yDevHook()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')

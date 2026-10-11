@@ -4,9 +4,12 @@ import { expect, type Page } from '@playwright/test'
 
 declare global {
   interface Window {
+    __FIELD_A11Y_BOOT__?: Record<string, boolean | number | string>
     __FIELD_APPLY_A11Y__?: (patch: Record<string, boolean | number | string>) => void
   }
 }
+
+let bootNonce = 0
 
 let artifactDir: string | undefined
 
@@ -54,25 +57,22 @@ type Boot = {
 
 export async function boot(page: Page, init: Boot = {}): Promise<void> {
   if (init.reducedMotion) await page.emulateMedia({ reducedMotion: init.reducedMotion })
+  const nonce = String(++bootNonce)
   await page.addInitScript((state) => {
     localStorage.setItem('field.uiLocale', state.locale ?? 'en')
     localStorage.setItem('firstsound.uiMode', state.mode ?? 'technical')
     localStorage.setItem('field.theme', state.theme ?? 'studio-dark')
     localStorage.setItem('field.technicalInterface', 'workspace')
-  }, init)
+    // Applied during bootstrap, before the first paint. A reload keeps the nonce and starts off.
+    if (state.a11y && sessionStorage.getItem('field.testA11yNonce') !== state.nonce) {
+      sessionStorage.setItem('field.testA11yNonce', state.nonce)
+      window.__FIELD_A11Y_BOOT__ = state.a11y
+    }
+  }, { ...init, nonce })
   await page.goto('/')
   await page.locator('#root').waitFor()
   // Phone layouts hide the mode radiogroup. Settings (Technical) or Menu (Sensory) is always present.
   await page.getByRole('button', { name: /^(Settings|Menu|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
-  if (init.a11y) {
-    // Accessibility choices stay in this page. A reload starts from the off defaults.
-    await page.waitForFunction(() => typeof window.__FIELD_APPLY_A11Y__ === 'function')
-    await page.evaluate((patch) => {
-      const apply = window.__FIELD_APPLY_A11Y__
-      if (!apply) throw new Error('FIELD accessibility test hook is missing')
-      apply(patch)
-    }, init.a11y)
-  }
 }
 
 /** axe WCAG tags. A clean result is not a conformance claim. */
