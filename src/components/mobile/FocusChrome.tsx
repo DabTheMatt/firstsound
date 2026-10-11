@@ -184,9 +184,13 @@ function FocusTransport({
   }, [])
   return (
     <div className={styles.transport} data-focus-transport="">
+      <span className={styles.transportTime} ref={playheadRef}>
+        {formatTimecode(0)}
+      </span>
       <button
         type="button"
         className={styles.hit}
+        data-geometry="square"
         aria-label={playing ? t.transport.pause : t.transport.play}
         title={playing ? t.transport.pause : t.transport.play}
         aria-pressed={playing}
@@ -200,6 +204,7 @@ function FocusTransport({
       <button
         type="button"
         className={styles.hit}
+        data-geometry="square"
         aria-label={t.transport.stop}
         title={t.transport.stop}
         disabled={!canPlay}
@@ -209,17 +214,15 @@ function FocusTransport({
       </button>
       <button
         type="button"
-        className={`${styles.hit} ${styles.transportWord}`}
+        className={styles.hit}
+        data-geometry="square"
         aria-pressed={loop}
         aria-label={t.transport.loop}
         title={t.transport.loop}
         onClick={() => engine.setLoop(!loop)}
       >
-        {t.transport.loop}
+        <LoopIcon />
       </button>
-      <span className={styles.transportTime} ref={playheadRef}>
-        {formatTimecode(0)}
-      </span>
     </div>
   )
 }
@@ -650,7 +653,29 @@ function PauseIcon() {
 function StopIcon() {
   return (
     <Svg>
-      <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />
+      <rect x="4.5" y="4.5" width="7" height="7" fill="currentColor" />
+    </Svg>
+  )
+}
+
+function LoopIcon() {
+  return (
+    <Svg>
+      <path
+        d="M4.2 6.2h6.1a2.1 2.1 0 0 1 0 4.2H6.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.8 4.4 3.6 6.2 5.8 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   )
 }

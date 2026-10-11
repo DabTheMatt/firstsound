@@ -7,6 +7,7 @@ import {
   SpectralFrameBuffer,
   SpectralHistoryClock,
   clampSpectralCamera,
+  shortestSpectralYaw,
   dbToSpectralLevel,
   formatSpectralReadout,
   nearestSpectralHit,
@@ -177,11 +178,30 @@ describe('3D projection', () => {
     expect(Math.abs(topPast.y - topNow.y)).toBeGreaterThan(Math.abs(topLoud.y - topQuiet.y) * 3)
   })
 
-  it('clamps yaw, pitch, and zoom', () => {
+  it('clamps pitch and zoom and keeps a free yaw', () => {
     const camera = clampSpectralCamera({ preset: 'angled', yaw: 4, pitch: -3, zoom: 9 })
-    expect(camera.yaw).toBe(1)
+    expect(camera.yaw).toBe(4)
     expect(camera.pitch).toBe(-1)
     expect(camera.zoom).toBe(1.4)
+    expect(clampSpectralCamera({ preset: 'angled', yaw: Number.NaN, pitch: 0, zoom: 1 }).yaw).toBe(0)
+  })
+
+  it('turns all the way around without lifting the floor above the ridges', () => {
+    const turned = { ...camera, yaw: Math.PI }
+    const low = projectSpectralPoint(0.1, 0.2, 0, plot, turned)
+    const high = projectSpectralPoint(0.9, 0.2, 0, plot, turned)
+    const quiet = projectSpectralPoint(0.5, 0.05, 0.4, plot, turned)
+    const loud = projectSpectralPoint(0.5, 0.95, 0.4, plot, turned)
+    expect(high.x).toBeLessThan(low.x)
+    expect(loud.y).toBeLessThan(quiet.y)
+    for (const yaw of [0, Math.PI / 2, Math.PI, Math.PI * 1.5, Math.PI * 3]) {
+      const view = { ...camera, yaw }
+      const floor = projectSpectralPoint(0.4, 0, 0.3, plot, view)
+      const peak = projectSpectralPoint(0.4, 1, 0.3, plot, view)
+      expect(peak.y).toBeLessThan(floor.y)
+    }
+    expect(shortestSpectralYaw(3, -3)).toBeCloseTo(shortestSpectralYaw(3, -3 + Math.PI * 2), 5)
+    expect(Math.abs(shortestSpectralYaw(3, -3))).toBeLessThan(1)
   })
 })
 

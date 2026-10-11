@@ -213,19 +213,20 @@
 .viewMore {
   position: relative;
   flex: none;
+  margin-left: auto;
 }
 
 .viewBar {
   position: absolute;
   z-index: 5;
-  top: 0;
-  right: 44px;
+  top: 4px;
+  right: 40px;
   left: 0;
   display: flex;
   align-items: center;
   gap: 2px;
   min-height: 28px;
-  padding: 2px 8px;
+  padding: 0 0 0 8px;
   pointer-events: none;
 }
 

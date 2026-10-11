@@ -10,8 +10,8 @@
 .editor > [data-selection-toolbar] {
   position: absolute;
   z-index: 5;
-  top: 0;
-  right: 44px;
+  top: 4px;
+  right: 40px;
   left: 0;
   pointer-events: none;
 }
@@ -22,7 +22,7 @@
 }
 
 .editor:has([data-enter-focus='corner-right']) .trackTabs {
-  right: 44px;
+  right: 40px;
 }
 
 .editor:has([data-enter-focus='corner-right']) .autoLegend {
@@ -30,7 +30,7 @@
 }
 
 .editor:has([data-enter-focus='corner-right']) .monoBadge {
-  right: 44px;
+  right: 40px;
 }
 
 .editor[data-calm] .stage {
