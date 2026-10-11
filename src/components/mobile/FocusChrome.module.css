@@ -73,7 +73,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0;
-  height: 28px;
+  height: auto;
+  min-height: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
   padding: 0;
   border-radius: 0;
   background: transparent;
@@ -81,13 +82,27 @@
 }
 
 .transport .hit {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: max(28px, var(--control-compact));
+  width: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  height: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  min-width: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  min-height: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
   border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
+}
+
+.transport .hit svg {
+  width: calc(16px * var(--field-text-scale, 1));
+  height: calc(16px * var(--field-text-scale, 1));
+}
+
+:global(html[data-text-room='room']) .transport .hit,
+:global(html[data-text-room='max']) .transport .hit {
+  width: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  height: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  min-width: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  min-height: max(28px, calc(28px * var(--field-interface-scale, 1)), calc(28px * var(--field-text-scale, 1)));
+  white-space: nowrap;
 }
 
 .transport .hit[aria-pressed='true'] {

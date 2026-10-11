@@ -44,6 +44,10 @@
   --control-compact: max(calc(28px * var(--field-interface-scale)), calc(var(--type-11) + 16px));
   --control-standard: max(calc(32px * var(--field-interface-scale)), calc(var(--type-12) + 16px));
   --control-touch: max(44px, calc(36px * min(var(--field-interface-scale), 1.15)));
+  /* Play glyph and transport buttons share one height so a larger text size stays on one line. */
+  --play-icon: calc(18px * var(--field-text-scale));
+  --play-size: max(44px, calc(var(--play-icon) + 26px), calc(44px * var(--field-interface-scale)));
+  --transport-h: var(--play-size);
 }
 
 *,
