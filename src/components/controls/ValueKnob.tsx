@@ -15,6 +15,7 @@ import {
   polar,
 } from './knobGeom'
 import { presentParamLabel } from './paramLabelFit'
+import { useI18n } from '../../i18n'
 import { useModulationParamId } from './LfoParamShell'
 import { ParamActionPair } from '../random/ParamActionPair'
 import styles from './Knob.module.css'
@@ -112,6 +113,7 @@ export function ValueKnob({
   markerNormalized,
   dialOnly = false,
 }: Props) {
+  const { t } = useI18n()
   const rootRef = useRef<HTMLDivElement>(null)
   const dialRef = useRef<HTMLDivElement>(null)
   const valueRef = useRef(normalized)
@@ -353,7 +355,14 @@ export function ValueKnob({
       >
       {adjusting ? <DragReadout anchorRef={rootRef} label={label} text={shownText} /> : null}
       <p className={captionClass ? `${styles.label} ${captionClass}` : styles.label} id={labelId} title={label}>
-        {caption.text}
+        {caption.text === label ? (
+          caption.text
+        ) : (
+          <>
+            <span aria-hidden="true">{caption.text}</span>
+            <span className="sr-only">{label}</span>
+          </>
+        )}
       </p>
       {description ? (
         <p id={descId} className="sr-only">
@@ -460,7 +469,7 @@ export function ValueKnob({
           className={styles.valueInput}
           value={draft}
           autoFocus
-          aria-label={`${label} value`}
+          aria-label={label}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => setEditing(false)}
           onKeyDown={(event) => {
@@ -477,7 +486,7 @@ export function ValueKnob({
       ) : (
         <>
           {focus || reserveBase || baseValueText ? (
-            <p className={styles.baseValue} title={baseValueText ? 'Stored value (LFO zero)' : undefined}>
+            <p className={styles.baseValue} title={baseValueText ? t.lfo.storedValue : undefined}>
               {baseValueText ?? '\u00a0'}
             </p>
           ) : null}
@@ -489,7 +498,7 @@ export function ValueKnob({
               setDraft('')
               setEditing(true)
             }}
-            title="Double-click to type a value"
+            title={t.lfo.typeValue}
           >
             {shownText}
           </p>

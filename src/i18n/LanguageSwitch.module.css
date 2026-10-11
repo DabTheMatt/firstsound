@@ -14,8 +14,8 @@
   color: var(--text-muted);
   font-size: var(--type-10);
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
   padding: 6px 9px;
   min-height: max(28px, var(--control-compact));
   min-width: 36px;
@@ -44,7 +44,8 @@
   padding: 4px 0;
   min-height: max(32px, var(--toolbar-h));
   min-width: 0;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.02em;
+  text-transform: none;
   background: transparent;
   border-radius: 0;
 }

@@ -602,8 +602,12 @@ export function nearestSpectralHit(
 }
 
 /** Screen-reader summary. History length is part of the name so the axis is explicit. */
-export function spectralHistoryAriaLabel(durationSec: number, frozen: boolean): string {
+export function spectralHistoryAriaLabel(durationSec: number, frozen: boolean, locale: 'en' | 'pl' = 'en'): string {
   const seconds = clampSpectralHistorySeconds(durationSec)
+  if (locale === 'pl') {
+    const base = `Historia widma 3D: częstotliwość, poziom i ostatnie ${seconds} s.`
+    return frozen ? `${base} Historia zatrzymana.` : base
+  }
   const base = `3D spectral history showing frequency, level and the last ${seconds} seconds.`
   return frozen ? `${base} History frozen.` : base
 }

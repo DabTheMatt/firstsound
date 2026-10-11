@@ -59,7 +59,12 @@ const ADVANCE: Record<string, number> = {
  * Established short forms. Empty unless compact type still overflows the slot.
  * Do not invent abbreviations for names that already fit (Resonance stays Resonance).
  */
-const SHORT_LABELS: Record<string, string> = {}
+const SHORT_LABELS: Record<string, string> = {
+  'CZĘSTOTLIWOŚĆ ODCIĘCIA': 'ODCIĘCIE',
+  'SPRZĘŻENIE ZWROTNE': 'SPRZĘŻ.',
+  'STOPIEŃ KOMPRESJI': 'STOPIEŃ',
+  'WZMOCNIENIE KOMPENSACYJNE': 'WZM. KOMP.',
+}
 
 export function measureParamLabelPx(label: string, sizePx: number, trackingEm: number): number {
   const chars = [...label.toLocaleUpperCase('en')]

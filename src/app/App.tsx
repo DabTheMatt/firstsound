@@ -72,7 +72,7 @@ import { EditBar } from '../components/samplePrep/EditBar'
 import { ExportDialog } from '../components/samplePrep/ExportDialog'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import { initialUiMode, persistUiMode, type UiMode } from '../modes/uiMode'
-import { useI18n } from '../i18n'
+import { LanguageSwitch, useI18n } from '../i18n'
 import { applySensorySession, captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import { dspSnapshotsEqual } from '../sensory/mapping/mappingEngine'
@@ -1214,6 +1214,10 @@ export default function App() {
             {t.header.settings}
           </h2>
           <p className={styles.hint}>{t.settings.hint}</p>
+          <div className={styles.languageRow}>
+            <span>{t.lang.group}</span>
+            <LanguageSwitch />
+          </div>
           <button type="button" onClick={() => setSettingsPage('access')}>
             {t.a11y.open}
           </button>
@@ -1267,17 +1271,15 @@ export default function App() {
         <button
           type="button"
           onClick={() => {
-            const name = window.prompt('Name this instrument preset for this browser')
+            const name = window.prompt(t.settings.saveToLibraryPrompt)
             if (!name) return
             saveUserPreset(name, engine.toPreset())
             setLibraryTick((n) => n + 1)
           }}
         >
-          Save to library
+          {t.settings.saveToLibrary}
         </button>
-        <p className={styles.hint}>
-          Library lives in this browser. Export a pack to share or back up. There is no account server.
-        </p>
+        <p className={styles.hint}>{t.settings.libraryHint}</p>
         {loadUserPresets().length ? (
           <ul className={styles.presetLib}>
             {loadUserPresets().map((item) => (
@@ -1293,7 +1295,7 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  aria-label={`Delete ${item.name}`}
+                  aria-label={t.settings.deletePreset(item.name)}
                   onClick={() => {
                     deleteUserPreset(item.id)
                     setLibraryTick((n) => n + 1)
@@ -1305,7 +1307,7 @@ export default function App() {
             ))}
           </ul>
         ) : (
-          <p className={styles.hint}>No saved library presets yet.</p>
+          <p className={styles.hint}>{t.settings.libraryEmpty}</p>
         )}
         <button
           type="button"
@@ -1317,7 +1319,7 @@ export default function App() {
             })
           }
         >
-          Export library
+          {t.settings.exportLibrary}
         </button>
         <button type="button" onClick={() => presetInput.current?.click()}>
           {t.settings.loadPreset}

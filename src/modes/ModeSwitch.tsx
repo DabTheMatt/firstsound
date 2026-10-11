@@ -12,10 +12,15 @@ type Props = {
 
 export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }: Props) {
   const { t } = useI18n()
-  const labels: Record<UiMode, string> = {
+  const full: Record<UiMode, string> = {
     simple: t.mode.simple,
     sensory: t.mode.sensory,
     technical: t.mode.technical,
+  }
+  const labels: Record<UiMode, string> = {
+    simple: t.mode.simpleShort,
+    sensory: t.mode.sensoryShort,
+    technical: t.mode.technicalShort,
   }
   return (
     <div
@@ -30,6 +35,8 @@ export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }
           type="button"
           role="radio"
           aria-checked={mode === id}
+          aria-label={full[id]}
+          title={full[id]}
           data-mode-option={id}
           className={`${styles.opt} ${mode === id ? styles.on : ''}`}
           data-geometry={variant === 'editorial' ? undefined : 'pill'}

@@ -26,6 +26,8 @@ import { eqTone, readThemeColors } from '../../theme'
 import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
 import { ValueKnob } from '../controls/ValueKnob'
 import { EqFilterTypeMenu } from './EqFilterTypeMenu'
+import { eqKnobCopy } from '../../i18n/filterTypes'
+import { useI18n } from '../../i18n'
 import { eqStripAccentVars } from './eqBandStyle'
 import { eqStripParamSlots, type EqStripSlot } from './eqStripSlots'
 import styles from './EqConsole.module.css'
@@ -42,6 +44,8 @@ type Props = {
 }
 
 export function EqBandStrip({ snap, instanceId, index, band, label, selected = false, inline = false }: Props) {
+  const { t, locale } = useI18n()
+  const knobs = eqKnobCopy(locale)
   const ids = EQ_BAND_LFO_IDS[index]
   const setBand = (patch: Partial<EqBand>) => engine.setEqBand(index, patch, instanceId)
   const includeUnscoped = eqInstanceUsesSharedLfo(snap.chain, instanceId)
@@ -80,7 +84,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <ValueKnob
             {...size}
             reserveBase
-            label="Freq"
+            label={knobs.freq}
+            description={knobs.freqFull}
             valueText={formatEqHz(freqLive != null ? fromNormalized(freqLive, PARAMS.eq1Freq) : band.frequency)}
             baseValueText={freqLive != null ? formatEqHz(band.frequency) : undefined}
             normalized={toNormalized(band.frequency, PARAMS.eq1Freq)}
@@ -106,7 +111,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <ValueKnob
             {...size}
             reserveBase
-            label="Slope"
+            label={knobs.slope}
+            description={knobs.slopeFull}
             valueText={`${band.slope} dB`}
             normalized={slopeToNormalized(band.slope)}
             min={12}
@@ -129,7 +135,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <ValueKnob
             {...size}
             reserveBase
-            label="Gain"
+            label={knobs.gain}
+            description={knobs.gainFull}
             valueText={`${(gainLive != null ? fromNormalized(gainLive, PARAMS.eq1Gain) : band.gain).toFixed(1)} dB`}
             baseValueText={gainLive != null ? `${band.gain.toFixed(1)} dB` : undefined}
             normalized={toNormalized(band.gain, PARAMS.eq1Gain)}
@@ -155,7 +162,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <ValueKnob
             {...size}
             reserveBase
-            label="Width"
+            label={knobs.width}
+            description={knobs.widthFull}
             valueText={formatEqHz(bandwidthHz(band.frequency, band.q))}
             normalized={widthToN(bandwidthHz(band.frequency, band.q))}
             lfoRange={widthLfo}
@@ -180,7 +188,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
           <ValueKnob
             {...size}
             reserveBase
-            label="Q"
+            label={knobs.q}
+            description={knobs.qFull}
             valueText={(qLive != null ? fromNormalized(qLive, PARAMS.eq1Q) : band.q).toFixed(2)}
             baseValueText={qLive != null ? band.q.toFixed(2) : undefined}
             normalized={toNormalized(band.q, PARAMS.eq1Q)}
@@ -237,8 +246,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
             <button
               type="button"
               className={`${styles.power} ${styles.powerHeader} ${band.bypassed ? styles.powerOff : styles.powerOn}`}
-              aria-label={band.bypassed ? 'Enable filter' : 'Bypass filter'}
-              title={band.bypassed ? 'Enable' : 'Bypass'}
+              aria-label={band.bypassed ? t.chain.enable(locale === 'pl' ? 'filtr' : 'filter') : t.chain.bypass(locale === 'pl' ? 'filtr' : 'filter')}
+              title={band.bypassed ? t.chain.enableShort : t.chain.bypassShort}
               onClick={() => setBand({ bypassed: !band.bypassed })}
             >
               <PowerMark />
@@ -265,8 +274,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
         <button
           type="button"
           className={`${styles.power} ${styles.powerHeader} ${band.bypassed ? styles.powerOff : styles.powerOn}`}
-          aria-label={band.bypassed ? 'Enable filter' : 'Bypass filter'}
-          title={band.bypassed ? 'Enable' : 'Bypass'}
+          aria-label={band.bypassed ? t.chain.enable(locale === 'pl' ? 'filtr' : 'filter') : t.chain.bypass(locale === 'pl' ? 'filtr' : 'filter')}
+          title={band.bypassed ? t.chain.enableShort : t.chain.bypassShort}
           onClick={() => setBand({ bypassed: !band.bypassed })}
         >
           <PowerMark />

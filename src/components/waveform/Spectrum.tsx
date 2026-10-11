@@ -101,6 +101,7 @@ import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { spectrumDbScaleMarks } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import { colorWithAlpha, eqBandTone, eqTone, readThemeColors } from '../../theme'
 import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, subscribeFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
@@ -286,7 +287,8 @@ function readTimePeaks(
 
 /** Banded FFT observer — never sits in the processing chain. */
 export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus = false, knobLane = false, suppressAnalyzerChrome = false, hideGraphMenu = false, hideLegend = false, eqGainGrid = false, analyzerOpen = false, onAnalyzerClose, onGraphEdit, onEnterFocus, onExitFocus, focusLabel = 'FFT' }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const spectrumCopy = analyzerCopy(locale)
   const snap = useEngine()
   const listenBand = spectrumListenId(snap.spectral.enabled, snap.spectral.analyser)
   const eqMods = snap.chain.filter((m) => m.type === 'eq')
@@ -1399,8 +1401,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       data-attention-region="fft"
       aria-label={
         prefs.viewMode === '3d' && !phoneEq && !phoneFocus
-          ? spectralHistoryAriaLabel(prefs.historySec, historyFrozen)
-          : 'Spectrum analyzer'
+          ? spectralHistoryAriaLabel(prefs.historySec, historyFrozen, locale)
+          : spectrumCopy.analyzerRegion
       }
     >
       {showGraphTools || focusControl ? (
@@ -1427,7 +1429,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                   className={styles.graphMenuButton}
                   data-geometry="square"
                   aria-expanded={gridOpen}
-                  aria-label="Graph settings"
+                  aria-label={spectrumCopy.graphSettings}
                   onClick={(event) => {
                     setGridOpen((open) => !open)
                     event.currentTarget.blur()
@@ -1437,13 +1439,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 </button>
               </div>
               {gridOpen ? (
-                <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
+                <div className={styles.graphMenuPanel} role="group" aria-label={spectrumCopy.graph}>
                   {phoneFocus ? (
                     <SpectrumDisplaySettings showLayer eqColor />
                   ) : (
                     <>
                       <div className={styles.graphMenuRow}>
-                        <span title="Vertical guides. 6, 12, or 24 frequency lines across the graph.">Grid</span>
+                        <span title={spectrumCopy.gridHint}>{spectrumCopy.grid}</span>
                         {([6, 12, 24] as const).map((density) => (
                           <button
                             key={density}
@@ -1460,7 +1462,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                         ))}
                       </div>
                       <div className={styles.graphMenuRow}>
-                        <span title="How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.">Scale</span>
+                        <span title={spectrumCopy.scaleHint}>{spectrumCopy.scale}</span>
                         {FREQ_SCALE_OPTIONS.map((opt) => (
                           <button
                             key={opt.value}
@@ -1516,17 +1518,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Layer
+            {spectrumCopy.layer}
             <select
-              aria-label="EQ spectrum layer"
+              aria-label={spectrumCopy.eqLayer}
               value={prefs.layer}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, layer: event.target.value as SpectrumLayer }))
               }
             >
-              <option value="pre">Before</option>
-              <option value="post">After</option>
-              <option value="both">Both</option>
+              <option value="pre">{spectrumCopy.before}</option>
+              <option value="post">{spectrumCopy.after}</option>
+              <option value="both">{spectrumCopy.both}</option>
             </select>
           </label>
           {eqMods.length > 1 ? (
@@ -1542,7 +1544,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           >
               EQ
               <select
-                aria-label="EQ overlay"
+                aria-label={spectrumCopy.eqOverlay}
                 value={eqFocus}
                 onChange={(event) => {
                   const next = clampEqOverlayFocus(event.target.value, snap.chain)
@@ -1568,10 +1570,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Scale
+            {spectrumCopy.scale}
             <select
-              aria-label="Frequency scale"
-              title="Change how Hertz are spaced across the FFT"
+              aria-label={spectrumCopy.scale}
+              title={spectrumCopy.scaleChange}
               value={freqScale}
               onChange={(event) => setFreqScale(event.target.value as FreqScaleKind)}
             >
@@ -1592,10 +1594,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            EQ ch
+            {spectrumCopy.eqChannel}
             <select
-              aria-label="EQ channel"
-              title="Shared EQ, or independent left / right curves"
+              aria-label={spectrumCopy.eqChannel}
+              title={spectrumCopy.eqChannelTitle}
               value={snap.eqChannelMode}
               onChange={(event) => engine.setEqChannelMode(event.target.value as (typeof EQ_CHANNEL_MODES)[number]['value'])}
             >
@@ -1616,10 +1618,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Columns
+            {spectrumCopy.columns}
             <select
-              aria-label="Spectrum display columns"
-              title="How many columns the bars use. Does not change FFT resolution."
+              aria-label={spectrumCopy.columns}
+              title={spectrumCopy.columnsTitle}
               value={prefs.bands}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, bands: clampSpectrumBandCount(Number(event.target.value)) }))
@@ -1642,10 +1644,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Range
+            {spectrumCopy.range}
             <select
-              aria-label="Analyzer range"
-              title="Spectrum scale from 0 dB down. Quiet bins stay measured; this does not stretch them. The EQ curve keeps its own scale."
+              aria-label={spectrumCopy.range}
+              title={spectrumCopy.rangeChrome}
               value={prefs.range}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, range: clampSpectrumRange(Number(event.target.value)) }))
@@ -1670,8 +1672,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           >
             FFT
             <select
-              aria-label="Analyzer resolution"
-              title="FFT length. 8192 resolves lower frequencies and reacts more slowly than 1024. Separate from display columns."
+              aria-label={spectrumCopy.resolution}
+              title={spectrumCopy.resolutionTitle}
               value={prefs.resolution}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, resolution: clampSpectrumResolution(Number(event.target.value)) }))
@@ -1694,10 +1696,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Fall
+            {spectrumCopy.fall}
             <select
-              aria-label="Spectrum fall speed"
-              title="Time-based release of the spectrum. Fast, Normal, and Slow all reach the floor. Slow is a longer release, not a freeze."
+              aria-label={spectrumCopy.fallAria}
+              title={spectrumCopy.fallTitle}
               value={prefs.fall}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, fall: clampSpectrumFallMode(event.target.value) }))
@@ -1705,7 +1707,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             >
               {SPECTRUM_FALL_MODES.map((mode) => (
                 <option key={mode} value={mode}>
-                  {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
+                  {mode === 'slow' ? spectrumCopy.slow : mode === 'fast' ? spectrumCopy.fast : spectrumCopy.normal}
                 </option>
               ))}
             </select>
@@ -1720,10 +1722,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               }
             }}
           >
-            Follow
+            {spectrumCopy.follow}
             <select
-              aria-label="Spectrum envelope follow"
-              title="Peak trace, slow trace, or both. Fall sets how quickly they drop."
+              aria-label={spectrumCopy.follow}
+              title={spectrumCopy.followTitle}
               value={prefs.follow}
               onChange={(event) =>
                 setPrefs((p) => ({ ...p, follow: clampSpectrumFollowMode(event.target.value) }))
@@ -1731,7 +1733,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             >
               {SPECTRUM_FOLLOW_MODES.map((mode) => (
                 <option key={mode} value={mode}>
-                  {mode === 'peak' ? 'Peak' : mode === 'slow' ? 'Slow' : 'Both'}
+                  {mode === 'peak' ? spectrumCopy.peak : mode === 'slow' ? spectrumCopy.slow : spectrumCopy.both}
                 </option>
               ))}
             </select>
@@ -1741,14 +1743,14 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         </div>
         <div className={styles.chromeRight}>
           {spatial ? null : showResponseKey ? (
-            <ul className={styles.curveKey} aria-label="Response curves">
+            <ul className={styles.curveKey} aria-label={spectrumCopy.curves}>
               <li>
                 <i className={styles.eqSwatch} />
                 EQ
               </li>
               <li>
                 <i className={styles.filterSwatch} />
-                Filter
+                {spectrumCopy.filter}
               </li>
             </ul>
           ) : null}
@@ -1757,8 +1759,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             type="button"
             className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
             aria-pressed={prefs.eqFreqColors}
-            aria-label={prefs.eqFreqColors ? 'Frequency colors on' : 'Frequency colors off'}
-            title={prefs.eqFreqColors ? 'Frequency colors on' : 'Color EQ nodes by frequency'}
+            aria-label={prefs.eqFreqColors ? `${spectrumCopy.nodes}: ${spectrumCopy.on}` : `${spectrumCopy.nodes}: ${spectrumCopy.off}`}
+            title={spectrumCopy.nodesHint}
             onClick={() => setPrefs((p) => ({ ...p, eqFreqColors: !p.eqFreqColors }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1771,8 +1773,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             type="button"
             className={`${styles.iconTap} ${prefs.regionColors ? styles.on : ''}`}
             aria-pressed={prefs.regionColors}
-            aria-label={prefs.regionColors ? 'Use solid band color' : 'Use region band colors'}
-            title="Band colors"
+            aria-label={prefs.regionColors ? `${spectrumCopy.regions}: ${spectrumCopy.on}` : `${spectrumCopy.regions}: ${spectrumCopy.off}`}
+            title={spectrumCopy.regionsHint}
             onClick={() => setPrefs((p) => ({ ...p, regionColors: !p.regionColors }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1785,8 +1787,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             type="button"
             className={`${styles.iconTap} ${prefs.showBars ? styles.on : ''}`}
             aria-pressed={prefs.showBars}
-            aria-label={prefs.showBars ? 'Hide FFT bars' : 'Show FFT bars'}
-            title={prefs.showBars ? 'Hide bars' : 'Show bars'}
+            aria-label={prefs.showBars ? `${spectrumCopy.bars}: ${spectrumCopy.on}` : `${spectrumCopy.bars}: ${spectrumCopy.off}`}
+            title={spectrumCopy.bars}
             onClick={() => setPrefs((p) => ({ ...p, showBars: !p.showBars }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1799,8 +1801,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             type="button"
             className={`${styles.iconTap} ${prefs.showLine ? styles.on : ''}`}
             aria-pressed={prefs.showLine}
-            aria-label={prefs.showLine ? 'Hide spectrum line' : 'Show spectrum line'}
-            title={prefs.showLine ? 'Hide line' : 'Show line'}
+            aria-label={prefs.showLine ? `${spectrumCopy.line}: ${spectrumCopy.on}` : `${spectrumCopy.line}: ${spectrumCopy.off}`}
+            title={spectrumCopy.line}
             onClick={() => setPrefs((p) => ({ ...p, showLine: !p.showLine }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1818,8 +1820,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             type="button"
             className={`${styles.iconTap} ${prefs.legendOpen ? styles.on : ''}`}
             aria-pressed={prefs.legendOpen}
-            aria-label={prefs.legendOpen ? 'Hide spectrum legend' : 'Show spectrum legend'}
-            title={prefs.legendOpen ? 'Hide legend' : 'Show legend'}
+            aria-label={prefs.legendOpen ? `${spectrumCopy.legend}: ${spectrumCopy.on}` : `${spectrumCopy.legend}: ${spectrumCopy.off}`}
+            title={spectrumCopy.legend}
             onClick={() => setPrefs((p) => ({ ...p, legendOpen: !p.legendOpen }))}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -1856,15 +1858,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               </ul>
             ) : (
               <ul className={styles.regions}>
-                <li>{prefs.showBars ? 'Slow bars' : 'Fill'}</li>
-                {prefs.showLine && prefs.follow !== 'slow' ? <li>Peak line</li> : null}
+                <li>{prefs.showBars ? spectrumCopy.slowBars : spectrumCopy.fill}</li>
+                {prefs.showLine && prefs.follow !== 'slow' ? <li>{spectrumCopy.peakLine}</li> : null}
                 {prefs.showLine && prefs.follow !== 'peak' ? (
-                  <li>Slow line</li>
+                  <li>{spectrumCopy.slowLine}</li>
                 ) : null}
-                {prefs.layer === 'both' ? <li>Before / after</li> : null}
+                {prefs.layer === 'both' ? <li>{spectrumCopy.beforeAfter}</li> : null}
               </ul>
             )}
-            {prefs.freqGuide ? <p className={styles.guideNote}>Hover a frequency for a landmark</p> : null}
+            {prefs.freqGuide ? <p className={styles.guideNote}>{spectrumCopy.hoverLandmark}</p> : null}
           </div>
         ) : null}
         {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (

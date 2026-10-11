@@ -125,6 +125,8 @@
 .tab,
 .tabOn {
   margin: 0;
+  min-width: 0;
+  white-space: nowrap;
   padding: 0 8px;
   border: 0;
   border-radius: 0;
@@ -372,7 +374,7 @@
 
 .analyzerRow {
   display: grid;
-  grid-template-columns: 4.4rem minmax(0, 1fr);
+  grid-template-columns: minmax(4.4rem, 7.2rem) minmax(0, 1fr);
   align-items: center;
   gap: 4px;
   min-height: 26px;
@@ -380,6 +382,8 @@
 }
 
 .analyzerLabel {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text-muted);
   font-size: var(--type-10);
   font-weight: var(--ws-bar-weight, 500);
@@ -553,7 +557,7 @@
 
 .displayRow {
   display: grid;
-  grid-template-columns: 5.6rem minmax(0, 1fr);
+  grid-template-columns: minmax(5.6rem, 7.5rem) minmax(0, 1fr);
   align-items: center;
   gap: 4px;
   min-height: 26px;
@@ -561,6 +565,8 @@
 
 .displayLabel {
   position: relative;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text-muted);
   font-size: var(--type-10);
   font-weight: var(--ws-bar-weight, 500);

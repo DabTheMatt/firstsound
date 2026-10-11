@@ -41,6 +41,8 @@ export function WorkspaceTabs({
             type="button"
             role="tab"
             aria-selected={on}
+            aria-label={id === 'wave' ? t.focus.waveFull : t.focus[LABEL[id]]}
+            title={id === 'wave' ? t.focus.waveFull : undefined}
             className={on ? styles.tabOn : styles.tab}
             onClick={() => onWorkspace(id)}
           >

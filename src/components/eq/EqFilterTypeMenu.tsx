@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { EQ_FILTER_TYPES, type EqFilterType } from '../../audio/engine/eqBands'
+import { useI18n } from '../../i18n'
+import { filterTypeCopy } from '../../i18n/filterTypes'
 import { FILTER_ICON_PATH } from './eqFilterIcons'
 import styles from './EqConsole.module.css'
 
@@ -13,11 +15,11 @@ type Props = {
 }
 
 export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, showBypass = true }: Props) {
+  const { t, locale } = useI18n()
   const [open, setOpen] = useState(false)
   const [menuBox, setMenuBox] = useState<{ top: number; left: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLUListElement>(null)
-  const current = EQ_FILTER_TYPES.find((t) => t.value === value) ?? EQ_FILTER_TYPES[0]!
 
   useEffect(() => {
     if (!open) return
@@ -27,7 +29,8 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
       const menuHeight = 280
       const below = rect.bottom + 4
       const top = below + menuHeight > window.innerHeight && rect.top > menuHeight ? rect.top - menuHeight - 4 : below
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - 188))
+      const menuWidth = 280
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8))
       setMenuBox({ top, left })
     }
     place()
@@ -54,19 +57,19 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
           className={`${styles.typeBtn} ${value === 'off' ? styles.typeOff : ''}`}
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-label={`Filter type ${current.label}`}
-          title={current.label}
+          aria-label={filterTypeCopy(locale, value).aria}
+          title={filterTypeCopy(locale, value).label}
           onClick={() => setOpen((v) => !v)}
         >
           <EqFilterIcon type={value} />
-          <span>{current.short}</span>
+          <span>{filterTypeCopy(locale, value).short}</span>
         </button>
         {showBypass && onBypass ? (
           <button
             type="button"
             className={`${styles.power} ${bypassed ? styles.powerOff : styles.powerOn}`}
-            aria-label={bypassed ? 'Enable filter' : 'Bypass filter'}
-            title={bypassed ? 'Enable' : 'Bypass'}
+            aria-label={bypassed ? t.chain.enable(locale === 'pl' ? 'filtr' : 'filter') : t.chain.bypass(locale === 'pl' ? 'filtr' : 'filter')}
+            title={bypassed ? t.chain.enableShort : t.chain.bypassShort}
             onClick={(event) => {
               event.stopPropagation()
               onBypass()
@@ -82,7 +85,7 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
               ref={menuRef}
               className={`${styles.typeMenu} ${styles.typeMenuFixed}`}
               role="listbox"
-              aria-label="EQ filter type"
+              aria-label={t.dragFree.filterType}
               style={{ top: menuBox.top, left: menuBox.left }}
             >
               {EQ_FILTER_TYPES.map((opt) => (
@@ -96,8 +99,8 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
                     }}
                   >
                     <EqFilterIcon type={opt.value} />
-                    <span>{opt.short}</span>
-                    <em>{opt.label}</em>
+                    <span>{filterTypeCopy(locale, opt.value).short}</span>
+                    <em>{filterTypeCopy(locale, opt.value).label}</em>
                   </button>
                 </li>
               ))}

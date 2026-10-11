@@ -34,33 +34,12 @@ import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
   subscribeSpectrumPrefs,
-  type SpectrumLayer,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import styles from './Workspace.module.css'
-
-const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Before' },
-  { id: 'post', label: 'After' },
-  { id: 'both', label: 'Both' },
-]
-
-const HINTS = {
-  grid: 'Vertical guides. 6, 12, or 24 frequency lines across the graph.',
-  layer: 'Which spectrum to draw. Before is the input of the chain. After is the output. Both draws them together.',
-  scale: 'How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.',
-  range: 'How far down the spectrum bars reach, from 0 dB. The EQ curve keeps its own scale, from −24 dB to +24 dB.',
-  color: 'EQ graph only. Paints those spectrum columns by frequency region. FFT color stays where you set it.',
-  nodes: 'EQ only. Each handle, the filter list, and the band name take the color of the frequency. FFT color does not change them.',
-  regions: 'EQ graph only. Tints each spectrum column by sub, bass, mids, presence, or air. FFT color is a separate setting.',
-  bars: 'Spectrum columns. Off leaves the outline, when Line is on.',
-  line: 'Spectrum outline drawn over the columns.',
-  legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
-  guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
-  holdLength: 'How long that fragment is. 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
-} as const
 
 type Props = {
   /** EQ graph has no Before / After / Both bar, so the row lives with the other display settings. */
@@ -74,6 +53,8 @@ type Props = {
  * The FFT inspector and the EQ graph use this same row list.
  */
 export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: Props) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const [grid, setGrid] = useState<FreqGridDensity>(() => loadFreqGridDensity())
@@ -87,7 +68,7 @@ export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: 
 
   return (
     <div className={styles.displayRows}>
-      <ChoiceRow label="Grid" hint={HINTS.grid}>
+      <ChoiceRow label={copy.grid} hint={copy.gridHint}>
         {FREQ_GRID_DENSITIES.map((density) => (
           <Choice
             key={density}
@@ -102,23 +83,24 @@ export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: 
         ))}
       </ChoiceRow>
       {showLayer ? (
-        <ChoiceRow label="Layer" hint={HINTS.layer}>
-          {LAYERS.map((layer) => (
+        <ChoiceRow label={copy.layer} hint={copy.layerHint}>
+          {(['pre', 'post', 'both'] as const).map((id) => (
             <Choice
-              key={layer.id}
-              pressed={prefs.layer === layer.id}
-              onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
+              key={id}
+              pressed={prefs.layer === id}
+              onClick={() => patch({ layer: id, historyLayer: id })}
             >
-              {layer.label}
+              {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
             </Choice>
           ))}
         </ChoiceRow>
       ) : null}
-      <ChoiceRow label="Scale" hint={HINTS.scale}>
+      <ChoiceRow label={copy.scale} hint={copy.scaleHint}>
         {FREQ_SCALE_OPTIONS.map((opt) => (
           <Choice
             key={opt.value}
             pressed={scale === opt.value}
+            title={opt.value === 'log' ? copy.scaleLog : opt.value === 'linear' ? copy.scaleLin : copy.scaleMel}
             onClick={() => {
               setScale(opt.value)
               persistFreqScale(opt.value)
@@ -129,7 +111,7 @@ export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: 
         ))}
       </ChoiceRow>
       {showLayer ? (
-        <ChoiceRow label="Range" hint={HINTS.range}>
+        <ChoiceRow label={copy.range} hint={copy.rangeHint}>
           {SPECTRUM_RANGE_CHOICES.map((db) => (
             <Choice
               key={db}
@@ -144,30 +126,30 @@ export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: 
       {eqColor ? (
         <>
           <OnOff
-            label="Color"
-            hint={HINTS.color}
+            label={copy.color}
+            hint={copy.colorHint}
             on={prefs.regionColors}
             onChange={(regionColors) => patch({ regionColors })}
           />
           <OnOff
-            label="Freq nodes"
-            hint={HINTS.nodes}
+            label={copy.nodes}
+            hint={copy.nodesHint}
             on={prefs.eqFreqColors}
             onChange={(eqFreqColors) => patch({ eqFreqColors })}
           />
           <OnOff
-            label="Regions"
-            hint={HINTS.regions}
+            label={copy.regions}
+            hint={copy.regionsHint}
             on={prefs.regionColors}
             onChange={(regionColors) => patch({ regionColors })}
           />
         </>
       ) : null}
-      <OnOff label="Bars" hint={HINTS.bars} on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
-      <OnOff label="Line" hint={HINTS.line} on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
+      <OnOff label={copy.bars} hint={copy.barsHint} on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
+      <OnOff label={copy.line} hint={copy.lineHint} on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
       <OnOff
-        label="Legend"
-        hint={HINTS.legend}
+        label={copy.legend}
+        hint={copy.legendHint}
         on={prefs.legendOpen}
         onChange={(legendOpen) => patch({ legendOpen })}
       />
@@ -184,12 +166,14 @@ export function holdGraphSnapshot(on: boolean): void {
 }
 
 export function GuidesRow() {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   return (
     <OnOff
-      label="Guides"
-      hint={HINTS.guides}
+      label={copy.guides}
+      hint={copy.guidesHint}
       on={prefs.freqGuide}
       onChange={(freqGuide) => patchSpectrumPrefs({ freqGuide })}
     />
@@ -198,12 +182,14 @@ export function GuidesRow() {
 
 /** Frequency hue for the handles, the filter list, and the band name. */
 export function FreqNodesRow() {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   return (
     <OnOff
-      label="Freq nodes"
-      hint={HINTS.nodes}
+      label={copy.nodes}
+      hint={copy.nodesHint}
       on={prefs.eqFreqColors}
       onChange={(eqFreqColors) => patchSpectrumPrefs({ eqFreqColors })}
     />
@@ -241,11 +227,13 @@ export function HoldGraphButton({
 }
 
 export function SnapshotRow() {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [span, setSpan] = useState<AuditionSpanSec>(() => auditionSpanSec())
   useEffect(() => subscribeAuditionSpan(setSpan), [])
   return (
     <>
-      <ChoiceRow label="Length" hint={HINTS.holdLength}>
+      <ChoiceRow label={copy.length} hint={copy.holdLengthHint}>
         {AUDITION_SPAN_CHOICES.map((choice) => (
           <Choice
             key={choice}
@@ -275,13 +263,15 @@ function OnOff({
   on: boolean
   onChange: (next: boolean) => void
 }) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   return (
     <ChoiceRow label={label} hint={hint}>
       <Choice pressed={!on} onClick={() => onChange(false)}>
-        Off
+        {copy.off}
       </Choice>
       <Choice pressed={on} onClick={() => onChange(true)}>
-        On
+        {copy.on}
       </Choice>
     </ChoiceRow>
   )
