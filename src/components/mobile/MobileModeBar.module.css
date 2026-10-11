@@ -1,19 +1,27 @@
+/* Fill the phone column and wrap, so View stays on screen at 320px with large text. */
 .bar {
   position: relative;
   flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: flex-start;
   gap: 4px 8px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: max(32px, var(--toolbar-h));
   padding: 0 0 4px;
 }
 
 .modes {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .mode,
@@ -43,9 +51,13 @@
 
 .tools {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .icon,
