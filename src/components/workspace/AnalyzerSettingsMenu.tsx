@@ -92,6 +92,9 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           </div>
         </>
       ) : null}
+      <h2 className={styles.analyzerSection}>Display</h2>
+      <SpectrumDisplaySettings surface="fft" />
+
       <h2 className={styles.analyzerSection}>History</h2>
       <div className={styles.analyzerRows}>
         <ChoiceField
@@ -226,9 +229,6 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           </SelectField>
         ) : null}
       </div>
-
-      <h2 className={styles.analyzerSection}>Display</h2>
-      <SpectrumDisplaySettings surface="fft" />
     </div>
   )
 }
