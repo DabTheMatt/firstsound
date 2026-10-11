@@ -29,10 +29,11 @@ test.describe('accessible waveform navigation', () => {
     await page.keyboard.press('Space')
     await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'on')
     await page.keyboard.press('Escape')
+    await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toBeVisible()
     await page.reload()
     await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'on')
-    await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('data-wave-nav', 'off')
+    await expect(page.getByRole('button', { name: 'Open waveform navigation' })).toHaveCount(0)
   })
 
   test('edits a selection from the keyboard without a click', async ({ page }) => {
