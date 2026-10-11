@@ -20,6 +20,7 @@ import {
   spectralCaptureInterval,
   spectralHistoryAriaLabel,
   spectralLevelColor,
+  spectralLevelShade,
   spectralPointCount,
   spectralScrollAge,
   spectralSliceTarget,
@@ -238,6 +239,9 @@ describe('history presentation', () => {
     expect(quiet.toLowerCase()).toBe('#aeb5b6')
     expect(loud.toLowerCase()).toBe('#e6ad48')
     expect(quiet).not.toBe(loud)
+    expect(spectralLevelShade(0)).toBe(0)
+    expect(spectralLevelShade(1)).toBe(1)
+    expect(spectralLevelShade(0.9)).toBeGreaterThan(spectralLevelShade(0.5))
   })
 
   it('fades older ridges smoothly', () => {

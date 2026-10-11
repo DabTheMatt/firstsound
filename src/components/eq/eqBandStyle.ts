@@ -22,6 +22,12 @@ export function eqStripHeading(eqCount: number, eqNumber: number, bandNumber: nu
   return `EQ ${eq} · BAND ${band}`
 }
 
+/** List dot and band title. Frequency coloring follows the band's frequency, not its index. */
+export function listedBandColor(frequencyHz: number, indexColor: string, freqColors: boolean): string {
+  if (freqColors) return eqBandColorForHz(frequencyHz)
+  return indexColor
+}
+
 /** When frequency coloring is on, the mixer strip matches the FFT node color. */
 export function eqStripAccentVars(opts: {
   frequencyHz: number

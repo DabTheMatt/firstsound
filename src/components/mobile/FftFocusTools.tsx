@@ -4,7 +4,7 @@ import { useI18n } from '../../i18n'
 import { AnalyzerSettingsMenu } from '../workspace/AnalyzerSettingsMenu'
 import styles from './FocusChrome.module.css'
 
-const MENU_WIDTH = 360
+const MENU_WIDTH = 440
 
 function menuStyle(anchor: HTMLButtonElement | null): { top: number; left: number; width: number } | undefined {
   if (!anchor) return undefined

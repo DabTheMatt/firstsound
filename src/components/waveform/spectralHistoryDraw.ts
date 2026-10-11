@@ -33,6 +33,7 @@ import {
   spectralFreqTicks,
   spectralHistorySession,
   spectralLevelColor,
+  spectralLevelShade,
   spectralPeakHold,
   spectralPointCount,
   spectralScrollAge,
@@ -279,7 +280,7 @@ function seriesColor(input: SpectralPaintInput, fallback: string, level: number,
       input.colors.eqCurve3 || input.colors.ridgeCool,
       input.colors.eqCurve2 || input.colors.ridgeMid,
       input.colors.eqCurve || input.colors.ridgeWarm,
-      level,
+      spectralLevelShade(level),
     )
   }
   return fallback
@@ -307,7 +308,6 @@ function strokeSeries(
   const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (colored ? 1.15 : 1))
   const surface = input.drawStyle === 'surface'
   const fillAlpha = alpha * 0.16 * (0.4 + 0.6 * (1 - age01))
-  const colorFill = alpha * 0.2 * (0.45 + 0.55 * (1 - age01))
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
@@ -320,8 +320,8 @@ function strokeSeries(
   let n = 0
   const flushLine = () => {
     if (n < 1) return
-    if (surface && n >= 2) {
-      ctx.fillStyle = colorWithAlpha(color, colored ? Math.min(0.28, fillAlpha) : fillAlpha)
+    if (surface && n >= 2 && !colored) {
+      ctx.fillStyle = colorWithAlpha(color, fillAlpha)
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
       for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
@@ -331,10 +331,11 @@ function strokeSeries(
       ctx.fill()
     }
     if (surface && colored && n >= 2) {
+      const wash = Math.min(0.86, 0.55 + 0.25 * (1 - age01))
       for (let p = 1; p < n; p++) {
         const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
         const hz = ((hzs[p - 1] ?? 0) + (hzs[p] ?? 0)) * 0.5
-        ctx.fillStyle = colorWithAlpha(seriesColor(input, color, level, hz), colorFill)
+        ctx.fillStyle = colorWithAlpha(seriesColor(input, color, level, hz), wash)
         ctx.beginPath()
         ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
         ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
@@ -350,11 +351,11 @@ function strokeSeries(
       for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
     }
     if (n >= 2) {
-      ctx.strokeStyle = colorWithAlpha(input.colors.bgApp, colored ? 0.85 : 0.4)
-      ctx.lineWidth = width + input.dpr * 1.8
+      ctx.strokeStyle = colorWithAlpha(input.colors.bgApp, colored ? 0.45 : 0.4)
+      ctx.lineWidth = width + input.dpr * (colored ? 0.55 : 1.8)
       trace()
       ctx.stroke()
-      ctx.lineWidth = width
+      ctx.lineWidth = colored ? width * 1.7 : width
     }
     if (!colored) {
       ctx.strokeStyle = colorWithAlpha(color, alpha)
@@ -364,7 +365,7 @@ function strokeSeries(
       for (let p = 1; p < n; p++) {
         const level = ((levels[p - 1] ?? 0) + (levels[p] ?? 0)) * 0.5
         const hz = ((hzs[p - 1] ?? 0) + (hzs[p] ?? 0)) * 0.5
-        ctx.strokeStyle = colorWithAlpha(seriesColor(input, color, level, hz), Math.min(1, alpha + 0.35))
+        ctx.strokeStyle = seriesColor(input, color, level, hz)
         ctx.beginPath()
         ctx.moveTo(xs[(p - 1) * 2] ?? 0, xs[(p - 1) * 2 + 1] ?? 0)
         ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
