@@ -5,6 +5,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
+  max-width: 100%;
   min-height: max(32px, var(--toolbar-h));
   padding: 0 0 4px;
 }
@@ -43,8 +44,12 @@
 
 .tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
+  max-width: 100%;
+  min-width: 0;
   margin-left: auto;
 }
 
