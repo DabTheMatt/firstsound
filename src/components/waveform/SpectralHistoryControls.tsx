@@ -18,7 +18,6 @@ import {
   spectralHistorySession,
   subscribeSpectralHistorySession,
   type SpectralCameraPreset,
-  type SpectralColorMode,
   type SpectralDensity,
   type SpectralDrawStyle,
 } from '../../audio/engine/spectralHistory'
@@ -30,6 +29,8 @@ import {
   type SpectrumLayer,
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
+import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import focusStyles from '../mobile/FocusChrome.module.css'
 import spectrumStyles from './Spectrum.module.css'
 import styles from './SpectralHistory.module.css'
@@ -43,10 +44,12 @@ export function FftViewToggle({
   onChange: (mode: '2d' | '3d') => void
   variant?: 'bar' | 'focus'
 }) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const pill = variant === 'focus' ? focusStyles.fftField : spectrumStyles.bands
   const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
   return (
-    <div className={pill} role="group" aria-label="FFT view">
+    <div className={pill} role="group" aria-label={copy.fftView}>
       <button type="button" className={choice} aria-pressed={mode === '2d'} onClick={() => onChange('2d')}>
         2D
       </button>
@@ -55,7 +58,7 @@ export function FftViewToggle({
         className={choice}
         aria-pressed={mode === '3d'}
         aria-label="3D"
-        title="3D Spectral History"
+        title={copy.history3d}
         onClick={() => onChange('3d')}
       >
         3D
@@ -64,23 +67,9 @@ export function FftViewToggle({
   )
 }
 
-const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
-  { id: 'front', label: 'Front' },
-  { id: 'angled', label: 'Angled' },
-  { id: 'top', label: 'Top' },
-]
+const VIEW_IDS: SpectralCameraPreset[] = ['front', 'angled', 'top']
 
-const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Before' },
-  { id: 'post', label: 'After' },
-  { id: 'both', label: 'Both' },
-]
-
-const COLOR_LABEL: Record<SpectralColorMode, string> = {
-  off: 'Off',
-  level: 'Level',
-  frequency: 'Frequency',
-}
+const LAYER_IDS: SpectrumLayer[] = ['pre', 'post', 'both']
 
 /** Primary 3D controls. The 2D/3D switch stays in the FFT chrome, not in this bar. */
 export function SpectralHistoryControls({
@@ -91,6 +80,8 @@ export function SpectralHistoryControls({
   /** Draw the extra 3D options in this bar. Used when a parent menu would clip a popup. */
   embedSettings?: boolean
 }) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
   const [scale, setScale] = useState<FreqScaleKind>(() => loadSpectrumPrefs().surfaces.fft.scale)
@@ -145,7 +136,7 @@ export function SpectralHistoryControls({
           <div className={styles.row}>
             <span>FFT</span>
             <select
-              aria-label="FFT size"
+              aria-label={copy.fftSize}
               value={String(prefs.resolution)}
               onChange={(event) => patch({ resolution: clampSpectrumResolution(Number(event.target.value)) })}
             >
@@ -157,23 +148,23 @@ export function SpectralHistoryControls({
             </select>
           </div>
           <div className={styles.row}>
-            <span>Smooth</span>
+            <span>{copy.smooth}</span>
             <select
-              aria-label="Smoothing"
+              aria-label={copy.smoothing}
               value={prefs.fall}
               onChange={(event) => patch({ fall: clampSpectrumFallMode(event.target.value) })}
             >
               {SPECTRUM_FALL_MODES.map((mode) => (
                 <option key={mode} value={mode}>
-                  {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
+                  {mode === 'slow' ? copy.slow : mode === 'fast' ? copy.fast : copy.normal}
                 </option>
               ))}
             </select>
           </div>
           <div className={styles.row}>
-            <span>Range</span>
+            <span>{copy.range}</span>
             <select
-              aria-label="Analyzer range"
+              aria-label={copy.range}
               value={String(prefs.surfaces.fft.range)}
               onChange={(event) => patchSurfaceDisplay('fft', { range: clampSpectrumRange(Number(event.target.value)) })}
             >
@@ -185,7 +176,7 @@ export function SpectralHistoryControls({
             </select>
           </div>
           <div className={styles.row}>
-            <span>Scale</span>
+            <span>{copy.scale}</span>
             {FREQ_SCALE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -201,7 +192,7 @@ export function SpectralHistoryControls({
         </>
       ) : null}
       <div className={styles.row}>
-        <span>Density</span>
+        <span>{copy.density}</span>
         {SPECTRAL_DENSITIES.map((density) => (
           <button
             key={density}
@@ -209,12 +200,12 @@ export function SpectralHistoryControls({
             aria-pressed={prefs.density === density}
             onClick={() => patch({ density: density as SpectralDensity })}
           >
-            {density === 'auto' ? 'Auto' : density === 'low' ? 'Low' : density === 'high' ? 'High' : 'Normal'}
+            {density === 'auto' ? copy.auto : density === 'low' ? copy.low : density === 'high' ? copy.high : copy.normal}
           </button>
         ))}
       </div>
       <div className={styles.row}>
-        <span>Draw</span>
+        <span>{copy.draw}</span>
         {(['lines', 'surface'] as const).map((style) => (
           <button
             key={style}
@@ -222,12 +213,12 @@ export function SpectralHistoryControls({
             aria-pressed={prefs.drawStyle === style}
             onClick={() => patch({ drawStyle: style as SpectralDrawStyle })}
           >
-            {style === 'lines' ? 'Lines' : 'Surface'}
+            {style === 'lines' ? copy.lines : copy.surface}
           </button>
         ))}
       </div>
       <div className={styles.row}>
-        <span>Color</span>
+        <span>{copy.color}</span>
         {SPECTRAL_COLOR_MODES.map((mode) => (
           <button
             key={mode}
@@ -235,7 +226,7 @@ export function SpectralHistoryControls({
             aria-pressed={prefs.colorMode === mode}
             onClick={() => patch({ colorMode: mode })}
           >
-            {COLOR_LABEL[mode]}
+            {mode === 'off' ? copy.off : mode === 'level' ? copy.level : copy.frequency}
           </button>
         ))}
       </div>
@@ -245,7 +236,7 @@ export function SpectralHistoryControls({
           checked={prefs.peakTrails}
           onChange={(event) => patch({ peakTrails: event.target.checked })}
         />
-        Peak trails
+        {copy.peakTrails}
       </label>
       <div className={styles.actions}>
         <button
@@ -255,10 +246,10 @@ export function SpectralHistoryControls({
             requestSpectralViewReset()
           }}
         >
-          Reset view
+          {copy.resetView}
         </button>
         <button type="button" onClick={() => requestSpectralHistoryClear()}>
-          Clear history
+          {copy.clearHistory}
         </button>
       </div>
     </>
@@ -269,8 +260,8 @@ export function SpectralHistoryControls({
       className={`${variant === 'focus' ? styles.focus : styles.bar} ${embedSettings ? styles.embed : ''}`}
       data-spectral-history=""
     >
-      <div className={pill} role="group" aria-label="History">
-        <span>History</span>
+      <div className={pill} role="group" aria-label={copy.history}>
+        <span>{copy.history}</span>
         {SPECTRAL_HISTORY_SECONDS.map((sec) => (
           <button
             key={sec}
@@ -284,33 +275,33 @@ export function SpectralHistoryControls({
         ))}
       </div>
       {embedSettings ? null : (
-      <div className={pill} role="group" aria-label="Signal">
-        <span>Signal</span>
-        {LAYERS.map((layer) => (
+      <div className={pill} role="group" aria-label={copy.signal}>
+        <span>{copy.signal}</span>
+        {LAYER_IDS.map((id) => (
           <button
-            key={layer.id}
+            key={id}
             type="button"
             className={choice}
-            aria-pressed={prefs.surfaces.fft.layer === layer.id}
-            title={layer.id === 'pre' ? 'Before the effect chain' : layer.id === 'post' ? 'After the effect chain' : 'Before and after'}
-            onClick={() => patchSurfaceDisplay('fft', { layer: layer.id })}
+            aria-pressed={prefs.surfaces.fft.layer === id}
+            title={id === 'pre' ? copy.beforeChain : id === 'post' ? copy.afterChain : copy.sourceAndOutput}
+            onClick={() => patchSurfaceDisplay('fft', { layer: id })}
           >
-            {layer.label}
+            {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
           </button>
         ))}
       </div>
       )}
-      <div className={pill} role="group" aria-label="View">
-        <span>View</span>
-        {VIEWS.map((view) => (
+      <div className={pill} role="group" aria-label={copy.view}>
+        <span>{copy.view}</span>
+        {VIEW_IDS.map((id) => (
           <button
-            key={view.id}
+            key={id}
             type="button"
             className={choice}
-            aria-pressed={prefs.cameraPreset === view.id}
-            onClick={() => patch({ cameraPreset: view.id })}
+            aria-pressed={prefs.cameraPreset === id}
+            onClick={() => patch({ cameraPreset: id })}
           >
-            {view.label}
+            {id === 'front' ? copy.front : id === 'angled' ? copy.angled : copy.top}
           </button>
         ))}
       </div>
@@ -318,13 +309,13 @@ export function SpectralHistoryControls({
         type="button"
         className={pill}
         aria-pressed={frozen}
-        title="Freeze history. Audio keeps playing."
+        title={copy.freezeHint}
         onClick={() => setSpectralHistoryFrozen(!frozen)}
       >
-        Freeze
+        {copy.freeze}
       </button>
       {embedSettings ? (
-        <div className={styles.inline} id={panelId} aria-label="3D Spectral History settings">
+        <div className={styles.inline} id={panelId} aria-label={copy.settings3d}>
           {settings(false)}
         </div>
       ) : (
@@ -334,7 +325,7 @@ export function SpectralHistoryControls({
           className={icon}
           aria-expanded={open}
           aria-controls={panelId}
-          title="3D settings"
+          title={copy.settings3d}
           onClick={() => setOpen((value) => !value)}
         >
           •••
@@ -342,13 +333,13 @@ export function SpectralHistoryControls({
         {open ? (
           sheet ? (
             createPortal(
-              <div className={styles.sheet} ref={panelRef} id={panelId} role="dialog" aria-label="3D Spectral History settings">
+              <div className={styles.sheet} ref={panelRef} id={panelId} role="dialog" aria-label={copy.settings3d}>
                 {settings(true)}
               </div>,
               document.body,
             )
           ) : (
-            <div className={styles.panel} ref={panelRef} id={panelId} role="dialog" aria-label="3D Spectral History settings">
+            <div className={styles.panel} ref={panelRef} id={panelId} role="dialog" aria-label={copy.settings3d}>
               {settings(true)}
             </div>
           )

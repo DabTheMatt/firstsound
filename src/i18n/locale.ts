@@ -6,10 +6,14 @@ export type Locale = (typeof LOCALES)[number]
 export type LocalizedText = Record<Locale, string>
 
 export function parseLocale(raw: string | null | undefined): Locale | null {
-  if (raw === 'en' || raw === 'pl') return 'en'
+  if (!raw) return null
+  const value = raw.trim().toLowerCase()
+  if (value === 'en' || value.startsWith('en-')) return 'en'
+  if (value === 'pl' || value.startsWith('pl-')) return 'pl'
   return null
 }
 
+/** No stored preference stays English. The browser language does not force Polish. */
 export function detectBrowserLocale(_language: string | null | undefined): Locale {
   return 'en'
 }
@@ -32,9 +36,9 @@ export function persistLocale(locale: Locale): void {
 
 export function applyDocumentLocale(locale: Locale): void {
   if (typeof document === 'undefined') return
-  document.documentElement.lang = locale
+  document.documentElement.lang = locale === 'pl' ? 'pl' : 'en'
 }
 
 export function initialLocale(): Locale {
-  return 'en'
+  return readStoredLocale() ?? 'en'
 }

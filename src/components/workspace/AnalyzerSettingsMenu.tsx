@@ -38,21 +38,19 @@ import { spectrumListenId } from '../../audio/spectral/bands'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
 import { useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import { SpectrumDisplaySettings } from './SpectrumDisplaySettings'
 import styles from './Workspace.module.css'
 
-const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
-  { id: 'front', label: 'Front' },
-  { id: 'angled', label: 'Angled' },
-  { id: 'top', label: 'Top' },
-]
+const VIEW_IDS: SpectralCameraPreset[] = ['front', 'angled', 'top']
 
 /**
  * Analyzer options in the same compact rows as the workspace bar.
  * Layer and 2D / 3D stay on the FFT bar unless `showView` puts them in this menu.
  */
 export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const snap = useEngine()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [overlay, setOverlay] = useState<string>(() => loadEqOverlayFocus())
@@ -78,74 +76,77 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
     <div className={styles.analyzerMenu}>
       {showView ? (
         <>
-          <h2 className={styles.analyzerSection}>Graph</h2>
+          <h2 className={styles.analyzerSection}>{copy.graph}</h2>
           <div className={styles.analyzerRows}>
             <ChoiceField
-              label="Mode"
+              label={copy.mode}
               value={prefs.viewMode}
               options={[
                 { id: '2d', label: '2D' },
-                { id: '3d', label: '3D', title: '3D Spectral History' },
+                { id: '3d', label: '3D', title: copy.history3d },
               ]}
               onChange={(id) => patch({ viewMode: id })}
             />
           </div>
         </>
       ) : null}
-      <h2 className={styles.analyzerSection}>Display</h2>
+      <h2 className={styles.analyzerSection}>{copy.display}</h2>
       <SpectrumDisplaySettings surface="fft" />
 
-      <h2 className={styles.analyzerSection}>History</h2>
+      <h2 className={styles.analyzerSection}>{copy.history}</h2>
       <div className={styles.analyzerRows}>
         <ChoiceField
-          label="Time"
+          label={copy.time}
           value={String(prefs.historySec)}
           options={SPECTRAL_HISTORY_SECONDS.map((sec) => ({ id: String(sec), label: `${sec}s` }))}
           onChange={(id) => patch({ historySec: clampSpectralHistorySeconds(Number(id)) })}
         />
         <ChoiceField
-          label="View"
+          label={copy.view}
           value={prefs.cameraPreset}
-          options={VIEWS}
+          options={VIEW_IDS.map((id) => ({
+            id,
+            label: id === 'front' ? copy.front : id === 'angled' ? copy.angled : copy.top,
+          }))}
           onChange={(id) => patch({ cameraPreset: id })}
         />
         <ChoiceField
-          label="Freeze"
+          label={copy.freeze}
           value={frozen ? 'on' : 'off'}
           options={[
-            { id: 'off', label: 'Off' },
-            { id: 'on', label: 'On', title: 'Freeze history. Audio keeps playing.' },
+            { id: 'off', label: copy.off },
+            { id: 'on', label: copy.on, title: copy.freezeHint },
           ]}
           onChange={(id) => setSpectralHistoryFrozen(id === 'on')}
         />
       </div>
 
-      <h2 className={styles.analyzerSection}>Picture</h2>
+      <h2 className={styles.analyzerSection}>{copy.picture}</h2>
       <div className={styles.analyzerRows}>
         <ChoiceField
-          label="Density"
+          label={copy.density}
           value={prefs.density}
           options={SPECTRAL_DENSITIES.map((density) => ({
             id: density,
-            label: density === 'auto' ? 'Auto' : density === 'low' ? 'Low' : density === 'high' ? 'High' : 'Normal',
+            label: density === 'auto' ? copy.auto : density === 'low' ? copy.low : density === 'high' ? copy.high : copy.normal,
           }))}
           onChange={(id) => patch({ density: id as SpectralDensity })}
         />
         <ChoiceField
-          label="Draw"
+          label={copy.draw}
           value={prefs.drawStyle}
           options={[
-            { id: 'lines' as const, label: 'Lines' },
-            { id: 'surface' as const, label: 'Surface' },
+            { id: 'lines' as const, label: copy.lines },
+            { id: 'surface' as const, label: copy.surface },
           ]}
           onChange={(id) => patch({ drawStyle: id as SpectralDrawStyle })}
         />
         <ChoiceField
-          label="Trails"
+          label={copy.trails}
           value={prefs.peakTrails ? 'on' : 'off'}
           options={[
-            { id: 'off', label: 'Off' },
-            { id: 'on', label: 'On' },
+            { id: 'off', label: copy.off },
+            { id: 'on', label: copy.on },
           ]}
           onChange={(id) => patch({ peakTrails: id === 'on' })}
         />
@@ -158,21 +159,21 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
               requestSpectralViewReset()
             }}
           >
-            Reset view
+            {copy.resetView}
           </button>
           <button type="button" className={styles.analyzerChoice} onClick={() => requestSpectralHistoryClear()}>
-            Clear history
+            {copy.clearHistory}
           </button>
         </div>
       </div>
 
-      <h2 className={styles.analyzerSection}>Analyzer</h2>
+      <h2 className={styles.analyzerSection}>{copy.analyzer}</h2>
       <div className={styles.analyzerRows}>
         {spectralBandsEnabled && listenBand ? (
           <p className={styles.analyzerNote}>{t.waveform.spectral.analyseBand}</p>
         ) : null}
         <SelectField
-          label="Columns"
+          label={copy.columns}
           value={String(prefs.bands)}
           onChange={(value) => patch({ bands: clampSpectrumBandCount(Number(value)) })}
         >
@@ -194,20 +195,20 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           ))}
         </SelectField>
         <ChoiceField
-          label="Fall"
+          label={copy.fall}
           value={prefs.fall}
           options={SPECTRUM_FALL_MODES.map((mode) => ({
             id: mode,
-            label: mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal',
+            label: mode === 'slow' ? copy.slow : mode === 'fast' ? copy.fast : copy.normal,
           }))}
           onChange={(id) => patch({ fall: clampSpectrumFallMode(id) })}
         />
         <ChoiceField
-          label="Follow"
+          label={copy.follow}
           value={prefs.follow}
           options={SPECTRUM_FOLLOW_MODES.map((mode) => ({
             id: mode,
-            label: mode === 'peak' ? 'Peak' : mode === 'slow' ? 'Slow' : 'Both',
+            label: mode === 'peak' ? copy.peak : mode === 'slow' ? copy.slow : copy.both,
           }))}
           onChange={(id) => patch({ follow: clampSpectrumFollowMode(id) })}
         />

@@ -10,6 +10,7 @@ import { captureDsp } from '../../sensory/applySensory'
 import type { DspSnapshot } from '../../sensory/mapping/mappingEngine'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { filterTypeCopy } from '../../i18n/filterTypes'
 import { AssistedParameterEditor } from './AssistedParameterEditor'
 import { indexOfBandId } from './edits'
 import styles from './DragFree.module.css'
@@ -119,7 +120,7 @@ function EqBody({ onDspGesture }: Props) {
               ]
             }
             return bands.map(({ band, index }) => {
-              const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.label ?? band.type
+              const typeLabel = filterTypeCopy(locale, band.type).label
               const number = index + 1
               const selected = picked != null && picked.bandId === band.id && picked.instanceId === mod.instanceId
               return (
@@ -166,7 +167,7 @@ function BandEditor({
 }) {
   const { t } = useI18n()
   const copy = t.dragFree
-  const typeLabel = EQ_FILTER_TYPES.find((item) => item.value === band.type)?.label ?? band.type
+  const typeLabel = filterTypeCopy(locale, band.type).label
   const gain = bandUsesGain(band.type)
   const slope = bandUsesSlope(band.type)
   return (
@@ -196,10 +197,10 @@ function BandEditor({
       />
       {slope ? (
         <label className={styles.field}>
-          <span>Slope</span>
+          <span>{locale === 'pl' ? 'Nachylenie' : 'Slope'}</span>
           <select
             value={String(band.slope)}
-            aria-label={`${typeLabel}, slope, ${band.slope}`}
+            aria-label={locale === 'pl' ? `${typeLabel}, nachylenie, ${band.slope}` : `${typeLabel}, slope, ${band.slope}`}
             onChange={(event) => {
               const next = FILTER_SLOPES.find((item) => item.value === Number(event.target.value))
               if (next) onEdit({ slope: next.value })
@@ -227,7 +228,7 @@ function BandEditor({
           {band.type === 'off' ? <option value="">{copy.chooseType}</option> : null}
           {EQ_FILTER_TYPES.filter((item) => item.value !== 'off').map((item) => (
             <option key={item.value} value={item.value}>
-              {item.label}
+              {filterTypeCopy(locale, item.value).label}
             </option>
           ))}
         </select>

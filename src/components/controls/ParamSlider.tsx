@@ -26,7 +26,7 @@ type Props = {
 }
 
 export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocusRequest, modulationRange }: Props) {
-  const { paramLabel, locale } = useI18n()
+  const { paramLabel, locale, t } = useI18n()
   const snap = useEngine()
   const def = PARAMS[id]
   const n = toNormalized(value, def)
@@ -254,7 +254,7 @@ export function ParamSlider({ id, value, liveValue, gestureSafe = false, onFocus
           </span>
           <span className={styles.readouts}>
             {liveValue != null ? (
-              <span className={styles.baseValue} title="Stored value (LFO zero)">
+              <span className={styles.baseValue} title={t.lfo.storedValue}>
                 {formatParamValue(value, def)}
               </span>
             ) : null}

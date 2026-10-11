@@ -959,6 +959,21 @@
   max-width: min(480px, 100%);
 }
 
+.languageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 10px 8px;
+}
+
+.languageRow span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-12);
+}
+
 .settingsTitle {
   margin: 8px 10px 2px;
   font-size: var(--type-13);

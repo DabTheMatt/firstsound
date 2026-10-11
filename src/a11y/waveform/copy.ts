@@ -1,3 +1,4 @@
+import { countNoun, polishCardinal } from '../../i18n/plural'
 import type { LandmarkType, NavStepId } from './types'
 
 export type WaveNavCopy = {
@@ -112,7 +113,7 @@ const labelsPl: Record<LandmarkType, string> = {
   'selection-end': 'Koniec zaznaczenia',
   'loop-start': 'Początek pętli',
   'loop-end': 'Koniec pętli',
-  transient: 'Wykryty transient',
+  transient: 'Wykryty transjent',
   'low-level-start': 'Możliwa cisza zaczyna się',
   'low-level-end': 'Możliwa cisza kończy się',
   'level-change': 'Zmiana poziomu',
@@ -128,7 +129,7 @@ function spokenFrom(labels: Record<LandmarkType, string>, locale: 'en' | 'pl'): 
     'loop-start': (time) => `${labels['loop-start']} ${at} ${time}.`,
     'loop-end': (time) => `${labels['loop-end']} ${at} ${time}.`,
     transient: (time) =>
-      locale === 'pl' ? `Wykryty transient o ${time}.` : `Detected transient at ${time}.`,
+      locale === 'pl' ? `Wykryty transjent o ${time}.` : `Detected transient at ${time}.`,
     'low-level-start': (time) =>
       locale === 'pl' ? `Możliwa cisza zaczyna się o ${time}.` : `Possible silence begins at ${time}.`,
     'low-level-end': (time) =>
@@ -148,7 +149,8 @@ const EN: WaveNavCopy = {
   meta: (channels, duration, rate) => `${channels} Duration ${duration}. ${rate}`,
   mono: 'Mono recording.',
   stereo: 'Stereo recording.',
-  channels: (count) => `${count} channels.`,
+  channels: (count) =>
+    `${countNoun('en', count, { one: 'channel', other: 'channels' }, { one: 'kanał', few: 'kanały', many: 'kanałów' })}.`,
   rate: (khz) => `Sample rate ${khz} kilohertz.`,
   position: 'Playhead position',
   readPosition: 'Read playhead position',
@@ -231,8 +233,15 @@ const PL: WaveNavCopy = {
   meta: (channels, duration, rate) => `${channels} Czas ${duration}. ${rate}`,
   mono: 'Nagranie mono.',
   stereo: 'Nagranie stereo.',
-  channels: (count) => `${count} kanały.`,
-  rate: (khz) => `Częstotliwość próbkowania ${khz} kiloherca.`,
+  channels: (count) =>
+    `${countNoun('pl', count, { one: 'channel', other: 'channels' }, { one: 'kanał', few: 'kanały', many: 'kanałów' })}.`,
+  rate: (khz) => {
+    const n = Number(String(khz).replace(',', '.'))
+    const unit = Number.isFinite(n)
+      ? polishCardinal(Math.round(n), { one: 'kiloherc', few: 'kiloherce', many: 'kiloherców' })
+      : 'kHz'
+    return `Częstotliwość próbkowania ${khz} ${unit}.`
+  },
   position: 'Pozycja głowicy',
   readPosition: 'Odczytaj pozycję głowicy',
   positionNow: (spoken) => `Pozycja głowicy, ${spoken}.`,
@@ -257,8 +266,8 @@ const PL: WaveNavCopy = {
   preview: 'Odsłuch zaznaczenia',
   previewed: 'Odtwarzanie zaznaczenia.',
   trim: 'Przytnij',
-  fadeIn: 'Fade in',
-  fadeOut: 'Fade out',
+  fadeIn: 'Narastanie',
+  fadeOut: 'Wygaszanie',
   normalize: 'Normalizuj',
   loop: 'Pętla',
   loopOn: 'Pętla włączona',
@@ -270,7 +279,7 @@ const PL: WaveNavCopy = {
   filter: 'Filtr punktów',
   filters: {
     all: 'Wszystkie',
-    transient: 'Transienty',
+    transient: 'Transjenty',
     'low-level': 'Ciche odcinki',
     level: 'Zmiany poziomu',
     selection: 'Granice zaznaczenia',
@@ -291,7 +300,7 @@ const PL: WaveNavCopy = {
   activity: 'W tym oknie jest sygnał.',
   quiet: 'W tym oknie aktywność jest niska.',
   units: 'Szczyt i RMS to poziomy cyfrowe w dBFS.',
-  learnTransient: 'Czym jest transient?',
+  learnTransient: 'Czym jest transjent?',
   learnSilence: 'Czym jest wykrywanie ciszy?',
   learnRms: 'Co znaczy RMS?',
   analysing: 'Szukam punktów charakterystycznych.',

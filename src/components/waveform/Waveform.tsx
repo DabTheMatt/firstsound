@@ -1884,7 +1884,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           <button
             type="button"
             className={styles.splitHandle}
-            aria-label="Resize waveform and FFT"
+            aria-label={t.waveform.resizeSplit}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId)
               splitDrag.current = { y: event.clientY, share: waveShareRef.current, kind: 'wave' }
@@ -1946,8 +1946,8 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           <button
             type="button"
             className={styles.splitHandle}
-            aria-label="Resize waveform"
-            title="Drag to shrink or grow the waveform"
+            aria-label={t.waveform.resizeWave}
+            title={t.waveform.resizeWave}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId)
               splitDrag.current = { y: event.clientY, share: hearingWaveRef.current, kind: 'wave' }

@@ -6,6 +6,7 @@ import type { ThemeId } from '../theme/tokens'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PL_PARAMS } from './plParams'
 import type { Locale } from './locale'
+import { countNoun, polishCardinal } from './plural'
 
 export type FeelingCopy = {
   label: string
@@ -137,7 +138,15 @@ export type Messages = {
     control: string
     controlCopy: string
   }
-  mode: { group: string; simple: string; sensory: string; technical: string }
+  mode: {
+    group: string
+    simple: string
+    sensory: string
+    technical: string
+    simpleShort: string
+    sensoryShort: string
+    technicalShort: string
+  }
   simple: SimpleMessages
   header: {
     loadSample: string
@@ -172,6 +181,12 @@ export type Messages = {
     revertSource: string
     undo: string
     redo: string
+    saveToLibrary: string
+    saveToLibraryPrompt: string
+    libraryHint: string
+    libraryEmpty: string
+    exportLibrary: string
+    deletePreset: (name: string) => string
   }
   workspace: {
     interface: string
@@ -232,6 +247,7 @@ export type Messages = {
     eq: string
     auto: string
     wave: string
+    waveFull: string
     fft: string
     hearing: string
     more: string
@@ -310,6 +326,8 @@ export type Messages = {
     hold: string
     holdOn: string
     holdOff: string
+    resizeWave: string
+    resizeSplit: string
     regionStart: string
     regionEnd: string
     tracksAria: string
@@ -390,6 +408,9 @@ export type Messages = {
     killNoise: string
     killNoiseTitle: string
     loop: string
+    scrub: string
+    scrubRange: string
+    scrubSample: string
     undo: string
     redo: string
     playhead: string
@@ -638,6 +659,8 @@ export type Messages = {
   lfo: {
     center: string
     lead: (slots: number) => string
+    storedValue: string
+    typeValue: string
   }
   modulation: {
     title: (name: string) => string
@@ -985,7 +1008,7 @@ export type Messages = {
 }
 
 export const EN: Messages = {
-  lang: { group: 'Language', en: 'EN', pl: 'PL' },
+  lang: { group: 'Language', en: 'English', pl: 'Polski' },
   gate: {
     title: 'How do you want to shape sound?',
     simple: 'Simple',
@@ -995,7 +1018,15 @@ export const EN: Messages = {
     control: 'Control',
     controlCopy: 'Shape sound by parameters.',
   },
-  mode: { group: 'Interface mode', simple: 'Simple', sensory: 'Sensory', technical: 'Technical' },
+  mode: {
+    group: 'Interface mode',
+    simple: 'Simple',
+    sensory: 'Sensory',
+    technical: 'Technical',
+    simpleShort: 'Simple',
+    sensoryShort: 'Sensory',
+    technicalShort: 'Technical',
+  },
   simple: {
     fileUntitled: 'No sample',
     cut: 'Cut',
@@ -1176,6 +1207,12 @@ export const EN: Messages = {
     revertSource: 'Revert to source',
     undo: 'Undo',
     redo: 'Redo',
+    saveToLibrary: 'Save to library',
+    saveToLibraryPrompt: 'Name this instrument preset for this browser',
+    libraryHint: 'Library lives in this browser. Export a pack to share or back up. There is no account server.',
+    libraryEmpty: 'No saved library presets yet.',
+    exportLibrary: 'Export library',
+    deletePreset: (name) => `Delete ${name}`,
   },
   workspace: {
     interface: 'Technical interface',
@@ -1244,6 +1281,7 @@ export const EN: Messages = {
     eq: 'EQ',
     auto: 'Auto',
     wave: 'Wave',
+    waveFull: 'Waveform',
     fft: 'FFT',
     hearing: 'Hearing',
     more: 'More edit actions',
@@ -1260,7 +1298,8 @@ export const EN: Messages = {
     noSelection: 'No partial selection.',
     monoRecording: 'Mono recording.',
     stereoRecording: 'Stereo recording.',
-    channelCount: (count) => `${count} channels.`,
+    channelCount: (count) =>
+      `${countNoun('en', count, { one: 'channel', other: 'channels' }, { one: 'kanał', few: 'kanały', many: 'kanałów' })}.`,
     sampleRate: (khz) => `Sample rate ${khz} kilohertz.`,
     loadDemo: 'Generate demo sample',
     edit: 'Edit',
@@ -1323,6 +1362,8 @@ export const EN: Messages = {
     hold: 'Hold',
     holdOn: 'Hold is looping this fragment. The FFT and EQ graph follows the loop. Press to play on.',
     holdOff: 'Loop the fragment at the playhead. The FFT and EQ graph follows that loop.',
+    resizeWave: 'Resize waveform',
+    resizeSplit: 'Resize waveform and FFT',
     regionStart: 'Region start',
     regionEnd: 'Region end',
     tracksAria: 'Tracks',
@@ -1403,6 +1444,9 @@ export const EN: Messages = {
     killNoise: 'Kill noise',
     killNoiseTitle: 'Mutes the distortion Noise generator only — not mic feedback or other FX. Use Kill FX for delay/reverb tails.',
     loop: 'Loop',
+    scrub: 'Scrub mode',
+    scrubRange: 'Range',
+    scrubSample: 'Sample',
     undo: 'Undo',
     redo: 'Redo',
     playhead: 'Playhead',
@@ -1751,6 +1795,8 @@ export const EN: Messages = {
   lfo: {
     center: 'LFO center',
     lead: (slots) => `Running modulators and their targets. Up to ${slots} LFOs on each effect.`,
+    storedValue: 'Stored value (LFO zero)',
+    typeValue: 'Double-click to type a value',
   },
   modulation: {
     title: (name) => `${name} modulation`,
@@ -2134,7 +2180,7 @@ export const EN: Messages = {
 }
 
 export const PL: Messages = {
-  lang: { group: 'Język', en: 'EN', pl: 'PL' },
+  lang: { group: 'Język', en: 'English', pl: 'Polski' },
   gate: {
     title: 'Jak chcesz kształtować dźwięk?',
     simple: 'Prosty',
@@ -2144,7 +2190,15 @@ export const PL: Messages = {
     control: 'Sterowanie',
     controlCopy: 'Kształtuj dźwięk parametrami.',
   },
-  mode: { group: 'Tryb interfejsu', simple: 'Prosty', sensory: 'Sensoryczny', technical: 'Techniczny' },
+  mode: {
+    group: 'Tryb interfejsu',
+    simple: 'Prosty',
+    sensory: 'Sensoryczny',
+    technical: 'Techniczny',
+    simpleShort: 'Prosty',
+    sensoryShort: 'Sens.',
+    technicalShort: 'Techn.',
+  },
   simple: {
     fileUntitled: 'Brak sampla',
     cut: 'Cięcie',
@@ -2153,8 +2207,8 @@ export const PL: Messages = {
     setEnd: 'Ustaw koniec',
     length: (value) => `Długość: ${value} s`,
     startEnd: 'Początek i koniec',
-    fadeIn: 'Płynny początek',
-    fadeOut: 'Płynny koniec',
+    fadeIn: 'Narastanie',
+    fadeOut: 'Wygaszanie',
     fadeNone: 'Brak',
     fadeShort: 'Krótki',
     fadeMedium: 'Średni',
@@ -2167,8 +2221,8 @@ export const PL: Messages = {
     fadeOutShort: 'Krótkie',
     fadeOutMedium: 'Średnie',
     fadeOutLong: 'Długie',
-    fadeInAria: (step) => `Płynny początek: ${step}`,
-    fadeOutAria: (step) => `Płynny koniec: ${step}`,
+    fadeInAria: (step) => `Narastanie: ${step}`,
+    fadeOutAria: (step) => `Wygaszanie: ${step}`,
     regionStartAria: (value) => `Początek sampla: ${value} sekund`,
     regionEndAria: (value) => `Koniec sampla: ${value} sekund`,
     closeSheet: 'Zamknij',
@@ -2195,9 +2249,9 @@ export const PL: Messages = {
     clarity: 'Czytelność',
     level: 'Poziom',
     evenOut: 'Wyrównaj',
-    gain: 'Gain',
+    gain: 'Wzmocnienie',
     gainValue: (db) => `${db} dB`,
-    gainAria: (db) => `Gain ${db} decybeli`,
+    gainAria: (db) => `Wzmocnienie ${db} decybeli`,
     tail: 'Wybrzmienie',
     tailOn: 'Z ogonem',
     tailOff: 'Bez ogona',
@@ -2215,7 +2269,7 @@ export const PL: Messages = {
     echoMedium: 'Średnie',
     echoLong: 'Długie',
     advanced: 'Aktywna jest zaawansowana obróbka.',
-    openTechnical: 'Otwórz Technical',
+    openTechnical: 'Otwórz Techniczny',
     resetChanges: 'Resetuj zmiany',
     moreEdit: 'Więcej narzędzi edycji',
     customEffect: 'Własne',
@@ -2230,11 +2284,11 @@ export const PL: Messages = {
     restoreConfirm: 'Czyści zaniki, barwę, pogłos i opóźnienie. Wczytany sample zostaje.',
     restoreYes: 'Resetuj',
     restoreNo: 'Zostaw zmiany',
-    save: 'Eksport',
+    save: 'Eksportuj',
     saveTitle: 'Eksport',
     saveName: 'Nazwa',
     saveFormat: 'Format',
-    saveFile: 'Eksport',
+    saveFile: 'Eksportuj',
     moreSettings: 'Więcej ustawień',
     hideSettings: 'Mniej ustawień',
     sampleRate: 'Częstotliwość próbkowania',
@@ -2246,7 +2300,7 @@ export const PL: Messages = {
     mp3: 'MP3',
     loadSample: 'Otwórz sample',
     play: 'Odtwórz',
-    pause: 'Zatrzymaj',
+    pause: 'Wstrzymaj',
     clock: (now, total) => `${now} / ${total}`,
     tones: {
       natural: {
@@ -2325,6 +2379,12 @@ export const PL: Messages = {
     revertSource: 'Przywróć źródło',
     undo: 'Cofnij',
     redo: 'Ponów',
+    saveToLibrary: 'Zapisz w bibliotece',
+    saveToLibraryPrompt: 'Nazwij ten preset instrumentu w tej przeglądarce',
+    libraryHint: 'Biblioteka zostaje w tej przeglądarce. Wyeksportuj paczkę, aby ją udostępnić albo zachować kopię. Nie ma serwera kont.',
+    libraryEmpty: 'Brak zapisanych presetów w bibliotece.',
+    exportLibrary: 'Eksportuj bibliotekę',
+    deletePreset: (name) => `Usuń ${name}`,
   },
   workspace: {
     interface: 'Interfejs techniczny',
@@ -2375,9 +2435,9 @@ export const PL: Messages = {
     addBand: 'Dodaj pasmo',
     addEq: 'Dodaj EQ',
     freq: 'Częst.',
-    gain: 'Gain',
+    gain: 'Wzm.',
     q: 'Q',
-    slope: 'Slope',
+    slope: 'Nach.',
     context: 'Parametry efektu',
   },
   focus: {
@@ -2393,6 +2453,7 @@ export const PL: Messages = {
     eq: 'EQ',
     auto: 'Auto',
     wave: 'Fala',
+    waveFull: 'Przebieg',
     fft: 'FFT',
     hearing: 'Słuch',
     more: 'Więcej edycji',
@@ -2401,16 +2462,23 @@ export const PL: Messages = {
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
-    editorAria: (fileName) => `Fala, ${fileName}.`,
-    editorEmpty: 'Edytor fali. Brak wczytanego sampla.',
+    editorAria: (fileName) => `Przebieg, ${fileName}.`,
+    editorEmpty: 'Edytor przebiegu. Nie wczytano pliku audio.',
     editorSummary: (channels, duration, rate, playhead, selection) =>
       `${channels} Czas ${duration}. ${rate} Głowica ${playhead}. ${selection} Strzałki przesuwają głowicę.`,
     selectionRange: (start, end, duration) => `Zaznaczenie od ${start} do ${end}. Czas ${duration}.`,
     noSelection: 'Brak częściowego zaznaczenia.',
     monoRecording: 'Nagranie mono.',
     stereoRecording: 'Nagranie stereo.',
-    channelCount: (count) => `${count} kanały.`,
-    sampleRate: (khz) => `Częstotliwość próbkowania ${khz} kiloherca.`,
+    channelCount: (count) =>
+      `${countNoun('pl', count, { one: 'channel', other: 'channels' }, { one: 'kanał', few: 'kanały', many: 'kanałów' })}.`,
+    sampleRate: (khz) => {
+      const n = Number(String(khz).replace(',', '.'))
+      const unit = Number.isFinite(n)
+        ? polishCardinal(Math.round(n), { one: 'kiloherc', few: 'kiloherce', many: 'kiloherców' })
+        : 'kHz'
+      return `Częstotliwość próbkowania ${khz} ${unit}.`
+    },
     loadDemo: 'Wygeneruj sample demo',
     edit: 'Edycja',
     trim: 'Przytnij',
@@ -2465,13 +2533,15 @@ export const PL: Messages = {
     zoomIn: 'Przybliż',
     scrollZoom: 'Scrolluj, aby zoomować',
     mono: 'Mono',
-    fadeIn: 'Fade in',
-    fadeOut: 'Fade out',
+    fadeIn: 'Narastanie',
+    fadeOut: 'Wygaszanie',
     autoFade: 'Auto',
-    autoFadeTitle: 'Auto fade — 10 ms fade-in and fade-out',
+    autoFadeTitle: 'Auto — 10 ms narastania i wygaszania',
     hold: 'Hold',
     holdOn: 'Hold zapętla ten fragment. Wykres FFT i EQ podąża za pętlą. Naciśnij, aby grać dalej.',
     holdOff: 'Zapętla fragment przy głowicy. Wykres FFT i EQ podąża za tą pętlą.',
+    resizeWave: 'Zmień wysokość przebiegu',
+    resizeSplit: 'Zmień podział przebiegu i FFT',
     regionStart: 'Początek regionu',
     regionEnd: 'Koniec regionu',
     tracksAria: 'Ślady',
@@ -2542,7 +2612,7 @@ export const PL: Messages = {
   },
   transport: {
     play: 'Odtwórz',
-    pause: 'Pauza',
+    pause: 'Wstrzymaj',
     stop: 'Stop',
     playFromStart: 'Odtwórz od początku sampla',
     playFromStartTitle: 'Odtwórz od początku sampla, nie od zaznaczenia',
@@ -2552,6 +2622,9 @@ export const PL: Messages = {
     killNoise: 'Kill noise',
     killNoiseTitle: 'Wycisza tylko generator szumu w Distortion — nie sprzężenie mikrofonu. Tails delay/reverb: Kill FX.',
     loop: 'Pętla',
+    scrub: 'Tryb przesuwania',
+    scrubRange: 'Zakres',
+    scrubSample: 'Sample',
     undo: 'Cofnij',
     redo: 'Ponów',
     playhead: 'Głowica',
@@ -2561,11 +2634,11 @@ export const PL: Messages = {
     selStartTitle: 'Skocz głowicą na początek zaznaczenia (loop in)',
     selEnd: 'Kon. zazn.',
     selEndTitle: 'Skocz głowicą na koniec zaznaczenia (loop out)',
-    export: 'Eksport',
+    export: 'Eksportuj',
     use: 'Użyj',
     useAsSample: 'Użyj jako sample',
-    useTitle: 'Wypiecz bieżące zaznaczenie (z fade’ami) i wczytaj jako roboczy klip.',
-    useHint: 'Wypieka to zaznaczenie (z fade’ami) do roboczego sampla.',
+    useTitle: 'Zapisz bieżące zaznaczenie, razem z narastaniem i wygaszaniem, jako roboczy sample.',
+    useHint: 'Zapisuje to zaznaczenie, razem z narastaniem i wygaszaniem, jako roboczy sample.',
     selectionSr: (start, end) => `Zaznaczenie ${start} do ${end}`,
   },
   chain: {
@@ -2585,8 +2658,8 @@ export const PL: Messages = {
     moveAfter: (moved, other) => `Przenieś ${moved} za ${other}`,
     movedBefore: (moved, other) => `${moved} przeniesiono przed ${other}.`,
     movedAfter: (moved, other) => `${moved} przeniesiono za ${other}.`,
-    bypassOn: (name) => `${name} bypass, włączony`,
-    bypassOff: (name) => `${name} bypass, wyłączony`,
+    bypassOn: (name) => `${name}, ominięcie włączone`,
+    bypassOff: (name) => `${name}, ominięcie wyłączone`,
     bypassedTag: 'Wyłączony',
     dragHint: 'Przeciągnij, aby zmienić kolejność. Wejście i wyjście zostają na miejscu.',
   },
@@ -2612,18 +2685,18 @@ export const PL: Messages = {
     snapStart: 'Przyciągnij start',
     snapEnd: 'Przyciągnij koniec',
     grainFadesHelp:
-      'Ziarno gra od kursora, więc fade’y regionu łatwo przegapić. Użyj Playback, aby usłyszeć fade-in i fade-out zaznaczenia.',
-    fadeIn: 'Fade in',
-    fadeOut: 'Fade out',
+      'Ziarno gra od kursora, więc narastanie i wygaszanie regionu łatwo przegapić. Użyj odtwarzania, aby je usłyszeć na zaznaczeniu.',
+    fadeIn: 'Narastanie',
+    fadeOut: 'Wygaszanie',
     curve: 'Krzywa',
     linear: 'Lin',
     equalPower: 'EqPow',
     exponential: 'Exp',
     sCurve: 'S',
     fadeHelp:
-      'Koło wygina wybrany fade w prawie Lin / EqPow / Exp / S. Fade zaczyna się na krawędzi pętli. Wyższe Q przysuwa kolano.',
-    fadeHelpOut: 'fade-out',
-    fadeHelpIn: 'fade-in',
+      'Pokrętło wygina wybrany zanik ku krzywej Lin, EqPow, Exp albo S. Zanik zaczyna się na krawędzi pętli. Wyższe Q przysuwa kolano.',
+    fadeHelpOut: 'wygaszanie',
+    fadeHelpIn: 'narastanie',
     auto10: 'Auto 10 ms',
     fadesOff: 'Wyłącz fade’y',
     trim: 'Przytnij',
@@ -2713,8 +2786,8 @@ export const PL: Messages = {
     stringsHideAria: 'Ukryj struny parametrów',
     menu: 'Menu',
     play: 'Odtwórz',
-    pause: 'Pauza',
-    playPause: 'Odtwórz lub pauza',
+    pause: 'Wstrzymaj',
+    playPause: 'Odtwórz lub wstrzymaj',
     loadDemo: 'Wygeneruj sample demo',
     rest: 'spoczynek',
     restAll: 'Wyzeruj wszystkie efekty sensoryczne',
@@ -2900,6 +2973,8 @@ export const PL: Messages = {
   lfo: {
     center: 'Centrum LFO',
     lead: (slots) => `Działające modulacje i ich cele. Do ${slots} LFO na każdy efekt.`,
+    storedValue: 'Zapisana wartość (zero LFO)',
+    typeValue: 'Kliknij dwukrotnie, aby wpisać wartość',
   },
   modulation: {
     title: (name) => `Modulacja: ${name}`,
@@ -2979,7 +3054,7 @@ export const PL: Messages = {
     filterCount: 'Liczba filtrów',
     countRandom: 'Losowo 1–6',
     frequency: 'Częstotliwość',
-    gain: 'Gain',
+    gain: 'Wzmocnienie',
     q: 'Q',
     filterType: 'Typ filtra',
     slope: 'Nachylenie',
@@ -3168,7 +3243,7 @@ export const PL: Messages = {
       guided: 'Zadania z przewodnikiem',
       export: 'Eksport',
       accessibility: 'Ustawienia dostępności',
-      gain: 'Gain',
+      gain: 'Wzmocnienie',
       parameters: 'Parametry',
     },
     byId: {
@@ -3224,8 +3299,8 @@ export const PL: Messages = {
     trim: 'Przytnij',
     trimWarn: 'Przycięcie zostawia zaznaczenie i usuwa dźwięk poza nim. Można to cofnąć.',
     trimApply: 'Przytnij zaznaczenie',
-    fadeIn: 'Płynny początek',
-    fadeOut: 'Płynny koniec',
+    fadeIn: 'Narastanie',
+    fadeOut: 'Wygaszanie',
     fadeLess: 'Krócej o 50 milisekund',
     fadeMore: 'Dłużej o 50 milisekund',
     duration: 'Czas trwania',

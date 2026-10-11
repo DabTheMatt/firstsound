@@ -3,6 +3,8 @@ import { FADE_CURVES, type FadeCurveId } from '../../audio/samplePrep'
 import { formatTimecode, timecodeDigits } from '../../audio/engine/formatTime'
 import { engine } from '../../hooks/useEngine'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import { useI18n } from '../../i18n'
+import { prepCopy, prepNotice } from '../../i18n/prepCopy'
 import styles from './EditBar.module.css'
 
 type Props = {
@@ -31,6 +33,8 @@ function CurveIcon({ id, active }: { id: FadeCurveId; active: boolean }) {
 }
 
 export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDone }: Props) {
+  const { t, locale } = useI18n()
+  const prepText = prepCopy(locale)
   const prep = snap.prep
   const digits = timecodeDigits(viewSpan)
   const len = Math.max(0, prep.selectionEnd - prep.selectionStart)
@@ -71,31 +75,31 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
     <div className={styles.bar}>
       <div className={styles.times}>
         <div className={styles.time}>
-          <span>Start</span>
+          <span>{t.inspector.start}</span>
           <div className={styles.nudge}>
-            <button type="button" aria-label="Nudge start earlier" onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart - step })}>
+            <button type="button" aria-label={prepText.nudgeStartEarlier} onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart - step })}>
               −
             </button>
             <strong ref={startReadout}>{formatTimecode(prep.selectionStart, digits)}</strong>
-            <button type="button" aria-label="Nudge start later" onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart + step })}>
+            <button type="button" aria-label={prepText.nudgeStartLater} onClick={() => engine.commitPrep({ selectionStart: prep.selectionStart + step })}>
               +
             </button>
           </div>
         </div>
         <div className={styles.time}>
-          <span>End</span>
+          <span>{t.inspector.end}</span>
           <div className={styles.nudge}>
-            <button type="button" aria-label="Nudge end earlier" onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd - step })}>
+            <button type="button" aria-label={prepText.nudgeEndEarlier} onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd - step })}>
               −
             </button>
             <strong ref={endReadout}>{formatTimecode(prep.selectionEnd, digits)}</strong>
-            <button type="button" aria-label="Nudge end later" onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd + step })}>
+            <button type="button" aria-label={prepText.nudgeEndLater} onClick={() => engine.commitPrep({ selectionEnd: prep.selectionEnd + step })}>
               +
             </button>
           </div>
         </div>
         <div className={styles.time}>
-          <span>Length</span>
+          <span>{t.inspector.length}</span>
           <strong ref={lenReadout}>{formatTimecode(len, digits)}</strong>
         </div>
       </div>
@@ -103,7 +107,7 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
       <div className={styles.fades}>
         <label className={styles.fade}>
           <header>
-            Fade in
+            {t.inspector.fadeIn}
             <b>{Math.round(prep.fadeInSec * 1000)} ms</b>
           </header>
           <div className={styles.row}>
@@ -121,13 +125,13 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
               className={`${styles.tool} ${prep.fadeInEnabled ? styles.toolActive : ''}`}
               onClick={() => engine.commitPrep({ fadeInEnabled: !prep.fadeInEnabled, fadeAuto: false })}
             >
-              {prep.fadeInEnabled ? 'On' : 'Off'}
+              {prep.fadeInEnabled ? t.a11y.on : t.a11y.off}
             </button>
           </div>
         </label>
         <label className={styles.fade}>
           <header>
-            Fade out
+            {t.inspector.fadeOut}
             <b>{Math.round(prep.fadeOutSec * 1000)} ms</b>
           </header>
           <div className={styles.row}>
@@ -145,13 +149,13 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
               className={`${styles.tool} ${prep.fadeOutEnabled ? styles.toolActive : ''}`}
               onClick={() => engine.commitPrep({ fadeOutEnabled: !prep.fadeOutEnabled, fadeAuto: false })}
             >
-              {prep.fadeOutEnabled ? 'On' : 'Off'}
+              {prep.fadeOutEnabled ? t.a11y.on : t.a11y.off}
             </button>
           </div>
         </label>
       </div>
 
-      <div className={styles.row} role="group" aria-label="Fade curve">
+      <div className={styles.row} role="group" aria-label={prepText.fadeCurve}>
         {FADE_CURVES.map((c) => (
           <button
             key={c.id}
@@ -169,8 +173,8 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
       </div>
       <label className={styles.fade}>
         <header>
-          Curve character
-          <b>{prep.fadeInBend < 0.45 ? 'Slow start' : prep.fadeInBend > 0.55 ? 'Fast start' : 'Default'}</b>
+          {prepText.curveCharacter}
+          <b>{prep.fadeInBend < 0.45 ? prepText.slowStart : prep.fadeInBend > 0.55 ? prepText.fastStart : prepText.curveDefault}</b>
         </header>
         <input
           type="range"
@@ -193,16 +197,16 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
           className={`${styles.tool} ${prep.autoSnapZero ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ autoSnapZero: !prep.autoSnapZero })}
         >
-          Auto snap
+          {prepText.autoSnap}
         </button>
         <button type="button" className={styles.tool} onClick={() => engine.snapZero('start')}>
-          Zero start
+          {prepText.zeroStart}
         </button>
         <button type="button" className={styles.tool} onClick={() => engine.snapZero('end')}>
-          Zero end
+          {prepText.zeroEnd}
         </button>
       </div>
-      {snap.zeroNotice ? <p className={styles.notice}>{snap.zeroNotice}</p> : null}
+      {snap.zeroNotice ? <p className={styles.notice}>{prepNotice(locale, snap.zeroNotice)}</p> : null}
 
       <div className={styles.playRow}>
         <button
@@ -210,43 +214,43 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
           className={styles.primary}
           onClick={() => void engine.unlock().then(() => engine.toggleSelectionPlayback())}
         >
-          {snap.previewPlaying ? 'Stop' : 'Play selection'}
+          {snap.previewPlaying ? t.header.stop : prepText.playSelection}
         </button>
         <button
           type="button"
           className={`${styles.tool} ${snap.previewLoop ? styles.toolActive : ''}`}
           onClick={() => engine.setPreviewLoop(!snap.previewLoop)}
         >
-          Loop
+          {t.transport.loop}
         </button>
         <button type="button" className={styles.tool} onClick={() => void engine.playAudition('start')}>
-          Start
+          {t.inspector.start}
         </button>
         <button type="button" className={styles.tool} onClick={() => void engine.playAudition('end')}>
-          End
+          {t.inspector.end}
         </button>
       </div>
 
       <div className={styles.tools}>
         <button type="button" className={styles.tool} onClick={() => engine.trimToSelection()}>
-          Trim
+          {t.inspector.trim}
         </button>
         <button
           type="button"
           className={`${styles.tool} ${prep.normalize ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ normalize: !prep.normalize })}
         >
-          Normalize audio
+          {prepText.normalizeAudio}
         </button>
         <button
           type="button"
           className={`${styles.tool} ${prep.reverse ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ reverse: !prep.reverse })}
         >
-          Reverse
+          {t.inspector.reverse}
         </button>
         <button type="button" className={styles.tool} onClick={onExport}>
-          Export
+          {t.transport.export}
         </button>
         <button
           type="button"
@@ -254,19 +258,19 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
           style={{ gridColumn: '1 / -1' }}
           onClick={() => void engine.unlock().then(() => engine.useAsSample()).then(onDone)}
         >
-          Use as sample
+          {t.transport.useAsSample}
         </button>
       </div>
 
       <div className={styles.row}>
         <button type="button" className={styles.tool} disabled={!snap.canUndoPrep} onClick={() => engine.undoPrep()}>
-          Undo
+          {t.waveform.undo}
         </button>
         <button type="button" className={styles.tool} disabled={!snap.canRedoPrep} onClick={() => engine.redoPrep()}>
-          Redo
+          {t.waveform.redo}
         </button>
         <button type="button" className={`${styles.moreBtn} ${moreOpen ? styles.toolActive : ''}`} onClick={onToggleMore}>
-          More tools
+          {prepText.moreTools}
         </button>
       </div>
 
@@ -276,11 +280,13 @@ export function EditBar({ snap, viewSpan, moreOpen, onToggleMore, onExport, onDo
 }
 
 function MoreTools({ snap }: { snap: EngineSnapshot }) {
+  const { t, locale } = useI18n()
+  const prepText = prepCopy(locale)
   const prep = snap.prep
   return (
     <div className={styles.sheet}>
       <label>
-        Gain
+        {t.inspector.gain}
         <input
           className={styles.input}
           type="number"
@@ -290,7 +296,7 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
         />
       </label>
       <label>
-        Normalize to
+        {prepText.normalizeTo}
         <select
           className={styles.input}
           style={{ width: 110 }}
@@ -309,36 +315,36 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
           className={`${styles.tool} ${prep.removeDc ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ removeDc: !prep.removeDc })}
         >
-          Remove DC offset
+          {prepText.removeDc}
         </button>
         <button type="button" className={styles.tool} onClick={() => engine.detectSilenceMarkers()}>
-          Detect silence
+          {prepText.detectSilence}
         </button>
       </div>
       {snap.silenceProposal ? (
         <div className={styles.silence}>
-          Trim {snap.silenceProposal.leadingSec.toFixed(2)}s lead / {snap.silenceProposal.trailingSec.toFixed(2)}s tail
+          {prepText.silenceLead(snap.silenceProposal.leadingSec.toFixed(2), snap.silenceProposal.trailingSec.toFixed(2))}
           <button type="button" className={styles.tool} onClick={() => engine.applySilenceProposal()}>
-            Apply
+            {t.dragFree.apply}
           </button>
           <button type="button" className={styles.tool} onClick={() => engine.dismissSilenceProposal()}>
-            Cancel
+            {t.dragFree.cancel}
           </button>
         </div>
       ) : null}
       <label>
-        Channels
+        {prepText.channels}
         <select
           className={styles.input}
           style={{ width: 140 }}
           value={prep.channelMode}
           onChange={(e) => engine.commitPrep({ channelMode: e.target.value as typeof prep.channelMode })}
         >
-          <option value="original">Original</option>
-          <option value="mono">Mono</option>
-          <option value="left">Left only</option>
-          <option value="right">Right only</option>
-          <option value="swap">Swap L/R</option>
+          <option value="original">{prepText.original}</option>
+          <option value="mono">{t.header.mono}</option>
+          <option value="left">{prepText.leftOnly}</option>
+          <option value="right">{prepText.rightOnly}</option>
+          <option value="swap">{prepText.swap}</option>
         </select>
       </label>
       <div className={styles.row}>
@@ -347,18 +353,18 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
           className={`${styles.tool} ${prep.invertL ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ invertL: !prep.invertL })}
         >
-          Invert L
+          {prepText.invertL}
         </button>
         <button
           type="button"
           className={`${styles.tool} ${prep.invertR ? styles.toolActive : ''}`}
           onClick={() => engine.commitPrep({ invertR: !prep.invertR })}
         >
-          Invert R
+          {prepText.invertR}
         </button>
       </div>
       <label>
-        Clip name
+        {prepText.clipName}
         <input
           className={styles.input}
           style={{ width: 160 }}
@@ -370,7 +376,7 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
         />
       </label>
       <button type="button" className={styles.tool} onClick={() => engine.saveVariation(prep.clipName)}>
-        Save variation
+        {prepText.saveVariation}
       </button>
       {snap.variations.length ? (
         <div className={styles.row}>
@@ -386,7 +392,7 @@ function MoreTools({ snap }: { snap: EngineSnapshot }) {
           ))}
         </div>
       ) : (
-        <p className={styles.notice}>Several clips can share one recording.</p>
+        <p className={styles.notice}>{prepText.variations}</p>
       )}
     </div>
   )

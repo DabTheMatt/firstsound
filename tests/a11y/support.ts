@@ -15,6 +15,7 @@ export const VIEWPORTS = [
 
 type Boot = {
   mode?: 'simple' | 'technical' | 'sensory'
+  locale?: 'en' | 'pl'
   theme?: string
   a11y?: Record<string, boolean | number | string>
   reducedMotion?: 'reduce' | 'no-preference'
@@ -23,7 +24,7 @@ type Boot = {
 export async function boot(page: Page, init: Boot = {}): Promise<void> {
   if (init.reducedMotion) await page.emulateMedia({ reducedMotion: init.reducedMotion })
   await page.addInitScript((state) => {
-    localStorage.setItem('field.uiLocale', 'en')
+    localStorage.setItem('field.uiLocale', state.locale ?? 'en')
     localStorage.setItem('firstsound.uiMode', state.mode ?? 'technical')
     localStorage.setItem('field.theme', state.theme ?? 'studio-dark')
     localStorage.setItem('field.technicalInterface', 'workspace')
@@ -35,7 +36,7 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
   await page.goto('/')
   await page.locator('#root').waitFor()
   // Phone layouts hide the mode radiogroup. Settings (Technical) or Menu (Sensory) is always present.
-  await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor({ timeout: 20_000 })
+  await page.getByRole('button', { name: /^(Settings|Menu|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
 }
 
 /** axe WCAG tags. A clean result is not a conformance claim. */

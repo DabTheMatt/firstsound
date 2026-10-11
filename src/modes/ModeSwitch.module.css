@@ -10,6 +10,8 @@
 
 .opt {
   border: 0;
+  min-width: 0;
+  white-space: nowrap;
   background: transparent;
   color: var(--text-muted);
   font-size: var(--type-10);

@@ -8,11 +8,13 @@ import {
 import { FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { loadSpectrumPrefs, patchSpectrumPrefs, patchSurfaceDisplay, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import styles from './MobileContext.module.css'
 
 /** Advanced analyzer options for the phone EQ workspace. Not shown on the graph. */
 export function AnalyzerSettings() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [scale, setScale] = useState<FreqScaleKind>(() => loadSpectrumPrefs().surfaces.eq.scale)
 
@@ -28,35 +30,35 @@ export function AnalyzerSettings() {
   return (
     <div className={styles.analyzer} aria-label={t.mobile.analyzer}>
       <label className={styles.field}>
-        Layer
+        {copy.layer}
         <select
-          aria-label="EQ spectrum layer"
+          aria-label={copy.eqLayer}
           value={prefs.surfaces.eq.layer}
           onChange={(event) => patchSurfaceDisplay('eq', { layer: event.target.value as SpectrumLayer })}
         >
-          <option value="pre">Before</option>
-          <option value="post">After</option>
-          <option value="both">Both</option>
+          <option value="pre">{copy.before}</option>
+          <option value="post">{copy.after}</option>
+          <option value="both">{copy.both}</option>
         </select>
       </label>
       <label className={styles.field}>
-        Fall
+        {copy.fall}
         <select
-          aria-label="Spectrum fall speed"
+          aria-label={copy.fallAria}
           value={prefs.fall}
           onChange={(event) => patch({ fall: clampSpectrumFallMode(event.target.value) })}
         >
           {SPECTRUM_FALL_MODES.map((mode) => (
             <option key={mode} value={mode}>
-              {mode === 'slow' ? 'Slow' : mode === 'fast' ? 'Fast' : 'Normal'}
+              {mode === 'slow' ? copy.slow : mode === 'fast' ? copy.fast : copy.normal}
             </option>
           ))}
         </select>
       </label>
       <label className={styles.field}>
-        Range
+        {copy.range}
         <select
-          aria-label="Analyzer range"
+          aria-label={copy.range}
           value={prefs.surfaces.eq.range}
           onChange={(event) => patchSurfaceDisplay('eq', { range: clampSpectrumRange(Number(event.target.value)) })}
         >
@@ -68,9 +70,9 @@ export function AnalyzerSettings() {
         </select>
       </label>
       <label className={styles.field}>
-        Scale
+        {copy.scale}
         <select
-          aria-label="Frequency scale"
+          aria-label={copy.scale}
           value={scale}
           onChange={(event) => patchSurfaceDisplay('eq', { scale: event.target.value as FreqScaleKind })}
         >

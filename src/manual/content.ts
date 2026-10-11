@@ -38,6 +38,16 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'language',
+    title: 'Language',
+    body: [
+      'FIELD can run in English or Polish. The language control shows the names English and Polski. It sits on the opening choice screen and in Settings. The choice is saved in this browser. There is no account. A browser with no saved choice stays in English.',
+      'Polish uses audio terms: wzmocnienie for gain, poziom for level, głośność for volume, przesterowanie for clipping, próg for threshold, atak for attack, zwolnienie for release, and stopień kompresji for ratio. Narastanie is fade in. Wygaszanie is fade out. EQ, FFT, RMS, LUFS, dB, dBFS, Hz, kHz, Q, LFO, MIDI, WAV, MP3, FLAC, and PCM stay as written. The header keeps units such as 48 kHz. Timecode stays 00:12.450.',
+      'Some controls keep a short visible label so the bars do not grow. The full Polish name is the accessible name and the tooltip. The Wave tab stays Fala. Its accessible name is Przebieg. The mode switch shows Prosty, Techn., and Sens. The accessible names are Prosty, Techniczny, and Sensoryczny.',
+      'Changing language updates the interface only. It does not rebuild the audio graph, reset parameters, move the playhead, or stop playback.',
+    ],
+  },
+  {
     id: 'simple',
     title: 'Simple — Quick Editor',
     body: [
@@ -514,6 +524,16 @@ const pl: ManualSection[] = [
     body: [
       'FIELD otwiera się w Technical, w układzie Workspace. Simple to szybki edytor wykończenia sampla. Technical to pełny edytor. Sensoryczny kształtuje dźwięk odczuciem. Wszystkie trzy korzystają z tego samego silnika. Simple i Sensoryczny zostają w nagłówku. Zapisany w tej przeglądarce wybór zostaje.',
       'Zezwól na dźwięk, gdy przeglądarka zapyta. Jeśli status mówi, że audio jest zablokowane, kliknij stronę jeszcze raz, żeby AudioContext mógł wystartować.',
+    ],
+  },
+  {
+    id: 'language',
+    title: 'Język',
+    body: [
+      'FIELD działa po angielsku albo po polsku. Przełącznik pokazuje nazwy English i Polski. Jest na ekranie wyboru trybu i w Ustawieniach. Wybór zapisuje się w tej przeglądarce. Nie ma konta. Przeglądarka bez zapisanego wyboru zostaje przy angielskim.',
+      'Polski używa terminów audio: wzmocnienie to gain, poziom to level, głośność to volume, przesterowanie to clipping, próg to threshold, atak to attack, zwolnienie to release, a stopień kompresji to ratio. Narastanie to fade in. Wygaszanie to fade out. EQ, FFT, RMS, LUFS, dB, dBFS, Hz, kHz, Q, LFO, MIDI, WAV, MP3, FLAC i PCM zostają w tej postaci. Nagłówek zostawia jednostki, na przykład 48 kHz. Zapis czasu zostaje 00:12.450.',
+      'Część kontrolek ma krótką etykietę, żeby belki nie rosły. Pełna polska nazwa jest nazwą dostępną i podpowiedzią. Zakładka fali zostaje Fala. Jej nazwa dostępna to Przebieg. Przełącznik trybów pokazuje Prosty, Techn. i Sens. Nazwy dostępne to Prosty, Techniczny i Sensoryczny.',
+      'Zmiana języka aktualizuje tylko interfejs. Nie przebudowuje grafu audio, nie resetuje parametrów, nie rusza głowicy i nie zatrzymuje odtwarzania.',
     ],
   },
   {

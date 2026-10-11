@@ -2,6 +2,7 @@ import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react
 import { scrubBounds } from '../../audio/parameters/mapping'
 import type { ScrubMode } from '../../audio/parameters/types'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import {
   angleToTime,
   pointerAngle,
@@ -41,6 +42,7 @@ export function TransportDock({
   scrubMode,
   disabled,
 }: Props) {
+  const { t } = useI18n()
   const tickRef = useRef<SVGLineElement>(null)
   const playWrapRef = useRef<HTMLDivElement>(null)
   const stateRef = useRef({ start, end, duration, scrubMode })
@@ -138,9 +140,9 @@ export function TransportDock({
           className={`${styles.loop} ${loop ? styles.loopActive : ''}`}
           onClick={() => engine.setLoop(!loop)}
         >
-          Loop
+          {t.transport.loop}
         </button>
-        <div className={styles.directions} role="radiogroup" aria-label="Scrub mode">
+        <div className={styles.directions} role="radiogroup" aria-label={t.transport.scrub}>
           {SCRUB_MODES.map((opt) => (
             <button
               key={opt.value}
@@ -153,7 +155,7 @@ export function TransportDock({
                 engine.setScrubMode(opt.value)
               }}
             >
-              {opt.label}
+              {opt.value === 'region' ? t.transport.scrubRange : t.transport.scrubSample}
             </button>
           ))}
         </div>

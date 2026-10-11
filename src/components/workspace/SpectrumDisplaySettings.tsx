@@ -19,10 +19,7 @@ import {
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
 import { EQ_CHANNEL_MODES, type EqChannelMode } from '../../audio/engine/eqGraph'
-import {
-  SPECTRAL_COLOR_MODES,
-  type SpectralColorMode,
-} from '../../audio/engine/spectralHistory'
+import { SPECTRAL_COLOR_MODES } from '../../audio/engine/spectralHistory'
 import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
@@ -35,35 +32,10 @@ import {
 } from '../../audio/engine/spectrumPrefs'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { analyzerCopy } from '../../i18n/analyzerCopy'
 import styles from './Workspace.module.css'
 
-const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Before' },
-  { id: 'post', label: 'After' },
-  { id: 'both', label: 'Both' },
-]
-
-const HINTS = {
-  grid: 'Vertical guides. 6, 12, or 24 frequency lines across the graph.',
-  layer: 'Which spectrum to draw. Before is the input of the chain. After is the output. Both draws them together.',
-  scale: 'How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.',
-  range: 'How far down the spectrum bars reach, from 0 dB. The EQ curve keeps its own scale, from −24 dB to +24 dB.',
-  eqColor: 'EQ graph only. Tints the spectrum columns by sub, bass, mids, presence, or air.',
-  fftColor: 'FFT only. Off, Level, or Frequency. It paints the FFT bars, the FFT line, and the 3D ridges. It does not recolor the EQ graph.',
-  nodes: 'EQ only. Each handle, the filter list, and the band name take the color of the frequency. FFT color does not change them.',
-  eqChannel: 'EQ only. Shared uses one curve. Left and Right keep separate curves.',
-  bars: 'Spectrum columns. Off leaves the outline, when Line is on.',
-  line: 'Spectrum outline drawn over the columns.',
-  legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
-  guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
-  holdLength: 'How long that fragment is. 0.05 s, 0.1 s, 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
-} as const
-
-const FFT_COLOR_LABEL: Record<SpectralColorMode, string> = {
-  off: 'Off',
-  level: 'Level',
-  frequency: 'Frequency',
-}
+const LAYER_IDS: SpectrumLayer[] = ['pre', 'post', 'both']
 
 type Props = {
   /** Which graph these rows edit. EQ and FFT keep separate values. */
@@ -75,6 +47,8 @@ type Props = {
  * Each surface stores its own values.
  */
 export function SpectrumDisplaySettings({ surface }: Props) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const snap = useEngine()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
@@ -85,28 +59,28 @@ export function SpectrumDisplaySettings({ surface }: Props) {
 
   return (
     <div className={styles.displayRows}>
-      <ChoiceRow label="Grid" hint={HINTS.grid}>
+      <ChoiceRow label={copy.grid} hint={copy.gridHint}>
         {FREQ_GRID_DENSITIES.map((density) => (
           <Choice key={density} pressed={display.grid === density} onClick={() => paint({ grid: density })}>
             {density}
           </Choice>
         ))}
       </ChoiceRow>
-      <ChoiceRow label="Layer" hint={HINTS.layer}>
-        {LAYERS.map((layer) => (
-          <Choice key={layer.id} pressed={display.layer === layer.id} onClick={() => paint({ layer: layer.id })}>
-            {layer.label}
+      <ChoiceRow label={copy.layer} hint={copy.layerHint}>
+        {LAYER_IDS.map((id) => (
+          <Choice key={id} pressed={display.layer === id} onClick={() => paint({ layer: id })}>
+            {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
           </Choice>
         ))}
       </ChoiceRow>
-      <ChoiceRow label="Scale" hint={HINTS.scale}>
+      <ChoiceRow label={copy.scale} hint={copy.scaleHint}>
         {FREQ_SCALE_OPTIONS.map((opt) => (
           <Choice key={opt.value} pressed={display.scale === opt.value} onClick={() => paint({ scale: opt.value })}>
             {opt.label}
           </Choice>
         ))}
       </ChoiceRow>
-      <ChoiceRow label="Range" hint={HINTS.range}>
+      <ChoiceRow label={copy.range} hint={copy.rangeHint}>
         {SPECTRUM_RANGE_CHOICES.map((db) => (
           <Choice key={db} pressed={display.range === db} onClick={() => paint({ range: clampSpectrumRange(db) })}>
             {db}
@@ -114,50 +88,50 @@ export function SpectrumDisplaySettings({ surface }: Props) {
         ))}
       </ChoiceRow>
       {surface === 'fft' ? (
-        <ChoiceRow label="Color" hint={HINTS.fftColor}>
+        <ChoiceRow label={copy.color} hint={copy.fftColorHint}>
           {SPECTRAL_COLOR_MODES.map((mode) => (
             <Choice
               key={mode}
               pressed={prefs.colorMode === mode}
               onClick={() => patchSpectrumPrefs({ colorMode: mode })}
             >
-              {FFT_COLOR_LABEL[mode]}
+              {mode === 'off' ? copy.off : mode === 'level' ? copy.level : copy.frequency}
             </Choice>
           ))}
         </ChoiceRow>
       ) : (
         <>
           <OnOff
-            label="Color"
-            hint={HINTS.eqColor}
+            label={copy.color}
+            hint={copy.colorHint}
             on={display.regionColors}
             onChange={(regionColors) => paint({ regionColors })}
           />
           <OnOff
-            label="Freq nodes"
-            hint={HINTS.nodes}
+            label={copy.nodes}
+            hint={copy.nodesHint}
             on={display.eqFreqColors}
             onChange={(eqFreqColors) => paint({ eqFreqColors })}
           />
-          <ChoiceRow label="EQ ch" hint={HINTS.eqChannel}>
+          <ChoiceRow label={copy.eqChannel} hint={copy.eqChannelTitle}>
             {EQ_CHANNEL_MODES.map((opt) => (
               <Choice
                 key={opt.value}
                 pressed={snap.eqChannelMode === opt.value}
-                title={opt.title}
+                title={opt.value === 'shared' ? copy.sharedHint : opt.value === 'left' ? copy.leftHint : copy.rightHint}
                 onClick={() => engine.setEqChannelMode(opt.value as EqChannelMode)}
               >
-                {opt.label}
+                {opt.value === 'shared' ? copy.shared : opt.value === 'left' ? copy.left : copy.right}
               </Choice>
             ))}
           </ChoiceRow>
         </>
       )}
-      <OnOff label="Bars" hint={HINTS.bars} on={display.showBars} onChange={(showBars) => paint({ showBars })} />
-      <OnOff label="Line" hint={HINTS.line} on={display.showLine} onChange={(showLine) => paint({ showLine })} />
+      <OnOff label={copy.bars} hint={copy.barsHint} on={display.showBars} onChange={(showBars) => paint({ showBars })} />
+      <OnOff label={copy.line} hint={copy.lineHint} on={display.showLine} onChange={(showLine) => paint({ showLine })} />
       <OnOff
-        label="Legend"
-        hint={HINTS.legend}
+        label={copy.legend}
+        hint={copy.legendHint}
         on={display.legendOpen}
         onChange={(legendOpen) => paint({ legendOpen })}
       />
@@ -174,12 +148,14 @@ export function holdGraphSnapshot(on: boolean): void {
 }
 
 export function GuidesRow({ surface }: { surface: GraphSurface }) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   return (
     <OnOff
-      label="Guides"
-      hint={HINTS.guides}
+      label={copy.guides}
+      hint={copy.guidesHint}
       on={prefs.surfaces[surface].freqGuide}
       onChange={(freqGuide) => patchSurfaceDisplay(surface, { freqGuide })}
     />
@@ -188,12 +164,14 @@ export function GuidesRow({ surface }: { surface: GraphSurface }) {
 
 /** Frequency hue for the handles, the filter list, and the band name. */
 export function FreqNodesRow() {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   return (
     <OnOff
-      label="Freq nodes"
-      hint={HINTS.nodes}
+      label={copy.nodes}
+      hint={copy.nodesHint}
       on={prefs.surfaces.eq.eqFreqColors}
       onChange={(eqFreqColors) => patchSurfaceDisplay('eq', { eqFreqColors })}
     />
@@ -231,11 +209,13 @@ export function HoldGraphButton({
 }
 
 export function SnapshotRow() {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const [span, setSpan] = useState<AuditionSpanSec>(() => auditionSpanSec())
   useEffect(() => subscribeAuditionSpan(setSpan), [])
   return (
     <>
-      <ChoiceRow label="Length" hint={HINTS.holdLength}>
+      <ChoiceRow label={copy.length} hint={copy.holdLengthHint}>
         {AUDITION_SPAN_CHOICES.map((choice) => (
           <Choice
             key={choice}
@@ -265,13 +245,15 @@ function OnOff({
   on: boolean
   onChange: (next: boolean) => void
 }) {
+  const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   return (
     <ChoiceRow label={label} hint={hint}>
       <Choice pressed={!on} onClick={() => onChange(false)}>
-        Off
+        {copy.off}
       </Choice>
       <Choice pressed={on} onClick={() => onChange(true)}>
-        On
+        {copy.on}
       </Choice>
     </ChoiceRow>
   )
