@@ -4,7 +4,7 @@ import { boot, expectNoAxeViolations, loadDemo, openAccess, openSettings } from 
 test.describe('axe states', () => {
   test('scans the initial technical workspace', async ({ page }) => {
     await boot(page)
-    await expect(page.getByRole('tab', { name: 'Wave', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Waveform', exact: true })).toBeVisible()
     await expectNoAxeViolations(page)
   })
 
