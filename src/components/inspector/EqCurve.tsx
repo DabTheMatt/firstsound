@@ -10,9 +10,8 @@ import {
   eqNodePlotDb,
   eqResponseCurveStyle,
   EQ_MINI_BAND_COUNT,
-  EQ_PLOT_MAX_DB,
-  EQ_PLOT_MIN_DB,
   displayFrequencies,
+  eqOverlayDbRange,
   freqToX,
   layoutMagnitudeCurve,
   responseSampleCount,
@@ -175,6 +174,7 @@ export function EqCurve({
       ctx.lineJoin = 'round'
       ctx.lineCap = 'round'
       const processing = plotBands
+      const curveRange = eqOverlayDbRange(processing, sr, EQ_MIN_HZ, plotMax)
       const storedStyle = eqResponseCurveStyle('stored', false, dpr)
       const eqVerts = layoutMagnitudeCurve(
         freqs,
@@ -182,8 +182,8 @@ export function EqCurve({
         plot,
         EQ_MIN_HZ,
         plotMax,
-        EQ_PLOT_MIN_DB,
-        EQ_PLOT_MAX_DB,
+        curveRange.minDb,
+        curveRange.maxDb,
         'log',
       )
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
@@ -237,7 +237,8 @@ export function EqCurve({
     if (!band) return
     const plotMax = spectrumMaxHz(sr)
     const frequency = xToFreq(x, rect.width, plotMax)
-    const db = yToDb(y, rect.height)
+    const dragRange = eqOverlayDbRange(comb ? [...bands, ...combAsEqBands(comb)] : bands, sr, EQ_MIN_HZ, plotMax)
+    const db = yToDb(y, rect.height, dragRange.minDb, dragRange.maxDb)
     onDragBand?.(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY))
   }
 
@@ -273,8 +274,16 @@ export function EqCurve({
         })
         const liveBands = modulate ? liveEqBandsFromParams(bands, (live ?? snap.liveParams) as typeof snap.liveParams) : bands
         const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
+        const nodeRange = eqOverlayDbRange(
+          comb ? [...liveBands, ...combAsEqBands(comb)] : liveBands,
+          sr,
+          EQ_MIN_HZ,
+          plotMax,
+        )
         const xPct = freqToX(motion.frequencyHz, 1, plotMax) * 100
-        const yPct = dbToY(eqNodePlotDb(anchor, motion.frequencyHz, sr, EQ_PLOT_MIN_DB, EQ_PLOT_MAX_DB), 1) * 100
+        const yPct =
+          dbToY(eqNodePlotDb(anchor, motion.frequencyHz, sr, nodeRange.minDb, nodeRange.maxDb), 1, nodeRange.minDb, nodeRange.maxDb) *
+          100
         const selected = index === selectedBand
         const colors = readThemeColors()
         const tone = eqTone(toneIndex, colors)

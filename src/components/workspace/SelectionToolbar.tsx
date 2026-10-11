@@ -80,6 +80,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
       <button
         type="button"
         className={styles.textButton}
+        data-geometry="square"
         aria-expanded={open}
         aria-controls={menuId}
         aria-label={t.workspace.moreEdit}

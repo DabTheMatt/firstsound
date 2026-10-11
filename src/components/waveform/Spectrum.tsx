@@ -12,6 +12,7 @@ import {
   EQ_CURVE_INSET_PX,
   eqGainGridDb,
   eqNodePlotDb,
+  eqOverlayDbRange,
   eqResponseCurveStyle,
   eqResponsePlot,
   formatEqGainGridLabel,
@@ -19,8 +20,6 @@ import {
   spectrumEqOverlayY,
   layoutMagnitudeCurve,
   responseSampleCount,
-  SPECTRUM_EQ_MAX_DB,
-  SPECTRUM_EQ_MIN_DB,
   strokeMagnitudeVertices,
   xToFreq,
   yToDb as eqYToDb,
@@ -71,6 +70,7 @@ import { bandCenterHz, eqBandColorForHz, SPECTRUM_REGIONS } from '../../audio/en
 import { placeEqBell } from '../eq/placeEqBell'
 import {
   clampEqOverlayFocus,
+  type EqOverlayFocus,
   eqInstanceUsesSharedLfo,
   eqOverlayIncludes,
   eqOverlayOptions,
@@ -621,7 +621,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           EQ_CURVE_INSET_PX * dpr,
         )
 
-        const eqZeroY = spectrumEqOverlayY(0, responsePlot.top, responsePlot.bottom, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
+        const eqRange = pictureEqRange(live, eqFocusRef.current, drag.current)
+        const eqZeroY = spectrumEqOverlayY(0, responsePlot.top, responsePlot.bottom, eqRange.minDb, eqRange.maxDb)
         const fadeAboveZero = (y: number) => {
           if (!focusPlot || y >= eqZeroY) return 1
           const span = Math.max(1, eqZeroY - top)
@@ -653,7 +654,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         ctx.textBaseline = 'middle'
         ctx.font = `${8 * dpr}px ui-sans-serif, system-ui, sans-serif`
         for (const db of gainMarks) {
-          const y = spectrumEqOverlayY(db, responsePlot.top, responsePlot.bottom)
+          const y = spectrumEqOverlayY(db, responsePlot.top, responsePlot.bottom, eqRange.minDb, eqRange.maxDb)
           const fade = fadeAboveZero(y)
           if (fade < 0.08) continue
           const strong = db === 0
@@ -981,8 +982,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             responsePlot,
             minHz,
             maxHz,
-            SPECTRUM_EQ_MIN_DB,
-            SPECTRUM_EQ_MAX_DB,
+            eqRange.minDb,
+            eqRange.maxDb,
             scale,
           )
           const responseInk = phoneEqRef.current ? colors.textPrimary : tone.curve
@@ -1006,8 +1007,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             responsePlot,
             minHz,
             maxHz,
-            SPECTRUM_EQ_MIN_DB,
-            SPECTRUM_EQ_MAX_DB,
+            eqRange.minDb,
+            eqRange.maxDb,
             scale,
           )
           ctx.setLineDash([])
@@ -1025,8 +1026,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             responsePlot,
             minHz,
             maxHz,
-            SPECTRUM_EQ_MIN_DB,
-            SPECTRUM_EQ_MAX_DB,
+            eqRange.minDb,
+            eqRange.maxDb,
             scale,
           )
           ctx.save()
@@ -1196,7 +1197,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     }
     const plotMaxHz = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
     const frequency = xToFreq(x, rect.width, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScaleRef.current)
-    const db = eqYToDb(y, rect.height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)
+    const dragRange = pictureEqRange(engine.getSnapshot(), eqFocusRef.current, d)
+    const db = eqYToDb(y, rect.height, dragRange.minDb, dragRange.maxDb)
     engine.setEqBand(d.index, eqBandDragPatch(band, frequency, db, d.q0, d.y0 - event.clientY), d.instanceId)
   }
 
@@ -1218,6 +1220,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     if (x < left || x > right || y < top || y > bottom) return
     const live = engine.getSnapshot()
     const plotMax = spectrumMaxHz(live.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
+    const clickRange = pictureEqRange(live, eqFocusRef.current, null)
     const bell = bellFromPlotPoint(
       x - left,
       y - top,
@@ -1226,6 +1229,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       plotMax,
       SPECTRUM_AXIS_MIN_HZ,
       freqScaleRef.current,
+      clickRange.minDb,
+      clickRange.maxDb,
     )
     const focusId = eqFocusRef.current
     const target =
@@ -1280,6 +1285,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
   }
 
   if (!active) return null
+  const eqRange = pictureEqRange(snap, eqFocus, dragNode)
   const plotPad = plotPadNow(
     { compact, focus: phoneFocus, phoneEq: phoneEq && !phoneFocus },
     knobLane,
@@ -1315,7 +1321,90 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           : 'Spectrum analyzer'
       }
     >
-      {focusControl ? <div className={styles.focusDock}>{focusControl}</div> : null}
+      {showGraphTools || focusControl ? (
+        <div className={styles.cornerRow} data-picture-corner="">
+          {showGraphTools ? (
+            <div className={styles.graphMenu} ref={graphMenuRef}>
+              <div className={styles.graphMenuBar}>
+                <button
+                  type="button"
+                  className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
+                  data-geometry="square"
+                  aria-pressed={snapshotOn}
+                  aria-label={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
+                  title={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
+                  onClick={(event) => {
+                    holdGraphSnapshot(!snapshotOn)
+                    event.currentTarget.blur()
+                  }}
+                >
+                  {t.waveform.hold}
+                </button>
+                <button
+                  type="button"
+                  className={styles.graphMenuButton}
+                  data-geometry="square"
+                  aria-expanded={gridOpen}
+                  aria-label="Graph settings"
+                  onClick={(event) => {
+                    setGridOpen((open) => !open)
+                    event.currentTarget.blur()
+                  }}
+                >
+                  •••
+                </button>
+              </div>
+              {gridOpen ? (
+                <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
+                  {phoneFocus ? (
+                    <SpectrumDisplaySettings showLayer />
+                  ) : (
+                    <>
+                      <div className={styles.graphMenuRow}>
+                        <span title="Vertical guides. 6, 12, or 24 frequency lines across the graph.">Grid</span>
+                        {([6, 12, 24] as const).map((density) => (
+                          <button
+                            key={density}
+                            type="button"
+                            aria-pressed={gridDensity === density}
+                            onClick={(event) => {
+                              setGridDensity(density)
+                              persistFreqGridDensity(density)
+                              event.currentTarget.blur()
+                            }}
+                          >
+                            {density}
+                          </button>
+                        ))}
+                      </div>
+                      <div className={styles.graphMenuRow}>
+                        <span title="How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.">Scale</span>
+                        {FREQ_SCALE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            aria-pressed={freqScale === opt.value}
+                            title={opt.title}
+                            onClick={(event) => {
+                              setFreqScale(opt.value)
+                              event.currentTarget.blur()
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <GuidesRow />
+                      <SnapshotRow />
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {focusControl}
+        </div>
+      ) : null}
       {showFftMenu ? <FftPrimaryBar /> : null}
       {suppressAnalyzerChrome ? null : (
       <div
@@ -1789,7 +1878,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                 if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
                 const width = Math.max(1, canvasRef.current?.clientWidth ?? 1)
                 const height = Math.max(1, canvasRef.current?.clientHeight ?? 1)
-                historyRef.current.camera.yaw = Math.min(1, Math.max(-1, gesture.yaw + (dx / width) * 1.4))
+                historyRef.current.camera.yaw = gesture.yaw + (dx / width) * Math.PI
                 historyRef.current.camera.pitch = Math.min(1, Math.max(-1, gesture.pitch + (dy / height) * 1.2))
                 historyRef.current.displayYaw = historyRef.current.camera.yaw
                 historyRef.current.displayPitch = historyRef.current.camera.pitch
@@ -1862,7 +1951,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const liveBands = eqCurveBands(bands, motionInput, dragging ? index : null)
             const anchor = eqNodeAnchorBands(liveBands, index, motion.frequencyHz, motion.gainDb, motion.q)
             const xPct = freqToX(motion.frequencyHz, 1, plotMaxHz, SPECTRUM_AXIS_MIN_HZ, freqScale) * 100
-            const yPct = spectrumEqOverlayY(eqNodePlotDb(anchor, motion.frequencyHz, sr), 0, 100)
+            const yPct = spectrumEqOverlayY(
+              eqNodePlotDb(anchor, motion.frequencyHz, sr, eqRange.minDb, eqRange.maxDb),
+              0,
+              100,
+              eqRange.minDb,
+              eqRange.maxDb,
+            )
             const selected =
               selectedBand?.instanceId === mod.instanceId && selectedBand.index === index
             const dim = mod.bypassed || band.bypassed
@@ -1956,84 +2051,41 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {hover.label}
           </div>
         ) : null}
-        {showGraphTools ? (
-        <div className={styles.graphMenu} ref={graphMenuRef}>
-          <div className={styles.graphMenuBar}>
-            <button
-              type="button"
-              className={`${styles.graphMenuButton} ${styles.holdButton} ${snapshotOn ? styles.snapshotOn : ''}`}
-              aria-pressed={snapshotOn}
-              aria-label={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
-              title={snapshotOn ? t.waveform.holdOn : t.waveform.holdOff}
-              onClick={(event) => {
-                holdGraphSnapshot(!snapshotOn)
-                event.currentTarget.blur()
-              }}
-            >
-              {t.waveform.hold}
-            </button>
-            <button
-              type="button"
-              className={styles.graphMenuButton}
-              aria-expanded={gridOpen}
-              aria-label="Graph settings"
-              onClick={(event) => {
-                setGridOpen((open) => !open)
-                event.currentTarget.blur()
-              }}
-            >
-              •••
-            </button>
-          </div>
-          {gridOpen ? (
-            <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
-              {phoneFocus ? (
-                <SpectrumDisplaySettings showLayer />
-              ) : (
-              <>
-              <div className={styles.graphMenuRow}>
-                <span title="Vertical guides. 6, 12, or 24 frequency lines across the graph.">Grid</span>
-                {([6, 12, 24] as const).map((density) => (
-                  <button
-                    key={density}
-                    type="button"
-                    aria-pressed={gridDensity === density}
-                    onClick={(event) => {
-                      setGridDensity(density)
-                      persistFreqGridDensity(density)
-                      event.currentTarget.blur()
-                    }}
-                  >
-                    {density}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.graphMenuRow}>
-                <span title="How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.">Scale</span>
-                {FREQ_SCALE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    aria-pressed={freqScale === opt.value}
-                    title={opt.title}
-                    onClick={(event) => {
-                      setFreqScale(opt.value)
-                      event.currentTarget.blur()
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <GuidesRow />
-              <SnapshotRow />
-              </>
-              )}
-            </div>
-          ) : null}
-        </div>
-        ) : null}
       </div>
     </div>
+  )
+}
+
+function pictureEqRange(
+  snap: ReturnType<typeof engine.getSnapshot>,
+  focus: EqOverlayFocus,
+  dragging: { instanceId: string; index: number } | null,
+) {
+  const bands = []
+  for (const mod of snap.chain) {
+    if (mod.type !== 'eq' || !eqOverlayIncludes(focus, mod.instanceId)) continue
+    const state = snap.eqById[mod.instanceId]
+    if (!state) continue
+    const instanceLive = snap.liveByInstance[mod.instanceId]
+    const shaped = eqCurveBands(
+      state.bands,
+      {
+        lfos: snap.fxLfos,
+        automation: snap.automation,
+        live: instanceLive ?? snap.liveParams,
+        timeSec: snap.transportSec,
+        playing: snap.playing,
+        modulate: Boolean(instanceLive) || eqInstanceUsesSharedLfo(snap.chain, mod.instanceId),
+      },
+      dragging?.instanceId === mod.instanceId ? dragging.index : null,
+    )
+    bands.push(...shaped, ...combAsEqBands(state.comb))
+  }
+  const sampleRate = snap.sampleRate || 44100
+  return eqOverlayDbRange(
+    bands,
+    sampleRate,
+    SPECTRUM_AXIS_MIN_HZ,
+    spectrumMaxHz(sampleRate, SPECTRUM_AXIS_MAX_HZ),
   )
 }

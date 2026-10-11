@@ -110,11 +110,44 @@ export function spectrumEqOverlayY(
 }
 
 /**
- * CSS pixels kept inside the clip so a curve that reaches ±24 dB is stroked
- * in full. Without this, the peak sits on the clip edge and the cap is cut
- * into a flat line. That flat line is the chart ceiling, not distortion.
+ * CSS pixels kept inside the clip so a stroke on the ±24 dB line is not cut
+ * by the canvas edge. A response past that line uses `eqOverlayDbRange`
+ * instead of being shaved into a shelf.
  */
 export const EQ_CURVE_INSET_PX = 8
+
+/** Hard stop so a runaway response cannot squash the whole plot. */
+const EQ_OVERLAY_ABS_LIMIT_DB = 72
+
+/**
+ * Plot range for an EQ magnitude curve.
+ * ±24 dB is the nominal window and the per-band gain limit. Cascaded bands can
+ * sum past that. Opening the scale keeps the shape: a stack of bells stays a
+ * hump, and a shelf that really is flat stays flat on its gain.
+ */
+export function eqOverlayDbRange(
+  bands: readonly EqBand[],
+  sampleRate: number,
+  minHz = EQ_MIN_HZ,
+  maxHz = EQ_MAX_HZ,
+): { minDb: number; maxDb: number } {
+  let peak = 0
+  const sample = (hz: number) => {
+    if (!(hz > 0) || !Number.isFinite(hz)) return
+    const db = eqMagnitudeDb(bands, hz, sampleRate)
+    if (Number.isFinite(db)) peak = Math.max(peak, Math.abs(db))
+  }
+  const lo = Math.max(1, minHz)
+  const hi = Math.max(lo * 1.01, maxHz)
+  const count = 96
+  for (let i = 0; i < count; i++) sample(lo * (hi / lo) ** (i / (count - 1)))
+  for (const band of bands) sample(band.frequency)
+  const span =
+    peak <= SPECTRUM_EQ_MAX_DB + 0.25
+      ? SPECTRUM_EQ_MAX_DB
+      : Math.min(EQ_OVERLAY_ABS_LIMIT_DB, peak * 1.06)
+  return { minDb: -span, maxDb: span }
+}
 
 export type EqPlotBox = { left: number; right: number; top: number; bottom: number }
 
@@ -270,6 +303,8 @@ export function bellFromPlotPoint(
   maxHz: number,
   minHz = EQ_MIN_HZ,
   scale: FreqScaleKind = 'log',
+  minDb = SPECTRUM_EQ_MIN_DB,
+  maxDb = SPECTRUM_EQ_MAX_DB,
 ): { type: 'peaking'; frequency: number; gain: number; q: number } {
   const frequency = Math.min(
     EQ_MAX_HZ,
@@ -277,7 +312,7 @@ export function bellFromPlotPoint(
   )
   const gain = Math.min(
     SPECTRUM_EQ_MAX_DB,
-    Math.max(SPECTRUM_EQ_MIN_DB, yToDb(y, height, SPECTRUM_EQ_MIN_DB, SPECTRUM_EQ_MAX_DB)),
+    Math.max(SPECTRUM_EQ_MIN_DB, yToDb(y, height, minDb, maxDb)),
   )
   return { type: 'peaking', frequency, gain, q: 0.7 }
 }

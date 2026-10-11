@@ -38,8 +38,9 @@ export const SPECTRAL_FREQ_TICKS = [20, 50, 100, 200, 500, 1000, 2000, 5000, 100
 
 export type SpectralCamera = {
   preset: SpectralCameraPreset
-  /** Limited user offset around the preset. -1..1. */
+  /** Radians around the vertical axis. Unbounded; sine and cosine wrap it. */
   yaw: number
+  /** Tilt. -1..1, and the projection keeps the floor below the ridges. */
   pitch: number
   /** Limited zoom. 1 is the preset. */
   zoom: number
@@ -134,10 +135,20 @@ function clampUnit(value: number, min: number, max: number): number {
 export function clampSpectralCamera(camera: SpectralCamera): SpectralCamera {
   return {
     preset: clampSpectralCameraPreset(camera.preset),
-    yaw: clampUnit(camera.yaw, -1, 1),
+    yaw: Number.isFinite(camera.yaw) ? camera.yaw : 0,
     pitch: clampUnit(camera.pitch, -1, 1),
     zoom: clampUnit(camera.zoom, 0.75, 1.4),
   }
+}
+
+/** Shortest step from `from` to `to`, so a spin past π does not unwind the long way. */
+export function shortestSpectralYaw(from: number, to: number): number {
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return 0
+  const turn = Math.PI * 2
+  let delta = (to - from) % turn
+  if (delta > Math.PI) delta -= turn
+  if (delta < -Math.PI) delta += turn
+  return delta
 }
 
 /** Animated perspective only when the user has not asked for reduced motion. */
@@ -449,8 +460,10 @@ const PRESET_POSE = {
 } as const
 
 /**
- * Constrained analyzer camera.
+ * Analyzer camera.
  * x = frequency 0..1, y = level 0..1 (0 is the floor), z = age 0..1 (0 is now).
+ * Yaw orbits the vertical axis without a stop. Pitch only tilts.
+ * Level always rises up the screen, so the floor stays the floor.
  * Screen Y grows downward. Depth of the scene does not depend on history duration.
  */
 export function projectSpectralPoint(
@@ -464,26 +477,30 @@ export function projectSpectralPoint(
   const freq = clampUnit(freq01, 0, 1)
   const level = clampUnit(level01, 0, 1)
   const age = clampUnit(age01, 0, 1)
-  const yaw = clampUnit(pose.yaw + camera.yaw * 0.22, -0.42, 0.42)
+  const yaw = pose.yaw + (Number.isFinite(camera.yaw) ? camera.yaw : 0)
   const pitch = clampUnit(pose.pitch + camera.pitch * 0.16, 0.04, 0.72)
   const zoom = clampUnit(camera.zoom, 0.75, 1.4)
   const width = Math.max(1, plot.right - plot.left)
   const height = Math.max(1, plot.bottom - plot.top)
   const cx = (plot.left + plot.right) / 2
+  const xNorm = freq - 0.5
+  const zNorm = age - 0.5
+  const cos = Math.cos(yaw)
+  const sin = Math.sin(yaw)
+  const rotX = xNorm * cos - zNorm * sin
+  const rotZ = xNorm * sin + zNorm * cos
 
   if (camera.preset === 'top') {
-    const xShear = (freq - 0.5) * Math.cos(yaw) + (age - 0.5) * Math.sin(yaw) * 0.2
-    const x = cx + xShear * width * 0.92 * zoom
-    const y = plot.bottom - height * 0.08 - age * height * 0.84 * zoom - level * height * 0.05
+    const x = cx + rotX * width * 0.92 * zoom
+    const y = plot.bottom - height * 0.5 - rotZ * height * 0.84 * zoom - level * height * 0.05
     return { x, y }
   }
 
-  const perspective = zoom / (1 + age * pose.perspective)
-  const xNorm = freq - 0.5
-  const xShear = xNorm * Math.cos(yaw) + (age - 0.15) * Math.sin(yaw) * 0.48
-  const x = cx + xShear * width * 0.92 * perspective
+  const depth = rotZ + 0.5 * Math.cos(pose.yaw)
+  const perspective = zoom / (1 + Math.max(0, depth) * pose.perspective)
+  const x = cx + rotX * width * 0.92 * perspective
   const frontBase = plot.bottom - height * 0.045
-  const baseY = frontBase - age * height * pitch * 0.98
+  const baseY = frontBase - depth * height * pitch * 0.98
   const rise = level * height * (0.8 - pitch * 0.22) * perspective
   return { x, y: baseY - rise }
 }

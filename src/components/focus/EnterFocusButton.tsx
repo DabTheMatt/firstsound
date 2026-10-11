@@ -20,6 +20,7 @@ export function EnterFocusButton({ label, onClick, corner = false, exit = false,
       type="button"
       className={place ? `${styles.button} ${place}` : styles.button}
       data-enter-focus={exit ? 'exit' : corner === 'right' ? 'corner-right' : corner ? 'corner' : 'inline'}
+      data-geometry="square"
       aria-pressed={exit ? true : undefined}
       aria-label={name}
       title={name}

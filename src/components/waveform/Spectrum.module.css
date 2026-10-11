@@ -438,46 +438,43 @@
   transform: translate(calc(-100% - 12px), 8px);
 }
 
-.focusDock {
+.cornerRow {
   position: absolute;
-  z-index: 6;
-  top: 6px;
+  z-index: 24;
+  top: 4px;
   right: 8px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 4px;
   pointer-events: none;
 }
 
-.focusDock > * {
+.cornerRow > * {
   pointer-events: auto;
 }
 
 .graphMenu {
-  position: absolute;
+  position: relative;
   z-index: 5;
-  top: 0;
-  right: 44px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
-  pointer-events: auto;
 }
 
 .graphMenuBar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  height: 28px;
+  gap: 2px;
 }
 
 .graphMenuButton {
   min-width: 28px;
-  height: 22px;
+  height: 28px;
   padding: 0 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font: inherit;

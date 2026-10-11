@@ -20,6 +20,7 @@ import {
   SPECTRUM_EQ_MAX_DB,
   SPECTRUM_EQ_MIN_DB,
   eqGainGridDb,
+  eqOverlayDbRange,
   eqResponsePlot,
   formatEqGainGridLabel,
   spectrumEqOverlayY,
@@ -83,6 +84,42 @@ describe('eq plot mapping', () => {
     expect(formatEqGainGridLabel(12)).toBe('+12')
     expect(formatEqGainGridLabel(-12)).toBe('−12')
     expect(formatEqGainGridLabel(0)).toBe('0')
+  })
+
+  it('opens the scale when cascaded bells pass ±24 dB instead of shaving a shelf', () => {
+    const a = peak({ frequency: 800, gain: 24, q: 0.7 })
+    const b = peak({ frequency: 1400, gain: 24, q: 0.7 })
+    const range = eqOverlayDbRange([a, b], 48000, 20, 20000)
+    expect(range.maxDb).toBeGreaterThan(24)
+    expect(range.minDb).toBe(-range.maxDb)
+    const freqs = displayFrequencies(512, 20, 20000, 'log')
+    const plot = { left: 0, right: 800, top: 0, bottom: 200 }
+    const verts = layoutMagnitudeCurve(
+      freqs,
+      (hz) => eqMagnitudeDb([a, b], hz, 48000),
+      plot,
+      20,
+      20000,
+      range.minDb,
+      range.maxDb,
+      'log',
+    )
+    const y24 = spectrumEqOverlayY(24, plot.top, plot.bottom, range.minDb, range.maxDb)
+    const between = verts.filter((point) => point.hz > 800 && point.hz < 1400)
+    expect(between.length).toBeGreaterThan(10)
+    for (const point of between) {
+      expect(point.db).toBeGreaterThan(30)
+      expect(point.y).toBeLessThan(y24 - 8)
+    }
+    const shoulder = verts.find((point) => point.hz > 3900 && point.hz < 4200)
+    expect(shoulder).toBeTruthy()
+    expect(shoulder!.y).toBeGreaterThan(y24)
+  })
+
+  it('keeps a real high shelf on the ±24 dB window', () => {
+    const shelf: EqBand = { type: 'highshelf', frequency: 2000, gain: 24, q: 0.7, slope: 12 }
+    expect(eqOverlayDbRange([shelf], 48000, 20, 20000).maxDb).toBe(24)
+    expect(eqOverlayDbRange([peak({ gain: 24 })], 48000, 20, 20000).maxDb).toBe(24)
   })
 
   it('clamps a high-shelf stopband into the FFT overlay range', () => {

@@ -36,6 +36,7 @@ import {
   spectralPeakHold,
   spectralPointCount,
   spectralScrollAge,
+  shortestSpectralYaw,
   spectralSliceTarget,
   spectralTimeLabels,
   spectralVisibleFreqTicks,
@@ -472,7 +473,7 @@ export function paintSpectralHistory(
   runtime.camera = camera
   if (spectralCameraEases(input.reducedMotion)) {
     const glide = Math.min(1, Math.max(0.2, input.dt * 10))
-    runtime.displayYaw += (camera.yaw - runtime.displayYaw) * glide
+    runtime.displayYaw += shortestSpectralYaw(runtime.displayYaw, camera.yaw) * glide
     runtime.displayPitch += (camera.pitch - runtime.displayPitch) * glide
     runtime.displayZoom += (camera.zoom - runtime.displayZoom) * glide
   } else {
@@ -653,7 +654,9 @@ export function paintSpectralHistory(
   ctx.textBaseline = 'top'
   ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.72)
   ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
-  ctx.fillText(source, plot.right - 4 * input.dpr, plot.top + 2 * input.dpr)
+  // The corner row (••• and the focus icon) occupies the top 32px.
+  const belowCorner = 36 * input.dpr
+  ctx.fillText(source, plot.right - 4 * input.dpr, Math.max(plot.top + 2 * input.dpr, belowCorner))
 
   ctx.font = `${12 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
   ctx.textAlign = 'left'
