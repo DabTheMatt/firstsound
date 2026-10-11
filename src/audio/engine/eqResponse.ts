@@ -9,7 +9,7 @@ type Biquad = { b0: number; b1: number; b2: number; a1: number; a2: number }
  * Cascaded bands sum in dB, which is the linear-magnitude product of the chain.
  * `off` bands are skipped. Sample rate only sets Nyquist for coefficient calc.
  */
-export function eqMagnitudeDb(bands: EqBand[], freqHz: number, sampleRate: number): number {
+export function eqMagnitudeDb(bands: readonly EqBand[], freqHz: number, sampleRate: number): number {
   const nyquist = sampleRate / 2
   // 0 Hz is not a log-frequency sample. Callers must skip NaN instead of drawing 0 dB.
   if (!(freqHz > 0) || !(nyquist > 0) || !Number.isFinite(freqHz)) return Number.NaN

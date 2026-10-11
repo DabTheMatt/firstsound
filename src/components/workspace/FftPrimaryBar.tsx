@@ -85,6 +85,7 @@ export function FftPrimaryBar() {
         <button
           type="button"
           className={styles.textButton}
+          data-geometry="square"
           aria-expanded={open}
           aria-controls={menuId}
           aria-label={t.workspace.moreEdit}
