@@ -51,9 +51,9 @@ const HINTS = {
   layer: 'Which spectrum to draw. Before is the input of the chain. After is the output. Both draws them together.',
   scale: 'How frequency is spaced. Log is the usual musical spacing. Lin is even in hertz. Mel follows hearing.',
   range: 'How far down the spectrum bars reach, from 0 dB. The EQ curve keeps its own scale, from −24 dB to +24 dB.',
-  color: 'Paints the spectrum by frequency. Off uses one theme color.',
-  nodes: 'Frequency-colored nodes. Each EQ handle takes the color of the frequency region it sits in.',
-  regions: 'Region colors. Tints each spectrum column by sub, bass, mids, presence, or air. Off uses one color, unless Color is set to level.',
+  color: 'EQ graph only. Paints those spectrum columns by frequency region. FFT color stays where you set it.',
+  nodes: 'EQ only. Each handle, the filter list, and the band name take the color of the frequency. FFT color does not change them.',
+  regions: 'EQ graph only. Tints each spectrum column by sub, bass, mids, presence, or air. FFT color is a separate setting.',
   bars: 'Spectrum columns. Off leaves the outline, when Line is on.',
   line: 'Spectrum outline drawn over the columns.',
   legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
@@ -65,13 +65,15 @@ const HINTS = {
 type Props = {
   /** EQ graph has no Before / After / Both bar, so the row lives with the other display settings. */
   showLayer?: boolean
+  /** EQ color rows. The FFT menu keeps its own Off / Level / Frequency control. */
+  eqColor?: boolean
 }
 
 /**
  * Grid, scale, and spectrum drawing options.
  * The FFT inspector and the EQ graph use this same row list.
  */
-export function SpectrumDisplaySettings({ showLayer = false }: Props) {
+export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: Props) {
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
   const [grid, setGrid] = useState<FreqGridDensity>(() => loadFreqGridDensity())
@@ -139,30 +141,28 @@ export function SpectrumDisplaySettings({ showLayer = false }: Props) {
           ))}
         </ChoiceRow>
       ) : null}
-      <OnOff
-        label="Color"
-        hint={HINTS.color}
-        on={prefs.regionColors || prefs.colorMode !== 'off'}
-        onChange={(on) =>
-          patch(
-            on
-              ? { regionColors: true, colorMode: prefs.colorMode === 'level' ? 'level' : 'frequency' }
-              : { regionColors: false, colorMode: 'off' },
-          )
-        }
-      />
-      <OnOff
-        label="Freq nodes"
-        hint={HINTS.nodes}
-        on={prefs.eqFreqColors}
-        onChange={(eqFreqColors) => patch({ eqFreqColors })}
-      />
-      <OnOff
-        label="Regions"
-        hint={HINTS.regions}
-        on={prefs.regionColors}
-        onChange={(regionColors) => patch({ regionColors })}
-      />
+      {eqColor ? (
+        <>
+          <OnOff
+            label="Color"
+            hint={HINTS.color}
+            on={prefs.regionColors}
+            onChange={(regionColors) => patch({ regionColors })}
+          />
+          <OnOff
+            label="Freq nodes"
+            hint={HINTS.nodes}
+            on={prefs.eqFreqColors}
+            onChange={(eqFreqColors) => patch({ eqFreqColors })}
+          />
+          <OnOff
+            label="Regions"
+            hint={HINTS.regions}
+            on={prefs.regionColors}
+            onChange={(regionColors) => patch({ regionColors })}
+          />
+        </>
+      ) : null}
       <OnOff label="Bars" hint={HINTS.bars} on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
       <OnOff label="Line" hint={HINTS.line} on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
       <OnOff

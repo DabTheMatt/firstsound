@@ -519,7 +519,7 @@
   box-sizing: border-box;
   height: 20px;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 0 7px;
   font-size: 10px;
   line-height: 1;
@@ -529,9 +529,9 @@
 }
 
 :global([data-technical-ui='workspace']) .chips li {
-  border: 0;
-  border-radius: 0;
-  padding: 0 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 6px;
   color: var(--text-secondary);
 }
 
@@ -585,14 +585,13 @@
 .tagBar .chips {
   --hearing-tag-row: 20px;
   --hearing-tag-gap: 4px;
-  --hearing-tag-rows: 4;
   flex: 0 0 auto;
   width: 100%;
   min-width: 0;
   gap: var(--hearing-tag-gap);
-  height: calc(
-    var(--hearing-tag-rows) * var(--hearing-tag-row) + (var(--hearing-tag-rows) - 1) * var(--hearing-tag-gap)
-  );
+  height: var(--hearing-tag-row);
+  min-height: var(--hearing-tag-row);
+  max-height: var(--hearing-tag-row);
   overflow: hidden;
 }
 

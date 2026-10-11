@@ -140,6 +140,45 @@ export function transportSpaceSuppressed(input: {
   return false
 }
 
+/**
+ * Special accessibility options keep Space for the focused control.
+ * Otherwise Space is play and pause.
+ */
+export function accessibilityOwnsSpace(settings: {
+  keyboardFirst: boolean
+  dragFreeEditing: boolean
+  screenReaderOptimizations: boolean
+  accessibleWaveform: boolean
+}): boolean {
+  return (
+    settings.keyboardFirst ||
+    settings.dragFreeEditing ||
+    settings.screenReaderOptimizations ||
+    settings.accessibleWaveform
+  )
+}
+
+/**
+ * Space toggles play/pause.
+ * A text field always keeps the character. An open dialog keeps Space for its controls.
+ * With no special accessibility options on, a focused button, switch, or slider does not.
+ */
+export function spaceTogglesTransport(
+  target: EventTarget | null,
+  ownsSpace: boolean,
+): boolean {
+  if (isTypingTarget(target)) return false
+  if (
+    typeof HTMLElement !== 'undefined' &&
+    target instanceof HTMLElement &&
+    target.closest('[role="dialog"], [role="alertdialog"]')
+  ) {
+    return false
+  }
+  if (!ownsSpace) return true
+  return isTransportShortcutTarget(target)
+}
+
 /** Space toggles play/pause except while a control, field, menu, or dialog owns that key. */
 export function isTransportShortcutTarget(target: EventTarget | null): boolean {
   if (!target || !(target instanceof HTMLElement)) return !isTypingTarget(target)

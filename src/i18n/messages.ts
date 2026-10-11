@@ -1778,7 +1778,7 @@ export const EN: Messages = {
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
     shortcutsHelp:
-      'When on, Space plays or pauses unless a button, switch, slider, menu, or text field has focus. Open dialogs keep Space for their own controls. Tab is never captured.',
+      'When on, Space plays or pauses. With Keyboard-First, Drag-Free Editing, screen reader optimizations, and Accessible Waveform Navigation off, it does that even while a button, switch, or slider has focus. A text field still takes the character. Open dialogs keep Space for their own controls. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -1787,7 +1787,7 @@ export const EN: Messages = {
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
     shortcutSpace:
-      'Space: play or pause when focus is not on a button, switch, slider, menu, or text field. While Hold is on, Space clears Hold.',
+      'Space: play or pause. With the special accessibility options off, this includes a focused button, switch, or slider. A text field and an open dialog keep Space. While Hold is on, Space clears Hold.',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
     dragFree: 'Drag-Free Editing',
@@ -1835,7 +1835,7 @@ export const EN: Messages = {
     byId: {
       'nav.workspaces': 'Open workspace navigation',
       'nav.help': 'Open keyboard shortcuts',
-      'transport.play': 'Play or pause when focus is not on a control',
+      'transport.play': 'Play or pause. With special accessibility options off, this includes a focused control',
       'transport.stop': 'Stop playback',
       'transport.loop': 'Toggle loop',
       'transport.back': 'Move the playhead a small step backward',
@@ -2828,7 +2828,7 @@ export const PL: Messages = {
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',
     shortcutsHelp:
-      'Gdy włączone, spacja odtwarza albo pauzuje, chyba że fokus jest na przycisku, przełączniku, suwaku, menu albo polu tekstowym. Otwarte okno zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
+      'Gdy włączone, spacja odtwarza albo pauzuje. Przy wyłączonej obsłudze klawiaturą, edytowaniu bez przeciągania, optymalizacjach czytnika i dostępnej nawigacji po nagraniu robi to także, gdy fokus jest na przycisku, przełączniku albo suwaku. Pole tekstowe nadal przyjmuje znak. Otwarte okno zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
     shortcutsTitle: 'Skróty klawiszowe',
     shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
     shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
@@ -2837,7 +2837,7 @@ export const PL: Messages = {
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
     shortcutSpace:
-      'Spacja: odtwarzanie lub pauza, gdy fokus nie jest na przycisku, przełączniku, suwaku, menu ani polu tekstowym. Gdy Hold jest włączony, spacja kasuje Hold.',
+      'Spacja: odtwarzanie albo pauza. Przy wyłączonych specjalnych opcjach dostępności dotyczy to też przycisku, przełącznika i suwaka w fokusie. Pole tekstowe i otwarte okno zostawiają spację u siebie. Gdy Hold jest włączony, spacja kasuje Hold.',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
     dragFree: 'Edytowanie bez przeciągania',
@@ -2885,7 +2885,7 @@ export const PL: Messages = {
     byId: {
       'nav.workspaces': 'Otwórz nawigację po obszarze',
       'nav.help': 'Otwórz skróty klawiszowe',
-      'transport.play': 'Odtwarzaj albo pauzuj, gdy fokus nie jest na kontrolce',
+      'transport.play': 'Odtwarzaj albo pauzuj. Przy wyłączonych specjalnych opcjach dostępności dotyczy to też kontrolki w fokusie',
       'transport.stop': 'Zatrzymaj odtwarzanie',
       'transport.loop': 'Przełącz pętlę',
       'transport.back': 'Cofnij głowicę o mały krok',

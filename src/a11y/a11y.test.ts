@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
-import { applySliderKey, isImeEvent, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, transportSpaceSuppressed } from './keyboard'
+import { accessibilityOwnsSpace, applySliderKey, isImeEvent, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, spaceTogglesTransport, transportSpaceSuppressed } from './keyboard'
 import {
   A11Y_STORAGE_KEY,
   A11Y_STORAGE_KEY_V1,
@@ -76,6 +76,22 @@ describe('slider keyboard', () => {
     expect(isTypingFromTag('INPUT', 'search')).toBe(true)
     expect(isTypingFromTag('TEXTAREA')).toBe(true)
     expect(isTypingFromTag('DIV', '', true)).toBe(true)
+  })
+
+  it('uses Space for play and pause until a special accessibility option is on', () => {
+    const plain = {
+      keyboardFirst: false,
+      dragFreeEditing: false,
+      screenReaderOptimizations: false,
+      accessibleWaveform: false,
+    }
+    expect(accessibilityOwnsSpace(plain)).toBe(false)
+    expect(accessibilityOwnsSpace({ ...plain, keyboardFirst: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, dragFreeEditing: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, screenReaderOptimizations: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, accessibleWaveform: true })).toBe(true)
+    expect(spaceTogglesTransport(null, false)).toBe(true)
+    expect(spaceTogglesTransport(null, true)).toBe(true)
   })
 
   it('keeps Space for checkboxes, radios, and dialogs', () => {
