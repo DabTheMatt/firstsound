@@ -31,48 +31,67 @@
   z-index: 8;
   top: calc(100% + 6px);
   right: 0;
-  width: min(320px, 78vw);
+  box-sizing: border-box;
+  width: min(28rem, calc(100vw - 16px));
+  max-height: min(70vh, 640px);
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
+  gap: 0;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
   background: var(--bg-panel);
   color: var(--text-primary);
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--bg-app) 45%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, black 28%, transparent);
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 26px;
 }
 
 .row span {
   flex: none;
   width: 4.6rem;
   color: var(--text-muted);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
   text-transform: uppercase;
 }
 
 .row button,
 .row select {
-  min-height: 28px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  min-height: 26px;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
+  text-transform: uppercase;
+}
+
+.row button:hover,
+.row select:hover {
+  color: var(--text-primary);
+  background: var(--ws-bar-hover, color-mix(in srgb, var(--text-primary) 10%, transparent));
 }
 
 .row button[aria-pressed='true'] {
-  border-color: var(--accent-primary);
+  border: 0;
   color: var(--text-primary);
-  background: var(--accent-soft);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
 }
 
 .check {
@@ -90,13 +109,21 @@
 }
 
 .actions button {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
+  text-transform: uppercase;
+}
+
+.actions button:hover {
   color: var(--text-primary);
-  font-size: 11px;
+  background: var(--ws-bar-hover, color-mix(in srgb, var(--text-primary) 10%, transparent));
 }
 
 .dock {
@@ -121,7 +148,8 @@
   bottom: max(8px, env(safe-area-inset-bottom, 0px));
   width: auto;
   max-height: min(70vh, 520px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;

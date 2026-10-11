@@ -1,8 +1,32 @@
 /** How long Hold repeats, so the looping fragment stays audible on the graph. */
-export const AUDITION_SPAN_SEC = 1.25
+export const AUDITION_SPAN_SEC = 1
+
+/** Lengths offered in the graph menu. */
+export const AUDITION_SPAN_CHOICES = [0.25, 0.5, 1] as const
+
+export type AuditionSpanSec = (typeof AUDITION_SPAN_CHOICES)[number]
 
 /** Shorter than this and the loop is a click, not a fragment you can hear. */
-export const AUDITION_MIN_SEC = 0.28
+export const AUDITION_MIN_SEC = 0.2
+
+let spanSec: AuditionSpanSec = AUDITION_SPAN_SEC
+const spanListeners = new Set<(span: AuditionSpanSec) => void>()
+
+export function auditionSpanSec(): AuditionSpanSec {
+  return spanSec
+}
+
+export function setAuditionSpanSec(next: number): void {
+  const choice = (AUDITION_SPAN_CHOICES as readonly number[]).includes(next) ? (next as AuditionSpanSec) : spanSec
+  if (choice === spanSec) return
+  spanSec = choice
+  for (const listener of spanListeners) listener(spanSec)
+}
+
+export function subscribeAuditionSpan(onChange: (span: AuditionSpanSec) => void): () => void {
+  spanListeners.add(onChange)
+  return () => spanListeners.delete(onChange)
+}
 
 /**
  * A short window of what has already reached the playhead.

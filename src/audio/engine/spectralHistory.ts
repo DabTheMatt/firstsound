@@ -295,6 +295,16 @@ export function spectralLevelColor(cool: string, mid: string, warm: string, leve
 }
 
 /**
+ * Floor-relative level spends audible energy well above the noise floor.
+ * A ridge that only clears the floor stays cool. A peak that stands up
+ * on the plot reaches the warm end, so loud and quiet stay apart.
+ */
+export function spectralLevelShade(level: number): number {
+  const t = clampUnit(level, 0, 1)
+  return clampUnit((t - 0.18) / 0.52, 0, 1)
+}
+
+/**
  * Age of one history ridge, measured back from now.
  * Index 0 is the youngest slice. Ages advance with playback time, and a slice
  * that reaches the next step continues as the following index instead of popping.

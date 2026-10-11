@@ -15,6 +15,13 @@ import {
   type FreqScaleKind,
 } from '../../audio/engine/freqScale'
 import {
+  AUDITION_SPAN_CHOICES,
+  auditionSpanSec,
+  setAuditionSpanSec,
+  subscribeAuditionSpan,
+  type AuditionSpanSec,
+} from '../../audio/engine/auditionHold'
+import {
   graphSnapshotFrozen,
   setGraphSnapshot,
   subscribeGraphSnapshot,
@@ -52,6 +59,7 @@ const HINTS = {
   legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
   guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
   snapshot: 'Loops a short fragment of the sample. The FFT and EQ graphs keep drawing that loop, including each repeat. Press again to play on from that place.',
+  holdLength: 'How long that fragment is. 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
 } as const
 
 type Props = {
@@ -188,19 +196,52 @@ export function GuidesRow() {
   )
 }
 
-export function SnapshotRow() {
-  const [on, setOn] = useState(() => graphSnapshotFrozen())
-  useEffect(() => subscribeGraphSnapshot(setOn), [])
+/** Frequency hue for the handles, the filter list, and the band name. */
+export function FreqNodesRow() {
+  const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
+  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
   return (
     <OnOff
-      label="Hold"
-      hint={HINTS.snapshot}
-      on={on}
-      onChange={(next) => {
-        setOn(next)
-        holdGraphSnapshot(next)
-      }}
+      label="Freq nodes"
+      hint={HINTS.nodes}
+      on={prefs.eqFreqColors}
+      onChange={(eqFreqColors) => patchSpectrumPrefs({ eqFreqColors })}
     />
+  )
+}
+
+export function SnapshotRow() {
+  const [on, setOn] = useState(() => graphSnapshotFrozen())
+  const [span, setSpan] = useState<AuditionSpanSec>(() => auditionSpanSec())
+  useEffect(() => subscribeGraphSnapshot(setOn), [])
+  useEffect(() => subscribeAuditionSpan(setSpan), [])
+  return (
+    <>
+      <OnOff
+        label="Hold"
+        hint={HINTS.snapshot}
+        on={on}
+        onChange={(next) => {
+          setOn(next)
+          holdGraphSnapshot(next)
+        }}
+      />
+      <ChoiceRow label="Length" hint={HINTS.holdLength}>
+        {AUDITION_SPAN_CHOICES.map((choice) => (
+          <Choice
+            key={choice}
+            pressed={span === choice}
+            onClick={() => {
+              setAuditionSpanSec(choice)
+              setSpan(choice)
+              if (graphSnapshotFrozen()) engine.holdAudition(true)
+            }}
+          >
+            {choice}s
+          </Choice>
+        ))}
+      </ChoiceRow>
+    </>
   )
 }
 

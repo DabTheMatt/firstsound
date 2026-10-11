@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { eqBandColorForHz } from '../../audio/engine/spectrumRegions'
-import { eqStripAccentVars, eqStripHeading } from './eqBandStyle'
+import { eqStripAccentVars, eqStripHeading, listedBandColor } from './eqBandStyle'
 
 describe('eqStripAccentVars', () => {
   it('uses the instance curve when frequency coloring is off', () => {
@@ -22,6 +22,14 @@ describe('eqStripAccentVars', () => {
     })
     expect(vars['--accent-primary']).toBe(eqBandColorForHz(hz))
     expect(vars['--eq-band']).toBe(eqBandColorForHz(hz))
+  })
+})
+
+describe('listedBandColor', () => {
+  it('keeps the index color until frequency coloring is on', () => {
+    expect(listedBandColor(219, '#e6ad48', false)).toBe('#e6ad48')
+    expect(listedBandColor(219, '#e6ad48', true)).toBe(eqBandColorForHz(219))
+    expect(listedBandColor(1180, '#4eb8c6', true)).toBe(eqBandColorForHz(1180))
   })
 })
 

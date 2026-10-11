@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { EQ_FILTER_TYPES, EQ_MAX_BANDS, EQ_MAX_HZ, EQ_MIN_HZ, planEqBandInsert, slopeFromNormalized, slopeToNormalized, nearestFilterSlope, type EqFilterType } from '../../audio/engine/eqBands'
-import { selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
+import { getEqBandSelection, selectEqBand, subscribeEqBandSelection, type EqBandSelection } from '../../audio/engine/eqBandSelection'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoDrivesInstance, lfoRangeNormalized } from '../../audio/fx/lfo'
 import { PARAMS } from '../../audio/parameters/definitions'
@@ -10,6 +10,8 @@ import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { LfoParamShell, ModulationScopeProvider } from '../controls/LfoParamShell'
+import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { listedBandColor } from '../eq/eqBandStyle'
 import { eqBandTone, readThemeColors } from '../../theme'
 import { ValueKnob } from '../controls/ValueKnob'
 import { focusEqTypePatch } from './eqFocusGesture'
@@ -25,9 +27,11 @@ type Props = {
 export function EqFocusCluster({ onSelectModule }: Props) {
   const { t } = useI18n()
   const snap = useEngine()
-  const [selected, setSelected] = useState<EqBandSelection | null>(null)
+  const [selected, setSelected] = useState<EqBandSelection | null>(() => getEqBandSelection())
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
   useEffect(() => subscribeEqBandSelection(setSelected), [])
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
 
   const eq =
     snap.chain.find((mod) => mod.instanceId === selected?.instanceId && mod.type === 'eq') ??
@@ -41,7 +45,11 @@ export function EqFocusCluster({ onSelectModule }: Props) {
   const ids = index >= 0 ? eqBandLfoIds(index) : null
   const knobs = active ? focusEqKnobs(active.type) : []
   const live = eq && snap.liveByInstance[eq.instanceId] ? snap.liveByInstance[eq.instanceId] : snap.liveParams
-  const accent = index >= 0 ? eqBandTone(index, readThemeColors()).curve : undefined
+  const tone = readThemeColors()
+  const accent =
+    index >= 0 && active
+      ? listedBandColor(active.frequency, eqBandTone(index, tone).curve, freqColors)
+      : undefined
   const listed = bands.filter((item) => item.type !== 'off')
 
   const addBand = () => {
@@ -101,8 +109,8 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                     aria-pressed={on}
                     onClick={() => selectRow(row)}
                   >
-                    <i style={{ background: eqBandTone(row, readThemeColors()).curve }} />
-                    <span className={styles.filterName} style={{ color: eqBandTone(row, readThemeColors()).curve }}>
+                    <i style={{ background: listedBandColor(item.frequency, eqBandTone(row, tone).curve, freqColors) }} />
+                    <span className={styles.filterName} style={{ color: listedBandColor(item.frequency, eqBandTone(row, tone).curve, freqColors) }}>
                       EQ {row + 1}
                     </span>
                     <span>{formatFocusHz(item.frequency)}</span>
