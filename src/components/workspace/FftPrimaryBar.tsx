@@ -8,6 +8,7 @@ import {
 } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
 import { AnalyzerSettingsMenu } from './AnalyzerSettingsMenu'
+import { HoldGraphButton } from './SpectrumDisplaySettings'
 import styles from './Workspace.module.css'
 
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
@@ -82,6 +83,7 @@ export function FftPrimaryBar() {
         </button>
       </div>
       <div className={styles.viewMore} data-view-more="">
+        <HoldGraphButton className={styles.textButton} pressedClassName={`${styles.textButton} ${styles.segmentOn}`} />
         <button
           type="button"
           className={styles.textButton}

@@ -269,6 +269,9 @@
 
 .viewMore {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   flex: none;
   margin-left: auto;
 }
