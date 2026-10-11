@@ -1,5 +1,5 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { effectiveReducedMotion } from '../../a11y/settings'
+import { appliedSensoryPresentation } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
@@ -156,7 +156,8 @@ export function SoundRange({
         frame = requestAnimationFrame(tick)
         return
       }
-      const reduced = effectiveReducedMotion()
+      const comfort = appliedSensoryPresentation()
+      const reduced = comfort.motionReduced || comfort.reduceDecorativeMotion
       const dt = lastStamp === 0 ? 16 : Math.min(100, now - lastStamp)
       lastStamp = now
       const snap = engine.getSnapshot()
@@ -207,7 +208,8 @@ export function SoundRange({
       const pitchLive = !reduced && Math.abs(playback.pitchFeel) > 0.004
       const settling = !playbackVisualSettled(playback, playbackTarget)
       const motionLive = Math.abs(motionRef.current - motionTarget(snap.playing, reduced)) > 0.035
-      const interval = settling || pitchLive || motionLive ? 33 : paintIntervalMs(snap.playing)
+      const activity = comfort.visualActivity === 'low' ? 'low' : 'standard'
+      const interval = settling || pitchLive || motionLive ? paintIntervalMs(true, activity) : paintIntervalMs(snap.playing, activity)
       if (now - lastPaint < interval) {
         frame = requestAnimationFrame(tick)
         return

@@ -12,6 +12,10 @@
   animation: focusIn 160ms ease;
 }
 
+:global(html[data-decorative-motion='reduce']) .chrome {
+  animation: none;
+}
+
 .top {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

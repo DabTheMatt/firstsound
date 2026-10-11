@@ -278,6 +278,15 @@
   color: var(--meter-clip);
 }
 
+:global(html[data-calm-meters='on']) .clipOn {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+:global(html[data-calm-meters='on']) .meterFill {
+  background: linear-gradient(var(--meter-clip) 0 8%, var(--meter-mid) 8% 24%, var(--meter-low) 24% 100%);
+}
+
 .meters {
   display: flex;
   gap: 2px;

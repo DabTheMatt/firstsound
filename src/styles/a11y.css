@@ -18,6 +18,11 @@
   --param-label-tracking-tight: 0.01em;
   --param-label-block: calc(14px * var(--field-text-scale, 1));
   --param-value-block: calc(16px * var(--field-text-scale, 1));
+  --field-motion-duration: 180ms;
+  --field-motion-intensity: 1;
+  --field-glow-intensity: 1;
+  --field-visual-transition-duration: 160ms;
+  --field-decorative-opacity: 1;
 }
 
 .sr-only {
@@ -65,6 +70,30 @@ html[data-ui-scale='large'] {
 
 html[data-ui-scale='large'] body {
   font-weight: 400;
+}
+
+html[data-sensory-comfort='on'] :where(
+  button,
+  a,
+  summary,
+  [role='tab'],
+  [role='switch'],
+  dialog,
+  [role='dialog'],
+  [role='menu']
+) {
+  transition-duration: var(--field-visual-transition-duration);
+}
+
+html[data-decorative-motion='reduce'] [data-decorative],
+html[data-visual-effects='reduce'] [data-decorative] {
+  animation: none !important;
+}
+
+html[data-decorative-motion='reduce'] [data-guide-highlight],
+html[data-visual-effects='reduce'] [data-guide-highlight] {
+  box-shadow: none;
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

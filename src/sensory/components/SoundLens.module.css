@@ -80,6 +80,12 @@
   animation: breathe 3.6s ease-in-out infinite;
 }
 
+:global(html[data-decorative-motion='reduce']) .halo,
+:global(html[data-visual-effects='reduce']) .loop .halo {
+  animation: none;
+  transform: none;
+}
+
 @keyframes breathe {
   0%,
   100% {

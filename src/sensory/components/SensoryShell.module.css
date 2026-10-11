@@ -93,6 +93,15 @@
   opacity: calc(var(--sensory-haze, 0) * 0.55);
 }
 
+:global(html[data-visual-effects='reduce']) .blur {
+  backdrop-filter: none;
+}
+
+:global(html[data-visual-effects='reduce']) .chroma::before,
+:global(html[data-visual-effects='reduce']) .chroma::after {
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .grain,
   .pulse {

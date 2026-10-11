@@ -778,6 +778,24 @@ export type Messages = {
     waveformNav: string
     waveformNavHelp: string
     waveformNavAlways: string
+    sensoryComfort: string
+    sensoryComfortHelp: string
+    sensoryComfortSection: string
+    sensoryComfortApplies: string
+    visualActivity: string
+    visualActivityHelp: string
+    visualActivityStandard: string
+    visualActivityLow: string
+    reduceDecorativeMotion: string
+    reduceDecorativeMotionHelp: string
+    calmMeters: string
+    calmMetersHelp: string
+    calmSpectrum: string
+    calmSpectrumHelp: string
+    reduceVisualEffects: string
+    reduceVisualEffectsHelp: string
+    quietNotifications: string
+    quietNotificationsHelp: string
   }
   keyboard: {
     open: string
@@ -1806,6 +1824,24 @@ export const EN: Messages = {
     waveformNav: 'Accessible Waveform Navigation',
     waveformNavHelp: 'Navigate recordings using time, keyboard controls and audio landmarks.',
     waveformNavAlways: 'Keyboard and screen reader access to the waveform stays available when this is off.',
+    sensoryComfort: 'Sensory Comfort',
+    sensoryComfortHelp: 'Reduce unnecessary motion, visual intensity and distractions.',
+    sensoryComfortSection: 'Sensory Comfort',
+    sensoryComfortApplies: 'These choices apply while Sensory Comfort is on. Reduced Motion stays independent.',
+    visualActivity: 'Visual Activity',
+    visualActivityHelp: 'Low reduces nonessential visual updates. Measurements stay the same.',
+    visualActivityStandard: 'Standard',
+    visualActivityLow: 'Low',
+    reduceDecorativeMotion: 'Reduce Decorative Motion',
+    reduceDecorativeMotionHelp: 'Stop decorative animation. Playhead, selection, and focus stay.',
+    calmMeters: 'Calm Meters',
+    calmMetersHelp: 'Steadier meters. Peaks, clipping, and the measured level stay exact.',
+    calmSpectrum: 'Calm Spectrum',
+    calmSpectrumHelp: 'Calmer FFT and waterfall drawing. Analysis settings stay the same.',
+    reduceVisualEffects: 'Reduce Visual Effects',
+    reduceVisualEffectsHelp: 'Less glow, blur, and decorative color movement. Focus stays visible.',
+    quietNotifications: 'Quiet Notifications',
+    quietNotificationsHelp: 'Fewer informational notices. Errors and clipping stay visible.',
   },
   keyboard: {
     open: 'Keyboard shortcuts',
@@ -2860,6 +2896,24 @@ export const PL: Messages = {
     waveformNav: 'Dostępna nawigacja po nagraniu',
     waveformNavHelp: 'Poruszaj się po nagraniu za pomocą czasu, klawiatury i punktów charakterystycznych.',
     waveformNavAlways: 'Klawiatura i czytnik ekranu nadal opisują falę, gdy ta preferencja jest wyłączona.',
+    sensoryComfort: 'Komfort sensoryczny',
+    sensoryComfortHelp: 'Ogranicz zbędny ruch, intensywność wizualną i elementy rozpraszające.',
+    sensoryComfortSection: 'Komfort sensoryczny',
+    sensoryComfortApplies: 'Te wybory działają, gdy Komfort sensoryczny jest włączony. Ograniczenie ruchu zostaje osobne.',
+    visualActivity: 'Aktywność wizualna',
+    visualActivityHelp: 'Niska ogranicza zbędne odświeżanie obrazu. Pomiary zostają te same.',
+    visualActivityStandard: 'Standardowa',
+    visualActivityLow: 'Niska',
+    reduceDecorativeMotion: 'Ogranicz ruch dekoracyjny',
+    reduceDecorativeMotionHelp: 'Zatrzymuje ozdobne animacje. Głowica, zaznaczenie i fokus zostają.',
+    calmMeters: 'Spokojne mierniki',
+    calmMetersHelp: 'Spokojniejszy rysunek. Szczyty, przesterowanie i pomiar zostają dokładne.',
+    calmSpectrum: 'Spokojne widmo',
+    calmSpectrumHelp: 'Spokojniejsze FFT i wodospad. Ustawienia analizy zostają te same.',
+    reduceVisualEffects: 'Ogranicz efekty wizualne',
+    reduceVisualEffectsHelp: 'Mniej poświaty, rozmycia i ozdobnego koloru. Fokus zostaje widoczny.',
+    quietNotifications: 'Ciche powiadomienia',
+    quietNotificationsHelp: 'Mniej komunikatów informacyjnych. Błędy i przesterowanie zostają widoczne.',
   },
   keyboard: {
     open: 'Skróty klawiszowe',

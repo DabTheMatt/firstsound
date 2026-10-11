@@ -197,6 +197,28 @@ export function lerpRgb(a: Rgb, b: Rgb, t: number): Rgb {
 }
 
 /** Ease visual fields so knobs retint the landscape instead of popping. */
+/**
+ * Scales decorative optical fields. Axis amounts used as parameter readouts stay unchanged.
+ * `null` returns the same object.
+ */
+export function calmSensoryVisual(
+  visual: SensoryVisualState,
+  factors: { motion: number; intensity: number } | null,
+): SensoryVisualState {
+  if (!factors) return visual
+  const motion = Math.min(1, Math.max(0, factors.motion))
+  const intensity = Math.min(1, Math.max(0, factors.intensity))
+  return {
+    ...visual,
+    glow: visual.glow * (0.35 + 0.65 * intensity),
+    motion: visual.motion * motion,
+    pulse: visual.pulse * motion,
+    haze: visual.haze * (0.45 + 0.55 * intensity),
+    chroma: visual.chroma * intensity,
+    filmGrain: visual.filmGrain * (0.25 + 0.75 * intensity),
+  }
+}
+
 export function lerpVisualState(from: SensoryVisualState, to: SensoryVisualState, t: number): SensoryVisualState {
   const u = Math.min(1, Math.max(0, t))
   return {

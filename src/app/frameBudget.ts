@@ -6,7 +6,11 @@ export function ridgeSampleStep(width: number): number {
   return 1
 }
 
-export function paintIntervalMs(playing: boolean): number {
+export type PaintActivity = 'standard' | 'low'
+
+/** Drawing cadence only. Audio block size and analysis hop stay where the engine set them. */
+export function paintIntervalMs(playing: boolean, activity: PaintActivity = 'standard'): number {
+  if (activity === 'low') return playing ? 66 : 140
   return playing ? 33 : 80
 }
 

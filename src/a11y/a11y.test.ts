@@ -8,6 +8,7 @@ import {
   A11Y_STORAGE_KEY,
   A11Y_STORAGE_KEY_V1,
   applyA11yDom,
+  appliedSensoryPresentation,
   clampScale,
   DEFAULT_A11Y_SETTINGS,
   effectiveMotionReduced,
@@ -132,13 +133,24 @@ describe('a11y settings and i18n', () => {
     expect(parseA11ySettings({ reduceMotion: true, extra: 1 }).reduceMotion).toBe(true)
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true })
     expect(effectiveMotionReduced()).toBe(true)
+    expect(appliedSensoryPresentation().motionReduced).toBe(true)
+    expect(appliedSensoryPresentation().active).toBe(false)
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, sensoryComfort: true })
+    expect(appliedSensoryPresentation().calmMeters).toBe(true)
+    expect(appliedSensoryPresentation().motionReduced).toBe(false)
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false })
     expect(effectiveMotionReduced()).toBe(false)
+    expect(appliedSensoryPresentation().active).toBe(false)
     expect(parseA11ySettings(null).shortcutsEnabled).toBe(true)
     expect(parseA11ySettings(null).dragFreeEditing).toBe(false)
     expect(parseA11ySettings(null).keyboardFirst).toBe(false)
     expect(parseA11ySettings({ keyboardFirst: true }).keyboardFirst).toBe(true)
     expect(parseA11ySettings(null).accessibleWaveform).toBe(false)
+    expect(parseA11ySettings(null).sensoryComfort).toBe(false)
+    expect(parseA11ySettings({ sensoryComfort: true, visualActivity: 'nope', calmMeters: false }).sensoryComfort).toBe(true)
+    expect(parseA11ySettings({ sensoryComfort: true, visualActivity: 'nope', calmMeters: false }).visualActivity).toBe('low')
+    expect(parseA11ySettings({ sensoryComfort: true, visualActivity: 'nope', calmMeters: false }).calmMeters).toBe(false)
+    expect(parseA11ySettings({ sensoryComfort: 'yes' }).sensoryComfort).toBe(false)
     expect(parseA11ySettings({ accessibleWaveform: true }).accessibleWaveform).toBe(true)
     expect(parseA11ySettings(null).lowVision).toBe(false)
   })
@@ -174,6 +186,10 @@ describe('a11y settings and i18n', () => {
     expect(EN.a11y.waveformNavHelp).toBe('Navigate recordings using time, keyboard controls and audio landmarks.')
     expect(PL.a11y.waveformNav).toBe('Dostępna nawigacja po nagraniu')
     expect(PL.a11y.waveformNavHelp).toBe('Poruszaj się po nagraniu za pomocą czasu, klawiatury i punktów charakterystycznych.')
+    expect(EN.a11y.sensoryComfort).toBe('Sensory Comfort')
+    expect(EN.a11y.sensoryComfortHelp).toBe('Reduce unnecessary motion, visual intensity and distractions.')
+    expect(PL.a11y.sensoryComfort).toBe('Komfort sensoryczny')
+    expect(PL.a11y.sensoryComfortHelp).toBe('Ogranicz zbędny ruch, intensywność wizualną i elementy rozpraszające.')
     expect(EN.chain.moveBefore('Reverb', 'Delay')).toBe('Move Reverb before Delay')
     expect(EN.chain.movedBefore('Delay', 'Reverb')).toBe('Delay moved before Reverb.')
   })

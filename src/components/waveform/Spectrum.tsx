@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { effectiveReducedMotion } from '../../a11y/settings'
+import { appliedSensoryPresentation, effectiveReducedMotion } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { FftPrimaryBar } from '../workspace/FftPrimaryBar'
@@ -97,7 +97,7 @@ import {
   clampSpectrumResolution,
   SPECTRUM_RESOLUTION_CHOICES,
 } from '../../audio/engine/analyserBudget'
-import { isDocumentHidden } from '../../app/frameBudget'
+import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { spectrumDbScaleMarks } from '../../app/editorState'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -531,15 +531,23 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     }
     let lineXY = new Float32Array(4096)
     let lastTs = 0
+    let lastVisual = 0
     const tick = (now: number) => {
-      const elapsed = lastTs === 0 ? 1 / 60 : Math.max(0, (now - lastTs) / 1000)
-      const dt = Math.min(0.05, elapsed)
-      lastTs = now
       if (isDocumentHidden()) {
         lastTs = 0
         frame = requestAnimationFrame(tick)
         return
       }
+      const comfort = appliedSensoryPresentation()
+      const slowDraw = comfort.calmSpectrum || comfort.visualActivity === 'low'
+      if (slowDraw && lastVisual !== 0 && now - lastVisual < paintIntervalMs(engine.getSnapshot().playing, 'low')) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      lastVisual = now
+      const elapsed = lastTs === 0 ? 1 / 60 : Math.max(0, (now - lastTs) / 1000)
+      const dt = Math.min(0.05, elapsed)
+      lastTs = now
       const live = engine.getSnapshot()
       const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
@@ -602,6 +610,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             colors,
             mobile: compactRef.current || cssW < 720,
             reducedMotion: reduced,
+            calm: comfort.calmSpectrum,
             layer: listenId ? 'post' : prefsNow.historyLayer,
           })
           frame = requestAnimationFrame(tick)
@@ -718,7 +727,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         for (let i = 0; i < hzTicks.length; i++) {
           const tick = hzTicks[i]!
           const ink = colorWithAlpha(colors.textMuted, 0.72)
-          if (focusPlot) {
+          if (focusPlot && !comfort.calmSpectrum) {
             const grad = ctx.createLinearGradient(0, top, 0, eqZeroY)
             grad.addColorStop(0, colorWithAlpha(colors.textMuted, 0))
             grad.addColorStop(0.35, colorWithAlpha(colors.textMuted, 0.05))
@@ -831,8 +840,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               if (style === 'post' || layer !== 'both') {
                 ctx.fillStyle = barLine
                 ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.max(2, dpr))
-                ctx.fillStyle = colorWithAlpha(barLine, 0.35)
-                ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.min(capH, 8 * dpr))
+                if (!comfort.calmSpectrum) {
+                  ctx.fillStyle = colorWithAlpha(barLine, 0.35)
+                  ctx.fillRect(x0 + gap / 2, capY, Math.max(1, bandW - gap), Math.min(capH, 8 * dpr))
+                }
               }
             }
           }

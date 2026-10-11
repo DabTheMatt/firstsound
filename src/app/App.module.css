@@ -1128,6 +1128,10 @@
   animation: modeIn 220ms ease;
 }
 
+:global(html[data-decorative-motion='reduce']) .modeFade {
+  animation: none;
+}
+
 @keyframes modeIn {
   from {
     opacity: 0.72;

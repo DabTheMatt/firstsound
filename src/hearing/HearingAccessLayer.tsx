@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { announce } from '../a11y'
+import { appliedSensoryPresentation } from '../a11y/settings'
+import { noticeShown } from '../a11y/sensoryComfort'
 import type { FocusWorkspace } from '../app/phoneWorkspace'
 import { PARAMS } from '../audio/parameters/definitions'
 import { formatTimecode } from '../audio/engine/formatTime'
@@ -278,7 +280,7 @@ export function HearingAccessLayer({
       })
       announce(recording ? 'Recording started' : 'Recording stopped')
     }
-    if (loop !== previous.loop) {
+    if (loop !== previous.loop && noticeShown('informational', appliedSensoryPresentation().quietNotifications)) {
       pushHearingAlert({
         id: 'loop',
         title: loop ? 'LOOP ON' : 'LOOP OFF',

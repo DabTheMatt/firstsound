@@ -18,7 +18,8 @@ import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import { useI18n } from '../../i18n'
 import type { ColorSound } from '../colorSound'
 import type { SensoryValues } from '../sensoryState'
-import { sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
+import { resolveSensoryPresentation, sensoryCalmFactors } from '../../a11y/sensoryComfort'
+import { calmSensoryVisual, sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { ColorSoundPad } from './ColorSoundPad'
 import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
@@ -103,8 +104,9 @@ export function SensoryShell({
   const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
   const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
   const { settings: a11y, systemReducedMotion } = useA11ySettings()
-  const reduced = a11y.reduceMotion || systemReducedMotion
-  const visual = sensoryVisualState(values, reduced, feelingId)
+  const presentation = resolveSensoryPresentation(a11y, systemReducedMotion)
+  const reduced = presentation.motionReduced
+  const visual = calmSensoryVisual(sensoryVisualState(values, reduced, feelingId), sensoryCalmFactors(presentation))
   const cssVars = visualCssVars(visual)
   const activeId = feelingId
   const sceneClass =
@@ -328,10 +330,10 @@ export function SensoryShell({
       />
       {sampleInput}
       <div className={styles.atmosphere} aria-hidden="true">
-        <div className={styles.blur} />
-        <div className={styles.chroma} />
-        <div className={styles.grain} />
-        <div className={styles.pulse} />
+        <div className={styles.blur} data-decorative="" />
+        <div className={styles.chroma} data-decorative="" />
+        <div className={styles.grain} data-decorative="" />
+        <div className={styles.pulse} data-decorative="" />
       </div>
     </div>
   )

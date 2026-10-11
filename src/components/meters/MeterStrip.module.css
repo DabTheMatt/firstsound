@@ -99,6 +99,28 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--meter-clip) 70%, transparent);
 }
 
+:global(html[data-calm-meters='on']) .clipOn .led {
+  box-shadow: none;
+  outline: 2px solid var(--text-primary);
+}
+
+:global(html[data-calm-meters='on']) .clipOn .clipLabel {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+:global(html[data-calm-meters='on']) .fill {
+  background: linear-gradient(
+    var(--meter-clip) 0 6%,
+    var(--meter-mid) 6% 22%,
+    var(--meter-low) 22% 100%
+  );
+}
+
+:global(html[data-calm-meters='on']) .hold {
+  box-shadow: none;
+}
+
 .clipLabel {
   font-size: var(--type-8);
   letter-spacing: 0.1em;
