@@ -8,7 +8,16 @@ type PanelState = {
 }
 
 let state: PanelState = { open: false, focusToken: 0, editId: null }
+let trigger: HTMLElement | null = null
 const listeners = new Set<() => void>()
+
+export function registerMarkerTrigger(node: HTMLElement | null): void {
+  trigger = node
+}
+
+export function markerTrigger(): HTMLElement | null {
+  return trigger
+}
 
 function emit(): void {
   for (const listener of listeners) listener()

@@ -950,13 +950,23 @@ export type Messages = {
     needAudio: string
     needName: string
     list: string
+    openCount: (count: number) => string
+    addMarker: string
+    emptyHint: string
     suggestions: string
+    suggestionsCount: (count: number) => string
     suggestionsHelp: string
     saveDetected: string
     noSuggestions: string
     analysing: string
+    moreSuggestions: string
     previousAction: string
     nextAction: string
+    prevShort: string
+    nextShort: string
+    editTime: string
+    editDescription: string
+    actions: (name: string) => string
     defaultName: (index: number) => string
     pointLabel: (name: string, time: string) => string
     goTo: (name: string) => string
@@ -1947,13 +1957,23 @@ export const EN: Messages = {
     needAudio: 'Load audio before adding a marker.',
     needName: 'Enter a marker name.',
     list: 'Markers',
-    suggestions: 'Detected places',
+    openCount: (count) => `Markers, ${count}`,
+    addMarker: 'Add marker',
+    emptyHint: 'Add a marker at the current playhead.',
+    suggestions: 'Suggestions',
+    suggestionsCount: (count) => `Suggestions, ${count}`,
     suggestionsHelp: 'These are suggestions from the existing landmark scan. They stay suggestions until you save one as a marker.',
     saveDetected: 'Save as marker',
     noSuggestions: 'No detected places.',
     analysing: 'Looking for places.',
+    moreSuggestions: 'More suggestions',
     previousAction: 'Previous marker',
     nextAction: 'Next marker',
+    prevShort: 'Prev',
+    nextShort: 'Next',
+    editTime: 'Edit time',
+    editDescription: 'Edit description',
+    actions: (name) => `Marker actions: ${name}`,
     defaultName: (index) => `Marker ${index}`,
     pointLabel: (name, time) => `Marker: ${name}, ${time}.`,
     goTo: (name) => `Go to marker: ${name}`,
@@ -3086,13 +3106,23 @@ export const PL: Messages = {
     needAudio: 'Wczytaj nagranie, zanim dodasz znacznik.',
     needName: 'Wpisz nazwę znacznika.',
     list: 'Znaczniki',
-    suggestions: 'Wykryte miejsca',
+    openCount: (count) => `Znaczniki, ${count}`,
+    addMarker: 'Dodaj znacznik',
+    emptyHint: 'Dodaj znacznik w miejscu głowicy.',
+    suggestions: 'Propozycje',
+    suggestionsCount: (count) => `Propozycje, ${count}`,
     suggestionsHelp: 'To propozycje z istniejącego skanu punktów. Zostają propozycjami, dopóki nie zapiszesz jednej jako znacznik.',
     saveDetected: 'Zapisz jako znacznik',
     noSuggestions: 'Brak wykrytych miejsc.',
     analysing: 'Szukam miejsc.',
+    moreSuggestions: 'Więcej propozycji',
     previousAction: 'Poprzedni znacznik',
     nextAction: 'Następny znacznik',
+    prevShort: 'Wstecz',
+    nextShort: 'Dalej',
+    editTime: 'Zmień czas',
+    editDescription: 'Zmień opis',
+    actions: (name) => `Akcje znacznika: ${name}`,
     defaultName: (index) => `Znacznik ${index}`,
     pointLabel: (name, time) => `Znacznik: ${name}, ${time}.`,
     goTo: (name) => `Idź do znacznika: ${name}`,

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { menuListKey } from '../../a11y/keyboard'
 import { guideTargetAttrs, guideTargetForAction } from '../../guide/targets'
 import { useI18n } from '../../i18n'
+import { MarkerTrigger } from '../markers/MarkerPanel'
 import styles from './Workspace.module.css'
 
 type Action = {
@@ -78,6 +79,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
             </button>
           ))
         : null}
+      <MarkerTrigger />
       <div className={styles.viewMore} data-view-more="">
       <button
         type="button"

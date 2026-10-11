@@ -474,7 +474,6 @@ export function SimpleShell({
               onRegionCommit={onRegionCommit}
               onTrim={onApplyTrim}
             />
-            <MarkerPanel mode="simple" onCommit={onRegionCommit} />
             <AccessibleWaveform
               mode="simple"
               onRegionCommit={onRegionCommit}
@@ -840,6 +839,7 @@ export function SimpleShell({
             {snap.fileName || t.simple.fileUntitled}
           </button>
           <div className={styles.modeSlot}>
+            <MarkerPanel mode="simple" onCommit={onRegionCommit} />
             <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
           </div>
           <ThemePicker compact={frame === 'phone'} />

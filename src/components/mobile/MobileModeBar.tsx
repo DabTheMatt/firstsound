@@ -4,6 +4,7 @@ import { useEngine } from '../../hooks/useEngine'
 import type { VizMode } from '../../app/editorState'
 import { phoneDisplayViz } from '../../app/phoneWorkspace'
 import { useI18n } from '../../i18n'
+import { MarkerTrigger } from '../markers/MarkerPanel'
 import { BackgroundControl } from '../waveform/BackgroundControl'
 import { FocusToggle } from './FocusToggle'
 import styles from './MobileModeBar.module.css'
@@ -108,6 +109,7 @@ export function MobileModeBar({
             {arrangement === 'multi' ? t.mix.single : t.mix.multi}
           </button>
         ) : null}
+        <MarkerTrigger />
         <FocusToggle expanded={false} onClick={onEnterFocus} />
         <button
           type="button"
