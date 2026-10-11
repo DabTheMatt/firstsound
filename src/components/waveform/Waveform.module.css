@@ -844,6 +844,20 @@
   outline-offset: 2px;
 }
 
+:global(html[data-high-visibility='on']) .simpleEdge::before {
+  width: 2px;
+}
+
+:global(html[data-high-visibility='on']) .simpleEdge::after {
+  width: var(--field-handle-visual-size);
+  height: var(--field-handle-visual-size);
+  border-width: 2px;
+}
+
+:global(html[data-high-visibility='on']) .sensoryEdge {
+  background: linear-gradient(var(--text-primary), var(--text-primary)) center / 2px 100% no-repeat;
+}
+
 .ruler {
   position: absolute;
   left: 0;

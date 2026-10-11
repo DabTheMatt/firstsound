@@ -40,6 +40,8 @@ export type A11ySettings = {
   textScale: number
   /** Shows landmark and time tools. Keyboard and screen reader access stay on when this is off. */
   accessibleWaveform: boolean
+  /** Stronger outlines, shapes, and labels for controls. Off until the user turns it on. */
+  highVisibility: boolean
   /** Calm presentation. Off leaves the current drawing alone. */
   sensoryComfort: boolean
   /** Stored choice. Effective only while Sensory Comfort is on. */
@@ -64,6 +66,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   interfaceScale: 1,
   textScale: 1,
   accessibleWaveform: false,
+  highVisibility: false,
   sensoryComfort: false,
   visualActivity: 'low',
   reduceDecorativeMotion: true,
@@ -84,6 +87,7 @@ const BOOLEAN_KEYS = [
   'dragFreeEditing',
   'keyboardFirst',
   'accessibleWaveform',
+  'highVisibility',
   'sensoryComfort',
   'reduceDecorativeMotion',
   'calmMeters',
@@ -255,6 +259,7 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
   root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
+  root.dataset.highVisibility = settings.highVisibility ? 'on' : 'off'
   const interfaceScale = clampScale(settings.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
   const textScale = clampScale(settings.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
   root.style.setProperty('--field-interface-scale', formatScale(interfaceScale))
@@ -294,4 +299,10 @@ export function effectiveReducedMotion(): boolean {
 export function largerControlsEnabled(): boolean {
   if (typeof document === 'undefined') return false
   return document.documentElement.dataset.uiScale === 'large'
+}
+
+/** DOM flag written by `applyA11yDom`. Canvas painters read this; it does not change parameters. */
+export function highVisibilityEnabled(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.documentElement.dataset.highVisibility === 'on'
 }

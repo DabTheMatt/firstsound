@@ -23,6 +23,32 @@
   --field-glow-intensity: 1;
   --field-visual-transition-duration: 160ms;
   --field-decorative-opacity: 1;
+  /* High Visibility overrides these. Defaults match the current drawing. */
+  --field-control-border-width: 1px;
+  --field-control-active-outline: var(--accent-primary);
+  --field-control-selected-outline: var(--border-strong);
+  --field-playhead-width: 2px;
+  --field-selection-border-width: 1.5px;
+  --field-selection-edge: 0px;
+  --field-handle-visual-size: 10px;
+  --field-handle-focus-ring: 0px;
+  --field-meter-marker-width: 1px;
+  --field-eq-node-ring: 1.5px;
+  --field-auto-point-size: 7px;
+}
+
+html[data-high-visibility='on'] {
+  --field-control-border-width: 2px;
+  --field-control-active-outline: var(--text-primary);
+  --field-control-selected-outline: var(--text-primary);
+  --field-playhead-width: 3px;
+  --field-selection-border-width: 2px;
+  --field-selection-edge: 2px;
+  --field-handle-visual-size: 12px;
+  --field-handle-focus-ring: 2px;
+  --field-meter-marker-width: 2px;
+  --field-eq-node-ring: 2px;
+  --field-auto-point-size: 9px;
 }
 
 .sr-only {
@@ -90,8 +116,8 @@ html[data-visual-effects='reduce'] [data-decorative] {
   animation: none !important;
 }
 
-html[data-decorative-motion='reduce'] [data-guide-highlight],
-html[data-visual-effects='reduce'] [data-guide-highlight] {
+html[data-decorative-motion='reduce']:not([data-high-visibility='on']) [data-guide-highlight],
+html[data-visual-effects='reduce']:not([data-high-visibility='on']) [data-guide-highlight] {
   box-shadow: none;
   animation: none;
 }

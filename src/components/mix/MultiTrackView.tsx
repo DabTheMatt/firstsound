@@ -885,7 +885,7 @@ function LaneCanvas({
           data-region-mark=""
         />
       ) : null}
-      <div className={styles.playhead} />
+      <div className={styles.playhead} data-playhead="" />
       {track.loop
         ? tiles.map((tile, index) => {
             const left = projectDuration > 0 ? (tile.projectStart / projectDuration) * 100 : 0
@@ -928,7 +928,7 @@ function LaneCanvas({
           <div
             className={styles.loopRegion}
             style={{ left: `${loopLeft}%`, width: `${loopWidth}%` }}
-            data-loop-handle=""
+            data-loop-region=""
             onPointerDown={(event) => beginDrag(event, 'body')}
           />
           <button
@@ -937,6 +937,7 @@ function LaneCanvas({
             style={{ left: `${loopLeft}%` }}
             aria-label={t.mix.loopStart}
             data-loop-handle=""
+            data-loop-edge="start"
             onPointerDown={(event) => beginDrag(event, 'start')}
           />
           <button
@@ -945,6 +946,7 @@ function LaneCanvas({
             style={{ left: `${loopLeft + loopWidth}%` }}
             aria-label={t.mix.loopEnd}
             data-loop-handle=""
+            data-loop-edge="end"
             onPointerDown={(event) => beginDrag(event, 'end')}
           />
           <div className={styles.loopReadout}>

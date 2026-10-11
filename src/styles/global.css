@@ -2,6 +2,7 @@
 @import './themes-extended.css';
 @import './a11y.css';
 @import './low-vision.css';
+@import './high-visibility.css';
 
 :root {
   --field-interface-scale: 1;

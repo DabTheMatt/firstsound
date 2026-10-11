@@ -134,7 +134,9 @@ const en: ManualSection[] = [
   {
     id: 'loop',
     title: 'Loop',
-    body: ['Loop repeats the current selection. Turn it off to play through the rest of the sample.'],
+    body: [
+      'Loop repeats the current selection. Fade in and fade out are heard on every pass, including the restart, so the join is the quiet end of the fade meeting the quiet start. Turn it off to play through the rest of the sample. In Focus the loop icon is accent-coloured while it is on. A mouse click does not leave a focus box around it.',
+    ],
   },
   {
     id: 'input',
@@ -318,8 +320,9 @@ const en: ManualSection[] = [
       'Reduced Motion reduces decorative animation, panel entrances, parallax, and glow. The playhead, waveform, meters, EQ curve, FFT, selection, and automation stay visible, with less extra motion. Sensory scenes drop decorative pulse. Spectral history skips camera glide and still draws the measurement. If the device asks for reduced motion, FIELD follows that even when the switch is off. The switch does not override the device. The sound does not change. Sensory Comfort is a separate preference on the same screen. See Sensory Comfort.',
       'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
       'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
+      'High Visibility Controls is in Settings → Accessibility → Visual comfort. It is off until you turn it on. It makes important controls, selections, and editing handles easier to see. The sound does not change.',
       'Interface Size and Text Size are in the same visual section. They are separate from each other and from Larger Controls. See Interface & text scaling.',
-      'Choices are saved in this browser and survive reload. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project. Reset application, in the top bar, also returns these preferences, including Interface Size and Text Size, to their defaults.',
+      'Choices are saved in this browser and survive reload. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project. Reset application, in the top bar, also returns these preferences, including Interface Size, Text Size, High Visibility, and Sensory Comfort, to their defaults.',
       'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
       'Screen reader support is partial. Buttons, knobs, sliders, switches, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
       'Known limits: pointer dragging still edits the waveform, fades, EQ nodes, and automation points. The same edits are available from the keyboard through buttons, sliders, and the drag-free editors. Screen reader behavior was not manually verified for this release. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
@@ -338,6 +341,20 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'high-visibility',
+    title: 'High Visibility Controls',
+    body: [
+      'High Visibility Controls is in Settings → Accessibility → Visual comfort. It is off until you turn it on. The same switch works in Simple, Technical, and Sensory, and it stays on through Focus mode, Guided Tasks, and theme changes.',
+      'Turn it on when controls, selections, or editing handles are hard to see. FIELD draws clearer edges, shapes, and short labels. It does not rely on color by itself. A bypassed effect is dashed and labeled. A selected EQ band is a rounded square with its band number. An unselected band stays a circle. Keyboard focus keeps the focus ring you already have, including Enhanced Focus Visibility.',
+      'On the waveform, the playhead is a slightly thicker line with a small triangle at the top. The selection keeps square marks at its start and end, with a light fill between them. Trim edges use a bracket. Fade in and fade out keep their own marks. A loop, where the view has one, uses a diamond and a dashed edge so it does not look like the playhead.',
+      'EQ nodes show a small band number. The response curve stays readable, and the 0 dB line is marked. Automation points use a circle when they are idle and a diamond when one is selected. An inactive automation lane is dashed. In the effect chain, Active and Bypassed are written on the effect. Move earlier and Move later stay available when those buttons are already shown.',
+      'Meters keep their scale. The clip light becomes a square and the Clip label stays, and only when the meter has already detected clipping. Hearing Access keeps its symbols (attack, clip, silence, loud, tone, click) and makes the words easier to read. Sensory keeps its picture. Editable controls gain a quiet edge so you can find them.',
+      'Guided Tasks draws a dashed outline around the step it is showing. That outline is not the keyboard focus ring, and it does not flash. Reduced Motion stays in charge of animation. High Visibility does not add pulsing handles.',
+      'The choice is saved in this browser. It survives reload and mode changes. Restore accessibility defaults turns High Visibility off and leaves the audio project alone. Reset application returns High Visibility to off together with the other accessibility preferences, and it also clears the session.',
+      'It works with the themes you already have, including Studio Dark, Soft Slate, Warm Paper, and Dusk. Edges use the theme’s text color so they stay visible on dark and light backgrounds. It also works with Interface Size, Text Size, and Larger Controls. Handles grow a little on screen. Their click area does not stack on top of the neighbor.',
+    ],
+  },
+  {
     id: 'sensory-comfort',
     title: 'Sensory Comfort',
     body: [
@@ -346,7 +363,7 @@ const en: ManualSection[] = [
       'Visual Activity has two settings. Standard keeps the usual drawing rate. Low draws nonessential pictures less often. That includes the FFT picture, meters’ motion on screen, and decorative Sensory drawing. It does not change the analysis size, the hop, or how often the audio itself is processed. The playhead stays on the editor’s own clock.',
       'Reduce Decorative Motion stops ornamental animation: Sensory pulse and grain drift, the LFO activity dot’s pulse, waterfall camera glide, and large entrance fades. The playhead, selection, trim, fades, loop edges, EQ curve, automation points, and keyboard focus stay. Calm Meters keep the same peak reading and the same clip point. The word Clip stays visible and does not rely on a flashing light. Calm Spectrum calms the 2D FFT and the 3D waterfall. Frequency and level mapping stay. The existing waterfall pause still pauses the picture only. Playback continues.',
       'Reduce Visual Effects lowers glow, blur, pulsing shadows, and decorative particles. Focus rings and control contrast stay. Quiet Notifications hides informational notes, such as a successful tempo guess and a loop badge. It does not hide export errors, file errors, clipping, unsaved-work warnings, or failed actions. Screen reader announcements for those important events stay. Guided Tasks use a steady outline instead of a pulse, and Show me where scrolls only when the target is off screen. Focus Mode does not play an entrance animation while decorative motion is reduced, and it does not restart playback.',
-      'Sensory Comfort works with Interface Size, Text Size, Larger Controls, and the high-contrast preference. It does not shrink focus or selection. Choices are saved in this browser. Restore accessibility defaults resets them with the other FIELD ACCESS preferences. Reset application does the same. Clearing the audio session inside the engine does not keep a second copy of these preferences.',
+      'Sensory Comfort works with Interface Size, Text Size, Larger Controls, and High Visibility Controls. It does not shrink focus, selection, or the stronger control edges. Choices are saved in this browser. Restore accessibility defaults resets them with the other FIELD ACCESS preferences. Reset application does the same. Clearing the audio session inside the engine does not keep a second copy of these preferences.',
     ],
   },
   {
@@ -553,7 +570,9 @@ const pl: ManualSection[] = [
   {
     id: 'loop',
     title: 'Pętla',
-    body: ['Loop powtarza bieżące zaznaczenie. Wyłączenie puszcza resztę sampla.'],
+    body: [
+      'Loop powtarza bieżące zaznaczenie. Fade in i fade out słychać przy każdym przejściu, także na początku pętli, więc szew łączy cichy koniec zaniku z cichym początkiem. Wyłączenie puszcza resztę sampla. W Focus ikona pętli ma kolor akcentu, gdy jest włączona. Kliknięcie myszą nie zostawia wokół niej ramki fokusu.',
+    ],
   },
   {
     id: 'input',
@@ -737,8 +756,9 @@ const pl: ManualSection[] = [
       'Ogranicz ruch zmniejsza dekoracyjne animacje, wejścia paneli, parallaksę i poświatę. Głowica, fala, mierniki, krzywa EQ, FFT, zaznaczenie i automatyzacja zostają widoczne, z mniejszą ilością zbędnego ruchu. Sceny sensoryczne gaszą ozdobny puls. Historia widmowa pomija ślizg kamery i nadal rysuje pomiar. Gdy urządzenie prosi o ograniczenie ruchu, FIELD to respektuje nawet przy wyłączonym przełączniku. Przełącznik nie nadpisuje urządzenia. Dźwięk się nie zmienia. Komfort sensoryczny jest osobną preferencją na tym samym ekranie. Patrz Komfort sensoryczny.',
       'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
       'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
+      'Zwiększona widoczność kontrolek jest w Ustawienia → Dostępność → Komfort widzenia. Jest wyłączona, dopóki jej nie włączysz. Poprawia widoczność kontrolek, zaznaczeń i uchwytów edycyjnych. Dźwięk się nie zmienia.',
       'Rozmiar interfejsu i Rozmiar tekstu są w tej samej sekcji widzenia. Są osobne od siebie i od większych elementów sterujących. Patrz Rozmiar interfejsu i tekstu.',
-      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu. Reset aplikacji na górnym pasku też wraca z tymi preferencjami, w tym z Rozmiarem interfejsu i Rozmiarem tekstu, do wartości domyślnych.',
+      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu. Reset aplikacji na górnym pasku też wraca z tymi preferencjami, w tym z Rozmiarem interfejsu, Rozmiarem tekstu, zwiększoną widocznością i Komfortem sensorycznym, do wartości domyślnych.',
       'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
       'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, przełączniki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
       'Znane ograniczenia: przeciąganie nadal edytuje falę, zaniki, węzły EQ i punkty automatyzacji. Te same edycje są dostępne z klawiatury przez przyciski, suwaki i edytory bez przeciągania. Zachowanie czytnika ekranu nie było sprawdzane ręcznie w tym wydaniu. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
@@ -757,6 +777,20 @@ const pl: ManualSection[] = [
     ],
   },
   {
+    id: 'high-visibility',
+    title: 'Zwiększona widoczność kontrolek',
+    body: [
+      'Zwiększona widoczność kontrolek jest w Ustawienia → Dostępność → Komfort widzenia. Jest wyłączona, dopóki jej nie włączysz. Ten sam przełącznik działa w trybie Prostym, Technicznym i Sensorycznym oraz zostaje przy Focus, zadaniach z przewodnikiem i zmianie motywu.',
+      'Włącz ją, gdy kontrolki, zaznaczenia albo uchwyty edycji są słabo widoczne. FIELD rysuje wyraźniejsze krawędzie, kształty i krótkie napisy. Sam kolor nie wystarcza. Efekt ominięty jest kreskowany i podpisany. Wybrane pasmo EQ jest zaokrąglonym kwadratem z numerem pasma. Niewybrane pasmo zostaje kółkiem. Fokus klawiatury zostaje przy dotychczasowym pierścieniu, także przy wyraźniejszym fokusie.',
+      'Na fali głowica jest nieco grubszą kreską z małym trójkątem u góry. Zaznaczenie ma kwadratowe znaki na początku i na końcu oraz lekkie wypełnienie między nimi. Krawędzie przycięcia używają nawiasu. Płynny początek i płynny koniec zachowują własne znaki. Pętla, tam gdzie widok ją ma, używa rombu i kreskowanej krawędzi, żeby nie wyglądała jak głowica.',
+      'Węzły EQ pokazują mały numer pasma. Krzywa odpowiedzi zostaje czytelna, a linia 0 dB jest oznaczona. Punkty automatyzacji są kółkiem, gdy są wolne, i rombem, gdy jeden jest wybrany. Nieaktywny pas automatyzacji jest kreskowany. W łańcuchu efektów na efekcie widać napis Aktywny albo Wyłączony. Przyciski przesuwania zostają tam, gdzie już są pokazywane.',
+      'Mierniki zachowują skalę. Lampka przesterowania staje się kwadratem, a napis Clip zostaje, i tylko wtedy, gdy miernik już wykrył przesterowanie. Dostęp słuchowy zachowuje symbole (atak, przester, cisza, głośno, ton, klik) i ułatwia czytanie słów. Tryb sensoryczny zachowuje swój obraz. Edytowalne kontrolki dostają cichą krawędź, żeby dało się je znaleźć.',
+      'Zadania z przewodnikiem rysują kreskowany obrys wokół kroku, który pokazują. Ten obrys nie jest pierścieniem fokusu klawiatury i nie miga. Ograniczenie ruchu nadal decyduje o animacji. Zwiększona widoczność nie dodaje pulsujących uchwytów.',
+      'Wybór zapisuje się w tej przeglądarce. Przeżywa odświeżenie i zmianę trybu. Przywróć domyślne ustawienia dostępności wyłącza zwiększoną widoczność i zostawia projekt audio. Reset aplikacji wyłącza zwiększoną widoczność razem z pozostałymi preferencjami dostępności i dodatkowo czyści sesję.',
+      'Działa z motywami, które już masz, w tym Studio Dark, Soft Slate, Warm Paper i Dusk. Krawędzie biorą kolor tekstu motywu, więc zostają widoczne na ciemnym i jasnym tle. Działa też z Rozmiarem interfejsu, Rozmiarem tekstu i większymi elementami sterującymi. Uchwyty rosną trochę na ekranie. Ich obszar kliknięcia nie nakłada się na sąsiada.',
+    ],
+  },
+  {
     id: 'sensory-comfort',
     title: 'Komfort sensoryczny',
     body: [
@@ -765,7 +799,7 @@ const pl: ManualSection[] = [
       'Aktywność wizualna ma dwa ustawienia. Standardowa zostawia zwykłe tempo rysowania. Niska rysuje zbędne obrazy rzadziej. Dotyczy to obrazu FFT, ruchu mierników na ekranie i ozdobnego rysunku Sensory. Nie zmienia rozmiaru analizy, skoku ani tego, jak często przetwarzany jest sam dźwięk. Głowica zostaje na zegarze edytora.',
       'Ogranicz ruch dekoracyjny zatrzymuje ozdobną animację: puls i szum Sensory, puls kropki aktywności LFO, ślizg kamery wodospadu i duże wejścia paneli. Zostają głowica, zaznaczenie, przycięcie, zaniki, krawędzie pętli, krzywa EQ, punkty automatyzacji i fokus klawiatury. Spokojne mierniki zostawiają ten sam odczyt szczytu i ten sam próg przesterowania. Słowo Clip zostaje widoczne i nie polega na migającym świetle. Spokojne widmo uspokaja FFT 2D i wodospad 3D. Mapowanie częstotliwości i poziomu zostaje. Istniejąca pauza wodospadu pauzuje tylko obraz. Odtwarzanie trwa.',
       'Ogranicz efekty wizualne zmniejsza poświatę, rozmycie, pulsujące cienie i ozdobne cząstki. Pierścienie fokusu i kontrast kontrolek zostają. Ciche powiadomienia chowają komunikaty informacyjne, takie jak udane wykrycie tempa i plakietkę pętli. Nie chowają błędów eksportu, błędów pliku, przesterowania, ostrzeżeń o niezapisanej pracy ani nieudanych działań. Komunikaty czytnika ekranu o tych ważnych zdarzeniach zostają. Zadania z przewodnikiem używają stałego obrysu zamiast pulsu, a Pokaż gdzie przewija tylko wtedy, gdy cel jest poza ekranem. Tryb Focus nie odtwarza animacji wejścia, gdy ruch dekoracyjny jest ograniczony, i nie restartuje odtwarzania.',
-      'Komfort sensoryczny działa z Rozmiarem interfejsu, Rozmiarem tekstu, większymi elementami sterującymi i preferencją wysokiego kontrastu. Nie zmniejsza fokusu ani zaznaczenia. Wybory zapisują się w tej przeglądarce. Przywróć domyślne ustawienia dostępności resetuje je razem z pozostałymi preferencjami FIELD ACCESS. Reset aplikacji robi to samo. Czyszczenie sesji audio w silniku nie trzyma drugiej kopii tych preferencji.',
+      'Komfort sensoryczny działa z Rozmiarem interfejsu, Rozmiarem tekstu, większymi elementami sterującymi i zwiększoną widocznością kontrolek. Nie zmniejsza fokusu, zaznaczenia ani mocniejszych krawędzi kontrolek. Wybory zapisują się w tej przeglądarce. Przywróć domyślne ustawienia dostępności resetuje je razem z pozostałymi preferencjami FIELD ACCESS. Reset aplikacji robi to samo. Czyszczenie sesji audio w silniku nie trzyma drugiej kopii tych preferencji.',
     ],
   },
   {

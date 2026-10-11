@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.26.0
+Tested application version: 0.28.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -12,7 +12,7 @@ This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim
 
 | Kind | Result |
 | --- | --- |
-| Automated tests | PASS — `npm run test:a11y`, 32 Playwright tests, axe-core 4.13 |
+| Automated tests | PASS — `npm run test:a11y`, 60 Playwright tests, axe-core 4.13 |
 | Manual assistive technology | NOT TESTED — no NVDA, VoiceOver, JAWS, or TalkBack session |
 | Known limitations | Documented below. They are not hidden by disabled axe rules. |
 
@@ -138,9 +138,9 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 | 20A Keyboard-First | Full keyboard maps for the waveform, EQ graph, and automation |
 | 20B Screen Reader Support | AT testing and announcement tuning |
 | 20C Accessible Waveform | Shipped in 0.26.0. Canvas handles remain pointer targets (R1). Detection is approximate. |
-| 22A Interface Scaling | Reflow at 320px and 200% zoom without a scrolling header |
-| 22B High Visibility | Broader than the current low-vision preference and the contrast token pass |
-| 22C Sensory Comfort | Shipped in 0.28.0. See the 22C section. Decorative canvas motion in Sensory is reduced, not removed from the mode. |
+| 22A Interface Scaling | Shipped as Interface Size and Text Size. The narrow header can still scroll at 320px (R4). 200% browser zoom was not rechecked here. |
+| 22B High Visibility | Shipped in 0.28.0 as an opt-in visual layer. See the 22B section. It is not a WCAG conformance claim. |
+| 22C Sensory Comfort | Shipped in 0.29.0. See the 22C section. Decorative canvas motion in Sensory is reduced, not removed from the mode. |
 
 ## FIELD ACCESS preferences
 
@@ -149,6 +149,7 @@ Checked independently and together, including after reload:
 - Reduced Motion → `data-reduce-motion`
 - Enhanced Focus Visibility → `data-focus="enhanced"` (ring at least 2px on Studio Dark, Soft Slate, Warm Paper, Dusk)
 - Larger Controls → `data-ui-scale="large"`
+- High Visibility Controls → `data-high-visibility` (off until turned on)
 - Accessible Waveform Navigation → `data-wave-nav` (off until turned on; keyboard and screen reader access to the waveform stay available either way)
 
 Playback kept the Pause control while the three switches were turned on. The OS reduced-motion emulation and the FIELD switch were both checked. Sensory canvas stayed on screen.
@@ -184,7 +185,44 @@ Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS s
 
 No DSP, routing, effect, modulation, automation, offline render, or export signal-processing code was changed. EQ arrow keys call the existing parameter API. Reduced motion only skips decorative animation.
 
-## FIELD ACCESS 22C — Sensory Comfort (0.28.0)
+## FIELD ACCESS 22B — high visibility controls (0.28.0)
+
+High Visibility Controls is Settings → Accessibility → Visual comfort. The stored flag is `highVisibility` on the existing FIELD ACCESS record. Default is off. `data-high-visibility` is `on` or `off`. Restore accessibility defaults sets it back to off. Reset application returns the whole FIELD ACCESS record to its defaults, including High Visibility, Interface Size, and Text Size, and it also clears the session. Reload and mode changes keep the flag.
+
+What got clearer, using shape, weight, or a label as well as color:
+
+- Switches, pressed toggles, the transport circle, knobs (edge, needle, dashed modulation arc), and slider tracks with a thumb at the value
+- Drag-free inputs, step buttons, disabled buttons, and error text
+- Playhead: thicker line, theme text color, top triangle. The time stays the center of the line (`translateX(-50%)`). The line does not receive pointer events
+- Selection: square caps and an inset edge. Trim uses a bracket. Fade in and fade out keep separate dash patterns. Loop edges, where a track loop exists, use a diamond and a dashed line
+- EQ nodes: band number, circle when idle, rounded square when selected, dashed when bypassed. The response keeps its theme color with a light text-colored halo on the selected curve. The 0 dB line is dashed and labeled. Frequency and gain mapping is unchanged
+- Automation: circle versus diamond, dashed inactive lane. Interpolation is unchanged
+- Effect chain: Active / Bypassed text, dashed bypass, solid selected bar. Move buttons keep their existing behavior
+- Meters: scale marks, channel letters, square clip light plus the existing Clip label. The clip latch is still the meter’s own detection
+- FFT: slightly stronger axis and 0 dB lines. Spectral drawing is otherwise the same
+- Hearing Access: existing symbols, plus a square behind a clip mark and stronger tag text
+- Sensory: a quiet inset edge on editable controls. The scene is not turned into a technical graph
+- Guided Tasks: a static dashed outline, separate from the keyboard focus ring. No flash. Reduced Motion still strips animation
+- Focus Mode, Simple, Technical, and Sensory share the same flag
+
+Contrast check that was run: theme text color against the app canvas for Studio Dark (`#e8e6df` / `#151616`), Soft Slate (`#e6edf3` / `#0d1117`), Warm Paper (`#2a261f` / `#f4efe6`), and Dusk (`#ebe6e1` / `#241e28`). Each pair is above 4.5:1, which also clears the 3:1 non-text floor for edges painted in the text color. This is not a full WCAG 2.2 AA audit. Canvas antialiasing, mixed fills, and custom themes still need a person to look at them.
+
+Manual review still required:
+
+- Screen readers were not run (VoiceOver, TalkBack, NVDA, JAWS). Semantics were checked in the DOM: new marks are either `aria-hidden` or they repeat a state the control already exposes
+- Interface Size and Text Size from 22A are in this build. High Visibility was checked with them at 100%/100%, 125%/150%, and 150%/200%, and with Larger Controls (`data-ui-scale="large"`) at 320, 375, 390, and 430 CSS pixels. Page overflow stayed within 1px. Settings can still sit in the scrolling header at 320px (R4). At 320px with Interface Size 150% and Text Size 200%, the empty Technical phone layout already stacks the load prompt, inspector actions, and transport. The same intersections are present with High Visibility off, so the preference does not add that overlap
+- A person should still look at Warm Paper and Dusk with a bypassed EQ band, a selected automation point, and a clipping meter, because automated contrast does not see every canvas pixel
+
+Known visual limits:
+
+- Some icon-only buttons stay icon-only. They keep an accessible name, a stronger boundary, and a distinct glyph. A text label was not added where it would break the circular transport
+- Fade handles on the canvas are still pointer targets. The keyboard path remains the drag-free editors
+- Close EQ nodes can sit near each other. Visual rings stay about 1.5px so the hit target is not grown again on top of Larger Controls
+- Guided highlight and keyboard focus can appear at the same time. The tutorial mark is dashed. The focus ring stays the focus ring
+
+DSP modifications: none.
+
+## FIELD ACCESS 22C — Sensory Comfort (0.29.0)
 
 Sensory Comfort is a FIELD ACCESS preference. Default is off. It is not a fourth mode. Stored choices apply only while the master is on. Reduced Motion and `prefers-reduced-motion` stay independent: either one still removes decorative animation when Sensory Comfort is off.
 
@@ -206,16 +244,19 @@ What changed on screen:
 - FFT 2D and the 3D waterfall can draw less often and with less glow. Waterfall camera glide stops while Calm Spectrum is on. FFT size, hop, and the existing visual pause are unchanged. The pause still affects the picture only.
 - Sensory pulse, grain drift, lens wobble, and the LFO activity dot calm down. String positions and parameter axes stay.
 - Quiet Notifications hide informational tempo notes and the hearing loop badge. Warnings, clipping, recording announcements, and the screen-reader live region stay.
-- Guided Tasks use a stable outline. Show me where scrolls only when the target is outside the viewport, without a smooth-scroll animation while decorative motion is reduced.
+- Guided Tasks use a stable outline. Show me where scrolls only when the target is outside the viewport, without a smooth-scroll animation while decorative motion is reduced. High Visibility’s dashed outline stays when that preference is also on.
 - Focus Mode skips its entrance animation while decorative motion is reduced.
 
 Remaining motion and visual limits:
 
 - Some Sensory depth drawing still moves while playback runs when Reduce Decorative Motion is off. Low Visual Activity slows that drawing. It does not freeze the picture.
 - Meter and spectrum display followers can update less often. The underlying analyser and DSP block size are not retuned. A very short peak can still fall between two visual samples, as it could before.
-- Clipping is a stable label and lamp, not a flash. Color is not the only cue while Calm Meters is on, because the word Clip is primary text.
+- Clipping is a stable label and lamp, not a flash. Color is not the only cue while Calm Meters is on, because the word Clip is primary text. High Visibility still draws the square clip mark.
 - No battery measurement was taken. Lower paint rates are not a battery claim.
-- Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 22C.
+- Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 22C. A person did not watch the screen for flashing over time. Playwright screenshots of the settings, Sensory view, and FFT were reviewed.
+- Physical iPhone, iPad, and Android devices were not used. Viewport checks at 320, 375, 390, and 430 CSS pixels ran in Playwright.
 - This section is not a WCAG 2.2 AA conformance claim.
 
-High Visibility in this tree is still the low-vision preference and Enhanced Focus Visibility. Sensory Comfort does not replace those tokens or the focus ring.
+Sensory Comfort works with the High Visibility layer from 22B. It does not replace those tokens, the focus ring, or the stronger control edges.
+
+DSP modifications: none.

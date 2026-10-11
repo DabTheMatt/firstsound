@@ -135,6 +135,7 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
             key={feeling.id}
             type="button"
             role="slider"
+            data-sensory-edit=""
             data-axis={feeling.id}
             className={`${styles.item} ${on ? styles.on : ''} ${focused && !on ? styles.dim : ''} ${Math.abs(amount) > 0.04 ? styles.lit : ''} ${lfoOn ? styles.lfoOn : ''}`}
             aria-label={copy.aria}

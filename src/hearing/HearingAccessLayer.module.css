@@ -556,6 +556,13 @@
 .chips li[data-tag='noise-like'],
 .chips li[data-tag='inharmonic'] { border-color: var(--warning); color: var(--warning); }
 
+:global(html[data-high-visibility='on']) .chips li {
+  color: var(--text-primary);
+  border-style: solid;
+  border-width: 2px;
+  font-weight: 650;
+}
+
 .chips button {
   display: inline-flex;
   align-items: center;

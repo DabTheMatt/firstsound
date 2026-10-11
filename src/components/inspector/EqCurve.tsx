@@ -26,6 +26,7 @@ import { measureSpectrumDb, SPECTRUM_ANALYSIS_FFT, type SpectrumFftScratch } fro
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
 import { eqNodeValueText, nudgeFocusEq } from '../mobile/eqFocusGesture'
 import { engine } from '../../hooks/useEngine'
+import { highVisibilityEnabled } from '../../a11y/settings'
 import { colorWithAlpha, eqTone, readThemeColors, subscribeThemeChange } from '../../theme'
 import styles from './EqCurve.module.css'
 
@@ -154,12 +155,22 @@ export function EqCurve({
         }
       }
       const zeroY = dbToY(0, height)
-      ctx.strokeStyle = colors.borderSubtle
-      ctx.lineWidth = 1
+      const hv = highVisibilityEnabled()
+      ctx.strokeStyle = hv ? colors.textPrimary : colors.borderSubtle
+      ctx.lineWidth = hv ? 1.75 : 1
+      ctx.setLineDash(hv ? [5, 4] : [])
       ctx.beginPath()
       ctx.moveTo(0, zeroY)
       ctx.lineTo(width, zeroY)
       ctx.stroke()
+      ctx.setLineDash([])
+      if (hv) {
+        ctx.fillStyle = colors.textPrimary
+        ctx.font = `${10 * dpr}px sans-serif`
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'bottom'
+        ctx.fillText('0 dB', 4, Math.max(12, zeroY - 2))
+      }
       const live = engine.getSnapshot()
       const plotMax = spectrumMaxHz(live.sampleRate || sr)
       const shaped = modulate ? liveEqBandsFromParams(bands, live.liveParams) : bands
@@ -186,8 +197,13 @@ export function EqCurve({
         curveRange.maxDb,
         'log',
       )
+      if (hv) {
+        ctx.strokeStyle = colorWithAlpha(colors.textPrimary, 0.9)
+        ctx.lineWidth = Math.max(3.25, storedStyle.width + 1.5)
+        strokeMagnitudeVertices(ctx, eqVerts)
+      }
       ctx.strokeStyle = colorWithAlpha(tone.curve, storedStyle.alpha)
-      ctx.lineWidth = Math.max(1.5, storedStyle.width)
+      ctx.lineWidth = Math.max(hv ? 2 : 1.5, storedStyle.width)
       strokeMagnitudeVertices(ctx, eqVerts)
       ctx.restore()
       ctx.fillStyle = colors.textMuted
@@ -292,6 +308,9 @@ export function EqCurve({
           <button
             type="button"
             data-eq-node=""
+            data-band={index + 1}
+            data-selected={selected ? 'true' : 'false'}
+            data-bypassed={band.bypassed ? 'true' : 'false'}
             data-q-live={motion.qLive ? 'true' : 'false'}
             className={`${styles.node} ${touch ? styles.nodeTouch : ''} ${selected ? styles.nodeOn : ''} ${band.bypassed ? styles.nodeOff : ''}`}
             style={{

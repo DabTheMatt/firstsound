@@ -143,7 +143,9 @@ export function HearingAccessLayer({
   const [floatAt, setFloatAt] = useState<{ left: number; top: number } | null>(null)
   const [resizeAt, setResizeAt] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
   const memory = useRef(emptyDescriptorMemory())
-  const edge = useRef({ recording: snap.recording, loop: snap.loop, blocked: snap.audioStatus === 'blocked', error: snap.recordError })
+  const selectedLoop = snap.tracks.find((item) => item.id === snap.selectedTrackId)?.loop ?? false
+  const heardLoop = snap.loop || selectedLoop
+  const edge = useRef({ recording: snap.recording, loop: heardLoop, blocked: snap.audioStatus === 'blocked', error: snap.recordError })
   const hapticsOk = vibrationSupported()
   const [pulseNote, setPulseNote] = useState<string | null>(null)
 
@@ -266,11 +268,12 @@ export function HearingAccessLayer({
   }, [settings.enabled, settings.panelOpen, patch])
 
   useEffect(() => {
-    if (!settings.enabled) return
     const recording = snap.recording
-    const loop = snap.loop
+    const loop = heardLoop
     const blocked = snap.audioStatus === 'blocked'
     const previous = edge.current
+    edge.current = { recording, loop, blocked, error: snap.recordError }
+    if (!settings.enabled) return
     if (recording !== previous.recording) {
       pushHearingAlert({
         id: 'record',
@@ -294,8 +297,7 @@ export function HearingAccessLayer({
     if (snap.recordError && snap.recordError !== previous.error) {
       pushHearingAlert({ id: 'error', title: 'WARNING', detail: snap.recordError, tone: 'warn' })
     }
-    edge.current = { recording, loop, blocked, error: snap.recordError }
-  }, [settings.enabled, snap.recording, snap.loop, snap.audioStatus, snap.recordError])
+  }, [settings.enabled, snap.recording, heardLoop, snap.audioStatus, snap.recordError])
 
   useEffect(() => {
     if (!settings.enabled || !hearing.analysis?.clipped) return

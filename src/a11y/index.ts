@@ -23,6 +23,7 @@ import {
   effectiveReducedMotion,
   largerControlsEnabled,
   appliedSensoryPresentation,
+  highVisibilityEnabled,
   type A11ySettings as A11ySettingsState,
 } from './settings'
 
@@ -56,6 +57,7 @@ export {
   effectiveReducedMotion,
   largerControlsEnabled,
   appliedSensoryPresentation,
+  highVisibilityEnabled,
 }
 
 export type { A11ySettingsState }

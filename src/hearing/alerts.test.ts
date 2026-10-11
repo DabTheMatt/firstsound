@@ -19,6 +19,15 @@ describe('hearing alerts', () => {
     expect(getHearingAlerts()).toEqual([])
   })
 
+  it('publishes a new list when the same badge changes title', () => {
+    pushHearingAlert({ id: 'loop', title: 'LOOP OFF', detail: 'Transport loop state.', tone: 'info' })
+    const first = getHearingAlerts()
+    pushHearingAlert({ id: 'loop', title: 'LOOP ON', detail: 'Transport loop state.', tone: 'info' })
+    const second = getHearingAlerts()
+    expect(second).not.toBe(first)
+    expect(second.map((alert) => alert.title)).toEqual(['LOOP ON'])
+  })
+
   it('keeps a warning until it is dismissed', () => {
     vi.useFakeTimers()
     pushHearingAlert({ id: 'audio', title: 'AUDIO BLOCKED', detail: 'The browser has not started audio.', tone: 'warn' })

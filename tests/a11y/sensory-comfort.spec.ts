@@ -12,6 +12,7 @@ const CALM = {
   reduceMotion: false,
   enhancedFocus: true,
   lowVision: true,
+  highVisibility: true,
   interfaceScale: 1.5,
   textScale: 2,
 }
@@ -77,13 +78,16 @@ test.describe('sensory comfort', () => {
     await expect(page.getByRole('button', { name: 'Pause', exact: true }).first()).toBeVisible()
   })
 
-  test('keeps focus, low vision, and large type with sensory comfort', async ({ page }) => {
+  test('keeps focus, high visibility, and large type with sensory comfort', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await boot(page, { theme: 'warm-paper', a11y: CALM })
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'warm-paper')
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-low-vision', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-focus', 'enhanced')
+    const playhead = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--field-playhead-width').trim())
+    expect(playhead).toBe('3px')
     await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
     await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '150')
     const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim())

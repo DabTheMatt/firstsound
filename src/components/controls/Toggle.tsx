@@ -26,7 +26,7 @@ export function Toggle({ pressed, label, reserveLabel, onToggle, compact, title 
         onToggle()
       }}
     >
-      {settings.lowVision ? (
+      {settings.lowVision || settings.highVisibility ? (
         <span className={styles.mark} aria-hidden="true">
           {pressed ? '●' : '○'}
         </span>

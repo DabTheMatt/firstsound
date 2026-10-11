@@ -11,6 +11,7 @@ import {
   appliedSensoryPresentation,
   clampScale,
   DEFAULT_A11Y_SETTINGS,
+  highVisibilityEnabled,
   effectiveMotionReduced,
   motionReduced,
   parseA11ySettings,
@@ -152,6 +153,8 @@ describe('a11y settings and i18n', () => {
     expect(parseA11ySettings({ sensoryComfort: true, visualActivity: 'nope', calmMeters: false }).calmMeters).toBe(false)
     expect(parseA11ySettings({ sensoryComfort: 'yes' }).sensoryComfort).toBe(false)
     expect(parseA11ySettings({ accessibleWaveform: true }).accessibleWaveform).toBe(true)
+    expect(parseA11ySettings(null).highVisibility).toBe(false)
+    expect(parseA11ySettings({ highVisibility: true }).highVisibility).toBe(true)
     expect(parseA11ySettings(null).lowVision).toBe(false)
   })
 
@@ -186,6 +189,10 @@ describe('a11y settings and i18n', () => {
     expect(EN.a11y.waveformNavHelp).toBe('Navigate recordings using time, keyboard controls and audio landmarks.')
     expect(PL.a11y.waveformNav).toBe('Dostępna nawigacja po nagraniu')
     expect(PL.a11y.waveformNavHelp).toBe('Poruszaj się po nagraniu za pomocą czasu, klawiatury i punktów charakterystycznych.')
+    expect(EN.a11y.highVisibility).toBe('High Visibility Controls')
+    expect(EN.a11y.highVisibilityHelp).toBe('Make important controls, selections and editing handles easier to see.')
+    expect(PL.a11y.highVisibility).toBe('Zwiększona widoczność kontrolek')
+    expect(PL.a11y.highVisibilityHelp).toBe('Popraw widoczność kontrolek, zaznaczeń i uchwytów edycyjnych.')
     expect(EN.a11y.sensoryComfort).toBe('Sensory Comfort')
     expect(EN.a11y.sensoryComfortHelp).toBe('Reduce unnecessary motion, visual intensity and distractions.')
     expect(PL.a11y.sensoryComfort).toBe('Komfort sensoryczny')
@@ -213,6 +220,7 @@ describe('a11y settings and i18n', () => {
     expect(parsed.reduceMotion).toBe(false)
     expect(parsed.enhancedFocus).toBe(true)
     expect(parsed.largerInterface).toBe(false)
+    expect(parsed.highVisibility).toBe(false)
     expect(parsed.shortcutsEnabled).toBe(true)
     expect(parsed.interfaceScale).toBe(1)
     expect(parsed.textScale).toBe(1)
@@ -269,6 +277,22 @@ describe('a11y settings and i18n', () => {
     store.delete(A11Y_STORAGE_KEY_V1)
     store.set(A11Y_STORAGE_KEY, JSON.stringify({ largerInterface: true, nope: 4 }))
     expect(readStoredA11ySettings().largerInterface).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('writes the high-visibility flag without turning it on by default', () => {
+    const root = {
+      dataset: {} as Record<string, string>,
+      style: { setProperty: () => undefined, removeProperty: () => undefined },
+    }
+    vi.stubGlobal('document', { documentElement: root })
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, highVisibility: true })
+    expect(root.dataset.highVisibility).toBe('on')
+    expect(highVisibilityEnabled()).toBe(true)
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS })
+    expect(root.dataset.highVisibility).toBe('off')
+    expect(highVisibilityEnabled()).toBe(false)
+    expect(DEFAULT_A11Y_SETTINGS.highVisibility).toBe(false)
     vi.unstubAllGlobals()
   })
 })

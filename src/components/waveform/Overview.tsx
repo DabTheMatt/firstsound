@@ -190,6 +190,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
         <>
           <div
             className={styles.selection}
+            data-overview-selection=""
             style={{ left: `${selLeft}%`, width: `${selWidth}%` }}
           />
           <div
@@ -211,7 +212,7 @@ export function Overview({ duration, start, end, view, onScrub, contentRev = 0, 
               onPointerDown={(e) => onResizeEdge('end', e)}
             />
           </div>
-          <div ref={playheadRef} className={styles.playhead} />
+          <div ref={playheadRef} className={styles.playhead} data-playhead="" />
           {silence ? (
             <div
               className={styles.silence}

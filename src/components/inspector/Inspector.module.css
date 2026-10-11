@@ -111,6 +111,23 @@
   min-width: 0;
 }
 
+:global(html[data-high-visibility='on']) .title,
+:global(html[data-high-visibility='on']) .readout strong,
+:global(html[data-high-visibility='on']) .fieldHead {
+  color: var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .head {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .field,
+:global(html[data-high-visibility='on']) .select {
+  border-width: var(--field-control-border-width);
+  border-color: var(--text-secondary);
+}
+
 .title {
   margin: 0;
   min-width: 0;

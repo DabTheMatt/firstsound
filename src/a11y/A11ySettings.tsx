@@ -235,6 +235,14 @@ export function A11ySettings({ onBack }: Props) {
           onChange={(textScale) => setSettings({ textScale })}
         />
         <PreferenceSwitch
+          checked={settings.highVisibility}
+          label={a.highVisibility}
+          description={a.highVisibilityHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(highVisibility) => setSettings({ highVisibility })}
+        />
+        <PreferenceSwitch
           checked={settings.reduceMotion}
           label={a.reduceMotion}
           description={a.reducedMotionHelp}

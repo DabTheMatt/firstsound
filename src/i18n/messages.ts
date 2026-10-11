@@ -749,6 +749,8 @@ export type Messages = {
     largerHelp: string
     focus: string
     focusHelp: string
+    highVisibility: string
+    highVisibilityHelp: string
     on: string
     off: string
     saved: string
@@ -1793,6 +1795,8 @@ export const EN: Messages = {
     largerHelp: 'Make interactive controls easier to use.',
     focus: 'Enhanced Focus Visibility',
     focusHelp: 'Make keyboard focus easier to see.',
+    highVisibility: 'High Visibility Controls',
+    highVisibilityHelp: 'Make important controls, selections and editing handles easier to see.',
     on: 'On',
     off: 'Off',
     saved: 'Your preferences are saved automatically.',
@@ -2865,6 +2869,8 @@ export const PL: Messages = {
     largerHelp: 'Ułatwia korzystanie z elementów sterujących.',
     focus: 'Wyraźniejszy fokus klawiatury',
     focusHelp: 'Ułatwia zobaczenie fokusu klawiatury.',
+    highVisibility: 'Zwiększona widoczność kontrolek',
+    highVisibilityHelp: 'Popraw widoczność kontrolek, zaznaczeń i uchwytów edycyjnych.',
     on: 'Wł.',
     off: 'Wył.',
     saved: 'Ustawienia zapisują się automatycznie.',

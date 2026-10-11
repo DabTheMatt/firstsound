@@ -63,7 +63,8 @@ html[data-low-vision='on'] .loop {
   font-weight: 600;
 }
 
-html[data-low-vision='on'] .mark {
+html[data-low-vision='on'] .mark,
+:global(html[data-high-visibility='on']) .mark {
   display: inline;
   font-size: 0.7em;
   line-height: 1;

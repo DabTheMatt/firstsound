@@ -92,6 +92,7 @@ export function SensoryDial({ spec, axisValue, onChange, onCommit }: Props) {
       <div
         className={`${styles.dial} ${held ? styles.held : ''}`}
         role="slider"
+        data-sensory-edit=""
         tabIndex={0}
         aria-label={spec.ariaLabel ?? `${from} to ${to}`}
         aria-valuemin={bipolar ? -100 : 0}

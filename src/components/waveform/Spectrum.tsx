@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { appliedSensoryPresentation, effectiveReducedMotion } from '../../a11y/settings'
+import { appliedSensoryPresentation, effectiveReducedMotion, highVisibilityEnabled } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { EnterFocusButton } from '../focus/EnterFocusButton'
 import { FftPrimaryBar } from '../workspace/FftPrimaryBar'
@@ -673,13 +673,17 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           for (const db of dbMarks) {
             const y = dbToY(db, top, bottom, dbFloor)
             const fade = fadeAboveZero(y)
-            ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, (db === 0 || db === -6 || db === -12 ? 1 : 0.75) * fade)
-            ctx.lineWidth = dpr * (db === 0 || db === -6 || db === -12 ? 0.7 : 0.45)
+            const hv = highVisibilityEnabled()
+            const strongDb = db === 0 || db === -6 || db === -12
+            ctx.strokeStyle = colorWithAlpha(db === 0 && hv ? colors.textPrimary : colors.borderSubtle, (strongDb ? 1 : 0.75) * fade)
+            ctx.lineWidth = dpr * (strongDb ? (hv ? 1.35 : 0.7) : 0.45)
+            ctx.setLineDash(db === 0 && hv ? [4 * dpr, 3 * dpr] : [])
             ctx.beginPath()
             ctx.moveTo(left, y)
             ctx.lineTo(right, y)
             ctx.stroke()
-            ctx.fillStyle = colorWithAlpha(colors.textMuted, (tight ? 0.55 : 1) * fade)
+            ctx.setLineDash([])
+            ctx.fillStyle = colorWithAlpha(hv && db === 0 ? colors.textPrimary : colors.textMuted, (tight ? 0.55 : 1) * fade)
             ctx.fillText(`${db}`, tight ? left + 4 * dpr : phoneScale ? 2 * dpr : left - 5 * dpr, y)
           }
         }
@@ -692,13 +696,16 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           const fade = fadeAboveZero(y)
           if (fade < 0.08) continue
           const strong = db === 0
-          ctx.strokeStyle = colorWithAlpha(colors.borderSubtle, (strong ? 1 : 0.75) * fade)
-          ctx.lineWidth = dpr * (strong ? 0.7 : 0.45)
+          const hvGain = highVisibilityEnabled()
+          ctx.strokeStyle = colorWithAlpha(strong && hvGain ? colors.textPrimary : colors.borderSubtle, (strong ? 1 : 0.75) * fade)
+          ctx.lineWidth = dpr * (strong ? (hvGain ? 1.35 : 0.7) : 0.45)
+          ctx.setLineDash(strong && hvGain ? [4 * dpr, 3 * dpr] : [])
           ctx.beginPath()
           ctx.moveTo(responsePlot.left, y)
           ctx.lineTo(responsePlot.right, y)
           ctx.stroke()
-          ctx.fillStyle = colorWithAlpha(colors.textMuted, (tight ? 0.55 : 0.85) * fade)
+          ctx.setLineDash([])
+          ctx.fillStyle = colorWithAlpha(strong && hvGain ? colors.textPrimary : colors.textMuted, (tight ? 0.55 : 0.85) * fade)
           ctx.fillText(formatEqGainGridLabel(db), responsePlot.left + 4 * dpr, y)
         }
         if (!tight && !phoneScale) {
@@ -714,7 +721,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const density = gridDensityRef.current
         const hzSource = frequencyGuideHz(minHz, maxHz, density, scale)
         const hzTicks = hzSource.map((hz) => {
-          ctx.font = `${9 * dpr}px ui-sans-serif, system-ui, sans-serif`
+          ctx.font = `${(highVisibilityEnabled() ? 10 : 9) * dpr}px ui-sans-serif, system-ui, sans-serif`
           const label = formatFreqTick(hz)
           return {
             hz,
@@ -737,7 +744,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           } else {
             ctx.strokeStyle = ink
           }
-          ctx.lineWidth = dpr * 1.05
+          ctx.lineWidth = dpr * (highVisibilityEnabled() ? 1.35 : 1.05)
           ctx.beginPath()
           ctx.moveTo(tick.x, top)
           ctx.lineTo(tick.x, bottom)
@@ -1038,9 +1045,20 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             scale,
           )
           const responseInk = phoneEqRef.current ? colors.textPrimary : tone.curve
-          ctx.setLineDash(mod.bypassed ? [5 * dpr, 4 * dpr] : [])
-          ctx.strokeStyle = colorWithAlpha(responseInk, storedStyle.alpha * (focused ? 1 : 0.28))
-          ctx.lineWidth = storedStyle.width * (phoneEqRef.current ? 1.45 : 1) * (focused ? 1 : 0.85)
+          const hvCurve = highVisibilityEnabled()
+          ctx.setLineDash(mod.bypassed ? [6 * dpr, 4 * dpr] : hvCurve && !focused ? [2 * dpr, 3 * dpr] : [])
+          ctx.strokeStyle = colorWithAlpha(responseInk, storedStyle.alpha * (focused ? 1 : hvCurve ? 0.55 : 0.28))
+          ctx.lineWidth = storedStyle.width * (phoneEqRef.current ? 1.45 : 1) * (focused ? 1 : 0.85) * (hvCurve ? 1.15 : 1)
+          if (hvCurve && focused && !mod.bypassed) {
+            const curveWidth = ctx.lineWidth
+            ctx.setLineDash([])
+            ctx.strokeStyle = colorWithAlpha(colors.textPrimary, 0.85)
+            ctx.lineWidth = curveWidth + dpr
+            strokeMagnitudeVertices(ctx, eqVerts)
+            ctx.setLineDash([])
+            ctx.strokeStyle = colorWithAlpha(responseInk, storedStyle.alpha)
+            ctx.lineWidth = curveWidth
+          }
           strokeMagnitudeVertices(ctx, eqVerts)
           ctx.restore()
         }
@@ -1062,9 +1080,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             eqRange.maxDb,
             scale,
           )
+          const hvCombined = highVisibilityEnabled()
           ctx.setLineDash([])
           ctx.strokeStyle = colorWithAlpha(colors.textPrimary, storedStyle.alpha)
-          ctx.lineWidth = storedStyle.width * 1.45
+          ctx.lineWidth = storedStyle.width * (hvCombined ? 1.7 : 1.45)
           strokeMagnitudeVertices(ctx, eqVerts)
           ctx.restore()
         }
@@ -2026,6 +2045,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               <button
                 type="button"
                 data-eq-node=""
+                data-band={index + 1}
+                data-selected={selected ? 'true' : 'false'}
+                data-bypassed={dim ? 'true' : 'false'}
                 data-q-live={motion.qLive ? 'true' : 'false'}
                 className={`${styles.node} ${selected ? styles.nodeOn : ''} ${dim ? styles.nodeOff : ''}`}
                 style={

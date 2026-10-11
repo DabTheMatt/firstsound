@@ -113,6 +113,24 @@
   color: var(--text-primary);
 }
 
+.transport .hit[data-loop] {
+  color: var(--text-secondary);
+}
+
+.transport .hit[data-loop][aria-pressed='true'] {
+  color: var(--accent-primary);
+}
+
+.transport .hit[data-loop]:focus,
+.transport .hit[data-loop]:focus-visible {
+  outline: none !important;
+  box-shadow: none;
+}
+
+.transport .hit[data-loop]:focus-visible {
+  box-shadow: inset 0 -2px 0 currentColor !important;
+}
+
 .transportTime {
   margin-right: 6px;
   min-width: 4.5rem;

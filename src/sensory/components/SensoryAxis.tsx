@@ -60,6 +60,7 @@ export function SensoryAxis({ def, value, onChange, onCommit, compact = false }:
       <div
         className={styles.field}
         role="slider"
+        data-sensory-edit=""
         tabIndex={0}
         aria-label={def.ariaLabel}
         aria-valuemin={-100}
