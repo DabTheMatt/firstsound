@@ -5,7 +5,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 0 4px;
 }
 
@@ -18,13 +18,13 @@
 
 .mode,
 .modeOn {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 8px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -51,14 +51,14 @@
 .icon,
 .edit button,
 .menu button {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   min-width: 32px;
   padding: 0 8px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .icon[aria-pressed='true'],

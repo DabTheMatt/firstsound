@@ -41,7 +41,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--accent-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;

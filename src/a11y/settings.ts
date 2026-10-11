@@ -3,6 +3,17 @@ export const A11Y_STORAGE_KEY_V1 = 'field.accessibility.v1'
 
 export const A11Y_STORAGE_KEY = 'field.a11y'
 
+/** Reliable step for both sliders. Presets sit on this grid. */
+export const SCALE_STEP = 0.05
+
+export const INTERFACE_SCALE_MIN = 1
+export const INTERFACE_SCALE_MAX = 1.5
+export const TEXT_SCALE_MIN = 1
+export const TEXT_SCALE_MAX = 2
+
+export const INTERFACE_SCALE_PRESETS = [1, 1.1, 1.25, 1.5] as const
+export const TEXT_SCALE_PRESETS = [1, 1.25, 1.5, 1.75, 2] as const
+
 export type A11ySettings = {
   lowVision: boolean
   reduceMotion: boolean
@@ -15,6 +26,10 @@ export type A11ySettings = {
   dragFreeEditing: boolean
   /** Extra navigation tools and editors. Keyboard access stays on when this is off. */
   keyboardFirst: boolean
+  /** Visual size of controls and surrounding chrome. 1 = 100%. */
+  interfaceScale: number
+  /** Type size. Independent of interfaceScale. 1 = 100%. */
+  textScale: number
   /** Shows landmark and time tools. Keyboard and screen reader access stay on when this is off. */
   accessibleWaveform: boolean
   /** Stronger outlines, shapes, and labels for controls. Off until the user turns it on. */
@@ -31,18 +46,57 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   shortcutsEnabled: true,
   dragFreeEditing: false,
   keyboardFirst: false,
+  interfaceScale: 1,
+  textScale: 1,
   accessibleWaveform: false,
   highVisibility: false,
+}
+
+const BOOLEAN_KEYS = [
+  'lowVision',
+  'reduceMotion',
+  'largerInterface',
+  'enhancedFocus',
+  'showDescriptions',
+  'screenReaderOptimizations',
+  'shortcutsEnabled',
+  'dragFreeEditing',
+  'keyboardFirst',
+  'accessibleWaveform',
+  'highVisibility',
+] as const satisfies readonly (keyof A11ySettings)[]
+
+/** Snap to the 5% grid and keep the value inside the supported range. */
+export function clampScale(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  const snapped = Math.round(value / SCALE_STEP) * SCALE_STEP
+  const clamped = Math.min(max, Math.max(min, snapped))
+  return Math.round(clamped * 100) / 100
+}
+
+function readScale(raw: unknown, min: number, max: number): number {
+  const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : Number.NaN
+  return clampScale(value, min, max)
 }
 
 export function parseA11ySettings(raw: unknown): A11ySettings {
   const next = { ...DEFAULT_A11Y_SETTINGS }
   if (!raw || typeof raw !== 'object') return next
   const rec = raw as Record<string, unknown>
-  for (const key of Object.keys(next) as (keyof A11ySettings)[]) {
+  for (const key of BOOLEAN_KEYS) {
     if (typeof rec[key] === 'boolean') next[key] = rec[key]
   }
+  if ('interfaceScale' in rec) next.interfaceScale = readScale(rec.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
+  if ('textScale' in rec) next.textScale = readScale(rec.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
   return next
+}
+
+export function formatScale(value: number): string {
+  return String(Math.round(value * 100) / 100)
+}
+
+export function scalePercent(value: number): number {
+  return Math.round(value * 100)
 }
 
 function readStorageKey(key: string): A11ySettings | undefined {
@@ -155,6 +209,15 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
   root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
   root.dataset.highVisibility = settings.highVisibility ? 'on' : 'off'
+  const interfaceScale = clampScale(settings.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
+  const textScale = clampScale(settings.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
+  root.style.setProperty('--field-interface-scale', formatScale(interfaceScale))
+  root.style.setProperty('--field-text-scale', formatScale(textScale))
+  root.dataset.interfaceScale = String(scalePercent(interfaceScale))
+  root.dataset.textScale = String(scalePercent(textScale))
+  root.dataset.textRoom = textScale >= 1.75 ? 'max' : textScale > 1 ? 'room' : 'base'
+  root.dataset.interfaceRoom = interfaceScale >= 1.25 ? 'room' : 'base'
+  root.dataset.layoutRoom = textScale > 1 || interfaceScale >= 1.25 ? 'open' : 'closed'
 }
 
 /** Drag-free editors and chain move buttons. Either preference is enough. */

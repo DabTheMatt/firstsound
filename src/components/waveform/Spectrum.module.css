@@ -26,7 +26,7 @@
 
 .focusReadout span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -34,7 +34,7 @@
 
 .focusReadout strong {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -63,11 +63,11 @@
 
 .analyzerClose {
   min-width: 32px;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: var(--type-16);
 }
 
 .chrome {
@@ -156,7 +156,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-app) 62%, transparent);
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -173,7 +173,7 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -197,7 +197,7 @@
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -227,7 +227,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-app) 62%, transparent);
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   pointer-events: none;
@@ -260,7 +260,7 @@
   align-items: center;
   justify-content: center;
   width: 28px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   padding: 0;
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -305,7 +305,7 @@
   gap: 5px;
   max-height: min(220px, calc(100% - 8px));
   overflow: auto;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -353,7 +353,7 @@
   border: 1.5px solid var(--border-subtle);
   background: var(--text-muted);
   color: var(--bg-app);
-  font-size: 8px;
+  font-size: var(--type-8);
   font-weight: 700;
   line-height: 1;
   display: flex;
@@ -420,7 +420,7 @@
   border: 1px solid var(--border-default);
   background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   white-space: pre-line;
@@ -478,7 +478,7 @@
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   line-height: 1;
 }
@@ -495,7 +495,7 @@
 .holdButton {
   padding: 0 8px;
   letter-spacing: 0.04em;
-  font-size: 10px;
+  font-size: var(--type-10);
   white-space: nowrap;
 }
 
@@ -517,7 +517,7 @@
   border-radius: 8px;
   background: var(--bg-panel);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -576,7 +576,7 @@
   background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   color: var(--text-primary);
   letter-spacing: 0.12em;
-  font-size: 11px;
+  font-size: var(--type-11);
 }
 
 .compact {
@@ -663,7 +663,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-app) 78%, transparent);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.04em;
 }
 
@@ -692,7 +692,7 @@
   height: 32px;
   min-width: 32px;
   padding: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   border-width: 2px;
 }
 
@@ -723,7 +723,7 @@
   flex-direction: column;
   gap: 1px;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   line-height: 1.25;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
@@ -733,7 +733,7 @@
 
 .focusTitle {
   color: var(--band, var(--accent-primary));
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.08em;
 }
@@ -761,7 +761,7 @@
   width: 28px;
   height: 28px;
   min-width: 28px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
 }
 
 .focusReadout[data-live='true'] .focusValues,
@@ -770,7 +770,7 @@
 }
 
 .focusReadout[data-live='true'] {
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .focusMenu {
@@ -794,7 +794,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-app) 78%, transparent);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 650;
   letter-spacing: 0.06em;
 }

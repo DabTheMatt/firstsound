@@ -16,7 +16,7 @@ export const VIEWPORTS = [
 type Boot = {
   mode?: 'simple' | 'technical' | 'sensory'
   theme?: string
-  a11y?: Record<string, boolean>
+  a11y?: Record<string, boolean | number>
   reducedMotion?: 'reduce' | 'no-preference'
 }
 
@@ -27,7 +27,10 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
     localStorage.setItem('firstsound.uiMode', state.mode ?? 'technical')
     localStorage.setItem('field.theme', state.theme ?? 'studio-dark')
     localStorage.setItem('field.technicalInterface', 'workspace')
-    if (state.a11y) localStorage.setItem('field.a11y', JSON.stringify(state.a11y))
+    if (state.a11y) {
+      localStorage.removeItem('field.accessibility.v1')
+      localStorage.setItem('field.a11y', JSON.stringify(state.a11y))
+    }
   }, init)
   await page.goto('/')
   await page.locator('#root').waitFor()

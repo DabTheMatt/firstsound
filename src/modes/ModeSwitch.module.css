@@ -12,12 +12,12 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 400;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 6px 10px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   border-radius: 999px;
 }
 
@@ -28,8 +28,8 @@
 
 .compact .opt {
   padding: 6px 7px;
-  min-height: 32px;
-  font-size: 9px;
+  min-height: max(32px, var(--toolbar-h));
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
 }
 
@@ -56,7 +56,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 0;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   letter-spacing: 0.22em;
   background: transparent;
   border-radius: 0;
@@ -90,7 +90,7 @@
 }
 
 :global([data-technical-ui='workspace']) .opt {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 6px;
   border-radius: 4px !important;
   font-size: var(--ws-bar-size, 11px);

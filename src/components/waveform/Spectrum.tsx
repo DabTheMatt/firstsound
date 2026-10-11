@@ -609,7 +609,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         }
         const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
-        const paintColor = spectrumPaintColor(prefsNow)
+        const eqSurface = focusPlot || phoneEqRef.current || eqGainGridRef.current
+        const paintColor = spectrumPaintColor(prefsNow, eqSurface ? 'eq' : 'fft')
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
         const showLine = focusPlot ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
         const { bands, fall, range, resolution } = prefsNow
@@ -1415,7 +1416,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               {gridOpen ? (
                 <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
                   {phoneFocus ? (
-                    <SpectrumDisplaySettings showLayer />
+                    <SpectrumDisplaySettings showLayer eqColor />
                   ) : (
                     <>
                       <div className={styles.graphMenuRow}>
@@ -1821,7 +1822,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen || phoneEq || phoneFocus) ? (
           <div className={styles.legendDock}>
-            {spectrumPaintColor(prefs) === 'frequency' ? (
+            {spectrumPaintColor(prefs, phoneFocus || phoneEq || eqGainGrid ? 'eq' : 'fft') === 'frequency' ? (
               <ul className={styles.regions}>
                 {SPECTRUM_REGIONS.map((region) => (
                   <li key={region.id}>

@@ -20,7 +20,7 @@
 }
 
 .word {
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 300;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
 }
 
 .compact .word {
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.16em;
 }
 

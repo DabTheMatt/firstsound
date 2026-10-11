@@ -41,7 +41,7 @@
   position: absolute;
   top: 0;
   right: 2px;
-  font-size: 8px;
+  font-size: var(--type-8);
   letter-spacing: 0.08em;
   text-transform: lowercase;
   color: var(--accent-primary);

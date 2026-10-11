@@ -13,7 +13,7 @@
 
 .title {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent-primary);
@@ -21,14 +21,14 @@
 
 .lead {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   line-height: 1.4;
   color: var(--text-muted);
 }
 
 .kind h3 {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -85,7 +85,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-primary);
@@ -93,7 +93,7 @@
 
 .meta span,
 .meta em {
-  font-size: 11px;
+  font-size: var(--type-11);
   color: var(--text-muted);
   font-style: normal;
 }
@@ -118,7 +118,7 @@
   border: 1px solid var(--border-default);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -139,7 +139,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: none;

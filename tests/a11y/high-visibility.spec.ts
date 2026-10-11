@@ -79,6 +79,30 @@ test.describe('high visibility controls', () => {
     }
   })
 
+  test('stays inside the page at the interface and text sizes', async ({ page }) => {
+    const pairs = [
+      { interfaceScale: 1, textScale: 1 },
+      { interfaceScale: 1.25, textScale: 1.5 },
+      { interfaceScale: 1.5, textScale: 2 },
+    ] as const
+    for (const pair of pairs) {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await boot(page, { a11y: { highVisibility: true, ...pair } })
+      await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
+      await expect(page.locator('html')).toHaveAttribute('data-interface-scale', String(pair.interfaceScale * 100))
+      await expect(page.locator('html')).toHaveAttribute('data-text-scale', String(pair.textScale * 100))
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow, `${pair.interfaceScale}/${pair.textScale}`).toBeLessThanOrEqual(1)
+      if (pair.interfaceScale === 1.5) {
+        await page.screenshot({ path: '/opt/cursor/artifacts/hv-scale-150-200.png' })
+        await page.setViewportSize({ width: 320, height: 700 })
+        const narrow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+        expect(narrow).toBeLessThanOrEqual(1)
+        await page.screenshot({ path: '/opt/cursor/artifacts/hv-scale-320-150-200.png' })
+      }
+    }
+  })
+
   test('scans Simple, Sensory, and Focus with high visibility on', async ({ page }) => {
     await boot(page, { mode: 'simple', a11y: HV })
     await expectNoAxeViolations(page)

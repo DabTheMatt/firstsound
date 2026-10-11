@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
-import { applySliderKey, isImeEvent, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, transportSpaceSuppressed } from './keyboard'
+import { accessibilityOwnsSpace, applySliderKey, isImeEvent, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, spaceTogglesTransport, transportSpaceSuppressed } from './keyboard'
+import { fracToTime } from '../components/waveform/viewport'
+import { xToHz } from '../audio/engine/freqScale'
 import {
   A11Y_STORAGE_KEY,
   A11Y_STORAGE_KEY_V1,
   applyA11yDom,
+  clampScale,
   DEFAULT_A11Y_SETTINGS,
   highVisibilityEnabled,
   effectiveMotionReduced,
@@ -79,6 +82,22 @@ describe('slider keyboard', () => {
     expect(isTypingFromTag('DIV', '', true)).toBe(true)
   })
 
+  it('uses Space for play and pause until a special accessibility option is on', () => {
+    const plain = {
+      keyboardFirst: false,
+      dragFreeEditing: false,
+      screenReaderOptimizations: false,
+      accessibleWaveform: false,
+    }
+    expect(accessibilityOwnsSpace(plain)).toBe(false)
+    expect(accessibilityOwnsSpace({ ...plain, keyboardFirst: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, dragFreeEditing: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, screenReaderOptimizations: true })).toBe(true)
+    expect(accessibilityOwnsSpace({ ...plain, accessibleWaveform: true })).toBe(true)
+    expect(spaceTogglesTransport(null, false)).toBe(true)
+    expect(spaceTogglesTransport(null, true)).toBe(true)
+  })
+
   it('keeps Space for checkboxes, radios, and dialogs', () => {
     expect(transportSpaceSuppressed({ tagName: 'BUTTON' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'DIV', role: 'slider' })).toBe(true)
@@ -142,6 +161,14 @@ describe('a11y settings and i18n', () => {
     expect(EN.a11y.dragFreeHelp).toContain('buttons and exact values')
     expect(PL.a11y.dragFree).toBe('Edytowanie bez przeciągania')
     expect(PL.a11y.dragFreeHelp).toContain('bez przeciągania')
+    expect(EN.a11y.interfaceSize).toBe('Interface Size')
+    expect(EN.a11y.interfaceSizeHelp).toBe('Adjust the size of interface controls and surrounding UI elements.')
+    expect(EN.a11y.textSize).toBe('Text Size')
+    expect(EN.a11y.textSizeHelp).toBe('Increase text size without enlarging the entire interface.')
+    expect(PL.a11y.interfaceSize).toBe('Rozmiar interfejsu')
+    expect(PL.a11y.interfaceSizeHelp).toBe('Zmień wielkość kontrolek i elementów interfejsu.')
+    expect(PL.a11y.textSize).toBe('Rozmiar tekstu')
+    expect(PL.a11y.textSizeHelp).toBe('Powiększ tekst niezależnie od wielkości całego interfejsu.')
     expect(EN.a11y.keyboardFirst).toBe('Keyboard-First')
     expect(EN.a11y.keyboardFirstHelp).toContain('without a mouse')
     expect(PL.a11y.keyboardFirst).toBe('Obsługa klawiaturą')
@@ -179,8 +206,36 @@ describe('a11y settings and i18n', () => {
     expect(parsed.largerInterface).toBe(false)
     expect(parsed.highVisibility).toBe(false)
     expect(parsed.shortcutsEnabled).toBe(true)
+    expect(parsed.interfaceScale).toBe(1)
+    expect(parsed.textScale).toBe(1)
     expect('extra' in parsed).toBe(false)
   })
+
+  it('keeps interface size and text size independent, clamped, and compatible with older stores', () => {
+    expect(parseA11ySettings({}).interfaceScale).toBe(1)
+    expect(parseA11ySettings({}).textScale).toBe(1)
+    expect(parseA11ySettings({ largerInterface: true }).interfaceScale).toBe(1)
+    const mixed = parseA11ySettings({ interfaceScale: 1.25, textScale: 2, reduceMotion: true })
+    expect(mixed.interfaceScale).toBe(1.25)
+    expect(mixed.textScale).toBe(2)
+    expect(mixed.reduceMotion).toBe(true)
+    expect(mixed.largerInterface).toBe(false)
+    expect(parseA11ySettings({ interfaceScale: 9, textScale: 0 }).interfaceScale).toBe(1.5)
+    expect(parseA11ySettings({ interfaceScale: 9, textScale: 0 }).textScale).toBe(1)
+    expect(parseA11ySettings({ interfaceScale: '1.13', textScale: 'nope' }).interfaceScale).toBe(1.15)
+    expect(parseA11ySettings({ interfaceScale: '1.13', textScale: 'nope' }).textScale).toBe(1)
+    expect(clampScale(1.5, 1, 1.5)).toBe(1.5)
+    expect(clampScale(2, 1, 2)).toBe(2)
+  })
+
+  it('maps waveform, EQ, and automation coordinates from the rendered fraction', () => {
+    const view = { start: 0, end: 8 }
+    expect(fracToTime(100 / 400, view)).toBeCloseTo(fracToTime(150 / 600, view))
+    expect(xToHz(100, 20, 20000, 0, 400, 'log')).toBeCloseTo(xToHz(150, 20, 20000, 0, 600, 'log'))
+    const valueFromY = (y: number, height: number) => 1 - Math.min(1, Math.max(0, y / Math.max(1, height)))
+    expect(valueFromY(40, 160)).toBeCloseTo(valueFromY(60, 240))
+  })
+
 
   it('treats system reduced motion as effective even when the toggle is off', () => {
     expect(motionReduced({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false }, true)).toBe(true)

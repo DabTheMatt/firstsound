@@ -26,7 +26,7 @@ const zoomButton = {
   color: 'var(--text-secondary)',
   letterSpacing: '0.06em',
   textTransform: 'uppercase' as const,
-  fontSize: 11,
+  fontSize: 'var(--type-11)',
 }
 
 function useHearingView() {
@@ -86,12 +86,12 @@ export function HearingFocusStage() {
     <section aria-label="Hearing Access focus" className={`${styles.palette} ${styles.focusStage}`}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
         <div className={styles.sectionTitle}>
-          <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <p style={{ margin: 0, fontSize: 'var(--type-12)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
           <InfoTip label="More about Hearing Access focus">
-            Attacks on the sound map are thin vertical lines at the time they happen. The band rows sit edge to edge on a fixed loudness scale, so a quieter high band stays visible beside a louder bass band. Drag across the wave to select a fragment. Releasing that drag makes it the loop. A click only moves the playhead. Note tags and character tags follow the playhead: a partial is listed while that moment is heard. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider lists quieter partials in the current moment. The same note is listed once. The tag list keeps four rows reserved, so extra tags do not move the sound map. There is no scrollbar. Clicking an attack on the sound map draws a line at the start of that attack. The line icon under the time scale shows or hides it. The waveform line is the same dashed mark as Input → Mark transients, and it stays hidden until that control is on. Sensitivity for it sits on its own row under the tempo buttons. The legend under the time scale turns those lines and the strip symbols on or off. The strip is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The loudness rail on the right follows the output while audio plays. When playback is stopped the bars rest at silence, and the sample peak stays listed as a number. The head and the space field follow pan, mid/side, and delay. A larger reverb size or a greater distance draws a smaller head. The source moves toward the front as distance grows. Wet does not move the source or the head. When wet is above zero, the sound map smears forward and dulls the high rows, and the space field draws a short tail under each mark. Spread is stereo width. A hollow mark is low correlation.
+            Attacks on the sound map are thin vertical lines at the time they happen. The band rows sit edge to edge on a fixed loudness scale, so a quieter high band stays visible beside a louder bass band. Drag across the wave to select a fragment. Releasing that drag makes it the loop. A click only moves the playhead. Note tags and character tags follow the playhead: a partial is listed while that moment is heard. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider lists quieter partials in the current moment. The same note is listed once. The tag list is one row. Each tag has a thin border and slightly rounded corners, so extra tags stay on that row and do not move the sound map. There is no scrollbar. Clicking an attack on the sound map draws a line at the start of that attack. The line icon under the time scale shows or hides it. The waveform line is the same dashed mark as Input → Mark transients, and it stays hidden until that control is on. Sensitivity for it sits on its own row under the tempo buttons. The legend under the time scale turns those lines and the strip symbols on or off. The strip is slice level: bar height is the peak of that moment, a triangle is a short attack, and an exclamation mark is full-scale clipping. The loudness rail on the right follows the output while audio plays. When playback is stopped the bars rest at silence, and the sample peak stays listed as a number. The head and the space field follow pan, mid/side, and delay. A larger reverb size or a greater distance draws a smaller head. The source moves toward the front as distance grows. Wet does not move the source or the head. When wet is above zero, the sound map smears forward and dulls the high rows, and the space field draws a short tail under each mark. Spread is stereo width. A hollow mark is low correlation.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -124,7 +124,7 @@ export function HearingFocusStage() {
       />
       {analysis && liveBucket ? (
         <>
-          {mono ? <p style={{ margin: 0, fontSize: 12 }}>This sample is mono. Pan still places that one image.</p> : null}
+          {mono ? <p style={{ margin: 0, fontSize: 'var(--type-12)' }}>This sample is mono. Pan still places that one image.</p> : null}
           <div className={styles.focusSpace}>
             <HeadSpace balance={heardBalance} width={liveBucket.width} correlation={liveBucket.correlation} space={room} fill />
             <SpaceField

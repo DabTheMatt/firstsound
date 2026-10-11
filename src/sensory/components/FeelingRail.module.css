@@ -1,6 +1,6 @@
 .rail {
   position: absolute;
-  top: 88px;
+  top: max(88px, calc(var(--sensory-chrome-top, 0px) + 8px));
   bottom: 96px;
   z-index: 6;
   display: flex;
@@ -78,7 +78,7 @@
   padding: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 42%, transparent);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.32em;
   text-transform: uppercase;
   min-height: 24px;
@@ -165,7 +165,7 @@
 }
 
 .label {
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -253,13 +253,13 @@
 }
 
 .rangeHint {
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .level {
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
   opacity: 0;
@@ -419,7 +419,7 @@
 
 @media (max-width: 720px) {
   .rail {
-    top: 80px;
+    top: max(80px, calc(var(--sensory-chrome-top, 0px) + 8px));
     bottom: 88px;
   }
 
@@ -433,7 +433,7 @@
 
   .label {
     letter-spacing: 0.08em;
-    font-size: 9px;
+    font-size: var(--type-9);
   }
 
   .item {

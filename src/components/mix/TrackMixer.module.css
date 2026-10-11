@@ -33,7 +33,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -57,7 +57,7 @@
 
 .bar .faderMeter {
   flex: 1 1 140px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   width: auto;
   align-items: center;
 }
@@ -156,7 +156,7 @@
   left: 0;
   transform: translateY(-50%);
   font-style: normal;
-  font-size: 8px;
+  font-size: var(--type-8);
   line-height: 1;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -242,7 +242,7 @@
   position: absolute;
   right: 0;
   transform: translateY(50%);
-  font-size: 7px;
+  font-size: var(--type-7);
   line-height: 1;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -269,7 +269,7 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 7px;
+  font-size: var(--type-7);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -300,7 +300,7 @@
   right: 0;
   bottom: 1px;
   text-align: center;
-  font-size: 7px;
+  font-size: var(--type-7);
   color: var(--text-muted);
   pointer-events: none;
 }
@@ -336,7 +336,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 650;
 }
 

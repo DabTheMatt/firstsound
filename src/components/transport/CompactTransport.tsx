@@ -74,6 +74,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             aria-label={t.transport.killFx}
             title={t.transport.killFxTitle}
             onClick={() => engine.killFx('all')}
@@ -85,6 +86,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             aria-label={t.transport.killNoise}
             title={t.transport.killNoiseTitle}
             onClick={() => engine.killNoise()}
@@ -96,6 +98,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             disabled={disabled}
             title={t.transport.selStartTitle}
             aria-label={t.transport.selStart}
@@ -108,6 +111,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             disabled={disabled}
             title={t.transport.selEndTitle}
             aria-label={t.transport.selEnd}
@@ -117,12 +121,12 @@ export function CompactTransport({
           </button>
         ) : null}
         {!minimal && !collapseSecondary ? (
-          <button type="button" className={styles.icon} disabled={!canUndo} aria-label={t.transport.undo} title={t.transport.undo} onClick={onUndo}>
+          <button type="button" className={styles.icon} data-transport="" disabled={!canUndo} aria-label={t.transport.undo} title={t.transport.undo} onClick={onUndo}>
             {actionLabel(t.transport.undo, '↺')}
           </button>
         ) : null}
         {!minimal && !collapseSecondary ? (
-          <button type="button" className={styles.icon} disabled={!canRedo} aria-label={t.transport.redo} title={t.transport.redo} onClick={onRedo}>
+          <button type="button" className={styles.icon} data-transport="" disabled={!canRedo} aria-label={t.transport.redo} title={t.transport.redo} onClick={onRedo}>
             {actionLabel(t.transport.redo, '↻')}
           </button>
         ) : null}
@@ -131,6 +135,7 @@ export function CompactTransport({
             <button
               type="button"
               className={styles.icon}
+              data-transport=""
               aria-label={t.transport.more}
               aria-expanded={moreOpen}
               title={t.transport.more}
@@ -157,6 +162,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             disabled={disabled}
             aria-label={t.transport.playFromStart}
             title={t.transport.playFromStartTitle}
@@ -180,6 +186,7 @@ export function CompactTransport({
           <button
             type="button"
             className={styles.icon}
+            data-transport=""
             disabled={disabled}
             aria-label={t.transport.playFromStart}
             title={t.transport.playFromStartTitle}
@@ -193,6 +200,7 @@ export function CompactTransport({
         <button
           type="button"
           className={styles.icon}
+          data-transport=""
           disabled={disabled}
           aria-label={t.transport.stop}
           onClick={() => engine.stop()}
@@ -202,6 +210,7 @@ export function CompactTransport({
         <button
           type="button"
           className={`${styles.loop} ${loop ? styles.on : ''}`}
+          data-transport=""
           aria-pressed={loop}
           aria-label="Loop selection"
           onClick={() => engine.setLoop(!loop)}
@@ -243,7 +252,7 @@ type ExportProps = {
 export function TransportExportButton({ disabled, onExport }: ExportProps) {
   const { t } = useI18n()
   return (
-    <button type="button" className={styles.export} data-export-open="" {...guideTargetAttrs('export.open')} disabled={disabled} onClick={onExport}>
+    <button type="button" className={styles.export} data-transport="" data-export-open="" {...guideTargetAttrs('export.open')} disabled={disabled} onClick={onExport}>
       {t.transport.export}
     </button>
   )

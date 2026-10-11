@@ -1,5 +1,4 @@
 .bar {
-  --transport-h: 40px;
   container: transport / inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -48,7 +47,8 @@
   justify-self: end;
   justify-content: flex-end;
   gap: 8px;
-  width: max-content;
+  width: auto;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -69,7 +69,7 @@
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -95,7 +95,7 @@
   margin: 0;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -103,6 +103,7 @@
 .details {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
   font-variant-numeric: tabular-nums;
@@ -116,7 +117,7 @@
   height: var(--transport-h);
   min-width: 9ch;
   color: var(--playhead, var(--accent-primary));
-  font-size: 22px;
+  font-size: var(--type-22);
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -147,13 +148,12 @@
 }
 
 button.export {
-  --transport-h: 40px;
   flex: 1 1 auto;
   align-self: stretch;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: var(--transport-h);
+  height: 100%;
   min-height: var(--transport-h);
   padding-inline: 4px;
   letter-spacing: 0.04em;
@@ -188,7 +188,7 @@ button.export {
 
 .bar[data-density='3'] .icon,
 .bar[data-density='4'] .icon {
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.04em;
 }
 
@@ -254,13 +254,13 @@ button.export {
   min-width: 44px;
   min-height: 44px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.06em;
 }
 
 .minimal .head {
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--type-15);
 }
 
 .minimal .transport {
@@ -292,7 +292,7 @@ button.export {
   }
 
   .minimal .head {
-    font-size: 13px;
+    font-size: var(--type-13);
   }
 }
 
@@ -300,11 +300,69 @@ button.export {
 :global(html[data-ui-scale='large']) .bar,
 :global(html[data-low-vision='on']) button.export,
 :global(html[data-ui-scale='large']) button.export {
-  --transport-h: 44px;
   align-items: center;
+}
+
+/* One band of equal controls. Extra items wrap onto the next full line. */
+:global(html[data-layout-room='open']) .bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: 8px;
+  row-gap: 8px;
+  height: auto;
+}
+
+:global(html[data-layout-room='open']) .transport {
+  order: 1;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
+}
+
+:global(html[data-layout-room='open']) .meta {
+  order: 2;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
+}
+
+:global(html[data-layout-room='open']) .actions {
+  order: 3;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+  justify-content: flex-start;
+}
+
+:global(html[data-layout-room='open']) .meta,
+:global(html[data-layout-room='open']) .details,
+:global(html[data-layout-room='open']) .times {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+:global(html[data-layout-room='open']) .head {
+  height: auto;
+  min-height: 1.2em;
+}
+
+:global(html[data-text-room='room']) .icon,
+:global(html[data-text-room='max']) .icon,
+:global(html[data-text-room='room']) .loop,
+:global(html[data-text-room='max']) .loop,
+:global(html[data-text-room='room']) button.export,
+:global(html[data-text-room='max']) button.export {
+  height: var(--transport-h);
+  min-height: var(--transport-h);
+  white-space: nowrap;
 }
 
 :global(html[data-low-vision='on']) .head,
 :global(html[data-ui-scale='large']) .head {
-  font-size: 1.35rem;
+  font-size: calc(1.35rem * var(--field-text-scale, 1));
 }

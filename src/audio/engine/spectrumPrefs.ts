@@ -156,15 +156,20 @@ export function patchSpectrumPrefs(patch: Partial<SpectrumPrefs>): SpectrumPrefs
   return next
 }
 
+/** EQ graph color and FFT color are stored together and painted apart. */
+export type SpectrumColorSurface = 'eq' | 'fft'
+
 /**
- * How the 2D analyzer paints bars, including the EQ workspace graph.
- * That graph is a focus plot, and it still follows Color and Regions.
+ * EQ columns follow Regions. FFT bars, the FFT line, and the 3D ridges follow Color.
+ * Changing one does not change the other.
  */
 export function spectrumPaintColor(
   prefs: Pick<SpectrumPrefs, 'colorMode' | 'regionColors'>,
+  surface: SpectrumColorSurface,
 ): 'solid' | 'frequency' | 'level' {
+  if (surface === 'eq') return prefs.regionColors ? 'frequency' : 'solid'
   if (prefs.colorMode === 'level') return 'level'
-  if (prefs.colorMode === 'frequency' || prefs.regionColors) return 'frequency'
+  if (prefs.colorMode === 'frequency') return 'frequency'
   return 'solid'
 }
 

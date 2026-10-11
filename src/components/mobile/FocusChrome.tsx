@@ -190,6 +190,7 @@ function FocusTransport({
       <button
         type="button"
         className={styles.hit}
+        data-transport=""
         data-geometry="square"
         aria-label={playing ? t.transport.pause : t.transport.play}
         title={playing ? t.transport.pause : t.transport.play}
@@ -204,6 +205,7 @@ function FocusTransport({
       <button
         type="button"
         className={styles.hit}
+        data-transport=""
         data-geometry="square"
         aria-label={t.transport.stop}
         title={t.transport.stop}
@@ -215,6 +217,7 @@ function FocusTransport({
       <button
         type="button"
         className={styles.hit}
+        data-transport=""
         data-geometry="square"
         aria-pressed={loop}
         aria-label={t.transport.loop}
@@ -662,14 +665,29 @@ function LoopIcon() {
   return (
     <Svg>
       <path
-        d="M4.2 6.2h6.1a2.1 2.1 0 0 1 0 4.2H6.2"
+        d="M4.4 5.4h6a1.5 1.5 0 0 1 1.5 1.5v1.2"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.4"
         strokeLinecap="round"
       />
       <path
-        d="M5.8 4.4 3.6 6.2 5.8 8"
+        d="M9.8 3.8 12.2 5.5 9.8 7.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.6 10.6H5.6a1.5 1.5 0 0 1-1.5-1.5V7.9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.2 12.2 3.8 10.5 6.2 8.8"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.4"

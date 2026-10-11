@@ -19,14 +19,14 @@
 }
 
 .time span {
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .time strong {
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 500;
   color: var(--accent-primary);
   font-variant-numeric: tabular-nums;
@@ -45,7 +45,7 @@
   border-radius: 6px;
   background: var(--bg-panel);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-14);
 }
 
 .row {
@@ -72,7 +72,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -83,7 +83,7 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: none;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .fade input[type='range'] {
@@ -143,7 +143,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--accent-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -161,7 +161,7 @@
   border-radius: 8px;
   background: var(--bg-panel);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0 6px;
@@ -175,7 +175,7 @@
 
 .notice {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   color: var(--positive);
 }
 
@@ -194,7 +194,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -205,7 +205,7 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--type-12);
   color: var(--text-primary);
 }
 

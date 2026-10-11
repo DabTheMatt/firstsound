@@ -2,22 +2,22 @@
 
 :root {
   --focus-ring: var(--accent-primary);
-  --focus-ring-width: 2px;
-  --focus-ring-offset: 2px;
-  --hit-min: 32px;
-  --control-gap: 2px;
-  --font-size-label: 9px;
-  --font-size-value: 12px;
+  --focus-ring-width: max(1.5px, calc(1.5px * min(var(--field-interface-scale, 1), 1.25)));
+  --focus-ring-offset: 3px;
+  --hit-min: max(32px, calc(24px * var(--field-interface-scale, 1)));
+  --control-gap: calc(2px * var(--field-interface-scale, 1));
+  --font-size-label: var(--type-9);
+  --font-size-value: var(--type-12);
   --font-weight-label: 500;
   --font-weight-value: 500;
   /* One-line knob captions. Compact size is the step after tighter tracking. */
   --param-label-size: var(--font-size-label);
-  --param-label-size-compact: 8px;
-  --param-label-size-snug: 7.5px;
+  --param-label-size-compact: var(--type-8);
+  --param-label-size-snug: var(--type-7-5);
   --param-label-tracking: 0.045em;
   --param-label-tracking-tight: 0.01em;
-  --param-label-block: 14px;
-  --param-value-block: 16px;
+  --param-label-block: calc(14px * var(--field-text-scale, 1));
+  --param-value-block: calc(16px * var(--field-text-scale, 1));
   /* High Visibility overrides these. Defaults match the current drawing. */
   --field-control-border-width: 1px;
   --field-control-active-outline: var(--accent-primary);
@@ -61,8 +61,8 @@ html[data-high-visibility='on'] {
 html[data-focus='enhanced'] {
   --focus-ring: var(--text-primary);
   --focus-ring-gap: var(--bg-app);
-  --focus-ring-width: 3px;
-  --focus-ring-offset: 2px;
+  --focus-ring-width: max(3px, calc(3px * min(var(--field-interface-scale, 1), 1.2)));
+  --focus-ring-offset: 3px;
 }
 
 html[data-focus='enhanced'] :focus-visible {
@@ -75,17 +75,18 @@ html[data-focus='enhanced'] :focus-visible {
 }
 
 html[data-ui-scale='large'] {
-  --hit-min: 44px;
-  --control-gap: 10px;
-  --font-size-label: 0.8125rem;
-  --font-size-value: 0.9375rem;
+  /* Floor for hit targets. Interface scale can raise it, without a second full multiply. */
+  --hit-min: max(44px, calc(32px * var(--field-interface-scale, 1)));
+  --control-gap: max(10px, calc(8px * var(--field-interface-scale, 1)));
+  --font-size-label: var(--type-13);
+  --font-size-value: var(--type-15);
   --param-label-size: var(--font-size-label);
   --param-label-size-compact: var(--font-size-label);
   --param-label-size-snug: var(--font-size-label);
   --param-label-tracking: 0.03em;
   --param-label-tracking-tight: 0;
-  --param-label-block: 1.25rem;
-  --param-value-block: 1.35rem;
+  --param-label-block: calc(20px * var(--field-text-scale, 1));
+  --param-value-block: calc(22px * var(--field-text-scale, 1));
 }
 
 html[data-ui-scale='large'] body {
@@ -118,8 +119,32 @@ html[data-reduced-motion='true'] *::after {
 
 html[data-ui-scale='large'] [role='tab'],
 html[data-ui-scale='large'] [role='switch'] {
-  min-height: 44px;
+  min-height: max(44px, calc(36px * var(--field-interface-scale, 1)));
   min-width: 44px;
+}
+
+html[data-text-room='room'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
+html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
+html[data-text-room='room'] [role='tab'],
+html[data-text-room='max'] [role='tab'],
+html[data-text-room='room'] summary,
+html[data-text-room='max'] summary {
+  height: auto;
+  max-height: none;
+  line-height: 1.35;
+}
+
+html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
+html[data-text-room='max'] [role='tab'],
+html[data-text-room='max'] summary {
+  white-space: normal;
+}
+
+html[data-layout-room='open'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+html[data-layout-room='open'] select,
+html[data-layout-room='open'] textarea {
+  min-height: max(var(--hit-min), 1.6em);
+  height: auto;
 }
 
 html[data-ui-scale='large'] [data-eq-node]::before {
@@ -133,8 +158,8 @@ html[data-ui-scale='large'] [data-eq-node]:focus-visible {
 }
 
 html[data-ui-scale='large'] [data-auto-node] {
-  width: 36px;
-  height: 36px;
+  width: min(40px, max(36px, calc(28px * var(--field-interface-scale, 1))));
+  height: min(40px, max(36px, calc(28px * var(--field-interface-scale, 1))));
 }
 
 html[data-ui-scale='large'] [data-auto-tension] {

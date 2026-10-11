@@ -117,7 +117,7 @@
 }
 
 .tools button {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
@@ -198,7 +198,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .compare li {
@@ -361,7 +361,7 @@
 .head h2,
 .body h3 {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -374,7 +374,7 @@
 .tabs button,
 .events button,
 .body button {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-control);
@@ -398,7 +398,7 @@
   overflow: auto;
   padding-inline-end: 14px;
   scrollbar-gutter: stable;
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1.4;
 }
 
@@ -407,7 +407,7 @@
 .monitor,
 .help {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .monitor {
@@ -451,7 +451,7 @@
   grid-template-columns: 5.5rem 1fr auto;
   gap: 6px;
   align-items: center;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
 }
 
 .events li {
@@ -489,7 +489,7 @@
 .eventDetail {
   grid-column: 2;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .empty {
@@ -519,9 +519,9 @@
   box-sizing: border-box;
   height: 20px;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 0 7px;
-  font-size: 10px;
+  font-size: var(--type-10);
   line-height: 1;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -529,9 +529,9 @@
 }
 
 :global([data-technical-ui='workspace']) .chips li {
-  border: 0;
-  border-radius: 0;
-  padding: 0 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 6px;
   color: var(--text-secondary);
 }
 
@@ -592,14 +592,13 @@
 .tagBar .chips {
   --hearing-tag-row: 20px;
   --hearing-tag-gap: 4px;
-  --hearing-tag-rows: 4;
   flex: 0 0 auto;
   width: 100%;
   min-width: 0;
   gap: var(--hearing-tag-gap);
-  height: calc(
-    var(--hearing-tag-rows) * var(--hearing-tag-row) + (var(--hearing-tag-rows) - 1) * var(--hearing-tag-gap)
-  );
+  height: var(--hearing-tag-row);
+  min-height: var(--hearing-tag-row);
+  max-height: var(--hearing-tag-row);
   overflow: hidden;
 }
 
@@ -611,7 +610,7 @@
   width: 100%;
   height: 28px;
   margin: 0;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -708,14 +707,14 @@
   color: var(--text-primary);
   font-family: Georgia, serif;
   font-style: italic;
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1;
 }
 
 .infoNote {
   flex-basis: 100%;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0;
   text-transform: none;
   font-weight: 400;
@@ -806,7 +805,7 @@
 }
 
 .loudnessRail strong {
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.06em;
   text-align: center;
 }
@@ -831,7 +830,7 @@
 
 .loudnessRail p {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.04em;
   text-align: center;
   color: var(--text-muted);
@@ -853,7 +852,7 @@
   position: absolute;
   right: 0;
   transform: translateY(50%);
-  font-size: 8px;
+  font-size: var(--type-8);
   letter-spacing: 0.02em;
   color: var(--text-muted);
   white-space: nowrap;
@@ -893,7 +892,7 @@
   right: 0;
   bottom: 4px;
   text-align: center;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
 }
 
@@ -930,7 +929,7 @@
   background: transparent;
   border-top: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
@@ -964,7 +963,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.04em;
 }
 
@@ -993,7 +992,7 @@
 .compareTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--type-12);
   margin: 0 0 12px;
 }
 
@@ -1008,7 +1007,7 @@
 
 .compareTable thead th {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

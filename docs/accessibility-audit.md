@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.27.0
+Tested application version: 0.28.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -12,7 +12,7 @@ This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim
 
 | Kind | Result |
 | --- | --- |
-| Automated tests | PASS — `npm run test:a11y`, 32 Playwright tests, axe-core 4.13 |
+| Automated tests | PASS — `npm run test:a11y`, 60 Playwright tests, axe-core 4.13 |
 | Manual assistive technology | NOT TESTED — no NVDA, VoiceOver, JAWS, or TalkBack session |
 | Known limitations | Documented below. They are not hidden by disabled axe rules. |
 
@@ -138,8 +138,8 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 | 20A Keyboard-First | Full keyboard maps for the waveform, EQ graph, and automation |
 | 20B Screen Reader Support | AT testing and announcement tuning |
 | 20C Accessible Waveform | Shipped in 0.26.0. Canvas handles remain pointer targets (R1). Detection is approximate. |
-| 22A Interface Scaling | Reflow at 320px and 200% zoom without a scrolling header |
-| 22B High Visibility | Shipped in 0.27.0 as an opt-in visual layer. See the 22B section. It is not a WCAG conformance claim. |
+| 22A Interface Scaling | Shipped as Interface Size and Text Size. The narrow header can still scroll at 320px (R4). 200% browser zoom was not rechecked here. |
+| 22B High Visibility | Shipped in 0.28.0 as an opt-in visual layer. See the 22B section. It is not a WCAG conformance claim. |
 | 22C Sensory Comfort | Further Sensory motion and flash review beyond the reduced-motion switch |
 
 ## FIELD ACCESS preferences
@@ -185,9 +185,9 @@ Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS s
 
 No DSP, routing, effect, modulation, automation, offline render, or export signal-processing code was changed. EQ arrow keys call the existing parameter API. Reduced motion only skips decorative animation.
 
-## FIELD ACCESS 22B — high visibility controls (0.27.0)
+## FIELD ACCESS 22B — high visibility controls (0.28.0)
 
-High Visibility Controls is Settings → Accessibility → Visual comfort. The stored flag is `highVisibility` on the existing FIELD ACCESS record. Default is off. `data-high-visibility` is `on` or `off`. Restore accessibility defaults sets it back to off. Reset application does not clear the record.
+High Visibility Controls is Settings → Accessibility → Visual comfort. The stored flag is `highVisibility` on the existing FIELD ACCESS record. Default is off. `data-high-visibility` is `on` or `off`. Restore accessibility defaults sets it back to off. Reset application returns the whole FIELD ACCESS record to its defaults, including High Visibility, Interface Size, and Text Size, and it also clears the session. Reload and mode changes keep the flag.
 
 What got clearer, using shape, weight, or a label as well as color:
 
@@ -210,7 +210,7 @@ Contrast check that was run: theme text color against the app canvas for Studio 
 Manual review still required:
 
 - Screen readers were not run (VoiceOver, TalkBack, NVDA, JAWS). Semantics were checked in the DOM: new marks are either `aria-hidden` or they repeat a state the control already exposes
-- Interface percentage and text percentage from task 22A are not in this build. Larger Controls (`data-ui-scale="large"`) was the scale that exists. It was combined with High Visibility at 320, 375, 390, and 430 CSS pixels
+- Interface Size and Text Size from 22A are in this build. High Visibility was checked with them at 100%/100%, 125%/150%, and 150%/200%, and with Larger Controls (`data-ui-scale="large"`) at 320, 375, 390, and 430 CSS pixels. Page overflow stayed within 1px. Settings can still sit in the scrolling header at 320px (R4). At 320px with Interface Size 150% and Text Size 200%, the empty Technical phone layout already stacks the load prompt, inspector actions, and transport. The same intersections are present with High Visibility off, so the preference does not add that overlap
 - A person should still look at Warm Paper and Dusk with a bypassed EQ band, a selected automation point, and a clipping meter, because automated contrast does not see every canvas pixel
 
 Known visual limits:

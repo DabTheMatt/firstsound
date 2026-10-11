@@ -74,20 +74,20 @@
 }
 
 .identityKicker {
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--inspector-accent, var(--accent-primary));
 }
 
 .identityName {
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .identitySource {
-  font-size: 11px;
+  font-size: var(--type-11);
   color: var(--text-secondary);
 }
 
@@ -135,7 +135,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--type-14);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -145,7 +145,7 @@
 .help {
   margin: 8px 0 12px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-12);
   line-height: 1.45;
 }
 
@@ -155,14 +155,14 @@
   align-items: baseline;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .readout strong {
   color: var(--accent-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -176,6 +176,25 @@
   gap: 6px;
 }
 
+:global(html[data-text-room='max']) .fine,
+:global(html[data-text-room='max']) .filterRow,
+:global(html[data-text-room='max']) .filterOn {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:global(html[data-text-room='room']) .identityKicker,
+:global(html[data-text-room='max']) .identityKicker,
+:global(html[data-text-room='room']) .identityName,
+:global(html[data-text-room='max']) .identityName,
+:global(html[data-text-room='room']) .identitySource,
+:global(html[data-text-room='max']) .identitySource,
+:global(html[data-text-room='room']) .title,
+:global(html[data-text-room='max']) .title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
 .fine button,
 .ghost {
   min-height: 44px;
@@ -184,7 +203,7 @@
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -220,7 +239,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -309,7 +328,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-8);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -323,7 +342,7 @@
 .fine span {
   text-align: center;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -339,7 +358,7 @@
   flex-direction: column;
   gap: 10px;
   margin: 8px 0 14px;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -350,7 +369,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
 }
 
 .field input {
@@ -374,7 +393,7 @@
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -393,7 +412,7 @@
 .selectCurrent {
   margin: 0;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -488,19 +507,19 @@
 }
 
 .mixReadoutLabel {
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.14em;
   color: var(--text-muted);
 }
 
 .mixReadoutWet {
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
 .mixReadoutPair {
-  font-size: 11px;
+  font-size: var(--type-11);
   color: var(--text-muted);
 }
 
@@ -640,7 +659,7 @@
 }
 
 .noteKicker {
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -657,7 +676,7 @@
   border: 1px solid var(--border-default);
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -688,7 +707,7 @@
 }
 
 .lrTime {
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -778,10 +797,10 @@
 .band summary {
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -875,7 +894,7 @@
 
 .sub {
   margin: 16px 0 8px;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -898,7 +917,7 @@
   border: 1px solid var(--border-default);
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.02em;
   text-transform: none;
   text-align: left;
@@ -907,7 +926,7 @@
 .preset em {
   font-style: normal;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   line-height: 1.3;
   letter-spacing: 0;
 }
@@ -937,13 +956,13 @@
 
 .paneTab,
 .paneTabOn {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 12px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -1001,7 +1020,7 @@
   width: 28px;
   height: 28px;
   min-width: 28px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   max-height: 28px;
   padding: 0;
   border: 1px solid var(--border-default);
@@ -1120,7 +1139,7 @@
 .lfoCompact .sub {
   margin: 0;
   line-height: 1;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
 }
 
@@ -1177,7 +1196,7 @@
   background: var(--bg-control);
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1209,7 +1228,7 @@
   border-color: var(--accent-primary);
   background: var(--accent-primary);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--type-11);
   line-height: 1;
   letter-spacing: 0;
   padding: 0;
@@ -1233,7 +1252,7 @@
 }
 
 .tapCycle .ghost {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
 }
 
 .lfoCompact .tapCycle {
@@ -1245,7 +1264,7 @@
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   margin: 0;
   width: 100%;
   overflow: visible;
@@ -1273,8 +1292,8 @@
   background: transparent;
   color: var(--text-muted);
   text-align: left;
-  font-size: 12px;
-  min-height: 32px;
+  font-size: var(--type-12);
+  min-height: max(32px, var(--toolbar-h));
 }
 
 .filterOn {

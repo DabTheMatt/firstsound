@@ -270,7 +270,7 @@
   border-radius: 0 0 7px 7px;
   background: color-mix(in srgb, var(--bg-panel) 86%, transparent);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -289,7 +289,7 @@
   text-overflow: ellipsis;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 9px;
+  font-size: var(--type-9);
   color: var(--text-muted);
 }
 
@@ -343,7 +343,7 @@
   background: color-mix(in srgb, var(--bg-app) 70%, var(--accent-primary) 30%);
   color: var(--accent-primary);
   letter-spacing: 0.14em;
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 600;
   text-transform: uppercase;
   pointer-events: none;
@@ -433,7 +433,7 @@
   border-radius: 6px;
   background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1;
   pointer-events: none;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--selection-border, var(--accent-primary)) 55%, transparent);
@@ -449,7 +449,7 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-panel) 90%, transparent);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   letter-spacing: 0.04em;
   pointer-events: none;
@@ -504,7 +504,7 @@
   display: flex;
   align-items: flex-start;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   font-weight: 650;
   color: var(--text-primary);
@@ -862,7 +862,7 @@
   height: var(--wave-ruler);
   padding: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -906,7 +906,7 @@
 }
 
 .phone .tick {
-  font-size: 9px;
+  font-size: var(--type-9);
   color: color-mix(in srgb, var(--text-muted) 75%, transparent);
 }
 
@@ -934,7 +934,7 @@
   justify-content: center;
   gap: 12px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   pointer-events: none;
@@ -945,7 +945,7 @@
   color: var(--text-on-accent);
   min-height: 48px;
   padding-inline: 22px;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .demo {
@@ -957,7 +957,7 @@
   background: transparent;
   color: var(--accent-primary);
   letter-spacing: 0.14em;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 500;
   text-transform: uppercase;
   touch-action: manipulation;
@@ -1030,7 +1030,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.02em;
 }
 
@@ -1089,7 +1089,7 @@
   border-radius: 3px;
   background: color-mix(in srgb, var(--bg-app) 84%, transparent);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 14px;

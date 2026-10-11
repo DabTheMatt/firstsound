@@ -162,12 +162,7 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           label="Color"
           value={prefs.colorMode}
           options={SPECTRAL_COLOR_MODES.map((mode) => ({ id: mode, label: COLOR_LABEL[mode] }))}
-          onChange={(id) =>
-            patch({
-              colorMode: id,
-              regionColors: id === 'off' ? false : id === 'frequency' ? true : prefs.regionColors,
-            })
-          }
+          onChange={(id) => patch({ colorMode: id })}
         />
         <ChoiceField
           label="Trails"
