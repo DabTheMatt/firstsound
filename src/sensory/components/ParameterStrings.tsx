@@ -296,6 +296,7 @@ export function ParameterStrings({
                   <>
                     <line
                       className={styles.lfoLine}
+                      data-decorative=""
                       x1={geom.x1}
                       y1={geom.y1}
                       x2={geom.x2}

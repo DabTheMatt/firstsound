@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { applyThemePreference, getThemePreference, invalidateThemeColors } from '../theme'
 import {
   applyA11yDom,
+  appliedSensoryPresentation,
   migrateLegacyLowVisionTheme,
   persistA11ySettings,
   readStoredA11ySettings,
@@ -49,7 +50,11 @@ export function bootstrapA11y(): A11ySettings {
     document.addEventListener('focusin', (event) => {
       const target = event.target
       if (target instanceof HTMLElement) {
-        target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        target.scrollIntoView({
+          block: 'nearest',
+          inline: 'nearest',
+          behavior: appliedSensoryPresentation().reduceDecorativeMotion ? 'auto' : undefined,
+        })
       }
     })
   }

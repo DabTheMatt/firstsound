@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { useA11ySettings } from '../../a11y/useA11ySettings'
+import { noticeShown, resolveSensoryPresentation, tempoNoticePriority } from '../../a11y/sensoryComfort'
 import { tabListKey } from '../../a11y/keyboard'
 import { focusSelector } from '../../a11y/dialogFocus'
 import { guideTargetAttrs } from '../../guide/targets'
@@ -1559,6 +1561,10 @@ function EqEditor({
 function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' | 'slider' }) {
   const { t } = useI18n()
   const { settings, patch } = useHearingSettings()
+  const a11y = useA11ySettings()
+  const quiet = resolveSensoryPresentation(a11y.settings, a11y.systemReducedMotion).quietNotifications
+  const tempoNotice = snap.tempoNotice
+  const showTempoNotice = Boolean(tempoNotice && noticeShown(tempoNoticePriority(tempoNotice), quiet))
   const source =
     snap.tempoSource === 'detected'
       ? 'detected'
@@ -1634,7 +1640,7 @@ function SampleTempo({ snap, variant }: { snap: EngineSnapshot; variant: 'knob' 
           <strong>{snap.tapCount}</strong>
         </div>
       ) : null}
-      {snap.tempoNotice ? <p className={styles.help}>{snap.tempoNotice}</p> : null}
+      {showTempoNotice ? <p className={styles.help}>{tempoNotice}</p> : null}
     </div>
   )
 }

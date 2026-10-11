@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { effectiveReducedMotion } from '../../a11y/settings'
+import { appliedSensoryPresentation } from '../../a11y/settings'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { computeMinMax, computeMinMaxCached } from '../../audio/engine/peaks'
 import { engine } from '../../hooks/useEngine'
@@ -44,7 +44,10 @@ export function SoundLens({
         frame = requestAnimationFrame(tick)
         return
       }
-      if (now - lastPaint < paintIntervalMs(engine.getSnapshot().playing)) {
+      const comfort = appliedSensoryPresentation()
+      const playing = engine.getSnapshot().playing
+      const activity = comfort.visualActivity === 'low' || comfort.reduceDecorativeMotion ? 'low' : 'standard'
+      if (now - lastPaint < paintIntervalMs(playing, activity)) {
         frame = requestAnimationFrame(tick)
         return
       }
@@ -106,7 +109,7 @@ export function SoundLens({
           }
           energy = Math.min(1, Math.sqrt(acc / bins.length) * 3)
         }
-        const reduced = effectiveReducedMotion()
+        const reduced = comfort.motionReduced || comfort.reduceDecorativeMotion
         const wobble = reduced ? 0 : visual.motion * 8 * dpr * Math.sin(performance.now() / 380)
         const amp = r * (0.58 + visual.mass * 0.2) * (0.86 + energy * 0.28)
         const step = Math.max(1, Math.floor(dpr))
@@ -238,7 +241,7 @@ export function SoundLens({
         ['--lens-ink-b' as string]: String(visual.ink.b),
       }}
     >
-      <div className={styles.halo} aria-hidden="true" />
+      <div className={styles.halo} data-decorative="" aria-hidden="true" />
       <div className={styles.glass}>
         <canvas ref={canvasRef} className={styles.canvas} />
         <span className={styles.shine} aria-hidden="true" />

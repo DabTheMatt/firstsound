@@ -399,9 +399,19 @@
   animation: lfoPulse 1.4s ease-in-out infinite;
 }
 
+:global(html[data-decorative-motion='reduce']) .lfoMark,
+:global(html[data-visual-effects='reduce']) .lfoMark {
+  animation: none;
+  opacity: 0.9;
+  transform: none;
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lfoMark {
     animation: none;
+    opacity: 0.9;
+    transform: none;
   }
 }
 

@@ -16,6 +16,7 @@ import {
   type A11ySettings as A11yState,
   type AttentionStrength,
 } from './settings'
+import type { VisualActivity } from './sensoryComfort'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
 
@@ -26,6 +27,7 @@ type SwitchProps = {
   extraDescription?: string
   onLabel: string
   offLabel: string
+  disabled?: boolean
   onChange: (next: boolean) => void
 }
 
@@ -36,6 +38,7 @@ function PreferenceSwitch({
   extraDescription,
   onLabel,
   offLabel,
+  disabled = false,
   onChange,
 }: SwitchProps) {
   const labelId = useId()
@@ -64,6 +67,7 @@ function PreferenceSwitch({
         aria-checked={checked}
         aria-labelledby={labelId}
         aria-describedby={describedBy}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
       >
         <span aria-hidden="true">{checked ? onLabel : offLabel}</span>
@@ -165,14 +169,61 @@ function StrengthChoice({
         </p>
       </div>
       <div className={styles.choices} role="radiogroup" aria-labelledby={labelId} aria-describedby={helpId}>
-        <button type="button" className={styles.choice} role="radio" aria-checked={value === 'subtle'} onClick={() => onChange('subtle')}>
+        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'subtle'} onClick={() => onChange('subtle')}>
           {subtle}
         </button>
-        <button type="button" className={styles.choice} role="radio" aria-checked={value === 'clear'} onClick={() => onChange('clear')}>
+        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'clear'} onClick={() => onChange('clear')}>
           {clear}
         </button>
       </div>
     </div>
+  )
+}
+
+type ActivityProps = {
+  label: string
+  description: string
+  standardLabel: string
+  lowLabel: string
+  value: VisualActivity
+  disabled: boolean
+  onChange: (next: VisualActivity) => void
+}
+
+function VisualActivityChoice({
+  label,
+  description,
+  standardLabel,
+  lowLabel,
+  value,
+  disabled,
+  onChange,
+}: ActivityProps) {
+  const name = useId()
+  const helpId = useId()
+  return (
+    <fieldset className={styles.choice} disabled={disabled} aria-describedby={helpId}>
+      <legend className={styles.optionLabel}>{label}</legend>
+      <p id={helpId} className={styles.help}>
+        {description}
+      </p>
+      <div className={styles.choiceRow}>
+        <label className={styles.choiceLabel}>
+          <input
+            type="radio"
+            name={name}
+            value="standard"
+            checked={value === 'standard'}
+            onChange={() => onChange('standard')}
+          />
+          {standardLabel}
+        </label>
+        <label className={styles.choiceLabel}>
+          <input type="radio" name={name} value="low" checked={value === 'low'} onChange={() => onChange('low')} />
+          {lowLabel}
+        </label>
+      </div>
+    </fieldset>
   )
 }
 
@@ -275,6 +326,73 @@ export function A11ySettings({ onBack }: Props) {
           onLabel={a.on}
           offLabel={a.off}
           onChange={(attentionReduce) => setSettings({ attentionReduce })}
+        />
+      </div>
+
+      <div>
+        <h3 className={styles.group}>{a.sensoryComfortSection}</h3>
+        <PreferenceSwitch
+          checked={settings.sensoryComfort}
+          label={a.sensoryComfort}
+          description={a.sensoryComfortHelp}
+          extraDescription={a.sensoryComfortApplies}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(sensoryComfort) => setSettings({ sensoryComfort })}
+        />
+        <VisualActivityChoice
+          label={a.visualActivity}
+          description={a.visualActivityHelp}
+          standardLabel={a.visualActivityStandard}
+          lowLabel={a.visualActivityLow}
+          value={settings.visualActivity}
+          disabled={!settings.sensoryComfort}
+          onChange={(visualActivity) => setSettings({ visualActivity })}
+        />
+        <PreferenceSwitch
+          checked={settings.reduceDecorativeMotion}
+          label={a.reduceDecorativeMotion}
+          description={a.reduceDecorativeMotionHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.sensoryComfort}
+          onChange={(reduceDecorativeMotion) => setSettings({ reduceDecorativeMotion })}
+        />
+        <PreferenceSwitch
+          checked={settings.calmMeters}
+          label={a.calmMeters}
+          description={a.calmMetersHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.sensoryComfort}
+          onChange={(calmMeters) => setSettings({ calmMeters })}
+        />
+        <PreferenceSwitch
+          checked={settings.calmSpectrum}
+          label={a.calmSpectrum}
+          description={a.calmSpectrumHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.sensoryComfort}
+          onChange={(calmSpectrum) => setSettings({ calmSpectrum })}
+        />
+        <PreferenceSwitch
+          checked={settings.reduceVisualEffects}
+          label={a.reduceVisualEffects}
+          description={a.reduceVisualEffectsHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.sensoryComfort}
+          onChange={(reduceVisualEffects) => setSettings({ reduceVisualEffects })}
+        />
+        <PreferenceSwitch
+          checked={settings.quietNotifications}
+          label={a.quietNotifications}
+          description={a.quietNotificationsHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.sensoryComfort}
+          onChange={(quietNotifications) => setSettings({ quietNotifications })}
         />
       </div>
 

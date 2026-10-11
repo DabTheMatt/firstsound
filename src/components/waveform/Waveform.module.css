@@ -52,6 +52,10 @@
   }
 }
 
+:global(html[data-decorative-motion='reduce']) .editor[data-calm] .stage {
+  animation: none;
+}
+
 .hearingEditor {
   flex-direction: row;
   align-items: stretch;

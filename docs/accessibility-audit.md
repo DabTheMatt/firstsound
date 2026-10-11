@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.29.0
+Tested application version: 0.30.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -12,7 +12,7 @@ This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim
 
 | Kind | Result |
 | --- | --- |
-| Automated tests | PASS — `npm run test:a11y`, 60 Playwright tests, axe-core 4.13 |
+| Automated tests | PASS — `npm run test:a11y`, 70 Playwright tests, axe-core 4.13 |
 | Manual assistive technology | NOT TESTED — no NVDA, VoiceOver, JAWS, or TalkBack session |
 | Known limitations | Documented below. They are not hidden by disabled axe rules. |
 
@@ -140,7 +140,7 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 | 20C Accessible Waveform | Shipped in 0.26.0. Canvas handles remain pointer targets (R1). Detection is approximate. |
 | 22A Interface Scaling | Shipped as Interface Size and Text Size. The narrow header can still scroll at 320px (R4). 200% browser zoom was not rechecked here. |
 | 22B High Visibility | Shipped in 0.28.0 as an opt-in visual layer. See the 22B section. It is not a WCAG conformance claim. |
-| 22C Sensory Comfort | Further Sensory motion and flash review beyond the reduced-motion switch |
+| 22C Sensory Comfort | Shipped in 0.29.0. See the 22C section. Decorative canvas motion in Sensory is reduced, not removed from the mode. |
 
 ## FIELD ACCESS preferences
 
@@ -222,7 +222,7 @@ Known visual limits:
 
 DSP modifications: none.
 
-## FIELD ACCESS 21A — attention focus (0.29.0)
+## FIELD ACCESS 21A — attention focus (0.30.0)
 
 Attention Focus is Settings → Accessibility → Cognitive & attention. The stored fields are `attentionFocus`, `attentionStrength` (`subtle` or `clear`), `attentionHighlight`, and `attentionReduce` on the existing FIELD ACCESS record. Defaults: off, subtle, highlight on, reduce on. `data-attention` is `on` or `off`. Restore accessibility defaults returns all four. Reset application still restores the whole FIELD ACCESS record, including Attention Focus, together with Interface Size and High Visibility. Reload and mode changes keep the record. Loading a sample and Reset all do not write the accessibility record.
 
@@ -245,5 +245,42 @@ Remaining limitations:
 - Narrow viewports were checked in the automated suite at 320, 375, 390, and 430 CSS pixels. That is emulation, not a physical phone
 - Canvas fade handles remain pointer targets. The keyboard path is still the drag-free editors
 - Reset application continues to restore FIELD ACCESS defaults. That matches the 22A and 22B contract and is covered by the scaling test
+
+## FIELD ACCESS 22C — Sensory Comfort (0.29.0)
+
+Sensory Comfort is a FIELD ACCESS preference. Default is off. It is not a fourth mode. Stored choices apply only while the master is on. Reduced Motion and `prefers-reduced-motion` stay independent: either one still removes decorative animation when Sensory Comfort is off.
+
+Implemented controls, in Settings → Accessibility → Sensory Comfort:
+
+- Sensory Comfort
+- Visual Activity: Standard or Low
+- Reduce Decorative Motion
+- Calm Meters
+- Calm Spectrum
+- Reduce Visual Effects
+- Quiet Notifications
+
+Presentation tokens on the document: `--field-motion-duration`, `--field-motion-intensity`, `--field-glow-intensity`, `--field-visual-transition-duration`, `--field-decorative-opacity`.
+
+What changed on screen:
+
+- Meters keep `timeDomainPeakDb` and the clip threshold. Calm Meters quantize the drawn bar and drop the clip glow. The Clip label stays. Low Visual Activity can refresh the bar less often. The clip check still runs on the existing meter cadence.
+- FFT 2D and the 3D waterfall can draw less often and with less glow. Waterfall camera glide stops while Calm Spectrum is on. FFT size, hop, and the existing visual pause are unchanged. The pause still affects the picture only.
+- Sensory pulse, grain drift, lens wobble, and the LFO activity dot calm down. String positions and parameter axes stay.
+- Quiet Notifications hide informational tempo notes and the hearing loop badge. Warnings, clipping, recording announcements, and the screen-reader live region stay.
+- Guided Tasks use a stable outline. Show me where scrolls only when the target is outside the viewport, without a smooth-scroll animation while decorative motion is reduced. High Visibility’s dashed outline stays when that preference is also on.
+- Focus Mode skips its entrance animation while decorative motion is reduced.
+
+Remaining motion and visual limits:
+
+- Some Sensory depth drawing still moves while playback runs when Reduce Decorative Motion is off. Low Visual Activity slows that drawing. It does not freeze the picture.
+- Meter and spectrum display followers can update less often. The underlying analyser and DSP block size are not retuned. A very short peak can still fall between two visual samples, as it could before.
+- Clipping is a stable label and lamp, not a flash. Color is not the only cue while Calm Meters is on, because the word Clip is primary text. High Visibility still draws the square clip mark.
+- No battery measurement was taken. Lower paint rates are not a battery claim.
+- Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 22C. A person did not watch the screen for flashing over time. Playwright screenshots of the settings, Sensory view, and FFT were reviewed.
+- Physical iPhone, iPad, and Android devices were not used. Viewport checks at 320, 375, 390, and 430 CSS pixels ran in Playwright.
+- This section is not a WCAG 2.2 AA conformance claim.
+
+Sensory Comfort works with the High Visibility layer from 22B. It does not replace those tokens, the focus ring, or the stronger control edges.
 
 DSP modifications: none.

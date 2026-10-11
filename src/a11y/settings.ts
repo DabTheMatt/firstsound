@@ -1,3 +1,11 @@
+import {
+  presentationTokens,
+  readVisualActivity,
+  resolveSensoryPresentation,
+  type SensoryPresentation,
+  type VisualActivity,
+} from './sensoryComfort'
+
 /** Versioned store. Legacy `field.a11y` is read once and kept in sync. */
 export const A11Y_STORAGE_KEY_V1 = 'field.accessibility.v1'
 
@@ -42,6 +50,15 @@ export type A11ySettings = {
   attentionHighlight: boolean
   /** Quiet decorative contrast outside the current edit. Text contrast stays. */
   attentionReduce: boolean
+  /** Calm presentation. Off leaves the current drawing alone. */
+  sensoryComfort: boolean
+  /** Stored choice. Effective only while Sensory Comfort is on. */
+  visualActivity: VisualActivity
+  reduceDecorativeMotion: boolean
+  calmMeters: boolean
+  calmSpectrum: boolean
+  reduceVisualEffects: boolean
+  quietNotifications: boolean
 }
 
 export type AttentionStrength = 'subtle' | 'clear'
@@ -64,6 +81,13 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   attentionStrength: 'subtle',
   attentionHighlight: true,
   attentionReduce: true,
+  sensoryComfort: false,
+  visualActivity: 'low',
+  reduceDecorativeMotion: true,
+  calmMeters: true,
+  calmSpectrum: true,
+  reduceVisualEffects: true,
+  quietNotifications: true,
 }
 
 const BOOLEAN_KEYS = [
@@ -81,6 +105,12 @@ const BOOLEAN_KEYS = [
   'attentionFocus',
   'attentionHighlight',
   'attentionReduce',
+  'sensoryComfort',
+  'reduceDecorativeMotion',
+  'calmMeters',
+  'calmSpectrum',
+  'reduceVisualEffects',
+  'quietNotifications',
 ] as const satisfies readonly (keyof A11ySettings)[]
 
 function readStrength(raw: unknown): AttentionStrength {
@@ -110,6 +140,7 @@ export function parseA11ySettings(raw: unknown): A11ySettings {
   if ('interfaceScale' in rec) next.interfaceScale = readScale(rec.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
   if ('textScale' in rec) next.textScale = readScale(rec.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
   if ('attentionStrength' in rec) next.attentionStrength = readStrength(rec.attentionStrength)
+  if ('visualActivity' in rec) next.visualActivity = readVisualActivity(rec.visualActivity)
   return next
 }
 
@@ -202,10 +233,16 @@ function applyLowVisionInline(root: HTMLElement, on: boolean): void {
 }
 
 let appliedSettings: A11ySettings = { ...DEFAULT_A11Y_SETTINGS }
+let appliedPresentation: SensoryPresentation = resolveSensoryPresentation(appliedSettings, false)
 
 /** Last settings written onto the document. Animation loops read this instead of localStorage. */
 export function appliedA11ySettings(): A11ySettings {
   return appliedSettings
+}
+
+/** Derived drawing choices from the last applied settings. */
+export function appliedSensoryPresentation(): SensoryPresentation {
+  return appliedPresentation
 }
 
 /** FIELD preference or the operating-system preference, whichever asks for less motion. */
@@ -215,8 +252,22 @@ export function effectiveMotionReduced(): boolean {
 
 export function applyA11yDom(settings: A11ySettings): void {
   appliedSettings = settings
+  appliedPresentation = resolveSensoryPresentation(settings, systemPrefersReducedMotion())
   if (typeof document === 'undefined') return
   const root = document.documentElement
+  const tokens = presentationTokens(appliedPresentation)
+  root.style.setProperty('--field-motion-duration', tokens.motionDuration)
+  root.style.setProperty('--field-motion-intensity', tokens.motionIntensity)
+  root.style.setProperty('--field-glow-intensity', tokens.glowIntensity)
+  root.style.setProperty('--field-visual-transition-duration', tokens.transitionDuration)
+  root.style.setProperty('--field-decorative-opacity', tokens.decorativeOpacity)
+  root.dataset.sensoryComfort = appliedPresentation.active ? 'on' : 'off'
+  root.dataset.visualActivity = appliedPresentation.visualActivity
+  root.dataset.decorativeMotion = appliedPresentation.reduceDecorativeMotion ? 'reduce' : 'full'
+  root.dataset.calmMeters = appliedPresentation.calmMeters ? 'on' : 'off'
+  root.dataset.calmSpectrum = appliedPresentation.calmSpectrum ? 'on' : 'off'
+  root.dataset.visualEffects = appliedPresentation.reduceVisualEffects ? 'reduce' : 'full'
+  root.dataset.quietNotices = appliedPresentation.quietNotifications ? 'on' : 'off'
   applyLowVisionInline(root, settings.lowVision)
   const reduced = motionReduced(settings)
   root.dataset.lowVision = settings.lowVision ? 'on' : 'off'
