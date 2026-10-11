@@ -111,7 +111,7 @@
   border: 0;
   background: transparent;
   color: color-mix(in srgb, var(--text-primary) 46%, transparent);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.28em;
   text-transform: uppercase;
   padding: 6px 8px 2px;

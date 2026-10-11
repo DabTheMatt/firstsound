@@ -52,7 +52,7 @@
   z-index: 1;
   margin: 0;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-8);
   font-weight: 650;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -100,7 +100,7 @@
 }
 
 .clipLabel {
-  font-size: 8px;
+  font-size: var(--type-8);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 1;
@@ -139,7 +139,7 @@
   position: absolute;
   right: 7px;
   z-index: 1;
-  font-size: 7px;
+  font-size: var(--type-7);
   line-height: 1;
   letter-spacing: 0;
   color: var(--text-muted);
@@ -258,7 +258,7 @@
   right: 0;
   z-index: 3;
   text-align: center;
-  font-size: 9px;
+  font-size: var(--type-9);
   color: var(--text-muted);
   letter-spacing: 0.06em;
 }
@@ -291,7 +291,7 @@
 
 .range span {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -302,7 +302,7 @@
   border-radius: 6px;
   background: var(--bg-panel);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   text-align: center;
   padding: 4px 2px;
   margin: 0;
@@ -325,7 +325,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   min-width: 0;
   padding: 0 2px;
 }
@@ -343,7 +343,7 @@
   flex: 1;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
 }
 
@@ -363,6 +363,16 @@
   bottom: 0;
   width: 0;
   background: var(--accent-primary);
+}
+
+:global(html[data-text-room='max']) .withWords .wordCol {
+  position: relative;
+  left: auto;
+  width: max(14px, calc(var(--type-8) + 6px));
+}
+
+:global(html[data-text-room='max']) .withWords .clipRow {
+  padding-left: 0;
 }
 
 .inlineHold {

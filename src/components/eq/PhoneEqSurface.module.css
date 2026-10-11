@@ -27,7 +27,7 @@
   margin: 0;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .empty button {

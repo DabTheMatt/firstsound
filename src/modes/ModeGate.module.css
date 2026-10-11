@@ -18,7 +18,7 @@
 
 .mark {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 400;
   letter-spacing: 0.42em;
   text-transform: uppercase;
@@ -72,14 +72,14 @@
 }
 
 .choiceName {
-  font-size: 22px;
+  font-size: var(--type-22);
   font-weight: 300;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .choiceCopy {
-  font-size: 14px;
+  font-size: var(--type-14);
   font-weight: 300;
   color: var(--text-muted);
 }

@@ -30,7 +30,7 @@
 
 .name {
   flex: none;
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -42,13 +42,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .chev {
   margin-left: auto;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .headTools {
@@ -65,13 +65,13 @@
 .more,
 .eqAdd {
   min-width: 36px;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 8px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -126,7 +126,7 @@
   border-radius: 6px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .field {
@@ -137,7 +137,7 @@
 }
 
 .field select {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   border: 0;
   background: transparent;
   color: var(--text-primary);
@@ -183,7 +183,7 @@
 
 .eqCell span {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -192,14 +192,14 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
 .eqAdd {
   min-width: 36px;
-  font-size: 18px;
+  font-size: var(--type-18);
 }
 
 .advanced {
@@ -211,7 +211,7 @@
 .advanced summary {
   min-height: 36px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;

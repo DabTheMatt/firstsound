@@ -9,7 +9,7 @@
 
 .caption {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 600;
   letter-spacing: 0.08em;
   line-height: 1.2;
@@ -30,12 +30,12 @@
 .option.labeled {
   width: auto;
   height: auto;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;

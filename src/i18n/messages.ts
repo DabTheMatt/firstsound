@@ -730,6 +730,10 @@ export type Messages = {
     accessTitle: string
     accessSubtitle: string
     visualComfort: string
+    interfaceSize: string
+    interfaceSizeHelp: string
+    textSize: string
+    textSizeHelp: string
     interaction: string
     theme: string
     reduceMotion: string
@@ -1743,6 +1747,10 @@ export const EN: Messages = {
     accessTitle: 'FIELD ACCESS',
     accessSubtitle: 'Make FIELD work your way.',
     visualComfort: 'Visual comfort',
+    interfaceSize: 'Interface Size',
+    interfaceSizeHelp: 'Adjust the size of interface controls and surrounding UI elements.',
+    textSize: 'Text Size',
+    textSizeHelp: 'Increase text size without enlarging the entire interface.',
     interaction: 'Interaction',
     theme: 'High Contrast / Low Vision Theme',
     reduceMotion: 'Reduced Motion',
@@ -2784,6 +2792,10 @@ export const PL: Messages = {
     accessTitle: 'FIELD ACCESS',
     accessSubtitle: 'Dostosuj FIELD do swoich potrzeb.',
     visualComfort: 'Komfort widzenia',
+    interfaceSize: 'Rozmiar interfejsu',
+    interfaceSizeHelp: 'Zmień wielkość kontrolek i elementów interfejsu.',
+    textSize: 'Rozmiar tekstu',
+    textSizeHelp: 'Powiększ tekst niezależnie od wielkości całego interfejsu.',
     interaction: 'Interakcja',
     theme: 'Wysoki kontrast / słabowidzący',
     reduceMotion: 'Ogranicz ruch',

@@ -2,7 +2,19 @@ import { useId } from 'react'
 import { useI18n } from '../i18n'
 import { HearingAccessSettings } from '../hearing/HearingAccessSettings'
 import { announce } from './liveRegion'
-import { DEFAULT_A11Y_SETTINGS, type A11ySettings as A11yState } from './settings'
+import {
+  DEFAULT_A11Y_SETTINGS,
+  INTERFACE_SCALE_MAX,
+  INTERFACE_SCALE_MIN,
+  INTERFACE_SCALE_PRESETS,
+  SCALE_STEP,
+  TEXT_SCALE_MAX,
+  TEXT_SCALE_MIN,
+  TEXT_SCALE_PRESETS,
+  clampScale,
+  scalePercent,
+  type A11ySettings as A11yState,
+} from './settings'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
 
@@ -59,6 +71,71 @@ function PreferenceSwitch({
   )
 }
 
+type ScaleProps = {
+  label: string
+  description: string
+  value: number
+  min: number
+  max: number
+  presets: readonly number[]
+  onChange: (next: number) => void
+}
+
+function ScalePreference({ label, description, value, min, max, presets, onChange }: ScaleProps) {
+  const labelId = useId()
+  const helpId = useId()
+  const rangeId = useId()
+  const percent = scalePercent(value)
+  return (
+    <div className={styles.scale}>
+      <div className={styles.copy}>
+        <label id={labelId} htmlFor={rangeId} className={styles.optionLabel}>
+          {label}
+        </label>
+        <p id={helpId} className={styles.help}>
+          {description}
+        </p>
+      </div>
+      <div className={styles.scaleRow}>
+        <input
+          id={rangeId}
+          className={styles.range}
+          type="range"
+          min={min}
+          max={max}
+          step={SCALE_STEP}
+          value={value}
+          aria-labelledby={labelId}
+          aria-describedby={helpId}
+          aria-valuetext={`${percent}%`}
+          onChange={(event) => onChange(clampScale(Number(event.target.value), min, max))}
+        />
+        <span className={styles.percent} aria-hidden="true">
+          {percent}%
+        </span>
+      </div>
+      <div className={styles.presets}>
+        {presets.map((preset) => {
+          const presetPercent = scalePercent(preset)
+          const selected = presetPercent === percent
+          return (
+            <button
+              key={preset}
+              type="button"
+              className={styles.preset}
+              aria-pressed={selected}
+              aria-label={`${label} ${presetPercent}%`}
+              onClick={() => onChange(preset)}
+            >
+              {presetPercent}%
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 type Props = {
   onBack: () => void
 }
@@ -88,6 +165,24 @@ export function A11ySettings({ onBack }: Props) {
 
       <div>
         <h3 className={styles.group}>{a.visualComfort}</h3>
+        <ScalePreference
+          label={a.interfaceSize}
+          description={a.interfaceSizeHelp}
+          value={settings.interfaceScale}
+          min={INTERFACE_SCALE_MIN}
+          max={INTERFACE_SCALE_MAX}
+          presets={INTERFACE_SCALE_PRESETS}
+          onChange={(interfaceScale) => setSettings({ interfaceScale })}
+        />
+        <ScalePreference
+          label={a.textSize}
+          description={a.textSizeHelp}
+          value={settings.textScale}
+          min={TEXT_SCALE_MIN}
+          max={TEXT_SCALE_MAX}
+          presets={TEXT_SCALE_PRESETS}
+          onChange={(textScale) => setSettings({ textScale })}
+        />
         <PreferenceSwitch
           checked={settings.reduceMotion}
           label={a.reduceMotion}

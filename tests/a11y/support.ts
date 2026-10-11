@@ -16,7 +16,7 @@ export const VIEWPORTS = [
 type Boot = {
   mode?: 'simple' | 'technical' | 'sensory'
   theme?: string
-  a11y?: Record<string, boolean>
+  a11y?: Record<string, boolean | number>
   reducedMotion?: 'reduce' | 'no-preference'
 }
 
