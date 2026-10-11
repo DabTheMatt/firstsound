@@ -65,7 +65,7 @@ No rule was disabled. No blanket exclusion was added for canvas, SVG, or a works
 | F6 | MEDIUM | 4.1.2 | Transient markers | Markers were `role="slider"` without a value or keyboard access. They are `aria-hidden`. |
 | F7 | HIGH | 4.1.2 | Guided Tasks progress | The progressbar had a value but no accessible name. It is named by the visible step label. |
 | F8 | MEDIUM | 2.4.11, 1.4.10 | Header at 320×568 and 1280×800 | Settings was clipped. The phone header scrolls sideways. At 1280 the bar tightens padding before Settings crosses the edge. |
-| F9 | HIGH | 2.1.4, 3.2.2 | Space shortcut | Space still toggles transport, including on a focused button outside a dialog. It does not fire while typing, on a checkbox, radio, or switch, or inside a dialog, menu, or alertdialog. Settings can turn transport shortcuts off. |
+| F9 | HIGH | 2.1.4, 3.2.2 | Space shortcut | Space toggles transport only when focus is not on a button, switch, slider, menu, or text field, and not inside a dialog. A focused button keeps Space for itself. Settings can turn transport shortcuts off. |
 | F10 | MEDIUM | 2.4.3 | Dialogs and Guided Tasks | Settings, Manual, and Export move focus in and return it to the trigger. Escape minimizes Guided Tasks even after Show me where moves attention. Focus is not moved on every tutorial step. |
 | F11 | MEDIUM | 2.2.2, 2.3.1 | Reduced motion | The FIELD switch and `prefers-reduced-motion` both reduce decorative motion, including Sensory scenes and spectral camera glide. Meters, waveform, and spectrum still draw. Audio processing is unchanged. |
 | F12 | LOW | 1.4.3 | Light themes | `color-scheme` follows the theme (Warm Paper, Manga, Light Studio) instead of forcing dark. |

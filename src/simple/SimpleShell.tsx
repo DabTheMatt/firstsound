@@ -10,6 +10,8 @@ import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
 import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
+import { radioGroupKey, tabListKey } from '../a11y/keyboard'
+import { focusInitial, trapTab } from '../a11y/dialogFocus'
 import { useI18n } from '../i18n'
 import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
 import { guideChrome } from '../guide/copy'
@@ -123,6 +125,17 @@ export function SimpleShell({
   const sidePanel = frame === 'desktop'
   const [section, setSection] = useState<Section>('edit')
   const [sheet, setSheet] = useState<Sheet>('none')
+  const sheetTrigger = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (sheet === 'none') {
+      const node = sheetTrigger.current
+      sheetTrigger.current = null
+      if (node?.isConnected) node.focus()
+      return
+    }
+    if (!sheetTrigger.current && document.activeElement instanceof HTMLElement) sheetTrigger.current = document.activeElement
+    focusInitial(document.querySelector('[role="dialog"][aria-labelledby="simple-sheet-title"]'))
+  }, [sheet])
   const [moreEdit, setMoreEdit] = useState(false)
   const [toneAmount, setToneAmount] = useState(DEFAULT_TONE_AMOUNT)
   const [activeTone, setActiveTone] = useState<SimpleToneId | 'custom'>('natural')
@@ -382,7 +395,7 @@ export function SimpleShell({
 
   const panel = (
     <aside className={styles.panel} aria-label={t.simple.sound}>
-      <div className={styles.tabs} role="tablist" aria-label={t.simple.sound}>
+      <div className={styles.tabs} role="tablist" aria-label={t.simple.sound} onKeyDown={(event) => tabListKey(event)}>
         {(['edit', 'sound', 'effects'] as const).map((id) => (
           <button
             key={id}
@@ -391,6 +404,7 @@ export function SimpleShell({
             id={`simple-tab-${id}`}
             aria-selected={section === id}
             aria-controls="simple-panel"
+            tabIndex={section === id ? 0 : -1}
             className={section === id ? styles.tabOn : styles.tab}
             data-simple-tab={id}
             onClick={() => setSection(id)}
@@ -716,7 +730,7 @@ export function SimpleShell({
   )
 
   const transport = (
-    <div className={styles.transport}>
+    <div className={styles.transport} data-transport="">
       <button
         type="button"
         className={styles.play}
@@ -877,7 +891,22 @@ export function SimpleShell({
 
       {sheet !== 'none' ? (
         <div className={styles.sheetScrim} onClick={() => setSheet('none')}>
-          <div className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="simple-sheet-title" onClick={(event) => event.stopPropagation()}>
+          <div
+            className={styles.sheet}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="simple-sheet-title"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                event.stopPropagation()
+                setSheet('none')
+                return
+              }
+              trapTab(event)
+            }}
+          >
             <button type="button" className={styles.sheetGrab} data-geometry="pill" aria-label={t.simple.closeSheet} onClick={() => setSheet('none')} />
             {sheet === 'save' ? (
               <form
@@ -887,7 +916,9 @@ export function SimpleShell({
                   saveFile()
                 }}
               >
-                <h2 id="simple-sheet-title">{t.transport.export}</h2>
+                <h2 id="simple-sheet-title" tabIndex={-1} data-dialog-initial="">
+                  {t.transport.export}
+                </h2>
                 <label className={styles.field}>
                   {t.simple.saveName}
                   <input value={saveName} onChange={(event) => setSaveName(event.target.value)} />
@@ -1036,7 +1067,7 @@ function FadeGroup({
         <FadeMark side={side} />
         <span className="sr-only">{label}</span>
       </h2>
-      <div className={`${styles.segments} ${styles.fadeSegments}`} role="radiogroup" aria-labelledby={id}>
+      <div className={`${styles.segments} ${styles.fadeSegments}`} role="radiogroup" aria-labelledby={id} onKeyDown={(event) => radioGroupKey(event)}>
         {FADE_STEP_IDS.map((step) => (
           <button
             key={step}

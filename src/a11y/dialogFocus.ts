@@ -17,6 +17,10 @@ export function peekTrigger(id: string): HTMLElement | null {
   return triggers.get(id) ?? null
 }
 
+export function forgetTrigger(id: string): void {
+  triggers.delete(id)
+}
+
 export function restoreTrigger(id: string, fallbackSelector?: string): void {
   if (!triggers.has(id)) return
   const node = triggers.get(id) ?? null

@@ -1063,7 +1063,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'amplitude',
         text('Height is amplitude', 'Wysokość to amplituda'),
-        text('Click the waveform. Tall parts swing further. Flat parts are quiet. Height is not the whole of loudness.', 'Kliknij falę. Wysokie fragmenty wychylają się dalej. Płaskie są ciche. Wysokość nie jest całą głośnością.'),
+        text('Focus the waveform and press an arrow key. Tall parts swing further. Flat parts are quiet. Height is not the whole of loudness.', 'Ustaw fokus na fali i naciśnij strzałkę. Wysokie fragmenty wychylają się dalej. Płaskie są ciche. Wysokość nie jest całą głośnością.'),
         {
           target: 'waveform.main',
           completion: { kind: 'any', actions: ['waveform.touched'] },
@@ -1071,7 +1071,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           why: text('The vertical direction is how far the signal moves from silence.', 'Kierunek pionowy to, jak daleko sygnał odchodzi od ciszy.'),
           technical: {
             target: 'technical.waveform',
-            instruction: text('Click the waveform. Tall parts swing further. Flat parts are quiet. Height is not the whole of loudness.', 'Kliknij falę. Wysokie fragmenty wychylają się dalej. Płaskie są ciche. Wysokość nie jest całą głośnością.'),
+            instruction: text('Focus the waveform and press an arrow key. Tall parts swing further. Flat parts are quiet. Height is not the whole of loudness.', 'Ustaw fokus na fali i naciśnij strzałkę. Wysokie fragmenty wychylają się dalej. Płaskie są ciche. Wysokość nie jest całą głośnością.'),
           },
           advanced: text('Perceived loudness also depends on frequency and duration. Do not read the picture as a loudness meter.', 'Odczuwana głośność zależy też od częstotliwości i czasu. Nie czytaj rysunku jak miernika głośności.'),
           success: text('Done — you touched the waveform.', 'Gotowe — dotknąłeś fali.'),
@@ -1093,7 +1093,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
       step(
         'selection',
         text('Make a selection', 'Zrób zaznaczenie'),
-        text('Drag across a short piece of the waveform, or set the start and end with Edit times. That range is the selection.', 'Przeciągnij po krótkim kawałku fali albo ustaw początek i koniec przez Edytuj czasy. Ten zakres to zaznaczenie.'),
+        text('Set the selection start and end from the keyboard, or drag across a short piece. That range is the selection.', 'Ustaw początek i koniec zaznaczenia z klawiatury albo przeciągnij po krótkim kawałku. Ten zakres to zaznaczenie.'),
         {
           target: 'waveform.main',
           completion: { kind: 'any', actions: ['selection.created'] },
@@ -1101,7 +1101,7 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
           success: text('Done — a selection exists.', 'Gotowe — zaznaczenie istnieje.'),
           technical: {
             target: 'technical.waveform',
-            instruction: text('Drag across a short piece of the waveform, or set the start and end with Edit times. That range is the selection.', 'Przeciągnij po krótkim kawałku fali albo ustaw początek i koniec przez Edytuj czasy. Ten zakres to zaznaczenie.'),
+            instruction: text('Set the selection start and end from the keyboard, or drag across a short piece. That range is the selection.', 'Ustaw początek i koniec zaznaczenia z klawiatury albo przeciągnij po krótkim kawałku. Ten zakres to zaznaczenie.'),
           },
         },
       ),

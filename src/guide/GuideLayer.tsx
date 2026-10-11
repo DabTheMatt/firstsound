@@ -666,6 +666,13 @@ function locate(target: GuideTargetId, instance: string | null, several: boolean
   return null
 }
 
+function focusRevealed(node: HTMLElement | null): void {
+  if (!node) return
+  const selector = 'button, a[href], input, select, textarea, [role="slider"], [tabindex="0"]'
+  const target = node.matches(selector) ? node : node.querySelector<HTMLElement>(selector)
+  target?.focus()
+}
+
 function reveal(target: GuideTargetId, instance: string | null): void {
   const host = getGuideHost()
   if (host.focusActive && targetHiddenInFocus(target)) {
@@ -676,6 +683,7 @@ function reveal(target: GuideTargetId, instance: string | null): void {
   window.setTimeout(() => {
     const node = findGuideElement(target, instance) ?? (target.startsWith('technical.add') ? findGuideElement('technical.addEffect') : null)
     node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    focusRevealed(node)
     window.dispatchEvent(new Event('field-guide-revealed'))
   }, 60)
 }

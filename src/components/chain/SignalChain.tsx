@@ -9,6 +9,8 @@ import {
   type ModuleType,
 } from '../../audio/chain/chain'
 import { announce, useA11ySettings } from '../../a11y'
+import { menuListKey } from '../../a11y/keyboard'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { onPointerReset } from '../../app/pointerSession'
 import { guideTargetAttrs, guideTargetForInsert, technicalTargetForModule } from '../../guide/targets'
 import { engine } from '../../hooks/useEngine'
@@ -28,7 +30,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
   const { t, moduleName } = useI18n()
   const { settings } = useA11ySettings()
   const lowVision = settings.lowVision
-  const showMoves = settings.lowVision || settings.dragFreeEditing
+  const showMoves = settings.lowVision || assistedEditorsEnabled(settings)
   const [reorder, setReorder] = useState(false)
   const [gapAt, setGapAt] = useState<number | null>(null)
   const [addAt, setAddAt] = useState<number | null>(null)
@@ -66,7 +68,13 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
       if (event.key === 'Escape') closeAdd()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const focusTimer = window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>(`.${styles.menu} [role="menuitem"]`)?.focus()
+    }, 0)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [addAt])
 
   const moveModule = (index: number, dir: -1 | 1) => {
@@ -235,15 +243,30 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                 className={styles.tab}
                 aria-pressed={selected}
                 title={label}
+                data-effect-tab={mod.instanceId}
                 onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => {
-                  if (fixed) return
-                  if ((event.altKey || event.metaKey) && event.key === 'ArrowLeft') {
+                  if ((event.altKey || event.metaKey) && (event.key === 'ArrowLeft' || event.key === 'ArrowUp')) {
                     event.preventDefault()
-                    moveModule(index, -1)
-                  } else if ((event.altKey || event.metaKey) && event.key === 'ArrowRight') {
-                    event.preventDefault()
-                    moveModule(index, 1)
+                    if (!fixed) moveModule(index, -1)
+                    return
                   }
+                  if ((event.altKey || event.metaKey) && (event.key === 'ArrowRight' || event.key === 'ArrowDown')) {
+                    event.preventDefault()
+                    if (!fixed) moveModule(index, 1)
+                    return
+                  }
+                  if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return
+                  const tabs = [...event.currentTarget.closest('nav')!.querySelectorAll<HTMLButtonElement>('[data-effect-tab]')]
+                  const at = tabs.indexOf(event.currentTarget)
+                  if (at < 0) return
+                  let next = at
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = Math.max(0, at - 1)
+                  else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = Math.min(tabs.length - 1, at + 1)
+                  else if (event.key === 'Home') next = 0
+                  else if (event.key === 'End') next = tabs.length - 1
+                  else return
+                  event.preventDefault()
+                  tabs[next]?.focus()
                 }}
                 onPointerDown={(event) => {
                   if (fixed) return
@@ -372,7 +395,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
         ? createPortal(
             <>
               <button type="button" className={styles.scrim} aria-label={t.chain.addEffect} onClick={closeAdd} />
-              <div className={styles.menu} role="menu" style={{ top: menuPos.top, left: menuPos.left }}>
+              <div className={styles.menu} role="menu" style={{ top: menuPos.top, left: menuPos.left }} onKeyDown={(event) => menuListKey(event)}>
                 {INSERTABLE_TYPES.map((type) => (
                   <button
                     key={type}

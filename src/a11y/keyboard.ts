@@ -100,11 +100,23 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const SPACE_OWNING_ROLES = new Set([
+  'button',
   'checkbox',
   'radio',
   'switch',
+  'link',
+  'menuitem',
   'menuitemcheckbox',
   'menuitemradio',
+  'tab',
+  'option',
+  'slider',
+  'spinbutton',
+  'combobox',
+  'listbox',
+  'searchbox',
+  'textbox',
+  'treeitem',
 ])
 
 /**
@@ -121,14 +133,14 @@ export function transportSpaceSuppressed(input: {
   if (input.inDialog) return true
   if (isTypingFromTag(input.tagName, input.inputType ?? '', input.editable ?? false)) return true
   const tag = input.tagName.toUpperCase()
-  if (tag === 'SELECT' || tag === 'SUMMARY') return true
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'SELECT' || tag === 'SUMMARY') return true
   const type = (input.inputType ?? '').toLowerCase()
-  if (tag === 'INPUT' && (type === 'checkbox' || type === 'radio')) return true
+  if (tag === 'INPUT' && (type === 'checkbox' || type === 'radio' || type === 'range')) return true
   if (input.role && SPACE_OWNING_ROLES.has(input.role)) return true
   return false
 }
 
-/** Space toggles play/pause except while typing, on a checkbox or radio, or inside a dialog. */
+/** Space toggles play/pause except while a control, field, menu, or dialog owns that key. */
 export function isTransportShortcutTarget(target: EventTarget | null): boolean {
   if (!target || !(target instanceof HTMLElement)) return !isTypingTarget(target)
   const inDialog = Boolean(target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]'))
@@ -144,4 +156,72 @@ export function isTransportShortcutTarget(target: EventTarget | null): boolean {
 export function scrollFocusedIntoView(target: EventTarget | null): void {
   if (!(target instanceof HTMLElement)) return
   target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+export function isImeEvent(event: { isComposing?: boolean; key?: string }): boolean {
+  return Boolean(event.isComposing) || event.key === 'Process'
+}
+
+type KeyHost = {
+  key: string
+  preventDefault(): void
+  currentTarget: EventTarget | null
+}
+
+function enabledItems(root: HTMLElement, selector: string): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(selector)].filter((item) => {
+    if (item.getAttribute('aria-disabled') === 'true') return false
+    if (item instanceof HTMLButtonElement && item.disabled) return false
+    return true
+  })
+}
+
+function stepItems(items: HTMLElement[], key: string, horizontal: boolean): HTMLElement | null {
+  const active = typeof document === 'undefined' ? null : document.activeElement
+  const index = items.findIndex((item) => item === active)
+  if (index < 0) return null
+  const nextKey = horizontal ? 'ArrowRight' : 'ArrowDown'
+  const prevKey = horizontal ? 'ArrowLeft' : 'ArrowUp'
+  let next = index
+  if (key === nextKey) next = (index + 1) % items.length
+  else if (key === prevKey) next = (index - 1 + items.length) % items.length
+  else if (key === 'Home') next = 0
+  else if (key === 'End') next = items.length - 1
+  else return null
+  return items[next] ?? null
+}
+
+/** Arrow keys move and select radios. Tab still leaves the group. */
+export function radioGroupKey(event: KeyHost): void {
+  const root = event.currentTarget
+  if (!(root instanceof HTMLElement)) return
+  const items = enabledItems(root, '[role="radio"]')
+  const next = stepItems(items, event.key, true) ?? stepItems(items, event.key, false)
+  if (!next) return
+  event.preventDefault()
+  next.focus()
+  next.click()
+}
+
+/** Arrow keys move and activate tabs. Tab still leaves the tablist. */
+export function tabListKey(event: KeyHost, orientation: 'horizontal' | 'vertical' = 'horizontal'): void {
+  const root = event.currentTarget
+  if (!(root instanceof HTMLElement)) return
+  const next = stepItems(enabledItems(root, '[role="tab"]'), event.key, orientation === 'horizontal')
+  if (!next) return
+  event.preventDefault()
+  next.focus()
+  next.click()
+}
+
+/** Arrow keys move between menu items. Does not trap Tab. */
+export function menuListKey(event: KeyHost): void {
+  const root = event.currentTarget
+  if (!(root instanceof HTMLElement)) return
+  const menu = root.getAttribute('role') === 'menu' ? root : root.querySelector<HTMLElement>('[role="menu"]')
+  if (!menu) return
+  const next = stepItems(enabledItems(menu, '[role="menuitem"]'), event.key, false)
+  if (!next) return
+  event.preventDefault()
+  next.focus()
 }

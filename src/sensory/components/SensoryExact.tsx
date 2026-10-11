@@ -1,3 +1,4 @@
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { SENSORY_AXES, type SensoryAxisId } from '../sensoryParameters'
 import { clampSensoryValue } from '../sensoryState'
@@ -16,7 +17,7 @@ type Props = {
 export function SensoryExact({ axisId, value, onChange, onCommit }: Props) {
   const { settings } = useA11ySettings()
   const { t } = useI18n()
-  if (!settings.dragFreeEditing || !axisId) return null
+  if (!assistedEditorsEnabled(settings) || !axisId) return null
   const axis = SENSORY_AXES[axisId]
   const min = axis.kind === 'bipolar' ? -1 : 0
   return (

@@ -1,5 +1,6 @@
 export {
   createSpaceActivationGuard,
+  isImeEvent,
   isSpaceKey,
   isTransportShortcutTarget,
   isTypingTarget,

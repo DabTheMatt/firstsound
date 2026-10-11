@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { EQ_FILTER_TYPES, FILTER_SLOPES, bandUsesGain, bandUsesSlope, type EqBand, type EqFilterType } from '../../audio/engine/eqBands'
 import { selectEqBand } from '../../audio/engine/eqBandSelection'
@@ -21,7 +22,7 @@ type Pick = { instanceId: string; bandId: string }
 
 export function DragFreeEq({ onDspGesture }: Props) {
   const { settings } = useA11ySettings()
-  if (!settings.dragFreeEditing) return null
+  if (!assistedEditorsEnabled(settings)) return null
   return <EqBody onDspGesture={onDspGesture} />
 }
 

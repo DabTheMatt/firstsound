@@ -13,6 +13,8 @@ export type A11ySettings = {
   shortcutsEnabled: boolean
   /** Shows non-dragging editors. Does not turn off existing keyboard access. */
   dragFreeEditing: boolean
+  /** Extra navigation tools and editors. Keyboard access stays on when this is off. */
+  keyboardFirst: boolean
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -24,6 +26,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   screenReaderOptimizations: false,
   shortcutsEnabled: true,
   dragFreeEditing: false,
+  keyboardFirst: false,
 }
 
 export function parseA11ySettings(raw: unknown): A11ySettings {
@@ -143,6 +146,12 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.srOpt = settings.screenReaderOptimizations ? 'on' : 'off'
   root.dataset.shortcuts = settings.shortcutsEnabled ? 'on' : 'off'
   root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
+  root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
+}
+
+/** Drag-free editors and chain move buttons. Either preference is enough. */
+export function assistedEditorsEnabled(settings: Pick<A11ySettings, 'dragFreeEditing' | 'keyboardFirst'>): boolean {
+  return settings.dragFreeEditing || settings.keyboardFirst
 }
 
 export function systemPrefersReducedMotion(): boolean {

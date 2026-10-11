@@ -263,6 +263,10 @@ export type Messages = {
     pasteCaption: string
     moreEdits: string
     moreEditsCaption: string
+    setPlayheadStart: string
+    setPlayheadEnd: string
+    toSampleStart: string
+    toSampleEnd: string
     displayGroup: string
     undo: string
     redo: string
@@ -758,6 +762,45 @@ export type Messages = {
     skipToMain: string
     dragFree: string
     dragFreeHelp: string
+    keyboardFirst: string
+    keyboardFirstHelp: string
+    keyboardFirstAlways: string
+  }
+  keyboard: {
+    open: string
+    jump: string
+    close: string
+    search: string
+    empty: string
+    destSearch: string
+    destEmpty: string
+    alwaysOn: string
+    browserChord: string
+    groups: {
+      navigation: string
+      transport: string
+      editing: string
+      effects: string
+      automation: string
+      guidedTasks: string
+    }
+    destinations: Record<
+      | 'waveform'
+      | 'transport'
+      | 'effects'
+      | 'inspector'
+      | 'eq'
+      | 'fft'
+      | 'automation'
+      | 'hearing'
+      | 'guided'
+      | 'export'
+      | 'accessibility'
+      | 'gain'
+      | 'parameters',
+      string
+    >
+    byId: Record<string, string>
   }
   dragFree: {
     selection: string
@@ -1129,6 +1172,10 @@ export const EN: Messages = {
     pasteCaption: 'Paste',
     moreEdits: 'More edits',
     moreEditsCaption: 'More',
+    setPlayheadStart: 'Set selection start',
+    setPlayheadEnd: 'Set selection end',
+    toSampleStart: 'Go to start',
+    toSampleEnd: 'Go to end',
     displayGroup: 'Display',
     undo: 'Undo',
     redo: 'Redo',
@@ -1716,7 +1763,7 @@ export const EN: Messages = {
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
     shortcutsHelp:
-      'When on, Space plays or pauses, including when a button outside a dialog has focus. Space still types in text fields and still toggles checkboxes, radios, and switches. Open dialogs keep Space for their own controls. Tab is never captured.',
+      'When on, Space plays or pauses unless a button, switch, slider, menu, or text field has focus. Open dialogs keep Space for their own controls. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -1725,11 +1772,76 @@ export const EN: Messages = {
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
     shortcutSpace:
-      'Space: play or pause, except while typing, on a checkbox, radio, or switch, or inside a dialog. While Hold is on, Space clears Hold.',
+      'Space: play or pause when focus is not on a button, switch, slider, menu, or text field. While Hold is on, Space clears Hold.',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
     dragFree: 'Drag-Free Editing',
     dragFreeHelp: 'Edit audio using buttons and exact values instead of dragging.',
+    keyboardFirst: 'Keyboard-First',
+    keyboardFirstHelp: 'Navigate and edit FIELD efficiently without a mouse.',
+    keyboardFirstAlways: 'Tab, Enter, Space, and Escape keep working when this is off.',
+  },
+  keyboard: {
+    open: 'Keyboard shortcuts',
+    jump: 'Workspace navigation',
+    close: 'Close',
+    search: 'Filter shortcuts',
+    empty: 'No matching shortcuts.',
+    destSearch: 'Filter destinations',
+    destEmpty: 'No matching destinations.',
+    alwaysOn: 'Keyboard access stays available when Keyboard-First is off. These shortcuts come from the live registry.',
+    browserChord: 'Ctrl+K and Cmd+K stay with the browser. FIELD uses Ctrl+Shift+K or Cmd+Shift+K.',
+    groups: {
+      navigation: 'Navigation',
+      transport: 'Transport',
+      editing: 'Editing',
+      effects: 'Effects',
+      automation: 'Automation',
+      guidedTasks: 'Guided Tasks',
+    },
+    destinations: {
+      waveform: 'Waveform',
+      transport: 'Transport',
+      effects: 'Effects',
+      inspector: 'Inspector',
+      eq: 'EQ',
+      fft: 'FFT',
+      automation: 'Automation',
+      hearing: 'Hearing',
+      guided: 'Guided Tasks',
+      export: 'Export',
+      accessibility: 'Accessibility Settings',
+      gain: 'Gain',
+      parameters: 'Parameters',
+    },
+    byId: {
+      'nav.workspaces': 'Open workspace navigation',
+      'nav.help': 'Open keyboard shortcuts',
+      'transport.play': 'Play or pause when focus is not on a control',
+      'transport.stop': 'Stop playback',
+      'transport.loop': 'Toggle loop',
+      'transport.back': 'Move the playhead a small step backward',
+      'transport.forward': 'Move the playhead a small step forward',
+      'transport.backCoarse': 'Move the playhead a larger step backward',
+      'transport.forwardCoarse': 'Move the playhead a larger step forward',
+      'transport.toStart': 'Move the playhead to the start',
+      'transport.toEnd': 'Move the playhead to the end',
+      'transport.pageBack': 'Move the playhead back one second',
+      'transport.pageForward': 'Move the playhead forward one second',
+      'edit.undo': 'Undo',
+      'edit.redo': 'Redo',
+      'edit.redoY': 'Redo',
+      'edit.copy': 'Copy the selection',
+      'edit.cut': 'Cut the selection',
+      'edit.paste': 'Paste at the playhead',
+      'effects.earlier': 'Move the focused effect earlier',
+      'effects.later': 'Move the focused effect later',
+      'effects.up': 'Move the focused effect earlier',
+      'effects.down': 'Move the focused effect later',
+      'auto.delete': 'Delete the selected automation point',
+      'guide.minimize': 'Minimize guided tasks',
+      'modal.close': 'Close the dialog',
+    },
   },
   dragFree: {
     selection: 'Selection',
@@ -2101,6 +2213,10 @@ export const PL: Messages = {
     pasteCaption: 'Wklej',
     moreEdits: 'Więcej edycji',
     moreEditsCaption: 'Więcej',
+    setPlayheadStart: 'Ustaw początek zaznaczenia',
+    setPlayheadEnd: 'Ustaw koniec zaznaczenia',
+    toSampleStart: 'Idź na początek',
+    toSampleEnd: 'Idź na koniec',
     displayGroup: 'Podgląd',
     undo: 'Cofnij',
     redo: 'Ponów',
@@ -2688,7 +2804,7 @@ export const PL: Messages = {
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',
     shortcutsHelp:
-      'Gdy włączone, spacja odtwarza albo pauzuje, także gdy fokus jest na przycisku poza oknem dialogowym. W polu tekstowym spacja pisze, a na polu wyboru i przełączniku zmienia stan. Otwarte okno dialogowe zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
+      'Gdy włączone, spacja odtwarza albo pauzuje, chyba że fokus jest na przycisku, przełączniku, suwaku, menu albo polu tekstowym. Otwarte okno zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
     shortcutsTitle: 'Skróty klawiszowe',
     shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
     shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
@@ -2697,11 +2813,76 @@ export const PL: Messages = {
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
     shortcutSpace:
-      'Spacja: odtwarzanie lub pauza, poza pisaniem, polem wyboru, przełącznikiem i otwartym oknem dialogowym. Gdy Hold jest włączony, spacja kasuje Hold.',
+      'Spacja: odtwarzanie lub pauza, gdy fokus nie jest na przycisku, przełączniku, suwaku, menu ani polu tekstowym. Gdy Hold jest włączony, spacja kasuje Hold.',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
     dragFree: 'Edytowanie bez przeciągania',
     dragFreeHelp: 'Edytuj dźwięk za pomocą przycisków i dokładnych wartości, bez przeciągania.',
+    keyboardFirst: 'Obsługa klawiaturą',
+    keyboardFirstHelp: 'Nawiguj i edytuj dźwięk bez używania myszy.',
+    keyboardFirstAlways: 'Tab, Enter, Spacja i Escape działają także przy wyłączonej preferencji.',
+  },
+  keyboard: {
+    open: 'Skróty klawiszowe',
+    jump: 'Nawigacja po obszarze',
+    close: 'Zamknij',
+    search: 'Filtruj skróty',
+    empty: 'Brak pasujących skrótów.',
+    destSearch: 'Filtruj miejsca',
+    destEmpty: 'Brak pasujących miejsc.',
+    alwaysOn: 'Obsługa klawiaturą działa także przy wyłączonej preferencji. Skróty pochodzą z aktualnego rejestru.',
+    browserChord: 'Ctrl+K i Cmd+K zostają przy przeglądarce. FIELD używa Ctrl+Shift+K albo Cmd+Shift+K.',
+    groups: {
+      navigation: 'Nawigacja',
+      transport: 'Transport',
+      editing: 'Edycja',
+      effects: 'Efekty',
+      automation: 'Automatyzacja',
+      guidedTasks: 'Zadania z przewodnikiem',
+    },
+    destinations: {
+      waveform: 'Fala',
+      transport: 'Transport',
+      effects: 'Efekty',
+      inspector: 'Inspektor',
+      eq: 'EQ',
+      fft: 'FFT',
+      automation: 'Automatyzacja',
+      hearing: 'Słuch',
+      guided: 'Zadania z przewodnikiem',
+      export: 'Eksport',
+      accessibility: 'Ustawienia dostępności',
+      gain: 'Gain',
+      parameters: 'Parametry',
+    },
+    byId: {
+      'nav.workspaces': 'Otwórz nawigację po obszarze',
+      'nav.help': 'Otwórz skróty klawiszowe',
+      'transport.play': 'Odtwarzaj albo pauzuj, gdy fokus nie jest na kontrolce',
+      'transport.stop': 'Zatrzymaj odtwarzanie',
+      'transport.loop': 'Przełącz pętlę',
+      'transport.back': 'Cofnij głowicę o mały krok',
+      'transport.forward': 'Przesuń głowicę o mały krok',
+      'transport.backCoarse': 'Cofnij głowicę o większy krok',
+      'transport.forwardCoarse': 'Przesuń głowicę o większy krok',
+      'transport.toStart': 'Przesuń głowicę na początek',
+      'transport.toEnd': 'Przesuń głowicę na koniec',
+      'transport.pageBack': 'Cofnij głowicę o jedną sekundę',
+      'transport.pageForward': 'Przesuń głowicę o jedną sekundę',
+      'edit.undo': 'Cofnij',
+      'edit.redo': 'Ponów',
+      'edit.redoY': 'Ponów',
+      'edit.copy': 'Kopiuj zaznaczenie',
+      'edit.cut': 'Wytnij zaznaczenie',
+      'edit.paste': 'Wklej przy głowicy',
+      'effects.earlier': 'Przenieś efekt w fokusie wcześniej',
+      'effects.later': 'Przenieś efekt w fokusie później',
+      'effects.up': 'Przenieś efekt w fokusie wcześniej',
+      'effects.down': 'Przenieś efekt w fokusie później',
+      'auto.delete': 'Usuń wybrany punkt automatyzacji',
+      'guide.minimize': 'Zminimalizuj zadania z przewodnikiem',
+      'modal.close': 'Zamknij okno',
+    },
   },
   dragFree: {
     selection: 'Zaznaczenie',

@@ -125,6 +125,15 @@ export function A11ySettings({ onBack }: Props) {
           offLabel={a.off}
           onChange={(dragFreeEditing) => setSettings({ dragFreeEditing })}
         />
+        <PreferenceSwitch
+          checked={settings.keyboardFirst}
+          label={a.keyboardFirst}
+          description={a.keyboardFirstHelp}
+          extraDescription={a.keyboardFirstAlways}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(keyboardFirst) => setSettings({ keyboardFirst })}
+        />
       </div>
 
       <p className={styles.saved}>{a.saved}</p>

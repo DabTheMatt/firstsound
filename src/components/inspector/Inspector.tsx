@@ -1,6 +1,9 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { announce } from '../../a11y/liveRegion'
+import { tabListKey } from '../../a11y/keyboard'
+import { focusSelector } from '../../a11y/dialogFocus'
 import { guideTargetAttrs } from '../../guide/targets'
-import { eqColorIndex, isFixedType, moduleLabel, type ModuleType } from '../../audio/chain/chain'
+import { eqColorIndex, isFixedType, moduleLabel, type ChainModule, type ModuleType } from '../../audio/chain/chain'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
 import { clampCombSpacing, defaultSpacingForMode } from '../../audio/engine/comb'
 import { formatTimecode } from '../../audio/engine/formatTime'
@@ -497,7 +500,7 @@ function InspectorTabs({
 }) {
   const { t } = useI18n()
   return (
-    <div className={styles.paneTabs} role="tablist" aria-label={t.inspector.effectSettings}>
+    <div className={styles.paneTabs} role="tablist" aria-label={t.inspector.effectSettings} onKeyDown={(event) => tabListKey(event)}>
       <button
         type="button"
         role="tab"
@@ -517,6 +520,44 @@ function InspectorTabs({
         {advancedLabel}
       </button>
     </div>
+  )
+}
+
+function EffectOrderButtons({ chain, instanceId }: { chain: ChainModule[]; instanceId: string }) {
+  const { t, moduleName } = useI18n()
+  const index = chain.findIndex((item) => item.instanceId === instanceId)
+  const mod = chain[index]
+  if (!mod || isFixedType(mod.type)) return null
+  const earlier = chain[index - 1]
+  const later = chain[index + 1]
+  const name = moduleLabel(mod, chain, t.modules)
+  const move = (dir: -1 | 1) => {
+    const dest = index + dir
+    const other = chain[dest]
+    if (!other || dest < 1 || dest >= chain.length - 1) return
+    engine.reorderModules(index, dest)
+    const vars = [moduleName(mod.type), moduleName(other.type)] as const
+    announce(dir < 0 ? t.chain.movedBefore(vars[0], vars[1]) : t.chain.movedAfter(vars[0], vars[1]))
+  }
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={earlier && !isFixedType(earlier.type) ? t.chain.moveBefore(name, moduleLabel(earlier, chain, t.modules)) : t.chain.moveEarlier}
+        disabled={index <= 1}
+        onClick={() => move(-1)}
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        aria-label={later && !isFixedType(later.type) ? t.chain.moveAfter(name, moduleLabel(later, chain, t.modules)) : t.chain.moveLater}
+        disabled={index >= chain.length - 2}
+        onClick={() => move(1)}
+      >
+        ›
+      </button>
+    </>
   )
 }
 
@@ -587,6 +628,7 @@ function ModuleInspector({
                   onToggle={() => engine.toggleModuleBypass(instanceId)}
                 />
               ) : null}
+              <EffectOrderButtons chain={snap.chain} instanceId={instanceId} />
             </div>
           </div>
           {ids.length ? params([...ids]) : null}
@@ -617,12 +659,18 @@ function ModuleInspector({
             />
           ) : null}
           <EffectRandomMenu type={type} />
+          <EffectOrderButtons chain={snap.chain} instanceId={instanceId} />
           {mod && !isFixedType(mod.type) ? (
             <button
               type="button"
               className={styles.remove}
               aria-label={`${t.inspector.remove} ${t.modules[mod.type]}`}
-              onClick={() => engine.removeModule(instanceId)}
+              onClick={() => {
+                const index = snap.chain.findIndex((item) => item.instanceId === instanceId)
+                const neighbor = snap.chain[index - 1] ?? snap.chain[index + 1]
+                engine.removeModule(instanceId)
+                focusSelector(neighbor ? `[data-effect-tab="${neighbor.instanceId}"]` : '[data-effect-tab]')
+              }}
             >
               {t.inspector.remove}
             </button>

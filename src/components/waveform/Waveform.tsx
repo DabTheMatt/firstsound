@@ -856,14 +856,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     })
   }, [])
 
-  const onEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (sensory) return
-    if (event.altKey || event.metaKey || event.ctrlKey) return
-    if (blocksPlayheadArrowKey(event.target)) return
-    const delta = playheadNudgeSeconds(event.key, event.shiftKey)
-    if (delta == null || !loaded || !(duration > 0)) return
-    event.preventDefault()
-    engine.nudgePlayhead(delta, 'sample')
+  const paintPlayhead = () => {
     const el = playheadRef.current
     if (!el) return
     const frac = timeToFrac(engine.getSourcePlayheadSeconds(), viewRef.current)
@@ -873,6 +866,33 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     } else {
       el.style.display = 'none'
     }
+  }
+
+  const onEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (sensory) return
+    if (event.altKey || event.metaKey || event.ctrlKey) return
+    if (blocksPlayheadArrowKey(event.target)) return
+    if (!loaded || !(duration > 0)) return
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      engine.seekSeconds(event.key === 'Home' ? 0 : duration, 'sample')
+      paintPlayhead()
+      emitGuideEvent('waveform.touched')
+      return
+    }
+    if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault()
+      engine.nudgePlayhead(event.key === 'PageUp' ? -1 : 1, 'sample')
+      paintPlayhead()
+      emitGuideEvent('waveform.touched')
+      return
+    }
+    const delta = playheadNudgeSeconds(event.key, event.shiftKey)
+    if (delta == null) return
+    event.preventDefault()
+    engine.nudgePlayhead(delta, 'sample')
+    paintPlayhead()
+    emitGuideEvent('waveform.touched')
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1433,6 +1453,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
     <div
       className={`${styles.editor} ${hearingFocus ? styles.hearingEditor : ''} ${sensory ? styles.sensory : ''} ${simple ? styles.simple : ''} ${phone ? styles.phone : ''} ${phoneFocus ? styles.phoneFocus : ''}`}
       data-waveform-editor=""
+      data-region="waveform"
       data-calm={calm ? calmWorkspace ?? undefined : undefined}
     >
       {workspaceBar}

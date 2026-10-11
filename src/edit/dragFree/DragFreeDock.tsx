@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { useI18n } from '../../i18n'
 import type { DspSnapshot } from '../../sensory/mapping/mappingEngine'
@@ -47,7 +48,7 @@ export function DragFreeDock({
   const { settings } = useA11ySettings()
   const { t } = useI18n()
   const [waveOpen, setWaveOpen] = useState(false)
-  if (!settings.dragFreeEditing) return null
+  if (!assistedEditorsEnabled(settings)) return null
   const wave = (
     <DragFreeWave
       fadeIn={fadeIn}

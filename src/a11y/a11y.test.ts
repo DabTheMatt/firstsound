@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PARAM_DESCRIPTIONS, SENSORY_DESCRIPTIONS } from './descriptions'
-import { applySliderKey, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, transportSpaceSuppressed } from './keyboard'
+import { applySliderKey, isImeEvent, isSpaceKey, isTypingFromTag, isTransportShortcutTarget, transportSpaceSuppressed } from './keyboard'
 import {
   A11Y_STORAGE_KEY,
   A11Y_STORAGE_KEY_V1,
@@ -79,13 +79,21 @@ describe('slider keyboard', () => {
   })
 
   it('keeps Space for checkboxes, radios, and dialogs', () => {
-    expect(transportSpaceSuppressed({ tagName: 'BUTTON' })).toBe(false)
+    expect(transportSpaceSuppressed({ tagName: 'BUTTON' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'DIV', role: 'slider' })).toBe(true)
+    expect(transportSpaceSuppressed({ tagName: 'DIV', role: 'menuitem' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'checkbox' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'radio' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'INPUT', inputType: 'text' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'DIV', role: 'switch' })).toBe(true)
     expect(transportSpaceSuppressed({ tagName: 'BUTTON', inDialog: true })).toBe(true)
     expect(isTransportShortcutTarget(null)).toBe(true)
+  })
+
+  it('ignores keys while an IME composition is active', () => {
+    expect(isImeEvent({ isComposing: true, key: 'a' })).toBe(true)
+    expect(isImeEvent({ key: 'Process' })).toBe(true)
+    expect(isImeEvent({ isComposing: false, key: 'a' })).toBe(false)
   })
 })
 
@@ -109,6 +117,8 @@ describe('a11y settings and i18n', () => {
     expect(effectiveMotionReduced()).toBe(false)
     expect(parseA11ySettings(null).shortcutsEnabled).toBe(true)
     expect(parseA11ySettings(null).dragFreeEditing).toBe(false)
+    expect(parseA11ySettings(null).keyboardFirst).toBe(false)
+    expect(parseA11ySettings({ keyboardFirst: true }).keyboardFirst).toBe(true)
     expect(parseA11ySettings(null).lowVision).toBe(false)
   })
 
@@ -127,6 +137,10 @@ describe('a11y settings and i18n', () => {
     expect(EN.a11y.dragFreeHelp).toContain('buttons and exact values')
     expect(PL.a11y.dragFree).toBe('Edytowanie bez przeciągania')
     expect(PL.a11y.dragFreeHelp).toContain('bez przeciągania')
+    expect(EN.a11y.keyboardFirst).toBe('Keyboard-First')
+    expect(EN.a11y.keyboardFirstHelp).toContain('without a mouse')
+    expect(PL.a11y.keyboardFirst).toBe('Obsługa klawiaturą')
+    expect(PL.a11y.keyboardFirstHelp).toBe('Nawiguj i edytuj dźwięk bez używania myszy.')
     expect(EN.chain.moveBefore('Reverb', 'Delay')).toBe('Move Reverb before Delay')
     expect(EN.chain.movedBefore('Delay', 'Reverb')).toBe('Delay moved before Reverb.')
   })

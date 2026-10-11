@@ -1,3 +1,4 @@
+import { radioGroupKey } from '../a11y/keyboard'
 import { useI18n } from '../i18n'
 import { UI_MODES, type UiMode } from './uiMode'
 import styles from './ModeSwitch.module.css'
@@ -21,6 +22,7 @@ export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }
       className={`${styles.switch} ${variant === 'editorial' ? styles.editorial : ''} ${compact ? styles.compact : ''}`}
       role="radiogroup"
       aria-label={t.mode.group}
+      onKeyDown={(event) => radioGroupKey(event)}
     >
       {UI_MODES.map((id) => (
         <button

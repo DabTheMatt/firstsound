@@ -57,4 +57,26 @@ describe('drag-free keyboard markup', () => {
     )
     expect(html).toBe('')
   })
+
+  it('shows the same editors when keyboard-first is on', () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value)
+      },
+    })
+    persistA11ySettings({ ...DEFAULT_A11Y_SETTINGS, dragFreeEditing: false, keyboardFirst: true })
+    const html = renderToStaticMarkup(
+      <DragFreeWave
+        fadeIn={0}
+        fadeOut={0}
+        onFades={() => undefined}
+        onFadesCommit={() => undefined}
+        onRegionCommit={() => undefined}
+        onTrim={() => undefined}
+      />,
+    )
+    expect(html).toContain('Set start')
+  })
 })

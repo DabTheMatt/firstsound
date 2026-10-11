@@ -294,7 +294,7 @@ const en: ManualSection[] = [
     id: 'keys',
     title: 'Keyboard shortcuts',
     body: [
-      'Space plays or pauses, except while typing, on a checkbox, radio, or switch, or inside a dialog. A focused button outside a dialog still uses Space for transport. While Hold is on, Space clears Hold and leaves playback running from that place. Enter activates that button. Escape closes menus and dialogs and returns focus to the control that opened them.',
+      'Space plays or pauses when focus is not on a button, switch, slider, menu, or text field, and not inside a dialog. Enter or Space activates the focused button itself. While Hold is on, Space clears Hold and leaves playback running from that place. Escape closes menus and dialogs and returns focus to the control that opened them.',
       'Ctrl+Z or Cmd+Z undoes. Shift+Ctrl+Z or Shift+Cmd+Z redoes.',
       'Tab moves between controls. Arrow keys change a focused knob or slider. Shift+Arrow is a finer step. Home and End jump to the ends. Page Up and Page Down take a larger step. Delete or Backspace resets the focused parameter.',
       'Transport shortcuts can be turned off in Settings.',
@@ -321,7 +321,7 @@ const en: ManualSection[] = [
       'Choices are saved in this browser and survive reload and Reset application. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project.',
       'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
       'Screen reader support is partial. Buttons, knobs, sliders, switches, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
-      'Known limits: dragging a waveform selection, fade handles, and automation points still needs a pointer. EQ numeric controls and graph-node arrow keys cover frequency, gain, and Q. A complete keyboard waveform is not finished. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
+      'Known limits: pointer dragging still edits the waveform, fades, EQ nodes, and automation points. The same edits are available from the keyboard through buttons, sliders, and the drag-free editors. Screen reader behavior was not manually verified for this release. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
     ],
   },
   {
@@ -336,6 +336,19 @@ const en: ManualSection[] = [
       'In the effect chain, each movable effect has move buttons. Input and Output stay fixed. Moving an effect keeps its settings. The sound can change because the order changed.',
       'When a track is looping, Set loop start, Set loop end, and Edit loop times use that loop. Simple and Sensory do not add a separate loop if the view does not have one.',
       'The same editors are available in Simple, Technical, and Sensory where that edit already exists, including Focus mode. Tab, Shift+Tab, Enter, Space, and Escape work on the new controls. Times are minutes, seconds, and milliseconds. FIELD still rounds sample edits the way it did before. The clock does not mean every millisecond is its own sample.',
+    ],
+  },
+  {
+    id: 'keyboard-first',
+    title: 'Keyboard-First',
+    body: [
+      'Keyboard-First is in Settings → Accessibility → Interaction. It is off until you turn it on. Turning it on shows the drag-free editors and the effect move buttons, and it does not change the audio engine.',
+      'Tab, Shift+Tab, Enter, Space, arrows, Home, End, and Escape work whether Keyboard-First is on or off. The preference does not turn keyboard access off.',
+      'Workspace navigation is in the Settings menu, and Ctrl+Shift+K or Cmd+Shift+K opens it. Ctrl+K and Cmd+K stay with the browser. The list shows only destinations that exist in the current mode. Choosing one moves focus there. Escape closes the list and restores focus. Playback does not restart.',
+      'On the waveform, Left and Right move the playhead by 10 milliseconds. Shift makes that 100 milliseconds. Page Up and Page Down move one second. Home and End go to the start and end of the audio. Set selection start and Set selection end, in More edits, use the playhead. Trim and fades stay on their existing buttons and inspector sliders. Nothing trims just because focus moved.',
+      'The effect chain is a list. Tab reaches it. Arrow keys move between effects. Enter selects the effect and opens it in the Inspector. Alt+Arrow moves it. The Inspector also has move and remove buttons. Input and Output stay fixed.',
+      'EQ bands, automation points, and sensory parameters use the same controls as the pointer: sliders, numeric fields, and the drag-free editors when Drag-Free Editing or Keyboard-First is on. Guided Tasks advance from those real edits. Show me where moves focus only when you activate it.',
+      'Keyboard shortcuts, in the Settings menu, lists the live registry grouped as Navigation, Transport, Editing, Effects, Automation, and Guided Tasks. Focus mode keeps the same keys. Closing it restores focus and does not restart playback.',
     ],
   },
   {
@@ -659,7 +672,7 @@ const pl: ManualSection[] = [
     id: 'keys',
     title: 'Skróty klawiszowe',
     body: [
-      'Spacja odtwarza albo pauzuje, poza pisaniem, polem wyboru, przełącznikiem i otwartym oknem dialogowym. Przycisk poza oknem nadal używa spacji do transportu. Gdy Hold jest włączony, spacja kasuje Hold i zostawia odtwarzanie od tego miejsca. Enter aktywuje ten przycisk. Escape zamyka menu i okna i wraca fokus do kontrolki, która je otworzyła.',
+      'Spacja odtwarza albo pauzuje, gdy fokus nie jest na przycisku, przełączniku, suwaku, menu ani polu tekstowym i nie jest w oknie. Enter albo Spacja aktywuje sam przycisk w fokusie. Gdy Hold jest włączony, spacja kasuje Hold i zostawia odtwarzanie od tego miejsca. Escape zamyka menu i okna i wraca fokus do kontrolki, która je otworzyła.',
       'Ctrl+Z albo Cmd+Z cofa. Shift+Ctrl+Z albo Shift+Cmd+Z ponawia.',
       'Tab przechodzi między kontrolkami. Strzałki zmieniają gałkę albo suwak w fokusie. Shift+strzałka to mniejszy krok. Home i End skaczą na krańce. Page Up i Page Down robią większy krok. Delete albo Backspace resetuje parametr w fokusie.',
       'Skróty transportu można wyłączyć w Ustawieniach.',
@@ -686,7 +699,7 @@ const pl: ManualSection[] = [
       'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
       'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
       'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, przełączniki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
-      'Znane ograniczenia: przeciąganie zaznaczenia fali, uchwytów fade i punktów automatyzacji nadal wymaga wskaźnika. Liczbowe kontrolki EQ i strzałki na węźle wykresu obejmują częstotliwość, wzmocnienie i Q. Pełna klawiaturowa fala nie jest gotowa. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
+      'Znane ograniczenia: przeciąganie nadal edytuje falę, zaniki, węzły EQ i punkty automatyzacji. Te same edycje są dostępne z klawiatury przez przyciski, suwaki i edytory bez przeciągania. Zachowanie czytnika ekranu nie było sprawdzane ręcznie w tym wydaniu. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
     ],
   },
   {
@@ -701,6 +714,19 @@ const pl: ManualSection[] = [
       'W łańcuchu efektów każdy przesuwalny efekt ma przyciski ruchu. Wejście i wyjście zostają na miejscu. Przesunięcie zachowuje ustawienia efektu. Dźwięk może się zmienić, bo zmieniła się kolejność.',
       'Gdy ścieżka jest w pętli, Ustaw początek pętli, Ustaw koniec pętli i Edytuj czasy pętli używają tej pętli. Prosty i Sensoryczny nie dokładają osobnej pętli, jeśli widok jej nie ma.',
       'Te same edytory są w Prostym, Technicznym i Sensorycznym tam, gdzie dana edycja już istnieje, także w trybie Focus. Tab, Shift+Tab, Enter, Spacja i Escape działają na nowych kontrolkach. Czas to minuty, sekundy i milisekundy. FIELD nadal zaokrągla edycję sampli tak jak wcześniej. Zegar nie oznacza, że każda milisekunda jest osobną próbką.',
+    ],
+  },
+  {
+    id: 'keyboard-first',
+    title: 'Obsługa klawiaturą',
+    body: [
+      'Obsługa klawiaturą jest w Ustawienia → Dostępność → Interakcja. Jest wyłączona, dopóki jej nie włączysz. Po włączeniu pojawiają się edytory bez przeciągania i przyciski przesuwania efektów. Silnik audio się nie zmienia.',
+      'Tab, Shift+Tab, Enter, Spacja, strzałki, Home, End i Escape działają niezależnie od tej preferencji. Wyłączenie jej nie wyłącza klawiatury.',
+      'Nawigacja po obszarze jest w menu Ustawień, a Ctrl+Shift+K albo Cmd+Shift+K ją otwiera. Ctrl+K i Cmd+K zostają przy przeglądarce. Lista pokazuje tylko miejsca dostępne w bieżącym trybie. Wybór przenosi fokus. Escape zamyka listę i przywraca fokus. Odtwarzanie nie startuje od nowa.',
+      'Na fali Left i Right przesuwają głowicę o 10 milisekund. Shift robi z tego 100 milisekund. Page Up i Page Down przesuwają o sekundę. Home i End idą na początek i koniec audio. Ustaw początek zaznaczenia i Ustaw koniec zaznaczenia, w Więcej edycji, biorą miejsce głowicy. Przycięcie i zaniki zostają na dotychczasowych przyciskach i suwakach inspektora. Samo przeniesienie fokusu niczego nie przycina.',
+      'Łańcuch efektów jest listą. Tab do niego wchodzi. Strzałki przechodzą między efektami. Enter wybiera efekt i otwiera go w Inspektorze. Alt+strzałka go przesuwa. Inspektor ma też przyciski przesunięcia i usunięcia. Wejście i Wyjście zostają na miejscu.',
+      'Pasma EQ, punkty automatyzacji i parametry sensoryczne używają tych samych kontrolek co wskaźnik: suwaków, pól liczbowych i edytorów bez przeciągania, gdy włączone jest edytowanie bez przeciągania albo obsługa klawiaturą. Zadania z przewodnikiem zaliczają te prawdziwe edycje. Pokaż gdzie przenosi fokus tylko wtedy, gdy sam to uruchomisz.',
+      'Skróty klawiszowe, w menu Ustawień, pokazują aktualny rejestr w grupach: Nawigacja, Transport, Edycja, Efekty, Automatyzacja i Zadania z przewodnikiem. Focus używa tych samych klawiszy. Zamknięcie przywraca fokus i nie restartuje odtwarzania.',
     ],
   },
   {

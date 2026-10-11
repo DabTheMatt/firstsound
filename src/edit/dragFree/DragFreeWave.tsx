@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { guideTargetAttrs } from '../../guide/targets'
 import { engine, useEngine } from '../../hooks/useEngine'
@@ -43,7 +44,7 @@ export function DragFreeWave({
   showFades = true,
 }: Props) {
   const { settings } = useA11ySettings()
-  if (!settings.dragFreeEditing) return null
+  if (!assistedEditorsEnabled(settings)) return null
   return (
     <DragFreeWaveBody
       fadeIn={fadeIn}

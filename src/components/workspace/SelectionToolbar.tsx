@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { menuListKey } from '../../a11y/keyboard'
 import { guideTargetAttrs, guideTargetForAction } from '../../guide/targets'
 import { useI18n } from '../../i18n'
 import styles from './Workspace.module.css'
@@ -36,6 +37,7 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
 
   useEffect(() => {
     if (!open) return
+    rootRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([disabled])')?.focus()
     const onPointer = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
     }
@@ -87,8 +89,8 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
       >
         •••
       </button>
-      {open && selected ? (
-        <div className={styles.menu} id={menuId} role="menu">
+      {open ? (
+        <div className={styles.menu} id={menuId} role="menu" onKeyDown={(event) => menuListKey(event)}>
           {more.map((action) => (
             <button
               key={action.id}

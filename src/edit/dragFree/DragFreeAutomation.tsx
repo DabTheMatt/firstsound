@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { formatAccessibleValue } from '../../a11y/valueText'
 import { PARAMS } from '../../audio/parameters/definitions'
@@ -19,7 +20,7 @@ type Props = {
 
 export function DragFreeAutomation({ onCommit }: Props) {
   const { settings } = useA11ySettings()
-  if (!settings.dragFreeEditing) return null
+  if (!assistedEditorsEnabled(settings)) return null
   return <AutomationBody onCommit={onCommit} />
 }
 

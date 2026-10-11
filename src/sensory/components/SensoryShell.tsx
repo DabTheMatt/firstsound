@@ -135,6 +135,7 @@ export function SensoryShell({
   return (
     <div
       className={`${styles.page} ${styles.rangePage} ${sceneClass} ${dragging ? styles.drop : ''}`}
+      data-region="sensory"
       style={cssVars as CSSProperties}
       onDragOver={(event) => {
         event.preventDefault()
@@ -241,7 +242,7 @@ export function SensoryShell({
         }}
         onEditing={(id) => {
           setEditingId(id)
-          if (!id && !a11y.dragFreeEditing) setFeelingId(null)
+          if (!id && !a11y.dragFreeEditing && !a11y.keyboardFirst) setFeelingId(null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
@@ -261,7 +262,7 @@ export function SensoryShell({
         onEditing={(id) => {
           const next = id && RAIL_AXIS_IDS.includes(id as SensoryAxisId) ? (id as SensoryAxisId) : null
           setEditingId(next)
-          if (!next && !a11y.dragFreeEditing) setFeelingId(null)
+          if (!next && !a11y.dragFreeEditing && !a11y.keyboardFirst) setFeelingId(null)
         }}
         onValues={(next) => {
           onMoodLabel(null)
@@ -279,7 +280,7 @@ export function SensoryShell({
         onCommit={onCommitSensory}
       />
 
-      <div className={styles.bar}>
+      <div className={styles.bar} data-transport="">
         <button
           type="button"
           className={styles.play}

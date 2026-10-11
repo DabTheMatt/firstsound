@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { assistedEditorsEnabled } from '../../a11y/settings'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { engine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
@@ -18,7 +19,7 @@ type Props = {
 
 export function DragFreeLoop({ trackId, selected, duration, loopStart, loopEnd }: Props) {
   const { settings } = useA11ySettings()
-  if (!settings.dragFreeEditing) return null
+  if (!assistedEditorsEnabled(settings)) return null
   return (
     <LoopBody
       trackId={trackId}

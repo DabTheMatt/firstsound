@@ -21,8 +21,15 @@ import {
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
-import { createSpaceActivationGuard, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
-import { A11ySettings, LiveAnnouncer, SkipLink, scrollFocusedIntoView, useA11ySettings } from '../a11y'
+import { createSpaceActivationGuard, isImeEvent, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
+import { isTextEditingTarget } from '../components/waveform/editorShortcuts'
+import { matchShortcut } from '../a11y/shortcuts/registry'
+import { focusDestination, type DestinationId } from '../a11y/shortcuts/destinations'
+import { KeyboardHelp, closeKeyboardHelp } from '../a11y/shortcuts/KeyboardHelp'
+import { WorkspaceNav, closeWorkspaceNav } from '../a11y/shortcuts/WorkspaceNav'
+import { forgetTrigger } from '../a11y/dialogFocus'
+import { validateSelection } from '../edit/dragFree/edits'
+import { A11ySettings, LiveAnnouncer, SkipLink, announce, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { focusInitial, focusSelector, rememberTrigger, restoreTrigger, trapTab } from '../a11y/dialogFocus'
 import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
 import { layersForProfile, persistHearingSettings, readStoredHearingSettings } from '../hearing/settings'
@@ -214,6 +221,8 @@ export default function App() {
   const [editMode, setEditMode] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
+  const [keysOpen, setKeysOpen] = useState(false)
   const [focus, setFocus] = useState<InspectorFocus>({
     kind: 'module',
     instanceId: 'gain-1',
@@ -314,18 +323,29 @@ export default function App() {
   useEffect(() => {
     const clickGuard = createSpaceActivationGuard()
     const onKey = (event: KeyboardEvent) => {
+      if (isImeEvent(event)) return
       if (event.key === 'Escape') {
         if (menuOpenRef.current) restoreTrigger('settings')
         setMenuOpen(false)
         setLfoCenterOpen(false)
         return
       }
-      if (isTypingTarget(event.target)) return
-      if (isSpaceKey(event)) {
-        if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
+      if (!a11y.shortcutsEnabled) return
+      const matched = matchShortcut(event)
+      if (!matched) return
+      if (event.repeat) {
+        if (matched.id === 'transport.play' && isTransportShortcutTarget(event.target)) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+        return
+      }
+      const typing = isTypingTarget(event.target) || isTextEditingTarget(event.target)
+      const inOverlay = event.target instanceof Element && Boolean(event.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]'))
+      if (matched.id === 'transport.play') {
+        if (!isTransportShortcutTarget(event.target)) return
         event.preventDefault()
         event.stopImmediatePropagation()
-        if (event.repeat) return
         if (graphSnapshotFrozen()) {
           holdGraphSnapshot(false)
           return
@@ -335,13 +355,37 @@ export default function App() {
         engine.togglePlay()
         return
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+      if (typing || inOverlay) return
+      if (matched.id === 'edit.undo' || matched.id === 'edit.redo' || matched.id === 'edit.redoY') {
         event.preventDefault()
         const current = historyRef.current
-        const next = event.shiftKey ? redoHistory(current) : undoHistory(current)
+        const redo = matched.id !== 'edit.undo'
+        const next = redo ? redoHistory(current) : undoHistory(current)
         if (next === current) return
         setHistory(next)
         restorePresentRef.current(next.present)
+        return
+      }
+      if (matched.id === 'transport.stop') {
+        event.preventDefault()
+        engine.stop()
+        return
+      }
+      if (matched.id === 'transport.loop') {
+        event.preventDefault()
+        engine.setLoop(!engine.getSnapshot().loop)
+        return
+      }
+      if (matched.id === 'nav.workspaces') {
+        event.preventDefault()
+        rememberTrigger('workspace-nav')
+        setNavOpen(true)
+        return
+      }
+      if (matched.id === 'nav.help') {
+        event.preventDefault()
+        rememberTrigger('keyboard-help')
+        setKeysOpen(true)
       }
     }
     const onKeyUp = (event: KeyboardEvent) => {
@@ -1169,6 +1213,26 @@ export default function App() {
         <button
           type="button"
           onClick={() => {
+            rememberTrigger('workspace-nav', document.querySelector('[data-settings-toggle]'))
+            closeSettings(false)
+            setNavOpen(true)
+          }}
+        >
+          {t.keyboard.jump}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            rememberTrigger('keyboard-help', document.querySelector('[data-settings-toggle]'))
+            closeSettings(false)
+            setKeysOpen(true)
+          }}
+        >
+          {t.keyboard.open}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             rememberTrigger('manual', document.querySelector('[data-settings-toggle]'))
             setManualOpen(true)
             closeSettings(false)
@@ -1320,6 +1384,93 @@ export default function App() {
     />
   )
 
+  const placeSelection = (edge: 'start' | 'end') => {
+    const live = engine.getSnapshot()
+    const head = engine.getSourcePlayheadSeconds()
+    const result = validateSelection(
+      edge === 'start' ? head : live.params.start,
+      edge === 'end' ? head : live.params.end,
+      live.duration,
+    )
+    if (!result.ok) {
+      const copy = t.dragFree
+      const message =
+        result.error === 'order'
+          ? copy.errOrder
+          : result.error === 'short'
+            ? copy.errShort
+            : result.error === 'past'
+              ? copy.errPast
+              : copy.errFormat
+      announce(message)
+      return
+    }
+    engine.setRegion(result.value.start, result.value.end)
+    commit()
+  }
+
+  const goToDestination = (id: DestinationId) => {
+    forgetTrigger('workspace-nav')
+    setNavOpen(false)
+    if (id === 'accessibility') {
+      rememberTrigger('settings', document.querySelector('[data-settings-toggle]'))
+      setSettingsPage('access')
+      setMenuOpen(true)
+      return
+    }
+    if (id === 'guided') {
+      rememberTrigger('guide', document.querySelector('[data-settings-toggle]'))
+      dispatchGuide({ type: 'open-library' })
+      return
+    }
+    if (uiMode === 'technical') {
+      if (id === 'gain') {
+        const gain = engine.getSnapshot().chain.find((item) => item.type === 'gain')
+        if (gain) selectModule(gain.instanceId)
+      }
+      if (focusWorkspace) {
+        if (id === 'hearing') enterHearingFocus()
+        else if (id === 'eq' || id === 'fft' || id === 'automation' || id === 'waveform') {
+          const next = vizForWorkspace(id === 'waveform' ? 'wave' : id === 'automation' ? 'auto' : id)
+          if (next) focusViz(next)
+        }
+      } else {
+        if (id === 'eq') activateWorkspace('eq')
+        if (id === 'fft') activateWorkspace('fft')
+        if (id === 'automation') activateWorkspace('auto')
+        if (id === 'hearing') activateWorkspace('hearing')
+        if (id === 'waveform') activateWorkspace('wave')
+        if (id === 'inspector' || id === 'gain') setInspectorOpen(true)
+      }
+    }
+    window.setTimeout(() => {
+      if (!focusDestination(id, uiMode)) document.querySelector<HTMLElement>('[data-settings-toggle]')?.focus()
+    }, 50)
+  }
+
+  const keyboardChrome = (
+    <>
+      {navOpen ? (
+        <WorkspaceNav
+          mode={uiMode}
+          onClose={() => {
+            setNavOpen(false)
+            closeWorkspaceNav()
+          }}
+          onSelect={goToDestination}
+        />
+      ) : null}
+      {keysOpen ? (
+        <KeyboardHelp
+          onClose={() => {
+            setKeysOpen(false)
+            closeKeyboardHelp()
+          }}
+        />
+      ) : null}
+    </>
+  )
+
   if (uiMode === 'simple') {
     return (
       <>
@@ -1373,6 +1524,7 @@ export default function App() {
         />
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {keyboardChrome}
         {guide}
         <HearingAccessLayer surface="simple" />
       </>
@@ -1421,6 +1573,7 @@ export default function App() {
         />
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {keyboardChrome}
         {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
         {guide}
         <HearingAccessLayer surface="sensory" />
@@ -1776,6 +1929,10 @@ export default function App() {
                       } },
                     ]}
                     more={[
+                      { id: 'set-start', label: t.waveform.setPlayheadStart, disabled: !snap.sampleLoaded, onClick: () => placeSelection('start') },
+                      { id: 'set-end', label: t.waveform.setPlayheadEnd, disabled: !snap.sampleLoaded, onClick: () => placeSelection('end') },
+                      { id: 'to-start', label: t.waveform.toSampleStart, disabled: !snap.sampleLoaded, onClick: () => engine.seekSeconds(0, 'sample') },
+                      { id: 'to-end', label: t.waveform.toSampleEnd, disabled: !snap.sampleLoaded, onClick: () => engine.seekSeconds(engine.getSnapshot().duration, 'sample') },
                       { id: 'paste', label: t.waveform.pasteCaption, disabled: !snap.canPaste, onClick: pasteAtPlayhead },
                       { id: 'silence', label: t.waveform.insertSilence, disabled: !snap.canInsertSilence, onClick: insertSilence },
                       { id: 'clear', label: t.waveform.clearSelection, disabled: !snap.canClearSelection, onClick: clearSelection },
@@ -1939,6 +2096,7 @@ export default function App() {
         </div>
 
         {fileInputs}
+        {keyboardChrome}
         {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
       </main>
       {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
