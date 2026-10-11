@@ -1,4 +1,5 @@
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
+import { engine } from '../hooks/useEngine'
 import { matchSimpleDelay, matchSimpleReverb } from '../simple/fxPresets'
 import { matchSimpleTone } from '../simple/tonePresets'
 import { blankSignal, type GuideSignal } from './actions'
@@ -69,6 +70,7 @@ export function signalFromSnapshot(snap: EngineSnapshot, ctx: GuideContext): Gui
     sampleLoaded: snap.sampleLoaded,
     playing: snap.playing,
     duration: snap.duration,
+    playheadSec: quantizePlayhead(engine.getSourcePlayheadSeconds()),
     regionStart: snap.params.start,
     regionEnd: snap.params.end,
     selectionActive: snap.canClearSelection,
@@ -103,6 +105,11 @@ export function signalFromSnapshot(snap: EngineSnapshot, ctx: GuideContext): Gui
     delayTime: snap.params.delayTime,
     eqShape: eqShape(snap),
   }
+}
+
+function quantizePlayhead(seconds: number): number {
+  if (!Number.isFinite(seconds) || seconds < 0) return 0
+  return Math.round(seconds * 1000) / 1000
 }
 
 function eqShape(snap: EngineSnapshot): string {

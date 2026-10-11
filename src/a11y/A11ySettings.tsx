@@ -229,6 +229,15 @@ export function A11ySettings({ onBack }: Props) {
           offLabel={a.off}
           onChange={(keyboardFirst) => setSettings({ keyboardFirst })}
         />
+        <PreferenceSwitch
+          checked={settings.accessibleWaveform}
+          label={a.waveformNav}
+          description={a.waveformNavHelp}
+          extraDescription={a.waveformNavAlways}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(accessibleWaveform) => setSettings({ accessibleWaveform })}
+        />
       </div>
 
       <p className={styles.saved}>{a.saved}</p>

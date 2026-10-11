@@ -240,9 +240,15 @@ export type Messages = {
   }
   waveform: {
     empty: string
-    editorAria: string
+    editorAria: (fileName: string) => string
     editorEmpty: string
-    editorSummary: (duration: string, playhead: string, selectionStart: string, selectionEnd: string) => string
+    editorSummary: (channels: string, duration: string, rate: string, playhead: string, selection: string) => string
+    selectionRange: (start: string, end: string, duration: string) => string
+    noSelection: string
+    monoRecording: string
+    stereoRecording: string
+    channelCount: (count: number) => string
+    sampleRate: (khz: string) => string
     loadDemo: string
     edit: string
     trim: string
@@ -769,6 +775,9 @@ export type Messages = {
     keyboardFirst: string
     keyboardFirstHelp: string
     keyboardFirstAlways: string
+    waveformNav: string
+    waveformNavHelp: string
+    waveformNavAlways: string
   }
   keyboard: {
     open: string
@@ -1152,10 +1161,16 @@ export const EN: Messages = {
   },
   waveform: {
     empty: 'Load a sample to begin',
-    editorAria: 'Waveform editor',
+    editorAria: (fileName) => `Waveform, ${fileName}.`,
     editorEmpty: 'Waveform editor. No sample loaded.',
-    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
-      `Duration ${duration}. Playhead ${playhead}. Selection from ${selectionStart} to ${selectionEnd}. Arrow keys move the playhead.`,
+    editorSummary: (channels, duration, rate, playhead, selection) =>
+      `${channels} Duration ${duration}. ${rate} Playhead ${playhead}. ${selection} Arrow keys move the playhead.`,
+    selectionRange: (start, end, duration) => `Selection from ${start} to ${end}. Duration ${duration}.`,
+    noSelection: 'No partial selection.',
+    monoRecording: 'Mono recording.',
+    stereoRecording: 'Stereo recording.',
+    channelCount: (count) => `${count} channels.`,
+    sampleRate: (khz) => `Sample rate ${khz} kilohertz.`,
     loadDemo: 'Generate demo sample',
     edit: 'Edit',
     trim: 'Trim',
@@ -1771,7 +1786,7 @@ export const EN: Messages = {
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
     shortcutsHelp:
-      'When on, Space plays or pauses unless a button, switch, slider, menu, or text field has focus. Open dialogs keep Space for their own controls. Tab is never captured.',
+      'When on, Space plays or pauses. With Keyboard-First, Drag-Free Editing, screen reader optimizations, and Accessible Waveform Navigation off, it does that even while a button, switch, or slider has focus. A text field still takes the character. Open dialogs keep Space for their own controls. Tab is never captured.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTab: 'Tab / Shift+Tab: move between controls',
     shortcutArrows: 'Arrow keys: change the focused knob or slider',
@@ -1780,7 +1795,7 @@ export const EN: Messages = {
     shortcutPage: 'Page Up / Page Down: larger steps',
     shortcutReset: 'Delete or Backspace: reset the focused parameter',
     shortcutSpace:
-      'Space: play or pause when focus is not on a button, switch, slider, menu, or text field. While Hold is on, Space clears Hold.',
+      'Space: play or pause. With the special accessibility options off, this includes a focused button, switch, or slider. A text field and an open dialog keep Space. While Hold is on, Space clears Hold.',
     shortcutEsc: 'Escape: close menus, dialogs, and tooltips',
     skipToMain: 'Skip to main controls',
     dragFree: 'Drag-Free Editing',
@@ -1788,6 +1803,9 @@ export const EN: Messages = {
     keyboardFirst: 'Keyboard-First',
     keyboardFirstHelp: 'Navigate and edit FIELD efficiently without a mouse.',
     keyboardFirstAlways: 'Tab, Enter, Space, and Escape keep working when this is off.',
+    waveformNav: 'Accessible Waveform Navigation',
+    waveformNavHelp: 'Navigate recordings using time, keyboard controls and audio landmarks.',
+    waveformNavAlways: 'Keyboard and screen reader access to the waveform stays available when this is off.',
   },
   keyboard: {
     open: 'Keyboard shortcuts',
@@ -1825,7 +1843,7 @@ export const EN: Messages = {
     byId: {
       'nav.workspaces': 'Open workspace navigation',
       'nav.help': 'Open keyboard shortcuts',
-      'transport.play': 'Play or pause when focus is not on a control',
+      'transport.play': 'Play or pause. With special accessibility options off, this includes a focused control',
       'transport.stop': 'Stop playback',
       'transport.loop': 'Toggle loop',
       'transport.back': 'Move the playhead a small step backward',
@@ -2197,10 +2215,16 @@ export const PL: Messages = {
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
-    editorAria: 'Edytor fali',
+    editorAria: (fileName) => `Fala, ${fileName}.`,
     editorEmpty: 'Edytor fali. Brak wczytanego sampla.',
-    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
-      `Czas ${duration}. Głowica ${playhead}. Zaznaczenie od ${selectionStart} do ${selectionEnd}. Strzałki przesuwają głowicę.`,
+    editorSummary: (channels, duration, rate, playhead, selection) =>
+      `${channels} Czas ${duration}. ${rate} Głowica ${playhead}. ${selection} Strzałki przesuwają głowicę.`,
+    selectionRange: (start, end, duration) => `Zaznaczenie od ${start} do ${end}. Czas ${duration}.`,
+    noSelection: 'Brak częściowego zaznaczenia.',
+    monoRecording: 'Nagranie mono.',
+    stereoRecording: 'Nagranie stereo.',
+    channelCount: (count) => `${count} kanały.`,
+    sampleRate: (khz) => `Częstotliwość próbkowania ${khz} kiloherca.`,
     loadDemo: 'Wygeneruj sample demo',
     edit: 'Edycja',
     trim: 'Przytnij',
@@ -2816,7 +2840,7 @@ export const PL: Messages = {
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',
     shortcutsHelp:
-      'Gdy włączone, spacja odtwarza albo pauzuje, chyba że fokus jest na przycisku, przełączniku, suwaku, menu albo polu tekstowym. Otwarte okno zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
+      'Gdy włączone, spacja odtwarza albo pauzuje. Przy wyłączonej obsłudze klawiaturą, edytowaniu bez przeciągania, optymalizacjach czytnika i dostępnej nawigacji po nagraniu robi to także, gdy fokus jest na przycisku, przełączniku albo suwaku. Pole tekstowe nadal przyjmuje znak. Otwarte okno zostawia spację swoim kontrolkom. Tab nigdy nie jest przechwytywany.',
     shortcutsTitle: 'Skróty klawiszowe',
     shortcutTab: 'Tab / Shift+Tab: przejście między kontrolkami',
     shortcutArrows: 'Strzałki: zmiana wartości gałki lub suwaka',
@@ -2825,7 +2849,7 @@ export const PL: Messages = {
     shortcutPage: 'Page Up / Page Down: większy krok',
     shortcutReset: 'Delete lub Backspace: reset aktualnego parametru',
     shortcutSpace:
-      'Spacja: odtwarzanie lub pauza, gdy fokus nie jest na przycisku, przełączniku, suwaku, menu ani polu tekstowym. Gdy Hold jest włączony, spacja kasuje Hold.',
+      'Spacja: odtwarzanie albo pauza. Przy wyłączonych specjalnych opcjach dostępności dotyczy to też przycisku, przełącznika i suwaka w fokusie. Pole tekstowe i otwarte okno zostawiają spację u siebie. Gdy Hold jest włączony, spacja kasuje Hold.',
     shortcutEsc: 'Escape: zamyka menu, okna i podpowiedzi',
     skipToMain: 'Przejdź do głównych parametrów',
     dragFree: 'Edytowanie bez przeciągania',
@@ -2833,6 +2857,9 @@ export const PL: Messages = {
     keyboardFirst: 'Obsługa klawiaturą',
     keyboardFirstHelp: 'Nawiguj i edytuj dźwięk bez używania myszy.',
     keyboardFirstAlways: 'Tab, Enter, Spacja i Escape działają także przy wyłączonej preferencji.',
+    waveformNav: 'Dostępna nawigacja po nagraniu',
+    waveformNavHelp: 'Poruszaj się po nagraniu za pomocą czasu, klawiatury i punktów charakterystycznych.',
+    waveformNavAlways: 'Klawiatura i czytnik ekranu nadal opisują falę, gdy ta preferencja jest wyłączona.',
   },
   keyboard: {
     open: 'Skróty klawiszowe',
@@ -2870,7 +2897,7 @@ export const PL: Messages = {
     byId: {
       'nav.workspaces': 'Otwórz nawigację po obszarze',
       'nav.help': 'Otwórz skróty klawiszowe',
-      'transport.play': 'Odtwarzaj albo pauzuj, gdy fokus nie jest na kontrolce',
+      'transport.play': 'Odtwarzaj albo pauzuj. Przy wyłączonych specjalnych opcjach dostępności dotyczy to też kontrolki w fokusie',
       'transport.stop': 'Zatrzymaj odtwarzanie',
       'transport.loop': 'Przełącz pętlę',
       'transport.back': 'Cofnij głowicę o mały krok',

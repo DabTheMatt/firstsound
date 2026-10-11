@@ -85,6 +85,7 @@ import {
   spectralHistoryAriaLabel,
   spectralHistorySession,
   spectralLevelColor,
+  spectralLevelShade,
   subscribeSpectralHistorySession,
 } from '../../audio/engine/spectralHistory'
 import { filterCurveColor, processorCurveStyle, shouldShowResponseLegend } from '../../audio/engine/spectrumResponse'
@@ -131,7 +132,7 @@ import {
   type EqDragMode,
 } from '../mobile/eqFocusGesture'
 import { focusEqTypeLabel } from '../mobile/focusReadout'
-import { GuidesRow, holdGraphSnapshot, SnapshotRow, SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
+import { FreqNodesRow, GuidesRow, holdGraphSnapshot, SnapshotRow, SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
 import { VizBackground } from './VizBackground'
 import { FftViewToggle, SpectralHistoryControls } from './SpectralHistoryControls'
 import {
@@ -186,6 +187,29 @@ function plotPadNow(
 ) {
   const base = spectrumPlotPad(input)
   return lane ? focusPlotPad(base, clearance) : base
+}
+
+function strokeLevelPolyline(
+  ctx: CanvasRenderingContext2D,
+  xy: ArrayLike<number>,
+  count: number,
+  top: number,
+  bottom: number,
+  cool: string,
+  mid: string,
+  warm: string,
+): void {
+  const span = Math.max(1, bottom - top)
+  for (let i = 1; i < count; i++) {
+    const y0 = xy[(i - 1) * 2 + 1] ?? bottom
+    const y1 = xy[i * 2 + 1] ?? bottom
+    const level = Math.min(1, Math.max(0, (bottom - (y0 + y1) * 0.5) / span))
+    ctx.strokeStyle = spectralLevelColor(cool, mid, warm, spectralLevelShade(level))
+    ctx.beginPath()
+    ctx.moveTo(xy[(i - 1) * 2] ?? 0, y0)
+    ctx.lineTo(xy[i * 2] ?? 0, y1)
+    ctx.stroke()
+  }
 }
 
 function emptyBands(n: number): Float32Array {
@@ -585,7 +609,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         }
         const layer = prefsNow.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
-        const paintColor = spectrumPaintColor(prefsNow)
+        const eqSurface = focusPlot || phoneEqRef.current || eqGainGridRef.current
+        const paintColor = spectrumPaintColor(prefsNow, eqSurface ? 'eq' : 'fft')
         const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
         const showLine = focusPlot ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
         const { bands, fall, range, resolution } = prefsNow
@@ -764,7 +789,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           const bodySrc = display.barBody === 'slow' ? slow : fast
           const capSrc = display.barCap === 'slow' ? slow : fast
           const phoneDim = phoneEqRef.current ? 0.62 : 1
-          const alpha = (style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42) * phoneDim
+          const alpha =
+            (paintColor === 'level' ? 0.92 : style === 'pre' ? (layer === 'both' ? 0.22 : 0.42) : layer === 'both' ? 0.55 : 0.42) *
+            phoneDim
           const lineAlpha = (style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95) * phoneDim
           const fill = paintColor === 'solid' ? colors.spectrum : undefined
           const line = paintColor === 'solid' ? colors.spectrumLine : undefined
@@ -788,10 +815,10 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               const capDb = alignedBandDb(capSrc[i] ?? SPECTRUM_FLOOR_DB, 0)
               const regionColor = eqBandColorForHz(center)
               const levelColor = spectralLevelColor(
-                colors.ridgeCool || colors.spectrum,
+                colors.eqCurve3 || colors.ridgeCool || colors.spectrum,
                 colors.eqCurve2 || colors.spectrum,
-                colors.ridgeWarm || colors.spectrumLine,
-                dbToSpectralLevel(bodyDb, dbFloor),
+                colors.eqCurve || colors.ridgeWarm || colors.spectrumLine,
+                spectralLevelShade(dbToSpectralLevel(bodyDb, dbFloor)),
               )
               const barFill = paintColor === 'level' ? levelColor : (fill ?? regionColor)
               const barLine = paintColor === 'level' ? levelColor : (line ?? regionColor)
@@ -844,10 +871,23 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             if (!stroke) return
             ctx.lineJoin = 'round'
             ctx.lineCap = 'round'
-            ctx.strokeStyle = color
             ctx.lineWidth = width
             ctx.setLineDash(dash ? [4 * dpr, 3 * dpr] : [])
-            strokeSpectrumXY(ctx, lineXY, count)
+            if (paintColor === 'level') {
+              strokeLevelPolyline(
+                ctx,
+                lineXY,
+                count,
+                top,
+                bottom,
+                colors.eqCurve3 || colors.ridgeCool || colors.spectrum,
+                colors.eqCurve2 || colors.spectrum,
+                colors.eqCurve || colors.ridgeWarm || colors.spectrumLine,
+              )
+            } else {
+              ctx.strokeStyle = color
+              strokeSpectrumXY(ctx, lineXY, count)
+            }
             ctx.setLineDash([])
           }
           const bodyLine = display.barBody === 'peak' ? lineFast : lineSlow
@@ -1357,7 +1397,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               {gridOpen ? (
                 <div className={styles.graphMenuPanel} role="group" aria-label="Graph">
                   {phoneFocus ? (
-                    <SpectrumDisplaySettings showLayer />
+                    <SpectrumDisplaySettings showLayer eqColor />
                   ) : (
                     <>
                       <div className={styles.graphMenuRow}>
@@ -1395,6 +1435,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
                         ))}
                       </div>
                       <GuidesRow />
+                      <FreqNodesRow />
                       <SnapshotRow />
                     </>
                   )}
@@ -1762,7 +1803,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         <VizBackground inset="fill" />
         {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen || phoneEq || phoneFocus) ? (
           <div className={styles.legendDock}>
-            {spectrumPaintColor(prefs) === 'frequency' ? (
+            {spectrumPaintColor(prefs, phoneFocus || phoneEq || eqGainGrid ? 'eq' : 'fft') === 'frequency' ? (
               <ul className={styles.regions}>
                 {SPECTRUM_REGIONS.map((region) => (
                   <li key={region.id}>

@@ -403,7 +403,7 @@ import {
   stretchSchedule,
   type AudibleStretchGrain,
 } from './stretch'
-import { auditionWindow } from './auditionHold'
+import { auditionSpanSec, auditionWindow } from './auditionHold'
 import { setGraphSnapshot } from './graphSnapshot'
 import { findZeroCrossing, indexToSeconds, secondsToIndex } from './zeroCrossing'
 
@@ -1778,10 +1778,20 @@ export class AudioEngine {
       this.releaseAudition(true)
       return
     }
-    if (this.audition) return
     const duration = this.buffer?.duration ?? 0
+    const span = auditionSpanSec()
+    if (this.audition) {
+      const window = auditionWindow(this.audition.end, duration, span)
+      if (!window) return
+      this.audition.start = window.start
+      this.audition.end = window.end
+      this.playFullSample = false
+      this.playOffset = window.start
+      void this.play()
+      return
+    }
     const head = this.playing ? this.getPlayheadSeconds() : this.playOffset
-    const window = auditionWindow(head, duration)
+    const window = auditionWindow(head, duration, span)
     if (!window) return
     this.audition = {
       start: window.start,

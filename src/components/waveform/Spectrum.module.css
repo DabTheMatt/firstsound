@@ -509,7 +509,9 @@
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  min-width: 18.5rem;
+  min-width: min(22rem, calc(100vw - 24px));
+  max-width: min(28rem, calc(100vw - 24px));
+  overflow-x: hidden;
   padding: 4px 6px;
   border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
   border-radius: 8px;
@@ -522,20 +524,27 @@
 
 .graphMenuRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .graphMenuRow button {
   min-width: 28px;
-  height: 22px;
+  min-height: 26px;
+  height: auto;
+  margin: 0;
   padding: 0 6px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: var(--type-10);
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
 }
 
 .graphMenuRow button:focus {
@@ -547,9 +556,15 @@
   outline-offset: 2px;
 }
 
-.graphMenuRow button[aria-pressed='true'] {
+.graphMenuRow button:hover {
   color: var(--text-primary);
-  background: var(--bg-control);
+  background: var(--ws-bar-hover, color-mix(in srgb, var(--text-primary) 10%, transparent));
+}
+
+.graphMenuRow button[aria-pressed='true'],
+.graphMenuRow button[aria-pressed='true']:hover {
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
 }
 
 .settingsBtn {

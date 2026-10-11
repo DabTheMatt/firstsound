@@ -21,7 +21,7 @@ import {
 import { commitHistory, createHistory, redoHistory, undoHistory } from './history'
 import { commitDspGesture } from './dspHistory'
 import { setRandomHistoryRunner } from '../audio/random/historyBridge'
-import { createSpaceActivationGuard, isImeEvent, isSpaceKey, isTypingTarget, isTransportShortcutTarget } from './keys'
+import { accessibilityOwnsSpace, createSpaceActivationGuard, isImeEvent, isSpaceKey, isTypingTarget, spaceTogglesTransport } from './keys'
 import { isTextEditingTarget } from '../components/waveform/editorShortcuts'
 import { matchShortcut } from '../a11y/shortcuts/registry'
 import { focusDestination, type DestinationId } from '../a11y/shortcuts/destinations'
@@ -52,6 +52,7 @@ import { HearingTransportButton } from '../hearing/HearingTransportButton'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
+import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
 import { DragFreeDock, dragFreeSurface } from '../edit/dragFree/DragFreeDock'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
@@ -330,31 +331,38 @@ export default function App() {
         setLfoCenterOpen(false)
         return
       }
+      const ownsSpace = accessibilityOwnsSpace({
+        keyboardFirst: a11y.keyboardFirst,
+        dragFreeEditing: a11y.dragFreeEditing,
+        screenReaderOptimizations: a11y.screenReaderOptimizations,
+        accessibleWaveform: a11y.accessibleWaveform,
+      })
+      if (isSpaceKey(event) && a11y.shortcutsEnabled) {
+        if (event.repeat) {
+          if (spaceTogglesTransport(event.target, ownsSpace)) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+          }
+        } else if (spaceTogglesTransport(event.target, ownsSpace)) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          if (graphSnapshotFrozen()) {
+            holdGraphSnapshot(false)
+            return
+          }
+          clickGuard.arm()
+          void engine.unlock()
+          engine.togglePlay()
+          return
+        }
+      }
       if (!a11y.shortcutsEnabled) return
       const matched = matchShortcut(event)
       if (!matched) return
-      if (event.repeat) {
-        if (matched.id === 'transport.play' && isTransportShortcutTarget(event.target)) {
-          event.preventDefault()
-          event.stopImmediatePropagation()
-        }
-        return
-      }
+      if (event.repeat) return
       const typing = isTypingTarget(event.target) || isTextEditingTarget(event.target)
       const inOverlay = event.target instanceof Element && Boolean(event.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]'))
-      if (matched.id === 'transport.play') {
-        if (!isTransportShortcutTarget(event.target)) return
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        if (graphSnapshotFrozen()) {
-          holdGraphSnapshot(false)
-          return
-        }
-        clickGuard.arm()
-        void engine.unlock()
-        engine.togglePlay()
-        return
-      }
+      if (matched.id === 'transport.play') return
       if (typing || inOverlay) return
       if (matched.id === 'edit.undo' || matched.id === 'edit.redo' || matched.id === 'edit.redoY') {
         event.preventDefault()
@@ -391,7 +399,20 @@ export default function App() {
     const onKeyUp = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target)) return
       if (!isSpaceKey(event)) return
-      if (!a11y.shortcutsEnabled || !isTransportShortcutTarget(event.target)) return
+      if (
+        !a11y.shortcutsEnabled ||
+        !spaceTogglesTransport(
+          event.target,
+          accessibilityOwnsSpace({
+            keyboardFirst: a11y.keyboardFirst,
+            dragFreeEditing: a11y.dragFreeEditing,
+            screenReaderOptimizations: a11y.screenReaderOptimizations,
+            accessibleWaveform: a11y.accessibleWaveform,
+          }),
+        )
+      ) {
+        return
+      }
       event.preventDefault()
       event.stopImmediatePropagation()
     }
@@ -406,7 +427,7 @@ export default function App() {
       window.removeEventListener('keyup', onKeyUp, true)
       window.removeEventListener('click', onClick, true)
     }
-  }, [a11y.shortcutsEnabled])
+  }, [a11y.shortcutsEnabled, a11y.keyboardFirst, a11y.dragFreeEditing, a11y.screenReaderOptimizations, a11y.accessibleWaveform])
   const sampleInput = useRef<HTMLInputElement>(null)
   const presetInput = useRef<HTMLInputElement>(null)
   const waveRef = useRef<WaveformHandle>(null)
@@ -1986,6 +2007,40 @@ export default function App() {
                 })
               }}
               onDspGesture={(before, after) => setHistory((h) => commitDspGesture(h, before, after, histEqual))}
+            />
+            <AccessibleWaveform
+              mode="technical"
+              onRegionCommit={commit}
+              onTrim={async () => {
+                const ok = await engine.trimPlayRegion()
+                if (!ok) return false
+                setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                waveRef.current?.fitSample()
+                commit()
+                return true
+              }}
+              onNormalize={() => {
+                engine.normalizeRegion()
+                commit('dsp')
+                return true
+              }}
+              onExport={() => {
+                openExport()
+                return true
+              }}
+              onFadeIn={() => {
+                waveRef.current?.applyFade('in')
+                return true
+              }}
+              onFadeOut={() => {
+                waveRef.current?.applyFade('out')
+                return true
+              }}
+              onUndo={() => {
+                applyHistory(undoHistory(history))
+                return true
+              }}
+              canUndo={history.past.length > 0}
             />
           </div>
           {dockRight && showContext && !activeFocus && !workspaceContextBottom ? (

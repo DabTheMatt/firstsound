@@ -9,6 +9,7 @@ import { downloadBlob } from '../features/sample/files'
 import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
+import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
 import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
 import { radioGroupKey, tabListKey } from '../a11y/keyboard'
 import { focusInitial, trapTab } from '../a11y/dialogFocus'
@@ -466,6 +467,36 @@ export function SimpleShell({
               onFadesCommit={onFadesCommit}
               onRegionCommit={onRegionCommit}
               onTrim={onApplyTrim}
+            />
+            <AccessibleWaveform
+              mode="simple"
+              onRegionCommit={onRegionCommit}
+              onTrim={() => {
+                onApplyTrim()
+                return true
+              }}
+              onFadeIn={() => {
+                setFade('in', 'short')
+                return true
+              }}
+              onFadeOut={() => {
+                setFade('out', 'short')
+                return true
+              }}
+              onNormalize={() => {
+                onLevelLoudness()
+                return true
+              }}
+              onExport={() => {
+                emitGuideEvent('export.opened')
+                setSheet('save')
+                return true
+              }}
+              onUndo={() => {
+                onUndo()
+                return true
+              }}
+              canUndo={canUndo}
             />
             <FadeGroup
               id="fade-in"

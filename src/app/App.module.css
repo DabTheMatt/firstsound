@@ -499,6 +499,18 @@
   min-height: 0;
 }
 
+/* The navigation tools open in their own sheet. The trigger stays a single row. */
+.waveCol > [data-accessible-waveform],
+.phoneShell .waveCol > [data-accessible-waveform],
+.phoneShell[data-focus] .waveCol > [data-accessible-waveform],
+.shell[data-workspace='focus'] .waveCol > [data-accessible-waveform] {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
 .shell[data-workspace='focus'] > header,
 .shell[data-workspace='focus'] .transportWrap {
   display: none;

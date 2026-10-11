@@ -89,6 +89,11 @@ describe('guide action detection', () => {
     expect(diffGuideActions(base, withSignal({ exportCompletedCount: 1 }))).toContain('export.completed')
     expect(diffGuideActions(base, withSignal({ compareCount: 1 }))).toContain('compare.used')
     expect(diffGuideActions(base, withSignal({ waveformTouches: 1 }))).toContain('waveform.touched')
+    expect(diffGuideActions(base, withSignal({ playheadSec: 1.25 }))).toContain('playhead.moved')
+    expect(diffGuideActions(withSignal({ playing: true, playheadSec: 0 }), withSignal({ playing: false, playheadSec: 1.2 }))).not.toContain(
+      'playhead.moved',
+    )
+    expect(projectSatisfies('playhead.moved', withSignal({ playheadSec: 1 }))).toBe(false)
   })
 
   it('treats an existing fade as already done and a fresh play as not stored', () => {

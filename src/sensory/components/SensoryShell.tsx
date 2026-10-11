@@ -27,6 +27,7 @@ import { ParameterStrings } from './ParameterStrings'
 import { PlaybackFeel } from './PlaybackFeel'
 import { PlayheadClock } from './PlayheadClock'
 import { SensoryThemePicker } from './SensoryThemePicker'
+import { AccessibleWaveform } from '../../a11y/waveform/AccessibleWaveform'
 import { DragFreeWave } from '../../edit/dragFree/DragFreeWave'
 import { SensoryExact } from './SensoryExact'
 import { SoundRange } from './SoundRange'
@@ -220,6 +221,7 @@ export function SensoryShell({
         onFadesCommit={() => undefined}
         onRegionCommit={onRegionCommit}
       />
+      <AccessibleWaveform mode="sensory" onRegionCommit={onRegionCommit} />
       <SensoryExact
         axisId={activeId}
         value={activeId ? values[activeId] : 0}

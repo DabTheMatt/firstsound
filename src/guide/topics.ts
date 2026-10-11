@@ -44,8 +44,8 @@ export const LEARNING_TOPICS: readonly LearningTopic[] = [
     category: 'picture',
     title: text('Selection', 'Zaznaczenie'),
     summary: text(
-      'A selection is the time range you are working on. Drag across the waveform to set its start and end.',
-      'Zaznaczenie to zakres czasu, nad którym pracujesz. Przeciągnij po fali, aby ustawić początek i koniec.',
+      'A selection is the time range you are working on. Set the start and end from the keyboard, or drag across the waveform.',
+      'Zaznaczenie to zakres czasu, nad którym pracujesz. Ustaw początek i koniec z klawiatury albo przeciągnij po fali.',
     ),
     practical: text(
       'Trim, fades, and loop use that range. The rest of the recording stays outside it until you include it.',
@@ -326,6 +326,57 @@ export const LEARNING_TOPICS: readonly LearningTopic[] = [
     technical: text(
       'Q is the filter quality factor. It sets bandwidth around the band frequency. Gain sets how far that band moves.',
       'Q to dobroć filtra. Ustawia szerokość wokół częstotliwości pasma. Gain ustawia, jak daleko to pasmo się rusza.',
+    ),
+  },
+  {
+    id: 'transient',
+    category: 'time',
+    title: text('Transient', 'Transient'),
+    summary: text(
+      'A transient is a sudden rise in the signal, such as a hit or a hard start. FIELD can mark likely ones. It does not name the sound.',
+      'Transient to nagły wzrost sygnału, na przykład uderzenie albo twarde wejście. FIELD może oznaczyć prawdopodobne miejsca. Nie nazywa dźwięku.',
+    ),
+    practical: text(
+      'Use next and previous landmark to land near a hit. The time is approximate. It is not a guaranteed beat.',
+      'Użyj następnego i poprzedniego punktu, aby stanąć blisko uderzenia. Czas jest przybliżony. To nie jest gwarantowany bit.',
+    ),
+    technical: text(
+      'Detection watches short-term energy rise. A mark is a possible onset, not a drum, a word, or a musical beat.',
+      'Wykrywanie patrzy na wzrost energii w krótkim oknie. Znak to możliwy onset, a nie bęben, słowo albo bit.',
+    ),
+  },
+  {
+    id: 'silence-detection',
+    category: 'time',
+    title: text('Silence detection', 'Wykrywanie ciszy'),
+    summary: text(
+      'A low-level section is a stretch where the signal stays very quiet. FIELD calls it possible silence, not absolute silence.',
+      'Cichy odcinek to fragment, w którym sygnał zostaje bardzo niski. FIELD nazywa go możliwą ciszą, nie ciszą absolutną.',
+    ),
+    practical: text(
+      'Background noise can still sit in a quiet stretch. Treat the marks as hints, then listen.',
+      'Szum tła może zostać w cichym fragmencie. Traktuj znaki jako podpowiedź i posłuchaj.',
+    ),
+    technical: text(
+      'A section is marked when the RMS stays under about −48 dBFS for at least 120 milliseconds. That threshold is not absolute silence.',
+      'Odcinek jest oznaczany, gdy RMS zostaje poniżej około −48 dBFS przez co najmniej 120 milisekund. Ten próg nie jest ciszą absolutną.',
+    ),
+  },
+  {
+    id: 'rms',
+    category: 'level',
+    title: text('RMS', 'RMS'),
+    summary: text(
+      'RMS is an average of the signal level over a short window. It is not how loud the moment feels.',
+      'RMS to średni poziom sygnału w krótkim oknie. To nie jest to, jak głośno ten moment jest odczuwany.',
+    ),
+    practical: text(
+      'Inspect signal reads peak and RMS around the playhead. Both are digital levels, in dBFS.',
+      'Zbadaj sygnał odczytuje szczyt i RMS wokół głowicy. Oba to poziomy cyfrowe, w dBFS.',
+    ),
+    technical: text(
+      'The window is 50 milliseconds. Peak is the highest sample. RMS is the root mean square. Neither number is LUFS.',
+      'Okno ma 50 milisekund. Szczyt to najwyższa próbka. RMS to średnia kwadratowa. Żadna z tych liczb nie jest LUFS.',
     ),
   },
   {

@@ -250,10 +250,12 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 180px;
-  max-width: min(360px, 80vw);
-  max-height: min(420px, 60vh);
-  overflow: auto;
+  min-width: min(22rem, calc(100vw - 16px));
+  max-width: min(28rem, calc(100vw - 16px));
+  width: max-content;
+  max-height: min(70vh, 640px);
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 8px;
   background: var(--surface-raised, var(--bg-panel));
   border-radius: 8px;
@@ -331,6 +333,7 @@
   align-items: center;
   gap: 0;
   min-width: 0;
+  max-width: 100%;
 }
 
 .analyzerChoice,
@@ -533,6 +536,7 @@
   align-items: center;
   gap: 0;
   min-width: 0;
+  max-width: 100%;
 }
 
 .displayChoices button {

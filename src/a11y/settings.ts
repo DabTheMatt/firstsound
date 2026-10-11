@@ -30,6 +30,8 @@ export type A11ySettings = {
   interfaceScale: number
   /** Type size. Independent of interfaceScale. 1 = 100%. */
   textScale: number
+  /** Shows landmark and time tools. Keyboard and screen reader access stay on when this is off. */
+  accessibleWaveform: boolean
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -44,6 +46,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   keyboardFirst: false,
   interfaceScale: 1,
   textScale: 1,
+  accessibleWaveform: false,
 }
 
 const BOOLEAN_KEYS = [
@@ -56,6 +59,7 @@ const BOOLEAN_KEYS = [
   'shortcutsEnabled',
   'dragFreeEditing',
   'keyboardFirst',
+  'accessibleWaveform',
 ] as const satisfies readonly (keyof A11ySettings)[]
 
 /** Snap to the 5% grid and keep the value inside the supported range. */
@@ -199,6 +203,7 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.shortcuts = settings.shortcutsEnabled ? 'on' : 'off'
   root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
+  root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
   const interfaceScale = clampScale(settings.interfaceScale, INTERFACE_SCALE_MIN, INTERFACE_SCALE_MAX)
   const textScale = clampScale(settings.textScale, TEXT_SCALE_MIN, TEXT_SCALE_MAX)
   root.style.setProperty('--field-interface-scale', formatScale(interfaceScale))

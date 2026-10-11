@@ -116,7 +116,7 @@ test.describe('keyboard and focus', () => {
     await expect(slider).toHaveAttribute('aria-valuenow', /.*/)
     const name = await slider.evaluate((el) => el.getAttribute('aria-label') || el.getAttribute('aria-labelledby'))
     expect(name).toBeTruthy()
-    const region = page.getByRole('region', { name: 'Waveform editor', exact: true })
+    const region = page.getByRole('region', { name: /^Waveform,/ })
     await region.focus()
     const described = await region.evaluate((el) => {
       const id = el.getAttribute('aria-describedby')
@@ -124,6 +124,6 @@ test.describe('keyboard and focus', () => {
     })
     expect(described).toMatch(/Duration/)
     expect(described).toMatch(/Playhead/)
-    expect(described).toMatch(/Selection/)
+    expect(described).toMatch(/selection/i)
   })
 })

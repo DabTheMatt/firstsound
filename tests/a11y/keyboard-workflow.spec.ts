@@ -10,7 +10,7 @@ test.describe('keyboard-only editing', () => {
     const dialog = page.getByRole('dialog', { name: 'Settings' })
     await dialog.getByRole('button', { name: 'Generate demo sample' }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('region', { name: 'Waveform editor', exact: true })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole('region', { name: /^Waveform,/ })).toBeVisible({ timeout: 60_000 })
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
 

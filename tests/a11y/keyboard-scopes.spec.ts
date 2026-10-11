@@ -7,7 +7,7 @@ async function loadDemoKeys(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'Settings' })
   await dialog.getByRole('button', { name: 'Generate demo sample' }).focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('region', { name: 'Waveform editor', exact: true })).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByRole('region', { name: /^Waveform,/ })).toBeVisible({ timeout: 60_000 })
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
 }
@@ -100,7 +100,7 @@ test.describe('keyboard scopes', () => {
       return Boolean(active && active.closest('[role="region"][aria-labelledby]') && !active.closest('[data-region="waveform"]'))
     })
     expect(stayed).toBe(true)
-    const wave = page.getByRole('region', { name: 'Waveform editor', exact: true })
+    const wave = page.getByRole('region', { name: /^Waveform,/ })
     await wave.focus()
     await page.keyboard.press('ArrowRight')
     await expect(page.getByText('Done — you touched the waveform.', { exact: true })).toBeVisible()

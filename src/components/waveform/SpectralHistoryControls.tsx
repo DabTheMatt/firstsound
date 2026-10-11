@@ -230,12 +230,7 @@ export function SpectralHistoryControls({
             key={mode}
             type="button"
             aria-pressed={prefs.colorMode === mode}
-            onClick={() =>
-              patch({
-                colorMode: mode,
-                regionColors: mode === 'off' ? false : mode === 'frequency' ? true : prefs.regionColors,
-              })
-            }
+            onClick={() => patch({ colorMode: mode })}
           >
             {COLOR_LABEL[mode]}
           </button>

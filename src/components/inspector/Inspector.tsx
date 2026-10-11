@@ -41,6 +41,9 @@ import { fromNormalized, parseTypedRange, toNormalized } from '../../audio/param
 import { fadeKnobMaxSec } from '../waveform/handleLayout'
 import type { ParamId } from '../../audio/parameters/types'
 import { eqBandLfoIds, fxLfoIsActive, lfoBinding, lfoRangeNormalized } from '../../audio/fx/lfo'
+import { loadSpectrumPrefs, subscribeSpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { listedBandColor } from '../eq/eqBandStyle'
+import { eqBandTone, readThemeColors } from '../../theme'
 import { liveControlNormalized, liveWidthNormalized, widthModulationRange } from '../modulation/modulationModel'
 import { engine } from '../../hooks/useEngine'
 import { readStoredHearingSettings } from '../../hearing/settings'
@@ -1038,6 +1041,9 @@ function EqEditor({
   miniStrips?: boolean
 }) {
   const [openBand, setOpenBand] = useState(0)
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+  const tone = readThemeColors()
   const chooseBand = (index: number) => {
     setOpenBand(index)
     selectEqBand({ instanceId, index })
@@ -1099,7 +1105,9 @@ function EqEditor({
                   aria-pressed={on}
                   onClick={() => chooseBand(index)}
                 >
-                  <span>EQ {index + 1}</span>
+                  <span style={{ color: listedBandColor(band.frequency, eqBandTone(index, tone).curve, freqColors) }}>
+                    EQ {index + 1}
+                  </span>
                   <span>{formatHz(band.frequency)}</span>
                   <span>{band.bypassed ? 'Bypass' : typeLabel}</span>
                 </button>

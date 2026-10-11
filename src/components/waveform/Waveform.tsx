@@ -36,6 +36,7 @@ import {
 } from '../../audio/automation/automation'
 import { isTypingTarget } from '../../a11y/keyboard'
 import { formatTimecode } from '../../audio/engine/formatTime'
+import { kilohertzLabel } from '../../a11y/waveform/time'
 import { playheadNudgeSeconds } from '../../audio/engine/playheadNudge'
 import { blocksPlayheadArrowKey } from './playheadKeys'
 import { clipboardShortcut, hasUserTextSelection, isTextEditingTarget, isWaveformEditorContext } from './editorShortcuts'
@@ -308,7 +309,7 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
   },
   ref,
 ) {
-  const { t, paramLabel } = useI18n()
+  const { t, locale, paramLabel } = useI18n()
   const waveStatusId = useId()
   const sensory = appearance === 'sensory'
   const simple = appearance === 'simple'
@@ -1464,7 +1465,11 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           className={styles.wrap}
           hidden={!showWave || showArrangement}
           role="region"
-          aria-label={loaded && duration > 0 ? t.waveform.editorAria : t.waveform.editorEmpty}
+          aria-label={
+            loaded && duration > 0
+              ? t.waveform.editorAria(snap.fileName || (locale === 'pl' ? 'nagranie' : 'recording'))
+              : t.waveform.editorEmpty
+          }
           aria-describedby={loaded && duration > 0 ? waveStatusId : undefined}
           tabIndex={sensory ? undefined : 0}
           {...guideTargetAttrs('waveform.main')}
@@ -1481,10 +1486,17 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
           <p id={waveStatusId} className="sr-only">
             {loaded && duration > 0
               ? t.waveform.editorSummary(
+                  snap.channelCount <= 1
+                    ? t.waveform.monoRecording
+                    : snap.channelCount === 2
+                      ? t.waveform.stereoRecording
+                      : t.waveform.channelCount(snap.channelCount),
                   formatTimecode(duration),
+                  t.waveform.sampleRate(kilohertzLabel(snap.sampleRate)),
                   formatTimecode(engine.getSourcePlayheadSeconds()),
-                  formatTimecode(start),
-                  formatTimecode(end),
+                  snap.canClearSelection
+                    ? t.waveform.selectionRange(formatTimecode(start), formatTimecode(end), formatTimecode(Math.max(0, end - start)))
+                    : t.waveform.noSelection,
                 )
               : t.waveform.editorEmpty}
           </p>
