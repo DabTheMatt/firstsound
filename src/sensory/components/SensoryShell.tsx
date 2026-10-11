@@ -157,7 +157,7 @@ export function SensoryShell({
         if (file) onDrop(file)
       }}
     >
-      <header ref={headerRef} className={styles.top}>
+      <header ref={headerRef} className={styles.top} data-stable-region="navigation">
         <div className={styles.brandRow}>
           <Wordmark variant="editorial" />
         </div>
@@ -206,7 +206,7 @@ export function SensoryShell({
         </div>
       ) : null}
 
-      <div id="main-controls">
+      <div id="main-controls" data-stable-region="editor">
       <SoundRange
         duration={snap.sourceDuration || snap.duration}
         loaded={snap.sampleLoaded}

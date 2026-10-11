@@ -60,7 +60,7 @@ export function AppHeader({
           ? t.header.channels(snap.channelCount)
           : '—'
   return (
-    <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''} ${zoned ? styles.zoned : ''}`}>
+    <header className={`${styles.header} ${compact ? styles.compact : ''} ${minimal ? styles.minimal : ''} ${zoned ? styles.zoned : ''}`} data-stable-region="navigation">
       <div className={styles.brand}>
         <Wordmark compact={minimal} />
         <button

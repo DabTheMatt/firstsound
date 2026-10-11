@@ -52,6 +52,14 @@ export type A11ySettings = {
   attentionReduce: boolean
   /** Calm presentation. Off leaves the current drawing alone. */
   sensoryComfort: boolean
+  /** Stable places for tools and panels. Off leaves the current layout alone. */
+  predictableLayout: boolean
+  /** Inspector, chain, and transport keep a steady box. Content scrolls inside. */
+  stablePanels: boolean
+  /** Last workspace and panel arrangement, per mode. Not project audio. */
+  rememberWorkspaceLayout: boolean
+  /** Shorter panel motion. Does not freeze a responsive change the viewport asks for. */
+  reduceLayoutMovement: boolean
   /** Stored choice. Effective only while Sensory Comfort is on. */
   visualActivity: VisualActivity
   reduceDecorativeMotion: boolean
@@ -88,6 +96,10 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   calmSpectrum: true,
   reduceVisualEffects: true,
   quietNotifications: true,
+  predictableLayout: false,
+  stablePanels: true,
+  rememberWorkspaceLayout: true,
+  reduceLayoutMovement: true,
 }
 
 const BOOLEAN_KEYS = [
@@ -111,6 +123,10 @@ const BOOLEAN_KEYS = [
   'calmSpectrum',
   'reduceVisualEffects',
   'quietNotifications',
+  'predictableLayout',
+  'stablePanels',
+  'rememberWorkspaceLayout',
+  'reduceLayoutMovement',
 ] as const satisfies readonly (keyof A11ySettings)[]
 
 function readStrength(raw: unknown): AttentionStrength {
@@ -295,6 +311,11 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.textRoom = textScale >= 1.75 ? 'max' : textScale > 1 ? 'room' : 'base'
   root.dataset.interfaceRoom = interfaceScale >= 1.25 ? 'room' : 'base'
   root.dataset.layoutRoom = textScale > 1 || interfaceScale >= 1.25 ? 'open' : 'closed'
+  const predictable = settings.predictableLayout
+  root.dataset.predictable = predictable ? 'on' : 'off'
+  root.dataset.stablePanels = predictable && settings.stablePanels ? 'on' : 'off'
+  root.dataset.rememberLayout = predictable && settings.rememberWorkspaceLayout ? 'on' : 'off'
+  root.dataset.reduceLayout = predictable && settings.reduceLayoutMovement ? 'on' : 'off'
 }
 
 /** Drag-free editors and chain move buttons. Either preference is enough. */

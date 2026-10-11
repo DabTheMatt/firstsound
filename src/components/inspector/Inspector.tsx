@@ -1,9 +1,10 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { announce } from '../../a11y/liveRegion'
 import { useA11ySettings } from '../../a11y/useA11ySettings'
 import { noticeShown, resolveSensoryPresentation, tempoNoticePriority } from '../../a11y/sensoryComfort'
 import { tabListKey } from '../../a11y/keyboard'
 import { focusSelector } from '../../a11y/dialogFocus'
+import { bindLayoutScroll, inspectorScrollKey } from '../../a11y/predictableLayout'
 import { guideTargetAttrs } from '../../guide/targets'
 import { eqColorIndex, isFixedType, moduleLabel, type ChainModule, type ModuleType } from '../../audio/chain/chain'
 import { eqInstanceUsesSharedLfo } from '../../audio/engine/eqOverlayFocus'
@@ -208,12 +209,23 @@ export function Inspector({
 }: Props) {
   const variant = knobs ? 'knob' : 'slider'
   const track = snap.tracks.find((item) => item.id === snap.selectedTrackId) ?? snap.tracks[0]
+  const panelRef = useRef<HTMLDivElement>(null)
+  const { settings: a11ySettings } = useA11ySettings()
+  const scrollKey = inspectorScrollKey(focus)
+  const rememberScroll = a11ySettings.predictableLayout && a11ySettings.rememberWorkspaceLayout
+  useEffect(() => {
+    const node = panelRef.current
+    if (!node || !rememberScroll) return
+    return bindLayoutScroll(node, scrollKey)
+  }, [scrollKey, rememberScroll])
   return (
     <div
+      ref={panelRef}
       className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''} ${detail === 'essential' ? styles.essential : ''}`}
       style={inspectorAccentStyle(snap)}
       data-inspector-context={inspectorContextId(focus)}
       data-inspector-track={track?.id ?? ''}
+      data-layout-scroll="inspector"
     >
       {focus.kind === 'tool' ? (
         <ToolInspector

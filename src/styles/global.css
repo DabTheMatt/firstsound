@@ -4,6 +4,7 @@
 @import './low-vision.css';
 @import './high-visibility.css';
 @import './attention.css';
+@import './predictable.css';
 
 :root {
   --field-interface-scale: 1;

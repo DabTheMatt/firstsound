@@ -761,6 +761,17 @@ export type Messages = {
     attentionHighlightHelp: string
     attentionReduce: string
     attentionReduceHelp: string
+    predictableLayout: string
+    predictableLayoutHelp: string
+    stablePanels: string
+    stablePanelsHelp: string
+    rememberLayout: string
+    rememberLayoutHelp: string
+    reduceLayout: string
+    reduceLayoutHelp: string
+    restoreLayout: string
+    restoreLayoutHelp: string
+    layoutRestored: string
     on: string
     off: string
     saved: string
@@ -1817,6 +1828,17 @@ export const EN: Messages = {
     attentionHighlightHelp: 'Mark the controls that belong to this edit.',
     attentionReduce: 'Reduce Unrelated Emphasis',
     attentionReduceHelp: 'Quiet decorative contrast around other areas. Text stays readable.',
+    predictableLayout: 'Predictable Layout',
+    predictableLayoutHelp: 'Keep tools and panels in consistent locations while you work.',
+    stablePanels: 'Stable Panels',
+    stablePanelsHelp: 'Keep the inspector, effect chain, and transport in steady places. Their contents scroll inside.',
+    rememberLayout: 'Remember Workspace Layout',
+    rememberLayoutHelp: 'Remember the workspace and panel arrangement for each mode.',
+    reduceLayout: 'Reduce Layout Movement',
+    reduceLayoutHelp: 'Reduce panel animation and other layout motion.',
+    restoreLayout: 'Restore workspace layout',
+    restoreLayoutHelp: 'Puts panels back in their usual places. The sound and the other accessibility switches stay as they are.',
+    layoutRestored: 'Workspace layout restored.',
     on: 'On',
     off: 'Off',
     saved: 'Your preferences are saved automatically.',
@@ -2901,6 +2923,17 @@ export const PL: Messages = {
     attentionHighlightHelp: 'Oznacz kontrolki, które należą do tej edycji.',
     attentionReduce: 'Ścisz niepowiązane elementy',
     attentionReduceHelp: 'Ścisz dekoracyjny kontrast wokół pozostałych obszarów. Tekst zostaje czytelny.',
+    predictableLayout: 'Przewidywalny układ',
+    predictableLayoutHelp: 'Zachowuj stałe rozmieszczenie narzędzi i paneli podczas pracy.',
+    stablePanels: 'Stabilne panele',
+    stablePanelsHelp: 'Inspektor, łańcuch efektów i transport zostają na stałych miejscach. Ich zawartość przewija się w środku.',
+    rememberLayout: 'Zapamiętaj układ obszaru roboczego',
+    rememberLayoutHelp: 'Zapamiętaj obszar roboczy i układ paneli dla każdego trybu.',
+    reduceLayout: 'Ogranicz ruch układu',
+    reduceLayoutHelp: 'Ogranicz animację paneli i inny ruch układu.',
+    restoreLayout: 'Przywróć układ obszaru roboczego',
+    restoreLayoutHelp: 'Przywraca panele na zwykłe miejsca. Dźwięk i pozostałe przełączniki dostępności zostają bez zmian.',
+    layoutRestored: 'Przywrócono układ obszaru roboczego.',
     on: 'Wł.',
     off: 'Wył.',
     saved: 'Ustawienia zapisują się automatycznie.',

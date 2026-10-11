@@ -32,7 +32,7 @@ export function WorkspaceTabs({
   const { t } = useI18n()
   return (
     <div className={styles.tabs}>
-      <div className={styles.tablist} role="tablist" aria-label={t.workspace.workspaces} onKeyDown={(event) => tabListKey(event)}>
+      <div className={styles.tablist} role="tablist" aria-label={t.workspace.workspaces} data-stable-region="workspaces" onKeyDown={(event) => tabListKey(event)}>
       {TECHNICAL_WORKSPACES.map((id) => {
         const on = id === workspace
         return (

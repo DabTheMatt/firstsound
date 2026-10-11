@@ -688,7 +688,7 @@ function reveal(target: GuideTargetId, instance: string | null): void {
     return
   }
   host.revealTarget(target, instance)
-  const calm = appliedSensoryPresentation().reduceDecorativeMotion
+  const calm = appliedSensoryPresentation().reduceDecorativeMotion || document.documentElement.dataset.reduceLayout === 'on'
   window.setTimeout(() => {
     const node = findGuideElement(target, instance) ?? (target.startsWith('technical.add') ? findGuideElement('technical.addEffect') : null)
     if (node && needsScroll(node)) {
