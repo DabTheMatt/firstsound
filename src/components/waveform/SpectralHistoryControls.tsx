@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SPECTRUM_RESOLUTION_CHOICES, clampSpectrumResolution } from '../../audio/engine/analyserBudget'
-import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import {
   SPECTRUM_FALL_MODES,
   SPECTRUM_RANGE_CHOICES,
@@ -24,6 +24,7 @@ import {
 import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
+  patchSurfaceDisplay,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -44,10 +45,11 @@ export function FftViewToggle({
   variant?: 'bar' | 'focus'
 }) {
   const { locale } = useI18n()
+  const copy = analyzerCopy(locale)
   const pill = variant === 'focus' ? focusStyles.fftField : spectrumStyles.bands
   const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
   return (
-    <div className={pill} role="group" aria-label={analyzerCopy(locale).fftView}>
+    <div className={pill} role="group" aria-label={copy.fftView}>
       <button type="button" className={choice} aria-pressed={mode === '2d'} onClick={() => onChange('2d')}>
         2D
       </button>
@@ -56,7 +58,7 @@ export function FftViewToggle({
         className={choice}
         aria-pressed={mode === '3d'}
         aria-label="3D"
-        title={analyzerCopy(locale).history3d}
+        title={copy.history3d}
         onClick={() => onChange('3d')}
       >
         3D
@@ -65,17 +67,9 @@ export function FftViewToggle({
   )
 }
 
-const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
-  { id: 'front', label: 'Front' },
-  { id: 'angled', label: 'Angled' },
-  { id: 'top', label: 'Top' },
-]
+const VIEW_IDS: SpectralCameraPreset[] = ['front', 'angled', 'top']
 
-const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Source' },
-  { id: 'post', label: 'Output' },
-  { id: 'both', label: 'Both' },
-]
+const LAYER_IDS: SpectrumLayer[] = ['pre', 'post', 'both']
 
 /** Primary 3D controls. The 2D/3D switch stays in the FFT chrome, not in this bar. */
 export function SpectralHistoryControls({
@@ -90,7 +84,7 @@ export function SpectralHistoryControls({
   const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
-  const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
+  const [scale, setScale] = useState<FreqScaleKind>(() => loadSpectrumPrefs().surfaces.fft.scale)
   const [open, setOpen] = useState(false)
   const [sheet, setSheet] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 900px), (max-height: 560px)').matches,
@@ -102,8 +96,10 @@ export function SpectralHistoryControls({
   const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
   const icon = variant === 'focus' ? focusStyles.hit : spectrumStyles.iconTap
 
-  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
-  useEffect(() => subscribeFreqScale(setScale), [])
+  useEffect(() => subscribeSpectrumPrefs((next) => {
+    setPrefs(next)
+    setScale(next.surfaces.fft.scale)
+  }), [])
   useEffect(
     () =>
       subscribeSpectralHistorySession(() => {
@@ -169,8 +165,8 @@ export function SpectralHistoryControls({
             <span>{copy.range}</span>
             <select
               aria-label={copy.range}
-              value={String(prefs.range)}
-              onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
+              value={String(prefs.surfaces.fft.range)}
+              onChange={(event) => patchSurfaceDisplay('fft', { range: clampSpectrumRange(Number(event.target.value)) })}
             >
               {SPECTRUM_RANGE_CHOICES.map((db) => (
                 <option key={db} value={db}>
@@ -187,7 +183,7 @@ export function SpectralHistoryControls({
                 type="button"
                 aria-pressed={scale === opt.value}
                 title={opt.title}
-                onClick={() => persistFreqScale(opt.value)}
+                onClick={() => patchSurfaceDisplay('fft', { scale: opt.value })}
               >
                 {opt.label}
               </button>
@@ -281,37 +277,31 @@ export function SpectralHistoryControls({
       {embedSettings ? null : (
       <div className={pill} role="group" aria-label={copy.signal}>
         <span>{copy.signal}</span>
-        {LAYERS.map((layer) => (
+        {LAYER_IDS.map((id) => (
           <button
-            key={layer.id}
+            key={id}
             type="button"
             className={choice}
-            aria-pressed={prefs.historyLayer === layer.id}
-            title={
-              layer.id === 'pre'
-                ? copy.beforeChain
-                : layer.id === 'post'
-                  ? copy.afterChain
-                  : copy.sourceAndOutput
-            }
-            onClick={() => patch({ historyLayer: layer.id })}
+            aria-pressed={prefs.surfaces.fft.layer === id}
+            title={id === 'pre' ? copy.beforeChain : id === 'post' ? copy.afterChain : copy.sourceAndOutput}
+            onClick={() => patchSurfaceDisplay('fft', { layer: id })}
           >
-            {layer.id === 'pre' ? copy.source : layer.id === 'post' ? copy.output : copy.both}
+            {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
           </button>
         ))}
       </div>
       )}
       <div className={pill} role="group" aria-label={copy.view}>
         <span>{copy.view}</span>
-        {VIEWS.map((view) => (
+        {VIEW_IDS.map((id) => (
           <button
-            key={view.id}
+            key={id}
             type="button"
             className={choice}
-            aria-pressed={prefs.cameraPreset === view.id}
-            onClick={() => patch({ cameraPreset: view.id })}
+            aria-pressed={prefs.cameraPreset === id}
+            onClick={() => patch({ cameraPreset: id })}
           >
-            {view.id === 'front' ? copy.front : view.id === 'angled' ? copy.angled : copy.top}
+            {id === 'front' ? copy.front : id === 'angled' ? copy.angled : copy.top}
           </button>
         ))}
       </div>

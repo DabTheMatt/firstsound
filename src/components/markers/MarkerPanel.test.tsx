@@ -13,7 +13,7 @@ describe('marker panel markup', () => {
     const open = renderToStaticMarkup(<MarkerPanel mode="simple" onCommit={() => undefined} />)
     expect(open).toContain('Load audio before adding a marker.')
     expect(open).toContain('disabled')
-    expect(open).not.toContain('Detected places')
+    expect(open).not.toContain('Suggestions')
     resetMarkerPanel()
   })
 
@@ -21,7 +21,8 @@ describe('marker panel markup', () => {
     resetMarkerPanel()
     setMarkerPanelOpen(true)
     const technical = renderToStaticMarkup(<MarkerPanel mode="technical" onCommit={() => undefined} />)
-    expect(technical).toContain('Detected places')
+    expect(technical).toContain('Suggestions')
+    expect(technical).toContain('aria-expanded="false"')
     expect(technical).toContain('Previous marker')
     resetMarkerPanel()
   })

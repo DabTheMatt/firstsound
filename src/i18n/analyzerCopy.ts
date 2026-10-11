@@ -56,6 +56,7 @@ export type AnalyzerCopy = {
   scaleMel: string
   rangeHint: string
   colorHint: string
+  fftColorHint: string
   nodes: string
   nodesHint: string
   regions: string
@@ -163,7 +164,8 @@ const en: AnalyzerCopy = {
   scaleLin: 'Linear hertz axis.',
   scaleMel: 'Mel axis. Denser around speech frequencies.',
   rangeHint: 'How far down the spectrum bars reach, from 0 dB. The EQ curve keeps its own scale, from −24 dB to +24 dB.',
-  colorHint: 'EQ graph only. Paints those spectrum columns by frequency region. FFT color stays where you set it.',
+  colorHint: 'EQ graph only. Tints the spectrum columns by sub, bass, mids, presence, or air.',
+  fftColorHint: 'FFT only. Off, Level, or Frequency. It paints the FFT bars, the FFT line, and the 3D ridges. It does not recolor the EQ graph.',
   nodes: 'Freq nodes',
   nodesHint: 'EQ only. Each handle, the filter list, and the band name take the color of the frequency. FFT color does not change them.',
   regions: 'Regions',
@@ -177,7 +179,7 @@ const en: AnalyzerCopy = {
   guides: 'Guides',
   guidesHint: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
   length: 'Length',
-  holdLengthHint: 'How long that fragment is. 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
+  holdLengthHint: 'How long that fragment is. 0.05 s, 0.1 s, 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
   on: 'On',
   off: 'Off',
   graphSettings: 'Graph settings',
@@ -271,7 +273,8 @@ const pl: AnalyzerCopy = {
   scaleLin: 'Liniowa oś w hercach.',
   scaleMel: 'Oś mel. Gęstsza wokół częstotliwości mowy.',
   rangeHint: 'Jak nisko sięgają słupki widma, od 0 dB. Krzywa EQ ma własną skalę, od −24 dB do +24 dB.',
-  colorHint: 'Tylko wykres EQ. Maluje słupki widma regionem częstotliwości. Kolor FFT zostaje tam, gdzie go ustawisz.',
+  colorHint: 'Tylko wykres EQ. Barwi słupki widma według sub, basu, środka, prezencji albo powietrza.',
+  fftColorHint: 'Tylko FFT. Wył., poziom albo częstotliwość. Maluje słupki FFT, linię FFT i grzbiety 3D. Nie przemalowuje wykresu EQ.',
   nodes: 'Węzły',
   nodesHint: 'Tylko EQ. Uchwyt, lista filtrów i nazwa pasma biorą kolor częstotliwości. Kolor FFT ich nie zmienia.',
   regions: 'Regiony',
@@ -285,7 +288,7 @@ const pl: AnalyzerCopy = {
   guides: 'Prowadnice',
   guidesHint: 'Punkty częstotliwości. Najedź na wykres, aby zobaczyć, co zwykle tam mieszka, na przykład uderzenie stopy, głos, werbel albo powietrze.',
   length: 'Długość',
-  holdLengthHint: 'Jak długi jest ten fragment. 0,25 s, 0,5 s albo 1 s. Zmiana przy włączonym Hold zaczyna pętlę od nowej długości.',
+  holdLengthHint: 'Jak długi jest ten fragment. 0,05 s, 0,1 s, 0,25 s, 0,5 s albo 1 s. Zmiana przy włączonym Hold zaczyna pętlę od nowej długości.',
   on: 'Wł.',
   off: 'Wył.',
   graphSettings: 'Ustawienia wykresu',

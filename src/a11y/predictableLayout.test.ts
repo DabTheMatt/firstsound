@@ -19,18 +19,24 @@ import {
 } from './predictableLayout'
 
 describe('predictable layout flags', () => {
-  it('stays off until the user turns it on, with the suggested sub-settings ready', () => {
+  it('stays off until the user turns it on, and sub-settings start off', () => {
     expect(DEFAULT_A11Y_SETTINGS.predictableLayout).toBe(false)
-    expect(DEFAULT_A11Y_SETTINGS.stablePanels).toBe(true)
-    expect(DEFAULT_A11Y_SETTINGS.rememberWorkspaceLayout).toBe(true)
-    expect(DEFAULT_A11Y_SETTINGS.reduceLayoutMovement).toBe(true)
+    expect(DEFAULT_A11Y_SETTINGS.stablePanels).toBe(false)
+    expect(DEFAULT_A11Y_SETTINGS.rememberWorkspaceLayout).toBe(false)
+    expect(DEFAULT_A11Y_SETTINGS.reduceLayoutMovement).toBe(false)
     expect(effectiveLayoutFlags(DEFAULT_A11Y_SETTINGS)).toEqual({
       active: false,
       stablePanels: false,
       rememberWorkspace: false,
       reduceMovement: false,
     })
-    const on = effectiveLayoutFlags({ ...DEFAULT_A11Y_SETTINGS, predictableLayout: true })
+    const on = effectiveLayoutFlags({
+      ...DEFAULT_A11Y_SETTINGS,
+      predictableLayout: true,
+      stablePanels: true,
+      rememberWorkspaceLayout: true,
+      reduceLayoutMovement: true,
+    })
     expect(on).toEqual({
       active: true,
       stablePanels: true,

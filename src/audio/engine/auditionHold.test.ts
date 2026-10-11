@@ -28,6 +28,18 @@ describe('audition window', () => {
     expect(auditionWindow(0, 0)).toBeNull()
   })
 
+  it('keeps a 50 ms fragment when that length is chosen', () => {
+    const window = auditionWindow(3, 10, 0.05)
+    expect(window?.end).toBeCloseTo(3)
+    expect(window?.start).toBeCloseTo(2.95)
+  })
+
+  it('keeps a tenth of a second when that length is chosen', () => {
+    const window = auditionWindow(3, 10, 0.1)
+    expect(window?.end).toBeCloseTo(3)
+    expect(window?.start).toBeCloseTo(2.9)
+  })
+
   it('keeps a quarter-second fragment when that length is chosen', () => {
     const window = auditionWindow(3, 10, 0.25)
     expect(window?.end).toBeCloseTo(3)

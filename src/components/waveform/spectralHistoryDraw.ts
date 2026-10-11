@@ -301,19 +301,20 @@ function strokeSeries(
   input: SpectralPaintInput,
   dashed: boolean,
   recordHits: boolean,
+  plain = false,
 ): void {
   const points = values.length
   const stride = input.mobile || runtime.quality < 0.72 ? 2 : 1
-  const alpha = spectralAgeOpacity(age01) * (dashed ? 0.95 : 1)
-  // Both draws Source as a light dashed line so it stays readable over Output.
-  const colored = input.colorMode !== 'off' && !dashed
-  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 1.25 : 1) * (colored ? 1.15 : 1))
+  const alpha = spectralAgeOpacity(age01) * (plain ? 0.82 : 1)
+  // Both draws only the current Source contour, as a thin solid line, so the history stays readable.
+  const colored = input.colorMode !== 'off' && !plain
+  const width = Math.max(input.dpr * (plain ? 1.05 : 0.85), spectralAgeWidth(age01) * input.dpr * (plain ? 1.05 : 1) * (colored ? 1.15 : 1))
   const surface = input.drawStyle === 'surface'
   const fillAlpha = alpha * 0.16 * (0.4 + 0.6 * (1 - age01))
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  ctx.setLineDash(dashed ? [7 * input.dpr, 4 * input.dpr] : [])
+  ctx.setLineDash(dashed && !plain ? [4 * input.dpr, 3 * input.dpr] : [])
 
   const xs = runtime.trace
   const floors = runtime.floorXY
@@ -322,7 +323,7 @@ function strokeSeries(
   let n = 0
   const flushLine = () => {
     if (n < 1) return
-    if (surface && n >= 2 && !colored && !dashed) {
+    if (surface && n >= 2 && !colored && !plain) {
       ctx.fillStyle = colorWithAlpha(color, fillAlpha)
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
@@ -352,7 +353,7 @@ function strokeSeries(
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
       for (let p = 1; p < n; p++) ctx.lineTo(xs[p * 2] ?? 0, xs[p * 2 + 1] ?? 0)
     }
-    if (n >= 2) {
+    if (n >= 2 && !plain) {
       ctx.strokeStyle = colorWithAlpha(input.colors.bgApp, colored ? 0.45 : 0.4)
       ctx.lineWidth = width + input.dpr * (colored ? 0.55 : 1.8)
       trace()
@@ -559,10 +560,10 @@ export function paintSpectralHistory(
 
   runtime.hitCount = 0
   const liveFront = input.playing && !session.frozen
-  const drawBuffer = (buffer: SpectralFrameBuffer, live: Float32Array, color: string, dashed: boolean) => {
+  const drawBuffer = (buffer: SpectralFrameBuffer, live: Float32Array, color: string, dashed: boolean, frontOnly = false) => {
     const count = buffer.copyTimes(runtime.times)
     const historySlices = Math.max(1, slices - (liveFront ? 1 : 0))
-    for (let s = historySlices - 1; s >= 0; s--) {
+    if (!frontOnly) for (let s = historySlices - 1; s >= 0; s--) {
       const ageSec = spectralScrollAge(s, historySlices, runtime.clock.now, input.historySec)
       if (liveFront && ageSec < 1 / 120) continue
       const time = runtime.clock.now - ageSec
@@ -583,10 +584,10 @@ export function paintSpectralHistory(
         s % 2 === 0,
       )
     }
-    if (liveFront && hasSpectrum(live)) {
-      strokeSeries(ctx, runtime, live, 0, 0, color, floorDb, plot, viewCamera, input, dashed, true)
+    if ((liveFront || frontOnly) && hasSpectrum(live)) {
+      strokeSeries(ctx, runtime, live, 0, 0, color, floorDb, plot, viewCamera, input, dashed, true, frontOnly)
     }
-    if (input.peakTrails && count > 1) {
+    if (!frontOnly && input.peakTrails && count > 1) {
       const chosen = selectSpectralSlices(runtime.times, count, runtime.clock.now, input.historySec, slices)
       spectralPeakHold(buffer, chosen, runtime.peak)
       ctx.save()
@@ -617,12 +618,12 @@ export function paintSpectralHistory(
     }
   }
 
-  // Output first, then Source. In Both the dashed Before line stays on top of After.
+  // Output history stays intact. In Both, Source is only the current contour, drawn on top.
   if (input.showPost || !input.showPre) {
     drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
   }
   if (input.showPre) {
-    drawBuffer(runtime.pre, runtime.preLive, both ? colors.textPrimary : colors.textMuted, both)
+    drawBuffer(runtime.pre, runtime.preLive, both ? colors.textPrimary : colors.textMuted, false, both)
   }
 
   ctx.restore()
@@ -654,16 +655,6 @@ export function paintSpectralHistory(
     const tick = freqTicks[i]!
     ctx.fillText(tick.text, tick.x, Math.min(plot.bottom + 2 * input.dpr, tick.y + 4 * input.dpr))
   }
-
-  const source =
-    input.layer === 'both' ? 'Source + Output' : input.layer === 'pre' ? 'Source' : 'Output'
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'top'
-  ctx.fillStyle = colorWithAlpha(colors.textPrimary, 0.72)
-  ctx.font = `${10 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
-  // The corner row (••• and the focus icon) occupies the top 32px.
-  const belowCorner = 36 * input.dpr
-  ctx.fillText(source, plot.right - 4 * input.dpr, Math.max(plot.top + 2 * input.dpr, belowCorner))
 
   ctx.font = `${12 * input.dpr}px ui-sans-serif, system-ui, sans-serif`
   ctx.textAlign = 'left'

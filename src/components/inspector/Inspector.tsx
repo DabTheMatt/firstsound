@@ -1055,8 +1055,8 @@ function EqEditor({
   miniStrips?: boolean
 }) {
   const [openBand, setOpenBand] = useState(0)
-  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
-  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().surfaces.eq.eqFreqColors)
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.surfaces.eq.eqFreqColors)), [])
   const tone = readThemeColors()
   const chooseBand = (index: number) => {
     setOpenBand(index)

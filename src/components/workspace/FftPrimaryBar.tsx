@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
+  patchSurfaceDisplay,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -54,9 +55,9 @@ export function FftPrimaryBar() {
           <button
             key={layer.id}
             type="button"
-            className={prefs.layer === layer.id ? styles.segmentOn : styles.textButton}
-            aria-pressed={prefs.layer === layer.id}
-            onClick={() => patch({ layer: layer.id, historyLayer: layer.id })}
+            className={prefs.surfaces.fft.layer === layer.id ? styles.segmentOn : styles.textButton}
+            aria-pressed={prefs.surfaces.fft.layer === layer.id}
+            onClick={() => patchSurfaceDisplay('fft', { layer: layer.id })}
           >
             {layer.label}
           </button>

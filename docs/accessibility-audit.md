@@ -334,7 +334,7 @@ What was exercised here:
 - Playwright `tests/a11y/markers.spec.ts` in headless Chromium: add, rename, description, typed time, go to marker, playhead alignment under 3px, selection style unchanged, add during playback without leaving Pause, undo of delete, Simple without detected-place wording, Sensory entry in the header, a 320px sheet, High Visibility outline, reduced motion, Interface Size 150%, and Text Size 200%
 - Keyboard-only operation uses the list buttons and typed time. A manual pass with a screen reader was not run
 - High Visibility outlines the diamond and the selected row. Marker drawing has no pulse or flash. Reduced motion has no marker animation to remove
-- The marker sheet is fixed, like Accessible Waveform navigation, so opening it does not reflow the inspector. Attention Focus marks the editor, the selected row, and the time, name, and description fields, and leaves transport in the live set
+- 0.32.1 replaces the fixed marker sheet with a compact toolbar popover. It does not change waveform height, transport position, or inspector width. On a narrow viewport the same list is a short sheet above the transport. Attention Focus marks the editor, the selected row, and the time, name, and description fields, and leaves transport in the live set
 
 Known limitations:
 

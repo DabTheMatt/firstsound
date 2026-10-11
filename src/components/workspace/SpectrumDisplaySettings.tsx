@@ -1,19 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FloatingTip } from '../../a11y/FloatingTip'
-import {
-  FREQ_GRID_DENSITIES,
-  loadFreqGridDensity,
-  persistFreqGridDensity,
-  subscribeFreqGridDensity,
-  type FreqGridDensity,
-} from '../../audio/engine/freqGrid'
-import {
-  FREQ_SCALE_OPTIONS,
-  loadFreqScale,
-  persistFreqScale,
-  subscribeFreqScale,
-  type FreqScaleKind,
-} from '../../audio/engine/freqScale'
+import { FREQ_GRID_DENSITIES } from '../../audio/engine/freqGrid'
+import { FREQ_SCALE_OPTIONS } from '../../audio/engine/freqScale'
 import {
   AUDITION_SPAN_CHOICES,
   auditionSpanSec,
@@ -30,130 +18,124 @@ import {
   SPECTRUM_RANGE_CHOICES,
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
+import { EQ_CHANNEL_MODES, type EqChannelMode } from '../../audio/engine/eqGraph'
+import { SPECTRAL_COLOR_MODES } from '../../audio/engine/spectralHistory'
 import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
+  patchSurfaceDisplay,
   subscribeSpectrumPrefs,
+  type GraphSurface,
+  type SpectrumLayer,
   type SpectrumPrefs,
+  type SurfaceDisplay,
 } from '../../audio/engine/spectrumPrefs'
-import { engine } from '../../hooks/useEngine'
+import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { analyzerCopy } from '../../i18n/analyzerCopy'
 import styles from './Workspace.module.css'
 
+const LAYER_IDS: SpectrumLayer[] = ['pre', 'post', 'both']
+
 type Props = {
-  /** EQ graph has no Before / After / Both bar, so the row lives with the other display settings. */
-  showLayer?: boolean
-  /** EQ color rows. The FFT menu keeps its own Off / Level / Frequency control. */
-  eqColor?: boolean
+  /** Which graph these rows edit. EQ and FFT keep separate values. */
+  surface: GraphSurface
 }
 
 /**
- * Grid, scale, and spectrum drawing options.
- * The FFT inspector and the EQ graph use this same row list.
+ * The same display rows on the EQ graph and the FFT menu.
+ * Each surface stores its own values.
  */
-export function SpectrumDisplaySettings({ showLayer = false, eqColor = false }: Props) {
+export function SpectrumDisplaySettings({ surface }: Props) {
   const { locale } = useI18n()
   const copy = analyzerCopy(locale)
+  const snap = useEngine()
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
-  const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
-  const [grid, setGrid] = useState<FreqGridDensity>(() => loadFreqGridDensity())
   useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
-  useEffect(() => subscribeFreqScale(setScale), [])
-  useEffect(() => subscribeFreqGridDensity(setGrid), [])
-
-  const patch = (next: Partial<SpectrumPrefs>) => {
-    patchSpectrumPrefs(next)
+  const display = prefs.surfaces[surface]
+  const paint = (patch: Partial<SurfaceDisplay>) => {
+    patchSurfaceDisplay(surface, patch)
   }
 
   return (
     <div className={styles.displayRows}>
       <ChoiceRow label={copy.grid} hint={copy.gridHint}>
         {FREQ_GRID_DENSITIES.map((density) => (
-          <Choice
-            key={density}
-            pressed={grid === density}
-            onClick={() => {
-              setGrid(density)
-              persistFreqGridDensity(density)
-            }}
-          >
+          <Choice key={density} pressed={display.grid === density} onClick={() => paint({ grid: density })}>
             {density}
           </Choice>
         ))}
       </ChoiceRow>
-      {showLayer ? (
-        <ChoiceRow label={copy.layer} hint={copy.layerHint}>
-          {(['pre', 'post', 'both'] as const).map((id) => (
-            <Choice
-              key={id}
-              pressed={prefs.layer === id}
-              onClick={() => patch({ layer: id, historyLayer: id })}
-            >
-              {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
-            </Choice>
-          ))}
-        </ChoiceRow>
-      ) : null}
+      <ChoiceRow label={copy.layer} hint={copy.layerHint}>
+        {LAYER_IDS.map((id) => (
+          <Choice key={id} pressed={display.layer === id} onClick={() => paint({ layer: id })}>
+            {id === 'pre' ? copy.before : id === 'post' ? copy.after : copy.both}
+          </Choice>
+        ))}
+      </ChoiceRow>
       <ChoiceRow label={copy.scale} hint={copy.scaleHint}>
         {FREQ_SCALE_OPTIONS.map((opt) => (
-          <Choice
-            key={opt.value}
-            pressed={scale === opt.value}
-            title={opt.value === 'log' ? copy.scaleLog : opt.value === 'linear' ? copy.scaleLin : copy.scaleMel}
-            onClick={() => {
-              setScale(opt.value)
-              persistFreqScale(opt.value)
-            }}
-          >
+          <Choice key={opt.value} pressed={display.scale === opt.value} onClick={() => paint({ scale: opt.value })}>
             {opt.label}
           </Choice>
         ))}
       </ChoiceRow>
-      {showLayer ? (
-        <ChoiceRow label={copy.range} hint={copy.rangeHint}>
-          {SPECTRUM_RANGE_CHOICES.map((db) => (
+      <ChoiceRow label={copy.range} hint={copy.rangeHint}>
+        {SPECTRUM_RANGE_CHOICES.map((db) => (
+          <Choice key={db} pressed={display.range === db} onClick={() => paint({ range: clampSpectrumRange(db) })}>
+            {db}
+          </Choice>
+        ))}
+      </ChoiceRow>
+      {surface === 'fft' ? (
+        <ChoiceRow label={copy.color} hint={copy.fftColorHint}>
+          {SPECTRAL_COLOR_MODES.map((mode) => (
             <Choice
-              key={db}
-              pressed={prefs.range === db}
-              onClick={() => patch({ range: clampSpectrumRange(db) })}
+              key={mode}
+              pressed={prefs.colorMode === mode}
+              onClick={() => patchSpectrumPrefs({ colorMode: mode })}
             >
-              {db}
+              {mode === 'off' ? copy.off : mode === 'level' ? copy.level : copy.frequency}
             </Choice>
           ))}
         </ChoiceRow>
-      ) : null}
-      {eqColor ? (
+      ) : (
         <>
           <OnOff
             label={copy.color}
             hint={copy.colorHint}
-            on={prefs.regionColors}
-            onChange={(regionColors) => patch({ regionColors })}
+            on={display.regionColors}
+            onChange={(regionColors) => paint({ regionColors })}
           />
           <OnOff
             label={copy.nodes}
             hint={copy.nodesHint}
-            on={prefs.eqFreqColors}
-            onChange={(eqFreqColors) => patch({ eqFreqColors })}
+            on={display.eqFreqColors}
+            onChange={(eqFreqColors) => paint({ eqFreqColors })}
           />
-          <OnOff
-            label={copy.regions}
-            hint={copy.regionsHint}
-            on={prefs.regionColors}
-            onChange={(regionColors) => patch({ regionColors })}
-          />
+          <ChoiceRow label={copy.eqChannel} hint={copy.eqChannelTitle}>
+            {EQ_CHANNEL_MODES.map((opt) => (
+              <Choice
+                key={opt.value}
+                pressed={snap.eqChannelMode === opt.value}
+                title={opt.value === 'shared' ? copy.sharedHint : opt.value === 'left' ? copy.leftHint : copy.rightHint}
+                onClick={() => engine.setEqChannelMode(opt.value as EqChannelMode)}
+              >
+                {opt.value === 'shared' ? copy.shared : opt.value === 'left' ? copy.left : copy.right}
+              </Choice>
+            ))}
+          </ChoiceRow>
         </>
-      ) : null}
-      <OnOff label={copy.bars} hint={copy.barsHint} on={prefs.showBars} onChange={(showBars) => patch({ showBars })} />
-      <OnOff label={copy.line} hint={copy.lineHint} on={prefs.showLine} onChange={(showLine) => patch({ showLine })} />
+      )}
+      <OnOff label={copy.bars} hint={copy.barsHint} on={display.showBars} onChange={(showBars) => paint({ showBars })} />
+      <OnOff label={copy.line} hint={copy.lineHint} on={display.showLine} onChange={(showLine) => paint({ showLine })} />
       <OnOff
         label={copy.legend}
         hint={copy.legendHint}
-        on={prefs.legendOpen}
-        onChange={(legendOpen) => patch({ legendOpen })}
+        on={display.legendOpen}
+        onChange={(legendOpen) => paint({ legendOpen })}
       />
-      <GuidesRow />
+      <GuidesRow surface={surface} />
       <SnapshotRow />
     </div>
   )
@@ -165,7 +147,7 @@ export function holdGraphSnapshot(on: boolean): void {
   engine.holdAudition(on)
 }
 
-export function GuidesRow() {
+export function GuidesRow({ surface }: { surface: GraphSurface }) {
   const { locale } = useI18n()
   const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
@@ -174,8 +156,8 @@ export function GuidesRow() {
     <OnOff
       label={copy.guides}
       hint={copy.guidesHint}
-      on={prefs.freqGuide}
-      onChange={(freqGuide) => patchSpectrumPrefs({ freqGuide })}
+      on={prefs.surfaces[surface].freqGuide}
+      onChange={(freqGuide) => patchSurfaceDisplay(surface, { freqGuide })}
     />
   )
 }
@@ -190,8 +172,8 @@ export function FreqNodesRow() {
     <OnOff
       label={copy.nodes}
       hint={copy.nodesHint}
-      on={prefs.eqFreqColors}
-      onChange={(eqFreqColors) => patchSpectrumPrefs({ eqFreqColors })}
+      on={prefs.surfaces.eq.eqFreqColors}
+      onChange={(eqFreqColors) => patchSurfaceDisplay('eq', { eqFreqColors })}
     />
   )
 }

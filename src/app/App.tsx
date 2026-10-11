@@ -65,7 +65,7 @@ import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
 import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
-import { MarkerPanel } from '../components/markers/MarkerPanel'
+import { MarkerHost } from '../components/markers/MarkerPanel'
 import { DragFreeDock, dragFreeSurface } from '../edit/dragFree/DragFreeDock'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
@@ -651,7 +651,6 @@ export default function App() {
       const snapNow = engine.getSnapshot()
       if (!snapNow.sampleLoaded || !(snapNow.duration > 0)) {
         announce(t.markers.needAudio)
-        setMarkerPanelOpen(true)
         return
       }
       if (id === 'markers.add') {
@@ -664,7 +663,6 @@ export default function App() {
         commit()
         const marker = engine.getSnapshot().userMarkers.find((item) => item.id === result.id)
         announce(t.markers.added(marker?.name ?? name, speakEditTime(marker?.timeSeconds ?? 0, locale)))
-        setMarkerPanelOpen(true, result.id)
         return
       }
       const direction = id === 'markers.previous' ? -1 : 1
@@ -2151,7 +2149,7 @@ export default function App() {
               }}
               onDspGesture={(before, after) => setHistory((h) => commitDspGesture(h, before, after, histEqual))}
             />
-            <MarkerPanel mode="technical" onCommit={commit} />
+            <MarkerHost mode="technical" onCommit={commit} />
             <AccessibleWaveform
               mode="technical"
               onRegionCommit={commit}

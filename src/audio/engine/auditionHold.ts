@@ -2,12 +2,12 @@
 export const AUDITION_SPAN_SEC = 1
 
 /** Lengths offered in the graph menu. */
-export const AUDITION_SPAN_CHOICES = [0.25, 0.5, 1] as const
+export const AUDITION_SPAN_CHOICES = [0.05, 0.1, 0.25, 0.5, 1] as const
 
 export type AuditionSpanSec = (typeof AUDITION_SPAN_CHOICES)[number]
 
-/** Shorter than this and the loop is a click, not a fragment you can hear. */
-export const AUDITION_MIN_SEC = 0.2
+/** Shortest fragment the menu can ask for. */
+export const AUDITION_MIN_SEC = 0.05
 
 let spanSec: AuditionSpanSec = AUDITION_SPAN_SEC
 const spanListeners = new Set<(span: AuditionSpanSec) => void>()

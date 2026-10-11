@@ -5,8 +5,8 @@ import {
   clampSpectrumFallMode,
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
-import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
-import { loadSpectrumPrefs, patchSpectrumPrefs, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { loadSpectrumPrefs, patchSpectrumPrefs, patchSurfaceDisplay, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import { useI18n } from '../../i18n'
 import { analyzerCopy } from '../../i18n/analyzerCopy'
 import styles from './MobileContext.module.css'
@@ -16,10 +16,12 @@ export function AnalyzerSettings() {
   const { t, locale } = useI18n()
   const copy = analyzerCopy(locale)
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
-  const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
+  const [scale, setScale] = useState<FreqScaleKind>(() => loadSpectrumPrefs().surfaces.eq.scale)
 
-  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
-  useEffect(() => subscribeFreqScale(setScale), [])
+  useEffect(() => subscribeSpectrumPrefs((next) => {
+    setPrefs(next)
+    setScale(next.surfaces.eq.scale)
+  }), [])
 
   const patch = (next: Partial<SpectrumPrefs>) => {
     patchSpectrumPrefs(next)
@@ -31,8 +33,8 @@ export function AnalyzerSettings() {
         {copy.layer}
         <select
           aria-label={copy.eqLayer}
-          value={prefs.layer}
-          onChange={(event) => patch({ layer: event.target.value as SpectrumLayer })}
+          value={prefs.surfaces.eq.layer}
+          onChange={(event) => patchSurfaceDisplay('eq', { layer: event.target.value as SpectrumLayer })}
         >
           <option value="pre">{copy.before}</option>
           <option value="post">{copy.after}</option>
@@ -57,8 +59,8 @@ export function AnalyzerSettings() {
         {copy.range}
         <select
           aria-label={copy.range}
-          value={prefs.range}
-          onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
+          value={prefs.surfaces.eq.range}
+          onChange={(event) => patchSurfaceDisplay('eq', { range: clampSpectrumRange(Number(event.target.value)) })}
         >
           {SPECTRUM_RANGE_CHOICES.map((db) => (
             <option key={db} value={db}>
@@ -72,7 +74,7 @@ export function AnalyzerSettings() {
         <select
           aria-label={copy.scale}
           value={scale}
-          onChange={(event) => persistFreqScale(event.target.value as FreqScaleKind)}
+          onChange={(event) => patchSurfaceDisplay('eq', { scale: event.target.value as FreqScaleKind })}
         >
           {FREQ_SCALE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

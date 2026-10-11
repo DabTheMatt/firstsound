@@ -29,9 +29,9 @@ export function EqFocusCluster({ onSelectModule }: Props) {
   const snap = useEngine()
   const [selected, setSelected] = useState<EqBandSelection | null>(() => getEqBandSelection())
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().surfaces.eq.eqFreqColors)
   useEffect(() => subscribeEqBandSelection(setSelected), [])
-  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.surfaces.eq.eqFreqColors)), [])
 
   const eq =
     snap.chain.find((mod) => mod.instanceId === selected?.instanceId && mod.type === 'eq') ??

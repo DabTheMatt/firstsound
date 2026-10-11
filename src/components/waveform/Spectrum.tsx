@@ -38,9 +38,6 @@ import {
 } from '../../audio/engine/pitchScale'
 import {
   frequencyGuideHz,
-  loadFreqGridDensity,
-  persistFreqGridDensity,
-  subscribeFreqGridDensity,
   type FreqGridDensity,
 } from '../../audio/engine/freqGrid'
 import {
@@ -103,7 +100,7 @@ import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { analyzerCopy } from '../../i18n/analyzerCopy'
 import { colorWithAlpha, eqBandTone, eqTone, readThemeColors } from '../../theme'
-import { hzToX as mapHzToX, xToHz, loadFreqScale, persistFreqScale, subscribeFreqScale, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { hzToX as mapHzToX, xToHz, FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import { EQ_CHANNEL_MODES } from '../../audio/engine/eqGraph'
 import {
   eqCurveBands,
@@ -112,7 +109,7 @@ import {
 } from '../modulation/modulationModel'
 import { filterMagnitudeDb, filterMixMagnitudeDb, filterModuleIsAudible } from '../../audio/fx/filterResponse'
 import { isPrimaryPointerDown, isPrimaryPointerHeld } from '../../audio/engine/pointerDrag'
-import { loadSpectrumPrefs, patchSpectrumPrefs, persistSpectrumPrefs, spectrumLayerTaps, spectrumPaintColor, subscribeSpectrumPrefs, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
+import { loadSpectrumPrefs, patchSpectrumPrefs, patchSurfaceDisplay, persistSpectrumPrefs, spectrumLayerTaps, spectrumPaintColor, subscribeSpectrumPrefs, surfaceDisplay, type GraphSurface, type SpectrumLayer, type SpectrumPrefs } from '../../audio/engine/spectrumPrefs'
 import {
   SPECTRUM_FOCUS_HZ_LABEL_OFFSET,
   SPECTRUM_HZ_LABEL_OFFSET,
@@ -133,7 +130,7 @@ import {
   type EqDragMode,
 } from '../mobile/eqFocusGesture'
 import { focusEqTypeLabel } from '../mobile/focusReadout'
-import { FreqNodesRow, GuidesRow, holdGraphSnapshot, SnapshotRow, SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
+import { holdGraphSnapshot, SpectrumDisplaySettings } from '../workspace/SpectrumDisplaySettings'
 import { VizBackground } from './VizBackground'
 import { FftViewToggle, SpectralHistoryControls } from './SpectralHistoryControls'
 import {
@@ -351,10 +348,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     }
   }, [knobLane])
   const plotRef = useRef<HTMLDivElement>(null)
-  const [freqScale, setFreqScale] = useState<FreqScaleKind>(() => loadFreqScale())
-  const freqScaleRef = useRef(freqScale)
-  const [gridDensity, setGridDensity] = useState<FreqGridDensity>(() => loadFreqGridDensity())
-  const gridDensityRef = useRef(gridDensity)
+  const freqScaleRef = useRef<FreqScaleKind>('log')
+  const gridDensityRef = useRef<FreqGridDensity>(12)
   const [gridOpen, setGridOpen] = useState(false)
   const graphMenuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -410,30 +405,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
     })
   }, [])
 
-  useEffect(() => {
-    freqScaleRef.current = freqScale
-    persistFreqScale(freqScale)
-  }, [freqScale])
-
-  useEffect(() => {
-    gridDensityRef.current = gridDensity
-  }, [gridDensity])
-
-  useEffect(
-    () =>
-      subscribeFreqGridDensity((density) => {
-        setGridDensity((current) => (current === density ? current : density))
-      }),
-    [],
-  )
-
-  useEffect(
-    () =>
-      subscribeFreqScale((kind) => {
-        setFreqScale((current) => (current === kind ? current : kind))
-      }),
-    [],
-  )
+  const graphSurface: GraphSurface = phoneEq || phoneFocus || eqGainGrid ? 'eq' : 'fft'
+  const display = surfaceDisplay(prefs, graphSurface)
+  const freqScale = display.scale
+  freqScaleRef.current = freqScale
+  gridDensityRef.current = display.grid
 
   useEffect(() => subscribeEqOverlayFocus(setEqFocusRaw), [])
   useEffect(() => subscribeEqBandSelection(setSelectedBand), [])
@@ -551,7 +527,6 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       const dt = Math.min(0.05, elapsed)
       lastTs = now
       const live = engine.getSnapshot()
-      const scale = freqScaleRef.current
       const rect = canvas.getBoundingClientRect()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const width = Math.max(1, Math.floor(rect.width * dpr))
@@ -566,11 +541,16 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
         const colors = readThemeColors()
         const prefsNow = prefsRef.current
         const focusPlot = phoneFocusRef.current
+        const drawSurface: GraphSurface = phoneEqRef.current || eqGainGridRef.current || focusPlot ? 'eq' : 'fft'
+        const view = surfaceDisplay(prefsNow, drawSurface)
+        freqScaleRef.current = view.scale
+        gridDensityRef.current = view.grid
+        const scale = view.scale
         if (prefsNow.viewMode === '3d' && !phoneEqRef.current && !focusPlot) {
           if (!historyRef.current) historyRef.current = createSpectralHistoryRuntime()
           engine.setSpectrumFftSize(prefsNow.resolution)
           const sr = live.sampleRate || 44100
-          const taps = spectrumLayerTaps(prefsNow.historyLayer)
+          const taps = spectrumLayerTaps(view.layer)
           const showPre = taps.includes('pre')
           const showPost = taps.includes('post')
           const listenId = spectrumListenId(live.spectral.enabled, live.spectral.analyser)
@@ -607,24 +587,28 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             peakTrails: prefsNow.peakTrails,
             cameraPreset: prefsNow.cameraPreset,
             fall: prefsNow.fall,
-            range: prefsNow.range,
+            range: view.range,
             scale,
             colors,
             mobile: compactRef.current || cssW < 720,
             reducedMotion: reduced,
             calm: comfort.calmSpectrum,
-            layer: listenId ? 'post' : prefsNow.historyLayer,
+            layer: listenId ? 'post' : view.layer,
           })
           frame = requestAnimationFrame(tick)
           return
         }
-        const layer = prefsNow.layer
+        const layer = view.layer
         const follow = focusPlot ? 'peak' : prefsNow.follow
-        const eqSurface = focusPlot || phoneEqRef.current || eqGainGridRef.current
-        const paintColor = spectrumPaintColor(prefsNow, eqSurface ? 'eq' : 'fft')
-        const showBars = focusPlot ? prefsNow.showBars || !prefsNow.showLine : prefsNow.showBars
-        const showLine = focusPlot ? prefsNow.showLine || !prefsNow.showBars : prefsNow.showLine
-        const { bands, fall, range, resolution } = prefsNow
+        const eqSurface = drawSurface === 'eq'
+        const paintColor = spectrumPaintColor(
+          { colorMode: prefsNow.colorMode, regionColors: view.regionColors },
+          eqSurface ? 'eq' : 'fft',
+        )
+        const showBars = focusPlot ? view.showBars || !view.showLine : view.showBars
+        const showLine = focusPlot ? view.showLine || !view.showBars : view.showLine
+        const { bands, fall, resolution } = prefsNow
+        const range = view.range
         engine.setSpectrumFftSize(resolution)
         const ballistics = spectrumFallBallistics(fall)
         const display = spectrumDisplayUses(follow)
@@ -917,7 +901,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           }
           const bodyLine = display.barBody === 'peak' ? lineFast : lineSlow
           if (overlay) {
-            paintLine(lineFast, peakStroke, Math.max(2, dpr * 1.8), true, false, true, true)
+            paintLine(
+              lineFast,
+              colorWithAlpha(colors.textPrimary, 0.9),
+              Math.max(1.25, dpr * 1.15),
+              false,
+              false,
+              true,
+              true,
+            )
           } else if (!showBars) paintLine(bodyLine, peakStroke, 1, false, true, false)
           if (!overlay && showLine && wantPeak) {
             paintLine(lineFast, peakStroke, Math.max(1, dpr * 1.15), dashed, false, true)
@@ -1272,7 +1264,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       )
       const plotMax = spectrumMaxHz(snap.sampleRate || 44100, SPECTRUM_AXIS_MAX_HZ)
       const hz = xToHz(hx, SPECTRUM_AXIS_MIN_HZ, plotMax, pad.left, crect.width - pad.right, freqScaleRef.current)
-      setHover({ x: hx, y: hy, label: pointerLabel(hz, prefsRef.current.freqGuide), flip: hx > crect.width * 0.68, low: hy < 28 })
+      setHover({ x: hx, y: hy, label: pointerLabel(hz, surfaceDisplay(prefsRef.current, phoneEqRef.current || eqGainGridRef.current || phoneFocusRef.current ? 'eq' : 'fft').freqGuide), flip: hx > crect.width * 0.68, low: hy < 28 })
     }
     if (phoneFocusRef.current && d.mode === 'q') {
       engine.setEqBand(d.index, { q: qFromVertical(d.q0, d.y0 - event.clientY) }, d.instanceId)
@@ -1440,49 +1432,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               </div>
               {gridOpen ? (
                 <div className={styles.graphMenuPanel} role="group" aria-label={spectrumCopy.graph}>
-                  {phoneFocus ? (
-                    <SpectrumDisplaySettings showLayer eqColor />
-                  ) : (
-                    <>
-                      <div className={styles.graphMenuRow}>
-                        <span title={spectrumCopy.gridHint}>{spectrumCopy.grid}</span>
-                        {([6, 12, 24] as const).map((density) => (
-                          <button
-                            key={density}
-                            type="button"
-                            aria-pressed={gridDensity === density}
-                            onClick={(event) => {
-                              setGridDensity(density)
-                              persistFreqGridDensity(density)
-                              event.currentTarget.blur()
-                            }}
-                          >
-                            {density}
-                          </button>
-                        ))}
-                      </div>
-                      <div className={styles.graphMenuRow}>
-                        <span title={spectrumCopy.scaleHint}>{spectrumCopy.scale}</span>
-                        {FREQ_SCALE_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            aria-pressed={freqScale === opt.value}
-                            title={opt.title}
-                            onClick={(event) => {
-                              setFreqScale(opt.value)
-                              event.currentTarget.blur()
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                      <GuidesRow />
-                      <FreqNodesRow />
-                      <SnapshotRow />
-                    </>
-                  )}
+                  <SpectrumDisplaySettings surface={graphSurface} />
                 </div>
               ) : null}
             </div>
@@ -1521,9 +1471,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             {spectrumCopy.layer}
             <select
               aria-label={spectrumCopy.eqLayer}
-              value={prefs.layer}
+              value={display.layer}
               onChange={(event) =>
-                setPrefs((p) => ({ ...p, layer: event.target.value as SpectrumLayer }))
+                patchSurfaceDisplay(graphSurface, { layer: event.target.value as SpectrumLayer })
               }
             >
               <option value="pre">{spectrumCopy.before}</option>
@@ -1575,7 +1525,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               aria-label={spectrumCopy.scale}
               title={spectrumCopy.scaleChange}
               value={freqScale}
-              onChange={(event) => setFreqScale(event.target.value as FreqScaleKind)}
+              onChange={(event) => patchSurfaceDisplay(graphSurface, { scale: event.target.value as FreqScaleKind })}
             >
               {FREQ_SCALE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value} title={opt.title}>
@@ -1602,8 +1552,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               onChange={(event) => engine.setEqChannelMode(event.target.value as (typeof EQ_CHANNEL_MODES)[number]['value'])}
             >
               {EQ_CHANNEL_MODES.map((opt) => (
-                <option key={opt.value} value={opt.value} title={opt.title}>
-                  {opt.label}
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  title={opt.value === 'shared' ? spectrumCopy.sharedHint : opt.value === 'left' ? spectrumCopy.leftHint : spectrumCopy.rightHint}
+                >
+                  {opt.value === 'shared' ? spectrumCopy.shared : opt.value === 'left' ? spectrumCopy.left : spectrumCopy.right}
                 </option>
               ))}
             </select>
@@ -1648,9 +1602,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             <select
               aria-label={spectrumCopy.range}
               title={spectrumCopy.rangeChrome}
-              value={prefs.range}
+              value={display.range}
               onChange={(event) =>
-                setPrefs((p) => ({ ...p, range: clampSpectrumRange(Number(event.target.value)) }))
+                patchSurfaceDisplay(graphSurface, { range: clampSpectrumRange(Number(event.target.value)) })
               }
             >
               {SPECTRUM_RANGE_CHOICES.map((db) => (
@@ -1757,11 +1711,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           {spatial ? null : <>
           <button
             type="button"
-            className={`${styles.iconTap} ${prefs.eqFreqColors ? styles.on : ''}`}
-            aria-pressed={prefs.eqFreqColors}
-            aria-label={prefs.eqFreqColors ? `${spectrumCopy.nodes}: ${spectrumCopy.on}` : `${spectrumCopy.nodes}: ${spectrumCopy.off}`}
+            className={`${styles.iconTap} ${display.eqFreqColors ? styles.on : ''}`}
+            aria-pressed={display.eqFreqColors}
+            aria-label={display.eqFreqColors ? `${spectrumCopy.nodes}: ${spectrumCopy.on}` : `${spectrumCopy.nodes}: ${spectrumCopy.off}`}
             title={spectrumCopy.nodesHint}
-            onClick={() => setPrefs((p) => ({ ...p, eqFreqColors: !p.eqFreqColors }))}
+            onClick={() => patchSurfaceDisplay('eq', { eqFreqColors: !display.eqFreqColors })}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <circle cx="4" cy="8" r="2.2" fill="#d97706" />
@@ -1771,11 +1725,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
           <button
             type="button"
-            className={`${styles.iconTap} ${prefs.regionColors ? styles.on : ''}`}
-            aria-pressed={prefs.regionColors}
-            aria-label={prefs.regionColors ? `${spectrumCopy.regions}: ${spectrumCopy.on}` : `${spectrumCopy.regions}: ${spectrumCopy.off}`}
+            className={`${styles.iconTap} ${display.regionColors ? styles.on : ''}`}
+            aria-pressed={display.regionColors}
+            aria-label={display.regionColors ? `${spectrumCopy.regions}: ${spectrumCopy.on}` : `${spectrumCopy.regions}: ${spectrumCopy.off}`}
             title={spectrumCopy.regionsHint}
-            onClick={() => setPrefs((p) => ({ ...p, regionColors: !p.regionColors }))}
+            onClick={() => patchSurfaceDisplay(graphSurface, { regionColors: !display.regionColors })}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <circle cx="5" cy="6" r="3" fill="currentColor" opacity="0.85" />
@@ -1785,11 +1739,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
           <button
             type="button"
-            className={`${styles.iconTap} ${prefs.showBars ? styles.on : ''}`}
-            aria-pressed={prefs.showBars}
-            aria-label={prefs.showBars ? `${spectrumCopy.bars}: ${spectrumCopy.on}` : `${spectrumCopy.bars}: ${spectrumCopy.off}`}
-            title={spectrumCopy.bars}
-            onClick={() => setPrefs((p) => ({ ...p, showBars: !p.showBars }))}
+            className={`${styles.iconTap} ${display.showBars ? styles.on : ''}`}
+            aria-pressed={display.showBars}
+            aria-label={display.showBars ? `${spectrumCopy.bars}: ${spectrumCopy.on}` : `${spectrumCopy.bars}: ${spectrumCopy.off}`}
+            title={spectrumCopy.barsHint}
+            onClick={() => patchSurfaceDisplay(graphSurface, { showBars: !display.showBars })}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <rect x="2" y="8" width="3" height="6" rx="0.6" fill="currentColor" />
@@ -1799,11 +1753,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
           <button
             type="button"
-            className={`${styles.iconTap} ${prefs.showLine ? styles.on : ''}`}
-            aria-pressed={prefs.showLine}
-            aria-label={prefs.showLine ? `${spectrumCopy.line}: ${spectrumCopy.on}` : `${spectrumCopy.line}: ${spectrumCopy.off}`}
-            title={spectrumCopy.line}
-            onClick={() => setPrefs((p) => ({ ...p, showLine: !p.showLine }))}
+            className={`${styles.iconTap} ${display.showLine ? styles.on : ''}`}
+            aria-pressed={display.showLine}
+            aria-label={display.showLine ? `${spectrumCopy.line}: ${spectrumCopy.on}` : `${spectrumCopy.line}: ${spectrumCopy.off}`}
+            title={spectrumCopy.lineHint}
+            onClick={() => patchSurfaceDisplay(graphSurface, { showLine: !display.showLine })}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <path
@@ -1818,11 +1772,11 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           </button>
           <button
             type="button"
-            className={`${styles.iconTap} ${prefs.legendOpen ? styles.on : ''}`}
-            aria-pressed={prefs.legendOpen}
-            aria-label={prefs.legendOpen ? `${spectrumCopy.legend}: ${spectrumCopy.on}` : `${spectrumCopy.legend}: ${spectrumCopy.off}`}
-            title={spectrumCopy.legend}
-            onClick={() => setPrefs((p) => ({ ...p, legendOpen: !p.legendOpen }))}
+            className={`${styles.iconTap} ${display.legendOpen ? styles.on : ''}`}
+            aria-pressed={display.legendOpen}
+            aria-label={display.legendOpen ? `${spectrumCopy.legend}: ${spectrumCopy.on}` : `${spectrumCopy.legend}: ${spectrumCopy.off}`}
+            title={spectrumCopy.legendHint}
+            onClick={() => patchSurfaceDisplay(graphSurface, { legendOpen: !display.legendOpen })}
           >
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <rect x="1.5" y="2" width="3" height="3" rx="1" fill="currentColor" />
@@ -1845,9 +1799,9 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
       )}
       <div className={styles.stage}>
         <VizBackground inset="fill" />
-        {prefs.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen || phoneEq || phoneFocus) ? (
+        {display.legendOpen && !hideLegend && !spatial && (!compact || analyzerOpen || phoneEq || phoneFocus) ? (
           <div className={styles.legendDock}>
-            {spectrumPaintColor(prefs, phoneFocus || phoneEq || eqGainGrid ? 'eq' : 'fft') === 'frequency' ? (
+            {spectrumPaintColor({ colorMode: prefs.colorMode, regionColors: display.regionColors }, graphSurface) === 'frequency' ? (
               <ul className={styles.regions}>
                 {SPECTRUM_REGIONS.map((region) => (
                   <li key={region.id}>
@@ -1858,15 +1812,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               </ul>
             ) : (
               <ul className={styles.regions}>
-                <li>{prefs.showBars ? spectrumCopy.slowBars : spectrumCopy.fill}</li>
-                {prefs.showLine && prefs.follow !== 'slow' ? <li>{spectrumCopy.peakLine}</li> : null}
-                {prefs.showLine && prefs.follow !== 'peak' ? (
+                <li>{display.showBars ? spectrumCopy.slowBars : spectrumCopy.fill}</li>
+                {display.showLine && prefs.follow !== 'slow' ? <li>{spectrumCopy.peakLine}</li> : null}
+                {display.showLine && prefs.follow !== 'peak' ? (
                   <li>{spectrumCopy.slowLine}</li>
                 ) : null}
-                {prefs.layer === 'both' ? <li>{spectrumCopy.beforeAfter}</li> : null}
+                {display.layer === 'both' ? <li>{spectrumCopy.beforeAfter}</li> : null}
               </ul>
             )}
-            {prefs.freqGuide ? <p className={styles.guideNote}>{spectrumCopy.hoverLandmark}</p> : null}
+            {display.freqGuide ? <p className={styles.guideNote}>{spectrumCopy.hoverLandmark}</p> : null}
           </div>
         ) : null}
         {compact && !analyzerOpen && !phoneEq && !phoneFocus && !suppressAnalyzerChrome ? (
@@ -1989,7 +1943,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
               return
             }
             const hz = xToHz(x, SPECTRUM_AXIS_MIN_HZ, maxHz, left, right, freqScaleRef.current)
-            setHover({ x, y, label: pointerLabel(hz, prefs.freqGuide), flip: x > rect.width * 0.68, low: y < 28 })
+            setHover({ x, y, label: pointerLabel(hz, display.freqGuide), flip: x > rect.width * 0.68, low: y < 28 })
           }}
           onPointerCancel={() => {
             spatialGesture.current = null
@@ -2050,7 +2004,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             const bandTone = eqBandTone(index, readThemeColors())
             const freqColor = eqBandColorForHz(motion.frequencyHz)
             const tone = phoneEq || phoneFocus ? bandTone : moduleTone
-            const freqTint = prefs.eqFreqColors && !phoneEq
+            const freqTint = prefs.surfaces.eq.eqFreqColors && !phoneEq
             const nodeColor = freqTint ? freqColor : tone.node
             const curveColor = freqTint ? freqColor : tone.curve
             const nodeY = Math.min(100, Math.max(0, yPct))
