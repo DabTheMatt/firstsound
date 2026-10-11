@@ -1,8 +1,10 @@
 # FIELD accessibility audit
 
-Audit date: 2026-10-10
+Audit date: 2026-10-11
 
-Tested application version: 0.21.3
+Tested application version: 0.26.0
+
+The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
 This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim. Automated checks cannot prove WCAG 2.2 Level AA.
 
@@ -75,15 +77,13 @@ Reproduction for F1 before the fix: open Technical on Studio Dark and run axe. I
 
 ## Remaining issues
 
-### R1 — Pointer-only waveform editing
+### R1 — Canvas handles are still pointer targets
 
-- Severity: HIGH
+- Severity: MEDIUM
 - WCAG: 2.1.1, 2.5.7
-- Component: waveform selection, fade handles, automation points
-- Steps: load a sample, try to create a selection, drag a fade, or move an automation point with the keyboard only
-- What works: the waveform region is named and described with duration, playhead, and selection. Arrow keys move the playhead. Simple mode exposes region-edge sliders.
-- Recommendation: do not rebuild the interaction here
-- Future: 19B Drag-Free Editing, 20A Keyboard-First, 20C Accessible Waveform
+- Component: waveform fade handles and automation points drawn on the canvas
+- What works: the waveform region is named with the file, duration, channels, sample rate, playhead, and selection. Arrow keys, Home, and End move the playhead. Drag-Free Editing and Accessible Waveform Navigation set the selection, fades, trim, and landmarks from the keyboard. Guided Tasks accept those edits.
+- What remains: dragging a handle on the canvas is still a pointer gesture. The keyboard path is a separate control, not a focusable handle on the drawing.
 
 ### R2 — Screen reader behavior is unverified
 
@@ -126,7 +126,7 @@ Reproduction for F1 before the fix: open Technical on Studio Dark and run axe. I
 - axe `target-size` did not fail the scanned states. Fade handles, EQ nodes, and automation points are still tighter than a comfortable 24px target and are called out for a later pass.
 - Future: 19C Pointer Assistance, 22A Interface Scaling
 
-No CRITICAL issue remains in the scanned states. No HIGH automated failure remains open. R1 and R2 stay HIGH because they are outside what this suite can close.
+No CRITICAL issue remains in the scanned states. No HIGH automated failure remains open. R2 stays HIGH because assistive-technology behavior was not manually verified. R1 is MEDIUM: the keyboard path exists, and the canvas handles are still pointer targets.
 
 ## Remediation backlog
 
@@ -137,7 +137,7 @@ No CRITICAL issue remains in the scanned states. No HIGH automated failure remai
 | 19C Pointer Assistance | Target size and pointer cancellation on graph handles |
 | 20A Keyboard-First | Full keyboard maps for the waveform, EQ graph, and automation |
 | 20B Screen Reader Support | AT testing and announcement tuning |
-| 20C Accessible Waveform | Selection, fades, playhead, and duration as a keyboard-and-SR surface |
+| 20C Accessible Waveform | Shipped in 0.26.0. Canvas handles remain pointer targets (R1). Detection is approximate. |
 | 22A Interface Scaling | Reflow at 320px and 200% zoom without a scrolling header |
 | 22B High Visibility | Broader than the current low-vision preference and the contrast token pass |
 | 22C Sensory Comfort | Further Sensory motion and flash review beyond the reduced-motion switch |
@@ -149,6 +149,7 @@ Checked independently and together, including after reload:
 - Reduced Motion → `data-reduce-motion`
 - Enhanced Focus Visibility → `data-focus="enhanced"` (ring at least 2px on Studio Dark, Soft Slate, Warm Paper, Dusk)
 - Larger Controls → `data-ui-scale="large"`
+- Accessible Waveform Navigation → `data-wave-nav` (off until turned on; keyboard and screen reader access to the waveform stay available either way)
 
 Playback kept the Pause control while the three switches were turned on. The OS reduced-motion emulation and the FIELD switch were both checked. Sensory canvas stayed on screen.
 
@@ -162,6 +163,22 @@ Playback kept the Pause control while the three switches were turned on. The OS 
 - Enter Focus and Exit Focus move focus to the matching control
 - Guided Tasks: Learn more, Show me where, Escape minimizes, restore, Next, Exit returns to Guide me
 - No keyboard trap was observed in those flows
+
+## FIELD ACCESS 20C — accessible waveform (0.26.0)
+
+Implemented on the existing playhead, selection, loop, and transport. There is no second timeline and no second waveform drawing.
+
+Navigation: go to start, go to end, go to a typed time, step backward, step forward, go to selection start, go to selection end. Steps are 10 seconds, 1 second, 100 milliseconds, 10 milliseconds, and 1 sample. One sample uses the loaded buffer’s sample rate and integer frames. The millisecond steps do not claim sample accuracy. Invalid times are rejected. The open tools sit in a scrollable sheet so a narrow viewport and Focus mode do not clip them. Closing the sheet returns focus to the button that opened it. The waveform itself stays the existing view.
+
+The waveform region name is `Waveform, <file>.` Its description includes channel count, duration, sample rate, playhead, and selection. The description is not an `aria-live` region. Read playhead position speaks the time only when activated. Repeated steps are throttled. Analysis progress is not announced per chunk.
+
+Selection editing reuses drag-free validation: set start or end at the playhead, type both times, clear, and preview with the existing selection player. Preview does not start on focus. Trim, fade in, fade out, normalize, loop, and export selection call the existing actions in the modes that already have them. Sensory keeps navigation and selection and does not gain a new trim.
+
+Landmarks: recording start and end, selection edges, and loop edges are exact timeline times. Detected transients reuse the editor onset detector and are not beats or named events. Possible silence is RMS under about −48 dBFS for at least 120 ms, not absolute silence. Level changes are short-term RMS jumps of at least 12 dB, capped so a noisy file does not produce thousands of rows. Structural boundaries are not removed by density thinning. Loading another recording invalidates the previous result. A finished scan is cached by buffer revision, rate, length, and channel count, so a UI or mode change does not scan again. The scan yields between chunks, or uses a worker for recordings up to eight minutes, and does not run on the audio thread.
+
+Signal inspection, in Technical, reports peak and RMS in dBFS over a 50 ms window around the playhead, per channel for stereo. It is not LUFS.
+
+Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 20C. Semantics were checked in the DOM and with the automated suite.
 
 ## DSP
 

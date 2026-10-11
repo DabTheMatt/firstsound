@@ -51,6 +51,7 @@ export type GuideModePref = 'simple' | 'technical' | 'any'
 
 export type GuideAction =
   | 'playback.started'
+  | 'playhead.moved'
   | 'selection.created'
   | 'trim.completed'
   | 'fade.in'

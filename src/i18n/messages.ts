@@ -240,9 +240,15 @@ export type Messages = {
   }
   waveform: {
     empty: string
-    editorAria: string
+    editorAria: (fileName: string) => string
     editorEmpty: string
-    editorSummary: (duration: string, playhead: string, selectionStart: string, selectionEnd: string) => string
+    editorSummary: (channels: string, duration: string, rate: string, playhead: string, selection: string) => string
+    selectionRange: (start: string, end: string, duration: string) => string
+    noSelection: string
+    monoRecording: string
+    stereoRecording: string
+    channelCount: (count: number) => string
+    sampleRate: (khz: string) => string
     loadDemo: string
     edit: string
     trim: string
@@ -765,6 +771,9 @@ export type Messages = {
     keyboardFirst: string
     keyboardFirstHelp: string
     keyboardFirstAlways: string
+    waveformNav: string
+    waveformNavHelp: string
+    waveformNavAlways: string
   }
   keyboard: {
     open: string
@@ -1148,10 +1157,16 @@ export const EN: Messages = {
   },
   waveform: {
     empty: 'Load a sample to begin',
-    editorAria: 'Waveform editor',
+    editorAria: (fileName) => `Waveform, ${fileName}.`,
     editorEmpty: 'Waveform editor. No sample loaded.',
-    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
-      `Duration ${duration}. Playhead ${playhead}. Selection from ${selectionStart} to ${selectionEnd}. Arrow keys move the playhead.`,
+    editorSummary: (channels, duration, rate, playhead, selection) =>
+      `${channels} Duration ${duration}. ${rate} Playhead ${playhead}. ${selection} Arrow keys move the playhead.`,
+    selectionRange: (start, end, duration) => `Selection from ${start} to ${end}. Duration ${duration}.`,
+    noSelection: 'No partial selection.',
+    monoRecording: 'Mono recording.',
+    stereoRecording: 'Stereo recording.',
+    channelCount: (count) => `${count} channels.`,
+    sampleRate: (khz) => `Sample rate ${khz} kilohertz.`,
     loadDemo: 'Generate demo sample',
     edit: 'Edit',
     trim: 'Trim',
@@ -1780,6 +1795,9 @@ export const EN: Messages = {
     keyboardFirst: 'Keyboard-First',
     keyboardFirstHelp: 'Navigate and edit FIELD efficiently without a mouse.',
     keyboardFirstAlways: 'Tab, Enter, Space, and Escape keep working when this is off.',
+    waveformNav: 'Accessible Waveform Navigation',
+    waveformNavHelp: 'Navigate recordings using time, keyboard controls and audio landmarks.',
+    waveformNavAlways: 'Keyboard and screen reader access to the waveform stays available when this is off.',
   },
   keyboard: {
     open: 'Keyboard shortcuts',
@@ -2189,10 +2207,16 @@ export const PL: Messages = {
   },
   waveform: {
     empty: 'Wczytaj sample, aby zacząć',
-    editorAria: 'Edytor fali',
+    editorAria: (fileName) => `Fala, ${fileName}.`,
     editorEmpty: 'Edytor fali. Brak wczytanego sampla.',
-    editorSummary: (duration, playhead, selectionStart, selectionEnd) =>
-      `Czas ${duration}. Głowica ${playhead}. Zaznaczenie od ${selectionStart} do ${selectionEnd}. Strzałki przesuwają głowicę.`,
+    editorSummary: (channels, duration, rate, playhead, selection) =>
+      `${channels} Czas ${duration}. ${rate} Głowica ${playhead}. ${selection} Strzałki przesuwają głowicę.`,
+    selectionRange: (start, end, duration) => `Zaznaczenie od ${start} do ${end}. Czas ${duration}.`,
+    noSelection: 'Brak częściowego zaznaczenia.',
+    monoRecording: 'Nagranie mono.',
+    stereoRecording: 'Nagranie stereo.',
+    channelCount: (count) => `${count} kanały.`,
+    sampleRate: (khz) => `Częstotliwość próbkowania ${khz} kiloherca.`,
     loadDemo: 'Wygeneruj sample demo',
     edit: 'Edycja',
     trim: 'Przytnij',
@@ -2821,6 +2845,9 @@ export const PL: Messages = {
     keyboardFirst: 'Obsługa klawiaturą',
     keyboardFirstHelp: 'Nawiguj i edytuj dźwięk bez używania myszy.',
     keyboardFirstAlways: 'Tab, Enter, Spacja i Escape działają także przy wyłączonej preferencji.',
+    waveformNav: 'Dostępna nawigacja po nagraniu',
+    waveformNavHelp: 'Poruszaj się po nagraniu za pomocą czasu, klawiatury i punktów charakterystycznych.',
+    waveformNavAlways: 'Klawiatura i czytnik ekranu nadal opisują falę, gdy ta preferencja jest wyłączona.',
   },
   keyboard: {
     open: 'Skróty klawiszowe',

@@ -352,6 +352,22 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'accessible-waveform',
+    title: 'Accessible waveform',
+    body: [
+      'Accessible Waveform Navigation is in Settings → Accessibility → Interaction. It is off until you turn it on. Turning it on adds Open waveform navigation beside the waveform you already have. The tools open in a panel you can scroll and close. They do not draw a second waveform, and they do not change the audio engine.',
+      'The waveform region keeps its name, duration, channel count, sample rate, playhead, and selection whether this preference is on or off. Arrow keys, Home, and End on the waveform still move the playhead. Screen readers are not told the time on every audio frame.',
+      'Open waveform navigation, then use Go to start, Go to end, Step backward, and Step forward. The navigation step is a menu: 10 seconds, 1 second, 100 milliseconds, 10 milliseconds, or 1 sample. One sample follows the recording’s own sample rate. The other steps are in milliseconds and do not claim sample accuracy.',
+      'Go to time accepts the same clock as the rest of the editor, such as 00:12.350. The time has to be zero or greater and no later than the end of the recording. Read playhead position speaks the current time when you ask. It does not talk during playback.',
+      'Set start at playhead and Set end at playhead write the real selection. Edit selection times types both edges. Clear selection removes a partial highlight. The start has to be earlier than the end, and the range has to be at least 50 milliseconds. An invalid time is rejected and explained. Preview selection plays the current selection. It does not start when the controls receive focus.',
+      'Trim, Fade in, Fade out, Normalize, Loop, and Export selection use the same actions as the rest of FIELD, in the modes that already have them. Sensory keeps navigation and selection. It does not add a trim that Sensory did not have.',
+      'Landmarks are times you can jump to. Recording start, recording end, and selection or loop edges are exact. Detected transient, possible silence, and level change are approximate. A transient is a sudden rise, not a drum hit or a beat. Possible silence means the level stayed under about −48 dBFS for a short stretch. It is not absolute silence. Previous landmark and Next landmark move the real playhead and do not edit the audio.',
+      'Inspect signal, in Technical, reads peak and RMS in a 50 millisecond window around the playhead. Stereo recordings show the left and right channels separately. These are digital levels in dBFS. They are not a loudness measurement.',
+      'Tab, Shift+Tab, Enter, Space, and Escape operate the tools. Escape closes the panel and returns focus to the button that opened it. Choosing a landmark does not move focus away from the list. The same tools work in Focus mode and do not restart playback by themselves.',
+      'Automatic detection can miss hits, mark noise, or place a time a little early or late. Very quiet background is not guaranteed silence. Guided Tasks still complete from the real selection, trim, and fade, including edits made here without dragging.',
+    ],
+  },
+  {
     id: 'reset',
     title: 'Reset',
     body: [
@@ -727,6 +743,22 @@ const pl: ManualSection[] = [
       'Łańcuch efektów jest listą. Tab do niego wchodzi. Strzałki przechodzą między efektami. Enter wybiera efekt i otwiera go w Inspektorze. Alt+strzałka go przesuwa. Inspektor ma też przyciski przesunięcia i usunięcia. Wejście i Wyjście zostają na miejscu.',
       'Pasma EQ, punkty automatyzacji i parametry sensoryczne używają tych samych kontrolek co wskaźnik: suwaków, pól liczbowych i edytorów bez przeciągania, gdy włączone jest edytowanie bez przeciągania albo obsługa klawiaturą. Zadania z przewodnikiem zaliczają te prawdziwe edycje. Pokaż gdzie przenosi fokus tylko wtedy, gdy sam to uruchomisz.',
       'Skróty klawiszowe, w menu Ustawień, pokazują aktualny rejestr w grupach: Nawigacja, Transport, Edycja, Efekty, Automatyzacja i Zadania z przewodnikiem. Focus używa tych samych klawiszy. Zamknięcie przywraca fokus i nie restartuje odtwarzania.',
+    ],
+  },
+  {
+    id: 'accessible-waveform',
+    title: 'Dostępna fala',
+    body: [
+      'Dostępna nawigacja po nagraniu jest w Ustawienia → Dostępność → Interakcja. Jest wyłączona, dopóki jej nie włączysz. Po włączeniu obok dotychczasowej fali pojawia się Otwórz nawigację po nagraniu. Narzędzia otwierają się w panelu, który można przewijać i zamknąć. Nie rysują drugiej fali i nie zmieniają silnika audio.',
+      'Region fali zachowuje nazwę, czas, liczbę kanałów, częstotliwość próbkowania, głowicę i zaznaczenie niezależnie od tej preferencji. Strzałki, Home i End na fali nadal przesuwają głowicę. Czytnik ekranu nie dostaje czasu na każdej klatce audio.',
+      'Otwórz nawigację po nagraniu, a potem użyj Idź na początek, Idź na koniec, Krok wstecz i Krok naprzód. Krok nawigacji to menu: 10 sekund, 1 sekunda, 100 milisekund, 10 milisekund albo 1 próbka. Jedna próbka używa częstotliwości tego nagrania. Pozostałe kroki są w milisekundach i nie obiecują dokładności próbki.',
+      'Idź do czasu przyjmuje ten sam zegar co reszta edytora, na przykład 00:12.350. Czas ma być od zera do końca nagrania. Odczytaj pozycję głowicy mówi bieżący czas, gdy o to poprosisz. Nie mówi w trakcie odtwarzania.',
+      'Ustaw początek na głowicy i Ustaw koniec na głowicy zapisują prawdziwe zaznaczenie. Edytuj czasy zaznaczenia wpisuje obie krawędzie. Wyczyść zaznaczenie usuwa częściowe podświetlenie. Początek musi być wcześniejszy niż koniec, a zakres ma mieć co najmniej 50 milisekund. Zły czas jest odrzucany i wyjaśniany. Odsłuch zaznaczenia odtwarza bieżące zaznaczenie. Nie startuje, gdy kontrolki dostaną fokus.',
+      'Przytnij, Fade in, Fade out, Normalizuj, Pętla i Eksportuj zaznaczenie używają tych samych działań co reszta FIELD, w trybach, które już je mają. Tryb Sensoryczny zostawia nawigację i zaznaczenie. Nie dodaje przycięcia, którego ten tryb nie miał.',
+      'Punkty charakterystyczne to czasy, do których można skoczyć. Początek nagrania, koniec nagrania oraz krawędzie zaznaczenia albo pętli są dokładne. Wykryty transient, możliwa cisza i zmiana poziomu są przybliżone. Transient to nagły wzrost, a nie uderzenie bębna albo bit. Możliwa cisza znaczy, że poziom został poniżej około −48 dBFS przez krótki odcinek. To nie jest cisza absolutna. Poprzedni punkt i Następny punkt przesuwają prawdziwą głowicę i nie edytują audio.',
+      'Zbadaj sygnał, w trybie Sterowanie, odczytuje szczyt i RMS w oknie 50 milisekund wokół głowicy. Nagranie stereo pokazuje lewy i prawy kanał osobno. To poziomy cyfrowe w dBFS. To nie jest pomiar głośności odczuwanej.',
+      'Tab, Shift+Tab, Enter, Spacja i Escape obsługują te narzędzia. Escape zamyka panel i wraca fokus do przycisku, który go otworzył. Wybór punktu nie przenosi fokusu poza listę. Te same narzędzia działają w trybie Focus i same nie wznawiają odtwarzania.',
+      'Automatyczne wykrywanie może pominąć uderzenie, oznaczyć szum albo postawić czas odrobinę za wcześnie lub za późno. Bardzo ciche tło nie jest gwarantowaną ciszą. Zadania z przewodnikiem zaliczają prawdziwe zaznaczenie, przycięcie i zanik, także te zrobione tutaj bez przeciągania.',
     ],
   },
   {

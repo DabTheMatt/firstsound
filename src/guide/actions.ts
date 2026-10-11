@@ -8,6 +8,8 @@ export type GuideSignal = {
   sampleLoaded: boolean
   playing: boolean
   duration: number
+  /** Source playhead in seconds. Playback frames are not written here. */
+  playheadSec: number
   regionStart: number
   regionEnd: number
   selectionActive: boolean
@@ -53,6 +55,7 @@ export function blankSignal(): GuideSignal {
     sampleLoaded: false,
     playing: false,
     duration: 0,
+    playheadSec: 0,
     regionStart: 0,
     regionEnd: 0,
     selectionActive: false,
@@ -102,6 +105,14 @@ function near(a: number, b: number, epsilon: number): boolean {
 export function diffGuideActions(prev: GuideSignal, next: GuideSignal): GuideAction[] {
   const actions: GuideAction[] = []
   if (!prev.playing && next.playing) actions.push('playback.started')
+  if (
+    prev.sampleLoaded &&
+    next.sampleLoaded &&
+    prev.playing === next.playing &&
+    Math.abs(prev.playheadSec - next.playheadSec) >= 0.005
+  ) {
+    actions.push('playhead.moved')
+  }
   const selectionMoved =
     next.selectionActive &&
     (!prev.selectionActive || !near(prev.regionStart, next.regionStart, 0.0005) || !near(prev.regionEnd, next.regionEnd, 0.0005))
@@ -177,6 +188,8 @@ export function projectSatisfies(action: GuideAction, signal: GuideSignal): bool
   switch (action) {
     case 'playback.started':
       return signal.playing
+    case 'playhead.moved':
+      return false
     case 'selection.created':
       return signal.selectionActive
     case 'trim.completed':

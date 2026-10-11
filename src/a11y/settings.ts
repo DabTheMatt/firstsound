@@ -15,6 +15,8 @@ export type A11ySettings = {
   dragFreeEditing: boolean
   /** Extra navigation tools and editors. Keyboard access stays on when this is off. */
   keyboardFirst: boolean
+  /** Shows landmark and time tools. Keyboard and screen reader access stay on when this is off. */
+  accessibleWaveform: boolean
 }
 
 export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
@@ -27,6 +29,7 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   shortcutsEnabled: true,
   dragFreeEditing: false,
   keyboardFirst: false,
+  accessibleWaveform: false,
 }
 
 export function parseA11ySettings(raw: unknown): A11ySettings {
@@ -147,6 +150,7 @@ export function applyA11yDom(settings: A11ySettings): void {
   root.dataset.shortcuts = settings.shortcutsEnabled ? 'on' : 'off'
   root.dataset.dragFree = settings.dragFreeEditing ? 'on' : 'off'
   root.dataset.keyboardFirst = settings.keyboardFirst ? 'on' : 'off'
+  root.dataset.waveNav = settings.accessibleWaveform ? 'on' : 'off'
 }
 
 /** Drag-free editors and chain move buttons. Either preference is enough. */

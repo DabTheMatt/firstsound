@@ -52,6 +52,7 @@ import { HearingTransportButton } from '../hearing/HearingTransportButton'
 import { inspectorPaneForLfo, moduleTypeForLfoKind } from '../audio/fx/lfo'
 import { MeterStrip } from '../components/meters/MeterStrip'
 import { Waveform, type WaveformHandle } from '../components/waveform/Waveform'
+import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
 import { DragFreeDock, dragFreeSurface } from '../edit/dragFree/DragFreeDock'
 import { runDisplayAction, WaveformToolbar } from '../components/waveform/WaveformToolbar'
 import { EditBar } from '../components/samplePrep/EditBar'
@@ -1986,6 +1987,40 @@ export default function App() {
                 })
               }}
               onDspGesture={(before, after) => setHistory((h) => commitDspGesture(h, before, after, histEqual))}
+            />
+            <AccessibleWaveform
+              mode="technical"
+              onRegionCommit={commit}
+              onTrim={async () => {
+                const ok = await engine.trimPlayRegion()
+                if (!ok) return false
+                setEdit((e) => ({ ...e, fadeIn: 0, fadeOut: 0, fadeAuto: false }))
+                waveRef.current?.fitSample()
+                commit()
+                return true
+              }}
+              onNormalize={() => {
+                engine.normalizeRegion()
+                commit('dsp')
+                return true
+              }}
+              onExport={() => {
+                openExport()
+                return true
+              }}
+              onFadeIn={() => {
+                waveRef.current?.applyFade('in')
+                return true
+              }}
+              onFadeOut={() => {
+                waveRef.current?.applyFade('out')
+                return true
+              }}
+              onUndo={() => {
+                applyHistory(undoHistory(history))
+                return true
+              }}
+              canUndo={history.past.length > 0}
             />
           </div>
           {dockRight && showContext && !activeFocus && !workspaceContextBottom ? (

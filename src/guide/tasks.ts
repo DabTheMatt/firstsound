@@ -96,7 +96,10 @@ export const GUIDE_TASKS: readonly GuideTask[] = [
               'Przeciągnij po fali albo ustaw początek i koniec przez Edytuj czasy. Obejmij tylko fragment, który chcesz zostawić.',
             ),
           },
-          more: text('You can drag the edges again if the range is too long or too short.', 'Możesz znowu pociągnąć krawędzie, jeśli zakres jest za długi albo za krótki.'),
+          more: text(
+            'You can set the edges again from the keyboard, or drag them, if the range is too long or too short.',
+            'Możesz znowu ustawić krawędzie z klawiatury albo je przeciągnąć, jeśli zakres jest za długi albo za krótki.',
+          ),
           success: text('Done — a range is selected.', 'Gotowe — zakres jest zaznaczony.'),
         },
       ),
