@@ -187,7 +187,7 @@ type ActivityProps = {
   standardLabel: string
   lowLabel: string
   value: VisualActivity
-  disabled: boolean
+  disabled?: boolean
   onChange: (next: VisualActivity) => void
 }
 
@@ -197,7 +197,7 @@ function VisualActivityChoice({
   standardLabel,
   lowLabel,
   value,
-  disabled,
+  disabled = false,
   onChange,
 }: ActivityProps) {
   const name = useId()
@@ -342,7 +342,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.stablePanelsHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.predictableLayout}
           onChange={(stablePanels) => setSettings({ stablePanels })}
         />
         <PreferenceSwitch
@@ -351,7 +350,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.rememberLayoutHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.predictableLayout}
           onChange={(rememberWorkspaceLayout) => setSettings({ rememberWorkspaceLayout })}
         />
         <PreferenceSwitch
@@ -360,7 +358,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.reduceLayoutHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.predictableLayout}
           onChange={(reduceLayoutMovement) => setSettings({ reduceLayoutMovement })}
         />
         <p className={styles.help}>{a.restoreLayoutHelp}</p>
@@ -393,7 +390,6 @@ export function A11ySettings({ onBack }: Props) {
           standardLabel={a.visualActivityStandard}
           lowLabel={a.visualActivityLow}
           value={settings.visualActivity}
-          disabled={!settings.sensoryComfort}
           onChange={(visualActivity) => setSettings({ visualActivity })}
         />
         <PreferenceSwitch
@@ -402,7 +398,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.reduceDecorativeMotionHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.sensoryComfort}
           onChange={(reduceDecorativeMotion) => setSettings({ reduceDecorativeMotion })}
         />
         <PreferenceSwitch
@@ -411,7 +406,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.calmMetersHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.sensoryComfort}
           onChange={(calmMeters) => setSettings({ calmMeters })}
         />
         <PreferenceSwitch
@@ -420,7 +414,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.calmSpectrumHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.sensoryComfort}
           onChange={(calmSpectrum) => setSettings({ calmSpectrum })}
         />
         <PreferenceSwitch
@@ -429,7 +422,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.reduceVisualEffectsHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.sensoryComfort}
           onChange={(reduceVisualEffects) => setSettings({ reduceVisualEffects })}
         />
         <PreferenceSwitch
@@ -438,7 +430,6 @@ export function A11ySettings({ onBack }: Props) {
           description={a.quietNotificationsHelp}
           onLabel={a.on}
           offLabel={a.off}
-          disabled={!settings.sensoryComfort}
           onChange={(quietNotifications) => setSettings({ quietNotifications })}
         />
       </div>

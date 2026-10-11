@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SPECTRUM_RESOLUTION_CHOICES, clampSpectrumResolution } from '../../audio/engine/analyserBudget'
-import { FREQ_SCALE_OPTIONS, loadFreqScale, persistFreqScale, subscribeFreqScale, type FreqScaleKind } from '../../audio/engine/freqScale'
+import { FREQ_SCALE_OPTIONS, type FreqScaleKind } from '../../audio/engine/freqScale'
 import {
   SPECTRUM_FALL_MODES,
   SPECTRUM_RANGE_CHOICES,
@@ -25,6 +25,7 @@ import {
 import {
   loadSpectrumPrefs,
   patchSpectrumPrefs,
+  patchSurfaceDisplay,
   subscribeSpectrumPrefs,
   type SpectrumLayer,
   type SpectrumPrefs,
@@ -70,8 +71,8 @@ const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
 ]
 
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
-  { id: 'pre', label: 'Source' },
-  { id: 'post', label: 'Output' },
+  { id: 'pre', label: 'Before' },
+  { id: 'post', label: 'After' },
   { id: 'both', label: 'Both' },
 ]
 
@@ -92,7 +93,7 @@ export function SpectralHistoryControls({
 }) {
   const [prefs, setPrefs] = useState<SpectrumPrefs>(() => loadSpectrumPrefs())
   const [frozen, setFrozen] = useState(() => spectralHistorySession().frozen)
-  const [scale, setScale] = useState<FreqScaleKind>(() => loadFreqScale())
+  const [scale, setScale] = useState<FreqScaleKind>(() => loadSpectrumPrefs().surfaces.fft.scale)
   const [open, setOpen] = useState(false)
   const [sheet, setSheet] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 900px), (max-height: 560px)').matches,
@@ -104,8 +105,10 @@ export function SpectralHistoryControls({
   const choice = variant === 'focus' ? focusStyles.fftChoice : spectrumStyles.choice
   const icon = variant === 'focus' ? focusStyles.hit : spectrumStyles.iconTap
 
-  useEffect(() => subscribeSpectrumPrefs(setPrefs), [])
-  useEffect(() => subscribeFreqScale(setScale), [])
+  useEffect(() => subscribeSpectrumPrefs((next) => {
+    setPrefs(next)
+    setScale(next.surfaces.fft.scale)
+  }), [])
   useEffect(
     () =>
       subscribeSpectralHistorySession(() => {
@@ -171,8 +174,8 @@ export function SpectralHistoryControls({
             <span>Range</span>
             <select
               aria-label="Analyzer range"
-              value={String(prefs.range)}
-              onChange={(event) => patch({ range: clampSpectrumRange(Number(event.target.value)) })}
+              value={String(prefs.surfaces.fft.range)}
+              onChange={(event) => patchSurfaceDisplay('fft', { range: clampSpectrumRange(Number(event.target.value)) })}
             >
               {SPECTRUM_RANGE_CHOICES.map((db) => (
                 <option key={db} value={db}>
@@ -189,7 +192,7 @@ export function SpectralHistoryControls({
                 type="button"
                 aria-pressed={scale === opt.value}
                 title={opt.title}
-                onClick={() => persistFreqScale(opt.value)}
+                onClick={() => patchSurfaceDisplay('fft', { scale: opt.value })}
               >
                 {opt.label}
               </button>
@@ -288,9 +291,9 @@ export function SpectralHistoryControls({
             key={layer.id}
             type="button"
             className={choice}
-            aria-pressed={prefs.historyLayer === layer.id}
-            title={layer.id === 'pre' ? 'Before the effect chain' : layer.id === 'post' ? 'After the effect chain' : 'Source and output'}
-            onClick={() => patch({ historyLayer: layer.id })}
+            aria-pressed={prefs.surfaces.fft.layer === layer.id}
+            title={layer.id === 'pre' ? 'Before the effect chain' : layer.id === 'post' ? 'After the effect chain' : 'Before and after'}
+            onClick={() => patchSurfaceDisplay('fft', { layer: layer.id })}
           >
             {layer.label}
           </button>

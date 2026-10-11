@@ -59,8 +59,8 @@ export function EqBandStrip({ snap, instanceId, index, band, label, selected = f
   const gainLive = ids ? liveControlNormalized(live[ids.gain], ids.gain, Boolean(gainLfo)) : undefined
   const qLive = ids ? liveControlNormalized(live[ids.q], ids.q, Boolean(qLfo)) : undefined
   const widthLive = widthLfo && ids ? liveWidthNormalized(band.frequency, live[ids.q]) : undefined
-  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().eqFreqColors)
-  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.eqFreqColors)), [])
+  const [freqColors, setFreqColors] = useState(() => loadSpectrumPrefs().surfaces.eq.eqFreqColors)
+  useEffect(() => subscribeSpectrumPrefs((prefs) => setFreqColors(prefs.surfaces.eq.eqFreqColors)), [])
   const instanceCurve = eqTone(eqColorIndex(snap.chain, instanceId), readThemeColors()).curve
   const accent = eqStripAccentVars({
     frequencyHz: band.frequency,

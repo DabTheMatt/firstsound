@@ -3,6 +3,7 @@ import { applyThemePreference, getThemePreference, invalidateThemeColors } from 
 import {
   applyA11yDom,
   appliedSensoryPresentation,
+  DEFAULT_A11Y_SETTINGS,
   migrateLegacyLowVisionTheme,
   persistA11ySettings,
   readStoredA11ySettings,
@@ -33,11 +34,8 @@ export function persistAndApplyA11y(next: A11ySettings): A11ySettings {
 }
 
 export function bootstrapA11y(): A11ySettings {
-  const migrated = migrateLegacyLowVisionTheme()
-  const settings = persistAndApplyA11y({
-    ...readStoredA11ySettings(),
-    ...(migrated ? { lowVision: true } : {}),
-  })
+  migrateLegacyLowVisionTheme()
+  const settings = persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS })
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     const onMotion = () => {

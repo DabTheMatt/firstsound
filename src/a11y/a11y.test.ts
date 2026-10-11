@@ -17,6 +17,7 @@ import {
   parseA11ySettings,
   persistA11ySettings,
   readStoredA11ySettings,
+  resetA11ySession,
 } from './settings'
 import { formatAccessibleValue } from './valueText'
 import { SENSORY_AXIS_IDS } from '../sensory/sensoryParameters'
@@ -137,7 +138,7 @@ describe('a11y settings and i18n', () => {
     expect(appliedSensoryPresentation().motionReduced).toBe(true)
     expect(appliedSensoryPresentation().active).toBe(false)
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, sensoryComfort: true })
-    expect(appliedSensoryPresentation().calmMeters).toBe(true)
+    expect(appliedSensoryPresentation().calmMeters).toBe(false)
     expect(appliedSensoryPresentation().motionReduced).toBe(false)
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: false })
     expect(effectiveMotionReduced()).toBe(false)
@@ -157,12 +158,14 @@ describe('a11y settings and i18n', () => {
     expect(parseA11ySettings({ highVisibility: true }).highVisibility).toBe(true)
     expect(parseA11ySettings(null).attentionFocus).toBe(false)
     expect(parseA11ySettings(null).attentionStrength).toBe('subtle')
-    expect(parseA11ySettings(null).attentionHighlight).toBe(true)
-    expect(parseA11ySettings(null).attentionReduce).toBe(true)
+    expect(parseA11ySettings(null).attentionHighlight).toBe(false)
+    expect(parseA11ySettings(null).attentionReduce).toBe(false)
     expect(parseA11ySettings(null).predictableLayout).toBe(false)
-    expect(parseA11ySettings(null).stablePanels).toBe(true)
-    expect(parseA11ySettings(null).rememberWorkspaceLayout).toBe(true)
-    expect(parseA11ySettings(null).reduceLayoutMovement).toBe(true)
+    expect(parseA11ySettings(null).stablePanels).toBe(false)
+    expect(parseA11ySettings(null).rememberWorkspaceLayout).toBe(false)
+    expect(parseA11ySettings(null).reduceLayoutMovement).toBe(false)
+    expect(parseA11ySettings(null).calmMeters).toBe(false)
+    expect(parseA11ySettings(null).visualActivity).toBe('standard')
     expect(parseA11ySettings({ predictableLayout: true, stablePanels: false }).predictableLayout).toBe(true)
     expect(parseA11ySettings({ predictableLayout: true, stablePanels: false }).stablePanels).toBe(false)
     expect(parseA11ySettings({ predictableLayout: 'yes' }).predictableLayout).toBe(false)
@@ -291,7 +294,8 @@ describe('a11y settings and i18n', () => {
     expect(motionReduced({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true }, false)).toBe(true)
   })
 
-  it('stores a versioned payload and falls back from corrupt JSON', () => {
+  it('keeps accessibility choices for this session and ignores stored browser values', () => {
+    resetA11ySession()
     const store = new Map<string, string>()
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => store.get(key) ?? null,
@@ -299,16 +303,16 @@ describe('a11y settings and i18n', () => {
         store.set(key, value)
       },
     })
-    persistA11ySettings({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true })
-    const raw = store.get(A11Y_STORAGE_KEY_V1)
-    expect(raw).toBeTruthy()
-    expect(JSON.parse(raw ?? '{}').version).toBe(1)
-    expect(readStoredA11ySettings().reduceMotion).toBe(true)
-    store.set(A11Y_STORAGE_KEY_V1, '{')
+    const stored = JSON.stringify({ reduceMotion: true, version: 1 })
+    store.set(A11Y_STORAGE_KEY_V1, stored)
+    store.set(A11Y_STORAGE_KEY, JSON.stringify({ largerInterface: true }))
     expect(readStoredA11ySettings().reduceMotion).toBe(false)
-    store.delete(A11Y_STORAGE_KEY_V1)
-    store.set(A11Y_STORAGE_KEY, JSON.stringify({ largerInterface: true, nope: 4 }))
-    expect(readStoredA11ySettings().largerInterface).toBe(true)
+    expect(readStoredA11ySettings().largerInterface).toBe(false)
+    persistA11ySettings({ ...DEFAULT_A11Y_SETTINGS, reduceMotion: true })
+    expect(readStoredA11ySettings().reduceMotion).toBe(true)
+    expect(store.get(A11Y_STORAGE_KEY_V1)).toBe(stored)
+    resetA11ySession()
+    expect(readStoredA11ySettings().reduceMotion).toBe(false)
     vi.unstubAllGlobals()
   })
 
@@ -335,11 +339,11 @@ describe('a11y settings and i18n', () => {
     expect(DEFAULT_A11Y_SETTINGS.attentionFocus).toBe(false)
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, predictableLayout: true })
     expect(root.dataset.predictable).toBe('on')
-    expect(root.dataset.stablePanels).toBe('on')
-    expect(root.dataset.rememberLayout).toBe('on')
-    expect(root.dataset.reduceLayout).toBe('on')
-    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, predictableLayout: true, stablePanels: false, reduceLayoutMovement: false })
     expect(root.dataset.stablePanels).toBe('off')
+    expect(root.dataset.rememberLayout).toBe('off')
+    expect(root.dataset.reduceLayout).toBe('off')
+    applyA11yDom({ ...DEFAULT_A11Y_SETTINGS, predictableLayout: true, stablePanels: true, rememberWorkspaceLayout: true, reduceLayoutMovement: false })
+    expect(root.dataset.stablePanels).toBe('on')
     expect(root.dataset.reduceLayout).toBe('off')
     expect(root.dataset.rememberLayout).toBe('on')
     applyA11yDom({ ...DEFAULT_A11Y_SETTINGS })

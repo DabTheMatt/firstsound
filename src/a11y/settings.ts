@@ -87,19 +87,19 @@ export const DEFAULT_A11Y_SETTINGS: A11ySettings = {
   highVisibility: false,
   attentionFocus: false,
   attentionStrength: 'subtle',
-  attentionHighlight: true,
-  attentionReduce: true,
+  attentionHighlight: false,
+  attentionReduce: false,
   sensoryComfort: false,
-  visualActivity: 'low',
-  reduceDecorativeMotion: true,
-  calmMeters: true,
-  calmSpectrum: true,
-  reduceVisualEffects: true,
-  quietNotifications: true,
+  visualActivity: 'standard',
+  reduceDecorativeMotion: false,
+  calmMeters: false,
+  calmSpectrum: false,
+  reduceVisualEffects: false,
+  quietNotifications: false,
   predictableLayout: false,
-  stablePanels: true,
-  rememberWorkspaceLayout: true,
-  reduceLayoutMovement: true,
+  stablePanels: false,
+  rememberWorkspaceLayout: false,
+  reduceLayoutMovement: false,
 }
 
 const BOOLEAN_KEYS = [
@@ -168,38 +168,12 @@ export function scalePercent(value: number): number {
   return Math.round(value * 100)
 }
 
-function readStorageKey(key: string): A11ySettings | undefined {
-  if (typeof localStorage === 'undefined') return undefined
-  try {
-    const raw = localStorage.getItem(key)
-    if (raw == null) return undefined
-    return parseA11ySettings(JSON.parse(raw))
-  } catch {
-    return { ...DEFAULT_A11Y_SETTINGS }
-  }
-}
-
 export function readStoredA11ySettings(): A11ySettings {
-  const current = readStorageKey(A11Y_STORAGE_KEY_V1)
-  if (current) return current
-  const legacy = readStorageKey(A11Y_STORAGE_KEY)
-  if (legacy) return legacy
-  return { ...DEFAULT_A11Y_SETTINGS }
+  return { ...sessionSettings }
 }
 
 export function persistA11ySettings(settings: A11ySettings): void {
-  if (typeof localStorage === 'undefined') return
-  const body = JSON.stringify(settings)
-  try {
-    localStorage.setItem(A11Y_STORAGE_KEY_V1, JSON.stringify({ ...settings, version: 1 }))
-  } catch {
-    /* private mode */
-  }
-  try {
-    localStorage.setItem(A11Y_STORAGE_KEY, body)
-  } catch {
-    /* private mode */
-  }
+  sessionSettings = { ...settings }
 }
 
 export function migrateLegacyLowVisionTheme(): boolean {
@@ -246,6 +220,16 @@ function applyLowVisionInline(root: HTMLElement, on: boolean): void {
     if (on) root.style.setProperty(name, value)
     else root.style.removeProperty(name)
   }
+}
+
+/**
+ * Accessibility choices stay in this tab until a per-user or per-machine store exists.
+ * A reload starts from the off defaults. Stored browser values are not applied.
+ */
+let sessionSettings: A11ySettings = { ...DEFAULT_A11Y_SETTINGS }
+
+export function resetA11ySession(): void {
+  sessionSettings = { ...DEFAULT_A11Y_SETTINGS }
 }
 
 let appliedSettings: A11ySettings = { ...DEFAULT_A11Y_SETTINGS }

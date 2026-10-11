@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { SPECTRUM_RESOLUTION_CHOICES, clampSpectrumResolution } from '../../audio/engine/analyserBudget'
-import { EQ_CHANNEL_MODES, type EqChannelMode } from '../../audio/engine/eqGraph'
 import {
   clampEqOverlayFocus,
   eqOverlayOptions,
@@ -12,14 +11,11 @@ import {
   SPECTRUM_BAND_CHOICES,
   SPECTRUM_FALL_MODES,
   SPECTRUM_FOLLOW_MODES,
-  SPECTRUM_RANGE_CHOICES,
   clampSpectrumBandCount,
   clampSpectrumFallMode,
   clampSpectrumFollowMode,
-  clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
 import {
-  SPECTRAL_COLOR_MODES,
   SPECTRAL_DENSITIES,
   SPECTRAL_HISTORY_SECONDS,
   clampSpectralHistorySeconds,
@@ -29,7 +25,6 @@ import {
   spectralHistorySession,
   subscribeSpectralHistorySession,
   type SpectralCameraPreset,
-  type SpectralColorMode,
   type SpectralDensity,
   type SpectralDrawStyle,
 } from '../../audio/engine/spectralHistory'
@@ -41,7 +36,7 @@ import {
 } from '../../audio/engine/spectrumPrefs'
 import { spectrumListenId } from '../../audio/spectral/bands'
 import { spectralBandsEnabled } from '../../audio/spectral/ui'
-import { engine, useEngine } from '../../hooks/useEngine'
+import { useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
 import { SpectrumDisplaySettings } from './SpectrumDisplaySettings'
 import styles from './Workspace.module.css'
@@ -51,12 +46,6 @@ const VIEWS: { id: SpectralCameraPreset; label: string }[] = [
   { id: 'angled', label: 'Angled' },
   { id: 'top', label: 'Top' },
 ]
-
-const COLOR_LABEL: Record<SpectralColorMode, string> = {
-  off: 'Off',
-  level: 'Level',
-  frequency: 'Frequency',
-}
 
 /**
  * Analyzer options in the same compact rows as the workspace bar.
@@ -91,16 +80,6 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
         <>
           <h2 className={styles.analyzerSection}>Graph</h2>
           <div className={styles.analyzerRows}>
-            <ChoiceField
-              label="Layer"
-              value={prefs.layer}
-              options={[
-                { id: 'pre', label: 'Before' },
-                { id: 'post', label: 'After' },
-                { id: 'both', label: 'Both' },
-              ]}
-              onChange={(id) => patch({ layer: id, historyLayer: id })}
-            />
             <ChoiceField
               label="Mode"
               value={prefs.viewMode}
@@ -159,12 +138,6 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           onChange={(id) => patch({ drawStyle: id as SpectralDrawStyle })}
         />
         <ChoiceField
-          label="Color"
-          value={prefs.colorMode}
-          options={SPECTRAL_COLOR_MODES.map((mode) => ({ id: mode, label: COLOR_LABEL[mode] }))}
-          onChange={(id) => patch({ colorMode: id })}
-        />
-        <ChoiceField
           label="Trails"
           value={prefs.peakTrails ? 'on' : 'off'}
           options={[
@@ -195,17 +168,6 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
         {spectralBandsEnabled && listenBand ? (
           <p className={styles.analyzerNote}>{t.waveform.spectral.analyseBand}</p>
         ) : null}
-        <SelectField
-          label="Range"
-          value={String(prefs.range)}
-          onChange={(value) => patch({ range: clampSpectrumRange(Number(value)) })}
-        >
-          {SPECTRUM_RANGE_CHOICES.map((db) => (
-            <option key={db} value={db}>
-              {db} dB
-            </option>
-          ))}
-        </SelectField>
         <SelectField
           label="Columns"
           value={String(prefs.bands)}
@@ -246,12 +208,6 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
           }))}
           onChange={(id) => patch({ follow: clampSpectrumFollowMode(id) })}
         />
-        <ChoiceField
-          label="EQ ch"
-          value={snap.eqChannelMode}
-          options={EQ_CHANNEL_MODES.map((opt) => ({ id: opt.value, label: opt.label, title: opt.title }))}
-          onChange={(id) => engine.setEqChannelMode(id as EqChannelMode)}
-        />
         {eqs.length > 1 ? (
           <SelectField
             label="EQ"
@@ -272,7 +228,7 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
       </div>
 
       <h2 className={styles.analyzerSection}>Display</h2>
-      <SpectrumDisplaySettings />
+      <SpectrumDisplaySettings surface="fft" />
     </div>
   )
 }

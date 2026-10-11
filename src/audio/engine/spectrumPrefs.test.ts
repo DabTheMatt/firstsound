@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { defaultSpectrumPrefs, spectrumPaintColor } from './spectrumPrefs'
+import { describe, expect, it, vi } from 'vitest'
+import { defaultSpectrumPrefs, patchSurfaceDisplay, spectrumPaintColor } from './spectrumPrefs'
 
 describe('spectrum paint color', () => {
   it('keeps EQ region color independent of the FFT color mode', () => {
@@ -19,5 +19,28 @@ describe('spectrum paint color', () => {
 
   it('leaves frequency landmarks off until the graph menu turns them on', () => {
     expect(defaultSpectrumPrefs().freqGuide).toBe(false)
+  })
+
+  it('keeps EQ and FFT display choices apart', () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value)
+      },
+    })
+    patchSurfaceDisplay('eq', { scale: 'mel', range: 60, layer: 'pre' })
+    patchSurfaceDisplay('fft', { scale: 'linear', range: 120, layer: 'post' })
+    const prefs = patchSurfaceDisplay('eq', { grid: 6 })
+    expect(prefs.surfaces.eq.scale).toBe('mel')
+    expect(prefs.surfaces.eq.range).toBe(60)
+    expect(prefs.surfaces.eq.layer).toBe('pre')
+    expect(prefs.surfaces.eq.grid).toBe(6)
+    expect(prefs.surfaces.fft.scale).toBe('linear')
+    expect(prefs.surfaces.fft.range).toBe(120)
+    expect(prefs.surfaces.fft.layer).toBe('post')
+    expect(prefs.layer).toBe('post')
+    expect(prefs.surfaces.fft.grid).not.toBe(6)
+    vi.unstubAllGlobals()
   })
 })
