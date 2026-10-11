@@ -112,9 +112,9 @@
 .quiet .tile.selected.bypassed,
 .quiet .tile.selected:hover,
 .quiet .tile.selected.enabled:hover {
-  background: transparent;
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
   border-color: transparent;
-  box-shadow: inset 0 -1px 0 var(--accent-primary);
+  box-shadow: none;
   color: var(--text-primary);
   text-decoration: none;
 }

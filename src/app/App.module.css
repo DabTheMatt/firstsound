@@ -367,9 +367,11 @@
   grid-column: -2 / -1;
   grid-row: 1;
   justify-self: stretch;
-  align-self: stretch;
+  align-self: center;
   position: relative;
+  box-sizing: border-box;
   width: 100%;
+  height: var(--transport-h);
   min-width: 0;
   max-width: 100%;
   display: flex;
@@ -377,6 +379,8 @@
   justify-content: center;
   align-items: stretch;
   overflow: visible;
+  /* Keep Export off the window corner. The meter column stays put. */
+  padding-right: 10px;
   /* Above the inspector (z-index 3), which covers the strip left of Export. */
   z-index: 4;
 }
