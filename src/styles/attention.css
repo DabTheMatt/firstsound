@@ -27,16 +27,16 @@ html[data-attention='on'][data-attention-highlight='on'] [data-attention-hit='tr
 }
 
 html[data-attention='on'][data-attention-highlight='on'] [data-attention-region][data-attention-hit='true'] {
-  box-shadow: 0 0 0 1px var(--field-attention-outline);
+  box-shadow: inset 0 0 0 1px var(--field-attention-outline);
   background-color: transparent;
 }
 
 html[data-attention='on'][data-attention-highlight='on'][data-attention-strength='clear'] [data-attention-hit='true']:not([data-attention-region]) {
-  box-shadow: 0 0 0 2px var(--field-attention-outline);
+  box-shadow: inset 0 0 0 2px var(--field-attention-outline), 0 0 0 1px var(--field-attention-outline);
 }
 
 html[data-attention='on'][data-attention-highlight='on'][data-attention-strength='clear'] [data-attention-region][data-attention-hit='true'] {
-  box-shadow: 0 0 0 2px var(--field-attention-outline);
+  box-shadow: inset 0 0 0 2px var(--field-attention-outline);
 }
 
 /* High Visibility keeps its own outlines. Attention adds only a quiet wash. */

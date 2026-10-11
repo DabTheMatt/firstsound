@@ -62,14 +62,29 @@ test.describe('attention focus', () => {
     await page.keyboard.press('Tab')
     const moved = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || '')
     expect(moved.length).toBeGreaterThan(0)
-    const blocked = await page.evaluate(() => {
-      const nodes = [...document.querySelectorAll('[data-attention-region], [data-transport]')]
-      return nodes.some((node) => {
-        const style = getComputedStyle(node)
-        return style.pointerEvents === 'none' || node.hasAttribute('inert') || node.getAttribute('aria-hidden') === 'true'
-      })
+    const reach = await page.evaluate(() => {
+      const signature = () =>
+        [...document.querySelectorAll('button, [role="slider"], [role="tab"], input, select')]
+          .map((node) => {
+            const style = getComputedStyle(node)
+            return [
+              node.getAttribute('aria-label') || (node as HTMLElement).innerText || node.tagName,
+              style.pointerEvents,
+              node.getAttribute('aria-hidden') ?? '',
+              node.hasAttribute('inert') ? '1' : '0',
+            ].join('|')
+          })
+          .sort()
+          .join('\n')
+      const on = signature()
+      document.documentElement.dataset.attention = 'off'
+      const off = signature()
+      document.documentElement.dataset.attention = 'on'
+      return { same: on === off, mainHidden: document.querySelector('main')?.getAttribute('aria-hidden') ?? '', mainInert: document.querySelector('main')?.hasAttribute('inert') ?? false }
     })
-    expect(blocked).toBe(false)
+    expect(reach.same).toBe(true)
+    expect(reach.mainHidden).not.toBe('true')
+    expect(reach.mainInert).toBe(false)
   })
 
   test('does not stop playback when attention focus is toggled', async ({ page }) => {
@@ -104,7 +119,7 @@ test.describe('attention focus', () => {
     await boot(page, { a11y: ON })
     await loadDemo(page)
     await expect(page.locator('[data-attention-region="waveform"]')).toHaveAttribute('data-attention-live', 'true')
-    await expect(page.locator('[data-transport]')).toBeVisible()
+    await expect(page.locator('[data-transport]').first()).toBeVisible()
     const play = page.getByRole('button', { name: 'Play', exact: true }).first()
     await expect(play).toBeVisible()
     const opacity = await play.evaluate((el) => getComputedStyle(el).opacity)
