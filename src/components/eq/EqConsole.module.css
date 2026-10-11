@@ -459,7 +459,9 @@
   width: 100%;
   min-width: 0;
   overflow: visible;
-  padding: 2px 0 8px;
+  /* Top air matches the space under the last filter: this padding plus the
+     inspector column gap before Add band. */
+  padding: 18px 0 8px;
 }
 
 .inlineStrip {

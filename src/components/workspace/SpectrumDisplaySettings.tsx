@@ -38,6 +38,7 @@ import {
   type SpectrumPrefs,
 } from '../../audio/engine/spectrumPrefs'
 import { engine } from '../../hooks/useEngine'
+import { useI18n } from '../../i18n'
 import styles from './Workspace.module.css'
 
 const LAYERS: { id: SpectrumLayer; label: string }[] = [
@@ -58,7 +59,6 @@ const HINTS = {
   line: 'Spectrum outline drawn over the columns.',
   legend: 'Color key. Names the region colors, or what the bars and the line are. On the EQ graph this sits at the lower left.',
   guides: 'Frequency landmarks. Hover the graph to read what usually lives there, such as kick boom, voice, snare crack, or air.',
-  snapshot: 'Loops a short fragment of the sample. The FFT and EQ graphs keep drawing that loop, including each repeat. Press again to play on from that place.',
   holdLength: 'How long that fragment is. 0.25 s, 0.5 s, or 1 s. Changing it while Hold is on restarts the loop at the new length.',
 } as const
 
@@ -210,22 +210,41 @@ export function FreqNodesRow() {
   )
 }
 
-export function SnapshotRow() {
+/** Hold stays a button beside the menu. The menu only chooses the length. */
+export function HoldGraphButton({
+  className,
+  pressedClassName,
+}: {
+  className: string
+  pressedClassName: string
+}) {
+  const { t } = useI18n()
   const [on, setOn] = useState(() => graphSnapshotFrozen())
-  const [span, setSpan] = useState<AuditionSpanSec>(() => auditionSpanSec())
   useEffect(() => subscribeGraphSnapshot(setOn), [])
+  return (
+    <button
+      type="button"
+      className={on ? pressedClassName : className}
+      data-geometry="square"
+      data-hold-toggle=""
+      aria-pressed={on}
+      aria-label={on ? t.waveform.holdOn : t.waveform.holdOff}
+      title={on ? t.waveform.holdOn : t.waveform.holdOff}
+      onClick={(event) => {
+        holdGraphSnapshot(!on)
+        event.currentTarget.blur()
+      }}
+    >
+      {t.waveform.hold}
+    </button>
+  )
+}
+
+export function SnapshotRow() {
+  const [span, setSpan] = useState<AuditionSpanSec>(() => auditionSpanSec())
   useEffect(() => subscribeAuditionSpan(setSpan), [])
   return (
     <>
-      <OnOff
-        label="Hold"
-        hint={HINTS.snapshot}
-        on={on}
-        onChange={(next) => {
-          setOn(next)
-          holdGraphSnapshot(next)
-        }}
-      />
       <ChoiceRow label="Length" hint={HINTS.holdLength}>
         {AUDITION_SPAN_CHOICES.map((choice) => (
           <Choice

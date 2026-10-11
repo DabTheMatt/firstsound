@@ -304,16 +304,16 @@ function strokeSeries(
 ): void {
   const points = values.length
   const stride = input.mobile || runtime.quality < 0.72 ? 2 : 1
-  const alpha = spectralAgeOpacity(age01) * (dashed ? 0.72 : 1)
-  // The rear layer in Both stays a muted line so it does not share the front rainbow.
+  const alpha = spectralAgeOpacity(age01) * (dashed ? 0.95 : 1)
+  // Both draws Source as a light dashed line so it stays readable over Output.
   const colored = input.colorMode !== 'off' && !dashed
-  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 0.85 : 1) * (colored ? 1.15 : 1))
+  const width = Math.max(input.dpr * 0.85, spectralAgeWidth(age01) * input.dpr * (dashed ? 1.25 : 1) * (colored ? 1.15 : 1))
   const surface = input.drawStyle === 'surface'
   const fillAlpha = alpha * 0.16 * (0.4 + 0.6 * (1 - age01))
   ctx.lineWidth = width
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  ctx.setLineDash(dashed ? [4 * input.dpr, 3 * input.dpr] : [])
+  ctx.setLineDash(dashed ? [7 * input.dpr, 4 * input.dpr] : [])
 
   const xs = runtime.trace
   const floors = runtime.floorXY
@@ -322,7 +322,7 @@ function strokeSeries(
   let n = 0
   const flushLine = () => {
     if (n < 1) return
-    if (surface && n >= 2 && !colored) {
+    if (surface && n >= 2 && !colored && !dashed) {
       ctx.fillStyle = colorWithAlpha(color, fillAlpha)
       ctx.beginPath()
       ctx.moveTo(xs[0] ?? 0, xs[1] ?? 0)
@@ -617,9 +617,13 @@ export function paintSpectralHistory(
     }
   }
 
-  if (input.showPre) drawBuffer(runtime.pre, runtime.preLive, colors.textMuted, both)
-  if (input.showPost) drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
-  if (!input.showPre && !input.showPost) drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
+  // Output first, then Source. In Both the dashed Before line stays on top of After.
+  if (input.showPost || !input.showPre) {
+    drawBuffer(runtime.post, runtime.postLive, colors.spectrumLine || colors.spectrum, false)
+  }
+  if (input.showPre) {
+    drawBuffer(runtime.pre, runtime.preLive, both ? colors.textPrimary : colors.textMuted, both)
+  }
 
   ctx.restore()
 

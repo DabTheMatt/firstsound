@@ -811,8 +811,12 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           const lineAlpha = (style === 'pre' ? (layer === 'both' ? 0.55 : 0.85) : 0.95) * phoneDim
           const fill = paintColor === 'solid' ? colors.spectrum : undefined
           const line = paintColor === 'solid' ? colors.spectrumLine : undefined
-          const dashed = style === 'pre' && layer === 'both'
-          const peakStroke = colorWithAlpha(style === 'pre' ? colors.textMuted : colors.spectrumLine, lineAlpha)
+          const overlay = style === 'pre' && layer === 'both'
+          const dashed = overlay
+          const peakStroke = colorWithAlpha(
+            overlay ? colors.textPrimary : style === 'pre' ? colors.textMuted : colors.spectrumLine,
+            overlay ? 0.95 : lineAlpha,
+          )
           const slowStroke =
             follow === 'both'
               ? colorWithAlpha(colors.spectrumLine, style === 'pre' ? 0.55 : 0.85)
@@ -821,7 +825,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           ctx.beginPath()
           ctx.rect(left, top, plotW, plotH)
           ctx.clip()
-          if (showBars) {
+          if (showBars && !overlay) {
             for (let i = 0; i < bands; i++) {
               const x0 = hzToX(edges[i] ?? minHz, minHz, maxHz, left, right, scale)
               const x1 = hzToX(edges[i + 1] ?? maxHz, minHz, maxHz, left, right, scale)
@@ -863,6 +867,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             dash: boolean,
             fill: boolean,
             stroke: boolean,
+            forceSolid = false,
           ) => {
             if (!src || (!fill && !stroke)) return
             const curvePoints = spectrumCurvePointCount(plotW)
@@ -890,8 +895,8 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             ctx.lineJoin = 'round'
             ctx.lineCap = 'round'
             ctx.lineWidth = width
-            ctx.setLineDash(dash ? [4 * dpr, 3 * dpr] : [])
-            if (paintColor === 'level') {
+            ctx.setLineDash(dash ? (forceSolid ? [7 * dpr, 4 * dpr] : [4 * dpr, 3 * dpr]) : [])
+            if (paintColor === 'level' && !forceSolid) {
               strokeLevelPolyline(
                 ctx,
                 lineXY,
@@ -909,11 +914,13 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
             ctx.setLineDash([])
           }
           const bodyLine = display.barBody === 'peak' ? lineFast : lineSlow
-          if (!showBars) paintLine(bodyLine, peakStroke, 1, false, true, false)
-          if (showLine && wantPeak) {
+          if (overlay) {
+            paintLine(lineFast, peakStroke, Math.max(2, dpr * 1.8), true, false, true, true)
+          } else if (!showBars) paintLine(bodyLine, peakStroke, 1, false, true, false)
+          if (!overlay && showLine && wantPeak) {
             paintLine(lineFast, peakStroke, Math.max(1, dpr * 1.15), dashed, false, true)
           }
-          if (showLine && wantSlow) {
+          if (!overlay && showLine && wantSlow) {
             paintLine(
               lineSlow,
               slowStroke,
@@ -984,11 +991,15 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           postLineFast = followedFast
           postLineSlow = followedSlow
         }
-        if (!listenId && showPre) {
+        const bothLayers = !listenId && showPre && showPost
+        if (!listenId && showPre && !bothLayers) {
           drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
         }
         if (listenId || showPost) {
           drawLayer(postPeaks, postFast.current, postSlow.current, 'post')
+        }
+        if (bothLayers) {
+          drawLayer(prePeaks, preFast.current, preSlow.current, 'pre')
         }
 
         const combinedBands: (typeof live.eqBands) = []
