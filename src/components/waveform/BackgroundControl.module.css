@@ -5,7 +5,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   min-height: var(--control-compact, 28px);
@@ -34,7 +34,7 @@
 
 .heading {
   margin: 0;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-disabled);
@@ -43,7 +43,7 @@
 .file {
   margin: 4px 0 0;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--type-10);
   color: var(--text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -51,13 +51,13 @@
 
 .action {
   width: 100%;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   margin-top: 6px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -84,12 +84,12 @@
   grid-template-columns: 62px minmax(0, 1fr) 28px;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   margin-top: 6px;
 }
 
 .label {
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -103,7 +103,7 @@
 }
 
 .value {
-  font-size: 10px;
+  font-size: var(--type-10);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
   text-align: right;
@@ -111,7 +111,7 @@
 
 .note {
   margin: 6px 0 0;
-  font-size: 9px;
+  font-size: var(--type-9);
   line-height: 1.35;
   color: var(--text-muted);
 }

@@ -22,7 +22,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -128,7 +128,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-12);
   text-align: left;
   padding: 0;
 }
@@ -141,13 +141,13 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-12);
   padding: 0;
 }
 
 .meta {
   flex: none;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -161,14 +161,14 @@
   border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .dropHint {
   margin: 0 6px 6px;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -182,7 +182,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -299,7 +299,7 @@
   border-radius: 6px;
   background: color-mix(in srgb, var(--bg-panel-elevated) 92%, transparent);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   pointer-events: none;
@@ -329,7 +329,7 @@
   border-radius: 6px;
   color: var(--text-muted);
   background: transparent;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -344,7 +344,7 @@
 
 .channelLabel {
   margin: 0 6px;
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -355,7 +355,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 6px 6px;
-  font-size: 11px;
+  font-size: var(--type-11);
   color: var(--text-secondary);
 }
 

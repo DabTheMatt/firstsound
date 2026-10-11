@@ -97,7 +97,7 @@
 }
 
 .baseValue {
-  font-size: 11px;
+  font-size: var(--type-11);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -151,14 +151,14 @@
 
 .dragReadout span {
   display: block;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .dragReadout strong {
-  font-size: 16px;
+  font-size: var(--type-16);
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }

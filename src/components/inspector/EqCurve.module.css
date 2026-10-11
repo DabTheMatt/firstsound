@@ -30,7 +30,7 @@
 .fill .node {
   width: 44px;
   height: 44px;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .node {
@@ -43,7 +43,7 @@
   border: 1.5px solid var(--border-subtle);
   background: var(--text-muted);
   color: var(--bg-app);
-  font-size: 8px;
+  font-size: var(--type-8);
   font-weight: 700;
   line-height: 1;
   display: flex;

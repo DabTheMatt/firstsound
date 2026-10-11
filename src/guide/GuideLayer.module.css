@@ -18,7 +18,7 @@
   position: fixed;
   z-index: 18;
   width: min(400px, calc(100vw - 24px));
-  max-height: min(560px, 72dvh);
+  max-height: min(560px, calc(72dvh - env(safe-area-inset-bottom, 0px)));
   overflow: auto;
   overscroll-behavior: contain;
   box-sizing: border-box;
@@ -84,7 +84,7 @@
 
 .kicker {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -92,7 +92,7 @@
 .subtitle {
   margin: 2px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .body {
@@ -107,25 +107,30 @@
   margin: 0;
 }
 
+:global(html[data-text-room='max']) .panel {
+  width: min(36rem, calc(100vw - 16px));
+  max-height: min(78dvh, calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+}
+
 .body h2 {
-  font-size: 18px;
+  font-size: var(--type-18);
   font-weight: 560;
   line-height: 1.3;
 }
 
 .body h3 {
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 560;
   color: var(--text-muted);
 }
 
 .taskName {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .stepLabel {
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .track {
@@ -143,7 +148,7 @@
 
 .cat {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -179,14 +184,14 @@
 }
 
 .cardTitle {
-  font-size: 16px;
+  font-size: var(--type-16);
 }
 
 .cardBody,
 .meta,
 .hint {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1.4;
 }
 
@@ -277,7 +282,7 @@
   align-items: center;
   min-height: 44px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .sr {

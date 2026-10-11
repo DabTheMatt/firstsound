@@ -20,7 +20,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -37,7 +37,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--type-13);
   font-variant-numeric: tabular-nums;
   color: var(--accent-primary);
 }

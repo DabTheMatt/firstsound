@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 8px 12px;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   flex: none;
   min-width: 0;
   max-width: 100%;
@@ -31,7 +31,7 @@
 }
 
 .compact {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
 }
 
 .runtime {
@@ -120,7 +120,7 @@
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--type-13);
   font-weight: 500;
   padding: 0;
   text-align: left;
@@ -175,7 +175,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1;
@@ -219,7 +219,7 @@
   gap: 12px;
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -265,7 +265,7 @@
 }
 
 .minimal {
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   gap: 8px;
 }
 
@@ -274,7 +274,7 @@
 }
 
 .minimal .file {
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .minimal .settings {
@@ -299,7 +299,7 @@
   min-height: 44px;
   min-width: 44px;
   padding: 0 10px;
-  font-size: 9px;
+  font-size: var(--type-9);
 }
 
 .minimal .rec:not(.recOn) {
@@ -313,9 +313,14 @@
 }
 
 :global(html[data-low-vision='on']) .header,
-:global(html[data-ui-scale='large']) .header {
+:global(html[data-ui-scale='large']) .header,
+:global(html[data-layout-room='open']) .header {
   flex-wrap: wrap;
   align-items: start;
+  height: auto;
+  min-height: var(--toolbar-h);
+  max-height: none;
+  overflow: visible;
 }
 
 :global(html[data-low-vision='on']) .trailing,
@@ -385,9 +390,9 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    height: 32px;
-    min-height: 32px;
-    max-height: 32px;
+    height: auto;
+    min-height: max(32px, var(--toolbar-h));
+    max-height: none;
     row-gap: 0;
     overflow-x: auto;
     overflow-y: hidden;
@@ -405,7 +410,7 @@
 
 /* Workspace bar: one size and weight, no strokes. Hover and the active control share a soft wash. */
 :global([data-technical-ui='workspace']) .header {
-  min-height: 36px;
+  min-height: max(36px, var(--toolbar-h));
   gap: 2px 4px;
   border-bottom: 0;
 }
@@ -417,7 +422,8 @@
 }
 
 :global([data-technical-ui='workspace']) .file {
-  height: 32px;
+  height: auto;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 4px;
   border-radius: 4px;
   font-size: var(--ws-bar-size, 11px);
@@ -441,8 +447,8 @@
   border-radius: 4px !important;
   background: transparent;
   box-shadow: none;
-  height: 32px;
-  min-height: 32px;
+  height: auto;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 6px;
   font-size: var(--ws-bar-size, 11px);
   font-weight: var(--ws-bar-weight, 500);

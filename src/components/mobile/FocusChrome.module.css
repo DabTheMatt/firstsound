@@ -46,7 +46,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.04em;
   pointer-events: none;
 }
@@ -84,7 +84,7 @@
   width: 28px;
   height: 28px;
   min-width: 28px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
@@ -98,7 +98,7 @@
   margin-right: 6px;
   min-width: 4.5rem;
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--type-12);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   pointer-events: none;
@@ -132,7 +132,7 @@
   align-items: center;
   padding-left: 6px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -161,14 +161,14 @@
 }
 
 .switch {
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -195,7 +195,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--type-16);
   line-height: 1;
 }
 
@@ -253,7 +253,7 @@
   display: none;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
 }
 
 .filterToggle {
@@ -264,7 +264,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -290,7 +290,7 @@
 .filterHead {
   margin: 0 0 2px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
   font-weight: 650;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -311,7 +311,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.04em;
   text-align: left;
 }
@@ -353,14 +353,14 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 4px;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   max-width: 100%;
 }
 
 .eqName,
 .filterName {
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -370,7 +370,7 @@
 
 .eqMeta {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -454,7 +454,7 @@
   flex: none;
   margin: 0;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 650;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -477,7 +477,7 @@
   background-repeat: no-repeat;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   letter-spacing: 0.02em;
   text-align: center;
@@ -519,7 +519,7 @@
   padding: 0 8px;
   border-radius: 10px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -531,7 +531,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   letter-spacing: 0;
   text-transform: none;
@@ -547,11 +547,11 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--type-12);
   font-weight: 650;
   letter-spacing: 0;
   text-transform: none;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   padding: 0 6px;
   border-radius: 8px;
   cursor: pointer;
@@ -578,7 +578,7 @@
 
 .fftNote {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -598,7 +598,7 @@
   max-width: min(42vw, 220px);
   padding: 0 8px;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.04em;
 }
 
@@ -613,7 +613,7 @@
 }
 
 .lfoDepth {
-  font-size: 10px;
+  font-size: var(--type-10);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   pointer-events: none;
@@ -627,7 +627,7 @@
   margin: 0;
   padding: 0 8px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   line-height: 1.15;
@@ -643,7 +643,7 @@
 
 .meta span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -680,7 +680,7 @@
 
 .popover h2 {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -691,7 +691,7 @@
   flex-direction: column;
   gap: 4px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -706,7 +706,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-13);
   letter-spacing: 0;
   text-transform: none;
 }

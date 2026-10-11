@@ -1,5 +1,5 @@
 .bar {
-  --transport-h: 40px;
+  --transport-h: max(40px, calc(var(--type-13) + 20px));
   container: transport / inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -69,7 +69,7 @@
   border-radius: 8px;
   background: var(--bg-control);
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -95,7 +95,7 @@
   margin: 0;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -116,7 +116,7 @@
   height: var(--transport-h);
   min-width: 9ch;
   color: var(--playhead, var(--accent-primary));
-  font-size: 22px;
+  font-size: var(--type-22);
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -188,7 +188,7 @@ button.export {
 
 .bar[data-density='3'] .icon,
 .bar[data-density='4'] .icon {
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.04em;
 }
 
@@ -254,13 +254,13 @@ button.export {
   min-width: 44px;
   min-height: 44px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.06em;
 }
 
 .minimal .head {
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--type-15);
 }
 
 .minimal .transport {
@@ -292,7 +292,7 @@ button.export {
   }
 
   .minimal .head {
-    font-size: 13px;
+    font-size: var(--type-13);
   }
 }
 
@@ -300,11 +300,39 @@ button.export {
 :global(html[data-ui-scale='large']) .bar,
 :global(html[data-low-vision='on']) button.export,
 :global(html[data-ui-scale='large']) button.export {
-  --transport-h: 44px;
+  --transport-h: max(44px, calc(var(--type-13) + 20px));
   align-items: center;
+}
+
+:global(html[data-text-room='max']) .bar {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'transport'
+    'meta'
+    'actions';
+  row-gap: 8px;
+  height: auto;
+}
+
+:global(html[data-text-room='max']) .actions {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+:global(html[data-text-room='max']) .meta,
+:global(html[data-text-room='max']) .details,
+:global(html[data-text-room='max']) .times {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+:global(html[data-text-room='max']) .head {
+  height: auto;
+  min-height: 1.2em;
 }
 
 :global(html[data-low-vision='on']) .head,
 :global(html[data-ui-scale='large']) .head {
-  font-size: 1.35rem;
+  font-size: calc(1.35rem * var(--field-text-scale, 1));
 }

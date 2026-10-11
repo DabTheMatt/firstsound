@@ -4,29 +4,46 @@
 @import './low-vision.css';
 
 :root {
+  --field-interface-scale: 1;
+  --field-text-scale: 1;
+  --type-7: calc(7px * var(--field-text-scale));
+  --type-7-5: calc(7.5px * var(--field-text-scale));
+  --type-8: calc(8px * var(--field-text-scale));
+  --type-9: calc(9px * var(--field-text-scale));
+  --type-10: calc(10px * var(--field-text-scale));
+  --type-11: calc(11px * var(--field-text-scale));
+  --type-12: calc(12px * var(--field-text-scale));
+  --type-13: calc(13px * var(--field-text-scale));
+  --type-14: calc(14px * var(--field-text-scale));
+  --type-15: calc(15px * var(--field-text-scale));
+  --type-16: calc(16px * var(--field-text-scale));
+  --type-18: calc(18px * var(--field-text-scale));
+  --type-20: calc(20px * var(--field-text-scale));
+  --type-22: calc(22px * var(--field-text-scale));
   --radius-shell: 22px;
   --radius-control: 4px;
   --radius-pill: 999px;
   --font: 'Inter', system-ui, sans-serif;
   --theme-shift: 150ms ease;
-  --toolbar-h: 32px;
+  /* Interface scale and text scale each contribute. They are not multiplied together. */
+  --toolbar-h: max(calc(32px * var(--field-interface-scale)), calc(var(--type-10) + 18px));
   --toolbar-radius: 8px;
-  --toolbar-pad-x: 12px;
-  --toolbar-font: 10px;
+  --toolbar-pad-x: calc(12px * var(--field-interface-scale));
+  --toolbar-font: var(--type-10);
   --toolbar-tracking: 0.12em;
-  --field-stack-gap: 12px;
+  --field-stack-gap: calc(12px * var(--field-interface-scale));
   --surface-app: var(--bg-app);
   --surface-workspace: var(--bg-panel);
   --surface-context: var(--bg-panel);
   --surface-raised: var(--bg-panel-elevated, var(--bg-panel));
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --control-compact: 28px;
-  --control-standard: 32px;
-  --control-touch: 44px;
+  --space-1: calc(4px * var(--field-interface-scale));
+  --space-2: calc(8px * var(--field-interface-scale));
+  --space-3: calc(12px * var(--field-interface-scale));
+  --space-4: calc(16px * var(--field-interface-scale));
+  --space-5: calc(24px * var(--field-interface-scale));
+  --control-compact: max(calc(28px * var(--field-interface-scale)), calc(var(--type-11) + 16px));
+  --control-standard: max(calc(32px * var(--field-interface-scale)), calc(var(--type-12) + 16px));
+  --control-touch: max(44px, calc(36px * min(var(--field-interface-scale), 1.15)));
 }
 
 *,
@@ -111,13 +128,14 @@ select:disabled {
 }
 
 :focus-visible {
-  outline: 1.5px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width, 1.5px) solid var(--accent-primary);
+  outline-offset: var(--focus-ring-offset, 3px);
+  scroll-margin: 12px;
 }
 
 select:focus-visible {
-  outline: 1.5px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width, 1.5px) solid var(--accent-primary);
+  outline-offset: var(--focus-ring-offset, 3px);
 }
 
 /* A vertical swipe on a native slider should keep scrolling the sheet. */

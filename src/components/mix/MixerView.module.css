@@ -56,21 +56,21 @@
 
 .index {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--type-9);
 }
 
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--type-11);
   text-align: left;
 }
 
 .kind {
   grid-column: 2 / span 2;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--type-8);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -94,7 +94,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: var(--type-9);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;

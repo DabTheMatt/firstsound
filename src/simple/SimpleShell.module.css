@@ -78,7 +78,7 @@
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--type-15);
   font-weight: 500;
   text-align: left;
   min-height: 44px;
@@ -90,13 +90,13 @@
   justify-content: center;
   flex: none;
   box-sizing: border-box;
-  min-height: 32px;
+  min-height: max(32px, var(--toolbar-h));
   padding: 0 12px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: transparent;
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: var(--type-10);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1;
@@ -140,7 +140,7 @@
     order: 6;
     flex: 1 1 100%;
     width: auto;
-    min-height: 32px;
+    min-height: max(32px, var(--toolbar-h));
   }
 }
 
@@ -151,7 +151,7 @@
   border: 0;
   background: transparent;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: var(--type-18);
   letter-spacing: 0.12em;
 }
 
@@ -196,7 +196,7 @@
 }
 
 .selectionLabel {
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -230,7 +230,7 @@
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-12);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -272,7 +272,7 @@
 .group h2,
 .effect h2 {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--type-11);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -282,7 +282,7 @@
 .fadeHead {
   display: flex;
   align-items: center;
-  min-height: 28px;
+  min-height: max(28px, var(--control-compact));
   letter-spacing: 0;
   text-transform: none;
   color: var(--text-primary);
@@ -366,7 +366,7 @@
 }
 
 .effectState {
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -413,7 +413,7 @@
   border: 0;
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--type-14);
   font-weight: 500;
   padding: 0 10px;
 }
@@ -468,7 +468,7 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .textBtn:hover {
@@ -484,7 +484,7 @@
 .status,
 .advanced {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-13);
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -502,7 +502,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--type-11);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -523,7 +523,7 @@
   justify-content: space-between;
   letter-spacing: 0.04em;
   text-transform: none;
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .transport {
@@ -543,7 +543,7 @@
   border: 0;
   background: var(--accent-primary);
   color: var(--text-on-accent);
-  font-size: 18px;
+  font-size: var(--type-18);
 }
 
 .clock {
@@ -554,7 +554,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--type-15);
   color: var(--text-muted);
 }
 
@@ -577,7 +577,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .compare button + button {
@@ -597,7 +597,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 13px;
+  font-size: var(--type-13);
 }
 
 .play:focus-visible,
@@ -639,7 +639,7 @@
 
 .sheet h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--type-15);
   font-weight: 500;
 }
 
@@ -654,7 +654,7 @@
 
 .sheetLabel {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-13);
   color: var(--text-muted);
 }
 
@@ -816,13 +816,15 @@
 }
 
 :global(html[data-low-vision='on']) .page,
-:global(html[data-ui-scale='large']) .page {
+:global(html[data-ui-scale='large']) .page,
+:global(html[data-layout-room='open']) .page {
   height: 100%;
   overflow: hidden;
 }
 
 :global(html[data-low-vision='on']) .shell,
-:global(html[data-ui-scale='large']) .shell {
+:global(html[data-ui-scale='large']) .shell,
+:global(html[data-layout-room='open']) .shell {
   overflow: auto;
   min-height: 0;
 }

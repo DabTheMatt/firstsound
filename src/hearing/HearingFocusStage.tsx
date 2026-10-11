@@ -26,7 +26,7 @@ const zoomButton = {
   color: 'var(--text-secondary)',
   letterSpacing: '0.06em',
   textTransform: 'uppercase' as const,
-  fontSize: 11,
+  fontSize: 'var(--type-11)',
 }
 
 function useHearingView() {
@@ -86,7 +86,7 @@ export function HearingFocusStage() {
     <section aria-label="Hearing Access focus" className={`${styles.palette} ${styles.focusStage}`}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
         <div className={styles.sectionTitle}>
-          <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <p style={{ margin: 0, fontSize: 'var(--type-12)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}
             {pitched ? ` · heard at ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)} st` : ' · original pitch'}
           </p>
@@ -124,7 +124,7 @@ export function HearingFocusStage() {
       />
       {analysis && liveBucket ? (
         <>
-          {mono ? <p style={{ margin: 0, fontSize: 12 }}>This sample is mono. Pan still places that one image.</p> : null}
+          {mono ? <p style={{ margin: 0, fontSize: 'var(--type-12)' }}>This sample is mono. Pan still places that one image.</p> : null}
           <div className={styles.focusSpace}>
             <HeadSpace balance={heardBalance} width={liveBucket.width} correlation={liveBucket.correlation} space={room} fill />
             <SpaceField

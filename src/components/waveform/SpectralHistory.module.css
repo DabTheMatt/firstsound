@@ -61,7 +61,7 @@
   flex: none;
   width: 4.6rem;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--type-10);
   font-weight: var(--ws-bar-weight, 500);
   letter-spacing: var(--ws-bar-track, 0.08em);
   text-transform: uppercase;
@@ -69,7 +69,7 @@
 
 .row button,
 .row select {
-  min-height: 26px;
+  min-height: calc(26px * var(--field-interface-scale, 1));
   margin: 0;
   padding: 0 6px;
   border: 0;
@@ -99,7 +99,7 @@
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--type-12);
 }
 
 .actions {
@@ -109,7 +109,7 @@
 }
 
 .actions button {
-  min-height: 26px;
+  min-height: calc(26px * var(--field-interface-scale, 1));
   padding: 0 8px;
   border: 0;
   border-radius: 4px;
