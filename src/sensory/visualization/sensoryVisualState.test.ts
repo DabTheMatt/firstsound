@@ -7,6 +7,7 @@ import {
   filmGrainAmount,
   landscapeStops,
   lensInk,
+  calmSensoryVisual,
   lerpVisualState,
   panNorm,
   pulseAmount,
@@ -137,5 +138,19 @@ describe('lerpVisualState', () => {
     const mid = lerpVisualState(from, to, 0.5)
     expect(mid.warmth).toBeGreaterThan(from.warmth)
     expect(mid.warmth).toBeLessThan(to.warmth)
+  })
+})
+
+describe('calmSensoryVisual', () => {
+  it('quiets decorative fields and leaves parameter axes', () => {
+    const visual = sensoryVisualState(patchSensoryValue(defaultSensoryValues(), 'mod', 0.8), false)
+    const calm = calmSensoryVisual(visual, { motion: 0, intensity: 0.22 })
+    expect(calm.pulse).toBe(0)
+    expect(calm.motion).toBe(0)
+    expect(calm.glow).toBeLessThan(visual.glow)
+    expect(calm.mod).toBe(visual.mod)
+    expect(calm.space).toBe(visual.space)
+    expect(calm.character).toBe(visual.character)
+    expect(calmSensoryVisual(visual, null)).toBe(visual)
   })
 })

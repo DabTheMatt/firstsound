@@ -189,7 +189,7 @@ export function FeelingRail({ values, activeId, onActive, onEditing, onValues, o
               {sensoryDescription(feeling.id, locale)}
             </span>
             <FeelingIcon feeling={feeling} amount={amount} livePanPct={values.pan < 0.02 ? 0 : livePanPct} />
-            {lfoOn ? <span className={styles.lfoMark} aria-hidden="true" /> : null}
+            {lfoOn ? <span className={styles.lfoMark} data-decorative="" data-lfo-active="true" aria-hidden="true" /> : null}
             <span className={styles.guide} aria-hidden="true">
               <span className={styles.guideTrack} />
               {feeling.kind === 'bipolar' ? <span className={styles.guideCenter} /> : null}

@@ -254,6 +254,11 @@
   }
 }
 
+:global(html[data-decorative-motion='reduce']) .lfoLine,
+:global(html[data-visual-effects='reduce']) .lfoLine {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lfoLine,
   .line,

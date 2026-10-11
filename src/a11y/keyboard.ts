@@ -1,3 +1,5 @@
+import { appliedSensoryPresentation } from './settings'
+
 export type SliderKeyResult = { kind: 'value'; normalized: number } | { kind: 'reset' } | null
 
 export function sliderStepForKey(
@@ -194,7 +196,11 @@ export function isTransportShortcutTarget(target: EventTarget | null): boolean {
 
 export function scrollFocusedIntoView(target: EventTarget | null): void {
   if (!(target instanceof HTMLElement)) return
-  target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  target.scrollIntoView({
+    block: 'nearest',
+    inline: 'nearest',
+    behavior: appliedSensoryPresentation().reduceDecorativeMotion ? 'auto' : undefined,
+  })
 }
 
 export function isImeEvent(event: { isComposing?: boolean; key?: string }): boolean {

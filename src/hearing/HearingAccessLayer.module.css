@@ -681,7 +681,9 @@ button.besideExport[aria-pressed] {
 
 :global([data-reduce-motion='on']) .badge,
 :global([data-reduce-motion='on']) .pulse,
-:global([data-reduce-motion='on']) .launcher {
+:global([data-reduce-motion='on']) .launcher,
+:global(html[data-decorative-motion='reduce']) .badge,
+:global(html[data-quiet-notices='on']) .badge {
   animation: none;
 }
 

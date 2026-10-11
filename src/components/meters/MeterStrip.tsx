@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { appliedSensoryPresentation } from '../../a11y/settings'
+import { presentMeterPercent } from '../../a11y/sensoryComfort'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { PARAMS } from '../../audio/parameters/definitions'
 import { formatParamValue, fromNormalized, toNormalized } from '../../audio/parameters/mapping'
@@ -50,14 +52,16 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
   useEffect(() => {
     let frame = 0
     let last = 0
+    let lastVisual = 0
     const leftBuf = { data: null as Float32Array | null }
     const rightBuf = { data: null as Float32Array | null }
     const tick = (now: number) => {
-      if (isDocumentHidden() || now - last < paintIntervalMs(engine.getSnapshot().playing)) {
-        frame = requestAnimationFrame(tick)
-        return
-      }
+      frame = requestAnimationFrame(tick)
+      if (isDocumentHidden()) return
+      const playing = engine.getSnapshot().playing
+      if (now - last < paintIntervalMs(playing)) return
       last = now
+      const comfort = appliedSensoryPresentation()
       const { left, right } = engine.getChannelAnalysers()
       const minDb = meterDbMin(range)
       const l = timeDomainPeakDb(left, leftBuf)
@@ -66,10 +70,15 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
       hold.current.t = now
       hold.current.l = fallHoldDb(hold.current.l, l, dt)
       hold.current.r = fallHoldDb(hold.current.r, r, dt)
-      const lPct = `${dbToMeterPct(l, minDb)}%`
-      const rPct = `${dbToMeterPct(r, minDb)}%`
-      const holdL = `${dbToMeterPct(hold.current.l, minDb)}%`
-      const holdR = `${dbToMeterPct(hold.current.r, minDb)}%`
+      if (l >= -0.1 || r >= -0.1) setClipped(true)
+      const slowVisual = comfort.visualActivity === 'low' || comfort.calmMeters
+      if (slowVisual && lastVisual !== 0 && now - lastVisual < paintIntervalMs(playing, 'low')) return
+      lastVisual = now
+      const calm = comfort.calmMeters
+      const lPct = `${presentMeterPercent(dbToMeterPct(l, minDb), calm)}%`
+      const rPct = `${presentMeterPercent(dbToMeterPct(r, minDb), calm)}%`
+      const holdL = `${presentMeterPercent(dbToMeterPct(hold.current.l, minDb), calm)}%`
+      const holdR = `${presentMeterPercent(dbToMeterPct(hold.current.r, minDb), calm)}%`
       if (variant === 'inline') {
         if (leftRef.current) leftRef.current.style.width = lPct
         if (rightRef.current) rightRef.current.style.width = rPct
@@ -93,10 +102,6 @@ export function MeterStrip({ channels, range, onRange, variant = 'column', class
           rightHoldRef.current.style.opacity = Number.isFinite(hold.current.r) ? '1' : '0'
         }
       }
-      if (l >= -0.1 || r >= -0.1) {
-        setClipped(true)
-      }
-      frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)

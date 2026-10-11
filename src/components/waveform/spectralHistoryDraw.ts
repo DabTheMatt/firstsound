@@ -172,6 +172,8 @@ export type SpectralPaintInput = {
   colors: ThemeColors
   mobile: boolean
   reducedMotion: boolean
+  /** Presentation only. Skips camera glide and lowers decorative trail intensity. */
+  calm?: boolean
   layer: SpectrumLayer
 }
 
@@ -472,7 +474,7 @@ export function paintSpectralHistory(
   runtime.camera.preset = input.cameraPreset
   const camera = clampSpectralCamera(runtime.camera)
   runtime.camera = camera
-  if (spectralCameraEases(input.reducedMotion)) {
+  if (spectralCameraEases(input.reducedMotion) && !input.calm) {
     const glide = Math.min(1, Math.max(0.2, input.dt * 10))
     runtime.displayYaw += shortestSpectralYaw(runtime.displayYaw, camera.yaw) * glide
     runtime.displayPitch += (camera.pitch - runtime.displayPitch) * glide
@@ -588,7 +590,7 @@ export function paintSpectralHistory(
       const chosen = selectSpectralSlices(runtime.times, count, runtime.clock.now, input.historySec, slices)
       spectralPeakHold(buffer, chosen, runtime.peak)
       ctx.save()
-      ctx.globalAlpha = 0.85
+      ctx.globalAlpha = input.calm ? 0.55 : 0.85
       ctx.lineWidth = input.dpr * 1.1
       ctx.setLineDash([2 * input.dpr, 3 * input.dpr])
       ctx.strokeStyle = colorWithAlpha(colors.textPrimary, 0.45)

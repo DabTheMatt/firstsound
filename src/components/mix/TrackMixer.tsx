@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { appliedSensoryPresentation } from '../../a11y/settings'
+import { presentMeterPercent } from '../../a11y/sensoryComfort'
 import { dbToMeterPct } from '../../app/editorState'
 import { isDocumentHidden, paintIntervalMs } from '../../app/frameBudget'
 import { timeDomainPeakDb } from '../../audio/engine/timePeak'
@@ -29,6 +31,7 @@ type MeterBind = {
 const meterBinds = new Set<MeterBind>()
 let meterFrame = 0
 let meterLast = 0
+let meterVisual = 0
 const scratchL = { data: null as Float32Array | null }
 const scratchR = { data: null as Float32Array | null }
 
@@ -38,8 +41,15 @@ function paintMeters(now: number): void {
     return
   }
   meterFrame = requestAnimationFrame(paintMeters)
-  if (isDocumentHidden() || now - meterLast < paintIntervalMs(engine.getSnapshot().playing)) return
+  if (isDocumentHidden()) return
+  const playing = engine.getSnapshot().playing
+  if (now - meterLast < paintIntervalMs(playing)) return
   meterLast = now
+  const comfort = appliedSensoryPresentation()
+  const calm = comfort.calmMeters
+  const slowVisual = comfort.visualActivity === 'low' || calm
+  const paintNow = !slowVisual || meterVisual === 0 || now - meterVisual >= paintIntervalMs(playing, 'low')
+  if (paintNow) meterVisual = now
   for (const bind of meterBinds) {
     const pair = engine.getTrackMeterPair(bind.id)
     const leftDb = timeDomainPeakDb(pair?.left ?? engine.getTrackAnalyser(bind.id), scratchL)
@@ -48,10 +58,16 @@ function paintMeters(now: number): void {
       bind.clipped = true
       bind.onClip()
     }
-    const targetL = dbToMeterPct(leftDb, METER_FLOOR_DB)
-    const targetR = dbToMeterPct(rightDb, METER_FLOOR_DB)
-    bind.shownL = targetL > bind.shownL ? targetL : bind.shownL * 0.82
-    bind.shownR = targetR > bind.shownR ? targetR : bind.shownR * 0.82
+    if (!paintNow) continue
+    const targetL = presentMeterPercent(dbToMeterPct(leftDb, METER_FLOOR_DB), calm)
+    const targetR = presentMeterPercent(dbToMeterPct(rightDb, METER_FLOOR_DB), calm)
+    if (calm) {
+      bind.shownL = targetL
+      bind.shownR = targetR
+    } else {
+      bind.shownL = targetL > bind.shownL ? targetL : bind.shownL * 0.82
+      bind.shownR = targetR > bind.shownR ? targetR : bind.shownR * 0.82
+    }
     bind.left.style.height = `${Math.max(0, bind.shownL)}%`
     if (bind.right) bind.right.style.height = `${Math.max(0, bind.shownR)}%`
   }

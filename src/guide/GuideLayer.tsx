@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { peekTrigger, restoreTrigger } from '../a11y/dialogFocus'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
-import { effectiveReducedMotion } from '../a11y/settings'
+import { appliedSensoryPresentation, effectiveReducedMotion } from '../a11y/settings'
 import { useEngine } from '../hooks/useEngine'
 import { useI18n } from '../i18n'
 import { boundInstance, moduleIds } from './actions'
@@ -111,7 +111,7 @@ export function GuideLayer(props: Props) {
   useEffect(() => {
     if (!state.autoAdvance || state.view !== 'task' || !step) return
     if (readiness(step, state, signal) !== 'done') return
-    if (effectiveReducedMotion()) return
+    if (effectiveReducedMotion() || appliedSensoryPresentation().reduceDecorativeMotion) return
     const id = window.setTimeout(() => dispatchGuide({ type: 'next', signal, mode }), 1600)
     return () => window.clearTimeout(id)
   }, [state, step, signal, mode])
@@ -194,6 +194,7 @@ export function GuideLayer(props: Props) {
         <div
           className={styles.glow}
           data-guide-highlight=""
+          data-decorative=""
           style={{ top: rect.top - 4, left: rect.left - 4, width: rect.width + 8, height: rect.height + 8 }}
           aria-hidden="true"
         />
@@ -674,6 +675,12 @@ function focusRevealed(node: HTMLElement | null): void {
   target?.focus()
 }
 
+function needsScroll(node: HTMLElement): boolean {
+  const rect = node.getBoundingClientRect()
+  const margin = 8
+  return rect.top < margin || rect.left < margin || rect.bottom > window.innerHeight - margin || rect.right > window.innerWidth - margin
+}
+
 function reveal(target: GuideTargetId, instance: string | null): void {
   const host = getGuideHost()
   if (host.focusActive && targetHiddenInFocus(target)) {
@@ -681,10 +688,13 @@ function reveal(target: GuideTargetId, instance: string | null): void {
     return
   }
   host.revealTarget(target, instance)
+  const calm = appliedSensoryPresentation().reduceDecorativeMotion
   window.setTimeout(() => {
     const node = findGuideElement(target, instance) ?? (target.startsWith('technical.add') ? findGuideElement('technical.addEffect') : null)
-    node?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    if (node && needsScroll(node)) {
+      node.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: calm ? 'auto' : 'auto' })
+    }
     focusRevealed(node)
     window.dispatchEvent(new Event('field-guide-revealed'))
-  }, 60)
+  }, calm ? 0 : 60)
 }
