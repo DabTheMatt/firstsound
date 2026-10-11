@@ -203,6 +203,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
       data-guide-target="technical.effectChain"
       data-guide-rank="1"
       data-attention-region="chain"
+      data-stable-region="effects"
     >
       {chain.map((mod, index) => {
         const fixed = isFixedType(mod.type)

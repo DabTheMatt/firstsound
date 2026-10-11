@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { appViewportHeightPx, resolveLayoutMode, type LayoutMode } from './layoutMode'
+import { useEffect, useRef, useState } from 'react'
+import { LAYOUT_HYSTERESIS_PX, layoutStabilized } from '../a11y/predictableLayout'
+import { appViewportHeightPx, resolveLayoutModeStable, type LayoutMode } from './layoutMode'
 
 function readBox() {
   const viewport = window.visualViewport
@@ -20,29 +21,37 @@ function readBox() {
 }
 
 export function useLayoutMode(): { mode: LayoutMode; width: number; height: number } {
-  const [box, setBox] = useState(() =>
-    typeof window === 'undefined'
-      ? { width: 1280, height: 800 }
-      : readBox(),
-  )
+  const previous = useRef<LayoutMode | null>(null)
+  const [box, setBox] = useState(() => {
+    const size = typeof window === 'undefined' ? { width: 1280, height: 800 } : readBox()
+    return { ...size, mode: resolveLayoutModeStable(size, null, false) }
+  })
 
   useEffect(() => {
     const update = () => {
       const next = readBox()
-      setBox((prev) => (prev.width === next.width && prev.height === next.height ? prev : next))
+      const mode = resolveLayoutModeStable(next, previous.current, layoutStabilized(), LAYOUT_HYSTERESIS_PX)
+      previous.current = mode
+      setBox((prev) =>
+        prev.width === next.width && prev.height === next.height && prev.mode === mode
+          ? prev
+          : { width: next.width, height: next.height, mode },
+      )
     }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
     window.visualViewport?.addEventListener('resize', update)
     window.visualViewport?.addEventListener('scroll', update)
+    document.addEventListener('field-a11y-change', update)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('orientationchange', update)
       window.visualViewport?.removeEventListener('resize', update)
       window.visualViewport?.removeEventListener('scroll', update)
+      document.removeEventListener('field-a11y-change', update)
     }
   }, [])
 
-  return { mode: resolveLayoutMode(box), width: box.width, height: box.height }
+  return { mode: box.mode, width: box.width, height: box.height }
 }

@@ -35,6 +35,32 @@ export function meterColumnWidth(mode: LayoutMode): number {
   return mode === 'dock-right' ? 78 : 0
 }
 
+/**
+ * While Predictable Layout asks for stable panels, a viewport that is still
+ * within `hysteresis` of a breakpoint keeps the previous variant. A real
+ * change in size or orientation still switches. `enabled` false is the
+ * existing breakpoint function.
+ */
+export function resolveLayoutModeStable(
+  input: LayoutInput,
+  previous: LayoutMode | null,
+  enabled: boolean,
+  hysteresis = 32,
+): LayoutMode {
+  const next = resolveLayoutMode(input)
+  if (!enabled || previous == null || previous === next) return next
+  const band = Math.max(0, hysteresis)
+  const samples = [
+    resolveLayoutMode({ ...input, width: Math.max(0, input.width - band) }),
+    resolveLayoutMode({ ...input, width: input.width + band }),
+    resolveLayoutMode({ ...input, height: Math.max(0, input.height - band) }),
+    resolveLayoutMode({ ...input, height: input.height + band }),
+  ]
+  const unstable = samples.some((mode) => mode !== next)
+  if (unstable && samples.includes(previous)) return previous
+  return next
+}
+
 /** Layout pixels for the shell. The visual viewport is the area not covered by
  * mobile browser chrome. When it is missing, keep the larger of inner and
  * client so a standalone PWA does not leave a gap under the transport. */

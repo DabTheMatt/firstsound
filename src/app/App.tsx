@@ -98,6 +98,13 @@ import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
 import { graphSnapshotFrozen } from '../audio/engine/graphSnapshot'
 import { holdGraphSnapshot } from '../components/workspace/SpectrumDisplaySettings'
 import { vizForWorkspace, workspaceFromViz, type TechnicalWorkspaceId } from '../components/workspace/workspaces'
+import {
+  LAYOUT_RESTORE_EVENT,
+  initialLayoutMemory,
+  layoutMemoryEnabled,
+  patchLayoutMemory,
+  clearLayoutMemory,
+} from '../a11y/predictableLayout'
 import { countHiddenActivity } from '../components/workspace/disclosure'
 import { parameterModulationState } from '../components/modulation/modulationModel'
 import { toNormalized } from '../audio/parameters/mapping'
@@ -206,17 +213,21 @@ export default function App() {
   const [lfoCenterOpen, setLfoCenterOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [tool, setTool] = useState<WaveTool>('select')
-  const [viz, setViz] = useState<VizMode>('waveform')
+  const [viz, setViz] = useState<VizMode>(() => {
+    const id = initialLayoutMemory()?.technicalWorkspace
+    if (!id || id === 'hearing') return 'waveform'
+    return vizForWorkspace(id) ?? 'waveform'
+  })
   const [arrangement, setArrangement] = useState<'single' | 'multi'>('single')
   const [autoFocus, setAutoFocus] = useState<AutomationEditFocus>(EMPTY_AUTOMATION_FOCUS)
   const [meterRange, setMeterRange] = useState<MeterRange>('normal')
   const [edit, setEdit] = useState<EditState>(DEFAULT_EDIT)
   const [normalizeView, setNormalizeView] = useState(false)
-  const [inspectorOpen, setInspectorOpen] = useState(true)
-  const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>('medium')
+  const [inspectorOpen, setInspectorOpen] = useState(() => initialLayoutMemory()?.inspectorOpen ?? true)
+  const [sheetLevel, setSheetLevel] = useState<'collapsed' | 'medium' | 'expanded'>(() => initialLayoutMemory()?.sheetLevel ?? 'medium')
   const [focusWorkspace, setFocusWorkspace] = useState<FocusWorkspace | null>(null)
-  const [hearingBoard, setHearingBoard] = useState(false)
-  const [contextLevel, setContextLevel] = useState<'closed' | 'compact' | 'open'>('compact')
+  const [hearingBoard, setHearingBoard] = useState(() => initialLayoutMemory()?.technicalWorkspace === 'hearing')
+  const [contextLevel, setContextLevel] = useState<'closed' | 'compact' | 'open'>(() => initialLayoutMemory()?.contextLevel ?? 'compact')
   const [analyzerOpen, setAnalyzerOpen] = useState(false)
   const [collapseToken, setCollapseToken] = useState(0)
   const [zoomLabel, setZoomLabel] = useState('100%')
@@ -789,6 +800,7 @@ export default function App() {
     clearPointerInteraction()
     setDragging(false)
     persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS })
+    clearLayoutMemory()
     engine.resetSession()
     const dsp = captureDsp(engine)
     appliedRef.current = cloneDsp(dsp)
@@ -797,6 +809,10 @@ export default function App() {
     setFocus({ kind: 'module', instanceId: 'gain-1', type: 'gain' })
     setFocusWorkspace(null)
     setViz('waveform')
+    setHearingBoard(false)
+    setInspectorOpen(true)
+    setContextLevel('compact')
+    setSheetLevel('medium')
     setMenuOpen(false)
     setLfoCenterOpen(false)
     setExportOpen(false)
@@ -930,6 +946,30 @@ export default function App() {
   }
 
   const workspaceId = workspaceFromViz(viz, hearingBoard)
+  const rememberLayout = layoutMemoryEnabled(a11y)
+
+  useEffect(() => {
+    if (!rememberLayout || activeFocus) return
+    patchLayoutMemory({
+      technicalWorkspace: workspaceId,
+      inspectorOpen,
+      contextLevel,
+      sheetLevel,
+    })
+  }, [rememberLayout, activeFocus, workspaceId, inspectorOpen, contextLevel, sheetLevel])
+
+  useEffect(() => {
+    const restore = () => {
+      setViz('waveform')
+      setHearingBoard(false)
+      setInspectorOpen(true)
+      setContextLevel('compact')
+      setSheetLevel('medium')
+      setFocusWorkspace(null)
+    }
+    document.addEventListener(LAYOUT_RESTORE_EVENT, restore)
+    return () => document.removeEventListener(LAYOUT_RESTORE_EVENT, restore)
+  }, [])
 
   const activateWorkspace = (id: TechnicalWorkspaceId) => {
     if (id === 'hearing') {
@@ -1816,7 +1856,7 @@ export default function App() {
         </div>
 
         <div className={`${styles.work} ${isPhoneLayout ? styles.phoneWork : ''}`}>
-          <div ref={waveColRef} className={styles.waveCol} data-focus-inset={activeFocus ? '' : undefined} data-focus-workspace={activeFocus ?? undefined}>
+          <div ref={waveColRef} className={styles.waveCol} data-stable-region="waveform" data-focus-inset={activeFocus ? '' : undefined} data-focus-workspace={activeFocus ?? undefined}>
             {activeFocus ? (
               <FocusChrome
                 workspace={activeFocus}
@@ -2063,7 +2103,7 @@ export default function App() {
             />
           </div>
           {dockRight && showContext && !activeFocus && !workspaceContextBottom ? (
-            <aside className={styles.inspector} data-inspector={panelKey}>
+            <aside className={styles.inspector} data-inspector={panelKey} data-stable-region="inspector">
               {contextBody}
             </aside>
           ) : null}
@@ -2084,7 +2124,7 @@ export default function App() {
         </div>
 
         {isPhoneLayout && !activeFocus ? (
-          <div className={styles.phoneContext}>
+          <div className={styles.phoneContext} data-stable-region="inspector">
             <MobileContext snap={snap} focus={resolvedFocus} collapseToken={collapseToken} />
           </div>
         ) : null}
@@ -2093,6 +2133,8 @@ export default function App() {
           <div
             className={`${styles.bottom} ${isPhoneLayout ? styles.phoneBottom : styles[activeSheetLevel]}`}
             data-inspector={panelKey}
+            data-stable-region="inspector"
+            data-sheet-level={activeSheetLevel}
           >
             {sheet ? (
               <button
@@ -2128,7 +2170,7 @@ export default function App() {
           </div>
         ) : null}
 
-        <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`} data-transport="">
+        <div className={`${styles.transportWrap} ${isPhoneLayout ? styles.transportPinned : ''}`} data-transport="" data-stable-region="transport">
           <CompactTransport
             playing={snap.playing}
             loop={snap.loop}
@@ -2144,7 +2186,7 @@ export default function App() {
             onRedo={() => applyHistory(redoHistory(history))}
           />
           {isPhoneLayout ? null : (
-          <div className={styles.exportCol}>
+          <div className={styles.exportCol} data-stable-region="export">
             <HearingTransportButton hidden={activeFocus === 'hearing'} />
             <TransportExportButton disabled={!snap.sampleLoaded} onExport={openExport} />
           </div>

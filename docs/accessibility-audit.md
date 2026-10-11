@@ -2,7 +2,7 @@
 
 Audit date: 2026-10-11
 
-Tested application version: 0.30.0
+Tested application version: 0.31.0
 
 The 0.21.3 baseline below is kept. FIELD ACCESS 20C is recorded in its own section. This is still not a WCAG conformance claim.
 
@@ -12,7 +12,7 @@ This document is a baseline for FIELD ACCESS. It is not a WCAG conformance claim
 
 | Kind | Result |
 | --- | --- |
-| Automated tests | PASS — `npm run test:a11y`, 70 Playwright tests, axe-core 4.13 |
+| Automated tests | PASS — `npm run test:a11y`, 78 Playwright tests, axe-core 4.13 |
 | Manual assistive technology | NOT TESTED — no NVDA, VoiceOver, JAWS, or TalkBack session |
 | Known limitations | Documented below. They are not hidden by disabled axe rules. |
 
@@ -245,6 +245,35 @@ Remaining limitations:
 - Narrow viewports were checked in the automated suite at 320, 375, 390, and 430 CSS pixels. That is emulation, not a physical phone
 - Canvas fade handles remain pointer targets. The keyboard path is still the drag-free editors
 - Reset application continues to restore FIELD ACCESS defaults. That matches the 22A and 22B contract and is covered by the scaling test
+
+## FIELD ACCESS 21B — predictable layout (0.31.0)
+
+Predictable Layout is Settings → Accessibility → Cognitive & attention. It is an accessibility preference, not a mode. Default is off. Stored fields on the existing FIELD ACCESS record: `predictableLayout`, `stablePanels`, `rememberWorkspaceLayout`, `reduceLayoutMovement`. The three sub-settings are stored as on, and they apply only while Predictable Layout is on. `data-predictable`, `data-stable-panels`, `data-remember-layout`, and `data-reduce-layout` are `on` or `off`.
+
+Workspace arrangement is a separate record, `field.layout.v1`. It stores the Technical workspace, inspector open state, context level, sheet level, an optional inspector width, and scroll offsets. It does not store audio parameters, automation, LFO values, or focus. Restore workspace layout clears that record and returns Wave with the usual panel levels. It does not change FIELD ACCESS switches. Restore accessibility defaults resets Predictable Layout with the other switches and leaves the sample alone. Reset all clears the audio project and leaves both records alone. Reset application still restores FIELD ACCESS defaults and also clears the layout record.
+
+What the preference does when it is on:
+
+- Stable Panels gives the lower inspector and the phone context a steady height that follows the viewport and the text size. Extra parameters scroll inside. The side inspector on a wide screen already spans its column. Transport, waveform, effect chain, workspace tabs, and export keep their existing regions
+- Breakpoints stay the ones in `resolveLayoutMode`. Within 32px of a boundary the previous variant is held, so a small resize does not flip the layout. A larger change still switches. Responsive layout is not frozen
+- Remember Workspace Layout restores the last Technical workspace and panel levels on the next load, including after Simple or Sensory, because those modes share the same project
+- Reduce Layout Movement turns off panel transitions and makes Show me where reveal immediately. Reduced Motion and Sensory Comfort stay in charge of decorative motion
+- High Visibility border weight stays 1px while Predictable Layout’s stable panels are on, and the extra edge is an inset outline so the box size does not change. Attention Focus still uses shadow and outline and does not resize panels
+- Focus Mode can still hide the normal panels. Leaving it shows the panels that were already open. Guided Tasks stay on their fixed panel
+
+Remaining layout shifts:
+
+- Switching to a different effect still replaces the inspector’s contents. The outer panel stays; the controls inside are the new effect
+- Validation and status text inside a scrolling panel still takes a line when it appears. Errors are not hidden
+- The top bar can still scroll sideways on a very narrow screen (R4)
+- Hearing Access panel size stays in its own settings. This preference does not add a second copy
+- The technical inspector has no drag-resize handle. Its width still follows the viewport steps. A stored width is clamped if one is present
+
+Focus restoration: dialogs, the settings menu, export, Guided Tasks, workspace navigation, and keyboard help already return focus through `rememberTrigger` / `restoreTrigger`. The 21B Playwright case checks Escape from Settings. Assisted Controls that are inline editors do not move focus when a value changes.
+
+Mobile: Playwright viewports 320, 375, 390, 430, 768×1024, and desktop, with Interface Size 150% and Text Size 200%. That is emulation, not a physical phone. No device orientation session was run on hardware. The audio engine is not recreated by this preference. A desktop page at 1440×900 with Interface Size 125%, Text Size 150%, and CSS zoom 150% still showed the Predictable Layout switch. That is not a manual browser-zoom session, and FIELD does not disable zoom or simulate it with `transform: scale()`.
+
+Screen reader testing: NOT TESTED. No NVDA, VoiceOver, JAWS, or TalkBack session was run for 21B. The DOM order of navigation, waveform, inspector, and transport was not visually reordered. Positive tabindex was not added. This is not a WCAG 2.2 AA conformance claim.
 
 ## FIELD ACCESS 22C — Sensory Comfort (0.29.0)
 

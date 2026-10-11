@@ -16,6 +16,7 @@ import {
   type A11ySettings as A11yState,
   type AttentionStrength,
 } from './settings'
+import { requestLayoutRestore } from './predictableLayout'
 import type { VisualActivity } from './sensoryComfort'
 import { useA11ySettings } from './useA11ySettings'
 import styles from './A11ySettings.module.css'
@@ -327,6 +328,52 @@ export function A11ySettings({ onBack }: Props) {
           offLabel={a.off}
           onChange={(attentionReduce) => setSettings({ attentionReduce })}
         />
+        <PreferenceSwitch
+          checked={settings.predictableLayout}
+          label={a.predictableLayout}
+          description={a.predictableLayoutHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          onChange={(predictableLayout) => setSettings({ predictableLayout })}
+        />
+        <PreferenceSwitch
+          checked={settings.stablePanels}
+          label={a.stablePanels}
+          description={a.stablePanelsHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.predictableLayout}
+          onChange={(stablePanels) => setSettings({ stablePanels })}
+        />
+        <PreferenceSwitch
+          checked={settings.rememberWorkspaceLayout}
+          label={a.rememberLayout}
+          description={a.rememberLayoutHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.predictableLayout}
+          onChange={(rememberWorkspaceLayout) => setSettings({ rememberWorkspaceLayout })}
+        />
+        <PreferenceSwitch
+          checked={settings.reduceLayoutMovement}
+          label={a.reduceLayout}
+          description={a.reduceLayoutHelp}
+          onLabel={a.on}
+          offLabel={a.off}
+          disabled={!settings.predictableLayout}
+          onChange={(reduceLayoutMovement) => setSettings({ reduceLayoutMovement })}
+        />
+        <p className={styles.help}>{a.restoreLayoutHelp}</p>
+        <button
+          type="button"
+          className={styles.restore}
+          onClick={() => {
+            requestLayoutRestore()
+            announce(a.layoutRestored)
+          }}
+        >
+          {a.restoreLayout}
+        </button>
       </div>
 
       <div>

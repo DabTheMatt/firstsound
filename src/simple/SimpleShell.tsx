@@ -766,7 +766,7 @@ export function SimpleShell({
   )
 
   const transport = (
-    <div className={styles.transport} data-transport="">
+    <div className={styles.transport} data-transport="" data-stable-region="transport">
       <button
         type="button"
         className={styles.play}
@@ -804,7 +804,7 @@ export function SimpleShell({
         </button>
       </div>
       {sidePanel ? (
-        <button type="button" className={styles.export} data-simple-export="" {...guideTargetAttrs('export.open')} disabled={!snap.sampleLoaded} onClick={() => { emitGuideEvent('export.opened'); setSheet('save') }}>
+        <button type="button" className={styles.export} data-simple-export="" data-stable-region="export" {...guideTargetAttrs('export.open')} disabled={!snap.sampleLoaded} onClick={() => { emitGuideEvent('export.opened'); setSheet('save') }}>
           {t.transport.export}
         </button>
       ) : null}
@@ -826,7 +826,7 @@ export function SimpleShell({
       }}
     >
       <div className={styles.shell}>
-        <header className={styles.header}>
+        <header className={styles.header} data-stable-region="navigation">
           <Wordmark compact={frame === 'phone'} />
           <button
             type="button"
@@ -862,7 +862,7 @@ export function SimpleShell({
           <div className={styles.belowMain}>
             <div className={styles.workspace}>
               <div className={styles.stage}>
-                <div className={styles.wave}>
+                <div className={styles.wave} data-stable-region="waveform">
                   <Waveform
                     ref={waveRef}
                     key={`${snap.fileName || 'empty'}:${snap.duration.toFixed(6)}`}

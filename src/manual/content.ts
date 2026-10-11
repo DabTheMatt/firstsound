@@ -322,6 +322,7 @@ const en: ManualSection[] = [
       'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
       'High Visibility Controls is in Settings → Accessibility → Visual comfort. It is off until you turn it on. It makes important controls, selections, and editing handles easier to see. The sound does not change.',
       'Attention Focus is in Settings → Accessibility → Cognitive & attention. It is off until you turn it on. It highlights the controls that belong to the edit you are doing, and it can quiet decorative contrast elsewhere. It does not hide controls, and it does not change the sound. See Attention Focus.',
+      'Predictable Layout is in the same Cognitive & attention section. It is off until you turn it on. It keeps tools and panels in consistent places. See Predictable Layout.',
       'Interface Size and Text Size are in the same visual section. They are separate from each other and from Larger Controls. See Interface & text scaling.',
       'Choices are saved in this browser and survive reload. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project. Reset application, in the top bar, also returns these preferences, including Interface Size, Text Size, High Visibility, Attention Focus, and Sensory Comfort, to their defaults.',
       'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
@@ -365,6 +366,18 @@ const en: ManualSection[] = [
       'Attention Focus is not Focus Mode. Focus Mode changes which workspace is on screen. Attention Focus only changes emphasis. You can use both. FIELD does not turn Focus Mode on for you.',
       'When a Guided Tasks step is open, that step is the mark FIELD uses. Show me where still works the same way. Finishing a step still depends on the edit you actually make, not on the highlight.',
       'The choice is saved in this browser. It survives reload and mode changes. Restore accessibility defaults turns Attention Focus off and leaves the audio project alone. Changing it does not restart playback.',
+    ],
+  },
+  {
+    id: 'predictable-layout',
+    title: 'Predictable Layout',
+    body: [
+      'Predictable Layout is in Settings → Accessibility → Cognitive & attention. It is off until you turn it on. It is an accessibility preference, not another editing mode. Simple, Technical, and Sensory stay as they are. Turning it on does not change the sound, the audio engine, automation, LFO processing, or export.',
+      'Turn it on when you want tools and panels to stay in consistent places while you work. Three choices sit under it. Stable Panels keeps the inspector, the effect chain, and the transport in steady boxes. When a panel has more to show, that content scrolls inside the panel. Remember Workspace Layout remembers the workspace you last used, and whether panels were open or collapsed, for the next time you open FIELD. Reduce Layout Movement shortens panel animation. The screen still adapts when the window changes size. Browser zoom stays on.',
+      'A change you make on purpose still happens. Focus Mode can still open a quieter workspace, and leaving Focus Mode brings the panels back. Guided Tasks still open in their own panel. Show me where can still scroll to a control that is off screen. Drag-free editors, the accessible waveform tools, and Assisted Controls stay where they already open.',
+      'Restore workspace layout, on the same screen, puts the panels back in their usual places. It does not turn Predictable Layout off, and it does not change the sample. Restore accessibility defaults turns the switch off with the other accessibility preferences, and leaves the sample alone. Reset all, in Settings, clears the audio project and leaves these preferences in place. Reset application clears the session and also returns the accessibility preferences, including Predictable Layout, to their defaults.',
+      'On a narrow screen the same regions stay in a steady order: navigation, the waveform, then the editing controls. The inspector stays a side panel on a wide screen and a lower panel on a phone. It does not switch between those presentations on its own. Larger Interface Size and Text Size still reflow. Text that does not fit scrolls inside the panel instead of being clipped.',
+      'Attention Focus can still highlight the control you are editing. It does not move the panel. High Visibility keeps its outlines without pushing neighboring controls when Predictable Layout is on. Sensory Comfort and Reduced Motion still calm decorative motion. Keyboard focus stays on the control you are using while you edit a value.',
     ],
   },
   {
@@ -771,6 +784,7 @@ const pl: ManualSection[] = [
       'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
       'Zwiększona widoczność kontrolek jest w Ustawienia → Dostępność → Komfort widzenia. Jest wyłączona, dopóki jej nie włączysz. Poprawia widoczność kontrolek, zaznaczeń i uchwytów edycyjnych. Dźwięk się nie zmienia.',
       'Koncentracja uwagi jest w Ustawienia → Dostępność → Poznanie i uwaga. Jest wyłączona, dopóki jej nie włączysz. Wyróżnia kontrolki związane z czynnością, którą właśnie wykonujesz, i może ściszyć dekoracyjny kontrast gdzie indziej. Nie ukrywa kontrolek i nie zmienia dźwięku. Patrz Koncentracja uwagi.',
+      'Przewidywalny układ jest w tej samej sekcji Poznanie i uwaga. Jest wyłączony, dopóki go nie włączysz. Utrzymuje narzędzia i panele w stałych miejscach. Patrz Przewidywalny układ.',
       'Rozmiar interfejsu i Rozmiar tekstu są w tej samej sekcji widzenia. Są osobne od siebie i od większych elementów sterujących. Patrz Rozmiar interfejsu i tekstu.',
       'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu. Reset aplikacji na górnym pasku też wraca z tymi preferencjami, w tym z Rozmiarem interfejsu, Rozmiarem tekstu, zwiększoną widocznością, koncentracją uwagi i Komfortem sensorycznym, do wartości domyślnych.',
       'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
@@ -814,6 +828,18 @@ const pl: ManualSection[] = [
       'Koncentracja uwagi to nie jest tryb Focus. Focus zmienia, który obszar jest na ekranie. Koncentracja uwagi zmienia tylko wyróżnienie. Można używać obu. FIELD sam nie włącza trybu Focus.',
       'Gdy krok zadań z przewodnikiem jest otwarty, ten krok jest znakiem, którego FIELD używa. Pokaż gdzie działa tak samo jak wcześniej. Ukończenie kroku nadal zależy od edycji, którą naprawdę zrobisz, a nie od podświetlenia.',
       'Wybór zapisuje się w tej przeglądarce. Przeżywa odświeżenie i zmianę trybu. Przywróć domyślne ustawienia dostępności wyłącza koncentrację uwagi i zostawia projekt audio. Zmiana nie restartuje odtwarzania.',
+    ],
+  },
+  {
+    id: 'predictable-layout',
+    title: 'Przewidywalny układ',
+    body: [
+      'Przewidywalny układ jest w Ustawienia → Dostępność → Poznanie i uwaga. Jest wyłączony, dopóki go nie włączysz. To preferencja dostępności, nie kolejny tryb edycji. Prosty, Techniczny i Sensoryczny zostają. Włączenie nie zmienia dźwięku, silnika audio, automatyzacji, przetwarzania LFO ani eksportu.',
+      'Włącz go, gdy narzędzia i panele mają zostawać w stałych miejscach podczas pracy. Pod spodem są trzy wybory. Stabilne panele trzymają inspektor, łańcuch efektów i transport w stałych ramkach. Gdy panel ma więcej treści, ta treść przewija się w środku. Zapamiętaj układ obszaru roboczego pamięta ostatni obszar roboczy oraz to, czy panele były otwarte czy zwinięte, na kolejne otwarcie FIELD. Ogranicz ruch układu skraca animację paneli. Ekran nadal dopasowuje się, gdy zmieniasz rozmiar okna. Powiększenie przeglądarki zostaje włączone.',
+      'Zmiana, którą robisz celowo, nadal zachodzi. Tryb Focus nadal może otworzyć spokojniejszy obszar, a wyjście z Focus przywraca panele. Zadania z przewodnikiem nadal otwierają się we własnym panelu. Pokaż gdzie nadal może przewinąć do kontrolki poza ekranem. Edytory bez przeciągania, narzędzia dostępnej fali i kontrolki wspomagane zostają tam, gdzie już się otwierają.',
+      'Przywróć układ obszaru roboczego, na tym samym ekranie, odkłada panele na zwykłe miejsca. Nie wyłącza Przewidywalnego układu i nie zmienia sampla. Przywróć domyślne ustawienia dostępności wyłącza ten przełącznik razem z pozostałymi preferencjami dostępności i zostawia sampel. Reset wszystkiego, w Ustawieniach, czyści projekt audio i zostawia te preferencje. Reset aplikacji czyści sesję i dodatkowo wraca z preferencjami dostępności, łącznie z Przewidywalnym układem, do wartości domyślnych.',
+      'Na wąskim ekranie te same obszary zostają w stałej kolejności: nawigacja, fala, potem kontrolki edycji. Inspektor zostaje panelem z boku na szerokim ekranie i panelem u dołu na telefonie. Sam nie przeskakuje między tymi postaciami. Większy Rozmiar interfejsu i Rozmiar tekstu nadal układają treść od nowa. Tekst, który się nie mieści, przewija się w panelu, zamiast być ucięty.',
+      'Koncentracja uwagi nadal może wyróżnić kontrolkę, którą edytujesz. Nie przesuwa panelu. Zwiększona widoczność zostawia obrysy i nie popycha sąsiednich kontrolek, gdy Przewidywalny układ jest włączony. Komfort sensoryczny i Ogranicz ruch nadal uspokajają ruch dekoracyjny. Fokus klawiatury zostaje na kontrolce, której używasz, gdy zmieniasz wartość.',
     ],
   },
   {

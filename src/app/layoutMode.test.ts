@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appViewportHeightPx, inspectorWidth, resolveLayoutMode } from './layoutMode'
+import { appViewportHeightPx, inspectorWidth, resolveLayoutMode, resolveLayoutModeStable } from './layoutMode'
 
 describe('resolveLayoutMode', () => {
   it('uses bottom sheets on phone-width viewports', () => {
@@ -33,6 +33,14 @@ describe('resolveLayoutMode', () => {
 
   it('keeps landscape tablets on the dock', () => {
     expect(resolveLayoutMode({ width: 1024, height: 768 })).toBe('dock-right')
+  })
+})
+
+describe('resolveLayoutModeStable', () => {
+  it('uses the same answer as the breakpoint function when stability is off', () => {
+    const input = { width: 820, height: 900 }
+    expect(resolveLayoutModeStable(input, 'sheet', false)).toBe(resolveLayoutMode(input))
+    expect(resolveLayoutModeStable(input, null, true)).toBe(resolveLayoutMode(input))
   })
 })
 
