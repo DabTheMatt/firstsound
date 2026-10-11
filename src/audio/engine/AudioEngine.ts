@@ -351,6 +351,7 @@ import {
   regionFadeGain,
   type FadeCurve,
 } from './fades'
+import { renderFadedRegion } from './loopFade'
 import { motionValue } from './motion'
 import { mixToMono, buildPeakMips, type PeakMip } from './peaks'
 import {
@@ -724,6 +725,8 @@ export class AudioEngine {
     fadeInBend: 0.5,
     fadeOutBend: 0.5,
   }
+  /** Coalesces fade-handle drags so a looping project voice is not restarted per pixel. */
+  private fadeBakeTimer = 0
   private voices: ActiveVoice[] = []
   private loopTimer = 0
   private loopGen = 0
@@ -1411,7 +1414,19 @@ export class AudioEngine {
     if (same) return
     this.regionFade = next
     this.emit()
-    if (this.playing && this.engineMode === 'playback') this.retargetPlayingFade()
+    if (!this.playing || this.engineMode !== 'playback') return
+    if (!this.usingProjectTransport) {
+      this.retargetPlayingFade()
+      return
+    }
+    const selected = this.tracks.find((item) => item.id === this.selectedTrackId)
+    if (!selected?.loop) return
+    if (this.fadeBakeTimer) hostClearTimeout(this.fadeBakeTimer)
+    this.fadeBakeTimer = hostSetTimeout(() => {
+      this.fadeBakeTimer = 0
+      if (!this.playing || !this.usingProjectTransport) return
+      this.rescheduleTrack(this.selectedTrackId)
+    }, 40)
   }
 
   getChannelAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
@@ -1840,8 +1855,10 @@ export class AudioEngine {
         this.tracks = patchTrack(this.tracks, id, { loop: false })
       }
     }
+    // Publish before the async restart so the button and the hearing
+    // badge match the flag the click just wrote.
+    this.emit()
     if (this.playing) void this.play()
-    else this.emit()
   }
 
   seekSeconds(time: number, mode: ScrubMode = this.scrubMode): void {
@@ -4407,6 +4424,7 @@ export class AudioEngine {
     this.syncSelectedTrackRegion()
     const playhead = this.playing ? this.getPlayheadSeconds() : this.playOffset
     this.selectedTrackId = track.id
+    this.loop = track.loop
     this.direction = track.direction
     this.bindWorkingFromTrack(track.id)
     const duration = this.trackBuffers.get(track.id)?.duration ?? 0
@@ -6951,10 +6969,16 @@ export class AudioEngine {
           this.regionFade.fadeInBend,
           this.regionFade.fadeOutBend,
         )
+    const startGain = curve[0] ?? 1
+    const epsilon = 1 / (ctx.sampleRate || 48000)
     try {
-      musical.gain.setValueCurveAtTime(curve, when, Math.max(0.008, duration))
+      // The curve's first value is near 0 during a fade-in. Leaving the
+      // GainNode at its default of 1 for the first quantum is a tick.
+      if (when <= ctx.currentTime + epsilon) musical.gain.value = startGain
+      musical.gain.setValueAtTime(startGain, when)
+      musical.gain.setValueCurveAtTime(curve, when + epsilon, Math.max(0.008, Math.max(epsilon * 2, duration - epsilon)))
     } catch {
-      musical.gain.value = curve[0] ?? 1
+      musical.gain.value = startGain
     }
     if (segment.fadeIn > 0.0005) edge.gain.value = 0
     scheduleEdgeFades(edge.gain, when, duration, segment.fadeIn, segment.fadeOut)
@@ -7529,6 +7553,10 @@ export class AudioEngine {
     this.loopScheduling = false
     this.loopOverlapSec = 0
     this.usingProjectTransport = false
+    if (this.fadeBakeTimer) {
+      hostClearTimeout(this.fadeBakeTimer)
+      this.fadeBakeTimer = 0
+    }
     this.stopLeadStretch(fadeSec)
     this.stopCloudGrains(fadeSec)
     this.releaseVoices(Boolean(this.ctx), fadeSec)
@@ -7795,6 +7823,41 @@ export class AudioEngine {
     return buffer
   }
 
+  /**
+   * Region fades live on the waveform, not in the file. A native loop of the
+   * raw region clicks where fade-out should already be silent. Bake that
+   * envelope into the pass the source loops.
+   */
+  private fadedLoopBuffer(
+    source: AudioBuffer,
+    loopStart: number,
+    loopEnd: number,
+    reverse: boolean,
+  ): AudioBuffer | null {
+    const ctx = this.ctx
+    const fade = this.regionFade
+    if (!ctx || (fade.fadeIn < 0.0005 && fade.fadeOut < 0.0005)) return null
+    const channels: Float32Array[] = []
+    for (let c = 0; c < source.numberOfChannels; c++) channels.push(source.getChannelData(c))
+    const rendered = renderFadedRegion(
+      channels,
+      source.sampleRate,
+      loopStart,
+      loopEnd,
+      fade.fadeIn,
+      fade.fadeOut,
+      fade.curve,
+      fade.fadeInBend,
+      fade.fadeOutBend,
+      reverse,
+    )
+    const frames = rendered?.[0]?.length ?? 0
+    if (!rendered || frames < 2) return null
+    const baked = ctx.createBuffer(source.numberOfChannels, frames, source.sampleRate)
+    for (let c = 0; c < rendered.length; c++) baked.getChannelData(c).set(rendered[c]!)
+    return baked
+  }
+
   private startCue(
     trackId: string,
     buffer: AudioBuffer,
@@ -7804,14 +7867,24 @@ export class AudioEngine {
     bucket: 'project' | 'companion',
   ): void {
     const ctx = this.ctx
-    const playBuffer = this.cueBuffer(buffer, cue)
+    let playBuffer = this.cueBuffer(buffer, cue)
     if (!ctx || !playBuffer) return
     const src = ctx.createBufferSource()
+    let offset = Math.min(Math.max(0, cue.offset), Math.max(0, playBuffer.duration - 0.001))
+    let loopStart = Math.max(0, cue.loopStart)
+    let loopEnd = Math.min(playBuffer.duration, Math.max(loopStart + 0.001, cue.loopEnd || playBuffer.duration))
+    if (cue.loop && trackId === this.selectedTrackId) {
+      const faded = this.fadedLoopBuffer(playBuffer, loopStart, loopEnd, cue.buffer === 'reverse')
+      if (faded) {
+        offset = Math.min(Math.max(0, offset - loopStart), Math.max(0, faded.duration - 0.001))
+        playBuffer = faded
+        loopStart = 0
+        loopEnd = faded.duration
+      }
+    }
     src.buffer = playBuffer
     src.loop = cue.loop
     if (cue.loop) {
-      const loopStart = Math.max(0, cue.loopStart)
-      const loopEnd = Math.min(playBuffer.duration, Math.max(loopStart + 0.001, cue.loopEnd || playBuffer.duration))
       src.loopStart = loopStart
       src.loopEnd = loopEnd
     }
@@ -7829,7 +7902,6 @@ export class AudioEngine {
         edge.gain.value = 1
       }
     }
-    const offset = Math.min(Math.max(0, cue.offset), Math.max(0, playBuffer.duration - 0.001))
     try {
       src.start(at, offset, Math.max(0.001, cue.duration))
     } catch {

@@ -134,7 +134,9 @@ const en: ManualSection[] = [
   {
     id: 'loop',
     title: 'Loop',
-    body: ['Loop repeats the current selection. Turn it off to play through the rest of the sample.'],
+    body: [
+      'Loop repeats the current selection. Fade in and fade out are heard on every pass, including the restart, so the join is the quiet end of the fade meeting the quiet start. Turn it off to play through the rest of the sample. In Focus the loop icon is accent-coloured while it is on. A mouse click does not leave a focus box around it.',
+    ],
   },
   {
     id: 'input',
@@ -556,7 +558,9 @@ const pl: ManualSection[] = [
   {
     id: 'loop',
     title: 'Pętla',
-    body: ['Loop powtarza bieżące zaznaczenie. Wyłączenie puszcza resztę sampla.'],
+    body: [
+      'Loop powtarza bieżące zaznaczenie. Fade in i fade out słychać przy każdym przejściu, także na początku pętli, więc szew łączy cichy koniec zaniku z cichym początkiem. Wyłączenie puszcza resztę sampla. W Focus ikona pętli ma kolor akcentu, gdy jest włączona. Kliknięcie myszą nie zostawia wokół niej ramki fokusu.',
+    ],
   },
   {
     id: 'input',

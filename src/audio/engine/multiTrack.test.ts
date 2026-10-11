@@ -298,6 +298,7 @@ describe('multi-track foundation', () => {
     engine.useOfflineGraph(new OfflineAudioContext(2, rate * 2, rate))
     const track = engine.getSnapshot().tracks[0]!
     engine.loadTrackPcm(track.id, tone(1, rate, 1, 0.25), rate, 'loop.wav')
+    engine.setRegionFades(0, 0, 'linear')
     await engine.play()
     expect(engine.trackVoiceNode(track.id)).toBeNull()
     engine.setTrack(track.id, { loop: true })

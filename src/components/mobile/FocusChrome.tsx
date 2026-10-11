@@ -136,7 +136,12 @@ export function FocusChrome({
         </div>
         <div className={styles.actions} data-focus-zone="actions">
           {workspace === 'fft' && touch ? <FftFocusTools /> : null}
-          <FocusTransport playing={playing} canPlay={canPlay} loop={snap.loop} onTogglePlay={onTogglePlay} />
+          <FocusTransport
+            playing={playing}
+            canPlay={canPlay}
+            loop={snap.loop || Boolean(track?.loop)}
+            onTogglePlay={onTogglePlay}
+          />
           {touch ? (
             <button
               type="button"
@@ -219,12 +224,13 @@ function FocusTransport({
         className={styles.hit}
         data-transport=""
         data-geometry="square"
+        data-loop=""
         aria-pressed={loop}
         aria-label={t.transport.loop}
         title={t.transport.loop}
         onClick={() => engine.setLoop(!loop)}
       >
-        <LoopIcon />
+        <LoopIcon on={loop} />
       </button>
     </div>
   )
@@ -661,21 +667,22 @@ function StopIcon() {
   )
 }
 
-function LoopIcon() {
+function LoopIcon({ on }: { on: boolean }) {
+  const stroke = on ? 2.2 : 1.35
   return (
     <Svg>
       <path
         d="M4.4 5.4h6a1.5 1.5 0 0 1 1.5 1.5v1.2"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth={stroke}
         strokeLinecap="round"
       />
       <path
         d="M9.8 3.8 12.2 5.5 9.8 7.2"
-        fill="none"
+        fill={on ? 'currentColor' : 'none'}
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth={stroke}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -683,14 +690,14 @@ function LoopIcon() {
         d="M11.6 10.6H5.6a1.5 1.5 0 0 1-1.5-1.5V7.9"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth={stroke}
         strokeLinecap="round"
       />
       <path
         d="M6.2 12.2 3.8 10.5 6.2 8.8"
-        fill="none"
+        fill={on ? 'currentColor' : 'none'}
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth={stroke}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
