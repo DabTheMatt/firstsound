@@ -96,7 +96,13 @@ test.describe('Polish locale layout', () => {
 
   test('stays inside the viewport at interface 150% and text 200%', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
-    await boot(page, { locale: 'pl', a11y: { interfaceScale: 1.5, textScale: 2 } })
+    await boot(page, { locale: 'pl' })
+    await page.getByRole('button', { name: 'Ustawienia', exact: true }).click()
+    await page.getByRole('button', { name: 'Dostępność', exact: true }).click()
+    await page.getByRole('button', { name: 'Rozmiar interfejsu 150%' }).click()
+    await page.getByRole('button', { name: 'Rozmiar tekstu 200%' }).click()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '150')
     await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
     const outside = await controlsOutsideViewport(page)
     expect(outside, outside.join(', ')).toEqual([])
