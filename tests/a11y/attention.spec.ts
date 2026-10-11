@@ -9,7 +9,7 @@ const ON = {
 }
 
 test.describe('attention focus', () => {
-  test('is off until turned on, then survives reload and restore', async ({ page }) => {
+  test('is off until turned on, and a reload starts from the defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
@@ -17,24 +17,27 @@ test.describe('attention focus', () => {
     const toggle = page.getByRole('switch', { name: 'Attention Focus' })
     await expect(toggle).not.toBeChecked()
     await expect(page.getByRole('heading', { name: 'Cognitive & attention' })).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Highlight Related Controls' })).toBeEnabled()
     await toggle.check()
     await page.getByRole('radio', { name: 'Clear' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'clear')
+    await expect(page.locator('html')).toHaveAttribute('data-attention-highlight', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-attention-reduce', 'off')
+    await page.getByRole('switch', { name: 'Highlight Related Controls' }).check()
+    await page.getByRole('switch', { name: 'Reduce Unrelated Emphasis' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-attention-highlight', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-attention-reduce', 'on')
-    await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-attention', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'clear')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.attentionFocus).toBe(true)
-    expect(stored.attentionStrength).toBe('clear')
-    await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
     await expectNoAxeViolations(page)
+    await page.reload()
+    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-attention-highlight', 'off')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
   })
 
   test('keeps keyboard focus visible and does not trap or hide controls', async ({ page }) => {

@@ -16,6 +16,7 @@ import {
   motionReduced,
   parseA11ySettings,
   persistA11ySettings,
+  readA11yBootSeed,
   readStoredA11ySettings,
   resetA11ySession,
 } from './settings'
@@ -313,6 +314,11 @@ describe('a11y settings and i18n', () => {
     expect(store.get(A11Y_STORAGE_KEY_V1)).toBe(stored)
     resetA11ySession()
     expect(readStoredA11ySettings().reduceMotion).toBe(false)
+    expect(readA11yBootSeed()).toBeNull()
+    store.set(A11Y_STORAGE_KEY, JSON.stringify({ seed: true, reduceMotion: true, largerInterface: false }))
+    expect(readA11yBootSeed()).toMatchObject({ reduceMotion: true, largerInterface: false, sensoryComfort: false })
+    store.set(A11Y_STORAGE_KEY, '{')
+    expect(readA11yBootSeed()).toBeNull()
     vi.unstubAllGlobals()
   })
 

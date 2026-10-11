@@ -29,7 +29,7 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
     localStorage.setItem('field.technicalInterface', 'workspace')
     if (state.a11y) {
       localStorage.removeItem('field.accessibility.v1')
-      localStorage.setItem('field.a11y', JSON.stringify(state.a11y))
+      localStorage.setItem('field.a11y', JSON.stringify({ ...state.a11y, seed: true }))
     }
   }, init)
   await page.goto('/')

@@ -9,7 +9,7 @@ const ON = {
 }
 
 test.describe('predictable layout', () => {
-  test('is off until turned on, then survives reload and accessibility restore', async ({ page }) => {
+  test('is off until turned on, and a reload starts from the defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
@@ -18,21 +18,23 @@ test.describe('predictable layout', () => {
     await expect(toggle).not.toBeChecked()
     await expect(page.getByRole('heading', { name: 'Cognitive & attention' })).toBeVisible()
     await expect(page.getByText('Keep tools and panels in consistent locations while you work.')).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Stable Panels' })).toBeEnabled()
     await toggle.check()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'off')
+    await page.getByRole('switch', { name: 'Stable Panels' }).check()
     await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-remember-layout', 'on')
-    await expect(page.locator('html')).toHaveAttribute('data-reduce-layout', 'on')
-    await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
-    expect(stored.stablePanels).toBe(true)
-    await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
     await expectNoAxeViolations(page)
+    await page.reload()
+    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await expect(page.locator('html')).toHaveAttribute('data-predictable', 'off')
+    await expect(page.locator('html')).toHaveAttribute('data-stable-panels', 'off')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
   })
 
   test('keeps workspace order, transport, and focus while editing', async ({ page }) => {
@@ -75,8 +77,8 @@ test.describe('predictable layout', () => {
     await page.getByRole('button', { name: 'Restore workspace layout' }).click()
     await expect(page.getByRole('tab', { name: 'Wave' })).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(kept.predictableLayout).toBe(true)
+    const kept = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(kept).toBeNull()
   })
 
   test('does not stop playback when the preference or workspace changes', async ({ page }) => {
@@ -143,7 +145,7 @@ test.describe('predictable layout', () => {
     await page.getByRole('button', { name: 'Back', exact: true }).click()
     await page.getByRole('button', { name: 'Reset all' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-predictable', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.predictableLayout).toBe(true)
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
   })
 })

@@ -172,6 +172,23 @@ export function readStoredA11ySettings(): A11ySettings {
   return { ...sessionSettings }
 }
 
+/**
+ * The accessibility suite writes `{ seed: true }` into `field.a11y` before load.
+ * Ordinary browser values, including `field.accessibility.v1`, are ignored.
+ */
+export function readA11yBootSeed(): A11ySettings | null {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(A11Y_STORAGE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || (parsed as { seed?: unknown }).seed !== true) return null
+    return parseA11ySettings(parsed)
+  } catch {
+    return null
+  }
+}
+
 export function persistA11ySettings(settings: A11ySettings): void {
   sessionSettings = { ...settings }
 }
@@ -224,7 +241,8 @@ function applyLowVisionInline(root: HTMLElement, on: boolean): void {
 
 /**
  * Accessibility choices stay in this tab until a per-user or per-machine store exists.
- * A reload starts from the off defaults. Stored browser values are not applied.
+ * A reload starts from the off defaults. Stored browser values are not applied,
+ * except a `field.a11y` object marked `seed: true` for the accessibility suite.
  */
 let sessionSettings: A11ySettings = { ...DEFAULT_A11Y_SETTINGS }
 

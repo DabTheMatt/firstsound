@@ -7,7 +7,7 @@ mkdirSync('/opt/cursor/artifacts', { recursive: true })
 const HV = { highVisibility: true }
 
 test.describe('high visibility controls', () => {
-  test('is off until turned on, then survives reload and restore', async ({ page }) => {
+  test('is off until turned on, and a reload starts from the defaults', async ({ page }) => {
     await boot(page)
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     await openAccess(page)
@@ -16,15 +16,14 @@ test.describe('high visibility controls', () => {
     await toggle.check()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
     await page.screenshot({ path: '/opt/cursor/artifacts/hv-access-on.png' })
-    await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
-    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('field.accessibility.v1') || '{}'))
-    expect(stored.highVisibility).toBe(true)
-    await openAccess(page)
     await page.getByRole('button', { name: 'Restore accessibility defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     await expectNoAxeViolations(page)
+    await page.reload()
+    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
+    const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
+    expect(stored).toBeNull()
   })
 
   test('keeps a keyboard focus ring on representative themes', async ({ page }) => {
