@@ -367,7 +367,7 @@
   grid-column: -2 / -1;
   grid-row: 1;
   justify-self: stretch;
-  align-self: start;
+  align-self: stretch;
   position: relative;
   width: 100%;
   min-width: 0;

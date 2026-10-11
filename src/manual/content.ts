@@ -319,7 +319,7 @@ const en: ManualSection[] = [
       'Enhanced Focus Visibility draws a stronger keyboard focus ring from the theme’s text and background colors. It shows for keyboard focus. An ordinary click does not turn it on. The usual focus style remains when the switch is off.',
       'Larger Controls enlarges hit areas and minimum heights for buttons, knobs, sliders, transport, EQ nodes, waveform handles, and automation nodes. Dense Technical controls grow their invisible target more than their drawing. Parameter values, ranges, and the audio stay the same.',
       'Interface Size and Text Size are in the same visual section. They are separate from each other and from Larger Controls. See Interface & text scaling.',
-      'Choices are saved in this browser and survive reload and Reset application. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project.',
+      'Choices are saved in this browser and survive reload. Restore accessibility defaults, inside FIELD ACCESS, resets only these preferences. It does not delete audio, effects, automation, or the project. Reset application, in the top bar, also returns these preferences, including Interface Size and Text Size, to their defaults.',
       'Keyboard: Tab and Shift+Tab move between controls. Enter activates buttons. Space activates checkboxes, radios, and switches. Arrow keys change a focused knob or slider. On the waveform, arrow keys move the playhead. On an EQ graph node, arrow keys nudge frequency and gain, and Shift+arrow nudges Q. Home and End jump to the ends of a knob. Delete or Backspace resets the focused parameter.',
       'Screen reader support is partial. Buttons, knobs, sliders, switches, tabs, dialogs, and Guided Tasks expose names. Knobs and sliders expose values. This manual does not claim full WCAG 2.2 AA conformance. Automated checks do not replace testing with a screen reader.',
       'Known limits: pointer dragging still edits the waveform, fades, EQ nodes, and automation points. The same edits are available from the keyboard through buttons, sliders, and the drag-free editors. Screen reader behavior was not manually verified for this release. On a very narrow screen the top bar scrolls sideways so Settings stays reachable.',
@@ -334,7 +334,7 @@ const en: ManualSection[] = [
       'Text Size changes labels, numbers, menus, help, Guided Tasks, and status text. At the larger steps, columns wrap. The Inspector, Settings, and the tutorial panel scroll so the words stay reachable. Essential labels wrap instead of being cut off with no other way to read them.',
       'Larger Controls is a different switch. It increases the area you can press, including EQ nodes, waveform handles, and automation points. It does not change what those gestures edit. Interface Size and Larger Controls are not multiplied into one huge target.',
       'Browser zoom still works on top of these settings. Pinch zoom on a phone stays available. FIELD does not turn zoom off. On a narrow screen, a larger size stacks controls and lets sections scroll. Important actions stay clear of the notch and the home indicator.',
-      'Restore accessibility defaults sets Interface Size and Text Size back to 100%, together with the other accessibility switches. It does not delete the sample or the project. Reset application does not change these sizes. Changing either size does not restart playback and does not reload the audio.',
+      'Restore accessibility defaults sets Interface Size and Text Size back to 100%, together with the other accessibility switches. It does not delete the sample or the project. Reset application does the same for these preferences, including both sizes, and also clears the session. Changing either size does not restart playback and does not reload the audio.',
     ],
   },
   {
@@ -384,7 +384,7 @@ const en: ManualSection[] = [
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state. It does not clear FIELD ACCESS preferences.',
+      'Reset application, in the top bar, returns FIELD to a clean session without reloading the page. It stops audio, drops the loaded sample, clears effects, automation, modulation, and editing state. It also restores FIELD ACCESS preferences, including Interface Size and Text Size, to their defaults.',
       'If the session already has work, FIELD asks you to confirm. An empty session resets immediately.',
     ],
   },
@@ -726,7 +726,7 @@ const pl: ManualSection[] = [
       'Wyraźniejszy fokus klawiatury rysuje mocniejszy pierścień z kolorów tekstu i tła motywu. Widać go przy fokusie z klawiatury. Zwykłe kliknięcie go nie włącza. Gdy przełącznik jest wyłączony, zostaje dotychczasowy fokus.',
       'Większe elementy sterujące powiększają obszar trafienia i minimalną wysokość przycisków, gałek, suwaków, transportu, węzłów EQ, uchwytów fali i węzłów automatyzacji. W gęstym Technicznym rośnie głównie niewidoczny cel, nie sam rysunek. Wartości, zakresy i dźwięk zostają takie same.',
       'Rozmiar interfejsu i Rozmiar tekstu są w tej samej sekcji widzenia. Są osobne od siebie i od większych elementów sterujących. Patrz Rozmiar interfejsu i tekstu.',
-      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie oraz Reset aplikacji. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu.',
+      'Wybory zapisują się w tej przeglądarce i przeżywają odświeżenie. Przywróć domyślne ustawienia dostępności, w FIELD ACCESS, resetuje tylko te preferencje. Nie kasuje audio, efektów, automatyzacji ani projektu. Reset aplikacji na górnym pasku też wraca z tymi preferencjami, w tym z Rozmiarem interfejsu i Rozmiarem tekstu, do wartości domyślnych.',
       'Klawiatura: Tab i Shift+Tab przechodzą między kontrolkami. Enter aktywuje przyciski. Spacja zmienia pola wyboru i przełączniki. Strzałki zmieniają gałkę albo suwak w fokusie. Na fali strzałki przesuwają głowicę. Na węźle EQ strzałki ruszają częstotliwość i wzmocnienie, a Shift+strzałka rusza Q. Home i End skaczą na krańce gałki. Delete albo Backspace resetuje parametr w fokusie.',
       'Obsługa czytnika ekranu jest częściowa. Przyciski, gałki, suwaki, przełączniki, karty, okna i Zadania z przewodnikiem mają nazwy. Gałki i suwaki podają wartość. Ten podręcznik nie ogłasza pełnej zgodności z WCAG 2.2 AA. Testy automatyczne nie zastępują sprawdzenia czytnikiem ekranu.',
       'Znane ograniczenia: przeciąganie nadal edytuje falę, zaniki, węzły EQ i punkty automatyzacji. Te same edycje są dostępne z klawiatury przez przyciski, suwaki i edytory bez przeciągania. Zachowanie czytnika ekranu nie było sprawdzane ręcznie w tym wydaniu. Na bardzo wąskim ekranie górny pasek przewija się w bok, żeby Ustawienia zostały osiągalne.',
@@ -741,7 +741,7 @@ const pl: ManualSection[] = [
       'Rozmiar tekstu zmienia etykiety, liczby, menu, pomoc, zadania z przewodnikiem i komunikaty stanu. Przy większych krokach kolumny się zawijają. Inspektor, Ustawienia i panel samouczka przewijają się, żeby tekst dało się przeczytać. Ważne etykiety zawijają się, zamiast być ucięte bez innego sposobu odczytu.',
       'Większe elementy sterujące to inny przełącznik. Zwiększa obszar, który można nacisnąć, w tym węzły EQ, uchwyty fali i punkty automatyzacji. Nie zmienia tego, co ten gest edytuje. Rozmiar interfejsu i większe elementy sterujące nie mnożą się w jeden ogromny cel.',
       'Powiększenie przeglądarki nadal działa ponad tymi ustawieniami. Uszczypnięcie na telefonie zostaje włączone. FIELD go nie wyłącza. Na wąskim ekranie większy rozmiar układa kontrolki jedna pod drugą i pozwala przewijać sekcje. Ważne działania zostają z dala od wcięcia i wskaźnika domu.',
-      'Przywróć domyślne ustawienia dostępności wraca z Rozmiarem interfejsu i Rozmiarem tekstu do 100%, razem z pozostałymi przełącznikami dostępności. Nie kasuje sampla ani projektu. Reset aplikacji nie zmienia tych rozmiarów. Zmiana któregoś rozmiaru nie restartuje odtwarzania i nie wczytuje audio od nowa.',
+      'Przywróć domyślne ustawienia dostępności wraca z Rozmiarem interfejsu i Rozmiarem tekstu do 100%, razem z pozostałymi przełącznikami dostępności. Nie kasuje sampla ani projektu. Reset aplikacji robi to samo z tymi preferencjami, łącznie z oboma rozmiarami, i dodatkowo czyści sesję. Zmiana któregoś rozmiaru nie restartuje odtwarzania i nie wczytuje audio od nowa.',
     ],
   },
   {
@@ -791,7 +791,7 @@ const pl: ManualSection[] = [
     id: 'reset',
     title: 'Reset',
     body: [
-      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji. Nie kasuje preferencji FIELD ACCESS.',
+      'Reset aplikacji na górnym pasku wraca do czystej sesji FIELD bez przeładowania strony. Zatrzymuje dźwięk, usuwa sample, czyści efekty, automatyzację, modulację i stan edycji. Przywraca też preferencje FIELD ACCESS, w tym Rozmiar interfejsu i Rozmiar tekstu, do wartości domyślnych.',
       'Gdy w sesji jest już praca, FIELD prosi o potwierdzenie. Pusta sesja resetuje się od razu.',
     ],
   },

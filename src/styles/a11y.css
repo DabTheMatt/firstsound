@@ -97,8 +97,8 @@ html[data-ui-scale='large'] [role='switch'] {
   min-width: 44px;
 }
 
-html[data-text-room='room'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]),
-html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]),
+html[data-text-room='room'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
+html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
 html[data-text-room='room'] [role='tab'],
 html[data-text-room='max'] [role='tab'],
 html[data-text-room='room'] summary,
@@ -108,7 +108,7 @@ html[data-text-room='max'] summary {
   line-height: 1.35;
 }
 
-html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]),
+html[data-text-room='max'] button:not([data-eq-node]):not([data-auto-node]):not([data-auto-tension]):not([data-transport]),
 html[data-text-room='max'] [role='tab'],
 html[data-text-room='max'] summary {
   white-space: normal;

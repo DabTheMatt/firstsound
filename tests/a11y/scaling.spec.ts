@@ -98,6 +98,36 @@ test.describe('interface and text scaling', () => {
     expect(overlap).toBe('ok')
   })
 
+  test('grows the play control with the text and keeps it level with Loop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await boot(page, { a11y: { interfaceScale: 1.5, textScale: 2 } })
+    const box = await page.evaluate(() => {
+      const play = document.querySelector('[data-guide-target="transport.play"]')
+      const loop = document.querySelector('[aria-label="Loop selection"]')
+      if (!(play instanceof HTMLElement) || !(loop instanceof HTMLElement)) return null
+      const playBox = play.getBoundingClientRect()
+      const loopBox = loop.getBoundingClientRect()
+      const icon = play.querySelector('svg')?.getBoundingClientRect()
+      return {
+        play: playBox.height,
+        icon: icon?.width ?? 0,
+        delta: Math.abs(playBox.top + playBox.height / 2 - (loopBox.top + loopBox.height / 2)),
+      }
+    })
+    expect(box).not.toBeNull()
+    expect(box!.play).toBeGreaterThan(60)
+    expect(box!.icon).toBeGreaterThan(30)
+    expect(box!.delta).toBeLessThan(3)
+  })
+
+  test('reset application restores interface and text size', async ({ page }) => {
+    await boot(page, { a11y: { interfaceScale: 1.5, textScale: 2 } })
+    await expect(page.locator('html')).toHaveAttribute('data-text-scale', '200')
+    await page.getByRole('button', { name: 'Reset application' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '100')
+    await expect(page.locator('html')).toHaveAttribute('data-text-scale', '100')
+  })
+
   test('stays inside a narrow viewport at maximum text size', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await boot(page, { a11y: { interfaceScale: 1.25, textScale: 2 } })

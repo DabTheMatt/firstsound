@@ -17,6 +17,7 @@ export function TransportButton({ playing, onToggle, disabled, compact = false, 
     <button
       type="button"
       className={`${styles.play} ${compact ? styles.compact : ''} ${prominent ? styles.prominent : ''}`}
+      data-transport=""
       data-geometry="circle"
       {...guideTargetAttrs(guideTarget ?? null)}
       onClick={onToggle}

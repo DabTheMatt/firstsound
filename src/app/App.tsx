@@ -29,7 +29,7 @@ import { KeyboardHelp, closeKeyboardHelp } from '../a11y/shortcuts/KeyboardHelp'
 import { WorkspaceNav, closeWorkspaceNav } from '../a11y/shortcuts/WorkspaceNav'
 import { forgetTrigger } from '../a11y/dialogFocus'
 import { validateSelection } from '../edit/dragFree/edits'
-import { A11ySettings, LiveAnnouncer, SkipLink, announce, scrollFocusedIntoView, useA11ySettings } from '../a11y'
+import { A11ySettings, DEFAULT_A11Y_SETTINGS, LiveAnnouncer, SkipLink, announce, persistAndApplyA11y, scrollFocusedIntoView, useA11ySettings } from '../a11y'
 import { focusInitial, focusSelector, rememberTrigger, restoreTrigger, trapTab } from '../a11y/dialogFocus'
 import { HearingAccessLayer } from '../hearing/HearingAccessLayer'
 import { layersForProfile, persistHearingSettings, readStoredHearingSettings } from '../hearing/settings'
@@ -787,6 +787,7 @@ export default function App() {
   const resetSession = useCallback(() => {
     clearPointerInteraction()
     setDragging(false)
+    persistAndApplyA11y({ ...DEFAULT_A11Y_SETTINGS })
     engine.resetSession()
     const dsp = captureDsp(engine)
     appliedRef.current = cloneDsp(dsp)
