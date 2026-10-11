@@ -199,6 +199,63 @@
   box-shadow: inset 0 -1px 0 var(--accent-primary);
 }
 
+/* Workspace bar: selected options use the same soft wash as the header. No accent underline. */
+:global([data-technical-ui='workspace']) .tab,
+:global([data-technical-ui='workspace']) .tabOn,
+:global([data-technical-ui='workspace']) .segmentOff,
+:global([data-technical-ui='workspace']) .segmentOn,
+:global([data-technical-ui='workspace']) .textButton,
+:global([data-technical-ui='workspace']) .dangerButton {
+  box-shadow: none;
+  border-radius: 4px;
+  min-height: max(32px, var(--toolbar-h));
+  padding: 0 6px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
+}
+
+:global([data-technical-ui='workspace']) .tab,
+:global([data-technical-ui='workspace']) .segmentOff,
+:global([data-technical-ui='workspace']) .textButton,
+:global([data-technical-ui='workspace']) .dangerButton {
+  color: var(--text-secondary);
+}
+
+:global([data-technical-ui='workspace']) .tab:hover,
+:global([data-technical-ui='workspace']) .segmentOff:hover,
+:global([data-technical-ui='workspace']) .textButton:hover,
+:global([data-technical-ui='workspace']) .tab:focus-visible,
+:global([data-technical-ui='workspace']) .segmentOff:focus-visible,
+:global([data-technical-ui='workspace']) .textButton:focus-visible,
+:global([data-technical-ui='workspace']) .dangerButton:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-hover);
+  box-shadow: none;
+  outline: none;
+}
+
+:global([data-technical-ui='workspace']) .tabOn,
+:global([data-technical-ui='workspace']) .tabOn:hover,
+:global([data-technical-ui='workspace']) .tabOn:focus-visible,
+:global([data-technical-ui='workspace']) .segmentOn,
+:global([data-technical-ui='workspace']) .segmentOn:hover,
+:global([data-technical-ui='workspace']) .segmentOn:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-on);
+  box-shadow: none;
+  outline: none;
+}
+
+:global([data-technical-ui='workspace']) .textButton:disabled,
+:global([data-technical-ui='workspace']) .dangerButton:disabled,
+:global([data-technical-ui='workspace']) .textButton:disabled:hover,
+:global([data-technical-ui='workspace']) .dangerButton:disabled:hover {
+  color: var(--text-disabled);
+  background: transparent;
+  box-shadow: none;
+}
+
 .editBar {
   position: relative;
   display: flex;
@@ -435,6 +492,15 @@
 .analyzerIcon[aria-pressed='true'] {
   color: var(--text-primary);
   box-shadow: inset 0 -1px 0 var(--accent-primary);
+}
+
+:global([data-technical-ui='workspace']) .analyzerIcon[aria-pressed='true'],
+:global([data-technical-ui='workspace']) .analyzerIcon[aria-pressed='true']:hover,
+:global([data-technical-ui='workspace']) .analyzerIcon[aria-pressed='true']:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-on);
+  box-shadow: none;
+  outline: none;
 }
 
 .menuItem {

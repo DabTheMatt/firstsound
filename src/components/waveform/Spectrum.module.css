@@ -169,6 +169,28 @@
   background: var(--accent-soft);
 }
 
+:global([data-technical-ui='workspace']) .bands,
+:global([data-technical-ui='workspace']) .bands[aria-pressed='true'] {
+  border-color: transparent;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+}
+
+:global([data-technical-ui='workspace']) .bands:hover,
+:global([data-technical-ui='workspace']) .bands:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-hover, color-mix(in srgb, var(--text-primary) 10%, transparent));
+  outline: none;
+}
+
+:global([data-technical-ui='workspace']) .bands[aria-pressed='true'],
+:global([data-technical-ui='workspace']) .bands[aria-pressed='true']:hover {
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
+}
+
 .choice {
   border: 0;
   background: transparent;
@@ -186,6 +208,27 @@
 .choice[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--text-primary);
+}
+
+:global([data-technical-ui='workspace']) .choice,
+:global([data-technical-ui='workspace']) .choice[aria-pressed='true'] {
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+}
+
+:global([data-technical-ui='workspace']) .choice:hover,
+:global([data-technical-ui='workspace']) .choice:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-hover, color-mix(in srgb, var(--text-primary) 10%, transparent));
+  outline: none;
+}
+
+:global([data-technical-ui='workspace']) .choice[aria-pressed='true'],
+:global([data-technical-ui='workspace']) .choice[aria-pressed='true']:hover {
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
 }
 
 .bands:hover {
@@ -277,6 +320,14 @@
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--accent-soft);
+}
+
+:global([data-technical-ui='workspace']) .iconTap.on,
+:global([data-technical-ui='workspace']) .iconTap.on:hover {
+  border-color: transparent;
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
+  box-shadow: none;
 }
 
 .legendDock {
@@ -502,6 +553,16 @@
 .snapshotOn {
   color: var(--text-primary);
   box-shadow: inset 0 -1px 0 var(--accent-primary);
+}
+
+:global([data-technical-ui='workspace']) .snapshotOn,
+:global([data-technical-ui='workspace']) .snapshotOn:hover,
+:global([data-technical-ui='workspace']) .snapshotOn:focus-visible {
+  border-radius: 4px;
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
+  box-shadow: none;
+  outline: none;
 }
 
 .graphMenuPanel {

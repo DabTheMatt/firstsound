@@ -88,6 +88,16 @@
   background: var(--accent-soft);
 }
 
+:global([data-technical-ui='workspace']) .loop.on,
+:global([data-technical-ui='workspace']) .loop.on:hover,
+:global([data-technical-ui='workspace']) .loop.on:focus-visible {
+  border-color: transparent;
+  color: var(--text-primary);
+  background: var(--ws-bar-on, color-mix(in srgb, var(--text-primary) 16%, transparent));
+  box-shadow: none;
+  outline: none;
+}
+
 .times {
   display: flex;
   align-items: center;
@@ -150,12 +160,14 @@
 button.export {
   flex: 1 1 auto;
   align-self: stretch;
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: 100%;
+  height: var(--transport-h);
   min-height: var(--transport-h);
-  padding-inline: 4px;
+  max-height: var(--transport-h);
+  padding-inline: 8px;
   letter-spacing: 0.04em;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -237,6 +237,10 @@
   outline-offset: -2px;
 }
 
+:global([data-technical-ui='workspace']) .wrap:focus-visible {
+  outline-color: color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+
 .wrap[hidden] {
   display: none;
 }
@@ -285,6 +289,30 @@
   border-color: var(--accent-primary);
   border-top: 0;
   background: color-mix(in srgb, var(--bg-app) 82%, var(--accent-primary) 18%);
+}
+
+:global([data-technical-ui='workspace']) .trackTab,
+:global([data-technical-ui='workspace']) .trackTabOn {
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+:global([data-technical-ui='workspace']) .trackTab:hover,
+:global([data-technical-ui='workspace']) .trackTab:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-hover);
+  outline: none;
+}
+
+:global([data-technical-ui='workspace']) .trackTabOn,
+:global([data-technical-ui='workspace']) .trackTabOn:hover,
+:global([data-technical-ui='workspace']) .trackTabOn:focus-visible {
+  color: var(--text-primary);
+  background: var(--ws-bar-on);
+  outline: none;
 }
 
 .trackTabFile {
@@ -543,6 +571,11 @@
   background: color-mix(in srgb, var(--selection-fill) 45%, transparent);
   border-left: 1.5px solid var(--selection-border);
   border-right: 1.5px solid var(--selection-border);
+}
+
+:global([data-technical-ui='workspace']) .regionFrame {
+  border-left-color: color-mix(in srgb, var(--text-primary) 36%, transparent);
+  border-right-color: color-mix(in srgb, var(--text-primary) 36%, transparent);
 }
 
 .fadeHandle {
