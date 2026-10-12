@@ -288,6 +288,41 @@ textarea.input {
   resize: vertical;
 }
 
+.colors {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.colors legend {
+  padding: 0;
+  color: var(--text-muted);
+  font-size: var(--type-10);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.swatch {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 99px;
+}
+
+.swatch[aria-selected='true'] {
+  box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px var(--text-primary);
+}
+
 .editorActions {
   justify-content: flex-end;
 }

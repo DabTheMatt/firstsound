@@ -1,6 +1,8 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { markerPanelState, markerTrigger, registerMarkerTrigger, setMarkerPanelOpen, subscribeMarkerPanel } from '../../audio/markers/panel'
+import { setMarkerPreview } from '../../audio/markers/preview'
+import { TRACK_COLOR_IDS, trackColorVar, type TrackColorId } from '../../audio/mix/tracks'
 import { nextMarkerName } from '../../audio/markers/markers'
 import { readLandmarkCache, recordingKey } from '../../a11y/waveform/cache'
 import { waveNavCopy } from '../../a11y/waveform/copy'
@@ -106,7 +108,8 @@ export function MarkerHost({ mode, onCommit }: Props) {
   const [menuId, setMenuId] = useState<string | null>(null)
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [suggestionLimit, setSuggestionLimit] = useState(SUGGESTION_PAGE)
-  const [appliedEdit, setAppliedEdit] = useState<string | null>(null)
+  const [appliedToken, setAppliedToken] = useState(0)
+  const [colorDraft, setColorDraft] = useState<TrackColorId | null>(null)
   const [place, setPlace] = useState<Place | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef<HTMLButtonElement | null>(null)
@@ -122,19 +125,18 @@ export function MarkerHost({ mode, onCommit }: Props) {
   const copy = waveNavCopy(locale)
   const ssr = typeof document === 'undefined'
 
-  if (panel.open && panel.editId && panel.editId !== appliedEdit) {
+  if (panel.open && panel.editId && panel.focusToken !== appliedToken) {
     const marker = snap.userMarkers.find((item) => item.id === panel.editId)
-    setAppliedEdit(panel.editId)
+    setAppliedToken(panel.focusToken)
     if (marker) {
       setEditingId(marker.id)
       setName(marker.name)
       setDescription(marker.description ?? '')
       setTimeDraft(formatEditTime(marker.timeSeconds))
+      setColorDraft(marker.color ?? null)
       setFocusField('name')
       setError(null)
     }
-  } else if (!panel.editId && appliedEdit) {
-    setAppliedEdit(null)
   }
 
   if (!panel.open && (editingId || menuId || error || suggestionsOpen)) {
@@ -143,6 +145,10 @@ export function MarkerHost({ mode, onCommit }: Props) {
     setError(null)
     setSuggestionsOpen(false)
   }
+
+  useEffect(() => {
+    if (!panel.open || !suggestionsOpen) setMarkerPreview(null)
+  }, [panel.open, suggestionsOpen])
 
   useEffect(() => {
     editingRef.current = editingId
@@ -241,6 +247,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
     setName(marker.name)
     setDescription(marker.description ?? '')
     setTimeDraft(formatEditTime(marker.timeSeconds))
+    setColorDraft(marker.color ?? null)
     setError(null)
     window.requestAnimationFrame(() => {
       const fieldNode = field === 'description' ? descriptionRef.current : field === 'time' ? timeRef.current : nameRef.current
@@ -280,6 +287,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
       name,
       description,
       timeSeconds: parsed.seconds,
+      color: colorDraft,
     })
     if (!result.ok) {
       explain(result.error)
@@ -292,6 +300,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
     if (!after) return
     if (after.name !== before.name) announce(t.markers.renamed(after.name))
     else if ((after.description ?? '') !== (before.description ?? '')) announce(t.markers.described(after.name))
+    else if ((after.color ?? '') !== (before.color ?? '')) announce(t.markers.recolored(after.name, after.color ? t.markers.colors[after.color] : t.markers.color))
     else announce(t.markers.retimed(after.name, speakEditTime(after.timeSeconds, locale)))
   }
 
@@ -441,6 +450,23 @@ export function MarkerHost({ mode, onCommit }: Props) {
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
+            <fieldset className={styles.colors}>
+              <legend>{t.markers.color}</legend>
+              <div className={styles.swatches} role="listbox" aria-label={t.markers.color}>
+                {TRACK_COLOR_IDS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="option"
+                    className={styles.swatch}
+                    aria-selected={colorDraft === id}
+                    aria-label={t.markers.colors[id]}
+                    style={{ background: trackColorVar(id) }}
+                    onClick={() => setColorDraft(id)}
+                  />
+                ))}
+              </div>
+            </fieldset>
             <div className={styles.editorActions}>
               <button type="button" className={styles.text} onClick={() => { setEditingId(null); setError(null) }}>
                 {t.markers.cancel}
@@ -464,8 +490,17 @@ export function MarkerHost({ mode, onCommit }: Props) {
                   aria-current={selected ? 'true' : undefined}
                   aria-label={t.markers.pointLabel(marker.name, spoken)}
                   onClick={() => go(marker.id)}
+                  onDoubleClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    beginEdit(marker.id, 'name')
+                  }}
                 >
-                  <span className={styles.gem} aria-hidden="true" />
+                  <span
+                    className={styles.gem}
+                    aria-hidden="true"
+                    style={marker.color ? { color: trackColorVar(marker.color), borderColor: trackColorVar(marker.color) } : undefined}
+                  />
                   <span className={styles.time}>{formatEditTime(marker.timeSeconds)}</span>
                   <span className={styles.name}>{marker.name}</span>
                 </button>
@@ -526,7 +561,12 @@ export function MarkerHost({ mode, onCommit }: Props) {
                   {visibleSuggestions.map((mark, index) => {
                     const label = copy.labels[mark.type]
                     return (
-                      <li key={`${mark.type}:${index}:${mark.time.toFixed(3)}`} className={styles.suggestRow}>
+                      <li
+                        key={`${mark.type}:${index}:${mark.time.toFixed(3)}`}
+                        className={styles.suggestRow}
+                        onPointerEnter={() => setMarkerPreview({ timeSeconds: mark.time, name: label })}
+                        onPointerLeave={() => setMarkerPreview(null)}
+                      >
                         <span className={styles.time}>{formatEditTime(mark.time)}</span>
                         <span className={styles.name} title={label}>{label}</span>
                         <button type="button" className={`${styles.text} ${styles.suggestSave}`} onClick={() => saveDetected(mark.time, label)}>

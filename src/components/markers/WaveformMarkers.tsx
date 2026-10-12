@@ -1,5 +1,8 @@
-import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { announce } from '../../a11y/liveRegion'
+import { setMarkerPanelOpen } from '../../audio/markers/panel'
+import { markerPreview, subscribeMarkerPreview } from '../../audio/markers/preview'
+import { trackColorVar } from '../../audio/mix/tracks'
 import { engine } from '../../hooks/useEngine'
 import { speakEditTime } from '../../edit/dragFree/timeEntry'
 import { useI18n } from '../../i18n'
@@ -28,15 +31,27 @@ type Drag = {
 
 const DRAG_SLOP = 4
 
+function markerInk(marker: AudioMarker): CSSProperties | undefined {
+  if (!marker.color) return undefined
+  return { ['--marker-ink' as string]: trackColorVar(marker.color) }
+}
+
 /** Decorative waveform flags. The marker list owns the accessible actions. */
 export function WaveformMarkers({ view, markers, selectedId, duration, onCommit }: Props) {
   const { t, locale } = useI18n()
   const dragRef = useRef<Drag | null>(null)
+  const preview = useSyncExternalStore(subscribeMarkerPreview, markerPreview, markerPreview)
   const placed = markers
     .map((marker) => ({ marker, fraction: timeToFrac(marker.timeSeconds, view) }))
     .filter((item) => item.fraction >= -0.02 && item.fraction <= 1.02)
   const labels = new Set(markerLabelVisibility(placed.map((item) => ({ id: item.marker.id, fraction: item.fraction }))))
-  if (placed.length === 0) return null
+  const previewFraction = preview ? timeToFrac(preview.timeSeconds, view) : null
+  const showPreview = preview != null && previewFraction != null && previewFraction >= -0.02 && previewFraction <= 1.02
+  if (placed.length === 0 && !showPreview) return null
+
+  const openEditor = (id: string) => {
+    setMarkerPanelOpen(true, id)
+  }
 
   const finishDrag = (event: ReactPointerEvent<HTMLElement>, seekIfClick: boolean) => {
     const drag = dragRef.current
@@ -66,7 +81,8 @@ export function WaveformMarkers({ view, markers, selectedId, duration, onCommit 
             className={selected ? `${styles.userMarker} ${styles.userMarkerOn}` : styles.userMarker}
             data-user-marker={marker.id}
             data-marker-selected={selected ? 'true' : undefined}
-            style={{ left: `${markerLeftPercent(marker.timeSeconds, view)}%` }}
+            data-marker-color={marker.color}
+            style={{ left: `${markerLeftPercent(marker.timeSeconds, view)}%`, ...markerInk(marker) }}
             aria-hidden="true"
           >
             <span
@@ -74,7 +90,6 @@ export function WaveformMarkers({ view, markers, selectedId, duration, onCommit 
               data-marker-flag=""
               onPointerDown={(event) => {
                 if (event.button !== 0) return
-                event.preventDefault()
                 event.stopPropagation()
                 event.currentTarget.setPointerCapture(event.pointerId)
                 dragRef.current = {
@@ -90,7 +105,6 @@ export function WaveformMarkers({ view, markers, selectedId, duration, onCommit 
               onPointerMove={(event) => {
                 const drag = dragRef.current
                 if (!drag || event.pointerId !== drag.pointerId) return
-                event.preventDefault()
                 event.stopPropagation()
                 if (!drag.moved && Math.abs(event.clientX - drag.originX) < DRAG_SLOP) return
                 drag.moved = true
@@ -105,19 +119,61 @@ export function WaveformMarkers({ view, markers, selectedId, duration, onCommit 
               }}
               onPointerUp={(event) => {
                 event.stopPropagation()
-                finishDrag(event, true)
+                const editing = event.detail >= 2 && !dragRef.current?.moved
+                finishDrag(event, !editing)
+                if (editing) openEditor(marker.id)
               }}
               onPointerCancel={(event) => {
                 event.stopPropagation()
                 finishDrag(event, false)
               }}
+              onDoubleClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                if (dragRef.current?.moved) return
+                openEditor(marker.id)
+              }}
             >
               <span className={styles.userMarkerGem} data-marker-gem="" />
             </span>
-            {labels.has(marker.id) ? <span className={styles.userMarkerLabel}>{marker.name}</span> : null}
+            {labels.has(marker.id) ? (
+              <span
+                className={styles.userMarkerLabel}
+                data-marker-label=""
+                onPointerDown={(event) => {
+                  event.stopPropagation()
+                }}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  const found = engine.goToUserMarker(marker.id)
+                  if (!found) return
+                  announce(t.markers.pointLabel(found.name, speakEditTime(found.timeSeconds, locale)))
+                }}
+                onDoubleClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  openEditor(marker.id)
+                }}
+              >
+                {marker.name}
+              </span>
+            ) : null}
           </div>
         )
       })}
+      {showPreview && preview ? (
+        <div
+          className={`${styles.userMarker} ${styles.userMarkerPreview}`}
+          data-marker-preview=""
+          style={{ left: `${markerLeftPercent(preview.timeSeconds, view)}%` }}
+          aria-hidden="true"
+        >
+          <span className={styles.userMarkerFlag}>
+            <span className={styles.userMarkerGem} />
+          </span>
+          <span className={styles.userMarkerLabel}>{preview.name}</span>
+        </div>
+      ) : null}
     </>
   )
 }

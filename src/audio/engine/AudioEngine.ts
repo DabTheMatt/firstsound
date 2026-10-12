@@ -341,6 +341,7 @@ import {
   tracksEqual,
   writeTrackRegion,
   type MixTrack,
+  type TrackColorId,
 } from '../mix/tracks'
 import {
   applyTrackMixerParams,
@@ -4751,7 +4752,7 @@ export class AudioEngine {
 
   updateUserMarker(
     id: string,
-    patch: { timeSeconds?: number; name?: string; description?: string },
+    patch: { timeSeconds?: number; name?: string; description?: string; color?: TrackColorId | null },
   ): { ok: true; id: string } | { ok: false; error: MarkerTimeError } {
     const duration = this.buffer?.duration ?? 0
     const result = editMarker(this.userMarkers, id, patch, duration)

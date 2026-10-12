@@ -1004,6 +1004,18 @@ export type Messages = {
     next: (name: string, time: string) => string
     none: string
     savedDetected: (name: string, time: string) => string
+    color: string
+    colors: {
+      amber: string
+      cyan: string
+      green: string
+      violet: string
+      orange: string
+      magenta: string
+      blue: string
+      neutral: string
+    }
+    recolored: (name: string, color: string) => string
   }
 }
 
@@ -2034,6 +2046,18 @@ export const EN: Messages = {
     next: (name, time) => `Next marker: ${name}, ${time}.`,
     none: 'No marker in that direction.',
     savedDetected: (name, time) => `Saved as marker: ${name}, ${time}.`,
+    color: 'Color',
+    colors: {
+      amber: 'Amber',
+      cyan: 'Cyan',
+      green: 'Green',
+      violet: 'Violet',
+      orange: 'Orange',
+      magenta: 'Magenta',
+      blue: 'Blue',
+      neutral: 'Neutral',
+    },
+    recolored: (name, color) => `Marker color: ${name}, ${color}.`,
   },
   keyboard: {
     open: 'Keyboard shortcuts',
@@ -3212,6 +3236,18 @@ export const PL: Messages = {
     next: (name, time) => `Następny znacznik: ${name}, ${time}.`,
     none: 'Nie ma znacznika w tę stronę.',
     savedDetected: (name, time) => `Zapisano jako znacznik: ${name}, ${time}.`,
+    color: 'Kolor',
+    colors: {
+      amber: 'Bursztynowy',
+      cyan: 'Cyjan',
+      green: 'Zielony',
+      violet: 'Fiolet',
+      orange: 'Pomarańczowy',
+      magenta: 'Magenta',
+      blue: 'Niebieski',
+      neutral: 'Neutralny',
+    },
+    recolored: (name, color) => `Kolor znacznika: ${name}, ${color}.`,
   },
   keyboard: {
     open: 'Skróty klawiszowe',

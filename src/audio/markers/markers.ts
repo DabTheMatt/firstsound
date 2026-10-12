@@ -1,5 +1,6 @@
 import { validatePlayhead, type EditError } from '../../edit/dragFree/edits'
 import { mapTime, type TimelineEdit } from '../engine/sampleEdit'
+import { isTrackColorId, type TrackColorId } from '../mix/tracks'
 import type { AudioMarker, MarkerDocument, MarkerSource } from './types'
 
 export type { AudioMarker, MarkerDocument, MarkerSource } from './types'
@@ -31,6 +32,7 @@ export function cloneMarker(marker: AudioMarker): AudioMarker {
     name: marker.name,
   }
   if (marker.description) copy.description = marker.description
+  if (marker.color) copy.color = marker.color
   return copy
 }
 
@@ -60,6 +62,7 @@ export function markersEqual(a: readonly AudioMarker[] | undefined, b: readonly 
     if (!one || !two) return false
     if (one.id !== two.id || one.timeSeconds !== two.timeSeconds || one.name !== two.name) return false
     if ((one.description ?? '') !== (two.description ?? '')) return false
+    if ((one.color ?? '') !== (two.color ?? '')) return false
   }
   return true
 }
@@ -124,7 +127,7 @@ export function appendMarker(
 export function editMarker(
   markers: readonly AudioMarker[],
   id: string,
-  patch: { timeSeconds?: number; name?: string; description?: string },
+  patch: { timeSeconds?: number; name?: string; description?: string; color?: TrackColorId | null },
   duration: number,
 ): MarkerWrite {
   const index = markers.findIndex((marker) => marker.id === id)
@@ -145,6 +148,8 @@ export function editMarker(
   } else if (current.description) {
     next.description = current.description
   }
+  if (patch.color) next.color = patch.color
+  else if (patch.color === undefined && current.color) next.color = current.color
   const copy = markers.map(cloneMarker)
   copy[index] = next
   return { ok: true, id, markers: sortMarkers(copy) }
@@ -221,6 +226,7 @@ function parseMarker(raw: unknown, duration: number): AudioMarker | null {
     const description = cleanDescription(marker.description)
     if (description) parsed.description = description
   }
+  if (isTrackColorId(marker.color)) parsed.color = marker.color
   return parsed
 }
 

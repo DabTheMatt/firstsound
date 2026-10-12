@@ -68,6 +68,30 @@ describe('user markers', () => {
     expect(start.markers[0]).toEqual({ id: 'edge', timeSeconds: 0, name: 'Start' })
   })
 
+  it('keeps a palette color and ignores a color that is not in the palette', () => {
+    const added = appendMarker([], { id: 'a', timeSeconds: 1, name: 'Marker 1' }, 4)
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    const colored = editMarker(added.markers, 'a', { color: 'cyan' }, 4)
+    expect(colored.ok).toBe(true)
+    if (!colored.ok) return
+    expect(colored.markers[0]?.color).toBe('cyan')
+    expect(markersEqual(added.markers, colored.markers)).toBe(false)
+    const kept = editMarker(colored.markers, 'a', { name: 'Renamed' }, 4)
+    expect(kept.ok && kept.markers[0]?.color).toBe('cyan')
+    const cleared = editMarker(colored.markers, 'a', { color: null }, 4)
+    expect(cleared.ok && cleared.markers[0]?.color).toBeUndefined()
+    const parsed = parseMarkerDocument({
+      source: { id: 'src-1', fileName: 'take.wav', sampleRate: 48000, duration: 4 },
+      markers: [
+        { id: 'paint', timeSeconds: 1, name: 'Paint', color: 'violet' },
+        { id: 'plain', timeSeconds: 2, name: 'Plain', color: 'nope' },
+      ],
+    })
+    expect(parsed?.markers.find((marker) => marker.id === 'paint')?.color).toBe('violet')
+    expect(parsed?.markers.find((marker) => marker.id === 'plain')?.color).toBeUndefined()
+  })
+
   it('sorts by time and keeps equal times in their previous order', () => {
     const markers: AudioMarker[] = [
       { id: 'b', timeSeconds: 1, name: 'Second' },
