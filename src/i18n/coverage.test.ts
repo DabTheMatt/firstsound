@@ -10,6 +10,10 @@ const CRITICAL = [
   ['a11y.title', EN.a11y.title, PL.a11y.title],
   ['header.settings', EN.header.settings, PL.header.settings],
   ['transport.export', EN.transport.export, PL.transport.export],
+  ['export.checkTitle', EN.export.checkTitle, PL.export.checkTitle],
+  ['export.noAudio', EN.export.noAudio, PL.export.noAudio],
+  ['export.settingsValid', EN.export.settingsValid, PL.export.settingsValid],
+  ['export.checkRange', EN.export.checkRange, PL.export.checkRange],
   ['dragFree.errFormat', EN.dragFree.errFormat, PL.dragFree.errFormat],
 ] as const
 

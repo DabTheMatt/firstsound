@@ -577,6 +577,50 @@ export type Messages = {
     encoding: string
     exportFailed: string
     tailHint: string
+    cancel: string
+    applyFades: string
+    applyGain: string
+    applyReverse: string
+    applyNormalize: (db: number) => string
+    depth16: string
+    depth24: string
+    depth32: string
+    checkTitle: string
+    checkRange: string
+    fullAudio: string
+    selection: string
+    status: string
+    settingsValid: string
+    warning: string
+    error: string
+    info: string
+    noAudio: string
+    noAudioAction: string
+    loadAudio: string
+    invalidRange: string
+    zeroLength: string
+    outsideRange: string
+    unsupportedFormat: string
+    unsupportedRate: string
+    unsupportedDepth: string
+    effectsIncluded: (names: string) => string
+    effectsLabel: string
+    effectsNone: string
+    clipUnknown: string
+    clipDetected: string
+    clipWithin: string
+    resampleNote: string
+    swapNeedsStereo: string
+    help: string
+    rateHelp: string
+    depthHelpPcm: string
+    depthHelpDither: string
+    depthHelpFloat: string
+    channelHelp: string
+    rangeHelp: string
+    formatHelp: string
+    swap: string
+    fileRate: string
   }
   mix: {
     mixer: string
@@ -1713,6 +1757,50 @@ export const EN: Messages = {
     encoding: 'Encoding…',
     exportFailed: 'Export failed.',
     tailHint: 'Effect tails are included until the signal decays.',
+    cancel: 'Cancel',
+    applyFades: 'Apply fade in / out',
+    applyGain: 'Apply gain',
+    applyReverse: 'Apply reverse',
+    applyNormalize: (db) => `Normalize to ${db} dBFS`,
+    depth16: '16-bit PCM',
+    depth24: '24-bit PCM',
+    depth32: '32-bit float',
+    checkTitle: 'Export check',
+    checkRange: 'Export range',
+    fullAudio: 'Full audio',
+    selection: 'Selection',
+    status: 'Status',
+    settingsValid: 'Settings valid',
+    warning: 'Warning',
+    error: 'Error',
+    info: 'Info',
+    noAudio: 'No audio is loaded.',
+    noAudioAction: 'Load an audio file, then return to export.',
+    loadAudio: 'Load audio',
+    invalidRange: 'The export range is not valid.',
+    zeroLength: 'The export range has no length.',
+    outsideRange: 'The export range is outside the audio.',
+    unsupportedFormat: 'This format is not supported.',
+    unsupportedRate: 'This sample rate is not supported.',
+    unsupportedDepth: 'This bit depth is not supported.',
+    effectsIncluded: (names) => `Active effects are included: ${names}.`,
+    effectsLabel: 'Effects',
+    effectsNone: 'None',
+    clipUnknown: 'Export level is not measured before the file is written. This check does not confirm the file is free of clipping.',
+    clipDetected: 'The measured export output peaks above full scale.',
+    clipWithin: 'The measured export output stays within full scale.',
+    resampleNote: 'The file rate differs. Export uses the existing resampler.',
+    swapNeedsStereo: 'Swap needs two channels. The file stays mono.',
+    help: 'Checks these settings. It does not change the audio.',
+    rateHelp: 'Selected sample rate. Internal processing stays floating point.',
+    depthHelpPcm: 'Integer PCM. No dither. Internal processing stays floating point.',
+    depthHelpDither: 'Integer PCM. 16-bit export applies TPDF dither.',
+    depthHelpFloat: 'Floating-point file, not integer PCM. No dither.',
+    channelHelp: 'Output channel format written to the file.',
+    rangeHelp: 'Start, end, and duration must sit inside the audio.',
+    formatHelp: 'WAV is the format this export can write.',
+    swap: 'Swap L/R',
+    fileRate: 'File sample rate.',
   },
   mix: {
     mixer: 'Mixer',
@@ -2883,7 +2971,7 @@ export const PL: Messages = {
     original: 'Oryginał',
     hintCodec: 'FLAC i AIFF pojawiają się tylko, gdy ta kompilacja umie je kodować.',
     estimated: (time) => `Szacowany czas ${time}`,
-    exportProject: 'Eksport',
+    exportProject: 'Eksportuj',
     exportSelection: 'Eksport zaznaczenia',
     selectionUnavailable: 'Zaznacz fragment krótszy niż cały sampel.',
     preparing: 'Przygotowanie…',
@@ -2891,6 +2979,50 @@ export const PL: Messages = {
     encoding: 'Kodowanie…',
     exportFailed: 'Eksport nie powiódł się.',
     tailHint: 'Wybrzmienia efektów są dopisywane, aż sygnał wybrzmi.',
+    cancel: 'Anuluj',
+    applyFades: 'Zastosuj narastanie i wygaszanie',
+    applyGain: 'Zastosuj wzmocnienie',
+    applyReverse: 'Zastosuj odwrócenie',
+    applyNormalize: (db) => `Normalizuj do ${db} dBFS`,
+    depth16: '16-bit PCM',
+    depth24: '24-bit PCM',
+    depth32: '32-bit float',
+    checkTitle: 'Kontrola eksportu',
+    checkRange: 'Zakres eksportu',
+    fullAudio: 'Całe nagranie',
+    selection: 'Zaznaczenie',
+    status: 'Status',
+    settingsValid: 'Ustawienia poprawne',
+    warning: 'Ostrzeżenie',
+    error: 'Błąd',
+    info: 'Informacja',
+    noAudio: 'Nie wczytano pliku audio.',
+    noAudioAction: 'Wczytaj plik audio, a potem wróć do eksportu.',
+    loadAudio: 'Wczytaj audio',
+    invalidRange: 'Zakres eksportu jest niepoprawny.',
+    zeroLength: 'Zakres eksportu ma zerową długość.',
+    outsideRange: 'Zakres eksportu wykracza poza nagranie.',
+    unsupportedFormat: 'Ten format nie jest obsługiwany.',
+    unsupportedRate: 'Ta częstotliwość próbkowania nie jest obsługiwana.',
+    unsupportedDepth: 'Ta głębia bitowa nie jest obsługiwana.',
+    effectsIncluded: (names) => `Aktywne efekty trafią do pliku: ${names}.`,
+    effectsLabel: 'Efekty',
+    effectsNone: 'Brak',
+    clipUnknown: 'Poziom pliku nie jest mierzony przed zapisem. Ta kontrola nie potwierdza braku przesterowania.',
+    clipDetected: 'Zmierzony sygnał eksportu przekracza pełną skalę.',
+    clipWithin: 'Zmierzony sygnał eksportu mieści się w pełnej skali.',
+    resampleNote: 'Częstotliwość pliku jest inna. Eksport używa istniejącego resamplera.',
+    swapNeedsStereo: 'Zamiana wymaga dwóch kanałów. Plik zostaje mono.',
+    help: 'Sprawdza te ustawienia. Nie zmienia dźwięku.',
+    rateHelp: 'Wybrana częstotliwość próbkowania. Przetwarzanie wewnętrzne zostaje zmiennoprzecinkowe.',
+    depthHelpPcm: 'PCM całkowite. Bez ditheringu. Przetwarzanie wewnętrzne zostaje zmiennoprzecinkowe.',
+    depthHelpDither: 'PCM całkowite. Eksport 16-bit stosuje dithering TPDF.',
+    depthHelpFloat: 'Plik zmiennoprzecinkowy, nie PCM całkowite. Bez ditheringu.',
+    channelHelp: 'Układ kanałów zapisywany do pliku.',
+    rangeHelp: 'Początek, koniec i długość muszą mieścić się w nagraniu.',
+    formatHelp: 'WAV to format, który ten eksport potrafi zapisać.',
+    swap: 'Zamiana L/P',
+    fileRate: 'Częstotliwość pliku.',
   },
   mix: {
     mixer: 'Mikser',

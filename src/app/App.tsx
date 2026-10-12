@@ -1243,6 +1243,7 @@ export default function App() {
         {isPhoneLayout ? (
           <button
             type="button"
+            data-export-open=""
             disabled={!snap.sampleLoaded}
             onClick={() => {
               openExport()
@@ -1754,7 +1755,17 @@ export default function App() {
         {fileInputs}
         {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
         {keyboardChrome}
-        {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
+        {exportOpen ? (
+          <ExportDialog
+            snap={snap}
+            mode={uiMode}
+            onClose={closeExport}
+            onLoadAudio={() => {
+              closeExport()
+              sampleInput.current?.click()
+            }}
+          />
+        ) : null}
         {guide}
         <HearingAccessLayer surface="sensory" />
       </>
@@ -2316,7 +2327,17 @@ export default function App() {
         {keyboardChrome}
         {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
       </main>
-      {exportOpen ? <ExportDialog snap={snap} onClose={closeExport} /> : null}
+      {exportOpen ? (
+        <ExportDialog
+          snap={snap}
+          mode={uiMode}
+          onClose={closeExport}
+          onLoadAudio={() => {
+            closeExport()
+            sampleInput.current?.click()
+          }}
+        />
+      ) : null}
       {guide}
       <HearingAccessLayer surface="technical" focus={activeFocus} onEnterFocus={enterHearingFocus} />
     </div>

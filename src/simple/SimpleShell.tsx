@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { EngineSnapshot } from '../audio/engine/AudioEngine'
 import { PARAMS } from '../audio/parameters/definitions'
 import { formatSimpleClock } from '../audio/engine/formatTime'
@@ -39,6 +39,12 @@ import {
   disableSimpleReverb,
   resetSimpleSurface,
 } from './applySimple'
+import { ExportCheck } from '../components/samplePrep/ExportCheck'
+import {
+  SIMPLE_EXPORT_BIT_DEPTHS,
+  SIMPLE_EXPORT_RATES,
+  evaluateExportCheck,
+} from '../audio/samplePrep/exportCheck'
 import { bounceSimplePcm, encodeSimpleWav, formatSimpleSeconds, prepareSimpleExportPcm, simpleExportFilename } from './exportSimple'
 import { fadeSecondsForStep, fadeStepFromSeconds, FADE_STEP_IDS, type FadeStepId } from './fadeSteps'
 import {
@@ -163,6 +169,47 @@ export function SimpleShell({
   const [saveTail, setSaveTail] = useState(true)
   const [saving, setSaving] = useState(false)
   const saveBusyRef = useRef(false)
+  const saveCheck = useMemo(() => {
+    const span = snap.params.end - snap.params.start
+    const partial = span > 0.001 && (snap.params.start > 0.001 || snap.params.end < snap.duration - 0.001)
+    return evaluateExportCheck({
+      sampleLoaded: snap.sampleLoaded,
+      sourceSampleRate: snap.sourceSampleRate,
+      sourceChannels: snap.sourceChannels,
+      bufferDuration: snap.duration,
+      regionStart: snap.params.start,
+      regionEnd: snap.params.end,
+      prep: snap.prep,
+      scope: partial ? 'selection' : 'project',
+      format: 'wav',
+      sampleRate: saveRate === 'original' ? 'original' : Number(saveRate),
+      bitDepth: saveBits,
+      chain: snap.chain,
+      forceMono: saveMono,
+      rangeOverride: {
+        start: snap.params.start,
+        end: snap.params.end,
+        kind: partial ? 'selection' : 'full',
+      },
+      requirePartial: false,
+      allowedRates: SIMPLE_EXPORT_RATES,
+      allowedBitDepths: SIMPLE_EXPORT_BIT_DEPTHS,
+      bufferRev: snap.bufferRev,
+    })
+  }, [
+    snap.sampleLoaded,
+    snap.sourceSampleRate,
+    snap.sourceChannels,
+    snap.duration,
+    snap.params.start,
+    snap.params.end,
+    snap.prep,
+    snap.chain,
+    snap.bufferRev,
+    saveRate,
+    saveBits,
+    saveMono,
+  ])
   const liveDspRef = useRef(captureDsp(engine))
 
   const captured = listenOriginal ? listenSnapshot : null
@@ -356,7 +403,7 @@ export function SimpleShell({
   }
 
   const saveFile = () => {
-    if (saveBusyRef.current) return
+    if (saveBusyRef.current || !saveCheck.canExport) return
     saveBusyRef.current = true
     setSaving(true)
     exitOriginal()
@@ -962,8 +1009,14 @@ export function SimpleShell({
                   {t.simple.saveName}
                   <input value={saveName} onChange={(event) => setSaveName(event.target.value)} />
                 </label>
-                <p className={styles.sheetLabel}>{t.simple.saveFormat}</p>
-                <p className={styles.meta}>{t.simple.wav}</p>
+                <ExportCheck
+                  result={saveCheck}
+                  mode="simple"
+                  onLoadAudio={() => {
+                    setSheet('none')
+                    onLoadSample()
+                  }}
+                />
                 <p className={styles.sheetLabel} id="simple-tail">
                   {t.simple.tail}
                 </p>
@@ -1016,7 +1069,7 @@ export function SimpleShell({
                     </label>
                   </>
                 ) : null}
-                <button type="submit" className={styles.export} {...guideTargetAttrs('export.confirm')} disabled={saving}>
+                <button type="submit" className={`${styles.export} ${styles.saveSubmit}`} {...guideTargetAttrs('export.confirm')} disabled={saving || !saveCheck.canExport}>
                   {saving ? t.export.rendering : t.transport.export}
                 </button>
               </form>

@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusInitial, trapTab } from '../../a11y/dialogFocus'
 import { formatTimecode } from '../../audio/engine/formatTime'
 import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
+import {
+  EXPORT_BIT_DEPTHS,
+  EXPORT_FORMATS,
+  EXPORT_SAMPLE_RATES,
+  evaluateExportCheck,
+  type ExportCheckMode,
+} from '../../audio/samplePrep/exportCheck'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
 import { downloadBlob } from '../../features/sample/files'
 import { emitGuideEvent } from '../../guide/events'
@@ -10,22 +17,17 @@ import { engine } from '../../hooks/useEngine'
 import { pushHearingAlert } from '../../hearing/alerts'
 import { useI18n } from '../../i18n'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
+import { ExportCheck } from './ExportCheck'
 import styles from './ExportDialog.module.css'
 
 type Props = {
   snap: EngineSnapshot
+  mode?: ExportCheckMode
   onClose: () => void
+  onLoadAudio?: () => void
 }
 
-const RATES = [
-  { value: 'original', label: 'Original' },
-  { value: '44100', label: '44.1 kHz' },
-  { value: '48000', label: '48 kHz' },
-  { value: '88200', label: '88.2 kHz' },
-  { value: '96000', label: '96 kHz' },
-] as const
-
-export function ExportDialog({ snap, onClose }: Props) {
+export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }: Props) {
   const { t } = useI18n()
   const prep = snap.prep
   const partial =
@@ -35,7 +37,7 @@ export function ExportDialog({ snap, onClose }: Props) {
   const [name, setName] = useState(
     exportFileName(snap.fileName || 'sample', partial, prep.clipName).replace(/\.wav$/, ''),
   )
-  const [format] = useState('wav')
+  const [format] = useState<(typeof EXPORT_FORMATS)[number]>('wav')
   const [rate, setRate] = useState<'original' | string>('original')
   const [bitDepth, setBitDepth] = useState<WavBitDepth>(24)
   const [applyFades, setApplyFades] = useState(true)
@@ -56,7 +58,48 @@ export function ExportDialog({ snap, onClose }: Props) {
     }),
     [snap.duration, snap.params.start, snap.params.end],
   )
-  const selectionReady = selectionExportAvailable(prep, exportClock)
+  const sampleRate: number | 'original' = rate === 'original' ? 'original' : Number(rate)
+  const shared = useMemo(
+    () => ({
+      sampleLoaded: snap.sampleLoaded,
+      sourceSampleRate: snap.sourceSampleRate,
+      sourceChannels: snap.sourceChannels,
+      bufferDuration: snap.duration,
+      regionStart: snap.params.start,
+      regionEnd: snap.params.end,
+      prep,
+      format,
+      sampleRate,
+      bitDepth,
+      chain: snap.chain,
+      bufferRev: snap.bufferRev,
+      allowedRates: EXPORT_SAMPLE_RATES,
+      allowedBitDepths: EXPORT_BIT_DEPTHS,
+    }),
+    [
+      snap.sampleLoaded,
+      snap.sourceSampleRate,
+      snap.sourceChannels,
+      snap.duration,
+      snap.params.start,
+      snap.params.end,
+      prep,
+      format,
+      sampleRate,
+      bitDepth,
+      snap.chain,
+      snap.bufferRev,
+    ],
+  )
+  const projectCheck = useMemo(
+    () => evaluateExportCheck({ ...shared, scope: 'project', requirePartial: false }),
+    [shared],
+  )
+  const selectionCheck = useMemo(
+    () => evaluateExportCheck({ ...shared, scope: 'selection', requirePartial: true }),
+    [shared],
+  )
+  const selectionReady = selectionExportAvailable(prep, exportClock) && selectionCheck.canExport
 
   const projectLength = useMemo(() => {
     const range = exportWorkingRange(prep, 'project', exportClock)
@@ -96,7 +139,8 @@ export function ExportDialog({ snap, onClose }: Props) {
 
   const exportNow = (scope: 'project' | 'selection') => {
     if (busyRef.current) return
-    if (scope === 'selection' && !selectionReady) return
+    const gate = scope === 'selection' ? selectionCheck : projectCheck
+    if (!gate.canExport) return
     busyRef.current = true
     setError('')
     setPhase('preparing')
@@ -107,7 +151,7 @@ export function ExportDialog({ snap, onClose }: Props) {
         const result = await engine.exportWav(
           {
             name,
-            sampleRate: rate === 'original' ? 'original' : Number(rate),
+            sampleRate,
             bitDepth,
             applyFades,
             applyGain,
@@ -172,63 +216,90 @@ export function ExportDialog({ snap, onClose }: Props) {
           exportNow('project')
         }}
       >
+        <div className={styles.body} data-export-body="">
         <h2 id="export-title" tabIndex={-1}>
           {t.export.title}
         </h2>
         <label className={styles.field}>
-          Name
+          {t.simple.saveName}
           <input data-dialog-initial="" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label className={styles.field}>
-          Format
-          <select value={format} disabled>
-            <option value="wav">WAV</option>
+          {t.simple.saveFormat}
+          <select value={format} disabled aria-describedby="export-format-help">
+            {EXPORT_FORMATS.map((id) => (
+              <option key={id} value={id}>
+                {t.simple.wav}
+              </option>
+            ))}
           </select>
         </label>
-        <p className={styles.hint}>{t.export.hintCodec}</p>
+        <p id="export-format-help" className={styles.hint}>
+          {t.export.hintCodec}
+        </p>
         <label className={styles.field}>
-          Sample rate
+          {t.simple.sampleRate}
           <select value={rate} onChange={(e) => setRate(e.target.value)}>
-            {RATES.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.value === 'original' ? `${t.export.original} (${originalHz || '—'} Hz)` : r.label}
+            <option value="original">
+              {t.export.original} ({originalHz || '—'} Hz)
+            </option>
+            {EXPORT_SAMPLE_RATES.map((hz) => (
+              <option key={hz} value={String(hz)}>
+                {hz === 44100 ? '44.1 kHz' : hz === 48000 ? '48 kHz' : hz === 88200 ? '88.2 kHz' : '96 kHz'}
               </option>
             ))}
           </select>
         </label>
         <label className={styles.field}>
-          Bit depth
-          <select value={bitDepth} onChange={(e) => setBitDepth(Number(e.target.value) as WavBitDepth)}>
-            <option value={16}>16-bit (dithered)</option>
-            <option value={24}>24-bit</option>
-            <option value={32}>32-bit float</option>
+          {t.simple.bitDepth}
+          <select
+            value={bitDepth}
+            onChange={(e) => setBitDepth(Number(e.target.value) as WavBitDepth)}
+            aria-describedby="export-depth-help"
+          >
+            {EXPORT_BIT_DEPTHS.map((depth) => (
+              <option key={depth} value={depth}>
+                {depth === 16 ? t.export.depth16 : depth === 24 ? t.export.depth24 : t.export.depth32}
+              </option>
+            ))}
           </select>
         </label>
-        <p className={styles.hint}>
-          Channels: {snap.sourceChannels >= 2 && prep.channelMode === 'original' ? 'Stereo' : prep.channelMode === 'mono' || snap.sourceChannels < 2 ? 'Mono' : prep.channelMode}
+        <p id="export-depth-help" className={styles.hint}>
+          {bitDepth === 16 ? t.export.depthHelpDither : bitDepth === 32 ? t.export.depthHelpFloat : t.export.depthHelpPcm}
         </p>
         <label className={styles.check}>
           <input type="checkbox" checked={applyFades} onChange={(e) => setApplyFades(e.target.checked)} />
-          Apply fade in / out
+          {t.export.applyFades}
         </label>
         <label className={styles.check}>
           <input type="checkbox" checked={applyGain} onChange={(e) => setApplyGain(e.target.checked)} />
-          Apply gain
+          {t.export.applyGain}
         </label>
         <label className={styles.check}>
           <input type="checkbox" checked={applyReverse} onChange={(e) => setApplyReverse(e.target.checked)} />
-          Apply reverse
+          {t.export.applyReverse}
         </label>
         <label className={styles.check}>
           <input type="checkbox" checked={applyNormalize} onChange={(e) => setApplyNormalize(e.target.checked)} />
-          Normalize to {DEFAULT_NORMALIZE_DBFS} dBFS
+          {t.export.applyNormalize(DEFAULT_NORMALIZE_DBFS)}
         </label>
         <p className={styles.hint}>{t.export.estimated(formatTimecode(projectLength))}</p>
         <p className={styles.hint}>{t.export.tailHint}</p>
-        {error ? <p className={styles.hint}>{error}</p> : null}
+        <ExportCheck result={projectCheck} mode={mode} onLoadAudio={onLoadAudio} />
+        {error ? (
+          <p className={styles.hint} role="alert">
+            {error}
+          </p>
+        ) : null}
+        {!selectionReady ? (
+          <p className={styles.hint}>{t.export.selectionUnavailable}</p>
+        ) : (
+          <p className={styles.hint}>{t.export.estimated(formatTimecode(selectionLength))}</p>
+        )}
+        </div>
         <div className={styles.actions}>
           <button type="button" onClick={onClose} disabled={busy}>
-            Cancel
+            {t.export.cancel}
           </button>
           <button
             type="button"
@@ -238,13 +309,15 @@ export function ExportDialog({ snap, onClose }: Props) {
           >
             {phaseLabel(t.export.exportSelection)}
           </button>
-          <button type="submit" className={styles.export} {...guideTargetAttrs('export.confirm')} disabled={busy}>
+          <button
+            type="submit"
+            className={styles.export}
+            {...guideTargetAttrs('export.confirm')}
+            disabled={!projectCheck.canExport || busy}
+          >
             {phaseLabel(t.export.exportProject)}
           </button>
         </div>
-        {!selectionReady ? <p className={styles.hint}>{t.export.selectionUnavailable}</p> : (
-          <p className={styles.hint}>{t.export.estimated(formatTimecode(selectionLength))}</p>
-        )}
       </form>
     </div>
   )

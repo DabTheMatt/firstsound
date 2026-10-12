@@ -603,6 +603,12 @@
   font-size: var(--type-13);
 }
 
+.saveSubmit {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
 .play:focus-visible,
 .choice:focus-visible,
 .choiceOn:focus-visible,
