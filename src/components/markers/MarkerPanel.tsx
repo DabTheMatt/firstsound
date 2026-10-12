@@ -526,10 +526,10 @@ export function MarkerHost({ mode, onCommit }: Props) {
                   {visibleSuggestions.map((mark, index) => {
                     const label = copy.labels[mark.type]
                     return (
-                      <li key={`${mark.type}:${index}:${mark.time.toFixed(3)}`} className={styles.item}>
+                      <li key={`${mark.type}:${index}:${mark.time.toFixed(3)}`} className={styles.suggestRow}>
                         <span className={styles.time}>{formatEditTime(mark.time)}</span>
-                        <span className={styles.name}>{label}</span>
-                        <button type="button" className={styles.text} onClick={() => saveDetected(mark.time, label)}>
+                        <span className={styles.name} title={label}>{label}</span>
+                        <button type="button" className={`${styles.text} ${styles.suggestSave}`} onClick={() => saveDetected(mark.time, label)}>
                           {t.markers.saveDetected}
                         </button>
                       </li>
