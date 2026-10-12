@@ -1,4 +1,6 @@
 import type { EqBand } from '../audio/engine/eqBands'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import type { BufferAnalysis } from './analyze'
 import { HEARING_BANDS } from './bands'
 import { eqBandDeltas, heardBandLevels, levelBar } from './eqAssist'
@@ -64,23 +66,20 @@ function dbText(db: number | null): string {
 }
 
 export function AfterEqChart({ analysis, bands, sampleRate, engaged, pitchSemitones = 0, lit }: Props) {
-  if (!analysis) return <p style={{ margin: 0 }}>Load a sample to compare the original with what you hear.</p>
+  const copy = hearingUi(useI18n().locale)
+  if (!analysis) return <p style={{ margin: 0 }}>{copy.loadToCompare}</p>
   const rows = heardBandLevels(analysis, sampleRate || analysis.sampleRate, pitchSemitones, bands, engaged)
   const pitched = Math.abs(pitchSemitones) >= 0.05
   const changed = rows.some((band) => band.deltaDb !== null && Math.abs(band.deltaDb) >= 0.3)
+  const pitchText = `${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)}`
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>{pitched ? 'Original → heard' : 'Original → after EQ'}</h3>
-        <InfoTip label="More about original and heard levels">
-          Each track runs from −96 dB to 0 dB. The dimmer bar is the original and the tick is its end. The brighter bar is what you hear
-          {pitched
-            ? ` after pitch ${pitchSemitones > 0 ? '+' : ''}${pitchSemitones.toFixed(1)} st and the EQ curve.`
-            : engaged
-              ? ' after the current EQ curve.'
-              : '. EQ is bypassed and pitch is at 0 st, so the bars match.'}{' '}
-          A bright extension past the tick is a boost. A dim tail past the bright bar is a cut.
-          {changed || (!pitched && !engaged) ? '' : ' Nothing in the current pitch or EQ moves a band by 0.3 dB or more.'}
+        <h3>{pitched ? copy.originalHeard : copy.originalAfterEq}</h3>
+        <InfoTip label={copy.levelsTipLabel}>
+          {copy.levelsTip}
+          {pitched ? copy.levelsTipPitch(pitchText) : engaged ? copy.levelsTipEq : copy.levelsTipFlat} {copy.levelsTipRest}
+          {changed || (!pitched && !engaged) ? '' : copy.levelsTipStill}
         </InfoTip>
       </div>
       <ul className={styles.compare}>
@@ -89,7 +88,7 @@ export function AfterEqChart({ analysis, bands, sampleRate, engaged, pitchSemito
           const delta = row?.deltaDb ?? null
           return (
             <li key={band.id} data-band={band.id} data-lit={lit?.has(band.id) ? 'true' : 'false'}>
-              <span>{band.label}</span>
+              <span>{copy.band(band.id, band.label)}</span>
               <CompareTrack before={row?.beforeDb ?? null} after={row?.afterDb ?? null} />
               <span>
                 {dbText(row?.afterDb ?? null)}

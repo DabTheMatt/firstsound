@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import styles from './HearingAccessLayer.module.css'
 import { distanceWord, headLayout, roomWord, type ReverbSpacePicture } from './reverbDepth'
 import { useElementBox } from './useElementBox'
@@ -21,6 +23,7 @@ type Props = {
  * in front of the head and moves toward the front as distance grows.
  */
 export function HeadSpace({ balance, width, correlation, space = DRY, fill = false }: Props) {
+  const copy = hearingUi(useI18n().locale)
   const ref = useRef<HTMLCanvasElement>(null)
   const box = useElementBox(ref)
 
@@ -101,7 +104,7 @@ export function HeadSpace({ balance, width, correlation, space = DRY, fill = fal
       <canvas
         ref={ref}
         role="img"
-        aria-label={`Head view. Room is ${room}. Source is ${distance} and ${side}, in front of the head. Front is up. A larger room or a greater distance draws a smaller head.`}
+        aria-label={copy.headAria(room, distance, side)}
         style={
           fill
             ? undefined

@@ -723,6 +723,7 @@
 }
 
 .userMarker {
+  --marker-ink: var(--text-primary);
   position: absolute;
   top: 0;
   bottom: 0;
@@ -732,53 +733,98 @@
   border: 0;
   background: transparent;
   transform: translateX(-50%);
-  z-index: 6;
-  pointer-events: auto;
-  cursor: pointer;
+  z-index: 11;
+  pointer-events: none;
 }
 
 .userMarker::before {
   content: '';
   position: absolute;
-  top: 14px;
+  top: 26px;
   bottom: 0;
   left: 50%;
-  border-left: 1px dashed var(--text-primary);
+  border-left: 1px dashed color-mix(in srgb, var(--marker-ink) 42%, transparent);
   transform: translateX(-50%);
   pointer-events: none;
 }
 
+.userMarkerPreview {
+  opacity: 0.5;
+  z-index: 10;
+}
+
+.userMarkerPreview::before {
+  border-left-color: var(--marker-ink);
+}
+
+.userMarkerPreview .userMarkerFlag,
+.userMarkerPreview .userMarkerLabel {
+  pointer-events: none;
+  cursor: default;
+}
+
 .userMarkerFlag {
   position: absolute;
-  top: 2px;
+  top: 4px;
+  left: 50%;
+  width: 28px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.overlay[data-cursor] .userMarkerFlag {
+  cursor: ew-resize;
+}
+
+.userMarkerGem {
+  position: absolute;
+  top: 4px;
   left: 50%;
   width: 10px;
   height: 10px;
   transform: translateX(-50%) rotate(45deg);
-  border: 2px solid var(--text-primary);
+  border: 2px solid var(--marker-ink);
   background: var(--bg-app);
   pointer-events: none;
 }
 
-.userMarkerOn .userMarkerFlag {
-  background: var(--text-primary);
+.userMarkerOn .userMarkerGem {
+  background: var(--marker-ink);
 }
 
 .userMarkerLabel {
   position: absolute;
-  top: 16px;
-  left: calc(50% + 8px);
+  top: 4px;
+  left: calc(50% + 16px);
   max-width: 7rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
   line-height: 1.2;
-  color: var(--text-primary);
+  color: var(--marker-ink);
   background: color-mix(in srgb, var(--bg-app) 88%, transparent);
-  border: 1px solid var(--border-strong);
+  border: 1px solid color-mix(in srgb, var(--marker-ink) 45%, var(--border-strong));
   padding: 0 3px;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* The edit toolbar floats over the top of the technical waveform. */
+:global([data-technical-ui='workspace']) .userMarkerFlag,
+:global([data-technical-ui='workspace']) .userMarkerLabel {
+  top: calc(4px + var(--control-compact, 28px) + 8px);
+}
+
+:global([data-technical-ui='workspace']) .userMarker::before {
+  top: calc(4px + var(--control-compact, 28px) + 28px);
 }
 
 .sensory .playhead {

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import type { SpaceBucket } from './analyze'
 import { applyPanToBalance } from './effectViz'
 import styles from './HearingAccessLayer.module.css'
@@ -36,6 +38,7 @@ export function SpaceField({
   fill = false,
 }: Props & { fill?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const copy = hearingUi(useI18n().locale)
   const box = useElementBox(ref)
 
   useEffect(() => {
@@ -156,7 +159,7 @@ export function SpaceField({
         ref={ref}
         className="hearing-space-field"
         role="img"
-        aria-label="Stereo field over time. Wider marks are wider images. Hollow marks are low correlation. A short tail under a mark is reverb wet. The right edge is the room: a longer line is a larger room, and the dot is how far the source sits in front of the listener."
+        aria-label={copy.spaceFieldAria}
         style={
           fill
             ? undefined

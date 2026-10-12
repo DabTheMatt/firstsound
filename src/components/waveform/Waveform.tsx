@@ -1696,7 +1696,13 @@ export const Waveform = forwardRef<WaveformHandle, Props>(function Waveform(
                     </>
                   )}
                   {!sensory ? (
-                    <WaveformMarkers view={view} markers={snap.userMarkers} selectedId={snap.selectedMarkerId} />
+                    <WaveformMarkers
+                      view={view}
+                      markers={snap.userMarkers}
+                      selectedId={snap.selectedMarkerId}
+                      duration={duration}
+                      onCommit={onRegionCommit}
+                    />
                   ) : null}
                   <div ref={playheadRef} className={styles.playhead} data-playhead="" />
                   {fadeDrag ? (

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { commitHistory, createHistory, redoHistory, undoHistory } from '../../app/history'
 import { timeToFrac } from '../../components/waveform/viewport'
-import { markerLabelVisibility, markerLeftPercent } from '../../components/markers/placement'
+import { markerLabelVisibility, markerLeftPercent, markerTimeFromClientX } from '../../components/markers/placement'
 import {
   appendMarker,
   editMarker,
@@ -66,6 +66,30 @@ describe('user markers', () => {
     const rejected = editMarker(start.markers, 'edge', { timeSeconds: 9, name: 'Elsewhere' }, 2)
     expect(rejected.ok).toBe(false)
     expect(start.markers[0]).toEqual({ id: 'edge', timeSeconds: 0, name: 'Start' })
+  })
+
+  it('keeps a palette color and ignores a color that is not in the palette', () => {
+    const added = appendMarker([], { id: 'a', timeSeconds: 1, name: 'Marker 1' }, 4)
+    expect(added.ok).toBe(true)
+    if (!added.ok) return
+    const colored = editMarker(added.markers, 'a', { color: 'cyan' }, 4)
+    expect(colored.ok).toBe(true)
+    if (!colored.ok) return
+    expect(colored.markers[0]?.color).toBe('cyan')
+    expect(markersEqual(added.markers, colored.markers)).toBe(false)
+    const kept = editMarker(colored.markers, 'a', { name: 'Renamed' }, 4)
+    expect(kept.ok && kept.markers[0]?.color).toBe('cyan')
+    const cleared = editMarker(colored.markers, 'a', { color: null }, 4)
+    expect(cleared.ok && cleared.markers[0]?.color).toBeUndefined()
+    const parsed = parseMarkerDocument({
+      source: { id: 'src-1', fileName: 'take.wav', sampleRate: 48000, duration: 4 },
+      markers: [
+        { id: 'paint', timeSeconds: 1, name: 'Paint', color: 'violet' },
+        { id: 'plain', timeSeconds: 2, name: 'Plain', color: 'nope' },
+      ],
+    })
+    expect(parsed?.markers.find((marker) => marker.id === 'paint')?.color).toBe('violet')
+    expect(parsed?.markers.find((marker) => marker.id === 'plain')?.color).toBeUndefined()
   })
 
   it('sorts by time and keeps equal times in their previous order', () => {
@@ -187,5 +211,14 @@ describe('marker alignment', () => {
       0.1,
     )
     expect(labels).toEqual(['a', 'c'])
+  })
+
+  it('maps a diamond drag to a time inside the file', () => {
+    const bounds = { left: 100, width: 200 }
+    expect(markerTimeFromClientX(150, bounds, { start: 0, end: 4 }, 4)).toBeCloseTo(1)
+    expect(markerTimeFromClientX(150, bounds, { start: 2, end: 4 }, 8)).toBeCloseTo(2.5)
+    expect(markerTimeFromClientX(0, bounds, { start: 0, end: 4 }, 4)).toBe(0)
+    expect(markerTimeFromClientX(900, bounds, { start: 0, end: 4 }, 4)).toBe(4)
+    expect(markerTimeFromClientX(150, bounds, { start: 0, end: 4 }, 0)).toBe(0)
   })
 })

@@ -9,6 +9,8 @@ import {
   type HearingReveal,
 } from './reveal'
 import { getHearingView, subscribeHearingView } from './session'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import { useHearingSettings } from './useHearingSettings'
 import { SYMBOL_STRIP_HEIGHT, symbolBarRect, symbolGlyphBaseline, waveSymbolsVisible } from './waveSymbols'
 import styles from './HearingAccessLayer.module.css'
@@ -125,6 +127,7 @@ function TransientLineIcon({ hidden }: { hidden: boolean }) {
 /** Names the waveform marks and turns the shared transient lines and the strip symbols on or off. */
 export function HearingWaveLegend() {
   const { settings, patch } = useHearingSettings()
+  const copy = hearingUi(useI18n().locale)
   const snap = useEngine()
   const [lineShown, setLineShown] = useState(() => isTransientLineVisible())
   useEffect(() => subscribeHearingReveal(() => setLineShown(isTransientLineVisible())), [])
@@ -134,23 +137,23 @@ export function HearingWaveLegend() {
   const toggleLine = () => setTransientLineVisible(!lineShown)
   return (
     <div className={styles.waveLegend} data-hearing-legend="">
-      <span className={styles.waveLegendTransient}>transient</span>
-      <span>▲ attack</span>
-      <span>! clip</span>
-      <span>bar = level</span>
-      <span>▭ silence</span>
-      <span>● loud</span>
-      <span>♩ tone</span>
-      <span>◆ click</span>
+      <span className={styles.waveLegendTransient}>{copy.legend.transient}</span>
+      <span>{copy.legend.attack}</span>
+      <span>{copy.legend.clip}</span>
+      <span>{copy.legend.level}</span>
+      <span>{copy.legend.silence}</span>
+      <span>{copy.legend.loud}</span>
+      <span>{copy.legend.tone}</span>
+      <span>{copy.legend.click}</span>
       <button type="button" aria-pressed={snap.showTransients} onClick={toggleTransients}>
-        Transients
+        {copy.legend.transients}
       </button>
       <button
         type="button"
         className={styles.waveLegendIcon}
         aria-pressed={lineShown}
-        aria-label={lineShown ? 'Hide transient line' : 'Show transient line'}
-        title={lineShown ? 'Hide transient line' : 'Show transient line'}
+        aria-label={lineShown ? copy.legend.hideLine : copy.legend.showLine}
+        title={lineShown ? copy.legend.hideLine : copy.legend.showLine}
         onClick={toggleLine}
       >
         <TransientLineIcon hidden={!lineShown} />
@@ -160,7 +163,7 @@ export function HearingWaveLegend() {
         aria-pressed={settings.showWaveSymbols}
         onClick={() => patch({ showWaveSymbols: !settings.showWaveSymbols })}
       >
-        Symbols
+        {copy.legend.symbols}
       </button>
     </div>
   )

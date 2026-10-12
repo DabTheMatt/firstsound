@@ -3,6 +3,7 @@ import { trackAccentStyle } from '../../audio/mix/tracks'
 import { useEngine } from '../../hooks/useEngine'
 import type { VizMode, WaveTool } from '../../app/editorState'
 import { useI18n } from '../../i18n'
+import { hearingUi } from '../../i18n/hearingUi'
 import { MarkerTrigger } from '../markers/MarkerPanel'
 import { BackgroundControl } from './BackgroundControl'
 import styles from './WaveformToolbar.module.css'
@@ -141,7 +142,7 @@ export function WaveformToolbar({
   arrangement = 'single',
   onArrangement,
 }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const snap = useEngine()
   const accent = trackAccentStyle(snap.tracks.find((track) => track.id === snap.selectedTrackId)?.color ?? 'amber')
   const tools = TOOLS
@@ -403,7 +404,7 @@ export function WaveformToolbar({
         </IconButton>
         {onHearingFocus ? (
           <IconButton
-            label="Hearing Access focus"
+            label={hearingUi(locale).focusAria}
             caption={t.focus.hearing}
             pressed={hearingFocus}
             onClick={onHearingFocus}
