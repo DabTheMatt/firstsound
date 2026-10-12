@@ -189,7 +189,7 @@ function FocusTransport({
   }, [])
   return (
     <div className={styles.transport} data-focus-transport="">
-      <span className={styles.transportTime} ref={playheadRef}>
+      <span className={styles.transportTime} ref={playheadRef} tabIndex={0} data-explain="wave.timecode">
         {formatTimecode(0)}
       </span>
       <button
@@ -228,6 +228,7 @@ function FocusTransport({
         aria-pressed={loop}
         aria-label={t.transport.loop}
         title={t.transport.loop}
+        data-explain="wave.loop"
         onClick={() => engine.setLoop(!loop)}
       >
         <LoopIcon on={loop} />

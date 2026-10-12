@@ -68,6 +68,7 @@ export function FftPrimaryBar() {
           type="button"
           className={prefs.viewMode === '2d' ? styles.segmentOn : styles.textButton}
           aria-pressed={prefs.viewMode === '2d'}
+          data-explain="fft.spectrum"
           onClick={() => patch({ viewMode: '2d' })}
         >
           2D
@@ -78,6 +79,7 @@ export function FftPrimaryBar() {
           aria-pressed={prefs.viewMode === '3d'}
           aria-label="3D"
           title="3D Spectral History"
+          data-explain="fft.history"
           onClick={() => patch({ viewMode: '3d' })}
         >
           3D

@@ -213,6 +213,7 @@ export function CompactTransport({
           data-transport=""
           aria-pressed={loop}
           aria-label="Loop selection"
+          data-explain="wave.loop"
           onClick={() => engine.setLoop(!loop)}
         >
           {t.transport.loop}
@@ -221,7 +222,7 @@ export function CompactTransport({
 
       <div className={styles.meta}>
         <p className={styles.times}>
-          <span className={styles.head} ref={playheadRef} title={t.transport.playhead}>
+          <span className={styles.head} ref={playheadRef} title={t.transport.playhead} tabIndex={0} data-explain="wave.timecode">
             {formatTimecode(start)}
           </span>
           <span className={styles.details}>

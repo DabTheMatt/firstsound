@@ -302,7 +302,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
         </label>
         <label className={styles.field}>
           {t.simple.saveFormat}
-          <select value={format} disabled aria-describedby="export-format-help">
+          <select value={format} disabled aria-describedby="export-format-help" data-explain="export.format">
             {EXPORT_FORMATS.map((id) => (
               <option key={id} value={id}>
                 {t.simple.wav}
@@ -315,7 +315,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
         </p>
         <label className={styles.field}>
           {t.simple.sampleRate}
-          <select value={rate} onChange={(e) => setRate(e.target.value)}>
+          <select value={rate} data-explain="export.sampleRate" onChange={(e) => setRate(e.target.value)}>
             <option value="original">
               {t.export.original} ({originalHz || '—'} Hz)
             </option>
@@ -330,6 +330,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
           {t.simple.bitDepth}
           <select
             value={bitDepth}
+            data-explain="export.bitDepth"
             onChange={(e) => setBitDepth(Number(e.target.value) as WavBitDepth)}
             aria-describedby="export-depth-help"
           >
@@ -436,6 +437,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
             type="button"
             disabled={!selectionReady || busy || previewPreparing}
             title={selectionReady ? undefined : t.export.selectionUnavailable}
+            data-explain="export.range"
             onClick={() => exportNow('selection')}
           >
             {phaseLabel(t.export.exportSelection)}
@@ -444,6 +446,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
             type="submit"
             className={styles.export}
             {...guideTargetAttrs('export.confirm')}
+            data-explain="export.range"
             disabled={!projectCheck.canExport || busy || previewPreparing}
           >
             {phaseLabel(t.export.exportProject)}

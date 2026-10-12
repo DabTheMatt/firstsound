@@ -7,14 +7,17 @@ import styles from './ManualDialog.module.css'
 
 type Props = {
   onClose: () => void
+  sectionId?: string
 }
 
-export function ManualDialog({ onClose }: Props) {
+export function ManualDialog({ onClose, sectionId }: Props) {
   const { locale } = useI18n()
   const copy = MANUAL[locale]
   const panelRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
-  const [active, setActive] = useState(copy.sections[0]?.id ?? '')
+  const [active, setActive] = useState(
+    sectionId && copy.sections.some((section) => section.id === sectionId) ? sectionId : copy.sections[0]?.id ?? '',
+  )
   const needle = query.trim().toLowerCase()
   const sections = useMemo(() => {
     if (!needle) return copy.sections

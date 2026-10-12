@@ -45,7 +45,7 @@ export function ExportCheck({ result, mode, onLoadAudio }: Props) {
   const noAudio = issues.some((issue) => issue.id === 'no-audio')
 
   return (
-    <section className={styles.check} aria-labelledby={titleId} data-export-check="" data-export-status={result.status}>
+    <section className={styles.check} aria-labelledby={titleId} data-export-check="" data-explain="export.check" data-export-status={result.status}>
       <h3 id={titleId} className={styles.title}>
         {t.export.checkTitle}
       </h3>
@@ -55,7 +55,7 @@ export function ExportCheck({ result, mode, onLoadAudio }: Props) {
           const row = rowContent(field, result, t, locale, names)
           const helpId = `${titleId}-${field}`
           return (
-            <div key={field} className={styles.row}>
+            <div key={field} className={styles.row} tabIndex={0} data-explain={fieldExplainId(field)}>
               <dt id={`${helpId}-label`}>{row.label}</dt>
               <dd aria-labelledby={`${helpId}-label`} aria-describedby={helpId}>
                 <span>{row.value}</span>
@@ -143,6 +143,15 @@ function issueText(t: ReturnType<typeof useI18n>['t'], id: ExportCheckResult['is
     default:
       return t.export.info
   }
+}
+
+function fieldExplainId(field: 'format' | 'rate' | 'depth' | 'channels' | 'range' | 'effects'): string {
+  if (field === 'format') return 'export.format'
+  if (field === 'rate') return 'export.sampleRate'
+  if (field === 'depth') return 'export.bitDepth'
+  if (field === 'channels') return 'export.channels'
+  if (field === 'range') return 'export.range'
+  return 'export.check'
 }
 
 function rowContent(

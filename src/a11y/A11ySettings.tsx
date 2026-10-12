@@ -29,6 +29,7 @@ type SwitchProps = {
   onLabel: string
   offLabel: string
   disabled?: boolean
+  explain?: string
   onChange: (next: boolean) => void
 }
 
@@ -40,6 +41,7 @@ function PreferenceSwitch({
   onLabel,
   offLabel,
   disabled = false,
+  explain,
   onChange,
 }: SwitchProps) {
   const labelId = useId()
@@ -69,6 +71,7 @@ function PreferenceSwitch({
         aria-labelledby={labelId}
         aria-describedby={describedBy}
         disabled={disabled}
+        data-explain={explain}
         onClick={() => onChange(!checked)}
       >
         <span aria-hidden="true">{checked ? onLabel : offLabel}</span>
@@ -84,10 +87,11 @@ type ScaleProps = {
   min: number
   max: number
   presets: readonly number[]
+  explain?: string
   onChange: (next: number) => void
 }
 
-function ScalePreference({ label, description, value, min, max, presets, onChange }: ScaleProps) {
+function ScalePreference({ label, description, value, min, max, presets, explain, onChange }: ScaleProps) {
   const labelId = useId()
   const helpId = useId()
   const rangeId = useId()
@@ -114,6 +118,7 @@ function ScalePreference({ label, description, value, min, max, presets, onChang
           aria-labelledby={labelId}
           aria-describedby={helpId}
           aria-valuetext={`${percent}%`}
+          data-explain={explain}
           onChange={(event) => onChange(clampScale(Number(event.target.value), min, max))}
         />
         <span className={styles.percent} aria-hidden="true">
@@ -244,7 +249,7 @@ export function A11ySettings({ onBack }: Props) {
   }
 
   return (
-    <section className={styles.section} aria-labelledby="field-access-title">
+    <section className={styles.section} aria-labelledby="field-access-title" data-explain-scope="">
       <button type="button" className={styles.back} onClick={onBack}>
         {a.back}
       </button>
@@ -264,6 +269,7 @@ export function A11ySettings({ onBack }: Props) {
           min={INTERFACE_SCALE_MIN}
           max={INTERFACE_SCALE_MAX}
           presets={INTERFACE_SCALE_PRESETS}
+          explain="a11y.interfaceSize"
           onChange={(interfaceScale) => setSettings({ interfaceScale })}
         />
         <ScalePreference
@@ -273,12 +279,14 @@ export function A11ySettings({ onBack }: Props) {
           min={TEXT_SCALE_MIN}
           max={TEXT_SCALE_MAX}
           presets={TEXT_SCALE_PRESETS}
+          explain="a11y.textSize"
           onChange={(textScale) => setSettings({ textScale })}
         />
         <PreferenceSwitch
           checked={settings.highVisibility}
           label={a.highVisibility}
           description={a.highVisibilityHelp}
+          explain="a11y.highVisibility"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(highVisibility) => setSettings({ highVisibility })}
@@ -300,6 +308,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.attentionFocus}
           label={a.attentionFocus}
           description={a.attentionFocusHelp}
+          explain="a11y.attentionFocus"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(attentionFocus) => setSettings({ attentionFocus })}
@@ -332,6 +341,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.predictableLayout}
           label={a.predictableLayout}
           description={a.predictableLayoutHelp}
+          explain="a11y.predictableLayout"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(predictableLayout) => setSettings({ predictableLayout })}
@@ -379,6 +389,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.sensoryComfort}
           label={a.sensoryComfort}
           description={a.sensoryComfortHelp}
+          explain="a11y.sensoryComfort"
           extraDescription={a.sensoryComfortApplies}
           onLabel={a.on}
           offLabel={a.off}
@@ -456,6 +467,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.dragFreeEditing}
           label={a.dragFree}
           description={a.dragFreeHelp}
+          explain="a11y.dragFree"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(dragFreeEditing) => setSettings({ dragFreeEditing })}
@@ -464,6 +476,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.keyboardFirst}
           label={a.keyboardFirst}
           description={a.keyboardFirstHelp}
+          explain="a11y.keyboardFirst"
           extraDescription={a.keyboardFirstAlways}
           onLabel={a.on}
           offLabel={a.off}

@@ -80,6 +80,16 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'explain-this',
+    title: 'Explain this',
+    body: [
+      'Explain this is a short note about the control you are using. It stays inside FIELD. Open it with the info mark on an inspector heading, the floating info mark beside a focused control, or F1. The mark is ⓘ. Polish calls this Wyjaśnij.',
+      'Basic is plain language: what the control changes, what you may hear, and when it helps. Technical is the engineering note: units, range, and how the process behaves. The choice is remembered in this browser under the help level. It is not tied to Simple or Technical mode.',
+      'F1 explains the focused control. Escape closes the note. Focus returns to the control only if it had moved into the note. Opening the note does not move focus by itself. Tab from the control enters the note. A screen reader hears the name and the short explanation. The longer technical text waits until you open details.',
+      'More in the manual opens the matching section of this manual when one exists. English and Polish carry the same meaning. The note uses the live shortcut registry and the parameter ranges already in FIELD. Help does not stop playback, reset a parameter, or change an effect.',
+    ],
+  },
+  {
     id: 'technical-interface',
     title: 'Technical interface',
     body: [
@@ -316,7 +326,7 @@ const en: ManualSection[] = [
       'When Keyboard-First, Drag-Free Editing, screen reader optimizations, and Accessible Waveform Navigation are off, Space always plays or pauses, including while a button, switch, or slider has focus. A text field still takes the space character. An open dialog keeps Space for its own controls. While Hold is on, Space clears Hold and leaves playback running from that place. When one of those accessibility options is on, Space plays or pauses only when focus is not on a button, switch, slider, menu, or text field, and Enter or Space activates the focused button. Escape closes menus and dialogs and returns focus to the control that opened them.',
       'Ctrl+Z or Cmd+Z undoes. Shift+Ctrl+Z or Shift+Cmd+Z redoes.',
       'Tab moves between controls. Arrow keys change a focused knob or slider. Shift+Arrow is a finer step. Home and End jump to the ends. Page Up and Page Down take a larger step. Delete or Backspace resets the focused parameter.',
-      'Transport shortcuts can be turned off in Settings.',
+      'Transport shortcuts can be turned off in Settings. F1 explains the focused control. That shortcut stays available when transport shortcuts are off.',
     ],
   },
   {
@@ -576,6 +586,16 @@ const pl: ManualSection[] = [
     ],
   },
   {
+    id: 'explain-this',
+    title: 'Wyjaśnij',
+    body: [
+      'Wyjaśnij to krótka notatka o kontrolce, której używasz. Zostaje w FIELD. Otwierasz ją znakiem informacji w nagłówku inspektora, unoszonym znakiem przy kontrolce w fokusie albo klawiszem F1. Znak to ⓘ.',
+      'Podstawowy to zwykły język: co kontrolka zmienia, co możesz usłyszeć i kiedy się przydaje. Techniczny to opis inżynierski: jednostki, zakres i zachowanie procesu. Wybór zostaje w tej przeglądarce jako poziom pomocy. Nie jest związany z trybem Prostym ani Technicznym.',
+      'F1 wyjaśnia kontrolkę w fokusie. Escape zamyka notatkę. Fokus wraca do kontrolki tylko wtedy, gdy wcześniej wszedł do notatki. Otwarcie notatki samo nie przenosi fokusu. Tab z kontrolki wchodzi do notatki. Czytnik ekranu słyszy nazwę i krótkie wyjaśnienie. Dłuższy tekst techniczny czeka, aż otworzysz szczegóły.',
+      'Więcej w podręczniku otwiera pasującą sekcję tego podręcznika, gdy taka istnieje. Angielski i polski niosą to samo znaczenie. Notatka bierze skróty z bieżącego rejestru i zakresy z parametrów, które FIELD już ma. Pomoc nie zatrzymuje odtwarzania, nie zeruje parametru i nie zmienia efektu.',
+    ],
+  },
+  {
     id: 'technical-interface',
     title: 'Interfejs techniczny',
     body: [
@@ -812,7 +832,7 @@ const pl: ManualSection[] = [
       'Gdy obsługa klawiaturą, edytowanie bez przeciągania, optymalizacje czytnika ekranu i dostępna nawigacja po nagraniu są wyłączone, spacja zawsze włącza albo pauzuje odtwarzanie, także gdy fokus jest na przycisku, przełączniku albo suwaku. Pole tekstowe nadal przyjmuje znak spacji. Otwarte okno zostawia spację swoim kontrolkom. Gdy Hold jest włączony, spacja kasuje Hold i zostawia odtwarzanie od tego miejsca. Gdy jedna z tych opcji dostępności jest włączona, spacja odtwarza albo pauzuje tylko wtedy, gdy fokus nie jest na przycisku, przełączniku, suwaku, menu ani polu tekstowym, a Enter albo Spacja aktywuje sam przycisk. Escape zamyka menu i okna i wraca fokus do kontrolki, która je otworzyła.',
       'Ctrl+Z albo Cmd+Z cofa. Shift+Ctrl+Z albo Shift+Cmd+Z ponawia.',
       'Tab przechodzi między kontrolkami. Strzałki zmieniają gałkę albo suwak w fokusie. Shift+strzałka to mniejszy krok. Home i End skaczą na krańce. Page Up i Page Down robią większy krok. Delete albo Backspace resetuje parametr w fokusie.',
-      'Skróty transportu można wyłączyć w Ustawieniach.',
+      'Skróty transportu można wyłączyć w Ustawieniach. F1 wyjaśnia kontrolkę w fokusie. Ten skrót zostaje, gdy skróty transportu są wyłączone.',
     ],
   },
   {

@@ -287,7 +287,7 @@ export const ExportPreview = forwardRef<ExportPreviewHandle, Props>(function Exp
   const playDisabled = blocked || !plan || phase === 'preparing' || phase === 'stopping' || mainPlaying
 
   return (
-    <section className={styles.preview} aria-labelledby={titleId} data-export-preview="" data-preview-state={phase}>
+    <section className={styles.preview} aria-labelledby={titleId} data-export-preview="" data-explain="export.preview" data-preview-state={phase}>
       <h3 id={titleId} className={styles.title}>
         {t.export.previewTitle}
       </h3>

@@ -59,6 +59,7 @@ export function EqFilterTypeMenu({ value, onChange, bypassed = false, onBypass, 
           aria-expanded={open}
           aria-label={filterTypeCopy(locale, value).aria}
           title={filterTypeCopy(locale, value).label}
+          data-explain={`filter.${value}`}
           onClick={() => setOpen((v) => !v)}
         >
           <EqFilterIcon type={value} />

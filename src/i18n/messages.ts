@@ -2235,6 +2235,7 @@ export const EN: Messages = {
     byId: {
       'nav.workspaces': 'Open workspace navigation',
       'nav.help': 'Open keyboard shortcuts',
+      'help.explain': 'Explain the focused control',
       'transport.play': 'Play or pause. With special accessibility options off, this includes a focused control',
       'transport.stop': 'Stop playback',
       'transport.loop': 'Toggle loop',
@@ -3495,6 +3496,7 @@ export const PL: Messages = {
     byId: {
       'nav.workspaces': 'Otwórz nawigację po obszarze',
       'nav.help': 'Otwórz skróty klawiszowe',
+      'help.explain': 'Wyjaśnij kontrolkę w fokusie',
       'transport.play': 'Odtwarzaj albo pauzuj. Przy wyłączonych specjalnych opcjach dostępności dotyczy to też kontrolki w fokusie',
       'transport.stop': 'Zatrzymaj odtwarzanie',
       'transport.loop': 'Przełącz pętlę',

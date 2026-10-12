@@ -34,6 +34,7 @@ export type ShortcutDef = {
 export const SHORTCUTS: readonly ShortcutDef[] = [
   { id: 'nav.workspaces', group: 'navigation', scope: 'global', combo: { key: 'k', mod: true, shift: true }, dispatch: 'global' },
   { id: 'nav.help', group: 'navigation', scope: 'global', combo: { key: '/', mod: true, shift: true }, dispatch: 'global' },
+  { id: 'help.explain', group: 'navigation', scope: 'global', combo: { key: 'F1' }, dispatch: 'global' },
   { id: 'transport.play', group: 'transport', scope: 'global', combo: { key: ' ' }, dispatch: 'global' },
   { id: 'transport.stop', group: 'transport', scope: 'global', combo: { key: '.', mod: true, shift: true }, dispatch: 'global' },
   { id: 'transport.loop', group: 'transport', scope: 'global', combo: { key: 'l', mod: true, shift: true }, dispatch: 'global' },

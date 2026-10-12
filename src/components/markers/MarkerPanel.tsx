@@ -391,7 +391,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
         <h2 id={titleId} className={styles.title}>
           {t.markers.list}
         </h2>
-        <button ref={addRef} type="button" className={styles.icon} data-marker-add="" aria-label={t.markers.addMarker} disabled={!loaded} onClick={add}>
+        <button ref={addRef} type="button" className={styles.icon} data-marker-add="" data-explain="markers.user" aria-label={t.markers.addMarker} disabled={!loaded} onClick={add}>
           +
         </button>
         <button ref={closeRef} type="button" className={styles.icon} aria-label={t.markers.close} onClick={close}>
@@ -410,6 +410,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
           <form
             className={styles.editor}
             data-marker-editor=""
+            data-explain="markers.edit"
             onSubmit={(event) => {
               event.preventDefault()
               save()
@@ -489,6 +490,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
                   className={styles.row}
                   aria-current={selected ? 'true' : undefined}
                   aria-label={t.markers.pointLabel(marker.name, spoken)}
+                  data-explain="markers.navigate"
                   onClick={() => go(marker.id)}
                   onDoubleClick={(event) => {
                     event.preventDefault()
@@ -542,6 +544,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
             <button
               type="button"
               className={styles.disclosure}
+              data-explain="markers.detected"
               aria-expanded={suggestionsOpen}
               disabled={!loaded}
               onClick={() => {
@@ -569,7 +572,7 @@ export function MarkerHost({ mode, onCommit }: Props) {
                       >
                         <span className={styles.time}>{formatEditTime(mark.time)}</span>
                         <span className={styles.name} title={label}>{label}</span>
-                        <button type="button" className={`${styles.text} ${styles.suggestSave}`} onClick={() => saveDetected(mark.time, label)}>
+                        <button type="button" className={`${styles.text} ${styles.suggestSave}`} data-explain="markers.save" onClick={() => saveDetected(mark.time, label)}>
                           {t.markers.saveDetected}
                         </button>
                       </li>

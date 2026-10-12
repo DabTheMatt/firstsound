@@ -82,6 +82,9 @@ import { ParamActionPair } from '../random/ParamActionPair'
 import { inspectorAccentStyle, TrackIdentity } from './TrackIdentity'
 import { primaryParamIds } from '../workspace/disclosure'
 import styles from './Inspector.module.css'
+import { ExplainMark } from '../../help/ExplainMark'
+import helpStyles from '../../help/ExplainHost.module.css'
+import { moduleHelpId } from '../../help/resolve'
 
 export type EditActions = {
   canCopy: boolean
@@ -224,6 +227,7 @@ export function Inspector({
       className={`${styles.panel} ${sheet ? styles.sheet : ''} ${compact ? styles.compact : ''} ${detail === 'essential' ? styles.essential : ''}`}
       style={inspectorAccentStyle(snap)}
       data-inspector-context={inspectorContextId(focus)}
+      data-explain-scope=""
       data-inspector-track={track?.id ?? ''}
       data-layout-scroll="inspector"
     >
@@ -301,7 +305,7 @@ function ToolInspector({
     <>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
-        <h2 className={styles.title}>{t.inspector.edit}</h2>
+        <h2 className={`${styles.title} ${helpStyles.hostTitle}`}>{t.inspector.edit}<ExplainMark fallback="wave.editor" /></h2>
         {onHideInspector ? (
           <div className={styles.headActions}>
             <InspectorEye open onClick={onHideInspector} />
@@ -494,7 +498,7 @@ function ToolInspector({
       >
         {t.inspector.trim}
       </button>
-      <button type="button" className={styles.ghost} onClick={() => engine.normalizeRegion()}>
+      <button type="button" className={styles.ghost} data-explain="gain.normalize" onClick={() => engine.normalizeRegion()}>
         {t.inspector.normalize}
       </button>
       <button type="button" className={styles.ghost} onClick={() => engine.reverseRegion()}>
@@ -633,8 +637,9 @@ function ModuleInspector({
       <ModulationScopeProvider instanceId={instanceId} includeUnscoped={includeUnscoped}>
         <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-disclosure="compact" data-attention-region="inspector" {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
           <div className={styles.head}>
-            <h2 className={styles.title} id={`module-${instanceId}-title`}>
+            <h2 className={`${styles.title} ${helpStyles.hostTitle}`} id={`module-${instanceId}-title`}>
               {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
+              <ExplainMark fallback={moduleHelpId(type)} />
             </h2>
             <div className={styles.headActions}>
               {type !== 'gain' && type !== 'output' ? (
@@ -663,8 +668,9 @@ function ModuleInspector({
     <section className={styles.module} aria-labelledby={`module-${instanceId}-title`} data-attention-region="inspector" {...guideTargetAttrs('technical.effectInspector', '2', instanceId)}>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
-        <h2 className={styles.title} id={`module-${instanceId}-title`}>
+        <h2 className={`${styles.title} ${helpStyles.hostTitle}`} id={`module-${instanceId}-title`}>
           {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
+          <ExplainMark fallback={moduleHelpId(type)} />
         </h2>
         <div className={styles.headActions}>
           {type !== 'gain' && type !== 'output' ? (

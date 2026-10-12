@@ -73,14 +73,14 @@ export function SpectrumDisplaySettings({ surface }: Props) {
           </Choice>
         ))}
       </ChoiceRow>
-      <ChoiceRow label={copy.scale} hint={copy.scaleHint}>
+      <ChoiceRow label={copy.scale} hint={copy.scaleHint} explain={surface === 'fft' ? 'fft.freqAxis' : undefined}>
         {FREQ_SCALE_OPTIONS.map((opt) => (
           <Choice key={opt.value} pressed={display.scale === opt.value} onClick={() => paint({ scale: opt.value })}>
             {opt.label}
           </Choice>
         ))}
       </ChoiceRow>
-      <ChoiceRow label={copy.range} hint={copy.rangeHint}>
+      <ChoiceRow label={copy.range} hint={copy.rangeHint} explain={surface === 'fft' ? 'fft.levelAxis' : undefined}>
         {SPECTRUM_RANGE_CHOICES.map((db) => (
           <Choice key={db} pressed={display.range === db} onClick={() => paint({ range: clampSpectrumRange(db) })}>
             {db}
@@ -259,7 +259,7 @@ function OnOff({
   )
 }
 
-function ChoiceRow({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
+function ChoiceRow({ label, hint, children, explain }: { label: string; hint: string; children: ReactNode; explain?: string }) {
   const labelRef = useRef<HTMLSpanElement>(null)
   const [open, setOpen] = useState(false)
   return (
@@ -267,6 +267,7 @@ function ChoiceRow({ label, hint, children }: { label: string; hint: string; chi
       className={styles.displayRow}
       role="group"
       aria-label={label}
+      data-explain={explain}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >

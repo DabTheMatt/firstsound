@@ -23,6 +23,8 @@ import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { SegmentCurveControl } from './SegmentCurveControl'
 import styles from './AutomationInspector.module.css'
+import { ExplainMark } from '../../help/ExplainMark'
+import helpStyles from '../../help/ExplainHost.module.css'
 
 let rememberedScroll = 0
 
@@ -143,6 +145,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
       className={`${inspectorStyles.panel} ${sheet ? inspectorStyles.sheet : ''} ${compact ? inspectorStyles.compact : ''}`}
       style={inspectorAccentStyle(snap)}
       data-automation-inspector="true"
+      data-explain-scope=""
       data-attention-region="automation"
       data-inspector-context={inspectorContextId({ kind: 'automation' })}
       data-inspector-track={snap.selectedTrackId}
@@ -154,8 +157,9 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
         >
           {`T${Math.max(1, snap.tracks.findIndex((track) => track.id === snap.selectedTrackId) + 1)}`}
         </span>
-        <h2 className={styles.laneTitle} title={titleFor(selected)}>
+        <h2 className={`${styles.laneTitle} ${helpStyles.hostTitle}`} title={titleFor(selected)}>
           {titleFor(selected)}
+          <ExplainMark fallback="auto.lane" />
         </h2>
         {onHideInspector ? (
           <div className={inspectorStyles.headActions}>
@@ -200,6 +204,7 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
                   type="button"
                   className={styles.laneButton}
                   aria-current={active ? 'true' : undefined}
+                  data-explain="auto.lane"
                   onClick={() => choose(lane.paramId)}
                 >
                   <span>{title}</span>
@@ -312,13 +317,13 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
           {titleFor(selected)}
         </strong>
       </div>
-      <div className={inspectorStyles.readout}>
+      <div className={inspectorStyles.readout} data-explain="auto.point" tabIndex={0}>
         <span>{t.waveform.automationNodes}</span>
         <strong>{selectedLane?.nodes.length ?? 0}</strong>
       </div>
 
       {hasSegment && segmentId ? (
-        <div className={styles.segmentCurve} data-automation-segment-curve="inspector">
+        <div className={styles.segmentCurve} data-automation-segment-curve="inspector" data-explain="auto.interpolation">
           <SegmentCurveControl
             value={curve}
             labels={curveLabels}

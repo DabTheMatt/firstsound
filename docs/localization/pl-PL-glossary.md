@@ -58,6 +58,7 @@ The accessible name and the tooltip keep the full term.
 | Predictable layout | Przewidywalny układ | Accessibility | Przewidywalny układ | Przewidywalny układ | |
 | Assisted controls | Wspomagana edycja | Accessibility | Edytowanie bez przeciągania | Edytowanie bez przeciągania | |
 | Keyboard-first | Obsługa klawiaturą | Accessibility | Obsługa klawiaturą | Obsługa klawiaturą | |
+| Explain this | Wyjaśnij | Contextual help | ⓘ | Wyjaśnij | Levels: Basic / Podstawowy, Technical / Techniczny |
 | Screen reader | Czytnik ekranu | Accessibility | Czytnik ekranu | Optymalizacje czytnika ekranu | |
 | Low pass | Dolnoprzepustowy | EQ type | LP | Filtr dolnoprzepustowy | Value stays `lowpass` |
 | High pass | Górnoprzepustowy | EQ type | HP | Filtr górnoprzepustowy | |

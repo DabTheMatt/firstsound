@@ -348,3 +348,20 @@ Known limitations:
 Relationship to 20C: structural and detected landmarks stay in Accessible Waveform navigation. User markers are a separate list. Previous landmark and Previous marker are different actions.
 
 DSP modifications: none.
+
+## FIELD ACCESS 24A — Explain this (0.38.0)
+
+Explain this (Polish: Wyjaśnij) is a contextual note keyed by a stable id: a parameter id, an effect filter type, a sensory axis id, or a tool id. It does not use the visible translated label as the key. The basic line for a parameter is the existing screen-reader description. Ranges, units, defaults, FFT lengths, export lists, filter slope steps, and automation curve names are read from the same constants the editor already uses. Learn Audio topics are referenced when they already cover the idea.
+
+The note is a compact region, not a dialog and not a sidebar. On a viewport wider than 480px it anchors near the control at 280–360px. On a narrower viewport it is a sheet above a 72px transport reserve. There is no entrance animation. Escape closes it. Opening it does not move focus. F1 explains the focused control and is listed in the shortcut registry as `help.explain`. The screen-reader announcement on open is the title and the short summary. Technical text stays in the details until the user asks.
+
+What this record covers:
+
+- Unit tests in `src/help/help.test.ts` for content against parameter metadata, both locales, placement widths, and the help level parser
+- Keyboard behavior in the implementation: F1, Escape, Tab into the note, and a close control with an accessible name
+- Manual assistive technology: NOT TESTED. No VoiceOver, TalkBack, NVDA, or JAWS session was run for 24A
+- Physical iPhone was not used. Placement math covers 320, 375, 390, and 430 CSS pixels as a sheet. That is not a device lab
+
+The help layer does not call the audio engine. Playback, seeking, effects, automation, LFO, and export rendering are outside this change.
+
+DSP modifications: none.

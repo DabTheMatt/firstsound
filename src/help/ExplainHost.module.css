@@ -1,0 +1,179 @@
+.mark,
+.floatMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: var(--type-14, 14px);
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.floatMark {
+  position: fixed;
+  z-index: 85;
+  width: 44px;
+  height: 44px;
+}
+
+.hostTitle.hostTitle {
+  position: relative;
+  padding-right: 36px;
+  line-height: 32px;
+  min-height: 32px;
+  overflow: hidden;
+}
+
+.panel {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: var(--type-13, 13px);
+  line-height: 1.45;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.sheet {
+  border-radius: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--type-14, 14px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-control, transparent);
+  color: var(--text-primary);
+  font-size: var(--type-16, 16px);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.level {
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--type-12, 12px);
+  cursor: pointer;
+}
+
+.level[aria-checked='true'] {
+  border-width: 2px;
+  border-color: var(--text-primary);
+  font-weight: 600;
+}
+
+.summary,
+.practical,
+.technical,
+.fact,
+.shortcut {
+  margin: 0;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--type-11, 11px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.details {
+  border-top: 1px solid var(--border-subtle, var(--border-default));
+  padding-top: 8px;
+}
+
+.details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.technical {
+  white-space: pre-wrap;
+}
+
+.manual {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+:global(html[data-high-visibility='on']) .panel,
+:global(html[data-high-visibility='on']) .mark,
+:global(html[data-high-visibility='on']) .floatMark,
+:global(html[data-high-visibility='on']) .close,
+:global(html[data-high-visibility='on']) .level {
+  border-width: 2px;
+  border-color: var(--text-primary);
+}

@@ -55,14 +55,14 @@ export function SelectionToolbar({ selected, zoomLabel, onZoomIn, onZoomOut, onF
 
   return (
     <div className={styles.editBar} ref={rootRef} data-attention-region="selection" data-selection-toolbar={selected ? 'selection' : 'wave'}>
-      <button type="button" className={styles.textButton} onClick={onZoomOut} aria-label={t.waveform.zoomOut}>
+      <button type="button" className={styles.textButton} data-explain="wave.zoom" onClick={onZoomOut} aria-label={t.waveform.zoomOut}>
         −
       </button>
       <span className={styles.zoom}>{zoomLabel}</span>
-      <button type="button" className={styles.textButton} onClick={onZoomIn} aria-label={t.waveform.zoomIn}>
+      <button type="button" className={styles.textButton} data-explain="wave.zoom" onClick={onZoomIn} aria-label={t.waveform.zoomIn}>
         +
       </button>
-      <button type="button" className={styles.textButton} onClick={onFit}>
+      <button type="button" className={styles.textButton} data-explain="wave.zoom" onClick={onFit}>
         {t.waveform.fit}
       </button>
       {selected

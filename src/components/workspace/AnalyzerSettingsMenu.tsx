@@ -82,8 +82,8 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
               label={copy.mode}
               value={prefs.viewMode}
               options={[
-                { id: '2d', label: '2D' },
-                { id: '3d', label: '3D', title: copy.history3d },
+                { id: '2d', label: '2D', explain: 'fft.spectrum' },
+                { id: '3d', label: '3D', title: copy.history3d, explain: 'fft.history' },
               ]}
               onChange={(id) => patch({ viewMode: id })}
             />
@@ -185,6 +185,7 @@ export function AnalyzerSettingsMenu({ showView = false }: { showView?: boolean 
         </SelectField>
         <SelectField
           label="FFT"
+          explain="fft.window"
           value={String(prefs.resolution)}
           onChange={(value) => patch({ resolution: clampSpectrumResolution(Number(value)) })}
         >
@@ -242,7 +243,7 @@ function ChoiceField<T extends string>({
 }: {
   label: string
   value: T
-  options: { id: T; label: string; title?: string }[]
+  options: { id: T; label: string; title?: string; explain?: string }[]
   onChange: (id: T) => void
 }) {
   return (
@@ -256,6 +257,7 @@ function ChoiceField<T extends string>({
             className={value === opt.id ? styles.analyzerOn : styles.analyzerChoice}
             aria-pressed={value === opt.id}
             title={opt.title}
+            data-explain={opt.explain}
             onClick={() => onChange(opt.id)}
           >
             {opt.label}
@@ -271,16 +273,18 @@ function SelectField({
   value,
   onChange,
   children,
+  explain,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   children: ReactNode
+  explain?: string
 }) {
   return (
     <label className={styles.analyzerRow}>
       <span className={styles.analyzerLabel}>{label}</span>
-      <select className={styles.analyzerSelect} aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className={styles.analyzerSelect} aria-label={label} data-explain={explain} value={value} onChange={(event) => onChange(event.target.value)}>
         {children}
       </select>
     </label>

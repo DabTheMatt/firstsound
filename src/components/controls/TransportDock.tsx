@@ -138,6 +138,7 @@ export function TransportDock({
           type="button"
           aria-pressed={loop}
           className={`${styles.loop} ${loop ? styles.loopActive : ''}`}
+          data-explain="wave.loop"
           onClick={() => engine.setLoop(!loop)}
         >
           {t.transport.loop}

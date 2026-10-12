@@ -51,6 +51,8 @@ import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
+import { ExplainHost } from '../help/ExplainHost'
+import { OPEN_MANUAL_EVENT } from '../help/manual'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
 import { trackAccentStyle, trackColorVar, trackHasAudio } from '../audio/mix/tracks'
@@ -253,6 +255,7 @@ export default function App() {
   const [editMode, setEditMode] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
+  const [manualSection, setManualSection] = useState<string | undefined>(undefined)
   const [navOpen, setNavOpen] = useState(false)
   const [keysOpen, setKeysOpen] = useState(false)
   const navOpenRef = useRef(false)
@@ -276,6 +279,15 @@ export default function App() {
     memoryRef.current = inspectorMemory
     if (focus.kind === 'module') lastEffectRef.current = focus
   }, [focus, inspectorMemory])
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const sectionId = (event as CustomEvent<{ sectionId?: string }>).detail?.sectionId
+      setManualSection(sectionId)
+      setManualOpen(true)
+    }
+    document.addEventListener(OPEN_MANUAL_EVENT, onOpen)
+    return () => document.removeEventListener(OPEN_MANUAL_EVENT, onOpen)
+  }, [])
   const [history, setHistory] = useState(() =>
     createHistory(
       histKey(0, 1, [], DEFAULT_EDIT, engine.getSnapshot().automation, {
@@ -1657,6 +1669,7 @@ export default function App() {
       <>
         <SkipLink />
         <LiveAnnouncer />
+        <ExplainHost />
         <SimpleShell
           snap={snap}
           edit={edit}
@@ -1704,7 +1717,7 @@ export default function App() {
           onMode={chooseMode}
         />
         {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
         {keyboardChrome}
         {guide}
         <HearingAccessLayer surface="simple" />
@@ -1717,6 +1730,7 @@ export default function App() {
       <>
         <SkipLink />
         <LiveAnnouncer />
+        <ExplainHost />
         <SensoryShell
           snap={snap}
           edit={edit}
@@ -1753,7 +1767,7 @@ export default function App() {
           sampleInput={null}
         />
         {fileInputs}
-        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
         {keyboardChrome}
         {exportOpen ? (
           <ExportDialog
@@ -1790,6 +1804,7 @@ export default function App() {
     >
       <SkipLink />
       <LiveAnnouncer />
+      <ExplainHost />
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}
@@ -2325,7 +2340,7 @@ export default function App() {
 
         {fileInputs}
         {keyboardChrome}
-        {manualOpen ? <ManualDialog onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
       </main>
       {exportOpen ? (
         <ExportDialog
