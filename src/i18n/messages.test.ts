@@ -53,6 +53,8 @@ describe('i18n catalogs', () => {
     expect(PL.export.warning).toBe('Ostrzeżenie')
     expect(PL.export.error).toBe('Błąd')
     expect(PL.export.settingsValid).toBe('Ustawienia poprawne')
+    expect(PL.export.keepTail).toBe('Pozostaw ogon ewentualnych efektów')
+    expect(EN.export.keepTail).toBe('Keep audio tail')
     expect(PL.export.noAudio).toBe('Nie wczytano pliku audio.')
     expect(EN.export.checkTitle).toBe('Export check')
     expect(EN.export.noAudio).toBe('No audio is loaded.')

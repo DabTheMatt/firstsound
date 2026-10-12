@@ -31,6 +31,19 @@ test.describe('Export check', () => {
     await openExport(page)
     const dialog = page.locator('[role="dialog"][aria-labelledby="export-title"]')
     const check = dialog.locator('[data-export-check]')
+    await expect(dialog.getByRole('checkbox', { name: 'Keep audio tail' })).toBeChecked()
+    const placed = await dialog.boundingBox()
+    const viewport = page.viewportSize()
+    expect(placed).not.toBeNull()
+    expect(viewport).not.toBeNull()
+    if (placed && viewport) {
+      const top = placed.y
+      const bottom = viewport.height - (placed.y + placed.height)
+      expect(Math.abs(top - bottom)).toBeLessThan(28)
+    }
+    const bodyPad = await dialog.locator('[data-export-body]').evaluate((el) => Number.parseFloat(getComputedStyle(el).paddingInlineEnd))
+    expect(bodyPad).toBeGreaterThanOrEqual(16)
+    await page.screenshot({ path: `${ARTIFACTS}/export-centered.png` })
     await expect(dialog.getByRole('heading', { name: 'Export check' })).toBeVisible()
     await expect(dialog.getByText('Settings valid')).toBeVisible()
     await expect(check.getByText('WAV', { exact: true })).toBeVisible()

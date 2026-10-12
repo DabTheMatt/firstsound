@@ -577,6 +577,8 @@ export type Messages = {
     encoding: string
     exportFailed: string
     tailHint: string
+    keepTail: string
+    tailDropped: string
     cancel: string
     applyFades: string
     applyGain: string
@@ -1769,6 +1771,8 @@ export const EN: Messages = {
     encoding: 'Encoding…',
     exportFailed: 'Export failed.',
     tailHint: 'Effect tails are included until the signal decays.',
+    keepTail: 'Keep audio tail',
+    tailDropped: 'The file ends with the audio. Effect tails are not kept.',
     cancel: 'Cancel',
     applyFades: 'Apply fade in / out',
     applyGain: 'Apply gain',
@@ -3003,6 +3007,8 @@ export const PL: Messages = {
     encoding: 'Kodowanie…',
     exportFailed: 'Eksport nie powiódł się.',
     tailHint: 'Wybrzmienia efektów są dopisywane, aż sygnał wybrzmi.',
+    keepTail: 'Pozostaw ogon ewentualnych efektów',
+    tailDropped: 'Plik kończy się z nagraniem. Ogon efektów nie jest zachowany.',
     cancel: 'Anuluj',
     applyFades: 'Zastosuj narastanie i wygaszanie',
     applyGain: 'Zastosuj wzmocnienie',

@@ -611,6 +611,7 @@ export async function renderExportPcm(
   const processed = await renderProcessedPcm(prepared, processing, {
     ...options,
     timelineStart: range.start,
+    includeEffectTail: settings.includeEffectTail ?? options.includeEffectTail,
   })
   traceExport('ENCODE START', {
     frames: processed.channels[0]?.length ?? 0,

@@ -78,6 +78,11 @@ export type ExportSettings = {
   applyReverse: boolean
   applyNormalize: boolean
   /**
+   * When false, the file ends with the source. The default keeps the decay
+   * the exporter already renders for delay, reverb, and other active effects.
+   */
+  includeEffectTail?: boolean
+  /**
    * `project` exports the selected track. `selection` exports that track's region.
    * A future master bounce must sum every track on the shared timeline; it must
    * not assume the project is a single global sample.

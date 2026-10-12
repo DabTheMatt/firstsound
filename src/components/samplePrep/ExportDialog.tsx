@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusInitial, trapTab } from '../../a11y/dialogFocus'
 import { formatTimecode } from '../../audio/engine/formatTime'
-import { exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
+import { effectTailBudgetSec, exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
 import {
   EXPORT_BIT_DEPTHS,
   EXPORT_FORMATS,
@@ -44,6 +44,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
   const [applyGain, setApplyGain] = useState(prep.gainDb !== 0)
   const [applyReverse, setApplyReverse] = useState(prep.reverse)
   const [applyNormalize, setApplyNormalize] = useState(false)
+  const [keepTail, setKeepTail] = useState(true)
   const [phase, setPhase] = useState<'idle' | 'preparing' | 'rendering' | 'encoding' | 'error'>('idle')
   const [error, setError] = useState('')
   const busyRef = useRef(false)
@@ -101,14 +102,18 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
   )
   const selectionReady = selectionExportAvailable(prep, exportClock) && selectionCheck.canExport
 
+  const tailSec = useMemo(
+    () => (keepTail ? effectTailBudgetSec(snap.chain, snap.params, snap.reverbType) : 0),
+    [keepTail, snap.chain, snap.params, snap.reverbType],
+  )
   const projectLength = useMemo(() => {
     const range = exportWorkingRange(prep, 'project', exportClock)
-    return Math.max(0, range.end - range.start)
-  }, [prep, exportClock])
+    return Math.max(0, range.end - range.start) + tailSec
+  }, [prep, exportClock, tailSec])
   const selectionLength = useMemo(() => {
     const range = exportWorkingRange(prep, 'selection', exportClock)
-    return Math.max(0, range.end - range.start)
-  }, [prep, exportClock])
+    return Math.max(0, range.end - range.start) + tailSec
+  }, [prep, exportClock, tailSec])
   const originalHz = snap.sourceSampleRate
 
   useEffect(() => {
@@ -157,6 +162,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
             applyGain,
             applyReverse,
             applyNormalize,
+            includeEffectTail: keepTail,
             scope,
           },
           {
@@ -283,8 +289,17 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
           <input type="checkbox" checked={applyNormalize} onChange={(e) => setApplyNormalize(e.target.checked)} />
           {t.export.applyNormalize(DEFAULT_NORMALIZE_DBFS)}
         </label>
+        <label className={styles.check}>
+          <input
+            type="checkbox"
+            checked={keepTail}
+            data-keep-tail=""
+            onChange={(e) => setKeepTail(e.target.checked)}
+          />
+          {t.export.keepTail}
+        </label>
+        <p className={styles.hint}>{keepTail ? t.export.tailHint : t.export.tailDropped}</p>
         <p className={styles.hint}>{t.export.estimated(formatTimecode(projectLength))}</p>
-        <p className={styles.hint}>{t.export.tailHint}</p>
         <ExportCheck result={projectCheck} mode={mode} onLoadAudio={onLoadAudio} />
         {error ? (
           <p className={styles.hint} role="alert">

@@ -524,6 +524,24 @@ describe('offline export renders the audible chain', () => {
     expect(selectionExportAvailable(defaultPrep(seconds))).toBe(false)
   })
 
+  it('keeps the effect tail only when export settings ask for it', async () => {
+    const source = burst(0.2)
+    const prep = defaultPrep(0.2)
+    const snap = state({
+      chain: chain(['delay']),
+      params: { delayWet: 100, delayDry: 0, delayTime: 80, delayFeedback: 40, delayStereo: 0 },
+    })
+    const n = source.channels[0]!.length
+    const kept = mono(
+      await renderExportPcm(source, prep, { ...settings(), includeEffectTail: true }, snap, { factory }),
+    )
+    const dropped = mono(
+      await renderExportPcm(source, prep, { ...settings(), includeEffectTail: false }, snap, { factory }),
+    )
+    expect(dropped.length).toBeLessThanOrEqual(n + 8)
+    expect(kept.length).toBeGreaterThan(n + Math.floor(0.05 * SR))
+  })
+
   it('writes the highlighted span, not a stale prep selection', async () => {
     const seconds = 1
     const n = Math.floor(seconds * SR)
