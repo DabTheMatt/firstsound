@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { commitHistory, createHistory, redoHistory, undoHistory } from '../../app/history'
 import { timeToFrac } from '../../components/waveform/viewport'
-import { markerLabelVisibility, markerLeftPercent } from '../../components/markers/placement'
+import { markerLabelVisibility, markerLeftPercent, markerTimeFromClientX } from '../../components/markers/placement'
 import {
   appendMarker,
   editMarker,
@@ -187,5 +187,14 @@ describe('marker alignment', () => {
       0.1,
     )
     expect(labels).toEqual(['a', 'c'])
+  })
+
+  it('maps a diamond drag to a time inside the file', () => {
+    const bounds = { left: 100, width: 200 }
+    expect(markerTimeFromClientX(150, bounds, { start: 0, end: 4 }, 4)).toBeCloseTo(1)
+    expect(markerTimeFromClientX(150, bounds, { start: 2, end: 4 }, 8)).toBeCloseTo(2.5)
+    expect(markerTimeFromClientX(0, bounds, { start: 0, end: 4 }, 4)).toBe(0)
+    expect(markerTimeFromClientX(900, bounds, { start: 0, end: 4 }, 4)).toBe(4)
+    expect(markerTimeFromClientX(150, bounds, { start: 0, end: 4 }, 0)).toBe(0)
   })
 })

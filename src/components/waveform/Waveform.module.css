@@ -733,24 +733,43 @@
   background: transparent;
   transform: translateX(-50%);
   z-index: 6;
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
 }
 
 .userMarker::before {
   content: '';
   position: absolute;
-  top: 14px;
+  top: 26px;
   bottom: 0;
   left: 50%;
-  border-left: 1px dashed var(--text-primary);
+  border-left: 1px dashed color-mix(in srgb, var(--text-primary) 42%, transparent);
   transform: translateX(-50%);
   pointer-events: none;
 }
 
 .userMarkerFlag {
   position: absolute;
-  top: 2px;
+  top: 4px;
+  left: 50%;
+  width: 28px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.overlay[data-cursor] .userMarkerFlag {
+  cursor: ew-resize;
+}
+
+.userMarkerGem {
+  position: absolute;
+  top: 4px;
   left: 50%;
   width: 10px;
   height: 10px;
@@ -760,14 +779,14 @@
   pointer-events: none;
 }
 
-.userMarkerOn .userMarkerFlag {
+.userMarkerOn .userMarkerGem {
   background: var(--text-primary);
 }
 
 .userMarkerLabel {
   position: absolute;
-  top: 16px;
-  left: calc(50% + 8px);
+  top: 4px;
+  left: calc(50% + 16px);
   max-width: 7rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -779,6 +798,16 @@
   border: 1px solid var(--border-strong);
   padding: 0 3px;
   pointer-events: none;
+}
+
+/* The edit toolbar floats over the top of the technical waveform. */
+:global([data-technical-ui='workspace']) .userMarkerFlag,
+:global([data-technical-ui='workspace']) .userMarkerLabel {
+  top: calc(4px + var(--control-compact, 28px) + 8px);
+}
+
+:global([data-technical-ui='workspace']) .userMarker::before {
+  top: calc(4px + var(--control-compact, 28px) + 28px);
 }
 
 .sensory .playhead {

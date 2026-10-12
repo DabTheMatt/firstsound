@@ -44,20 +44,25 @@ html[data-high-visibility='on'] [data-marker-popover] {
 }
 
 html[data-high-visibility='on'] [data-user-marker] {
-  outline: 2px solid var(--text-primary);
-  outline-offset: 1px;
+  outline: none;
 }
 
-html[data-high-visibility='on'] [data-user-marker][data-marker-selected='true'] {
+html[data-high-visibility='on'] [data-marker-gem] {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+html[data-high-visibility='on'] [data-user-marker][data-marker-selected='true'] [data-marker-gem] {
   outline-width: 3px;
 }
 
 html[data-high-visibility='on'] [data-user-marker]::before {
   border-left-width: 2px;
   border-left-style: dashed;
+  border-left-color: var(--text-primary);
 }
 
-html[data-high-visibility='on'] [data-marker-selected='true'] {
+html[data-high-visibility='on'] [data-marker-selected='true']:not([data-user-marker]) {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;
 }

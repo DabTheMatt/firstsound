@@ -141,6 +141,10 @@
   gap: 1px;
 }
 
+.suggestions {
+  gap: 4px;
+}
+
 .item {
   position: relative;
   display: flex;
@@ -306,6 +310,40 @@ textarea.input {
   color: var(--text-muted);
 }
 
+.suggestRow {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-areas:
+    'time name'
+    'save save';
+  column-gap: 10px;
+  row-gap: 0;
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 4px 4px 2px 8px;
+  border-radius: 4px;
+}
+
+.suggestRow:hover {
+  background: var(--bg-control-hover);
+}
+
+.suggestRow .time {
+  grid-area: time;
+}
+
+.suggestRow .name {
+  grid-area: name;
+}
+
+.suggestSave {
+  grid-area: save;
+  justify-self: end;
+  max-width: 100%;
+  text-align: right;
+}
+
 .nav {
   flex: none;
   justify-content: space-between;
@@ -333,8 +371,13 @@ textarea.input {
   .suggest,
   .icon,
   .more,
-  .nav button {
+  .nav button,
+  .suggestSave {
     min-height: 44px;
+  }
+
+  .suggestRow {
+    min-height: 64px;
   }
 }
 
