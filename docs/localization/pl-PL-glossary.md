@@ -66,8 +66,13 @@ The accessible name and the tooltip keep the full term.
 | Bell | Dzwonowy | EQ type | Bell | Filtr dzwonowy | |
 | Notch | Pasmowo-zaporowy | EQ type | Notch | Filtr pasmowo-zaporowy | |
 | Band pass | Pasmowoprzepustowy | EQ type | BP | Filtr pasmowoprzepustowy | |
+| Hearing Access | Dostęp słuchowy | Accessibility layer | Dostęp słuchowy | Dostęp słuchowy | Panel, settings, and the ear button |
+| Dock | Dokuj | Return the hearing panel to the corner | Dokuj | Dokuj | |
+| Restore | Przywróć | Hearing panel size | Przywróć | Przywróć | Enlarge is Powiększ |
+| Show | Pokaż | Frame a mixing-assistant finding | Pokaż | Pokaż | Does not edit audio |
+| Transient line | Linia transjentu | Wave legend toggle | Transjenty | Pokaż linię transjentu | Legend words: atak, przester, poziom, cisza, głośno, ton, klik |
 
-Kept as written: EQ, FFT, RMS, LUFS, dB, dBFS, Hz, kHz, Q, LFO, MIDI, WAV, MP3, FLAC, PCM, Hold, 2D, 3D, Log, Lin, Mel.
+Kept as written: EQ, FFT, RMS, LUFS, dB, dBFS, Hz, kHz, Q, LFO, MIDI, WAV, MP3, FLAC, PCM, Hold, 2D, 3D, Log, Lin, Mel. The hearing bands keep SUB and AIR. Polish shorts are BAS, NISKI ŚR., ŚRODEK, WYS. ŚR., WYSOKI.
 
 Theme names stay the product names: Studio Dark, Soft Slate, Warm Paper, Dusk.
 

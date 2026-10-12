@@ -3,10 +3,11 @@ import { announce } from '../a11y'
 import { appliedSensoryPresentation } from '../a11y/settings'
 import { noticeShown } from '../a11y/sensoryComfort'
 import type { FocusWorkspace } from '../app/phoneWorkspace'
-import { PARAMS } from '../audio/parameters/definitions'
 import { formatTimecode } from '../audio/engine/formatTime'
 import { getEqBandSelection, subscribeEqBandSelection, type EqBandSelection } from '../audio/engine/eqBandSelection'
 import { engine, useEngine } from '../hooks/useEngine'
+import { paramLabel, useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import { dismissHearingAlert, getHearingAlerts, pushHearingAlert, subscribeHearingAlerts, type HearingAlert } from './alerts'
 import { analyzePcm, type BufferAnalysis } from './analyze'
 import { scopeLabel, transientMarkers } from './events'
@@ -34,7 +35,7 @@ import { revealHearingSpan, showTransientOnWave } from './reveal'
 import type { HearingBandId } from './bands'
 import { getHearingView, subscribeHearingView, useHearingAnalysis, type HearingView } from './session'
 import { useHearingSettings } from './useHearingSettings'
-import { HEARING_SECTIONS, HAPTIC_INTENSITIES, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HearingSection, type HapticIntensity } from './settings'
+import { HEARING_SECTIONS, HAPTIC_INTENSITIES, PANEL_HEIGHT_MIN, PANEL_WIDTH_MIN, clampPanelSize, type HapticIntensity } from './settings'
 import { balanceLabel, nearestSpaceBucket } from './spaceLive'
 import { useHeardSpace } from './useHeardSpace'
 import { useReverbSpace } from './useImageDepth'
@@ -43,15 +44,6 @@ import { voiceEstimate } from './voiceEstimate'
 import styles from './HearingAccessLayer.module.css'
 
 type Surface = 'simple' | 'technical' | 'sensory'
-
-const SECTION_LABEL: Record<HearingSection, string> = {
-  sound: 'Sound',
-  events: 'Events',
-  space: 'Space',
-  dynamics: 'Dynamics',
-  compare: 'Compare',
-  haptics: 'Haptics',
-}
 
 function nextPanelSize(width: number): { panelWidth: number; panelHeight: number } {
   if (width >= 640) return clampPanelSize(420, 560)
@@ -132,6 +124,8 @@ export function HearingAccessLayer({
   onEnterFocus?: () => void
 }) {
   const { settings, patch } = useHearingSettings()
+  const { locale } = useI18n()
+  const copy = useMemo(() => hearingUi(locale), [locale])
   const snap = useEngine()
   useHearingAnalysis(settings, snap)
   const hearing = useSyncHearing()
@@ -325,14 +319,14 @@ export function HearingAccessLayer({
     const active = selectedBand(current, getEqBandSelection())
     const text = active
       ? `EQ ${active.frequency.toFixed(0)} Hz · ${active.gain.toFixed(1)} dB · Q ${active.q.toFixed(2)}`
-      : `GAIN ${current.params.gain.toFixed(1)} dB`
+      : copy.gainNote(current.params.gain.toFixed(1))
     const handle = window.setTimeout(() => setNote(text), 700)
     const clear = window.setTimeout(() => setNote(null), 4200)
     return () => {
       window.clearTimeout(handle)
       window.clearTimeout(clear)
     }
-  }, [settings.enabled, confirmKey])
+  }, [settings.enabled, confirmKey, copy])
 
   const analysis = hearing.analysis
   const summary = analysis ? simpleSummary(analysis) : null
@@ -449,8 +443,8 @@ export function HearingAccessLayer({
       <div className={styles.alerts} aria-live="polite" data-critical="">
         {alerts.map((alert) => (
           <button key={alert.id} type="button" className={alert.tone === 'warn' ? styles.warn : styles.badge} onClick={() => dismissHearingAlert(alert.id)}>
-            <strong>{alert.title}</strong>
-            <span>{alert.detail}</span>
+            <strong>{copy.alertTitle(alert.title)}</strong>
+            <span>{copy.detail(alert.detail)}</span>
           </button>
         ))}
       </div>
@@ -459,8 +453,8 @@ export function HearingAccessLayer({
           type="button"
           className={styles.launcher}
           aria-pressed={settings.panelOpen}
-          aria-label="Hearing Access"
-          title="Hearing Access"
+          aria-label={copy.title}
+          title={copy.title}
           onClick={() => patch({ panelOpen: !settings.panelOpen })}
         >
           <EarIcon />
@@ -470,7 +464,7 @@ export function HearingAccessLayer({
         <section
           className={narrow ? styles.sheet : styles.panel}
           role="dialog"
-          aria-label="Hearing Access panel"
+          aria-label={copy.panel}
           style={{
             ['--hearing-panel-w' as string]: `${resizeAt?.width ?? settings.panelWidth}px`,
             ['--hearing-panel-h' as string]: `${resizeAt?.height ?? settings.panelHeight}px`,
@@ -485,7 +479,7 @@ export function HearingAccessLayer({
             <button
               type="button"
               className={styles.grip}
-              aria-label="Resize panel height"
+              aria-label={copy.resizeHeight}
               onPointerDown={(event) => startPanelResize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
               onKeyDown={(event) => nudgePanelSize(event, settings.panelWidth, settings.panelHeight, narrow, patch)}
             />
@@ -496,8 +490,8 @@ export function HearingAccessLayer({
                 type="button"
                 className={styles.corner}
                 data-corner={corner}
-                aria-label={`Resize from the ${corner} corner`}
-                title="Drag to resize"
+                aria-label={copy.resizeCorner(corner)}
+                title={copy.dragResize}
                 onPointerDown={(event) => {
                   event.currentTarget.setPointerCapture(event.pointerId)
                   startCornerResize(event, corner)
@@ -508,32 +502,32 @@ export function HearingAccessLayer({
           )}
           <header
             className={narrow ? styles.head : `${styles.head} ${styles.movable}`}
-            title={narrow ? undefined : 'Drag to move this panel. Dock returns it to the corner.'}
+            title={narrow ? undefined : copy.dragTitle}
             onPointerDown={onHeaderPointerDown}
           >
             <div className={styles.headLead}>
-              {onEnterFocus && focus !== 'hearing' ? <EnterFocusButton label="Hearing Access" onClick={onEnterFocus} /> : null}
-              <h2>Hearing Access</h2>
+              {onEnterFocus && focus !== 'hearing' ? <EnterFocusButton label={copy.title} accessibleName={copy.focusAria} onClick={onEnterFocus} /> : null}
+              <h2>{copy.title}</h2>
             </div>
             <div className={styles.tools}>
               {dockedPoint && !narrow ? (
                 <button type="button" onClick={() => patch({ panelLeft: null, panelTop: null })}>
-                  Dock
+                  {copy.dock}
                 </button>
               ) : null}
               <button type="button" onClick={() => patch(nextPanelSize(settings.panelWidth))}>
-                {settings.panelWidth >= 640 ? 'Restore' : 'Enlarge'}
+                {settings.panelWidth >= 640 ? copy.restore : copy.enlarge}
               </button>
               <button type="button" onClick={() => patch({ panelOpen: false })}>
-                Close
+                {copy.close}
               </button>
             </div>
           </header>
           {settings.monitorEnabled ? (
-            <p className={styles.monitor}>Monitoring only. Not included in export. Not a hearing aid.</p>
+            <p className={styles.monitor}>{copy.monitor}</p>
           ) : null}
           {note ? <p className={styles.note}>{note}</p> : null}
-          <div className={styles.tabs} role="tablist" aria-label="Hearing Access sections">
+          <div className={styles.tabs} role="tablist" aria-label={copy.sectionsLabel}>
             {HEARING_SECTIONS.map((section) => (
               <button
                 key={section}
@@ -544,7 +538,7 @@ export function HearingAccessLayer({
                 aria-controls={`hearing-panel-${section}`}
                 onClick={() => patch({ section })}
               >
-                {SECTION_LABEL[section]}
+                {copy.section[section]}
               </button>
             ))}
           </div>
@@ -586,11 +580,11 @@ export function HearingAccessLayer({
                   const vibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' ? navigator.vibrate.bind(navigator) : null
                   const fired = fireHaptic('transient', intensity, performance.now(), -1e9, vibrate)
                   if (fired.result.fired) {
-                    setPulseNote(settings.hapticIntensity === 'off' ? 'Pulse sent. Set intensity above off to pulse during playback.' : 'Pulse sent.')
+                    setPulseNote(settings.hapticIntensity === 'off' ? copy.pulseSentOff : copy.pulseSent)
                   } else if (fired.result.reason === 'unsupported') {
-                    setPulseNote('This device rejected the pulse. FIELD does not imitate haptics on screen.')
+                    setPulseNote(copy.pulseRejected)
                   } else {
-                    setPulseNote('No pulse.')
+                    setPulseNote(copy.noPulse)
                   }
                 }}
               />
@@ -617,36 +611,35 @@ function HapticsSection({
   onIntensity: (value: HapticIntensity) => void
   onTest: () => void
 }) {
+  const copy = hearingUi(useI18n().locale)
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>Haptics</h3>
-        <InfoTip label="More about haptics">
-          Optional pulses on transients, clipping, loop edges, and selection edges. They are never a continuous buzz. Test sends one pulse. Intensity above off is what pulses during playback. FIELD does not imitate haptics on screen.
-        </InfoTip>
+        <h3>{copy.haptics}</h3>
+        <InfoTip label={copy.hapticsMore}>{copy.hapticsTip}</InfoTip>
       </div>
       {ok ? (
         <>
           <p>
             <label>
-              Intensity{' '}
-              <select aria-label="Haptic intensity" value={intensity} onChange={(event) => onIntensity(event.target.value as HapticIntensity)}>
+              {copy.intensity}{' '}
+              <select aria-label={copy.intensityAria} value={intensity} onChange={(event) => onIntensity(event.target.value as HapticIntensity)}>
                 {HAPTIC_INTENSITIES.map((item) => (
                   <option key={item} value={item}>
-                    {item}
+                    {copy.intensityLabel(item)}
                   </option>
                 ))}
               </select>
             </label>
           </p>
           <button type="button" onClick={onTest}>
-            Test pulse
+            {copy.testPulse}
           </button>
           {note ? <p className={styles.note}>{note}</p> : null}
-          {frequency ? <p>Frequency haptics are experimental and can be turned off in Accessibility settings.</p> : null}
+          {frequency ? <p>{copy.frequencyExperimental}</p> : null}
         </>
       ) : (
-        <p>This browser does not provide vibration. FIELD does not imitate haptics on screen.</p>
+        <p>{copy.noVibration}</p>
       )}
     </div>
   )
@@ -679,15 +672,16 @@ function selectedEq(snap: ReturnType<typeof useEngine>, pick: EqBandSelection | 
 }
 
 function NoteSensitivity({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const copy = hearingUi(useI18n().locale)
   return (
     <label className={styles.toneSensitivity}>
-      <span>Notes</span>
+      <span>{copy.notes}</span>
       <input
         type="range"
         min={0}
         max={100}
         value={Math.round(value * 100)}
-        aria-label="Note detection sensitivity"
+        aria-label={copy.notesAria}
         onChange={(event) => onChange(Number(event.target.value) / 100)}
       />
     </label>
@@ -709,6 +703,8 @@ function SoundSection(props: {
   showAssistant: boolean
 }) {
   const { settings, patch } = useHearingSettings()
+  const { locale } = useI18n()
+  const copy = hearingUi(locale)
   const room = useReverbSpace()
   const { analysis } = props.hearing
   const autoId = props.snap.automation.selectedParamId
@@ -717,25 +713,23 @@ function SoundSection(props: {
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <p className={styles.scope}>{analysis ? scopeLabel(analysis.scope) : 'NO SAMPLE'}</p>
-        <InfoTip label="More about Sound">
-          Note and character tags follow the playhead, so a sound is listed while that moment is under the playhead. Click a note tag to hear a quiet synthesized tone. High frequencies are kept much quieter, and a limiter caps the preview. The Notes slider sets how far below the loudest partial still counts. The same note is listed once. Silence does not invent a note. The tag list is one row. Each tag has a thin border and slightly rounded corners, so extra tags stay on that row and do not move the lines under them. There is no scrollbar. Original and heard levels share one bar per band.
-        </InfoTip>
+        <p className={styles.scope}>{analysis ? copy.scope(scopeLabel(analysis.scope)) : copy.noSample}</p>
+        <InfoTip label={copy.moreSound}>{copy.soundTip}</InfoTip>
       </div>
       {props.summary && props.surface === 'simple' ? (
         <dl className={styles.grid}>
-          <div><dt>Level</dt><dd>{props.summary.level}</dd></div>
-          <div><dt>Low</dt><dd>{props.summary.low}</dd></div>
-          <div><dt>Mid</dt><dd>{props.summary.mid}</dd></div>
-          <div><dt>High</dt><dd>{props.summary.high}</dd></div>
-          <div><dt>Space</dt><dd>{props.summary.space}</dd></div>
-          <div><dt>Dynamics</dt><dd>{props.summary.dynamics}</dd></div>
-          <div><dt>Transients</dt><dd>{props.summary.transients}</dd></div>
+          <div><dt>{copy.summaryLabel.level}</dt><dd>{copy.summaryWord(props.summary.level)}</dd></div>
+          <div><dt>{copy.summaryLabel.low}</dt><dd>{copy.summaryWord(props.summary.low)}</dd></div>
+          <div><dt>{copy.summaryLabel.mid}</dt><dd>{copy.summaryWord(props.summary.mid)}</dd></div>
+          <div><dt>{copy.summaryLabel.high}</dt><dd>{copy.summaryWord(props.summary.high)}</dd></div>
+          <div><dt>{copy.summaryLabel.space}</dt><dd>{copy.summaryWord(props.summary.space)}</dd></div>
+          <div><dt>{copy.summaryLabel.dynamics}</dt><dd>{copy.summaryWord(props.summary.dynamics)}</dd></div>
+          <div><dt>{copy.summaryLabel.transients}</dt><dd>{copy.summaryWord(props.summary.transients)}</dd></div>
         </dl>
       ) : null}
       {props.surface === 'simple' ? (
         <button type="button" onClick={() => props.onDetails(!props.settingsDetails)}>
-          {props.settingsDetails ? 'Hide details' : 'Details'}
+          {props.settingsDetails ? copy.hideDetails : copy.details}
         </button>
       ) : null}
       <div className={styles.tagBar}>
@@ -760,7 +754,7 @@ function SoundSection(props: {
       {props.showDetails && props.showMap ? (
         <>
           {Math.abs(props.snap.params.pitch) >= 0.05 ? (
-            <p className={styles.help}>Sound map after pitch. The bars above compare the original with what you hear.</p>
+            <p className={styles.help}>{copy.soundMapAfterPitch}</p>
           ) : null}
           <SoundMap
             columns={shiftSoundMap(analysis?.soundMap ?? null, props.snap.params.pitch)}
@@ -775,22 +769,21 @@ function SoundSection(props: {
       ) : null}
       {props.showDetails && props.voice ? (
         <p>
-          <strong>{props.voice.label}</strong> {props.voice.detail}
-          {props.voice.contrastDb !== null ? ` Voice contrast ${props.voice.contrastDb.toFixed(1)} dB.` : ''}
+          <strong>{copy.voiceLabel(props.voice.label)}</strong> {copy.detail(props.voice.detail)}
+          {props.voice.contrastDb !== null ? ` ${copy.voiceContrast(props.voice.contrastDb.toFixed(1))}` : ''}
         </p>
       ) : null}
       {props.showDetails && props.eq ? (
         <p>
-          EQ {props.eq.readout.index + 1} · {props.eq.readout.frequencyLabel} · {props.eq.readout.region} ·{' '}
-          {props.eq.readout.gainDb.toFixed(1)} dB · Q {props.eq.readout.q.toFixed(2)}
-          {props.eq.region
-            ? ` · affected ${Math.round(props.eq.region.lo)}–${Math.round(props.eq.region.hi)} Hz`
-            : ''}
+          EQ {props.eq.readout.index + 1} · {props.eq.readout.frequencyLabel} · {props.eq.readout.note} ·{' '}
+          {copy.band(props.eq.readout.regionId ?? '', props.eq.readout.region)} · {props.eq.readout.gainDb.toFixed(1)} dB · Q{' '}
+          {props.eq.readout.q.toFixed(2)}
+          {props.eq.region ? copy.affected(Math.round(props.eq.region.lo), Math.round(props.eq.region.hi)) : ''}
         </p>
       ) : null}
       {props.showDetails ? (
         <p>
-          Automation {PARAMS[autoId]?.label ?? autoId}: stored {stored.toFixed(2)} · effective {liveValue.toFixed(2)}
+          {copy.automation(paramLabel(locale, autoId), stored.toFixed(2), liveValue.toFixed(2))}
         </p>
       ) : null}
       {props.showDetails && props.showAssistant ? <Assistant findings={props.hearing.findings} analysis={analysis} /> : null}
@@ -799,42 +792,42 @@ function SoundSection(props: {
 }
 
 function EventsSection({ hearing }: { hearing: HearingView }) {
+  const copy = hearingUi(useI18n().locale)
   const [moved, setMoved] = useState<string | null>(null)
-  const scope = hearing.analysis ? scopeLabel(hearing.analysis.scope) : 'THIS SCOPE'
+  const scope = hearing.analysis ? copy.scope(scopeLabel(hearing.analysis.scope)) : copy.thisScope
   return (
     <div>
       <div className={styles.sectionTitle}>
         <h3>{scope}</h3>
-        <InfoTip label="More about events">
-          Listed moments are transients, silence, loud peaks, low-frequency onsets, sustained tones, possible clicks, and possible clipping. Click a row to move the playhead. The audio is not edited.
-        </InfoTip>
+        <InfoTip label={copy.eventsMore}>{copy.eventsTip}</InfoTip>
       </div>
       {hearing.events.length === 0 ? (
-        <p className={styles.empty}>
-          No qualifying events in {scope}. A short or steady selection often has none. Clear the selection to scan the full sample, or choose a passage with a clear attack or a gap.
-        </p>
+        <p className={styles.empty}>{copy.noEvents(scope)}</p>
       ) : (
         <ul className={styles.events}>
-          {hearing.events.map((event) => (
-            <li key={event.id}>
-              <button
-                type="button"
-                className={styles.eventRow}
-                onClick={() => {
-                  engine.seekSeconds(event.time, 'sample')
-                  setMoved(event.id)
-                  announce(`Playhead ${formatTimecode(event.time)}. ${event.label}.`)
-                }}
-              >
-                <span>{formatTimecode(event.time)}</span>
-                <span>{event.label}</span>
-                <span className={styles.eventDetail}>{event.detail}</span>
-              </button>
-            </li>
-          ))}
+          {hearing.events.map((event) => {
+            const label = copy.eventLabel(event.kind, event.label)
+            return (
+              <li key={event.id}>
+                <button
+                  type="button"
+                  className={styles.eventRow}
+                  onClick={() => {
+                    engine.seekSeconds(event.time, 'sample')
+                    setMoved(event.id)
+                    announce(copy.playheadAnnounce(formatTimecode(event.time), label))
+                  }}
+                >
+                  <span>{formatTimecode(event.time)}</span>
+                  <span>{label}</span>
+                  <span className={styles.eventDetail}>{copy.detail(event.detail)}</span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
-      {moved ? <p className={styles.note}>Playhead moved. Press play to hear from that point.</p> : null}
+      {moved ? <p className={styles.note}>{copy.playheadMoved}</p> : null}
     </div>
   )
 }
@@ -848,14 +841,15 @@ function SpaceSection({
 }) {
   const buckets = useHeardSpace(analysis)
   const room = useReverbSpace()
+  const copy = hearingUi(useI18n().locale)
   if (!analysis) {
     return (
       <div>
         <div className={styles.sectionTitle}>
-          <h3>Space</h3>
-          <InfoTip label="More about space">Balance, width, correlation, and mid/side energy for this scope.</InfoTip>
+          <h3>{copy.section.space}</h3>
+          <InfoTip label={copy.spaceMore}>{copy.spaceTipShort}</InfoTip>
         </div>
-        <p>Load a sample to place it in the field.</p>
+        <p>{copy.loadSpace}</p>
       </div>
     )
   }
@@ -865,10 +859,8 @@ function SpaceSection({
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>Space</h3>
-        <InfoTip label="More about space">
-          The head follows the playhead. Spread is stereo width. A hollow mark is correlation below 0.2. The field is what you hear after pan, mid/side, and delay. A larger reverb size or a greater distance draws a smaller head. The source moves toward the front as distance grows. Wet does not move the head or the source. When wet is above zero, the sound map smears forward and the field draws a short tail under each mark. The right edge shows the room: a longer line is a larger room, and the dot is the source distance. Time runs from top to bottom.
-        </InfoTip>
+        <h3>{copy.section.space}</h3>
+        <InfoTip label={copy.spaceMore}>{copy.spaceTip}</InfoTip>
       </div>
       <div className={styles.spaceStack}>
         <HeadSpace balance={heard} width={live?.width ?? 0} correlation={live?.correlation ?? 1} space={room} />
@@ -880,50 +872,50 @@ function SpaceSection({
           space={room}
         />
       </div>
-      {!stereo ? <p>This sample is mono, so width stays narrow. Pan still places it.</p> : null}
-      <p className={styles.meter} aria-label={`Heard balance ${balanceLabel(heard)}`}>
+      {!stereo ? <p>{copy.monoSample}</p> : null}
+      <p className={styles.meter} aria-label={`${copy.heardBalance} ${copy.balance(balanceLabel(heard))}`}>
         {balanceMeter(heard)}
       </p>
       <dl className={styles.grid}>
-        <div><dt>Heard balance</dt><dd>{balanceLabel(heard)}</dd></div>
-        <div><dt>Sample balance</dt><dd>{stereo ? balanceLabel(stereo.balance) : 'CENTER'}</dd></div>
-        <div><dt>Width</dt><dd>{live ? `${Math.round(live.width * 100)}%` : '0%'}</dd></div>
-        <div><dt>Correlation</dt><dd>{live ? live.correlation.toFixed(2) : '—'}</dd></div>
-        <div><dt>Room</dt><dd>{room.engaged ? roomWord(room.size) : '—'}</dd></div>
-        <div><dt>Distance</dt><dd>{room.engaged ? distanceWord(room.distance) : '—'}</dd></div>
-        <div><dt>Mid</dt><dd>{stereo ? `${Math.round(stereo.midShare * 100)}%` : '—'}</dd></div>
-        <div><dt>Side</dt><dd>{stereo ? `${Math.round(stereo.sideShare * 100)}%` : '—'}</dd></div>
+        <div><dt>{copy.heardBalance}</dt><dd>{copy.balance(balanceLabel(heard))}</dd></div>
+        <div><dt>{copy.sampleBalance}</dt><dd>{stereo ? copy.balance(balanceLabel(stereo.balance)) : copy.balance('CENTER')}</dd></div>
+        <div><dt>{copy.width}</dt><dd>{live ? `${Math.round(live.width * 100)}%` : '0%'}</dd></div>
+        <div><dt>{copy.correlation}</dt><dd>{live ? live.correlation.toFixed(2) : '—'}</dd></div>
+        <div><dt>{copy.room}</dt><dd>{room.engaged ? copy.roomWord(roomWord(room.size)) : '—'}</dd></div>
+        <div><dt>{copy.distance}</dt><dd>{room.engaged ? copy.distanceWord(distanceWord(room.distance)) : '—'}</dd></div>
+        <div><dt>{copy.mid}</dt><dd>{stereo ? `${Math.round(stereo.midShare * 100)}%` : '—'}</dd></div>
+        <div><dt>{copy.side}</dt><dd>{stereo ? `${Math.round(stereo.sideShare * 100)}%` : '—'}</dd></div>
       </dl>
-      {stereo?.lowCorrelation ? <p>Low correlation. Possible mono compatibility issue.</p> : null}
+      {stereo?.lowCorrelation ? <p>{copy.lowCorrelation}</p> : null}
     </div>
   )
 }
 
 function DynamicsSection({ analysis }: { analysis: BufferAnalysis | null }) {
-  if (!analysis) return <p className={styles.help}>Dynamics needs a loaded sample.</p>
+  const copy = hearingUi(useI18n().locale)
+  if (!analysis) return <p className={styles.help}>{copy.dynamicsNeedsSample}</p>
   const clips = analysis.dynamics.filter((bucket) => bucket.clip).length
   const transients = analysis.dynamics.filter((bucket) => bucket.transient).length
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>Dynamics</h3>
-        <InfoTip label="More about dynamics">
-          Levels for this scope. The thin strip on the waveform marks quiet, loud, and full-scale clipping. Loud audio below full scale is not clipping.
-        </InfoTip>
+        <h3>{copy.section.dynamics}</h3>
+        <InfoTip label={copy.dynamicsMore}>{copy.dynamicsTip}</InfoTip>
       </div>
       <dl className={styles.grid}>
-        <div><dt>Peak</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
+        <div><dt>{copy.peak}</dt><dd>{analysis.peakDbfs === null ? '—' : `${analysis.peakDbfs.toFixed(1)} dBFS`}</dd></div>
         <div><dt>RMS</dt><dd>{analysis.rmsDbfs === null ? '—' : `${analysis.rmsDbfs.toFixed(1)} dBFS`}</dd></div>
-        <div><dt>Crest</dt><dd>{analysis.crestDb === null ? '—' : `${analysis.crestDb.toFixed(1)} dB`}</dd></div>
-        <div><dt>Transients</dt><dd>{transients}</dd></div>
-        <div><dt>Clipping blocks</dt><dd>{clips}</dd></div>
+        <div><dt>{copy.crest}</dt><dd>{analysis.crestDb === null ? '—' : `${analysis.crestDb.toFixed(1)} dB`}</dd></div>
+        <div><dt>{copy.summaryLabel.transients}</dt><dd>{transients}</dd></div>
+        <div><dt>{copy.clippingBlocks}</dt><dd>{clips}</dd></div>
       </dl>
-      <p>Quiet blocks are the low bars on the waveform strip. Clipping uses a full-scale sample threshold, not loudness.</p>
+      <p>{copy.quietBlocks}</p>
     </div>
   )
 }
 
 function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; snap: ReturnType<typeof useEngine> }) {
+  const copy = hearingUi(useI18n().locale)
   const revision = [
     snap.bufferRev,
     snap.sampleRate,
@@ -998,22 +990,20 @@ function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; s
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>Compare</h3>
-        <InfoTip label="More about compare">
-          Each table is one active effect on this scope. A bypassed module is omitted. Delay times and the reverb tail follow the same parameters as the DSP. Nothing here rewrites the audio.
-        </InfoTip>
+        <h3>{copy.compare}</h3>
+        <InfoTip label={copy.compareMore}>{copy.compareTip}</InfoTip>
       </div>
-      {rows.length === 0 ? <p>No measurable change yet. Move gain, EQ, compressor, delay, reverb, or stereo width and the tables fill in.</p> : null}
+      {rows.length === 0 ? <p>{copy.noCompare}</p> : null}
       {groups.map((group) => (
         <section key={group} className={styles.compareGroup}>
-          <h3>{group}</h3>
+          <h3>{copy.compareGroup(group)}</h3>
           <table className={styles.compareTable}>
             <thead>
               <tr>
-                <th>Measure</th>
-                <th>Before</th>
-                <th>After</th>
-                <th>Change</th>
+                <th>{copy.measure}</th>
+                <th>{copy.before}</th>
+                <th>{copy.after}</th>
+                <th>{copy.change}</th>
               </tr>
             </thead>
             <tbody>
@@ -1021,10 +1011,10 @@ function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; s
                 .filter((row) => row.group === group)
                 .map((row) => (
                   <tr key={`${row.group}-${row.id}`}>
-                    <th scope="row">{row.label}</th>
-                    <td>{row.before}</td>
-                    <td>{row.after}</td>
-                    <td>{row.delta}</td>
+                    <th scope="row">{copy.compareRow(row.label)}</th>
+                    <td>{copy.cell(row.before)}</td>
+                    <td>{copy.cell(row.after)}</td>
+                    <td>{copy.cell(row.delta)}</td>
                   </tr>
                 ))}
             </tbody>
@@ -1038,6 +1028,7 @@ function CompareSection({ analysis, snap }: { analysis: BufferAnalysis | null; s
 }
 
 function DelaySketch({ snap }: { snap: ReturnType<typeof useEngine> }) {
+  const copy = hearingUi(useI18n().locale)
   const taps = delayPicture(paramRecord(snap.params), snap.delayType, snap.params.bpm || 120)
   if (taps.length === 0) return null
   const left = taps.filter((tap) => tap.channel !== 'R')
@@ -1045,7 +1036,7 @@ function DelaySketch({ snap }: { snap: ReturnType<typeof useEngine> }) {
   return (
     <div>
       <h3>Delay</h3>
-      <p>Direct</p>
+      <p>{copy.direct}</p>
       <p>{left.map((tap) => `● ${Math.round(tap.time * 1000)} ms`).join('  ')}</p>
       {right.length ? <p>R {right.map((tap) => `● ${Math.round(tap.time * 1000)} ms`).join('  ')}</p> : null}
     </div>
@@ -1053,12 +1044,13 @@ function DelaySketch({ snap }: { snap: ReturnType<typeof useEngine> }) {
 }
 
 function ReverbSketch({ snap }: { snap: ReturnType<typeof useEngine> }) {
+  const copy = hearingUi(useI18n().locale)
   const picture = reverbPicture(paramRecord(snap.params), snap.reverbType, snap.params.bpm || 120)
   return (
     <div>
-      <h3>Reverb</h3>
-      <p>Direct {Math.round(picture.direct * 100)}% · early {picture.early.length} · tail {picture.duration.toFixed(2)} s</p>
-      <p>{picture.note}</p>
+      <h3>{copy.compareGroup('Reverb')}</h3>
+      <p>{copy.reverbLine(String(Math.round(picture.direct * 100)), String(picture.early.length), picture.duration.toFixed(2))}</p>
+      <p>{copy.detail(picture.note)}</p>
     </div>
   )
 }
@@ -1069,43 +1061,47 @@ function bandsForFinding(id: string): HearingBandId[] {
 }
 
 function Assistant({ findings, analysis }: { findings: HearingView['findings']; analysis: BufferAnalysis | null }) {
+  const copy = hearingUi(useI18n().locale)
   const [shown, setShown] = useState<string | null>(null)
-  if (findings.length === 0) return <p>No technical findings in this scope.</p>
+  if (findings.length === 0) return <p>{copy.noFindings}</p>
   return (
     <div>
       <div className={styles.sectionTitle}>
-        <h3>Visual mixing assistant</h3>
-        <InfoTip label="More about the assistant">Show frames that span on the waveform and moves the playhead. It does not change the audio.</InfoTip>
+        <h3>{copy.assistant}</h3>
+        <InfoTip label={copy.assistantMore}>{copy.assistantTip}</InfoTip>
       </div>
       <ul className={styles.events}>
-        {findings.map((finding) => (
-          <li key={finding.id} className={styles.finding}>
-            <strong>{finding.title}</strong>
-            <span>{finding.detail}</span>
-            <button
-              type="button"
-              onClick={() => {
-                const start = finding.time ?? analysis?.originSec ?? 0
-                const fallbackEnd = analysis ? analysis.originSec + Math.max(analysis.durationSec, 0.05) : start + 0.2
-                const end = Math.max(finding.end ?? fallbackEnd, start + 0.05)
-                engine.seekSeconds(start, 'sample')
-                revealHearingSpan({
-                  id: finding.id,
-                  start,
-                  end,
-                  label: finding.title,
-                  bands: bandsForFinding(finding.id),
-                })
-                setShown(finding.id)
-                announce(`Showing ${finding.title} at ${formatTimecode(start)}.`)
-              }}
-            >
-              Show
-            </button>
-          </li>
-        ))}
+        {findings.map((finding) => {
+          const title = copy.findingTitle(finding.id, finding.title)
+          return (
+            <li key={finding.id} className={styles.finding}>
+              <strong>{title}</strong>
+              <span>{copy.detail(finding.detail)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const start = finding.time ?? analysis?.originSec ?? 0
+                  const fallbackEnd = analysis ? analysis.originSec + Math.max(analysis.durationSec, 0.05) : start + 0.2
+                  const end = Math.max(finding.end ?? fallbackEnd, start + 0.05)
+                  engine.seekSeconds(start, 'sample')
+                  revealHearingSpan({
+                    id: finding.id,
+                    start,
+                    end,
+                    label: title,
+                    bands: bandsForFinding(finding.id),
+                  })
+                  setShown(finding.id)
+                  announce(copy.showing(title, formatTimecode(start)))
+                }}
+              >
+                {copy.show}
+              </button>
+            </li>
+          )
+        })}
       </ul>
-      {shown ? <p className={styles.note}>The waveform is framed on that span. The outline is the region. Audio is unchanged.</p> : null}
+      {shown ? <p className={styles.note}>{copy.framed}</p> : null}
     </div>
   )
 }

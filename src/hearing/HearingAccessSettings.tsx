@@ -1,40 +1,26 @@
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import { useHearingSettings } from './useHearingSettings'
-import { EVENT_KINDS, HAPTIC_INTENSITIES, type HearingProfile } from './settings'
+import { EVENT_KINDS, HAPTIC_INTENSITIES, HEARING_PROFILES, type HearingProfile } from './settings'
 import { vibrationSupported } from './haptics'
 import styles from './HearingAccessSettings.module.css'
 
-const PROFILES: { id: HearingProfile; label: string; detail: string }[] = [
-  {
-    id: 'assisted',
-    label: 'Assisted listening',
-    detail: 'Visual measurements beside auditory monitoring.',
-  },
-  {
-    id: 'visual',
-    label: 'Visual first',
-    detail: 'Sound map, fingerprint, events, and numbers. Does not assume you can hear the result.',
-  },
-  {
-    id: 'visual-haptic',
-    label: 'Visual + haptic',
-    detail: 'The visual profile plus optional pulses where the device supports them.',
-  },
-]
+const PROFILE_IDS: HearingProfile[] = [...HEARING_PROFILES]
 
 export function HearingAccessSettings() {
   const { settings, patch, setProfile } = useHearingSettings()
+  const { locale } = useI18n()
+  const copy = hearingUi(locale)
   const haptics = vibrationSupported()
 
   return (
     <section className={styles.section} aria-labelledby="hearing-access-heading">
       <h2 id="hearing-access-heading" className={styles.title}>
-        Hearing Access
+        {copy.title}
       </h2>
-      <p className={styles.help}>
-        An accessibility layer on top of Simple, Technical, and Sensory. It does not replace those modes.
-      </p>
-      <div className={styles.switch} role="group" aria-label="Hearing Access">
-        <span>Hearing Access</span>
+      <p className={styles.help}>{copy.settingsIntro}</p>
+      <div className={styles.switch} role="group" aria-label={copy.title}>
+        <span>{copy.title}</span>
         <span className={styles.pair}>
           <button
             type="button"
@@ -42,7 +28,7 @@ export function HearingAccessSettings() {
             className={!settings.enabled ? styles.on : ''}
             onClick={() => patch({ enabled: false, panelOpen: false })}
           >
-            Off
+            {copy.off}
           </button>
           <button
             type="button"
@@ -50,79 +36,79 @@ export function HearingAccessSettings() {
             className={settings.enabled ? styles.on : ''}
             onClick={() => patch({ enabled: true })}
           >
-            On
+            {copy.on}
           </button>
         </span>
       </div>
       <fieldset className={styles.profiles} disabled={!settings.enabled}>
-        <legend className={styles.sub}>Profile</legend>
-        {PROFILES.map((profile) => (
-          <label key={profile.id} className={styles.profile}>
+        <legend className={styles.sub}>{copy.profile}</legend>
+        {PROFILE_IDS.map((id) => (
+          <label key={id} className={styles.profile}>
             <input
               type="radio"
               name="hearing-profile"
-              checked={settings.profile === profile.id}
-              onChange={() => setProfile(profile.id)}
+              checked={settings.profile === id}
+              onChange={() => setProfile(id)}
             />
             <span>
-              <strong>{profile.label}</strong>
-              <small>{profile.detail}</small>
+              <strong>{copy.profileLabel(id)}</strong>
+              <small>{copy.profileDetail(id)}</small>
             </span>
           </label>
         ))}
       </fieldset>
       <fieldset className={styles.profiles} disabled={!settings.enabled}>
-        <legend className={styles.sub}>Layers</legend>
+        <legend className={styles.sub}>{copy.layers}</legend>
         {(
           [
-            ['soundMap', 'Sound map'],
-            ['descriptors', 'Live description'],
-            ['events', 'Event detection'],
-            ['dynamicsMap', 'Dynamics map'],
-            ['space', 'Space map'],
-            ['compare', 'Before / after'],
-            ['assistant', 'Visual mixing assistant'],
-            ['voiceEstimate', 'Voice / background estimate'],
+            'soundMap',
+            'descriptors',
+            'events',
+            'dynamicsMap',
+            'space',
+            'compare',
+            'assistant',
+            'voiceEstimate',
           ] as const
-        ).map(([key, label]) => (
+        ).map((key) => (
           <label key={key} className={styles.check}>
             <input
               type="checkbox"
               checked={settings.layers[key]}
               onChange={(event) => patch({ layers: { ...settings.layers, [key]: event.target.checked } })}
             />
-            <span>{label}</span>
+            <span>{copy.layerLabel(key)}</span>
           </label>
         ))}
       </fieldset>
       <fieldset className={styles.profiles} disabled={!settings.enabled}>
-        <legend className={styles.sub}>Monitoring assistance</legend>
-        <p className={styles.warn}>Monitoring only. Not included in export. Not a hearing aid.</p>
+        <legend className={styles.sub}>{copy.monitoring}</legend>
+        <p className={styles.warn}>{copy.monitor}</p>
         <label className={styles.check}>
           <input
             type="checkbox"
             checked={settings.monitorEnabled}
             onChange={(event) => patch({ monitorEnabled: event.target.checked })}
           />
-          <span>Monitor emphasis</span>
+          <span>{copy.monitorEmphasis}</span>
         </label>
         {(
           [
-            ['monitorLow', 'Low'],
-            ['monitorMid', 'Mid'],
-            ['monitorHigh', 'High'],
+            ['monitorLow', 'Low', 'Dół'],
+            ['monitorMid', 'Mid', 'Środek'],
+            ['monitorHigh', 'High', 'Góra'],
           ] as const
-        ).map(([key, label]) => (
+        ).map(([key, en, pl]) => (
           <label key={key} className={styles.slider}>
             <span>
-              {label} {settings[key].toFixed(1)} dB
+              {(locale === 'pl' ? pl : en)} {settings[key].toFixed(1)} dB
             </span>
             <input
               type="range"
               min={-12}
               max={12}
               step={0.5}
-              aria-label={`${label} monitor emphasis`}
+              aria-label={copy.monitorBand(locale === 'pl' ? pl : en)}
               value={settings[key]}
               disabled={!settings.monitorEnabled}
               onChange={(event) => patch({ [key]: Number(event.target.value) })}
@@ -131,19 +117,19 @@ export function HearingAccessSettings() {
         ))}
       </fieldset>
       <fieldset className={styles.profiles} disabled={!settings.enabled}>
-        <legend className={styles.sub}>Haptics</legend>
-        {haptics ? null : <p className={styles.help}>This browser does not provide vibration. Haptic controls stay off.</p>}
+        <legend className={styles.sub}>{copy.haptics}</legend>
+        {haptics ? null : <p className={styles.help}>{copy.noVibrationSettings}</p>}
         <label className={styles.slider}>
-          <span>Intensity</span>
+          <span>{copy.intensity}</span>
           <select
-            aria-label="Haptic intensity"
+            aria-label={copy.intensityAria}
             value={settings.hapticIntensity}
             disabled={!haptics}
             onChange={(event) => patch({ hapticIntensity: event.target.value as (typeof HAPTIC_INTENSITIES)[number] })}
           >
             {HAPTIC_INTENSITIES.map((intensity) => (
               <option key={intensity} value={intensity}>
-                {intensity}
+                {copy.intensityLabel(intensity)}
               </option>
             ))}
           </select>
@@ -155,11 +141,11 @@ export function HearingAccessSettings() {
             disabled={!haptics}
             onChange={(event) => patch({ frequencyHaptics: event.target.checked })}
           />
-          <span>Frequency haptics (experimental)</span>
+          <span>{copy.frequencyHaptics}</span>
         </label>
       </fieldset>
       <fieldset className={styles.profiles} disabled={!settings.enabled}>
-        <legend className={styles.sub}>Event filters</legend>
+        <legend className={styles.sub}>{copy.eventFilters}</legend>
         {EVENT_KINDS.map((kind) => (
           <label key={kind} className={styles.check}>
             <input
@@ -169,7 +155,7 @@ export function HearingAccessSettings() {
                 patch({ eventFilters: { ...settings.eventFilters, [kind]: event.target.checked } })
               }
             />
-            <span>{kind}</span>
+            <span>{copy.eventFilter(kind)}</span>
           </label>
         ))}
       </fieldset>

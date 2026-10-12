@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import type { SoundMapColumn } from './analyze'
 import { HEARING_BANDS, type HearingBandId } from './bands'
 import type { TransientMark } from './events'
@@ -37,6 +39,8 @@ const BAND_VAR: Record<HearingBandId, string> = {
  */
 export function SoundMap({ columns, playhead, origin, duration, transients = [], onTransient, space = DRY }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const { locale } = useI18n()
+  const copy = useMemo(() => hearingUi(locale), [locale])
   const engaged = space.engaged
   const wet = space.wet
   const decay = space.decay
@@ -59,7 +63,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     const accent = computed.getPropertyValue('--accent-primary').trim() || ink
     ctx.fillStyle = panel
     ctx.fillRect(0, 0, width, height)
-    const gutter = 72
+    const gutter = 84
     const lane = 16
     const rows = HEARING_BANDS.length
     const rowH = (height - lane - 6) / rows
@@ -70,7 +74,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       const tone = computed.getPropertyValue(BAND_VAR[band.id]).trim() || ink
       ctx.fillStyle = ink
       ctx.globalAlpha = 0.9
-      ctx.fillText(band.label, 4, y + rowH / 2)
+      ctx.fillText(copy.band(band.id, band.label), 4, y + rowH / 2)
       ctx.globalAlpha = 0.05
       ctx.fillStyle = tone
       ctx.fillRect(gutter, y, width - gutter - 4, rowH - 1)
@@ -79,7 +83,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     if (!columns || columns.length === 0) {
       ctx.globalAlpha = 0.7
       ctx.fillStyle = ink
-      ctx.fillText('No spectral columns yet', gutter + 8, height / 2)
+      ctx.fillText(copy.soundMapEmpty, gutter + 8, height / 2)
       return
     }
     const plotW = width - gutter - 4
@@ -102,7 +106,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
     const span = Math.max(0.0001, duration)
     ctx.fillStyle = ink
     ctx.globalAlpha = 0.7
-    ctx.fillText('T', 4, lane / 2)
+    ctx.fillText(copy.soundMapTime, 4, lane / 2)
     ctx.globalAlpha = 1
     ctx.strokeStyle = accent
     ctx.lineWidth = 1.25
@@ -128,13 +132,13 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
         ctx.setLineDash([])
       }
     }
-  }, [columns, playhead, origin, duration, transients, engaged, wet, decay, distance])
+  }, [columns, playhead, origin, duration, transients, engaged, wet, decay, distance, copy])
 
   const pickTransient = (clientX: number) => {
     const canvas = ref.current
     if (!canvas || !onTransient || transients.length === 0 || duration <= 0) return
     const rect = canvas.getBoundingClientRect()
-    const gutter = 72
+    const gutter = 84
     const plotW = Math.max(1, rect.width - gutter - 4)
     const x = clientX - rect.left
     let best: TransientMark | null = null
@@ -155,7 +159,7 @@ export function SoundMap({ columns, playhead, origin, duration, transients = [],
       ref={ref}
       className={`${styles.palette} hearing-sound-map`}
       role="img"
-      aria-label="Sound map. Rows are labeled frequency regions and sit edge to edge. Color follows the theme and is paired with the label. Attacks are thin vertical lines at the time they happen. The waveform level strip can show several triangles for one attack. Choose a line to mark it on the waveform. Reverb wet smears the rows forward and dulls the high rows."
+      aria-label={copy.soundMapAria}
       onClick={(event) => pickTransient(event.clientX)}
       style={{ width: '100%', height: 184, color: 'var(--text-primary)', background: 'transparent', cursor: onTransient && transients.length ? 'pointer' : undefined }}
     />

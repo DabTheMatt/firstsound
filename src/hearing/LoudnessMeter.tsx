@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { dbToMeterPct } from '../app/editorState'
 import { engine } from '../hooks/useEngine'
+import { useI18n } from '../i18n'
+import { hearingUi } from '../i18n/hearingUi'
 import { getHearingView, subscribeHearingView } from './session'
 import {
   LOUDNESS_FLOOR_DB,
@@ -52,6 +54,7 @@ function Lane({ db, label }: { db: number; label: string }) {
 
 /** Vertical loudness rail. Same peak reading as the main meter, with a word scale. */
 export function LoudnessMeter() {
+  const copy = hearingUi(useI18n().locale)
   const [live, setLive] = useState<LiveLevels | null>(null)
   const [playing, setPlaying] = useState(false)
   const [samplePeak, setSamplePeak] = useState<number | null>(null)
@@ -91,7 +94,7 @@ export function LoudnessMeter() {
   const livePeak = live ? louder(live.left, live.right) : Number.NEGATIVE_INFINITY
   const usingLive = playing && live !== null && Number.isFinite(livePeak)
   const zone: LoudnessZone = liveMeterZone(usingLive, usingLive ? livePeak : null, usingLive && livePeak >= -0.1)
-  const word = LOUDNESS_ZONE_LABEL[zone]
+  const word = copy.loudnessWord(LOUDNESS_ZONE_LABEL[zone])
   const nowText = formatLoudnessDb(usingLive ? livePeak : null)
   const meterNow = usingLive ? Math.round(livePeak) : LOUDNESS_FLOOR_DB
   const lanes = usingLive && live?.stereo
@@ -109,15 +112,20 @@ export function LoudnessMeter() {
       aria-valuemin={LOUDNESS_FLOOR_DB}
       aria-valuemax={0}
       aria-valuenow={meterNow}
-      aria-valuetext={`${word}. ${usingLive ? `Now ${nowText}` : 'Playback is stopped.'} Sample peak ${formatLoudnessDb(samplePeak)}. RMS ${formatLoudnessDb(usingLive && live ? live.rms : sampleRms)}.`}
-      aria-label="Loudness"
+      aria-valuetext={copy.loudnessValue(
+        word,
+        usingLive ? copy.loudnessNow(nowText) : copy.loudnessStopped,
+        formatLoudnessDb(samplePeak),
+        formatLoudnessDb(usingLive && live ? live.rms : sampleRms),
+      )}
+      aria-label={copy.loudness}
     >
       <strong>{word}</strong>
       <div className={styles.loudnessBody}>
         <div className={styles.loudnessWords} aria-hidden="true">
           {SCALE_WORDS.map((mark) => (
             <span key={mark.label} style={{ bottom: `${dbToMeterPct(mark.db, LOUDNESS_FLOOR_DB)}%` }}>
-              {mark.label}
+              {copy.loudnessWord(mark.label)}
             </span>
           ))}
         </div>
@@ -127,8 +135,8 @@ export function LoudnessMeter() {
           ))}
         </div>
       </div>
-      <p>{usingLive ? `now ${nowText}` : 'stopped'}</p>
-      <p>peak {formatLoudnessDb(samplePeak)}</p>
+      <p>{usingLive ? `${copy.nowWord} ${nowText}` : copy.stoppedWord}</p>
+      <p>{copy.peakWord} {formatLoudnessDb(samplePeak)}</p>
       <p>RMS {formatLoudnessDb(usingLive && live ? live.rms : sampleRms)}</p>
     </aside>
   )
