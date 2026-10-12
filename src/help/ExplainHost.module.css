@@ -17,11 +17,12 @@
 }
 
 .mark {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 32px;
-  height: 32px;
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .floatMark {
@@ -32,11 +33,13 @@
 }
 
 .hostTitle.hostTitle {
-  position: relative;
-  padding-right: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   line-height: 32px;
   min-height: 32px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .panel {
