@@ -104,6 +104,7 @@ import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../senso
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import { useTechnicalInterface } from './useTechnicalInterface'
 import { useEqWorkspaceLayout } from './useEqWorkspaceLayout'
+import { ExplainMarksSetting } from '../components/workspace/ExplainMarksSetting'
 import { TechnicalInterfaceSetting } from '../components/workspace/TechnicalInterfaceSetting'
 import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
@@ -1246,6 +1247,7 @@ export default function App() {
             <span>{t.lang.group}</span>
             <LanguageSwitch />
           </div>
+          <ExplainMarksSetting />
           <button type="button" onClick={() => setSettingsPage('access')}>
             {t.a11y.open}
           </button>

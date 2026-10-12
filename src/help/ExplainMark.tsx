@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { useI18n } from '../i18n'
 import styles from './ExplainHost.module.css'
 import { helpChrome } from './chrome'
+import { explainMarksOn, subscribeExplainMarks } from './marks'
 import { rememberedExplainId, getExplainSession, openExplain, subscribeExplain } from './session'
 
 type Props = {
@@ -11,7 +12,9 @@ type Props = {
 export function ExplainMark({ fallback }: Props) {
   const { locale } = useI18n()
   const chrome = helpChrome(locale)
+  const marksOn = useSyncExternalStore(subscribeExplainMarks, explainMarksOn, () => false)
   const session = useSyncExternalStore(subscribeExplain, getExplainSession, () => null)
+  if (!marksOn) return null
   return (
     <button
       type="button"

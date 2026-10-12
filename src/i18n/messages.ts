@@ -187,6 +187,9 @@ export type Messages = {
     libraryEmpty: string
     exportLibrary: string
     deletePreset: (name: string) => string
+    explainMarks: string
+    explainMarksLabel: string
+    explainMarksHint: string
   }
   workspace: {
     interface: string
@@ -1295,6 +1298,9 @@ export const EN: Messages = {
     libraryEmpty: 'No saved library presets yet.',
     exportLibrary: 'Export library',
     deletePreset: (name) => `Delete ${name}`,
+    explainMarks: 'Explain this',
+    explainMarksLabel: 'Show info marks',
+    explainMarksHint: 'Shows ⓘ beside inspector headings. F1 still explains the focused control when the marks are hidden.',
   },
   workspace: {
     interface: 'Technical interface',
@@ -2550,6 +2556,9 @@ export const PL: Messages = {
     libraryEmpty: 'Brak zapisanych presetów w bibliotece.',
     exportLibrary: 'Eksportuj bibliotekę',
     deletePreset: (name) => `Usuń ${name}`,
+    explainMarks: 'Wyjaśnij',
+    explainMarksLabel: 'Pokaż znaki informacji',
+    explainMarksHint: 'Pokazuje ⓘ obok nagłówków inspektora. F1 nadal wyjaśnia kontrolkę w fokusie, gdy znaki są ukryte.',
   },
   workspace: {
     interface: 'Interfejs techniczny',

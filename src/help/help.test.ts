@@ -10,6 +10,7 @@ import { formatCombo, SHORTCUTS, shortcutPlatform } from '../a11y/shortcuts/regi
 import { paramLabel } from '../i18n/messages'
 import { MANUAL } from '../manual/content'
 import { parseHelpLevel } from './level'
+import { parseExplainMarks } from './marks'
 import { placeExplainPanel } from './place'
 import { helpTextLooksTranslated, resolveHelp } from './resolve'
 
@@ -218,8 +219,17 @@ describe('explain this', () => {
   it('documents explain this in both manuals', () => {
     for (const locale of ['en', 'pl'] as const) {
       const section = MANUAL[locale].sections.find((item) => item.id === 'explain-this')
-      expect(section?.body.join(' ')).toMatch(/F1/)
-      expect(section?.body.join(' ')).toMatch(/Escape/)
+      const body = section?.body.join(' ') ?? ''
+      expect(body).toMatch(/F1/)
+      expect(body).toMatch(/Escape/)
+      expect(body).toMatch(locale === 'pl' ? /Ustawienia/ : /Settings/)
+      expect(body).not.toMatch(/floating info mark|unoszonym znakiem/)
     }
+  })
+
+  it('keeps inspector marks off until the stored choice is on', () => {
+    expect(parseExplainMarks(null)).toBe(false)
+    expect(parseExplainMarks('off')).toBe(false)
+    expect(parseExplainMarks('on')).toBe(true)
   })
 })

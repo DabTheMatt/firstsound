@@ -11,7 +11,6 @@ export type ExplainRequest = {
 type Listener = () => void
 
 let session: ExplainRequest | null = null
-let hint: ExplainRequest | null = null
 let remembered: ExplainRequest | null = null
 const listeners = new Set<Listener>()
 
@@ -21,10 +20,6 @@ function emit(): void {
 
 export function getExplainSession(): ExplainRequest | null {
   return session
-}
-
-export function getExplainHint(): ExplainRequest | null {
-  return hint
 }
 
 export function subscribeExplain(listener: Listener): () => void {
@@ -64,10 +59,4 @@ export function closeExplain(): void {
   session = null
   emit()
   if (returnFocus && anchor.isConnected) anchor.focus()
-}
-
-export function setExplainHint(next: ExplainRequest | null): void {
-  if (hint?.id === next?.id && hint?.anchor === next?.anchor) return
-  hint = next
-  emit()
 }

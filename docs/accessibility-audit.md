@@ -355,6 +355,8 @@ Explain this (Polish: Wyjaśnij) is a contextual note keyed by a stable id: a pa
 
 The note is a compact region, not a dialog and not a sidebar. On a viewport wider than 480px it anchors near the control at 280–360px. On a narrower viewport it is a sheet above a 72px transport reserve. There is no entrance animation. Escape closes it. Opening it does not move focus. F1 explains the focused control and is listed in the shortcut registry as `help.explain`. The screen-reader announcement on open is the title and the short summary. Technical text stays in the details until the user asks.
 
+From 0.38.2, focusing a control does not show a floating info mark. The inspector heading mark is hidden until Settings → Show info marks is on, and that mark has no box around the glyph.
+
 What this record covers:
 
 - Unit tests in `src/help/help.test.ts` for content against parameter metadata, both locales, placement widths, and the help level parser

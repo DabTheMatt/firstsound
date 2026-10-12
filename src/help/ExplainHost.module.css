@@ -1,35 +1,22 @@
-.mark,
-.floatMark {
+.mark {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: var(--bg-panel);
-  color: var(--text-primary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-primary);
   font-size: var(--type-14, 14px);
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
-}
-
-.mark {
-  position: relative;
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-
-.floatMark {
-  position: fixed;
-  z-index: 85;
-  width: 44px;
-  height: 44px;
 }
 
 .hostTitle.hostTitle {
@@ -173,10 +160,14 @@
 }
 
 :global(html[data-high-visibility='on']) .panel,
-:global(html[data-high-visibility='on']) .mark,
-:global(html[data-high-visibility='on']) .floatMark,
 :global(html[data-high-visibility='on']) .close,
 :global(html[data-high-visibility='on']) .level {
   border-width: 2px;
   border-color: var(--text-primary);
+}
+
+:global(html[data-high-visibility='on']) .mark {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
 }

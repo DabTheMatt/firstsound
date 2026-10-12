@@ -83,7 +83,7 @@ const en: ManualSection[] = [
     id: 'explain-this',
     title: 'Explain this',
     body: [
-      'Explain this is a short note about the control you are using. It stays inside FIELD. Open it with the info mark on an inspector heading, the floating info mark beside a focused control, or F1. The mark is ⓘ. Polish calls this Wyjaśnij.',
+      'Explain this is a short note about the control you are using. It stays inside FIELD. Open it with F1 on the focused control. Settings can also show an info mark, ⓘ, beside an inspector heading. That mark stays hidden until Show info marks is on. Focusing or clicking a knob does not place another mark.',
       'Basic is plain language: what the control changes, what you may hear, and when it helps. Technical is the engineering note: units, range, and how the process behaves. The choice is remembered in this browser under the help level. It is not tied to Simple or Technical mode.',
       'F1 explains the focused control. Escape closes the note. Focus returns to the control only if it had moved into the note. Opening the note does not move focus by itself. Tab from the control enters the note. A screen reader hears the name and the short explanation. The longer technical text waits until you open details.',
       'More in the manual opens the matching section of this manual when one exists. English and Polish carry the same meaning. The note uses the live shortcut registry and the parameter ranges already in FIELD. Help does not stop playback, reset a parameter, or change an effect.',
@@ -589,7 +589,7 @@ const pl: ManualSection[] = [
     id: 'explain-this',
     title: 'Wyjaśnij',
     body: [
-      'Wyjaśnij to krótka notatka o kontrolce, której używasz. Zostaje w FIELD. Otwierasz ją znakiem informacji w nagłówku inspektora, unoszonym znakiem przy kontrolce w fokusie albo klawiszem F1. Znak to ⓘ.',
+      'Wyjaśnij to krótka notatka o kontrolce, której używasz. Zostaje w FIELD. Otwierasz ją klawiszem F1 na kontrolce w fokusie. Ustawienia mogą też pokazać znak informacji, ⓘ, obok nagłówka inspektora. Ten znak zostaje ukryty, dopóki nie włączysz Pokaż znaki informacji. Fokus albo kliknięcie gałki nie stawia drugiego znaku.',
       'Podstawowy to zwykły język: co kontrolka zmienia, co możesz usłyszeć i kiedy się przydaje. Techniczny to opis inżynierski: jednostki, zakres i zachowanie procesu. Wybór zostaje w tej przeglądarce jako poziom pomocy. Nie jest związany z trybem Prostym ani Technicznym.',
       'F1 wyjaśnia kontrolkę w fokusie. Escape zamyka notatkę. Fokus wraca do kontrolki tylko wtedy, gdy wcześniej wszedł do notatki. Otwarcie notatki samo nie przenosi fokusu. Tab z kontrolki wchodzi do notatki. Czytnik ekranu słyszy nazwę i krótkie wyjaśnienie. Dłuższy tekst techniczny czeka, aż otworzysz szczegóły.',
       'Więcej w podręczniku otwiera pasującą sekcję tego podręcznika, gdy taka istnieje. Angielski i polski niosą to samo znaczenie. Notatka bierze skróty z bieżącego rejestru i zakresy z parametrów, które FIELD już ma. Pomoc nie zatrzymuje odtwarzania, nie zeruje parametru i nie zmienia efektu.',

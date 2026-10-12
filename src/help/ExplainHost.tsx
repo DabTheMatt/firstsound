@@ -8,16 +8,14 @@ import { helpChrome } from './chrome'
 import styles from './ExplainHost.module.css'
 import { readHelpLevel, writeHelpLevel, type HelpLevel } from './level'
 import { requestManual } from './manual'
-import { placeExplainMark, placeExplainPanel } from './place'
+import { placeExplainPanel } from './place'
 import { resolveHelp } from './resolve'
 import {
   closeExplain,
-  getExplainHint,
   getExplainSession,
   openExplain,
   rememberExplainTarget,
   rememberedExplainId,
-  setExplainHint,
   subscribeExplain,
 } from './session'
 
@@ -29,7 +27,6 @@ export function ExplainHost() {
   const { locale } = useI18n()
   const chrome = helpChrome(locale)
   const session = useSnapshot(getExplainSession)
-  const hint = useSnapshot(getExplainHint)
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const [level, setLevel] = useState<HelpLevel>(() => readHelpLevel())
@@ -40,7 +37,6 @@ export function ExplainHost() {
   }
   const detailsOpen = detailsState.open
   const [box, setBox] = useState<ReturnType<typeof placeExplainPanel> | null>(null)
-  const [markBox, setMarkBox] = useState<{ top: number; left: number } | null>(null)
   const help = session ? resolveHelp(session.id, locale) : null
 
   useEffect(() => {
@@ -50,7 +46,6 @@ export function ExplainHost() {
       if (!found) return
       if (!resolveHelp(found.id, locale)) return
       rememberExplainTarget(found.id, found.anchor)
-      setExplainHint(found)
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && getExplainSession()) {
@@ -124,7 +119,7 @@ export function ExplainHost() {
       const target = event.target
       if (!(target instanceof Node)) return
       if (panelRef.current?.contains(target)) return
-      if (target instanceof Element && target.closest('[data-explain-mark], [data-explain-float]')) return
+      if (target instanceof Element && target.closest('[data-explain-mark]')) return
       closeExplain()
     }
     document.addEventListener('pointerdown', onPointer, true)
@@ -134,11 +129,6 @@ export function ExplainHost() {
   useLayoutEffect(() => {
     const place = () => {
       const viewport = { width: window.innerWidth, height: window.innerHeight }
-      if (hint?.anchor.isConnected && !session) {
-        setMarkBox(placeExplainMark(hint.anchor.getBoundingClientRect(), viewport))
-      } else {
-        setMarkBox(null)
-      }
       if (session?.anchor.isConnected && panelRef.current) {
         setBox(
           placeExplainPanel(
@@ -156,34 +146,13 @@ export function ExplainHost() {
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [hint, session, help?.summary, level, detailsOpen, locale])
+  }, [session, help?.summary, level, detailsOpen, locale])
 
   const chooseLevel = (next: HelpLevel) => {
     setLevel(next)
     writeHelpLevel(next)
     announce(chrome.levelChanged(next === 'technical' ? chrome.technical : chrome.basic))
   }
-
-  const mark =
-    hint && markBox && !session ? (
-      <button
-        type="button"
-        className={styles.floatMark}
-        data-explain-float=""
-        data-explain={hint.id}
-        aria-keyshortcuts="F1"
-        aria-haspopup="true"
-        aria-label={chrome.explain}
-        style={{ top: markBox.top, left: markBox.left }}
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          openExplain(hint.id, event.currentTarget)
-        }}
-      >
-        <span aria-hidden="true">ⓘ</span>
-      </button>
-    ) : null
 
   const panel =
     session && help ? (
@@ -294,11 +263,5 @@ export function ExplainHost() {
     ) : null
 
   if (typeof document === 'undefined') return null
-  return createPortal(
-    <>
-      {mark}
-      {panel}
-    </>,
-    document.body,
-  )
+  return createPortal(panel, document.body)
 }

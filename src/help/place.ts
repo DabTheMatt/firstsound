@@ -35,16 +35,3 @@ export function placeExplainPanel(anchor: Rect, viewport: Viewport, contentHeigh
   const capped = Math.min(maxHeight, viewport.height - top - margin)
   return { top, left, width: fitted, maxHeight: Math.max(120, capped), sheet: false }
 }
-
-/** Touch target beside a control, kept off the transport strip. */
-export function placeExplainMark(anchor: Rect, viewport: Viewport, size = 44): { top: number; left: number } {
-  const margin = 8
-  let left = anchor.left + anchor.width - size
-  let top = anchor.top - size - 4
-  if (top < margin) top = anchor.top + anchor.height + 4
-  if (left < margin) left = margin
-  if (left + size > viewport.width - margin) left = Math.max(margin, viewport.width - margin - size)
-  const floor = viewport.height - TRANSPORT_RESERVE - size
-  if (top > floor) top = Math.max(margin, floor)
-  return { top, left }
-}
