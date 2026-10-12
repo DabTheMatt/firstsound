@@ -1,4 +1,5 @@
 import type { FadeCurve } from '../audio/engine/fades'
+import type { ExportPreviewPlan } from '../audio/engine/exportPreview'
 import { encodeWav, resampleChannels, type Pcm, type WavBitDepth } from '../audio/samplePrep'
 import type { AudioEngine } from '../audio/engine/AudioEngine'
 
@@ -49,6 +50,52 @@ export type SimpleExportRequest = {
   sampleRate: number | 'original'
   bitDepth: WavBitDepth
   mono: boolean
+}
+
+/** Same bounce as a simple save, limited to one window and without WAV encoding. */
+export async function previewSimpleExportPcm(
+  engine: AudioEngine,
+  edit: { fadeIn: number; fadeOut: number; fadeCurve: FadeCurve; fadeInBend: number; fadeOutBend: number },
+  request: SimpleExportRequest,
+  plan: ExportPreviewPlan,
+  options?: { includeEffectTail?: boolean; signal?: AbortSignal },
+): Promise<Pcm | null> {
+  await engine.unlock()
+  if (options?.signal?.aborted) {
+    const error = new Error('Preview cancelled')
+    error.name = 'AbortError'
+    throw error
+  }
+  const rendered = engine.renderEdit({
+    fadeIn: edit.fadeIn,
+    fadeOut: edit.fadeOut,
+    fadeCurve: edit.fadeCurve,
+    fadeInBend: edit.fadeInBend,
+    fadeOutBend: edit.fadeOutBend,
+    reverse: false,
+    normalize: false,
+  })
+  if (!rendered) return null
+  const rate = rendered.sampleRate
+  const frames = rendered.length
+  const start = Math.max(0, Math.min(frames - 1, Math.floor(plan.localStartSec * rate)))
+  const end = Math.max(start + 1, Math.min(frames, Math.ceil((plan.localStartSec + plan.localDurSec) * rate)))
+  if (end - start < 1) return null
+  const channels: Float32Array[] = []
+  for (let c = 0; c < rendered.numberOfChannels; c++) {
+    channels.push(rendered.getChannelData(c).slice(start, end))
+  }
+  const processed = await engine.renderAudiblePcm(
+    { sampleRate: rate, channels },
+    plan.exportStart + plan.localStartSec,
+    {
+      includeEffectTail: options?.includeEffectTail,
+      clockOriginSec: plan.localStartSec,
+      signal: options?.signal,
+    },
+  )
+  if ((processed.channels[0]?.length ?? 0) < 1) return null
+  return prepareSimpleExportPcm(processed, request)
 }
 
 export function encodeSimpleWav(pcm: Pcm, bitDepth: WavBitDepth): Blob {

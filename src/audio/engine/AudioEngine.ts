@@ -403,7 +403,8 @@ import {
   type ExportProgressPhase,
   type ProcessingSnapshot,
 } from './offlineRender'
-import { prepForWorkingExport, selectionExportAvailable, type WorkingExportClock } from './exportTail'
+import { prepForWorkingExport, selectionExportAvailable, exportSourceRange, type WorkingExportClock } from './exportTail'
+import { renderExportPreviewPcm, type ExportPreviewPlan } from './exportPreview'
 import { peakNormalizeGain, peakOfBuffer, renderRegion } from './renderRegion'
 import {
   effectiveInterpAlgo,
@@ -502,6 +503,8 @@ export type EngineSnapshot = {
   canRedoPrep: boolean
   previewPlaying: boolean
   previewLoop: boolean
+  /** Export-preview monitor voice. Independent of transport playback. */
+  exportPreviewPlaying: boolean
   sourceDuration: number
   sourceSampleRate: number
   sourceChannels: number
@@ -550,6 +553,12 @@ type StretchControlSeed = {
   windowPitch?: number
 }
 const MIN_REGION = 0.05
+
+function isOfflineContext(ctx: BaseAudioContext): boolean {
+  const ctor = (globalThis as { OfflineAudioContext?: abstract new (...args: never[]) => BaseAudioContext }).OfflineAudioContext
+  if (typeof ctor === 'function' && ctx instanceof ctor) return true
+  return ctx.constructor.name === 'OfflineAudioContext'
+}
 
 function createContext(): AudioContext {
   const Ctor =
@@ -852,6 +861,8 @@ export class AudioEngine {
   private previewLoop = true
   private previewPlaying = false
   private previewSource: AudioBufferSourceNode | null = null
+  private exportPreviewSource: AudioBufferSourceNode | null = null
+  private exportPreviewEnded: (() => void) | null = null
   private previewGain: GainNode | null = null
   private zeroNotice: string | null = null
   private silenceProposal: SilenceProposal | null = null
@@ -3823,14 +3834,119 @@ export class AudioEngine {
   renderAudiblePcm(
     source: Pcm,
     timelineStart = 0,
-    options?: { includeEffectTail?: boolean },
+    options?: { includeEffectTail?: boolean; clockOriginSec?: number; signal?: AbortSignal },
   ): Promise<Pcm> {
     return this.occupyExport(() =>
       renderProcessedPcm(source, this.processingSnapshot(), {
         timelineStart,
         includeEffectTail: options?.includeEffectTail,
+        clockOriginSec: options?.clockOriginSec,
+        signal: options?.signal,
       }),
     )
+  }
+
+  /**
+   * Offline render of one export window. Does not write the project,
+   * move the playhead, or touch the live effect graph.
+   */
+  renderExportPreview(
+    settings: ExportSettings,
+    plan: ExportPreviewPlan,
+    options?: { signal?: AbortSignal },
+  ): Promise<Pcm | null> {
+    return this.occupyExport(() => this.runExportPreview(settings, plan, options?.signal))
+  }
+
+  /**
+   * Play a rendered preview through the existing monitor path.
+   * Refuses while transport playback is running. Does not move the playhead
+   * or replace the AudioContext.
+   */
+  async playExportPreview(
+    pcm: Pcm,
+    hooks?: { onEnded?: () => void },
+  ): Promise<'playing' | 'main-playback' | 'unavailable' | 'empty'> {
+    if (this.playing) return 'main-playback'
+    const context = this.ctx
+    await this.ensureContext()
+    if (this.ctx !== context && context) return 'unavailable'
+    if (!this.ctx || !this.previewGain) return 'unavailable'
+    if (this.ctx.state === 'suspended' && !isOfflineContext(this.ctx)) {
+      try {
+        await this.ctx.resume()
+      } catch {
+        return 'unavailable'
+      }
+    }
+    this.stopExportPreview()
+    const buffer = this.pcmToBuffer(pcm)
+    if (!buffer) return 'empty'
+    const src = this.ctx.createBufferSource()
+    src.buffer = buffer
+    src.connect(this.previewGain)
+    this.exportPreviewEnded = hooks?.onEnded ?? null
+    src.onended = () => {
+      if (this.exportPreviewSource !== src) return
+      this.exportPreviewSource = null
+      const done = this.exportPreviewEnded
+      this.exportPreviewEnded = null
+      this.emit()
+      done?.()
+    }
+    try {
+      src.start(0)
+    } catch {
+      try {
+        src.disconnect()
+      } catch {
+        /* not connected */
+      }
+      this.exportPreviewEnded = null
+      return 'unavailable'
+    }
+    this.exportPreviewSource = src
+    this.emit()
+    return 'playing'
+  }
+
+  /** Stop the export-preview voice only. Transport playback stays as it is. */
+  stopExportPreview(): void {
+    const src = this.exportPreviewSource
+    this.exportPreviewSource = null
+    this.exportPreviewEnded = null
+    if (!src) return
+    try {
+      src.onended = null
+      src.stop()
+    } catch {
+      /* already stopped */
+    }
+    try {
+      src.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    this.emit()
+  }
+
+  private async runExportPreview(
+    settings: ExportSettings,
+    plan: ExportPreviewPlan,
+    signal?: AbortSignal,
+  ): Promise<Pcm | null> {
+    if (this.spectral.enabled) this.ensureSpectral(true)
+    const buffer = this.audibleForwardBuffer() ?? this.sourceBuffer
+    if (!buffer) return null
+    const scope = settings.scope ?? 'project'
+    const clock = this.workingExportClock(buffer.duration)
+    if (scope === 'selection' && !selectionExportAvailable(this.prep, clock)) return null
+    const aligned = prepForWorkingExport(this.prep, scope, clock)
+    const range = exportSourceRange(aligned, scope)
+    if (Math.abs(range.start - plan.exportStart) > 0.002 || Math.abs(range.end - plan.exportEnd) > 0.002) return null
+    return renderExportPreviewPcm(clonePcmFromBuffer(buffer), aligned, { ...settings, scope }, this.processingSnapshot(), plan, {
+      signal,
+    })
   }
 
   private async occupyExport<T>(work: () => Promise<T>): Promise<T> {
@@ -5674,7 +5790,7 @@ export class AudioEngine {
       this.connectSlots()
       this.bindVisibility()
     }
-    if (this.ctx.state === 'suspended' && !(this.ctx instanceof OfflineAudioContext)) {
+    if (this.ctx.state === 'suspended' && !isOfflineContext(this.ctx)) {
       try {
         await this.ctx.resume()
       } catch {
@@ -5687,7 +5803,7 @@ export class AudioEngine {
       this.unlocked = true
     }
     if (!(this.unlocked && this.audioStatus === 'running')) {
-      const offline = this.ctx instanceof OfflineAudioContext
+      const offline = isOfflineContext(this.ctx)
       this.audioStatus = this.ctx.state === 'running' || offline ? 'running' : 'blocked'
     }
     this.syncLfoClock()
@@ -8563,6 +8679,7 @@ export class AudioEngine {
       canRedoPrep: canRedo(this.prepHistory),
       previewPlaying: this.previewPlaying,
       previewLoop: this.previewLoop,
+      exportPreviewPlaying: this.exportPreviewSource != null,
       sourceDuration: this.sourceBuffer?.duration ?? 0,
       sourceSampleRate: this.sourceBuffer?.sampleRate ?? 0,
       sourceChannels: this.sourceBuffer?.numberOfChannels ?? 0,

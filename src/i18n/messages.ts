@@ -623,6 +623,30 @@ export type Messages = {
     formatHelp: string
     swap: string
     fileRate: string
+    previewTitle: string
+    preview: string
+    previewStop: string
+    previewStopAria: string
+    previewPreparing: string
+    previewReady: string
+    previewPlaying: string
+    previewStopped: string
+    previewFailed: string
+    previewUnavailable: string
+    previewStopPlayback: string
+    previewStopPlaybackAction: string
+    previewDuration: string
+    previewScope: string
+    previewRange: (start: string, end: string) => string
+    previewOutside: string
+    previewNotEncoded: string
+    previewNormalize: string
+    previewTail: string
+    previewSpeed: string
+    previewPitch: string
+    previewMonitor: string
+    previewBusy: string
+    previewSeconds: (seconds: number) => string
   }
   mix: {
     mixer: string
@@ -1817,6 +1841,30 @@ export const EN: Messages = {
     formatHelp: 'WAV is the format this export can write.',
     swap: 'Swap L/R',
     fileRate: 'File sample rate.',
+    previewTitle: 'Export preview',
+    preview: 'Preview',
+    previewStop: 'Stop',
+    previewStopAria: 'Stop preview',
+    previewPreparing: 'Preparing preview…',
+    previewReady: 'Preview ready',
+    previewPlaying: 'Preview playing',
+    previewStopped: 'Preview stopped',
+    previewFailed: 'Preview failed',
+    previewUnavailable: 'Preview unavailable',
+    previewStopPlayback: 'Stop playback before starting export preview.',
+    previewStopPlaybackAction: 'Stop playback',
+    previewDuration: 'Preview duration',
+    previewScope: 'Preview range',
+    previewRange: (start, end) => `Preview ${start}–${end}`,
+    previewOutside: 'Playhead is outside the export range. Preview starts at the beginning of that range.',
+    previewNotEncoded: 'Processed audio, not the encoded file.',
+    previewNormalize: 'Normalize applies to the whole file. This window is not re-normalized.',
+    previewTail: 'The tail matches export. Audio from before this window is not in the delay or reverb.',
+    previewSpeed: 'Playback speed is not part of the export render.',
+    previewPitch: 'Pitch is not part of the export render.',
+    previewMonitor: 'Listening uses the monitor output, including its safety limiter.',
+    previewBusy: 'Export is already running.',
+    previewSeconds: (seconds) => `${seconds} s`,
   },
   mix: {
     mixer: 'Mixer',
@@ -3053,6 +3101,30 @@ export const PL: Messages = {
     formatHelp: 'WAV to format, który ten eksport potrafi zapisać.',
     swap: 'Zamiana L/P',
     fileRate: 'Częstotliwość pliku.',
+    previewTitle: 'Odsłuch eksportu',
+    preview: 'Odsłuchaj',
+    previewStop: 'Zatrzymaj',
+    previewStopAria: 'Zatrzymaj odsłuch',
+    previewPreparing: 'Przygotowywanie odsłuchu…',
+    previewReady: 'Odsłuch gotowy',
+    previewPlaying: 'Odsłuch trwa',
+    previewStopped: 'Odsłuch zatrzymany',
+    previewFailed: 'Nie udało się przygotować odsłuchu',
+    previewUnavailable: 'Odsłuch niedostępny',
+    previewStopPlayback: 'Zatrzymaj odtwarzanie przed rozpoczęciem odsłuchu eksportu.',
+    previewStopPlaybackAction: 'Zatrzymaj odtwarzanie',
+    previewDuration: 'Długość odsłuchu',
+    previewScope: 'Zakres odsłuchu',
+    previewRange: (start, end) => `Odsłuch ${start}–${end}`,
+    previewOutside: 'Głowica jest poza zakresem eksportu. Odsłuch zaczyna się na początku tego zakresu.',
+    previewNotEncoded: 'Przetworzone audio, nie zakodowany plik.',
+    previewNormalize: 'Normalizacja liczy cały plik. To okno nie jest normalizowane osobno.',
+    previewTail: 'Ogon jest jak w eksporcie. Dźwięk sprzed tego okna nie wchodzi do opóźnienia ani pogłosu.',
+    previewSpeed: 'Prędkość odtwarzania nie wchodzi do renderu eksportu.',
+    previewPitch: 'Wysokość dźwięku nie wchodzi do renderu eksportu.',
+    previewMonitor: 'Odsłuch idzie przez wyjście monitora, razem z jego limiterem bezpieczeństwa.',
+    previewBusy: 'Eksport już trwa.',
+    previewSeconds: (seconds) => `${seconds} s`,
   },
   mix: {
     mixer: 'Mikser',

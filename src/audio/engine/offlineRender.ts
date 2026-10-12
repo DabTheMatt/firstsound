@@ -422,6 +422,13 @@ export type ProcessedRenderOptions = {
   onProgress?: (phase: ExportProgressPhase) => void
   /** False renders only the source. The default keeps the effect decay. */
   includeEffectTail?: boolean
+  /**
+   * Added to the LFO and filter clocks. Zero keeps a full export starting at
+   * phase zero. A later preview window passes its offset into the export.
+   */
+  clockOriginSec?: number
+  /** Checked between schedule slices and before rendering. Offline rendering itself cannot be interrupted. */
+  signal?: AbortSignal
 }
 
 const EXPORT_TRACE = () =>
@@ -436,6 +443,13 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0)
   })
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return
+  const error = new Error('Preview cancelled')
+  error.name = 'AbortError'
+  throw error
 }
 
 /**
@@ -471,6 +485,8 @@ export async function renderProcessedPcm(
   traceExport('OFFLINE CONTEXT CREATED', { channels: 2, frames: length, sampleRate })
   const ctx = factory(2, length, sampleRate)
   const timelineStart = options.timelineStart ?? 0
+  const clockOrigin = Number.isFinite(options.clockOriginSec) ? Math.max(0, options.clockOriginSec ?? 0) : 0
+  throwIfAborted(options.signal)
   const chain = state.chain
   const slots = chain.map((mod) => {
     const slot = createChainSlot(ctx, mod, undefined, { offlineBypass: mod.bypassed })
@@ -509,7 +525,9 @@ export async function renderProcessedPcm(
   let previous = 0
   let scheduled = 0
   for (let index = 0; index < times.length; index++) {
+    throwIfAborted(options.signal)
     const elapsed = times[index] ?? 0
+    const clockSec = clockOrigin + elapsed
     const commitStatic = index === times.length - 1
     const dt = Math.max(0.001, elapsed - previous)
     previous = elapsed
@@ -531,13 +549,13 @@ export async function renderProcessedPcm(
       timelineStart + elapsed,
       true,
       state.fxLfos,
-      elapsed,
+      clockSec,
       hold,
       rand,
       state.randomOffsets,
     )
     const live = applyFilterModulation(performed, {
-      timeSec: elapsed,
+      timeSec: clockSec,
       playing: true,
       envOriginSec: 0,
       follower01: follower,
@@ -557,7 +575,7 @@ export async function renderProcessedPcm(
       commitStatic,
       {
         transportSec: timelineStart + elapsed,
-        lfoTimeSec: elapsed,
+        lfoTimeSec: clockSec,
         playing: true,
         hold,
         rand,
@@ -567,6 +585,7 @@ export async function renderProcessedPcm(
     scheduled += 1
     if (scheduled % 40 === 0) await yieldToMain()
   }
+  throwIfAborted(options.signal)
   traceExport('AUTOMATION SCHEDULED', { points: times.length })
   traceExport('RENDER START', { frames: length })
 

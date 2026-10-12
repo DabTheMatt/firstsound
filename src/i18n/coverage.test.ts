@@ -14,6 +14,10 @@ const CRITICAL = [
   ['export.noAudio', EN.export.noAudio, PL.export.noAudio],
   ['export.settingsValid', EN.export.settingsValid, PL.export.settingsValid],
   ['export.checkRange', EN.export.checkRange, PL.export.checkRange],
+  ['export.preview', EN.export.preview, PL.export.preview],
+  ['export.previewPreparing', EN.export.previewPreparing, PL.export.previewPreparing],
+  ['export.previewFailed', EN.export.previewFailed, PL.export.previewFailed],
+  ['export.previewStopPlayback', EN.export.previewStopPlayback, PL.export.previewStopPlayback],
   ['dragFree.errFormat', EN.dragFree.errFormat, PL.dragFree.errFormat],
 ] as const
 

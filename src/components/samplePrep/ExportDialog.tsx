@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusInitial, trapTab } from '../../a11y/dialogFocus'
 import { formatTimecode } from '../../audio/engine/formatTime'
+import { exportPreviewSignature, planExportPreview } from '../../audio/engine/exportPreview'
 import { effectTailBudgetSec, exportWorkingRange, selectionExportAvailable } from '../../audio/engine/exportTail'
 import {
   EXPORT_BIT_DEPTHS,
   EXPORT_FORMATS,
   EXPORT_SAMPLE_RATES,
   evaluateExportCheck,
+  exportProcessingStamp,
   type ExportCheckMode,
 } from '../../audio/samplePrep/exportCheck'
 import { DEFAULT_NORMALIZE_DBFS, exportFileName, isTrimmed, type WavBitDepth } from '../../audio/samplePrep'
@@ -18,6 +20,7 @@ import { pushHearingAlert } from '../../hearing/alerts'
 import { useI18n } from '../../i18n'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import { ExportCheck } from './ExportCheck'
+import { ExportPreview, type ExportPreviewHandle } from './ExportPreview'
 import styles from './ExportDialog.module.css'
 
 type Props = {
@@ -45,6 +48,9 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
   const [applyReverse, setApplyReverse] = useState(prep.reverse)
   const [applyNormalize, setApplyNormalize] = useState(false)
   const [keepTail, setKeepTail] = useState(true)
+  const [previewScope, setPreviewScope] = useState<'project' | 'selection'>('project')
+  const [previewPreparing, setPreviewPreparing] = useState(false)
+  const previewRef = useRef<ExportPreviewHandle>(null)
   const [phase, setPhase] = useState<'idle' | 'preparing' | 'rendering' | 'encoding' | 'error'>('idle')
   const [error, setError] = useState('')
   const busyRef = useRef(false)
@@ -101,6 +107,69 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
     [shared],
   )
   const selectionReady = selectionExportAvailable(prep, exportClock) && selectionCheck.canExport
+  const activeScope = previewScope === 'selection' && selectionReady ? 'selection' : 'project'
+  const previewGate = activeScope === 'selection' ? selectionCheck : projectCheck
+  const previewRange = useMemo(
+    () => exportWorkingRange(prep, activeScope, exportClock),
+    [prep, activeScope, exportClock],
+  )
+  const previewSignature = useMemo(
+    () =>
+      exportPreviewSignature([
+        snap.bufferRev,
+        activeScope,
+        String(sampleRate),
+        applyFades,
+        applyGain,
+        applyReverse && prep.reverse,
+        applyNormalize,
+        keepTail,
+        previewGate.canExport,
+        previewGate.status,
+        previewRange.start,
+        previewRange.end,
+        exportProcessingStamp({
+          chain: snap.chain,
+          automation: snap.automation,
+          lfos: snap.fxLfos,
+          params: {
+            params: snap.params,
+            eq: snap.eqById,
+            prep,
+            delay: snap.delayType,
+            reverb: snap.reverbType,
+            distortion: snap.distortionType,
+            master: snap.masterMix,
+            layout: snap.channelLayout,
+          },
+        }),
+      ]),
+    [
+      snap.bufferRev,
+      snap.chain,
+      snap.automation,
+      snap.fxLfos,
+      snap.params,
+      snap.eqById,
+      snap.delayType,
+      snap.reverbType,
+      snap.distortionType,
+      snap.masterMix,
+      snap.channelLayout,
+      activeScope,
+      sampleRate,
+      applyFades,
+      applyGain,
+      applyReverse,
+      applyNormalize,
+      keepTail,
+      previewGate.canExport,
+      previewGate.status,
+      previewRange.start,
+      previewRange.end,
+      prep,
+    ],
+  )
 
   const tailSec = useMemo(
     () => (keepTail ? effectTailBudgetSec(snap.chain, snap.params, snap.reverbType) : 0),
@@ -143,6 +212,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
   }
 
   const exportNow = (scope: 'project' | 'selection') => {
+    previewRef.current?.cancel()
     if (busyRef.current) return
     const gate = scope === 'selection' ? selectionCheck : projectCheck
     if (!gate.canExport) return
@@ -301,6 +371,52 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
         <p className={styles.hint}>{keepTail ? t.export.tailHint : t.export.tailDropped}</p>
         <p className={styles.hint}>{t.export.estimated(formatTimecode(projectLength))}</p>
         <ExportCheck result={projectCheck} mode={mode} onLoadAudio={onLoadAudio} />
+        <ExportPreview
+          ref={previewRef}
+          mode={mode}
+          mainPlaying={snap.playing}
+          blocked={!previewGate.canExport}
+          signature={previewSignature}
+          selectionAvailable={selectionReady}
+          scope={activeScope}
+          onScope={setPreviewScope}
+          exportStart={previewRange.start}
+          exportEnd={previewRange.end}
+          playhead={engine.getPlayheadSeconds()}
+          reversed={applyReverse && prep.reverse}
+          normalizeOn={applyNormalize}
+          keepTail={keepTail}
+          speedExcluded={Math.abs(snap.params.speed - 1) > 0.01}
+          pitchExcluded={Math.abs(snap.params.pitch) > 0.01}
+          onPauseMain={() => engine.pause()}
+          onPhase={(next) => setPreviewPreparing(next === 'preparing' || next === 'stopping')}
+          onRender={(durationSec, signal) => {
+            const range = exportWorkingRange(prep, activeScope, exportClock)
+            const next = planExportPreview({
+              exportStart: range.start,
+              exportEnd: range.end,
+              playhead: engine.getPlayheadSeconds(),
+              durationSec,
+              reversed: applyReverse && prep.reverse,
+            })
+            if (!next || !previewGate.canExport) return Promise.resolve(null)
+            return engine.renderExportPreview(
+              {
+                name,
+                sampleRate,
+                bitDepth,
+                applyFades,
+                applyGain,
+                applyReverse,
+                applyNormalize,
+                includeEffectTail: keepTail,
+                scope: activeScope,
+              },
+              next,
+              { signal },
+            )
+          }}
+        />
         {error ? (
           <p className={styles.hint} role="alert">
             {error}
@@ -318,7 +434,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
           </button>
           <button
             type="button"
-            disabled={!selectionReady || busy}
+            disabled={!selectionReady || busy || previewPreparing}
             title={selectionReady ? undefined : t.export.selectionUnavailable}
             onClick={() => exportNow('selection')}
           >
@@ -328,7 +444,7 @@ export function ExportDialog({ snap, mode = 'technical', onClose, onLoadAudio }:
             type="submit"
             className={styles.export}
             {...guideTargetAttrs('export.confirm')}
-            disabled={!projectCheck.canExport || busy}
+            disabled={!projectCheck.canExport || busy || previewPreparing}
           >
             {phaseLabel(t.export.exportProject)}
           </button>

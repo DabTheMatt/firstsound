@@ -40,12 +40,15 @@ import {
   resetSimpleSurface,
 } from './applySimple'
 import { ExportCheck } from '../components/samplePrep/ExportCheck'
+import { ExportPreview, type ExportPreviewHandle } from '../components/samplePrep/ExportPreview'
+import { exportPreviewSignature, planExportPreview } from '../audio/engine/exportPreview'
 import {
   SIMPLE_EXPORT_BIT_DEPTHS,
   SIMPLE_EXPORT_RATES,
   evaluateExportCheck,
+  exportProcessingStamp,
 } from '../audio/samplePrep/exportCheck'
-import { bounceSimplePcm, encodeSimpleWav, formatSimpleSeconds, prepareSimpleExportPcm, simpleExportFilename } from './exportSimple'
+import { bounceSimplePcm, encodeSimpleWav, formatSimpleSeconds, prepareSimpleExportPcm, previewSimpleExportPcm, simpleExportFilename } from './exportSimple'
 import { fadeSecondsForStep, fadeStepFromSeconds, FADE_STEP_IDS, type FadeStepId } from './fadeSteps'
 import {
   DEFAULT_DELAY_AMOUNT,
@@ -168,6 +171,8 @@ export function SimpleShell({
   const [saveMono, setSaveMono] = useState(false)
   const [saveTail, setSaveTail] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [previewPreparing, setPreviewPreparing] = useState(false)
+  const previewRef = useRef<ExportPreviewHandle>(null)
   const saveBusyRef = useRef(false)
   const saveCheck = useMemo(() => {
     const span = snap.params.end - snap.params.start
@@ -403,6 +408,7 @@ export function SimpleShell({
   }
 
   const saveFile = () => {
+    previewRef.current?.cancel()
     if (saveBusyRef.current || !saveCheck.canExport) return
     saveBusyRef.current = true
     setSaving(true)
@@ -1017,6 +1023,68 @@ export function SimpleShell({
                     onLoadSample()
                   }}
                 />
+                <ExportPreview
+                  ref={previewRef}
+                  mode="simple"
+                  mainPlaying={snap.playing}
+                  blocked={!saveCheck.canExport}
+                  signature={exportPreviewSignature([
+                    snap.bufferRev,
+                    snap.params.start,
+                    snap.params.end,
+                    edit.fadeIn,
+                    edit.fadeOut,
+                    edit.fadeCurve,
+                    edit.fadeInBend,
+                    edit.fadeOutBend,
+                    saveRate,
+                    saveMono,
+                    saveTail,
+                    saveCheck.canExport,
+                    exportProcessingStamp({
+                      chain: snap.chain,
+                      automation: snap.automation,
+                      lfos: snap.fxLfos,
+                      params: snap.params,
+                    }),
+                  ])}
+                  selectionAvailable={false}
+                  scope="project"
+                  onScope={() => undefined}
+                  exportStart={snap.params.start}
+                  exportEnd={snap.params.end}
+                  playhead={engine.getPlayheadSeconds()}
+                  reversed={false}
+                  normalizeOn={false}
+                  keepTail={saveTail}
+                  speedExcluded={false}
+                  pitchExcluded={false}
+                  onPauseMain={() => engine.pause()}
+                  onPhase={(next) => setPreviewPreparing(next === 'preparing' || next === 'stopping')}
+                  onRender={(durationSec, signal) => {
+                    const next = planExportPreview({
+                      exportStart: snap.params.start,
+                      exportEnd: snap.params.end,
+                      playhead: engine.getPlayheadSeconds(),
+                      durationSec,
+                      reversed: false,
+                    })
+                    if (!next || !saveCheck.canExport) return Promise.resolve(null)
+                    return previewSimpleExportPcm(
+                      engine,
+                      edit,
+                      {
+                        name: saveName,
+                        format: 'wav',
+                        sampleRate: saveRate === 'original' ? 'original' : Number(saveRate),
+                        bitDepth: saveBits,
+                        mono: saveMono,
+                      },
+                      next,
+                      { includeEffectTail: saveTail, signal },
+                    )
+                  }}
+                />
                 <p className={styles.sheetLabel} id="simple-tail">
                   {t.simple.tail}
                 </p>
@@ -1069,7 +1137,7 @@ export function SimpleShell({
                     </label>
                   </>
                 ) : null}
-                <button type="submit" className={`${styles.export} ${styles.saveSubmit}`} {...guideTargetAttrs('export.confirm')} disabled={saving || !saveCheck.canExport}>
+                <button type="submit" className={`${styles.export} ${styles.saveSubmit}`} {...guideTargetAttrs('export.confirm')} disabled={saving || previewPreparing || !saveCheck.canExport}>
                   {saving ? t.export.rendering : t.transport.export}
                 </button>
               </form>
