@@ -154,6 +154,7 @@ test.describe('audio markers popover', () => {
     await loadDemo(page)
     await openMarkers(page)
     await page.getByRole('button', { name: 'Add marker', exact: true }).click()
+    await page.getByRole('textbox', { name: 'Time' }).fill('00:04.000')
     await page.getByRole('button', { name: 'Save marker' }).click()
     await page.keyboard.press('Escape')
 

@@ -732,7 +732,7 @@
   border: 0;
   background: transparent;
   transform: translateX(-50%);
-  z-index: 6;
+  z-index: 11;
   pointer-events: none;
 }
 
