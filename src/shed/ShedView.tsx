@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, useState } from 'react'
+import { lazy, memo, Suspense, useCallback, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import { addElement } from './commands'
 import { ElementLibrary } from './ElementLibrary'
@@ -9,6 +9,15 @@ import { ShedScene } from './ShedScene'
 import { useShedDocument } from './useShedDocument'
 import { clampCamera, defaultCamera, nextZoom, panView, type SceneCamera } from './view'
 import styles from './ShedView.module.css'
+
+const SketchCompare = import.meta.env.DEV
+  ? lazy(() => import('./dev/SketchCompare').then((mod) => ({ default: mod.SketchCompare })))
+  : null
+
+function sketchPreviewRequested(): boolean {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('sketch') === '1'
+}
 
 export const ShedView = memo(function ShedView() {
   const { t } = useI18n()
@@ -90,6 +99,16 @@ export const ShedView = memo(function ShedView() {
   const setParam = (key: ParamKey, value: number) => {
     if (!selected) return
     shed.patch(selected.id, { params: { [key]: value } })
+  }
+
+  if (SketchCompare && sketchPreviewRequested()) {
+    return (
+      <section className={styles.root} data-shed-view="" data-sketch-preview="" aria-label={t.view.shed}>
+        <Suspense fallback={null}>
+          <SketchCompare />
+        </Suspense>
+      </section>
+    )
   }
 
   return (

@@ -1,7 +1,10 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { elementsInDrawOrder } from './commands'
 import type { ArchitecturalElement, ShedDocument } from './model'
 import { SHED_INK, SHED_LIMESTONE, SHED_PARCHMENT } from './palette'
+import { SketchMarks } from './rendering/SketchMarks'
+import { composeSheet } from './rendering/composition'
+import { hashString } from './rendering/seed'
 import { TowerElement } from './TowerElement'
 import { SCENE_HEIGHT, SCENE_WIDTH, viewTransform, type SceneCamera } from './view'
 import styles from './ShedView.module.css'
@@ -37,6 +40,10 @@ export function ShedScene({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const ordered = elementsInDrawOrder(document)
+  const decoration = useMemo(
+    () => composeSheet(SCENE_WIDTH, SCENE_HEIGHT, hashString(document.scene.id)),
+    [document.scene.id],
+  )
 
   useEffect(() => {
     const svg = svgRef.current
@@ -139,6 +146,9 @@ export function ShedScene({
         </g>
       ))}
       <g transform={viewTransform(camera)}>
+        <g data-shed-composition="" aria-hidden="true" pointerEvents="none">
+          <SketchMarks parts={decoration} />
+        </g>
         {ordered.map((element) => (
           <TowerElement
             key={element.id}
