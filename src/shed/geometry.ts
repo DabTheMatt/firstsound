@@ -270,10 +270,10 @@ function mariackiTallCrown(
     fill(
       'roof-side',
       path([
-        [right, bodyTop],
-        [right + depth * 0.65, bodyTop - depth * 0.16],
-        [cx + depth * 0.35, roofTop + roofHeight * 0.42],
-        [cx + width * 0.06, bodyTop - roofHeight * 0.2],
+        [cx + spireW * 0.55, bodyTop - 12],
+        [cx + spireW * 0.55 + depth * 0.28, bodyTop - 20],
+        [cx + depth * 0.16, roofTop + roofHeight * 0.18],
+        [cx + spireW * 0.15, roofTop + roofHeight * 0.34],
       ]),
       mixHex(colors.secondary, '#14080c', 0.38),
     ),

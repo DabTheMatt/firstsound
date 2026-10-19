@@ -104,7 +104,6 @@ export const TowerElement = memo(function TowerElement({
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
-      <rect data-hit="true" x={0} y={0} width={graphic.width} height={graphic.height} fill="transparent" />
       <GraphicPaths parts={graphic.parts} />
       <rect className={styles.focusRing} x={-6} y={-6} width={graphic.width + 12} height={graphic.height + 12} />
       {selected ? (

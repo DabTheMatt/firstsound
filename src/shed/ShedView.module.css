@@ -278,7 +278,7 @@
 
 .library {
   position: absolute;
-  top: 52px;
+  top: 72px;
   left: 8px;
   z-index: 4;
   width: min(360px, calc(100% - 16px));
