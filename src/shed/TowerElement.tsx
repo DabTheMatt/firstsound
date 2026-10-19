@@ -1,7 +1,9 @@
 import { memo, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { buildElement } from './geometry'
+import { buildElement, type TowerGraphic } from './geometry'
 import type { ArchitecturalElement } from './model'
 import { GraphicPaths } from './parts'
+import { SketchMarks } from './rendering/SketchMarks'
+import { renderSketchTower, usesSketchTower } from './rendering/tower'
 import { SCENE_HEIGHT, SCENE_WIDTH } from './view'
 import styles from './ShedView.module.css'
 
@@ -26,7 +28,9 @@ export const TowerElement = memo(function TowerElement({
   onNudge,
   onDelete,
 }: Props) {
-  const graphic = buildElement(element)
+  const sketch = usesSketchTower(element) ? renderSketchTower(element) : null
+  const library = sketch ? null : buildElement(element)
+  const graphic = sketch ?? (library as TowerGraphic)
   const x = element.x * SCENE_WIDTH
   const y = element.y * SCENE_HEIGHT
   const fit = Math.min(graphic.height > 520 ? 520 / graphic.height : 1, graphic.width > 640 ? 640 / graphic.width : 1)
@@ -104,7 +108,7 @@ export const TowerElement = memo(function TowerElement({
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
-      <GraphicPaths parts={graphic.parts} />
+      {sketch ? <SketchMarks parts={sketch.parts} drawing="pen-watercolor" /> : <GraphicPaths parts={library!.parts} />}
       <rect className={styles.focusRing} x={-6} y={-6} width={graphic.width + 12} height={graphic.height + 12} />
       {selected ? (
         <g aria-hidden="true">

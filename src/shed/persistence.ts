@@ -10,7 +10,9 @@ import {
   clampVariant,
   defaultParams,
   defaultShedDocument,
+  isColorTreatment,
   isElementType,
+  isInkStyle,
   isOrnamentId,
   type ArchitecturalElement,
   type ElementParams,
@@ -130,6 +132,7 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
       ornament: raw.ornament,
       variant,
       params,
+      ...sketchFields(raw),
     }
   }
 
@@ -150,7 +153,25 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
     ornament: isOrnamentId(raw.ornament) ? raw.ornament : 'finial',
     variant: clampVariant(type, typeof raw.variant === 'number' ? raw.variant : 0),
     params: repairedParams(raw.params ?? fallback),
+    ...sketchFields(raw),
   }
+}
+
+/** Keep a valid sketch seed. Drop anything else so a bad optional field cannot reject the scene. */
+function sketchFields(
+  raw: Record<string, unknown>,
+): Partial<Pick<ArchitecturalElement, 'visualSeed' | 'abstraction' | 'inkStyle' | 'colorTreatment'>> {
+  const fields: Partial<Pick<ArchitecturalElement, 'visualSeed' | 'abstraction' | 'inkStyle' | 'colorTreatment'>> = {}
+  if (typeof raw.visualSeed === 'number' && Number.isFinite(raw.visualSeed)) {
+    const seed = Math.round(raw.visualSeed)
+    if (seed >= 0 && seed <= 1_000_000_000) fields.visualSeed = seed
+  }
+  if (typeof raw.abstraction === 'number' && Number.isFinite(raw.abstraction) && raw.abstraction >= 0 && raw.abstraction <= 1) {
+    fields.abstraction = raw.abstraction
+  }
+  if (isInkStyle(raw.inkStyle)) fields.inkStyle = raw.inkStyle
+  if (isColorTreatment(raw.colorTreatment)) fields.colorTreatment = raw.colorTreatment
+  return fields
 }
 
 /**

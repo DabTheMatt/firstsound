@@ -1,4 +1,5 @@
 import { SHED_BLUE, SHED_BRICK, SHED_COPPER, SHED_GOLD, SHED_INK, SHED_LIMESTONE, SHED_PARCHMENT, SHED_WARM_GRAY } from './palette'
+import { hashString } from './rendering/seed'
 
 /**
  * Local architectural document for SHED.
@@ -16,6 +17,23 @@ export const SCENE_ID = 'shed-01'
 export const ORNAMENT_IDS = ['none', 'finial', 'rosette', 'star'] as const
 
 export type OrnamentId = (typeof ORNAMENT_IDS)[number]
+
+export const INK_STYLES = ['steady', 'studied', 'loose'] as const
+
+export type InkStyle = (typeof INK_STYLES)[number]
+
+export const COLOR_TREATMENTS = ['wash', 'reserve', 'layered'] as const
+
+export type ColorTreatment = (typeof COLOR_TREATMENTS)[number]
+
+export const DEFAULT_ABSTRACTION = 0.4
+
+export const DEFAULT_INK_STYLE: InkStyle = 'studied'
+
+export const DEFAULT_COLOR_TREATMENT: ColorTreatment = 'wash'
+
+/** Showcase seed: needle helmet, paired windows, a left turret. */
+export const DEFAULT_VISUAL_SEED = 17
 
 export const ELEMENT_TYPES = ['tower', 'facade', 'roof', 'arcade', 'gate', 'attic', 'ornament'] as const
 
@@ -70,6 +88,11 @@ export type ArchitecturalElement = {
   /** Index into the category's architectural variants. */
   variant: number
   params: ElementParams
+  /** Optional sketch-engine fields. Missing values stay missing so stored scenes are not rewritten. */
+  visualSeed?: number
+  abstraction?: number
+  inkStyle?: InkStyle
+  colorTreatment?: ColorTreatment
 }
 
 export type ShedScene = {
@@ -224,6 +247,14 @@ export function isElementType(value: unknown): value is ElementType {
   return typeof value === 'string' && (ELEMENT_TYPES as readonly string[]).includes(value)
 }
 
+export function isInkStyle(value: unknown): value is InkStyle {
+  return typeof value === 'string' && (INK_STYLES as readonly string[]).includes(value)
+}
+
+export function isColorTreatment(value: unknown): value is ColorTreatment {
+  return typeof value === 'string' && (COLOR_TREATMENTS as readonly string[]).includes(value)
+}
+
 export function defaultElement(type: ElementType = 'tower', id = `${type}-1`): ArchitecturalElement {
   const look = LOOK[type]
   return {
@@ -241,6 +272,20 @@ export function defaultElement(type: ElementType = 'tower', id = `${type}-1`): A
     ornament: look.ornament,
     variant: look.variant,
     params: defaultParams(),
+    ...sketchDefaults(type, id),
+  }
+}
+
+function sketchDefaults(
+  type: ElementType,
+  id: string,
+): Pick<ArchitecturalElement, 'visualSeed' | 'abstraction' | 'inkStyle' | 'colorTreatment'> | Record<string, never> {
+  if (type !== 'tower') return {}
+  return {
+    visualSeed: id === 'tower-1' ? DEFAULT_VISUAL_SEED : hashString(id) % 100_000,
+    abstraction: DEFAULT_ABSTRACTION,
+    inkStyle: DEFAULT_INK_STYLE,
+    colorTreatment: DEFAULT_COLOR_TREATMENT,
   }
 }
 
