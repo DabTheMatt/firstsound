@@ -9,6 +9,8 @@ import { LOAD_SAMPLE_LABELS } from '../../components/header/loadSampleLabels'
 import { StableLabel } from '../../components/header/StableLabel'
 import { Wordmark } from '../../components/header/Wordmark'
 import { ModeSwitch } from '../../modes/ModeSwitch'
+import { AppViewSwitch } from '../../app/AppViewSwitch'
+import type { AppView } from '../../app/appView'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
 import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
@@ -56,6 +58,8 @@ type Props = {
   onFadesCommit: () => void
   mode: UiMode
   onMode: (mode: UiMode) => void
+  view: AppView
+  onView: (view: AppView) => void
   values: SensoryValues
   onValues: (values: SensoryValues) => void
   color: ColorSound
@@ -87,6 +91,8 @@ export function SensoryShell({
   onFadesCommit: _onFadesCommit,
   mode,
   onMode,
+  view,
+  onView,
   values,
   onValues,
   color,
@@ -186,6 +192,7 @@ export function SensoryShell({
             {t.sensory.strings}
           </button>
           <MarkerPanel mode="sensory" onCommit={onRegionCommit} />
+          <AppViewSwitch variant="editorial" view={view} onChange={onView} />
           <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
           <button type="button" className={styles.loadBtn} data-load-sample="" onClick={onLoadSample}>
             <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />

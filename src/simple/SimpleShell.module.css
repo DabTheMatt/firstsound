@@ -68,7 +68,11 @@
   flex: none;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .file {

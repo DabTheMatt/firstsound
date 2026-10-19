@@ -1090,6 +1090,46 @@ export type Messages = {
     }
     recolored: (name: string, color: string) => string
   }
+  view: {
+    group: string
+    workspace: string
+    shed: string
+  }
+  shed: {
+    scene: string
+    toolbar: string
+    zoomIn: string
+    zoomOut: string
+    resetView: string
+    addElement: string
+    tower: string
+    elementType: string
+    height: string
+    width: string
+    roof: string
+    primary: string
+    secondary: string
+    ornament: string
+    ornamentNone: string
+    ornamentFinial: string
+    ornamentRosette: string
+    ornamentStar: string
+    position: string
+    positionX: string
+    positionY: string
+    layer: string
+    layerForward: string
+    layerBack: string
+    reset: string
+    saved: string
+    savedHint: string
+    restored: string
+    close: string
+    geometry: string
+    appearance: string
+    elementName: (type: string, selected: boolean) => string
+    moveHint: string
+  }
 }
 
 export const EN: Messages = {
@@ -2347,6 +2387,47 @@ export const EN: Messages = {
     pointSr: (n, time) => `Automation point ${n}, time, ${time}.`,
     valueSr: (n, value) => `Automation point ${n}, value, ${value}.`,
     sensoryExact: 'Exact value',
+  },
+  view: {
+    group: 'Destination',
+    workspace: 'Workspace',
+    shed: 'SHED',
+  },
+  shed: {
+    scene: 'Architectural scene',
+    toolbar: 'Scene',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    resetView: 'Reset view',
+    addElement: 'Add element',
+    tower: 'Tower',
+    elementType: 'Element type',
+    height: 'Height',
+    width: 'Width',
+    roof: 'Roof',
+    primary: 'Primary color',
+    secondary: 'Secondary color',
+    ornament: 'Ornament',
+    ornamentNone: 'None',
+    ornamentFinial: 'Finial',
+    ornamentRosette: 'Rosette',
+    ornamentStar: 'Star',
+    position: 'Position',
+    positionX: 'Horizontal position',
+    positionY: 'Vertical position',
+    layer: 'Layer',
+    layerForward: 'Bring forward',
+    layerBack: 'Send backward',
+    reset: 'Reset',
+    saved: 'Saved',
+    savedHint: 'Saved in this browser only. It does not sync to other devices.',
+    restored: 'Restored the default scene',
+    close: 'Close',
+    geometry: 'Geometry',
+    appearance: 'Appearance',
+    elementName: (type, selected) =>
+      selected ? `${type} — architectural element, selected` : `${type} — architectural element`,
+    moveHint: 'Arrow keys move the tower. Shift takes a smaller step. The position sliders do the same.',
   },
 }
 
@@ -3611,6 +3692,47 @@ export const PL: Messages = {
     pointSr: (n, time) => `Punkt automatyzacji ${n}, czas, ${time}.`,
     valueSr: (n, value) => `Punkt automatyzacji ${n}, wartość, ${value}.`,
     sensoryExact: 'Dokładna wartość',
+  },
+  view: {
+    group: 'Miejsce',
+    workspace: 'Warsztat',
+    shed: 'SHED',
+  },
+  shed: {
+    scene: 'Scena architektoniczna',
+    toolbar: 'Scena',
+    zoomIn: 'Powiększ',
+    zoomOut: 'Pomniejsz',
+    resetView: 'Resetuj widok',
+    addElement: 'Dodaj element',
+    tower: 'Wieża',
+    elementType: 'Typ elementu',
+    height: 'Wysokość',
+    width: 'Szerokość',
+    roof: 'Dach',
+    primary: 'Kolor podstawowy',
+    secondary: 'Kolor dodatkowy',
+    ornament: 'Ornament',
+    ornamentNone: 'Brak',
+    ornamentFinial: 'Szpic',
+    ornamentRosette: 'Rozeta',
+    ornamentStar: 'Gwiazda',
+    position: 'Położenie',
+    positionX: 'Położenie w poziomie',
+    positionY: 'Położenie w pionie',
+    layer: 'Warstwa',
+    layerForward: 'Przenieś wyżej',
+    layerBack: 'Przenieś niżej',
+    reset: 'Przywróć',
+    saved: 'Zapisano',
+    savedHint: 'Zapisane tylko w tej przeglądarce. Nie synchronizuje się z innymi urządzeniami.',
+    restored: 'Przywrócono domyślną scenę',
+    close: 'Zamknij',
+    geometry: 'Geometria',
+    appearance: 'Wygląd',
+    elementName: (type, selected) =>
+      selected ? `${type} — element architektoniczny, zaznaczony` : `${type} — element architektoniczny`,
+    moveHint: 'Strzałki przesuwają wieżę. Shift robi mniejszy krok. Suwaki położenia robią to samo.',
   },
 }
 

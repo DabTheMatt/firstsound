@@ -49,6 +49,9 @@ import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
+import { AppViewSwitch } from './AppViewSwitch'
+import { applyAppView, type AppView } from './appView'
+import { ShedView } from '../shed/ShedView'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
 import { ExplainHost } from '../help/ExplainHost'
@@ -301,6 +304,7 @@ export default function App() {
     ),
   )
   const [uiMode, setUiMode] = useState<UiMode>(() => initialUiMode())
+  const [appView, setAppView] = useState<AppView>('workspace')
   const [sensory, setSensory] = useState(defaultSensoryValues)
   const [colorSound, setColorSound] = useState<ColorSound>(NEUTRAL_COLOR_SOUND)
   const [moodLabel, setMoodLabel] = useState<string | null>(null)
@@ -751,6 +755,13 @@ export default function App() {
     if (mode === 'sensory') prepareSensoryLayer()
     setUiMode(mode)
     focusSelector(`[data-mode-option="${mode}"]`)
+  }
+
+  const chooseView = (view: AppView) => {
+    const next = applyAppView({ view: appView, mode: uiMode }, view)
+    setAppView(next.view)
+    announce(view === 'shed' ? t.view.shed : t.view.workspace)
+    focusSelector(`[data-app-view="${view}"]`)
   }
 
   const closeSettings = (restore: boolean) => {
@@ -1666,6 +1677,65 @@ export default function App() {
     automationLaneId: snap.automation.selectedParamId,
   })
 
+  if (appView === 'shed') {
+    return (
+      <div className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}>
+        <SkipLink />
+        <LiveAnnouncer />
+        <ExplainHost />
+        <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
+          <AppHeader
+            snap={snap}
+            settingsOpen={moreOpen}
+            lfoCenterOpen={lfoCenterOpen}
+            onToggleSettings={() => {
+              toggleSettings()
+              setLfoCenterOpen(false)
+            }}
+            onToggleLfoCenter={() => {
+              setLfoCenterOpen((open) => !open)
+              setMenuOpen(false)
+            }}
+            onLoadSample={() => sampleInput.current?.click()}
+            onReset={resetSession}
+            onRecord={() => {
+              if (engine.getSnapshot().recording) engine.stopMicRecord()
+              else void engine.startMicRecord()
+            }}
+            compact={sheet}
+            minimal={isPhoneLayout}
+            viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
+            guideLabel={guideChrome(locale).guideMe}
+            onOpenGuide={() => {
+              rememberTrigger('guide')
+              dispatchGuide({ type: 'open-library' })
+            }}
+          />
+          <ShedView />
+          {lfoCenterOpen ? (
+            <div className={styles.overlay}>
+              <button
+                type="button"
+                className={styles.settingsScrim}
+                aria-label={t.settings.closeLfo}
+                onClick={() => setLfoCenterOpen(false)}
+              />
+              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
+                <LfoCenter snap={snap} onReveal={revealLfo} />
+              </div>
+            </div>
+          ) : null}
+          {settingsMenu}
+        </main>
+        {fileInputs}
+        {keyboardChrome}
+        {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {guide}
+        <HearingAccessLayer surface="technical" />
+      </div>
+    )
+  }
+
   if (uiMode === 'simple') {
     return (
       <>
@@ -1717,6 +1787,8 @@ export default function App() {
           }}
           mode={uiMode}
           onMode={chooseMode}
+          view={appView}
+          onView={chooseView}
         />
         {fileInputs}
         {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
@@ -1758,6 +1830,8 @@ export default function App() {
           onFadesCommit={() => commit('region')}
           mode={uiMode}
           onMode={chooseMode}
+          view={appView}
+          onView={chooseView}
           values={sensory}
           onValues={applySensoryValues}
           color={colorSound}
@@ -1851,6 +1925,7 @@ export default function App() {
             </div>
             )
           }
+          viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
           uiSwitch={
             isPhoneLayout ? undefined : <TechnicalUiSwitch value={technicalUi} onChange={setTechnicalUi} />
           }

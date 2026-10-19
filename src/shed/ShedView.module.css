@@ -1,0 +1,281 @@
+.root {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.sceneWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  touch-action: none;
+  color: var(--text-primary);
+  background: var(--bg-app);
+}
+
+.element {
+  cursor: grab;
+  color: var(--text-primary);
+}
+
+.element:active {
+  cursor: grabbing;
+}
+
+.element:focus {
+  outline: none;
+}
+
+.focusRing,
+.selectionRing {
+  fill: none;
+  pointer-events: none;
+}
+
+.focusRing {
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+.element:focus-visible .focusRing {
+  stroke: var(--accent-primary);
+  stroke-dasharray: 3 3;
+}
+
+.selectionRing {
+  stroke: var(--text-primary);
+  stroke-width: 2.5;
+  stroke-dasharray: 7 5;
+}
+
+.selectionMark {
+  fill: var(--text-primary);
+  stroke: var(--bg-app);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.toolbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  min-width: 0;
+}
+
+.tool,
+.panel button,
+.choice {
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius);
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  color: var(--text-primary);
+  font-size: var(--type-10);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  padding: 0 10px;
+}
+
+.tool:hover,
+.panel button:hover,
+.choice:hover,
+.tool:focus-visible,
+.panel button:focus-visible,
+.choice:focus-visible {
+  background: var(--bg-control-hover);
+}
+
+.tool[aria-pressed='true'],
+.choice[aria-checked='true'] {
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 -2px 0 var(--accent-primary);
+}
+
+.status {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: var(--type-11);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.panel {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  width: min(320px, calc(100% - 24px));
+  max-height: min(68%, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 28%, transparent);
+}
+
+.panelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.panelHead h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--type-14);
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.meta {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--type-12);
+  overflow-wrap: anywhere;
+}
+
+.group {
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: var(--type-10);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.field span,
+.colorLabel {
+  font-size: var(--type-12);
+  overflow-wrap: anywhere;
+}
+
+.field input[type='range'] {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--accent-primary);
+}
+
+.colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.colorLabel {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.colorLabel input[type='color'] {
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius);
+  background: transparent;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.layerValue {
+  min-width: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--type-13);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 800px) {
+  .panel {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 46%;
+  }
+
+  .toolbar {
+    top: 6px;
+    left: 6px;
+    max-width: calc(100% - 12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .element,
+  .tool {
+    transition: none;
+  }
+}
