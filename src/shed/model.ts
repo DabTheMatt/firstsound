@@ -1,3 +1,5 @@
+import { SHED_BRICK, SHED_COPPER } from './palette'
+
 /**
  * Local architectural document for the SHED prototype.
  *
@@ -43,8 +45,8 @@ export type ShedDocument = {
   scene: ShedScene
 }
 
-export const DEFAULT_PRIMARY = '#9c2f3c'
-export const DEFAULT_SECONDARY = '#e0b15a'
+export const DEFAULT_PRIMARY = SHED_BRICK
+export const DEFAULT_SECONDARY = SHED_COPPER
 
 export function defaultTower(id = 'tower-1'): ArchitecturalElement {
   return {

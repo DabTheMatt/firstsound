@@ -81,11 +81,25 @@ describe('SHED geometry', () => {
   it('paints the tower from its colors and swaps the ornament', () => {
     const painted = buildTower({ ...defaultTower(), primary: '#112233', secondary: '#445566', ornament: 'star' })
     expect(painted.parts.find((part) => part.id === 'body-front')?.fill).toBe('#112233')
+    expect(painted.parts.find((part) => part.id === 'body-front')?.stroke).toBe('#20272a')
     expect(painted.parts.find((part) => part.id === 'roof-front')?.fill).toBe('#445566')
+    expect(painted.parts.find((part) => part.id === 'roof-front')?.d).toContain('C')
     expect(painted.parts.some((part) => part.id === 'ornament-star')).toBe(true)
     const plain = buildTower({ ...defaultTower(), ornament: 'none' })
     expect(plain.parts.some((part) => part.id.startsWith('ornament-'))).toBe(false)
     expect(painted.side).not.toBe(DEFAULT_PRIMARY)
+    expect(painted.side).not.toBe('#112233')
+  })
+
+  it('keeps a Kraków tower study: pointed windows, pinnacles, and construction lines', () => {
+    const study = buildTower(defaultTower())
+    expect(study.parts.some((part) => part.id === 'pinnacle-left-shaft')).toBe(true)
+    expect(study.parts.some((part) => part.id === 'pinnacle-right-cap')).toBe(true)
+    expect(study.parts.some((part) => part.id === 'gallery')).toBe(true)
+    expect(study.parts.find((part) => part.id === 'construction')?.strokeDasharray).toBeTruthy()
+    expect(study.parts.find((part) => part.id === 'window-0')?.d).toContain('C')
+    expect(study.primary).toBe('#a65a4d')
+    expect(study.secondary).toBe('#668078')
   })
 })
 

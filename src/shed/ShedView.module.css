@@ -25,7 +25,7 @@
   max-width: 100%;
   touch-action: none;
   color: var(--text-primary);
-  background: var(--bg-app);
+  background: #e8ddc8;
 }
 
 .element {
@@ -117,6 +117,12 @@
 .status {
   margin: 0;
   padding: 0 8px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius);
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   color: var(--text-muted);
   font-size: var(--type-11);
   letter-spacing: 0.04em;

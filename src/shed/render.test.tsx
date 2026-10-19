@@ -72,6 +72,8 @@ describe('SHED rendering', () => {
     )
     expect(markup).toContain('viewBox="0 0 1000 640"')
     expect(markup).toContain('data-shed-scene')
+    expect(markup).toContain('#e8ddc8')
+    expect(markup).toContain('data-drawing="pen-watercolor"')
     expect(markup.slice(0, markup.indexOf('>'))).not.toContain('width=')
   })
 })
