@@ -9,6 +9,15 @@
   max-width: 100%;
 }
 
+.modeBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 8px 0;
+  flex: none;
+  max-width: 100%;
+}
+
 .sceneWrap {
   position: relative;
   flex: 1 1 auto;

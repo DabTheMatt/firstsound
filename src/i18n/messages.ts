@@ -1196,6 +1196,37 @@ export type Messages = {
       limestone: string
       gray: string
     }
+    city: {
+      modeGroup: string
+      modeArchitecture: string
+      modeCity: string
+      scene: string
+      plotsNote: string
+      build: string
+      place: string
+      removeBuilding: string
+      availablePlot: (street: string) => string
+      occupiedPlot: (type: string, author: string) => string
+      location: (street: string) => string
+      noRecording: string
+      recording: string
+      author: string
+      authors: string
+      authorsNote: string
+      buildings: string
+      students: string
+      availablePlots: string
+      hideRanking: string
+      showRanking: string
+      close: string
+      saved: string
+      restored: string
+      savedHint: string
+      prototypeAuthor: string
+      buildingType: string
+      stats: string
+      zoomToolbar: string
+    }
   }
 }
 
@@ -2561,6 +2592,37 @@ export const EN: Messages = {
       gold: 'Aged gold',
       limestone: 'Limestone',
       gray: 'Warm gray',
+    },
+    city: {
+      modeGroup: 'SHED scene',
+      modeArchitecture: 'Architecture',
+      modeCity: 'City',
+      scene: 'Kraków sound city',
+      plotsNote: 'Virtual plots are game locations, not cadastral parcels.',
+      build: 'Build on this plot',
+      place: 'Place building',
+      removeBuilding: 'Remove building',
+      availablePlot: (street) => (street ? `Available virtual plot near ${street}` : 'Available virtual plot'),
+      occupiedPlot: (type, author) => `${type} by ${author}`,
+      location: (street) => (street ? `Near ${street}` : 'Virtual plot'),
+      noRecording: 'No recording linked',
+      recording: 'Recording',
+      author: 'Author',
+      authors: 'Authors',
+      authorsNote: 'A local prototype identity. This is not an account.',
+      buildings: 'Buildings',
+      students: 'Students',
+      availablePlots: 'Available plots',
+      hideRanking: 'Hide authors',
+      showRanking: 'Show authors',
+      close: 'Close',
+      saved: 'Saved',
+      restored: 'Restored the empty city',
+      savedHint: 'The city is saved in this browser only. It does not replace the architecture sheet.',
+      prototypeAuthor: 'Prototype author',
+      buildingType: 'Building',
+      stats: 'Contributions',
+      zoomToolbar: 'Map',
     },
   },
 }
@@ -3933,6 +3995,37 @@ export const PL: Messages = {
       gold: 'Postarzałe złoto',
       limestone: 'Wapień',
       gray: 'Ciepły szary',
+    },
+    city: {
+      modeGroup: 'Scena SHED',
+      modeArchitecture: 'Architektura',
+      modeCity: 'Miasto',
+      scene: 'Miasto dźwięku — Kraków',
+      plotsNote: 'Wirtualne działki to miejsca gry, a nie granice ewidencyjne.',
+      build: 'Zbuduj na tej działce',
+      place: 'Postaw budynek',
+      removeBuilding: 'Usuń budynek',
+      availablePlot: (street) => (street ? `Wolna wirtualna działka przy ${street}` : 'Wolna wirtualna działka'),
+      occupiedPlot: (type, author) => `${type}, ${author}`,
+      location: (street) => (street ? `Przy ${street}` : 'Wirtualna działka'),
+      noRecording: 'Brak powiązanego nagrania',
+      recording: 'Nagranie',
+      author: 'Autor',
+      authors: 'Autorzy',
+      authorsNote: 'Lokalna tożsamość prototypu. To nie jest konto.',
+      buildings: 'Budynki',
+      students: 'Studenci',
+      availablePlots: 'Wolne działki',
+      hideRanking: 'Ukryj autorów',
+      showRanking: 'Pokaż autorów',
+      close: 'Zamknij',
+      saved: 'Zapisano',
+      restored: 'Przywrócono puste miasto',
+      savedHint: 'Miasto zapisuje się tylko w tej przeglądarce. Nie zastępuje arkusza architektury.',
+      prototypeAuthor: 'Autor prototypu',
+      buildingType: 'Budynek',
+      stats: 'Wkład',
+      zoomToolbar: 'Mapa',
     },
   },
 }
