@@ -110,10 +110,10 @@
 }
 
 .file {
-  width: 11rem;
-  min-width: 11rem;
+  width: auto;
+  min-width: 0;
   max-width: 11rem;
-  flex: none;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -271,6 +271,11 @@
 
 .minimal .brand {
   gap: 6px;
+  /* Size containment would freeze this row at zero width, so the name
+     would paint over the destination switch. The phone bar scrolls instead. */
+  container-type: normal;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .minimal .file {
@@ -355,8 +360,10 @@
 }
 
 /* A container cannot query itself, so this breakpoint is a viewport media query.
-   Row one keeps the mode and Settings; row two keeps theme, Load Sample, and Record. */
-@media (max-width: 1100px) {
+   One row fits only once the destination switch, the sample name, and Load Sample
+   no longer cover each other. Until then, row one keeps the destination and
+   Settings, and row two keeps theme, Record, and the mode switch. */
+@media (max-width: 1760px) {
   .header,
   :global(html[data-low-vision='on']) .header,
   :global(html[data-ui-scale='large']) .header {
@@ -409,8 +416,8 @@
 .minimal .file,
 :global(html[data-ui-scale='large']) .header.minimal .file {
   width: auto;
-  min-width: 0;
-  flex: 0 1 auto;
+  min-width: 4.5rem;
+  flex: 0 0 auto;
   max-width: min(11rem, 42vw);
   overflow: hidden;
   text-overflow: ellipsis;
