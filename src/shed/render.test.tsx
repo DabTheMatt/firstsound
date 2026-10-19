@@ -61,17 +61,21 @@ describe('SHED rendering', () => {
       <ShedScene
         document={defaultShedDocument()}
         selectedId={null}
-        zoom={1}
+        camera={{ zoom: 1, panX: 0, panY: 0 }}
         sceneLabel="Architectural scene"
         labelFor={() => 'Tower — architectural element'}
         onSelect={() => undefined}
         onMove={() => undefined}
         onDeselect={() => undefined}
         onNudge={() => undefined}
+        onDelete={() => undefined}
+        onPan={() => undefined}
+        onZoom={() => undefined}
       />,
     )
     expect(markup).toContain('viewBox="0 0 1000 640"')
     expect(markup).toContain('data-shed-scene')
+    expect(markup).toContain('tabindex="0"')
     expect(markup.slice(0, markup.indexOf('>'))).not.toContain('width=')
   })
 })

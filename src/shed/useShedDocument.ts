@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { addTower, changeLayer, moveElement, nudgeElement, resetElement, updateElement, type ElementPatch } from './commands'
+import {
+  addElement,
+  bringForward,
+  deleteElement,
+  duplicateElement,
+  moveElement,
+  nudgeElement,
+  resetElement,
+  sendBackward,
+  updateElement,
+  type ElementPatch,
+} from './commands'
+import type { ElementType, OrnamentId } from './model'
 import { loadShedDocument, persistShedDocument, type ShedLoad, type ShedLoadStatus } from './persistence'
-import type { OrnamentId } from './model'
 
 export function useShedDocument() {
   const [state, setState] = useState<ShedLoad>(() => loadShedDocument())
@@ -37,29 +48,82 @@ export function useShedDocument() {
     }
   }, [flush])
 
+  const move = useCallback(
+    (id: string, x: number, y: number) => {
+      replace(moveElement(documentRef.current, id, x, y))
+    },
+    [replace],
+  )
+  const nudge = useCallback(
+    (id: string, key: string, shiftKey: boolean) => {
+      replace(nudgeElement(documentRef.current, id, key, shiftKey))
+    },
+    [replace],
+  )
+  const patch = useCallback(
+    (id: string, next: ElementPatch) => {
+      replace(updateElement(documentRef.current, id, next))
+    },
+    [replace],
+  )
+  const ornament = useCallback(
+    (id: string, ornamentId: OrnamentId) => {
+      replace(updateElement(documentRef.current, id, { ornament: ornamentId }))
+    },
+    [replace],
+  )
+  const forward = useCallback(
+    (id: string) => {
+      replace(bringForward(documentRef.current, id))
+    },
+    [replace],
+  )
+  const backward = useCallback(
+    (id: string) => {
+      replace(sendBackward(documentRef.current, id))
+    },
+    [replace],
+  )
+  const reset = useCallback(
+    (id: string) => {
+      replace(resetElement(documentRef.current, id))
+    },
+    [replace],
+  )
+  const add = useCallback(
+    (type: ElementType = 'tower') => {
+      replace(addElement(documentRef.current, type))
+    },
+    [replace],
+  )
+  const remove = useCallback(
+    (id: string) => {
+      replace(deleteElement(documentRef.current, id))
+    },
+    [replace],
+  )
+  const duplicate = useCallback(
+    (id: string) => {
+      const before = new Set(documentRef.current.scene.elements.map((element) => element.id))
+      const next = duplicateElement(documentRef.current, id)
+      replace(next)
+      return next.scene.elements.find((element) => !before.has(element.id))?.id ?? null
+    },
+    [replace],
+  )
+
   return {
     document: state.document,
     status: state.status,
-    move(id: string, x: number, y: number) {
-      replace(moveElement(documentRef.current, id, x, y))
-    },
-    nudge(id: string, key: string, shiftKey: boolean) {
-      replace(nudgeElement(documentRef.current, id, key, shiftKey))
-    },
-    patch(id: string, patch: ElementPatch) {
-      replace(updateElement(documentRef.current, id, patch))
-    },
-    ornament(id: string, ornament: OrnamentId) {
-      replace(updateElement(documentRef.current, id, { ornament }))
-    },
-    layer(id: string, delta: number) {
-      replace(changeLayer(documentRef.current, id, delta))
-    },
-    reset(id: string) {
-      replace(resetElement(documentRef.current, id))
-    },
-    add() {
-      replace(addTower(documentRef.current))
-    },
+    move,
+    nudge,
+    patch,
+    ornament,
+    forward,
+    backward,
+    reset,
+    add,
+    remove,
+    duplicate,
   }
 }

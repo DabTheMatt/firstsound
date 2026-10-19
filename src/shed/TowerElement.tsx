@@ -1,6 +1,7 @@
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { buildTower } from './geometry'
+import { memo, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { buildElement } from './geometry'
 import type { ArchitecturalElement } from './model'
+import { GraphicPaths } from './parts'
 import { SCENE_HEIGHT, SCENE_WIDTH } from './view'
 import styles from './ShedView.module.css'
 
@@ -12,21 +13,32 @@ type Props = {
   onSelect: (id: string, via: 'pointer' | 'keyboard') => void
   onMove: (id: string, x: number, y: number) => void
   onNudge: (id: string, key: string, shiftKey: boolean) => void
+  onDelete?: (id: string) => void
 }
 
-export function TowerElement({ element, selected, label, zoom, onSelect, onMove, onNudge }: Props) {
-  const graphic = buildTower(element)
+export const TowerElement = memo(function TowerElement({
+  element,
+  selected,
+  label,
+  zoom,
+  onSelect,
+  onMove,
+  onNudge,
+  onDelete,
+}: Props) {
+  const graphic = buildElement(element)
   const x = element.x * SCENE_WIDTH
   const y = element.y * SCENE_HEIGHT
-  const fit = graphic.height > 470 ? 470 / graphic.height : 1
+  const fit = Math.min(graphic.height > 520 ? 520 / graphic.height : 1, graphic.width > 640 ? 640 / graphic.width : 1)
 
   const onPointerDown = (event: ReactPointerEvent<SVGGElement>) => {
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
     event.currentTarget.focus()
     onSelect(element.id, 'pointer')
+    if (event.pointerType === 'touch' && !selected) return
+    event.currentTarget.setPointerCapture(event.pointerId)
     const svg = event.currentTarget.ownerSVGElement
     const rect = svg?.getBoundingClientRect()
     const startX = event.clientX
@@ -59,6 +71,12 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       onSelect(element.id, 'keyboard')
       return
     }
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (!onDelete) return
+      event.preventDefault()
+      onDelete(element.id)
+      return
+    }
     if (event.key.startsWith('Arrow')) {
       event.preventDefault()
       onNudge(element.id, event.key, event.shiftKey)
@@ -69,8 +87,9 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
     <g
       className={styles.element}
       data-shed-element={element.id}
-      data-element-type="tower"
+      data-element-type={element.type}
       data-selected={selected ? 'true' : 'false'}
+      data-variant={element.variant}
       data-primary={graphic.primary}
       data-secondary={graphic.secondary}
       data-ornament={graphic.ornament}
@@ -85,16 +104,9 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
-      {graphic.parts.map((part) => (
-        <path key={part.id} data-part={part.id} d={part.d} fill={part.fill} opacity={part.opacity} />
-      ))}
-      <rect
-        className={styles.focusRing}
-        x={-6}
-        y={-6}
-        width={graphic.width + 12}
-        height={graphic.height + 12}
-      />
+      <rect data-hit="true" x={0} y={0} width={graphic.width} height={graphic.height} fill="transparent" />
+      <GraphicPaths parts={graphic.parts} />
+      <rect className={styles.focusRing} x={-6} y={-6} width={graphic.width + 12} height={graphic.height + 12} />
       {selected ? (
         <g aria-hidden="true">
           <rect className={styles.selectionRing} x={-8} y={-8} width={graphic.width + 16} height={graphic.height + 16} />
@@ -103,4 +115,6 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       ) : null}
     </g>
   )
-}
+})
+
+export const SceneElement = TowerElement

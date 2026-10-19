@@ -7,6 +7,14 @@ type Copy = {
   zoomOut: string
   resetView: string
   addElement: string
+  panLeft: string
+  panRight: string
+  panUp: string
+  panDown: string
+  panLeftShort: string
+  panRightShort: string
+  panUpShort: string
+  panDownShort: string
   saved: string
   restored: string
   savedHint: string
@@ -15,13 +23,15 @@ type Copy = {
 type Props = {
   copy: Copy
   status: ShedLoadStatus
+  libraryOpen: boolean
   onZoomIn: () => void
   onZoomOut: () => void
   onResetView: () => void
+  onPan: (direction: 'left' | 'right' | 'up' | 'down') => void
   onAdd: () => void
 }
 
-export function SceneToolbar({ copy, status, onZoomIn, onZoomOut, onResetView, onAdd }: Props) {
+export function SceneToolbar({ copy, status, libraryOpen, onZoomIn, onZoomOut, onResetView, onPan, onAdd }: Props) {
   const statusText = status === 'restored' ? copy.restored : copy.saved
   return (
     <div className={styles.toolbar} role="toolbar" aria-label={copy.toolbar}>
@@ -34,7 +44,19 @@ export function SceneToolbar({ copy, status, onZoomIn, onZoomOut, onResetView, o
       <button type="button" className={styles.tool} onClick={onResetView}>
         {copy.resetView}
       </button>
-      <button type="button" className={styles.tool} onClick={onAdd}>
+      <button type="button" className={styles.tool} aria-label={copy.panLeft} onClick={() => onPan('left')}>
+        {copy.panLeftShort}
+      </button>
+      <button type="button" className={styles.tool} aria-label={copy.panRight} onClick={() => onPan('right')}>
+        {copy.panRightShort}
+      </button>
+      <button type="button" className={styles.tool} aria-label={copy.panUp} onClick={() => onPan('up')}>
+        {copy.panUpShort}
+      </button>
+      <button type="button" className={styles.tool} aria-label={copy.panDown} onClick={() => onPan('down')}>
+        {copy.panDownShort}
+      </button>
+      <button type="button" className={styles.tool} aria-expanded={libraryOpen} aria-controls="shed-library" onClick={onAdd}>
         {copy.addElement}
       </button>
       <p className={styles.status} role="status" aria-describedby="shed-save-hint">

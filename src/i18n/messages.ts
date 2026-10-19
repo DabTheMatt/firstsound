@@ -1102,13 +1102,16 @@ export type Messages = {
     zoomOut: string
     resetView: string
     addElement: string
+    library: string
     tower: string
     elementType: string
     height: string
     width: string
     roof: string
+    helmet: string
     primary: string
     secondary: string
+    detail: string
     ornament: string
     ornamentNone: string
     ornamentFinial: string
@@ -1121,6 +1124,32 @@ export type Messages = {
     layerForward: string
     layerBack: string
     reset: string
+    duplicate: string
+    deleteElement: string
+    variant: string
+    proportion: string
+    windows: string
+    floors: string
+    entrance: string
+    gable: string
+    arches: string
+    archHeight: string
+    column: string
+    pitch: string
+    roofline: string
+    ridge: string
+    parapet: string
+    density: string
+    passage: string
+    crenellation: string
+    panLeft: string
+    panRight: string
+    panUp: string
+    panDown: string
+    panLeftShort: string
+    panRightShort: string
+    panUpShort: string
+    panDownShort: string
     saved: string
     savedHint: string
     restored: string
@@ -1129,6 +1158,43 @@ export type Messages = {
     appearance: string
     elementName: (type: string, selected: boolean) => string
     moveHint: string
+    categories: {
+      tower: string
+      facade: string
+      roof: string
+      arcade: string
+      gate: string
+      attic: string
+      ornament: string
+    }
+    descriptions: {
+      tower: string
+      facade: string
+      roof: string
+      arcade: string
+      gate: string
+      attic: string
+      ornament: string
+    }
+    variants: {
+      tower: readonly [string, string, string, string]
+      facade: readonly [string, string, string]
+      roof: readonly [string, string, string]
+      arcade: readonly [string, string, string]
+      gate: readonly [string, string, string]
+      attic: readonly [string, string]
+      ornament: readonly [string, string, string, string]
+    }
+    swatches: {
+      brick: string
+      ink: string
+      parchment: string
+      blue: string
+      copper: string
+      gold: string
+      limestone: string
+      gray: string
+    }
   }
 }
 
@@ -2400,13 +2466,16 @@ export const EN: Messages = {
     zoomOut: 'Zoom out',
     resetView: 'Reset view',
     addElement: 'Add element',
+    library: 'Element library',
     tower: 'Tower',
     elementType: 'Element type',
     height: 'Height',
     width: 'Width',
     roof: 'Roof',
+    helmet: 'Helmet',
     primary: 'Primary color',
     secondary: 'Secondary color',
+    detail: 'Detail color',
     ornament: 'Ornament',
     ornamentNone: 'None',
     ornamentFinial: 'Finial',
@@ -2419,6 +2488,32 @@ export const EN: Messages = {
     layerForward: 'Bring forward',
     layerBack: 'Send backward',
     reset: 'Reset',
+    duplicate: 'Duplicate',
+    deleteElement: 'Delete element',
+    variant: 'Variant',
+    proportion: 'Body proportion',
+    windows: 'Windows',
+    floors: 'Floors',
+    entrance: 'Entrance',
+    gable: 'Gable',
+    arches: 'Arches',
+    archHeight: 'Arch height',
+    column: 'Column width',
+    pitch: 'Pitch',
+    roofline: 'Roofline',
+    ridge: 'Ridge',
+    parapet: 'Parapet rhythm',
+    density: 'Ornament density',
+    passage: 'Passage',
+    crenellation: 'Crenellation',
+    panLeft: 'Pan left',
+    panRight: 'Pan right',
+    panUp: 'Pan up',
+    panDown: 'Pan down',
+    panLeftShort: 'Left',
+    panRightShort: 'Right',
+    panUpShort: 'Up',
+    panDownShort: 'Down',
     saved: 'Saved',
     savedHint: 'Saved in this browser only. It does not sync to other devices.',
     restored: 'Restored the default scene',
@@ -2427,7 +2522,44 @@ export const EN: Messages = {
     appearance: 'Appearance',
     elementName: (type, selected) =>
       selected ? `${type} — architectural element, selected` : `${type} — architectural element`,
-    moveHint: 'Arrow keys move the tower. Shift takes a smaller step. The position sliders do the same.',
+    moveHint: 'Arrow keys move the selected element. Shift takes a smaller step. The position sliders do the same.',
+    categories: {
+      tower: 'Tower',
+      facade: 'Facade',
+      roof: 'Roof',
+      arcade: 'Arcade',
+      gate: 'Gate',
+      attic: 'Attic',
+      ornament: 'Ornament',
+    },
+    descriptions: {
+      tower: 'Asymmetrical Gothic tower, a Wawel tower, or a Kraków defensive tower.',
+      facade: 'Church wall, narrow townhouse, or Cloth Hall front.',
+      roof: 'Historical Kraków roofline with a decorative ridge.',
+      arcade: 'Repeating arches from the Cloth Hall or the Wawel courtyard.',
+      gate: "St. Florian's Gate, the Barbican, or a townhouse portal.",
+      attic: 'Renaissance parapet in the manner of the Cloth Hall.',
+      ornament: 'A small finial, rosette, pinnacle, or medallion.',
+    },
+    variants: {
+      tower: ["St. Mary's taller helmet", "St. Mary's lower helmet", 'Wawel tower', 'Defensive tower'],
+      facade: ['Gothic facade', 'Townhouse', 'Cloth Hall front'],
+      roof: ['Steep roof', 'Renaissance roof', 'Townhouse roof'],
+      arcade: ['Cloth Hall arcade', 'Wawel arcade', 'Pointed arcade'],
+      gate: ["St. Florian's Gate", 'Barbican', 'Townhouse portal'],
+      attic: ['Cloth Hall attic', 'Townhouse attic'],
+      ornament: ['Finial', 'Rosette', 'Pinnacle', 'Medallion'],
+    },
+    swatches: {
+      brick: 'Brick red',
+      ink: 'Ink black',
+      parchment: 'Parchment',
+      blue: 'Desaturated blue',
+      copper: 'Oxidized copper',
+      gold: 'Aged gold',
+      limestone: 'Limestone',
+      gray: 'Warm gray',
+    },
   },
 }
 
@@ -3705,13 +3837,16 @@ export const PL: Messages = {
     zoomOut: 'Pomniejsz',
     resetView: 'Resetuj widok',
     addElement: 'Dodaj element',
+    library: 'Biblioteka elementów',
     tower: 'Wieża',
     elementType: 'Typ elementu',
     height: 'Wysokość',
     width: 'Szerokość',
     roof: 'Dach',
+    helmet: 'Hełm',
     primary: 'Kolor podstawowy',
     secondary: 'Kolor dodatkowy',
+    detail: 'Kolor detalu',
     ornament: 'Ornament',
     ornamentNone: 'Brak',
     ornamentFinial: 'Szpic',
@@ -3721,9 +3856,35 @@ export const PL: Messages = {
     positionX: 'Położenie w poziomie',
     positionY: 'Położenie w pionie',
     layer: 'Warstwa',
-    layerForward: 'Przenieś wyżej',
-    layerBack: 'Przenieś niżej',
+    layerForward: 'Przesuń na wierzch',
+    layerBack: 'Przesuń pod spód',
     reset: 'Przywróć',
+    duplicate: 'Duplikuj',
+    deleteElement: 'Usuń element',
+    variant: 'Wariant',
+    proportion: 'Proporcje korpusu',
+    windows: 'Układ okien',
+    floors: 'Kondygnacje',
+    entrance: 'Wejście',
+    gable: 'Szczyt',
+    arches: 'Liczba arkad',
+    archHeight: 'Wysokość łuku',
+    column: 'Szerokość kolumny',
+    pitch: 'Nachylenie',
+    roofline: 'Linia dachu',
+    ridge: 'Grzbiet',
+    parapet: 'Rytm attyki',
+    density: 'Gęstość ornamentu',
+    passage: 'Przejazd',
+    crenellation: 'Krenelaż',
+    panLeft: 'Przesuń widok w lewo',
+    panRight: 'Przesuń widok w prawo',
+    panUp: 'Przesuń widok w górę',
+    panDown: 'Przesuń widok w dół',
+    panLeftShort: 'Lewo',
+    panRightShort: 'Prawo',
+    panUpShort: 'Góra',
+    panDownShort: 'Dół',
     saved: 'Zapisano',
     savedHint: 'Zapisane tylko w tej przeglądarce. Nie synchronizuje się z innymi urządzeniami.',
     restored: 'Przywrócono domyślną scenę',
@@ -3732,7 +3893,44 @@ export const PL: Messages = {
     appearance: 'Wygląd',
     elementName: (type, selected) =>
       selected ? `${type} — element architektoniczny, zaznaczony` : `${type} — element architektoniczny`,
-    moveHint: 'Strzałki przesuwają wieżę. Shift robi mniejszy krok. Suwaki położenia robią to samo.',
+    moveHint: 'Strzałki przesuwają zaznaczony element. Shift robi mniejszy krok. Suwaki położenia robią to samo.',
+    categories: {
+      tower: 'Wieża',
+      facade: 'Fasada',
+      roof: 'Dach',
+      arcade: 'Arkada',
+      gate: 'Brama',
+      attic: 'Attyka',
+      ornament: 'Ornament',
+    },
+    descriptions: {
+      tower: 'Niesymetryczna wieża gotycka, wieża Wawelu albo baszta obronna Krakowa.',
+      facade: 'Ściana kościoła, wąska kamienica albo front Sukiennic.',
+      roof: 'Historyczna linia dachu Krakowa z ozdobnym grzbietem.',
+      arcade: 'Powtarzalne arkady Sukiennic albo krużganków wawelskich.',
+      gate: 'Brama Floriańska, Barbakan albo portal kamienicy.',
+      attic: 'Renesansowa attyka w rodzaju Sukiennic.',
+      ornament: 'Niewielki szpic, rozeta, sterczyna albo medalion.',
+    },
+    variants: {
+      tower: ['Hełm wyższej wieży Mariackiej', 'Hełm niższej wieży Mariackiej', 'Wieża Wawelu', 'Baszta obronna'],
+      facade: ['Fasada gotycka', 'Kamienica', 'Front Sukiennic'],
+      roof: ['Dach stromy', 'Dach renesansowy', 'Dach kamienicy'],
+      arcade: ['Arkady Sukiennic', 'Krużganki wawelskie', 'Arkada ostrołukowa'],
+      gate: ['Brama Floriańska', 'Barbakan', 'Portal kamienicy'],
+      attic: ['Attyka Sukiennic', 'Attyka kamienicy'],
+      ornament: ['Szpic', 'Rozeta', 'Sterczyna', 'Medalion'],
+    },
+    swatches: {
+      brick: 'Czerwień cegły',
+      ink: 'Czerń atramentu',
+      parchment: 'Pergamin',
+      blue: 'Przygaszony błękit',
+      copper: 'Utleniona miedź',
+      gold: 'Postarzałe złoto',
+      limestone: 'Wapień',
+      gray: 'Ciepły szary',
+    },
   },
 }
 
