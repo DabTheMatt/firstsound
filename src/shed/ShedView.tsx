@@ -1,5 +1,8 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
+import { CityView } from './city/CityView'
+import { loadSceneMode, persistSceneMode } from './city/sceneMode'
+import type { ShedSceneMode } from './city/model'
 import { addElement } from './commands'
 import { ElementLibrary } from './ElementLibrary'
 import { ElementPanel } from './ElementPanel'
@@ -17,6 +20,7 @@ export const ShedView = memo(function ShedView() {
   const [camera, setCamera] = useState<SceneCamera>(() => defaultCamera())
   const [focusPanel, setFocusPanel] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [sceneMode, setSceneMode] = useState<ShedSceneMode>(() => loadSceneMode())
   const panelRef = useRef<HTMLElement>(null)
   const libraryRef = useRef<HTMLElement>(null)
   const selected = shed.document.scene.elements.find((element) => element.id === selectedId) ?? null
@@ -92,19 +96,39 @@ export const ShedView = memo(function ShedView() {
     shed.patch(selected.id, { params: { [key]: value } })
   }
 
+  const chooseScene = (next: ShedSceneMode) => {
+    setSceneMode(next)
+    persistSceneMode(next)
+  }
+
   return (
     <section
       className={styles.root}
       data-shed-view=""
+      data-shed-scene-mode={sceneMode}
       aria-label={t.view.shed}
       onKeyDown={(event) => {
+        if (sceneMode !== 'architecture') return
         if (event.key !== 'Escape' || !selectedId || libraryOpen) return
         if (event.target instanceof Element && event.target.closest('[data-shed-panel]')) return
         event.preventDefault()
         deselect()
       }}
     >
-      <div className={styles.sceneWrap}>
+      <div className={styles.modeBar} role="group" aria-label={t.shed.city.modeGroup}>
+        <button
+          type="button"
+          className={styles.tool}
+          aria-pressed={sceneMode === 'architecture'}
+          onClick={() => chooseScene('architecture')}
+        >
+          {t.shed.city.modeArchitecture}
+        </button>
+        <button type="button" className={styles.tool} aria-pressed={sceneMode === 'city'} onClick={() => chooseScene('city')}>
+          {t.shed.city.modeCity}
+        </button>
+      </div>
+      {sceneMode === 'city' ? <CityView /> : <div className={styles.sceneWrap}>
         <ShedScene
           document={shed.document}
           selectedId={activeId}
@@ -168,7 +192,7 @@ export const ShedView = memo(function ShedView() {
             onDelete={() => remove(selected.id)}
           />
         ) : null}
-      </div>
+      </div>}
     </section>
   )
 })
