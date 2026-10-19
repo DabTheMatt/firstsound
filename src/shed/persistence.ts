@@ -18,6 +18,13 @@ export type ShedLoad = {
 const MAX_ELEMENTS = 32
 const HEX = /^#[0-9a-f]{6}$/
 
+/** Strict Mode reads storage twice. Remember a repair until the page reloads. */
+let restoredOnThisPage = false
+
+export function resetShedLoadNotice(): void {
+  restoredOnThisPage = false
+}
+
 function hexColor(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const next = value.trim().toLowerCase()
@@ -129,15 +136,17 @@ export function loadShedDocument(): ShedLoad {
   } catch {
     return { document: fallback, status: 'restored' }
   }
-  if (!raw) return { document: fallback, status: 'saved' }
+  if (!raw) return { document: fallback, status: restoredOnThisPage ? 'restored' : 'saved' }
   try {
     const parsed = parseShedDocument(JSON.parse(raw) as unknown)
     if (!parsed) {
+      restoredOnThisPage = true
       persistShedDocument(fallback)
       return { document: fallback, status: 'restored' }
     }
-    return { document: parsed, status: 'saved' }
+    return { document: parsed, status: restoredOnThisPage ? 'restored' : 'saved' }
   } catch {
+    restoredOnThisPage = true
     persistShedDocument(fallback)
     return { document: fallback, status: 'restored' }
   }

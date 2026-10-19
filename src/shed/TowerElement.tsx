@@ -18,6 +18,7 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
   const graphic = buildTower(element)
   const x = element.x * SCENE_WIDTH
   const y = element.y * SCENE_HEIGHT
+  const fit = graphic.height > 470 ? 470 / graphic.height : 1
 
   const onPointerDown = (event: ReactPointerEvent<SVGGElement>) => {
     if (event.button !== 0) return
@@ -80,7 +81,7 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       tabIndex={0}
       aria-label={label}
       aria-pressed={selected}
-      transform={`translate(${x} ${y}) translate(${(-graphic.anchorX).toFixed(1)} ${(-graphic.anchorY).toFixed(1)})`}
+      transform={`translate(${x} ${y}) scale(${fit.toFixed(4)}) translate(${(-graphic.anchorX).toFixed(1)} ${(-graphic.anchorY).toFixed(1)})`}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >

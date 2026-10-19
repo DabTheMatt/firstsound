@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { addTower, moveElement, nudgeElement, resetElement, updateElement } from './commands'
 import { buildTower } from './geometry'
 import { DEFAULT_PRIMARY, defaultShedDocument, defaultTower, SHED_STORAGE_KEY } from './model'
-import { loadShedDocument, parseShedDocument, persistShedDocument } from './persistence'
+import { loadShedDocument, parseShedDocument, persistShedDocument, resetShedLoadNotice } from './persistence'
 import { nextZoom } from './view'
 
 function memoryStorage() {
@@ -90,6 +90,10 @@ describe('SHED geometry', () => {
 })
 
 describe('SHED persistence', () => {
+  beforeEach(() => {
+    resetShedLoadNotice()
+  })
+
   it('round-trips a document under the SHED storage key', () => {
     const store = memoryStorage()
     vi.stubGlobal('localStorage', store)
@@ -109,6 +113,7 @@ describe('SHED persistence', () => {
     expect(loaded.status).toBe('restored')
     expect(loaded.document.scene.elements[0]?.id).toBe('tower-1')
     expect(parseShedDocument(JSON.parse(store.getItem(SHED_STORAGE_KEY) ?? 'null'))).not.toBeNull()
+    expect(loadShedDocument().status).toBe('restored')
     vi.unstubAllGlobals()
   })
 
