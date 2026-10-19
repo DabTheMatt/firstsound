@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react'
+import { lazy, memo, Suspense, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import { addTower } from './commands'
 import { ElementPanel } from './ElementPanel'
@@ -8,6 +8,15 @@ import { ShedScene } from './ShedScene'
 import { useShedDocument } from './useShedDocument'
 import { nextZoom } from './view'
 import styles from './ShedView.module.css'
+
+const SketchCompare = import.meta.env.DEV
+  ? lazy(() => import('./dev/SketchCompare').then((mod) => ({ default: mod.SketchCompare })))
+  : null
+
+function sketchPreviewRequested(): boolean {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('sketch') === '1'
+}
 
 function elementLabel(copy: (type: string, selected: boolean) => string, type: string, selected: boolean): string {
   return copy(type, selected)
@@ -40,6 +49,16 @@ export const ShedView = memo(function ShedView() {
 
   const labelFor = (element: ArchitecturalElement, isSelected: boolean) =>
     elementLabel(t.shed.elementName, t.shed.tower, element.type === 'tower' && isSelected)
+
+  if (SketchCompare && sketchPreviewRequested()) {
+    return (
+      <section className={styles.root} data-shed-view="" data-sketch-preview="" aria-label={t.view.shed}>
+        <Suspense fallback={null}>
+          <SketchCompare />
+        </Suspense>
+      </section>
+    )
+  }
 
   return (
     <section

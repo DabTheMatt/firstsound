@@ -1,6 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { buildTower } from './geometry'
 import type { ArchitecturalElement } from './model'
+import { SketchMarks } from './rendering/SketchMarks'
+import { renderSketchTower } from './rendering/tower'
 import { SCENE_HEIGHT, SCENE_WIDTH } from './view'
 import styles from './ShedView.module.css'
 
@@ -15,7 +16,7 @@ type Props = {
 }
 
 export function TowerElement({ element, selected, label, zoom, onSelect, onMove, onNudge }: Props) {
-  const graphic = buildTower(element)
+  const graphic = renderSketchTower(element)
   const x = element.x * SCENE_WIDTH
   const y = element.y * SCENE_HEIGHT
   const fit = graphic.height > 470 ? 470 / graphic.height : 1
@@ -74,6 +75,9 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       data-primary={graphic.primary}
       data-secondary={graphic.secondary}
       data-ornament={graphic.ornament}
+      data-sketch-seed={graphic.seed}
+      data-abstraction={graphic.abstraction.toFixed(2)}
+      data-helmet={graphic.variation.helmet}
       data-body-height={graphic.body.h.toFixed(1)}
       data-body-width={graphic.body.w.toFixed(1)}
       data-roof-height={graphic.roofHeight.toFixed(1)}
@@ -85,25 +89,9 @@ export function TowerElement({ element, selected, label, zoom, onSelect, onMove,
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
-      {graphic.parts.map((part) => (
-        <path
-          key={part.id}
-          data-part={part.id}
-          data-drawing="pen-watercolor"
-          d={part.d}
-          fill={part.fill}
-          fillOpacity={part.fillOpacity}
-          opacity={part.opacity}
-          stroke={part.stroke}
-          strokeWidth={part.strokeWidth}
-          strokeOpacity={part.strokeOpacity}
-          strokeDasharray={part.strokeDasharray}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          fillRule={part.fillRule}
-          pointerEvents={part.pointerEvents}
-        />
-      ))}
+      <g aria-hidden="true">
+        <SketchMarks parts={graphic.parts} drawing="pen-watercolor" />
+      </g>
       <rect
         className={styles.focusRing}
         x={-6}

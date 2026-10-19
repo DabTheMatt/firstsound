@@ -1,0 +1,73 @@
+.page {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 16px;
+  overflow: auto;
+  background: #e8ddc8;
+  color: #20272a;
+}
+
+.page h1,
+.page h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 560;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.note {
+  margin: 0 0 16px;
+  max-width: 68ch;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pair,
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.frame {
+  margin: 0;
+  min-width: 0;
+  background: #f3ecdc;
+  border: 1px solid color-mix(in srgb, #20272a 28%, transparent);
+}
+
+.frame figcaption {
+  padding: 8px 10px 10px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.sheet {
+  display: block;
+  width: 100%;
+  height: min(68vh, 640px);
+  background: #e8ddc8;
+}
+
+.row .sheet {
+  height: min(42vh, 420px);
+}
+
+@media (max-width: 800px) {
+  .pair,
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .sheet,
+  .row .sheet {
+    height: 70vw;
+    min-height: 280px;
+  }
+}

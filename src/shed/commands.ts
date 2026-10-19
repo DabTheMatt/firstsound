@@ -2,6 +2,8 @@ import { clampPosition } from './persistence'
 import {
   clampUnit,
   defaultTower,
+  isColorTreatment,
+  isInkStyle,
   isOrnamentId,
   type ArchitecturalElement,
   type OrnamentId,
@@ -13,7 +15,22 @@ const FINE_NUDGE = 0.005
 const MAX_ELEMENTS = 24
 
 export type ElementPatch = Partial<
-  Pick<ArchitecturalElement, 'x' | 'y' | 'layer' | 'height' | 'width' | 'roof' | 'primary' | 'secondary' | 'ornament'>
+  Pick<
+    ArchitecturalElement,
+    | 'x'
+    | 'y'
+    | 'layer'
+    | 'height'
+    | 'width'
+    | 'roof'
+    | 'primary'
+    | 'secondary'
+    | 'ornament'
+    | 'visualSeed'
+    | 'abstraction'
+    | 'inkStyle'
+    | 'colorTreatment'
+  >
 >
 
 export function nudgeDelta(key: string, shiftKey: boolean): { x: number; y: number } | null {
@@ -65,6 +82,12 @@ function sanitizePatch(patch: ElementPatch): ElementPatch {
   if (typeof patch.primary === 'string' && /^#[0-9a-fA-F]{6}$/.test(patch.primary)) next.primary = patch.primary.toLowerCase()
   if (typeof patch.secondary === 'string' && /^#[0-9a-fA-F]{6}$/.test(patch.secondary)) next.secondary = patch.secondary.toLowerCase()
   if (isOrnamentId(patch.ornament)) next.ornament = patch.ornament
+  if (patch.visualSeed != null && Number.isFinite(patch.visualSeed)) {
+    next.visualSeed = Math.min(1_000_000_000, Math.max(0, Math.round(patch.visualSeed)))
+  }
+  if (patch.abstraction != null) next.abstraction = clampUnit(patch.abstraction)
+  if (isInkStyle(patch.inkStyle)) next.inkStyle = patch.inkStyle
+  if (isColorTreatment(patch.colorTreatment)) next.colorTreatment = patch.colorTreatment
   return next
 }
 

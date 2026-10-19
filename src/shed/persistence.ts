@@ -3,9 +3,12 @@ import {
   SHED_STORAGE_KEY,
   clampUnit,
   defaultShedDocument,
+  isColorTreatment,
+  isInkStyle,
   isOrnamentId,
   type ArchitecturalElement,
   type ShedDocument,
+  type ShedSchemaVersion,
 } from './model'
 
 export type ShedLoadStatus = 'saved' | 'restored'
@@ -60,7 +63,7 @@ function readElement(value: unknown, seen: Set<string>): ArchitecturalElement | 
   if (x == null || y == null || height == null || width == null || roof == null || layer == null) return null
   if (!primary || !secondary || !isOrnamentId(raw.ornament)) return null
   seen.add(raw.id)
-  return {
+  const element: ArchitecturalElement = {
     id: raw.id,
     type: 'tower',
     x,
@@ -73,12 +76,28 @@ function readElement(value: unknown, seen: Set<string>): ArchitecturalElement | 
     secondary,
     ornament: raw.ornament,
   }
+  if (typeof raw.visualSeed === 'number' && Number.isFinite(raw.visualSeed)) {
+    const seed = Math.round(raw.visualSeed)
+    if (seed >= 0 && seed <= 1_000_000_000) element.visualSeed = seed
+  }
+  if (typeof raw.abstraction === 'number' && Number.isFinite(raw.abstraction)) {
+    element.abstraction = clampUnit(raw.abstraction)
+  }
+  if (isInkStyle(raw.inkStyle)) element.inkStyle = raw.inkStyle
+  if (isColorTreatment(raw.colorTreatment)) element.colorTreatment = raw.colorTreatment
+  return element
+}
+
+function readSchema(value: unknown): ShedSchemaVersion | null {
+  if (value === 1 || value === SHED_SCHEMA_VERSION) return value
+  return null
 }
 
 export function parseShedDocument(value: unknown): ShedDocument | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
-  if (raw.schema !== SHED_SCHEMA_VERSION) return null
+  const schema = readSchema(raw.schema)
+  if (!schema) return null
   if (!raw.scene || typeof raw.scene !== 'object') return null
   const scene = raw.scene as Record<string, unknown>
   if (typeof scene.id !== 'string' || scene.id.length < 1 || scene.id.length > 80) return null
@@ -92,7 +111,7 @@ export function parseShedDocument(value: unknown): ShedDocument | null {
     elements.push(element)
   }
   return {
-    schema: SHED_SCHEMA_VERSION,
+    schema,
     scene: {
       id: scene.id,
       version: scene.version,
