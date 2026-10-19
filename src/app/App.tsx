@@ -109,7 +109,6 @@ import { useTechnicalInterface } from './useTechnicalInterface'
 import { useEqWorkspaceLayout } from './useEqWorkspaceLayout'
 import { ExplainMarksSetting } from '../components/workspace/ExplainMarksSetting'
 import { TechnicalInterfaceSetting } from '../components/workspace/TechnicalInterfaceSetting'
-import { TechnicalUiSwitch } from '../components/workspace/TechnicalUiSwitch'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { ContextBar } from '../components/workspace/ContextBar'
 import { SelectionToolbar } from '../components/workspace/SelectionToolbar'
@@ -1926,9 +1925,6 @@ export default function App() {
             )
           }
           viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
-          uiSwitch={
-            isPhoneLayout ? undefined : <TechnicalUiSwitch value={technicalUi} onChange={setTechnicalUi} />
-          }
           guideLabel={guideChrome(locale).guideMe}
           onOpenGuide={() => {
             rememberTrigger('guide')

@@ -25,7 +25,6 @@ type Props = {
   minimal?: boolean
   modeSwitch?: ReactNode
   viewSwitch?: ReactNode
-  uiSwitch?: ReactNode
   zoned?: boolean
   guideLabel?: string
   onOpenGuide?: () => void
@@ -44,7 +43,6 @@ export function AppHeader({
   minimal = false,
   modeSwitch,
   viewSwitch,
-  uiSwitch,
   zoned = false,
   guideLabel,
   onOpenGuide,
@@ -161,7 +159,6 @@ export function AppHeader({
               {guideLabel}
             </button>
           ) : null}
-          {uiSwitch}
           <ResetSessionButton onReset={onReset} label={t.header.resetAction} toolbar />
           <ChaosControl />
           <button
