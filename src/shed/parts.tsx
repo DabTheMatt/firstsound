@@ -7,13 +7,19 @@ export function GraphicPaths({ parts }: { parts: TowerPart[] }) {
         <path
           key={part.id}
           data-part={part.id}
+          data-drawing="pen-watercolor"
           d={part.d}
-          fill={part.fill ?? 'none'}
+          fill={part.fill}
+          fillOpacity={part.fillOpacity}
+          opacity={part.opacity}
           stroke={part.stroke}
           strokeWidth={part.strokeWidth}
+          strokeOpacity={part.strokeOpacity}
+          strokeDasharray={part.strokeDasharray}
           strokeLinejoin="round"
           strokeLinecap="round"
-          opacity={part.opacity}
+          fillRule={part.fillRule}
+          pointerEvents={part.pointerEvents}
         />
       ))}
     </>

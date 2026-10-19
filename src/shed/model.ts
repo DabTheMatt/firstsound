@@ -1,3 +1,5 @@
+import { SHED_BLUE, SHED_BRICK, SHED_COPPER, SHED_GOLD, SHED_INK, SHED_LIMESTONE, SHED_PARCHMENT, SHED_WARM_GRAY } from './palette'
+
 /**
  * Local architectural document for SHED.
  *
@@ -81,19 +83,19 @@ export type ShedDocument = {
   scene: ShedScene
 }
 
-export const DEFAULT_PRIMARY = '#9c2f3c'
-export const DEFAULT_SECONDARY = '#e0b15a'
-export const DEFAULT_DETAIL = '#1c140f'
+export const DEFAULT_PRIMARY = SHED_BRICK
+export const DEFAULT_SECONDARY = SHED_COPPER
+export const DEFAULT_DETAIL = SHED_INK
 
 export const ARCHITECTURE_SWATCHES = [
-  { id: 'brick', value: '#9c2f3c' },
-  { id: 'ink', value: '#1c140f' },
-  { id: 'parchment', value: '#f3e6c8' },
-  { id: 'blue', value: '#5d7384' },
-  { id: 'copper', value: '#6e8b74' },
-  { id: 'gold', value: '#e0b15a' },
-  { id: 'limestone', value: '#d7d0c3' },
-  { id: 'gray', value: '#8a8178' },
+  { id: 'brick', value: SHED_BRICK },
+  { id: 'ink', value: SHED_INK },
+  { id: 'parchment', value: SHED_PARCHMENT },
+  { id: 'blue', value: SHED_BLUE },
+  { id: 'copper', value: SHED_COPPER },
+  { id: 'gold', value: SHED_GOLD },
+  { id: 'limestone', value: SHED_LIMESTONE },
+  { id: 'gray', value: SHED_WARM_GRAY },
 ] as const
 
 export type SwatchId = (typeof ARCHITECTURE_SWATCHES)[number]['id']
@@ -122,7 +124,7 @@ const LOOK: Record<ElementType, ElementLook> = {
   },
   facade: {
     primary: DEFAULT_PRIMARY,
-    secondary: '#d7d0c3',
+    secondary: SHED_LIMESTONE,
     detail: DEFAULT_DETAIL,
     width: 0.4,
     height: 0.56,
@@ -131,8 +133,8 @@ const LOOK: Record<ElementType, ElementLook> = {
     ornament: 'none',
   },
   roof: {
-    primary: '#6e8b74',
-    secondary: '#8a8178',
+    primary: SHED_COPPER,
+    secondary: SHED_WARM_GRAY,
     detail: DEFAULT_DETAIL,
     width: 0.64,
     height: 0.34,
@@ -141,7 +143,7 @@ const LOOK: Record<ElementType, ElementLook> = {
     ornament: 'finial',
   },
   arcade: {
-    primary: '#d7d0c3',
+    primary: SHED_LIMESTONE,
     secondary: DEFAULT_PRIMARY,
     detail: DEFAULT_DETAIL,
     width: 0.72,
@@ -152,7 +154,7 @@ const LOOK: Record<ElementType, ElementLook> = {
   },
   gate: {
     primary: DEFAULT_PRIMARY,
-    secondary: '#d7d0c3',
+    secondary: SHED_LIMESTONE,
     detail: DEFAULT_DETAIL,
     width: 0.5,
     height: 0.64,
@@ -161,7 +163,7 @@ const LOOK: Record<ElementType, ElementLook> = {
     ornament: 'none',
   },
   attic: {
-    primary: '#d7d0c3',
+    primary: SHED_LIMESTONE,
     secondary: DEFAULT_SECONDARY,
     detail: DEFAULT_DETAIL,
     width: 0.8,

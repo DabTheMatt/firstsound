@@ -1,6 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { elementsInDrawOrder } from './commands'
 import type { ArchitecturalElement, ShedDocument } from './model'
+import { SHED_INK, SHED_LIMESTONE, SHED_PARCHMENT } from './palette'
 import { TowerElement } from './TowerElement'
 import { SCENE_HEIGHT, SCENE_WIDTH, viewTransform, type SceneCamera } from './view'
 import styles from './ShedView.module.css'
@@ -89,14 +90,54 @@ export function ShedScene({
       data-shed-scene=""
       onPointerDown={onPointerDown}
     >
-      <rect data-scene-ground="true" width={SCENE_WIDTH} height={SCENE_HEIGHT} fill="var(--bg-app)" />
+      <defs>
+        <filter id="shed-paper" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="4" stitchTiles="stitch" result="noise" />
+          <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.91  0 0 0 0 0.87  0 0 0 0 0.78  0 0 0 0.16 0" result="grain" />
+          <feBlend in="SourceGraphic" in2="grain" mode="multiply" />
+        </filter>
+      </defs>
+      <rect data-scene-ground="true" width={SCENE_WIDTH} height={SCENE_HEIGHT} fill={SHED_PARCHMENT} filter="url(#shed-paper)" />
       <rect
         data-scene-ground="true"
         y={Math.round(SCENE_HEIGHT * 0.78)}
         width={SCENE_WIDTH}
         height={SCENE_HEIGHT - Math.round(SCENE_HEIGHT * 0.78)}
-        fill="color-mix(in srgb, var(--text-primary) 7%, var(--bg-app))"
+        fill={SHED_LIMESTONE}
+        opacity={0.45}
       />
+      <rect
+        x={16}
+        y={16}
+        width={SCENE_WIDTH - 32}
+        height={SCENE_HEIGHT - 32}
+        fill="none"
+        stroke={SHED_INK}
+        strokeWidth={0.6}
+        opacity={0.28}
+        pointerEvents="none"
+      />
+      <line
+        data-scene-ground="true"
+        x1={36}
+        y1={Math.round(SCENE_HEIGHT * 0.78)}
+        x2={SCENE_WIDTH - 36}
+        y2={Math.round(SCENE_HEIGHT * 0.78)}
+        stroke={SHED_INK}
+        strokeWidth={0.75}
+        opacity={0.4}
+      />
+      {[
+        [28, 28],
+        [SCENE_WIDTH - 28, 28],
+        [28, SCENE_HEIGHT - 28],
+        [SCENE_WIDTH - 28, SCENE_HEIGHT - 28],
+      ].map(([x, y]) => (
+        <g key={`${x}-${y}`} stroke={SHED_INK} strokeWidth={0.6} opacity={0.4} pointerEvents="none">
+          <line x1={x - 7} y1={y} x2={x + 7} y2={y} />
+          <line x1={x} y1={y - 7} x2={x} y2={y + 7} />
+        </g>
+      ))}
       <g transform={viewTransform(camera)}>
         {ordered.map((element) => (
           <TowerElement

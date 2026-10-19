@@ -12,6 +12,7 @@ import {
 import { buildElement } from './geometry'
 import { showsField } from './fields'
 import {
+  DEFAULT_PRIMARY,
   ELEMENT_TYPES,
   SHED_STORAGE_KEY,
   defaultElement,
@@ -256,7 +257,7 @@ describe('SHED document migration', () => {
       x: 0.96,
       y: 0.04,
       height: 0.5,
-      primary: '#9c2f3c',
+      primary: DEFAULT_PRIMARY,
       ornament: 'finial',
       variant: 3,
     })
