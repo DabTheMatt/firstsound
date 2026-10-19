@@ -1,0 +1,126 @@
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--bg-app) 55%, transparent);
+  flex: none;
+  max-width: 100%;
+}
+
+.opt {
+  border: 0;
+  min-width: 0;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--type-10);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  min-height: max(32px, var(--toolbar-h));
+  border-radius: 999px;
+}
+
+.compact {
+  gap: 0;
+  padding: 2px;
+}
+
+.compact .opt {
+  padding: 6px 7px;
+  min-height: 44px;
+  font-size: var(--type-9);
+  letter-spacing: 0.06em;
+}
+
+.opt.on {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  box-shadow: inset 0 -2px 0 var(--accent-primary);
+}
+
+.opt:hover,
+.opt:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-control-hover);
+}
+
+.opt:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.editorial {
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.editorial .opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  letter-spacing: 0.18em;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.editorial .opt.on {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--text-primary);
+  box-shadow: 0 0 10px var(--text-primary);
+}
+
+.dotOff {
+  visibility: hidden;
+  box-shadow: none;
+}
+
+:global([data-technical-ui='workspace']) .switch {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+:global([data-technical-ui='workspace']) .opt {
+  min-height: max(32px, var(--toolbar-h));
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: var(--ws-bar-size, 11px);
+  font-weight: var(--ws-bar-weight, 500);
+  letter-spacing: var(--ws-bar-track, 0.08em);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+:global([data-technical-ui='workspace']) .opt:hover,
+:global([data-technical-ui='workspace']) .opt:focus-visible {
+  background: var(--ws-bar-hover);
+  color: var(--text-primary);
+}
+
+:global([data-technical-ui='workspace']) .opt.on,
+:global([data-technical-ui='workspace']) .opt.on:hover {
+  background: var(--ws-bar-on);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--accent-primary);
+}

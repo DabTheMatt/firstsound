@@ -26,6 +26,8 @@ import { ThemePicker } from '../components/header/ThemePicker'
 import { Wordmark } from '../components/header/Wordmark'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import type { UiMode } from '../modes/uiMode'
+import { AppViewSwitch } from '../app/AppViewSwitch'
+import type { AppView } from '../app/appView'
 import { captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
 import type { EqBand } from '../audio/engine/eqBands'
@@ -101,6 +103,8 @@ type Props = {
   onApplyTrim: () => void
   mode: UiMode
   onMode: (mode: UiMode) => void
+  view: AppView
+  onView: (view: AppView) => void
 }
 
 export function SimpleShell({
@@ -129,6 +133,8 @@ export function SimpleShell({
   onApplyTrim,
   mode,
   onMode,
+  view,
+  onView,
 }: Props) {
   const { t, locale } = useI18n()
   const guide = guideChrome(locale)
@@ -893,6 +899,7 @@ export function SimpleShell({
           </button>
           <div className={styles.modeSlot}>
             <MarkerPanel mode="simple" onCommit={onRegionCommit} />
+            <AppViewSwitch view={view} onChange={onView} compact={frame === 'phone'} />
             <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
           </div>
           <ThemePicker compact={frame === 'phone'} />

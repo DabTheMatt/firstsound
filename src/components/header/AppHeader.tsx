@@ -24,6 +24,7 @@ type Props = {
   compact: boolean
   minimal?: boolean
   modeSwitch?: ReactNode
+  viewSwitch?: ReactNode
   uiSwitch?: ReactNode
   zoned?: boolean
   guideLabel?: string
@@ -42,6 +43,7 @@ export function AppHeader({
   compact,
   minimal = false,
   modeSwitch,
+  viewSwitch,
   uiSwitch,
   zoned = false,
   guideLabel,
@@ -129,6 +131,7 @@ export function AppHeader({
       </div>
       )}
       <div className={styles.trailing}>
+        {viewSwitch}
         {minimal ? (
           <div className={styles.runtime}>
             <RuntimeStatus />

@@ -517,6 +517,16 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'shed',
+    title: 'SHED',
+    body: [
+      'SHED is a local prototype inside FIELD for the INTERFERENCJE project. It is a place to build a virtual Kraków nativity scene, a szopka krakowska. Later, each architectural element can stand for one field recording of Kraków. This first version keeps an editable tower on this device. It does not sync between devices. It does not use an account or Google Drive, and it does not play audio of its own.',
+      'Open SHED from the Workspace | SHED switch in the header. Workspace returns to the editing mode you were already using. Simple, Technical, and Sensory stay as they were. Switching does not restart the audio engine, drop the loaded sample, or clear editing parameters.',
+      'Select the tower by clicking, tapping, or focusing it and pressing Enter. A dashed outline and a corner mark show the selection. The panel lists the element type, height, width, roof, colors, ornament, position, and layer. Drag the tower to move it. Arrow keys move it too, and Shift takes a smaller step. The position sliders do the same. Reset restores that tower’s initial proportions, colors, ornament, and place. Reset view only restores zoom.',
+      'Changes are saved in this browser. Reload the page and the last tower comes back. If the saved note is unreadable, FIELD restores a safe default tower. The save line says Saved. That save stays on this device.',
+    ],
+  },
+  {
     id: 'trouble',
     title: 'Troubleshooting',
     body: [
@@ -1020,6 +1030,16 @@ const pl: ManualSection[] = [
       'Wizualny asystent miksu wymienia warunki techniczne: możliwe przesterowanie, energia niskich częstotliwości, nierównowaga kanałów, niska korelacja, zakres dynamiki, długa cisza i składowa stała. Pokaż przesuwa głowicę. Nie naprawia audio.',
       'W trybie Focus dostęp słuchowy zostaje jednym odczytem na aktywnym wykresie: szczyt i zakres fali, dominująca częstotliwość widma albo wartość zapisana i efektywna parametru automacji. EQ Focus tego odczytu nie pokazuje. Wykres pozostaje główną powierzchnią.',
       'Ograniczenia: Dostęp słuchowy daje wizualną, liczbową i opcjonalnie dotykową reprezentację mierzalnych właściwości dźwięku. Nie odtwarza każdego percepcyjnego aspektu słyszenia i nie gwarantuje, że miks będzie subiektywnie poprawny dla każdego słuchacza. Monitoring assistance nie jest medycznym urządzeniem słuchowym. Liczby voice/background, jeśli się pojawią, są szacunkiem i są pomijane, gdy widmo jest wąskim tonem albo wynik jest niejednoznaczny.',
+    ],
+  },
+  {
+    id: 'shed',
+    title: 'SHED',
+    body: [
+      'SHED to lokalny prototyp wewnątrz FIELD, część projektu INTERFERENCJE. Służy do budowania wirtualnej szopki krakowskiej. Później każdy element architektoniczny będzie mógł odpowiadać jednemu nagraniu terenowemu z Krakowa. Ta pierwsza wersja trzyma edytowalną wieżę na tym urządzeniu. Nie synchronizuje danych między urządzeniami. Nie używa konta ani Google Drive i nie odtwarza własnego audio.',
+      'SHED otwiera przełącznik Warsztat | SHED w nagłówku. Warsztat wraca do trybu edycji, którego już używasz. Prosty, Techniczny i Sensoryczny zostają takie, jakie były. Przełączenie nie uruchamia silnika audio od nowa, nie usuwa wczytanego sampla i nie czyści parametrów edycji.',
+      'Wieżę zaznaczasz kliknięciem, dotknięciem albo fokusem i Enter. Przerywany obrys i znacznik w rogu pokazują zaznaczenie. Panel podaje typ elementu, wysokość, szerokość, dach, kolory, ornament, położenie i warstwę. Wieżę przesuwasz przeciągnięciem. Strzałki też ją przesuwają, a Shift robi mniejszy krok. To samo robią suwaki położenia. Przywróć wraca do początkowych proporcji, kolorów, ornamentu i miejsca tej wieży. Resetuj widok przywraca tylko powiększenie.',
+      'Zmiany zapisują się w tej przeglądarce. Po odświeżeniu strony wraca ostatnia wieża. Gdy zapis jest nieczytelny, FIELD przywraca bezpieczną domyślną wieżę. Linia zapisu mówi Zapisano. Ten zapis zostaje na tym urządzeniu.',
     ],
   },
   {
