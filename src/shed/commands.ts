@@ -265,3 +265,15 @@ export function duplicateElement(document: ShedDocument, id: string): ShedDocume
 export function patchParam(document: ShedDocument, id: string, key: ParamKey, value: number): ShedDocument {
   return updateElement(document, id, { params: { [key]: value } })
 }
+
+export function setBuildingTransparency(document: ShedDocument, transparent: boolean): ShedDocument {
+  if (document.scene.transparentBuildings === transparent) return document
+  return {
+    ...document,
+    scene: {
+      ...document.scene,
+      version: nextVersion(document),
+      transparentBuildings: transparent,
+    },
+  }
+}

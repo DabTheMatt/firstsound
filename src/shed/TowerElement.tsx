@@ -16,6 +16,7 @@ type Props = {
   onMove: (id: string, x: number, y: number) => void
   onNudge: (id: string, key: string, shiftKey: boolean) => void
   onDelete?: (id: string) => void
+  transparent?: boolean
 }
 
 export const TowerElement = memo(function TowerElement({
@@ -27,6 +28,7 @@ export const TowerElement = memo(function TowerElement({
   onMove,
   onNudge,
   onDelete,
+  transparent = true,
 }: Props) {
   const sketch = usesSketchTower(element) ? renderSketchTower(element) : null
   const library = sketch ? null : buildElement(element)
@@ -108,7 +110,11 @@ export const TowerElement = memo(function TowerElement({
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
     >
-      {sketch ? <SketchMarks parts={sketch.parts} drawing="pen-watercolor" /> : <GraphicPaths parts={library!.parts} />}
+      {sketch ? (
+        <SketchMarks parts={sketch.parts} drawing="pen-watercolor" transparent={transparent} />
+      ) : (
+        <GraphicPaths parts={library!.parts} transparent={transparent} />
+      )}
       <rect className={styles.focusRing} x={-6} y={-6} width={graphic.width + 12} height={graphic.height + 12} />
       {selected ? (
         <g aria-hidden="true">

@@ -22,6 +22,7 @@ type Props = {
   onDelete: (id: string) => void
   onPan: (panX: number, panY: number) => void
   onZoom: (direction: 'in' | 'out') => void
+  transparent?: boolean
 }
 
 export function ShedScene({
@@ -37,6 +38,7 @@ export function ShedScene({
   onDelete,
   onPan,
   onZoom,
+  transparent = true,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const ordered = elementsInDrawOrder(document)
@@ -95,6 +97,7 @@ export function ShedScene({
       role="group"
       aria-label={sceneLabel}
       data-shed-scene=""
+      data-building-transparency={transparent ? 'on' : 'off'}
       onPointerDown={onPointerDown}
     >
       <defs>
@@ -160,6 +163,7 @@ export function ShedScene({
             onMove={onMove}
             onNudge={onNudge}
             onDelete={onDelete}
+            transparent={transparent}
           />
         ))}
       </g>

@@ -8,6 +8,7 @@ import {
   nudgeElement,
   resetElement,
   sendBackward,
+  setBuildingTransparency,
   updateElement,
   type ElementPatch,
 } from './commands'
@@ -102,6 +103,12 @@ export function useShedDocument() {
     },
     [replace],
   )
+  const setTransparency = useCallback(
+    (transparent: boolean) => {
+      replace(setBuildingTransparency(documentRef.current, transparent))
+    },
+    [replace],
+  )
   const duplicate = useCallback(
     (id: string) => {
       const before = new Set(documentRef.current.scene.elements.map((element) => element.id))
@@ -125,5 +132,6 @@ export function useShedDocument() {
     add,
     remove,
     duplicate,
+    setTransparency,
   }
 }

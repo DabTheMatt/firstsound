@@ -75,6 +75,8 @@ describe('i18n catalogs', () => {
     expect(PL.view.workspace).toBe('Warsztat')
     expect(EN.view.workspace).toBe('Workspace')
     expect(PL.shed.addElement).toBe('Dodaj element')
+    expect(PL.shed.transparency).toBe('Przezroczystość')
+    expect(EN.shed.transparency).toBe('Transparency')
     expect(PL.shed.tower).toBe('Wieża')
     expect(PL.shed.height).toBe('Wysokość')
     expect(PL.shed.width).toBe('Szerokość')

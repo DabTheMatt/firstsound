@@ -1150,6 +1150,7 @@ export type Messages = {
     panRightShort: string
     panUpShort: string
     panDownShort: string
+    transparency: string
     saved: string
     savedHint: string
     restored: string
@@ -2514,6 +2515,7 @@ export const EN: Messages = {
     panRightShort: 'Right',
     panUpShort: 'Up',
     panDownShort: 'Down',
+    transparency: 'Transparency',
     saved: 'Saved',
     savedHint: 'Saved in this browser only. It does not sync to other devices.',
     restored: 'Restored the default scene',
@@ -3885,6 +3887,7 @@ export const PL: Messages = {
     panRightShort: 'Prawo',
     panUpShort: 'Góra',
     panDownShort: 'Dół',
+    transparency: 'Przezroczystość',
     saved: 'Zapisano',
     savedHint: 'Zapisane tylko w tej przeglądarce. Nie synchronizuje się z innymi urządzeniami.',
     restored: 'Przywrócono domyślną scenę',

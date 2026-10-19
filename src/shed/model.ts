@@ -99,6 +99,11 @@ export type ShedScene = {
   id: string
   version: number
   elements: ArchitecturalElement[]
+  /**
+   * When false, building washes cover what is behind them.
+   * Missing means clear, and is left unwritten so older scenes stay as stored.
+   */
+  transparentBuildings?: boolean
 }
 
 export type ShedDocument = {

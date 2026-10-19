@@ -1,6 +1,7 @@
 import type { TowerPart } from './geometry'
+import { presentedFillOpacity } from './opacity'
 
-export function GraphicPaths({ parts }: { parts: TowerPart[] }) {
+export function GraphicPaths({ parts, transparent = true }: { parts: TowerPart[]; transparent?: boolean }) {
   return (
     <>
       {parts.map((part) => (
@@ -10,7 +11,7 @@ export function GraphicPaths({ parts }: { parts: TowerPart[] }) {
           data-drawing="pen-watercolor"
           d={part.d}
           fill={part.fill}
-          fillOpacity={part.fillOpacity}
+          fillOpacity={presentedFillOpacity(part, transparent)}
           opacity={part.opacity}
           stroke={part.stroke}
           strokeWidth={part.strokeWidth}

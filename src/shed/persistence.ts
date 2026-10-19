@@ -224,12 +224,14 @@ function readDocument(value: unknown, mode: ReadMode): ShedDocument | null {
   }
   if (mode === 'strict' && schema === 1 && elements.length < 1) return null
   if (mode === 'strict' && schema === SHED_SCHEMA_VERSION && elements.length !== scene.elements.length) return null
+  const transparentBuildings = scene.transparentBuildings
   return {
     schema: SHED_SCHEMA_VERSION,
     scene: {
       id,
       version: scene.version,
       elements,
+      ...(transparentBuildings === true || transparentBuildings === false ? { transparentBuildings } : {}),
     },
   }
 }

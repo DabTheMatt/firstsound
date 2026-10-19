@@ -18,12 +18,15 @@ type Copy = {
   saved: string
   restored: string
   savedHint: string
+  transparency: string
 }
 
 type Props = {
   copy: Copy
   status: ShedLoadStatus
   libraryOpen: boolean
+  transparent: boolean
+  onToggleTransparency: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onResetView: () => void
@@ -31,7 +34,18 @@ type Props = {
   onAdd: () => void
 }
 
-export function SceneToolbar({ copy, status, libraryOpen, onZoomIn, onZoomOut, onResetView, onPan, onAdd }: Props) {
+export function SceneToolbar({
+  copy,
+  status,
+  libraryOpen,
+  transparent,
+  onToggleTransparency,
+  onZoomIn,
+  onZoomOut,
+  onResetView,
+  onPan,
+  onAdd,
+}: Props) {
   const statusText = status === 'restored' ? copy.restored : copy.saved
   return (
     <div className={styles.toolbar} role="toolbar" aria-label={copy.toolbar}>
@@ -58,6 +72,9 @@ export function SceneToolbar({ copy, status, libraryOpen, onZoomIn, onZoomOut, o
       </button>
       <button type="button" className={styles.tool} aria-expanded={libraryOpen} aria-controls="shed-library" onClick={onAdd}>
         {copy.addElement}
+      </button>
+      <button type="button" className={styles.tool} aria-pressed={transparent} onClick={onToggleTransparency}>
+        {copy.transparency}
       </button>
       <p className={styles.status} role="status" aria-describedby="shed-save-hint">
         {statusText}

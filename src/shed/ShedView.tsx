@@ -4,6 +4,7 @@ import { addElement } from './commands'
 import { ElementLibrary } from './ElementLibrary'
 import { ElementPanel } from './ElementPanel'
 import type { ArchitecturalElement, ElementType, ParamKey } from './model'
+import { buildingsAreTransparent } from './opacity'
 import { SceneToolbar } from './SceneToolbar'
 import { ShedScene } from './ShedScene'
 import { useShedDocument } from './useShedDocument'
@@ -29,6 +30,7 @@ export const ShedView = memo(function ShedView() {
   const panelRef = useRef<HTMLElement>(null)
   const libraryRef = useRef<HTMLElement>(null)
   const selected = shed.document.scene.elements.find((element) => element.id === selectedId) ?? null
+  const transparent = buildingsAreTransparent(shed.document.scene)
   const activeId = selected?.id ?? null
   const copy = {
     ...t.shed,
@@ -137,11 +139,14 @@ export const ShedView = memo(function ShedView() {
           onDelete={remove}
           onPan={(panX, panY) => setCamera((current) => clampCamera({ ...current, panX, panY }))}
           onZoom={(direction) => zoomBy(direction)}
+          transparent={transparent}
         />
         <SceneToolbar
           copy={copy}
           status={shed.status}
           libraryOpen={libraryOpen}
+          transparent={transparent}
+          onToggleTransparency={() => shed.setTransparency(!transparent)}
           onZoomIn={() => zoomBy('in')}
           onZoomOut={() => zoomBy('out')}
           onResetView={() => zoomBy('reset')}
