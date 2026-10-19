@@ -263,12 +263,26 @@
 }
 
 @media (max-width: 800px) {
+  .sceneWrap {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scene {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+  }
+
   .panel {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
     width: auto;
-    max-height: 46%;
+    max-height: 42%;
+    flex: 0 1 auto;
+    margin: 0 8px 8px;
   }
 
   .toolbar {
