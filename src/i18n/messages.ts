@@ -1094,6 +1094,7 @@ export type Messages = {
   view: {
     group: string
     workspace: string
+    activity: string
     shed: string
   }
   shed: {
@@ -1280,6 +1281,49 @@ export type Messages = {
       stats: string
       zoomToolbar: string
     }
+  }
+  activity: {
+    region: string
+    demoBadge: string
+    demoNote: string
+    recordings: string
+    totalSize: string
+    activeStudents: string
+    last7Days: string
+    timeline: string
+    rangeGroup: string
+    range7: string
+    range30: string
+    rangeAll: string
+    timelineEmpty: string
+    timelineSummary: (count: number, peak: string, day: string) => string
+    timelineTable: string
+    day: string
+    count: string
+    students: string
+    sortGroup: string
+    sortCount: string
+    sortRecent: string
+    sortName: string
+    meterLabel: (name: string, count: number, size: string) => string
+    stateRecent: string
+    stateEarlier: string
+    stateNone: string
+    level: string
+    name: string
+    lastActivity: string
+    indicator: string
+    recentRecordings: string
+    filename: string
+    student: string
+    uploaded: string
+    fileSize: string
+    format: string
+    noRecordings: string
+    noStudents: string
+    unknownStudent: string
+    loadError: string
+    generated: (when: string) => string
   }
 }
 
@@ -2542,6 +2586,7 @@ export const EN: Messages = {
   view: {
     group: 'Destination',
     workspace: 'Workspace',
+    activity: 'Activity',
     shed: 'SHED',
   },
   shed: {
@@ -2752,6 +2797,65 @@ export const EN: Messages = {
       stats: 'Contributions',
       zoomToolbar: 'Map',
     },
+  },
+  activity: {
+    region: 'Recording activity',
+    demoBadge: 'Demo data',
+    demoNote: 'These figures are a sample set. They are not the project recordings, and Google Drive is not connected.',
+    recordings: 'Recordings',
+    totalSize: 'File size',
+    activeStudents: 'Active students',
+    last7Days: 'Last 7 days',
+    timeline: 'Activity timeline',
+    rangeGroup: 'Timeline range',
+    range7: '7 days',
+    range30: '30 days',
+    rangeAll: 'All',
+    timelineEmpty: 'No recordings in this range.',
+    timelineSummary: (count, peak, day) => {
+      const added = countNoun(
+        'en',
+        count,
+        { one: 'recording', other: 'recordings' },
+        { one: 'nagranie', few: 'nagrania', many: 'nagrań' },
+      )
+      return `${added} added. Peak ${peak} on ${day}.`
+    },
+    timelineTable: 'Values',
+    day: 'Day',
+    count: 'Count',
+    students: 'Participants',
+    sortGroup: 'Sort',
+    sortCount: 'Recordings',
+    sortRecent: 'Last activity',
+    sortName: 'Name',
+    meterLabel: (name, count, size) => {
+      const added = countNoun(
+        'en',
+        count,
+        { one: 'recording', other: 'recordings' },
+        { one: 'nagranie', few: 'nagrania', many: 'nagrań' },
+      )
+      return `${name}, ${added}, ${size}`
+    },
+    stateRecent: 'Recent',
+    stateEarlier: 'Earlier',
+    stateNone: 'None',
+    level: 'Level',
+    name: 'Name',
+    lastActivity: 'Last activity',
+    indicator: 'Status',
+    recentRecordings: 'Recent recordings',
+    filename: 'Filename',
+    student: 'Student',
+    uploaded: 'Uploaded',
+    fileSize: 'File size',
+    format: 'Format',
+    noRecordings: 'No recordings yet.',
+    noStudents: 'No participants.',
+    unknownStudent: 'Unknown participant',
+    loadError: 'Activity data could not be read.',
+    generated: (when) => `Sample set ${when}`,
   },
 }
 
@@ -4020,6 +4124,7 @@ export const PL: Messages = {
   view: {
     group: 'Miejsce',
     workspace: 'Warsztat',
+    activity: 'Aktywność',
     shed: 'SHED',
   },
   shed: {
@@ -4230,6 +4335,65 @@ export const PL: Messages = {
       stats: 'Wkład',
       zoomToolbar: 'Mapa',
     },
+  },
+  activity: {
+    region: 'Aktywność nagrań',
+    demoBadge: 'Dane demonstracyjne',
+    demoNote: 'To przykładowy zestaw. To nie są nagrania projektu i Dysk Google nie jest podłączony.',
+    recordings: 'Nagrania',
+    totalSize: 'Rozmiar plików',
+    activeStudents: 'Aktywni uczestnicy',
+    last7Days: 'Ostatnie 7 dni',
+    timeline: 'Oś aktywności',
+    rangeGroup: 'Zakres czasu',
+    range7: '7 dni',
+    range30: '30 dni',
+    rangeAll: 'Całość',
+    timelineEmpty: 'Brak nagrań w tym zakresie.',
+    timelineSummary: (count, peak, day) => {
+      const added = countNoun(
+        'pl',
+        count,
+        { one: 'recording', other: 'recordings' },
+        { one: 'nagranie', few: 'nagrania', many: 'nagrań' },
+      )
+      return `Dodano ${added}. Szczyt ${peak}, ${day}.`
+    },
+    timelineTable: 'Wartości',
+    day: 'Dzień',
+    count: 'Liczba',
+    students: 'Uczestnicy',
+    sortGroup: 'Sortowanie',
+    sortCount: 'Nagrania',
+    sortRecent: 'Ostatnia aktywność',
+    sortName: 'Nazwa',
+    meterLabel: (name, count, size) => {
+      const added = countNoun(
+        'pl',
+        count,
+        { one: 'recording', other: 'recordings' },
+        { one: 'nagranie', few: 'nagrania', many: 'nagrań' },
+      )
+      return `${name}, ${added}, ${size}`
+    },
+    stateRecent: 'Ostatnio',
+    stateEarlier: 'Wcześniej',
+    stateNone: 'Brak',
+    level: 'Poziom',
+    name: 'Nazwa',
+    lastActivity: 'Ostatnia aktywność',
+    indicator: 'Stan',
+    recentRecordings: 'Ostatnie nagrania',
+    filename: 'Nazwa pliku',
+    student: 'Uczestnik',
+    uploaded: 'Data',
+    fileSize: 'Rozmiar pliku',
+    format: 'Format',
+    noRecordings: 'Brak nagrań.',
+    noStudents: 'Brak uczestników.',
+    unknownStudent: 'Nieznany uczestnik',
+    loadError: 'Nie udało się odczytać danych aktywności.',
+    generated: (when) => `Zestaw z ${when}`,
   },
 }
 

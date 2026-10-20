@@ -51,6 +51,7 @@ import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { AppViewSwitch } from './AppViewSwitch'
 import { applyAppView, type AppView } from './appView'
+import { ActivityView } from '../activity/ActivityView'
 import { ShedView } from '../shed/ShedView'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
@@ -759,7 +760,7 @@ export default function App() {
   const chooseView = (view: AppView) => {
     const next = applyAppView({ view: appView, mode: uiMode }, view)
     setAppView(next.view)
-    announce(view === 'shed' ? t.view.shed : t.view.workspace)
+    announce(t.view[view])
     focusSelector(`[data-app-view="${view}"]`)
   }
 
@@ -1675,6 +1676,65 @@ export default function App() {
     automationPointId: autoFocus.nodeId,
     automationLaneId: snap.automation.selectedParamId,
   })
+
+  if (appView === 'activity') {
+    return (
+      <div className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}>
+        <SkipLink />
+        <LiveAnnouncer />
+        <ExplainHost />
+        <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
+          <AppHeader
+            snap={snap}
+            settingsOpen={moreOpen}
+            lfoCenterOpen={lfoCenterOpen}
+            onToggleSettings={() => {
+              toggleSettings()
+              setLfoCenterOpen(false)
+            }}
+            onToggleLfoCenter={() => {
+              setLfoCenterOpen((open) => !open)
+              setMenuOpen(false)
+            }}
+            onLoadSample={() => sampleInput.current?.click()}
+            onReset={resetSession}
+            onRecord={() => {
+              if (engine.getSnapshot().recording) engine.stopMicRecord()
+              else void engine.startMicRecord()
+            }}
+            compact={sheet}
+            minimal={isPhoneLayout}
+            viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
+            guideLabel={guideChrome(locale).guideMe}
+            onOpenGuide={() => {
+              rememberTrigger('guide')
+              dispatchGuide({ type: 'open-library' })
+            }}
+          />
+          <ActivityView />
+          {lfoCenterOpen ? (
+            <div className={styles.overlay}>
+              <button
+                type="button"
+                className={styles.settingsScrim}
+                aria-label={t.settings.closeLfo}
+                onClick={() => setLfoCenterOpen(false)}
+              />
+              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
+                <LfoCenter snap={snap} onReveal={revealLfo} />
+              </div>
+            </div>
+          ) : null}
+          {settingsMenu}
+        </main>
+        {fileInputs}
+        {keyboardChrome}
+        {manualOpen ? <ManualDialog sectionId={manualSection} onClose={() => { setManualOpen(false); restoreTrigger('manual', '[data-settings-toggle]') }} /> : null}
+        {guide}
+        <HearingAccessLayer surface="technical" />
+      </div>
+    )
+  }
 
   if (appView === 'shed') {
     return (

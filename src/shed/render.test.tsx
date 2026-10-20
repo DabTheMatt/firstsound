@@ -52,7 +52,9 @@ describe('SHED rendering', () => {
       </I18nProvider>,
     )
     expect(markup).toContain('Workspace')
+    expect(markup).toContain('Activity')
     expect(markup).toContain('SHED')
+    expect(markup).toContain('data-app-view="activity"')
     expect(markup).toContain('data-app-view="shed"')
   })
 

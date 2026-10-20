@@ -14,6 +14,7 @@ export function AppViewSwitch({ view, onChange, compact = false, variant = 'pill
   const { t } = useI18n()
   const options: { id: AppView; label: string }[] = [
     { id: 'workspace', label: t.view.workspace },
+    { id: 'activity', label: t.view.activity },
     { id: 'shed', label: t.view.shed },
   ]
   return (

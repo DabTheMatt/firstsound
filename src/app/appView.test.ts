@@ -4,8 +4,9 @@ import uiSource from '../modes/uiMode.ts?raw'
 import { applyAppView, parseAppView } from './appView'
 
 describe('application view', () => {
-  it('parses the two destinations', () => {
+  it('parses the destinations', () => {
     expect(parseAppView('workspace')).toBe('workspace')
+    expect(parseAppView('activity')).toBe('activity')
     expect(parseAppView('shed')).toBe('shed')
     expect(parseAppView('technical')).toBeNull()
   })
@@ -19,10 +20,19 @@ describe('application view', () => {
       view: 'workspace',
       mode: 'simple',
     })
+    expect(applyAppView({ view: 'workspace', mode: 'technical' }, 'activity')).toEqual({
+      view: 'activity',
+      mode: 'technical',
+    })
+    expect(applyAppView({ view: 'activity', mode: 'simple' }, 'workspace')).toEqual({
+      view: 'workspace',
+      mode: 'simple',
+    })
   })
 
-  it('does not register SHED as an editing mode', () => {
+  it('does not register SHED or Activity as an editing mode', () => {
     expect(uiSource).not.toContain("'shed'")
+    expect(uiSource).not.toContain("'activity'")
     expect(uiSource).toContain("'simple'")
   })
 
@@ -31,5 +41,6 @@ describe('application view', () => {
     expect(match?.[0]).toContain('applyAppView')
     expect(match?.[0]).not.toContain('engine')
     expect(appSource).toContain("appView === 'shed'")
+    expect(appSource).toContain("appView === 'activity'")
   })
 })
