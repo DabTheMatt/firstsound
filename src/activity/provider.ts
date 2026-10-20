@@ -1,5 +1,7 @@
 import { createDemoSnapshot } from './demo'
 import { parseActivitySnapshot, toPublicActivitySnapshot } from './parse'
+import { validatePublicSnapshot } from './snapshot/validate'
+import type { PublicActivitySnapshot } from './snapshot/schema'
 import type { ActivitySnapshot, ActivitySourceKind } from './types'
 
 /**
@@ -11,10 +13,17 @@ export interface ActivityProvider {
   load(): Promise<ActivitySnapshot>
 }
 
-export class ActivitySourceError extends Error {
-  readonly code: 'invalid-snapshot' | 'not-implemented'
+export type ActivitySourceErrorCode =
+  | 'invalid-snapshot'
+  | 'invalid-json'
+  | 'missing-snapshot'
+  | 'unavailable'
+  | 'not-implemented'
 
-  constructor(code: 'invalid-snapshot' | 'not-implemented') {
+export class ActivitySourceError extends Error {
+  readonly code: ActivitySourceErrorCode
+
+  constructor(code: ActivitySourceErrorCode) {
     super(code)
     this.name = 'ActivitySourceError'
     this.code = code
@@ -38,6 +47,25 @@ export function createPublishedJsonProvider(readJson: () => Promise<unknown>): A
       const parsed = parseActivitySnapshot(await readJson())
       if (!parsed) throw new ActivitySourceError('invalid-snapshot')
       return toPublicActivitySnapshot(parsed)
+    },
+  }
+}
+
+/**
+ * STATIC_SNAPSHOT. Reads a validated public JSON document.
+ * A failure rejects. It does not return demonstration data.
+ */
+export function createStaticSnapshotProvider(readJson: () => Promise<unknown>): {
+  readonly kind: 'static-snapshot'
+  load(): Promise<PublicActivitySnapshot>
+} {
+  return {
+    kind: 'static-snapshot',
+    async load() {
+      const payload = await readJson()
+      const validated = validatePublicSnapshot(payload)
+      if (!validated.ok) throw new ActivitySourceError('invalid-snapshot')
+      return validated.snapshot
     },
   }
 }

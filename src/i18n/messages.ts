@@ -1323,6 +1323,16 @@ export type Messages = {
     noStudents: string
     unknownStudent: string
     loadError: string
+    loading: string
+    missingSnapshot: string
+    invalidSnapshot: string
+    snapshotBadge: string
+    snapshotNote: string
+    publishedNote: string
+    synchronized: (when: string) => string
+    windowCounts: (students: string, last30: string) => string
+    stale: string
+    filenamesOmitted: string
     generated: (when: string) => string
   }
 }
@@ -2855,6 +2865,16 @@ export const EN: Messages = {
     noStudents: 'No participants.',
     unknownStudent: 'Unknown participant',
     loadError: 'Activity data could not be read.',
+    loading: 'Reading the activity snapshot.',
+    missingSnapshot: 'The activity snapshot is not published yet.',
+    invalidSnapshot: 'The activity snapshot could not be read. Demonstration data is not shown in its place.',
+    snapshotBadge: 'Published snapshot',
+    snapshotNote: 'These figures come from a published snapshot. FIELD does not connect to Google Drive. File names are not included.',
+    publishedNote: 'These figures come from a published snapshot.',
+    synchronized: (when) => `Last synchronization ${when}`,
+    windowCounts: (students, last30) => `${students} participants · Last 30 days ${last30}`,
+    stale: 'This snapshot is older than the expected refresh. The time above is the last successful synchronization.',
+    filenamesOmitted: 'File names are not part of the published snapshot.',
     generated: (when) => `Sample set ${when}`,
   },
 }
@@ -4393,6 +4413,16 @@ export const PL: Messages = {
     noStudents: 'Brak uczestników.',
     unknownStudent: 'Nieznany uczestnik',
     loadError: 'Nie udało się odczytać danych aktywności.',
+    loading: 'Odczyt zestawu aktywności.',
+    missingSnapshot: 'Zestaw aktywności nie został jeszcze opublikowany.',
+    invalidSnapshot: 'Nie udało się odczytać zestawu aktywności. W jego miejsce nie są pokazywane dane demonstracyjne.',
+    snapshotBadge: 'Opublikowany zestaw',
+    snapshotNote: 'Te liczby pochodzą z opublikowanego zestawu. FIELD nie łączy się z Dyskiem Google. Nazwy plików nie są w zestawie.',
+    publishedNote: 'Te liczby pochodzą z opublikowanego zestawu.',
+    synchronized: (when) => `Ostatnia synchronizacja ${when}`,
+    windowCounts: (students, last30) => `${students} uczestników · Ostatnie 30 dni ${last30}`,
+    stale: 'Ten zestaw jest starszy niż oczekiwane odświeżenie. Czas powyżej to ostatnia udana synchronizacja.',
+    filenamesOmitted: 'Nazwy plików nie wchodzą do opublikowanego zestawu.',
     generated: (when) => `Zestaw z ${when}`,
   },
 }

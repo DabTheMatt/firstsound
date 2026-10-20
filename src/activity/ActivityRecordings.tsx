@@ -7,9 +7,10 @@ import styles from './ActivityView.module.css'
 
 type Props = {
   rows: RecentRecordingRow[]
+  notice?: string | null
 }
 
-export function ActivityRecordings({ rows }: Props) {
+export function ActivityRecordings({ rows, notice = null }: Props) {
   const { t, locale } = useI18n()
   const titleId = useId()
   return (
@@ -20,7 +21,7 @@ export function ActivityRecordings({ rows }: Props) {
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className={styles.empty}>{t.activity.noRecordings}</p>
+        <p className={styles.empty}>{notice ?? t.activity.noRecordings}</p>
       ) : (
         <div>
           <div className={styles.recHead} aria-hidden="true">

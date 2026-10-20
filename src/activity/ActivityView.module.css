@@ -55,6 +55,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stale {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--warning);
+  font-size: var(--type-12);
+  line-height: 1.4;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

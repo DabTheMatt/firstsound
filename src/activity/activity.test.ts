@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createDemoSnapshot } from './demo'
 import { audioFormatLabel } from './format'
 import { activityMetrics, recentRecordings, studentRows, timelinePoints } from './metrics'
 import { parseActivitySnapshot } from './parse'
-import { createDemoActivityProvider, createDriveActivityProvider, createPublishedJsonProvider, ActivitySourceError } from './provider'
+import { loadActivity } from './loadActivity'
+import { createDemoActivityProvider, createDriveActivityProvider, createPublishedJsonProvider, createStaticSnapshotProvider, ActivitySourceError } from './provider'
+import { ACTIVITY_DATA_SOURCE } from './source'
+import { validatePublicSnapshot } from './snapshot/validate'
 import type { ActivitySnapshot, RecordingReference } from './types'
 
 const NOW = new Date('2026-10-20T12:00:00.000Z')
@@ -253,6 +256,55 @@ describe('activity providers', () => {
       'sizeBytes',
       'studentId',
     ])
+  })
+
+  it('reads a static snapshot and refuses invalid JSON without demo data', async () => {
+    expect(ACTIVITY_DATA_SOURCE).toBe('static-snapshot')
+    const stale = {
+      schemaVersion: 1,
+      generatedAt: '2026-10-18T12:00:00.000Z',
+      timezone: 'Europe/Warsaw',
+      activityBasis: 'createdTime',
+      synchronization: { status: 'complete', lastSynchronizationAt: '2026-10-18T12:00:00.000Z' },
+      project: {
+        totalStudents: 0,
+        activeStudents: 0,
+        totalRecordings: 0,
+        totalBytes: 0,
+        recordingsLast7Days: 0,
+        recordingsLast30Days: 0,
+        lastSynchronizationAt: '2026-10-18T12:00:00.000Z',
+      },
+      students: [],
+      dailyActivity: [],
+      filename: 'secret.wav',
+    }
+    expect(validatePublicSnapshot(stale).ok).toBe(false)
+    await expect(createStaticSnapshotProvider(async () => stale).load()).rejects.toMatchObject({ code: 'invalid-snapshot' })
+    const invalid = await loadActivity({
+      source: 'static-snapshot',
+      readJson: async () => {
+        throw new ActivitySourceError('invalid-json')
+      },
+    })
+    const missing = await loadActivity({
+      source: 'static-snapshot',
+      readJson: async () => ({ schemaVersion: 1, students: [] }),
+    })
+    expect(invalid).toEqual({ status: 'error', code: 'invalid-json' })
+    expect(missing).toEqual({ status: 'error', code: 'invalid-snapshot' })
+    expect(JSON.stringify(invalid)).not.toContain('demo')
+    expect(JSON.stringify(missing)).not.toContain('rynek')
+    vi.stubGlobal(
+      'fetch',
+      async () => new Response('<!doctype html><title>FIELD</title>', { status: 200, headers: { 'content-type': 'text/html' } }),
+    )
+    const htmlShell = await loadActivity({ source: 'static-snapshot' })
+    expect(htmlShell).toEqual({ status: 'error', code: 'missing-snapshot' })
+    vi.stubGlobal('fetch', async () => new Response('not-json', { status: 200, headers: { 'content-type': 'application/json' } }))
+    const badJson = await loadActivity({ source: 'static-snapshot' })
+    expect(badJson).toEqual({ status: 'error', code: 'invalid-json' })
+    vi.unstubAllGlobals()
   })
 
   it('rejects an unreadable published file and does not call Drive', async () => {

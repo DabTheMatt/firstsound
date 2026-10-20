@@ -1,4 +1,5 @@
 import type { Locale } from '../i18n/locale'
+import { ACTIVITY_TIMEZONE } from './calendar'
 
 const MIME_LABELS: Record<string, string> = {
   'audio/wav': 'WAV',
@@ -55,7 +56,21 @@ export function formatActivityWhen(iso: string, locale: Locale): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-    timeZone: 'UTC',
+    timeZone: ACTIVITY_TIMEZONE,
+  }).format(time)
+}
+
+export function formatActivityTimestamp(iso: string, locale: Locale): string {
+  const time = Date.parse(iso)
+  if (!Number.isFinite(time)) return '—'
+  return new Intl.DateTimeFormat(localeTag(locale), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: ACTIVITY_TIMEZONE,
   }).format(time)
 }
 
@@ -65,6 +80,6 @@ export function formatActivityDay(iso: string, locale: Locale): string {
   return new Intl.DateTimeFormat(localeTag(locale), {
     day: 'numeric',
     month: 'short',
-    timeZone: 'UTC',
+    timeZone: ACTIVITY_TIMEZONE,
   }).format(time)
 }

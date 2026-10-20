@@ -10,8 +10,10 @@ import type {
   TimelinePoint,
 } from './types'
 import { audioFormatLabel } from './format'
+import { addCalendarDays, calendarDateToIso, calendarWindow, dateInWindow, warsawCalendarDate } from './calendar'
 
-export const DAY_MS = 86_400_000
+export { DAY_MS } from './calendar'
+
 const MAX_TIMELINE_DAYS = 366
 export const METER_SEGMENTS = 16
 
@@ -20,42 +22,48 @@ export function utcDayStart(ms: number): number {
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 }
 
-export function fixedWindow(days: number, now: Date): { start: number; end: number } {
-  const end = utcDayStart(now.getTime())
-  return { start: end - (days - 1) * DAY_MS, end }
+function recordingDay(iso: string): string | null {
+  const time = Date.parse(iso)
+  if (!Number.isFinite(time)) return null
+  return warsawCalendarDate(time)
 }
 
-function allWindow(times: number[]): { start: number; end: number } | null {
-  if (times.length === 0) return null
-  let start = utcDayStart(Math.min(...times))
-  let end = utcDayStart(Math.max(...times))
-  if (end < start) return null
-  if (end - start > (MAX_TIMELINE_DAYS - 1) * DAY_MS) start = end - (MAX_TIMELINE_DAYS - 1) * DAY_MS
+function allWindow(days: string[]): { start: string; end: string } | null {
+  if (days.length === 0) return null
+  let start = days.reduce((earliest, day) => (day < earliest ? day : earliest))
+  const end = days.reduce((latest, day) => (day > latest ? day : latest))
+  const cap = addCalendarDays(end, -(MAX_TIMELINE_DAYS - 1))
+  if (start < cap) start = cap
   return { start, end }
 }
 
-function windowFor(range: ActivityRange, now: Date, times: number[]): { start: number; end: number } | null {
-  if (range === '7d') return fixedWindow(7, now)
-  if (range === '30d') return fixedWindow(30, now)
-  return allWindow(times)
+function windowFor(range: ActivityRange, now: Date, days: string[]): { start: string; end: string } | null {
+  if (range === '7d') return calendarWindow(7, now.getTime())
+  if (range === '30d') return calendarWindow(30, now.getTime())
+  return allWindow(days)
 }
 
-function inWindow(iso: string, start: number, end: number): boolean {
-  const time = Date.parse(iso)
-  if (!Number.isFinite(time)) return false
-  const day = utcDayStart(time)
-  return day >= start && day <= end
+export function recordingsInDays(recordings: RecordingReference[], days: number, now: Date): number {
+  const bounds = calendarWindow(days, now.getTime())
+  if (!bounds) return 0
+  let count = 0
+  for (const recording of recordings) {
+    const day = recordingDay(recording.createdTime)
+    if (day && dateInWindow(day, bounds.start, bounds.end)) count += 1
+  }
+  return count
 }
 
 export function activityMetrics(snapshot: ActivitySnapshot, now: Date): ActivityMetrics {
-  const recent = fixedWindow(7, now)
+  const recent = calendarWindow(7, now.getTime())
   const known = new Set(snapshot.students.map((student) => student.id))
   const active = new Set<string>()
   let totalBytes = 0
   let last7Days = 0
   for (const recording of snapshot.recordings) {
     if (Number.isFinite(recording.sizeBytes) && recording.sizeBytes >= 0) totalBytes += recording.sizeBytes
-    if (!inWindow(recording.createdTime, recent.start, recent.end)) continue
+    const day = recordingDay(recording.createdTime)
+    if (!recent || !day || !dateInWindow(day, recent.start, recent.end)) continue
     last7Days += 1
     if (known.has(recording.studentId)) active.add(recording.studentId)
   }
@@ -68,25 +76,28 @@ export function activityMetrics(snapshot: ActivitySnapshot, now: Date): Activity
 }
 
 export function timelinePoints(recordings: RecordingReference[], range: ActivityRange, now: Date): TimelinePoint[] {
-  const times = recordings.map((recording) => Date.parse(recording.createdTime)).filter(Number.isFinite)
-  const bounds = windowFor(range, now, times)
+  const days = recordings.map((recording) => recordingDay(recording.createdTime)).filter((day): day is string => day !== null)
+  const bounds = windowFor(range, now, days)
   if (!bounds) return []
-  const counts = new Map<number, number>()
-  for (let day = bounds.start; day <= bounds.end; day += DAY_MS) counts.set(day, 0)
+  const counts = new Map<string, number>()
+  for (let day = bounds.start; day <= bounds.end; day = addCalendarDays(day, 1)) {
+    counts.set(day, 0)
+    if (counts.size > MAX_TIMELINE_DAYS) break
+  }
   for (const recording of recordings) {
-    const time = Date.parse(recording.createdTime)
-    if (!Number.isFinite(time)) continue
-    const day = utcDayStart(time)
-    if (!counts.has(day)) continue
+    const day = recordingDay(recording.createdTime)
+    if (!day || !counts.has(day)) continue
     counts.set(day, (counts.get(day) ?? 0) + 1)
   }
-  return [...counts.entries()].map(([ms, count]) => ({ day: new Date(ms).toISOString(), count }))
+  return [...counts.entries()].map(([day, count]) => ({ day: calendarDateToIso(day), count }))
 }
 
 export function activityState(lastUpload: string | null, now: Date): ActivityState {
   if (!lastUpload) return 'none'
-  const recent = fixedWindow(7, now)
-  return inWindow(lastUpload, recent.start, recent.end) ? 'recent' : 'earlier'
+  const day = recordingDay(lastUpload)
+  const recent = calendarWindow(7, now.getTime())
+  if (!day || !recent) return 'earlier'
+  return dateInWindow(day, recent.start, recent.end) ? 'recent' : 'earlier'
 }
 
 export function meterSegments(count: number, max: number, segments = METER_SEGMENTS): number {

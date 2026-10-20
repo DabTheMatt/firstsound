@@ -51,7 +51,7 @@ import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { AppViewSwitch } from './AppViewSwitch'
 import { applyAppView, SHED_VISIBLE, type AppView } from './appView'
-import { ActivityView } from '../activity/ActivityView'
+import { ActivityScreen } from '../activity/ActivityScreen'
 import { ShedView } from '../shed/ShedView'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
@@ -1712,7 +1712,7 @@ export default function App() {
               dispatchGuide({ type: 'open-library' })
             }}
           />
-          <ActivityView />
+          <ActivityScreen />
           {lfoCenterOpen ? (
             <div className={styles.overlay}>
               <button

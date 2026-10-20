@@ -43,7 +43,7 @@ export type ActivityMetrics = {
 }
 
 export type TimelinePoint = {
-  /** UTC midnight, ISO-8601. */
+  /** UTC midnight of a Europe/Warsaw calendar date, ISO-8601. */
   day: string
   count: number
 }

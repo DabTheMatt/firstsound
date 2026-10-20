@@ -7,8 +7,11 @@ import studentsSource from './ActivityStudents.tsx?raw'
 import timelineSource from './ActivityTimeline.tsx?raw'
 import viewSource from './ActivityView.tsx?raw'
 import { ActivityView } from './ActivityView'
-import { formatActivityDay } from './format'
+import { ActivityScreen } from './ActivityScreen'
+import { formatActivityDay, formatActivityTimestamp } from './format'
 import { parseActivitySnapshot } from './parse'
+import { validatePublicSnapshot } from './snapshot/validate'
+import type { PublicActivitySnapshot } from './snapshot/schema'
 import type { ActivityRange, ActivitySnapshot, StudentSort } from './types'
 
 const NOW = new Date('2026-10-20T12:00:00.000Z')
@@ -61,10 +64,73 @@ const SNAPSHOT: ActivitySnapshot = {
   ],
 }
 
-function markup(props: { snapshot?: ActivitySnapshot; error?: boolean; initialRange?: ActivityRange; initialSort?: StudentSort } = {}) {
+const PUBLIC_EMPTY: PublicActivitySnapshot = {
+  schemaVersion: 1,
+  generatedAt: '2026-10-20T12:00:00.000Z',
+  timezone: 'Europe/Warsaw',
+  activityBasis: 'createdTime',
+  synchronization: { status: 'complete', lastSynchronizationAt: '2026-10-20T12:00:00.000Z' },
+  project: {
+    totalStudents: 0,
+    activeStudents: 0,
+    totalRecordings: 0,
+    totalBytes: 0,
+    recordingsLast7Days: 0,
+    recordingsLast30Days: 0,
+    lastSynchronizationAt: '2026-10-20T12:00:00.000Z',
+  },
+  students: [],
+  dailyActivity: [],
+}
+
+const PUBLIC_STALE: PublicActivitySnapshot = {
+  schemaVersion: 1,
+  generatedAt: '2026-10-18T12:00:00.000Z',
+  timezone: 'Europe/Warsaw',
+  activityBasis: 'createdTime',
+  synchronization: { status: 'complete', lastSynchronizationAt: '2026-10-18T12:00:00.000Z' },
+  project: {
+    totalStudents: 1,
+    activeStudents: 1,
+    totalRecordings: 1,
+    totalBytes: 10,
+    recordingsLast7Days: 1,
+    recordingsLast30Days: 1,
+    lastSynchronizationAt: '2026-10-18T12:00:00.000Z',
+  },
+  students: [
+    {
+      studentId: 'stu_0123456789abcdef',
+      displayName: 'Ania',
+      recordingCount: 1,
+      totalBytes: 10,
+      lastActivityAt: '2026-10-18T08:00:00.000Z',
+    },
+  ],
+  dailyActivity: [{ date: '2026-10-18', count: 1 }],
+}
+
+function markup(props: {
+  snapshot?: ActivitySnapshot
+  publicSnapshot?: PublicActivitySnapshot
+  error?: boolean
+  status?: 'loading' | 'error' | 'ready'
+  errorCode?: 'missing-snapshot' | 'invalid-snapshot' | 'invalid-json' | 'unavailable'
+  initialRange?: ActivityRange
+  initialSort?: StudentSort
+} = {}) {
   return renderToStaticMarkup(
     <I18nProvider>
-      <ActivityView now={NOW} snapshot={props.snapshot ?? SNAPSHOT} error={props.error} initialRange={props.initialRange} initialSort={props.initialSort} />
+      <ActivityView
+        now={NOW}
+        snapshot={props.publicSnapshot || props.status ? props.snapshot : (props.snapshot ?? SNAPSHOT)}
+        publicSnapshot={props.publicSnapshot}
+        error={props.error}
+        status={props.status}
+        errorCode={props.errorCode}
+        initialRange={props.initialRange}
+        initialSort={props.initialSort}
+      />
     </I18nProvider>,
   )
 }
@@ -186,6 +252,69 @@ describe('activity dashboard', () => {
     expect(html).toContain('Ostatnie nagrania')
     expect(html).toContain('Ostatnia aktywność')
     expect(html).not.toContain('>Demo data<')
+  })
+
+  it('shows a published snapshot with its synchronization time and no file names', () => {
+    expect(validatePublicSnapshot(PUBLIC_STALE).ok).toBe(true)
+    const html = markup({ publicSnapshot: PUBLIC_STALE })
+    expect(html).toContain('data-activity-source="static-snapshot"')
+    expect(html).toContain('data-activity-demo="false"')
+    expect(html).toContain('data-activity-stale="true"')
+    expect(html).toContain('Published snapshot')
+    expect(html).toContain('Last synchronization')
+    expect(html).toContain(formatActivityTimestamp(PUBLIC_STALE.generatedAt, 'en'))
+    expect(html).toContain('older than the expected refresh')
+    expect(html).toContain('File names are not part of the published snapshot.')
+    expect(html).toContain('Ania')
+    expect(html).not.toContain('Demo data')
+    expect(html).not.toContain('.wav')
+    expect(html).not.toContain('stu_0123456789abcdef')
+  })
+
+  it('renders an empty published project without demonstration rows', () => {
+    const html = markup({ publicSnapshot: PUBLIC_EMPTY })
+    expect(html).toContain('Published snapshot')
+    expect(html).toContain('No recordings in this range.')
+    expect(html).toContain('No participants.')
+    expect(html).toContain('No recordings yet.')
+    expect(html).not.toContain('Demo data')
+    expect(html).not.toContain('rynek')
+  })
+
+  it('keeps loading and invalid snapshots off the demonstration set', () => {
+    const loading = markup({ status: 'loading' })
+    const invalid = markup({ status: 'error', errorCode: 'invalid-snapshot' })
+    const missing = markup({ status: 'error', errorCode: 'missing-snapshot' })
+    expect(loading).toContain('data-activity-status="loading"')
+    expect(loading).toContain('Reading the activity snapshot.')
+    expect(loading).not.toContain('Demo data')
+    expect(loading).not.toContain('rynek-01.wav')
+    expect(invalid).toContain('could not be read')
+    expect(invalid).toContain('Demonstration data is not shown')
+    expect(invalid).not.toContain('rynek-01.wav')
+    expect(missing).toContain('not published yet')
+    expect(missing).not.toContain('Demo data')
+  })
+
+  it('uses Polish snapshot copy and does not paint demo data on first load', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => (key === 'field.uiLocale' ? 'pl' : null),
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    })
+    const html = markup({ publicSnapshot: PUBLIC_STALE })
+    expect(html).toContain('Opublikowany zestaw')
+    expect(html).toContain('Ostatnia synchronizacja')
+    expect(html).toContain('Nazwy plików nie wchodzą')
+    expect(html).not.toContain('Dane demonstracyjne')
+    const screen = renderToStaticMarkup(
+      <I18nProvider>
+        <ActivityScreen />
+      </I18nProvider>,
+    )
+    expect(screen).toContain('Odczyt zestawu aktywności.')
+    expect(screen).not.toContain('Dane demonstracyjne')
+    expect(screen).not.toContain('Demo data')
   })
 
   it('keeps the manual sections aligned and the view free of the audio engine', () => {
