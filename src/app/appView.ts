@@ -1,7 +1,11 @@
 /**
  * Application destination. SHED is not an audio editing mode.
  * The selected Simple / Technical / Sensory mode stays with the session.
+ *
+ * The architectural view stays in the codebase. This version does not offer it.
  */
+export const SHED_VISIBLE = false
+
 export const APP_VIEWS = ['workspace', 'shed'] as const
 
 export type AppView = (typeof APP_VIEWS)[number]

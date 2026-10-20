@@ -50,7 +50,7 @@ import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { AppViewSwitch } from './AppViewSwitch'
-import { applyAppView, type AppView } from './appView'
+import { applyAppView, SHED_VISIBLE, type AppView } from './appView'
 import { ShedView } from '../shed/ShedView'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
@@ -757,6 +757,7 @@ export default function App() {
   }
 
   const chooseView = (view: AppView) => {
+    if (view === 'shed' && !SHED_VISIBLE) return
     const next = applyAppView({ view: appView, mode: uiMode }, view)
     setAppView(next.view)
     announce(view === 'shed' ? t.view.shed : t.view.workspace)
@@ -1676,7 +1677,7 @@ export default function App() {
     automationLaneId: snap.automation.selectedParamId,
   })
 
-  if (appView === 'shed') {
+  if (SHED_VISIBLE && appView === 'shed') {
     return (
       <div className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}>
         <SkipLink />

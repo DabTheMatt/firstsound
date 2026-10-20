@@ -1,6 +1,6 @@
 import { radioGroupKey } from '../a11y/keyboard'
 import { useI18n } from '../i18n'
-import type { AppView } from './appView'
+import { SHED_VISIBLE, type AppView } from './appView'
 import styles from './AppViewSwitch.module.css'
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
 
 export function AppViewSwitch({ view, onChange, compact = false, variant = 'pill' }: Props) {
   const { t } = useI18n()
+  if (!SHED_VISIBLE) return null
   const options: { id: AppView; label: string }[] = [
     { id: 'workspace', label: t.view.workspace },
     { id: 'shed', label: t.view.shed },
