@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { moveElement } from '../commands'
 import { SketchCompare } from '../dev/SketchCompare'
-import { defaultShedDocument, defaultTower } from '../model'
+import { defaultTower, freeShedDocument } from '../model'
 import { parseShedDocument } from '../persistence'
 import { TowerElement } from '../TowerElement'
 import { composeSheet } from './composition'
@@ -39,7 +39,7 @@ describe('sketch engine tower', () => {
     const moved = renderSketchTower({ ...defaultTower(), x: 0.88, y: 0.91, layer: 8 })
     expect(moved.parts).toEqual(parked.parts)
     expect(moved.width).toBe(parked.width)
-    const document = moveElement(defaultShedDocument(), 'tower-1', 0.33, 0.44)
+    const document = moveElement(freeShedDocument(), 'tower-1', 0.33, 0.44)
     clearSketchCache()
     const shifted = renderSketchTower(document.scene.elements[0]!)
     clearSketchCache()

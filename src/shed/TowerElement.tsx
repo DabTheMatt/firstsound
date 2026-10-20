@@ -4,7 +4,7 @@ import type { ArchitecturalElement } from './model'
 import { GraphicPaths } from './parts'
 import { SketchMarks } from './rendering/SketchMarks'
 import { renderSketchTower, usesSketchTower } from './rendering/tower'
-import { SCENE_HEIGHT, SCENE_WIDTH } from './view'
+import { SCENE_HEIGHT, SCENE_WIDTH, elementFit } from './view'
 import styles from './ShedView.module.css'
 
 type Props = {
@@ -35,7 +35,7 @@ export const TowerElement = memo(function TowerElement({
   const graphic = sketch ?? (library as TowerGraphic)
   const x = element.x * SCENE_WIDTH
   const y = element.y * SCENE_HEIGHT
-  const fit = Math.min(graphic.height > 520 ? 520 / graphic.height : 1, graphic.width > 640 ? 640 / graphic.width : 1)
+  const fit = elementFit(graphic.width, graphic.height)
 
   const onPointerDown = (event: ReactPointerEvent<SVGGElement>) => {
     if (event.button !== 0) return

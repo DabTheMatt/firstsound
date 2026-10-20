@@ -8,7 +8,31 @@ import { hashString } from './rendering/seed'
  * `params`. The document is independent of FIELD's audio tracks and presets.
  */
 
-export const SHED_SCHEMA_VERSION = 2 as const
+export const SHED_FREE_SCHEMA = 2 as const
+
+export const SHED_SCHEMA_VERSION = 3 as const
+
+export const ATTACHMENT_TYPES = ['LEFT', 'RIGHT', 'TOP'] as const
+
+export type AttachmentType = (typeof ATTACHMENT_TYPES)[number]
+
+export const CONSTRUCTION_ROLES = [
+  'ground',
+  'upper',
+  'arcade',
+  'attic',
+  'roof',
+  'tower',
+  'helmet',
+  'ornament',
+  'gate',
+] as const
+
+export type ConstructionRole = (typeof CONSTRUCTION_ROLES)[number]
+
+export const SCENE_COMPOSITIONS = ['free', 'construction'] as const
+
+export type SceneComposition = (typeof SCENE_COMPOSITIONS)[number]
 
 export const SHED_STORAGE_KEY = 'field.shed.document'
 
@@ -93,6 +117,13 @@ export type ArchitecturalElement = {
   abstraction?: number
   inkStyle?: InkStyle
   colorTreatment?: ColorTreatment
+  /** Construction catalog id. Absent on free-composition elements. */
+  catalogId?: string
+  role?: ConstructionRole
+  parentId?: string | null
+  attachmentType?: AttachmentType | null
+  /** Stable name of the anchor on the parent. Independent of the drawn pixels. */
+  attachmentAnchor?: string | null
 }
 
 export type ShedScene = {
@@ -104,10 +135,15 @@ export type ShedScene = {
    * Missing means clear, and is left unwritten so older scenes stay as stored.
    */
   transparentBuildings?: boolean
+  /**
+   * Missing means a free composition (schema 1 and 2).
+   * Construction scenes say so explicitly.
+   */
+  composition?: SceneComposition
 }
 
 export type ShedDocument = {
-  schema: typeof SHED_SCHEMA_VERSION
+  schema: typeof SHED_FREE_SCHEMA | typeof SHED_SCHEMA_VERSION
   scene: ShedScene
 }
 
@@ -252,6 +288,22 @@ export function isElementType(value: unknown): value is ElementType {
   return typeof value === 'string' && (ELEMENT_TYPES as readonly string[]).includes(value)
 }
 
+export function isAttachmentType(value: unknown): value is AttachmentType {
+  return typeof value === 'string' && (ATTACHMENT_TYPES as readonly string[]).includes(value)
+}
+
+export function isConstructionRole(value: unknown): value is ConstructionRole {
+  return typeof value === 'string' && (CONSTRUCTION_ROLES as readonly string[]).includes(value)
+}
+
+export function isSceneComposition(value: unknown): value is SceneComposition {
+  return typeof value === 'string' && (SCENE_COMPOSITIONS as readonly string[]).includes(value)
+}
+
+export function isConstructionDocument(document: ShedDocument): boolean {
+  return document.schema === SHED_SCHEMA_VERSION && document.scene.composition === 'construction'
+}
+
 export function isInkStyle(value: unknown): value is InkStyle {
   return typeof value === 'string' && (INK_STYLES as readonly string[]).includes(value)
 }
@@ -298,13 +350,27 @@ export function defaultTower(id = 'tower-1'): ArchitecturalElement {
   return defaultElement('tower', id)
 }
 
+/** Schema 2 sheet: free placement, including the original St. Mary's tower study. */
+export function freeShedDocument(): ShedDocument {
+  return {
+    schema: SHED_FREE_SCHEMA,
+    scene: {
+      id: SCENE_ID,
+      version: 1,
+      elements: [defaultTower()],
+    },
+  }
+}
+
+/** A new architecture sheet. Construction starts empty, on the ground line. */
 export function defaultShedDocument(): ShedDocument {
   return {
     schema: SHED_SCHEMA_VERSION,
     scene: {
       id: SCENE_ID,
       version: 1,
-      elements: [defaultTower()],
+      composition: 'construction',
+      elements: [],
     },
   }
 }

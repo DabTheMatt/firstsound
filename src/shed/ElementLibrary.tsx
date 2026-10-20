@@ -1,5 +1,7 @@
 import { useEffect, useId, type RefObject } from 'react'
 import { focusInitial } from '../a11y/dialogFocus'
+import { catalogById, type CatalogGroup } from './construction/catalog'
+import { elementFromCatalog } from './construction/element'
 import { buildElement } from './geometry'
 import { ELEMENT_TYPES, defaultElement, type ElementType } from './model'
 import { GraphicPaths } from './parts'
@@ -12,11 +14,20 @@ type Copy = {
   descriptions: Record<ElementType, string>
 }
 
+export type LibraryEntry = {
+  id: string
+  name: string
+  group: CatalogGroup
+}
+
 type Props = {
   copy: Copy
   panelRef: RefObject<HTMLElement | null>
   onAdd: (type: ElementType) => void
   onClose: () => void
+  entries?: readonly LibraryEntry[]
+  groupLabel?: (group: CatalogGroup) => string
+  onPick?: (id: string) => void
 }
 
 function Preview({ type }: { type: ElementType }) {
@@ -28,7 +39,18 @@ function Preview({ type }: { type: ElementType }) {
   )
 }
 
-export function ElementLibrary({ copy, panelRef, onAdd, onClose }: Props) {
+function CatalogPreview({ id }: { id: string }) {
+  const entry = catalogById(id)
+  if (!entry) return null
+  const graphic = buildElement(elementFromCatalog(entry, `library-${id}`, { parentId: null, attachmentType: null }))
+  return (
+    <svg className={styles.preview} viewBox={`0 0 ${graphic.width} ${graphic.height}`} aria-hidden="true">
+      <GraphicPaths parts={graphic.parts} />
+    </svg>
+  )
+}
+
+export function ElementLibrary({ copy, panelRef, onAdd, onClose, entries, groupLabel, onPick }: Props) {
   const titleId = useId()
 
   useEffect(() => {
@@ -57,6 +79,24 @@ export function ElementLibrary({ copy, panelRef, onAdd, onClose }: Props) {
           {copy.close}
         </button>
       </div>
+      {entries && onPick ? (
+        <div className={styles.libraryList}>
+          {entries.map((entry, index) => {
+            const previous = entries[index - 1]
+            const heading = !previous || previous.group !== entry.group
+            return (
+              <div key={entry.id} className={styles.libraryGroup}>
+                {heading ? <h3 className={styles.libraryGroupTitle}>{groupLabel?.(entry.group) ?? entry.group}</h3> : null}
+                <button type="button" className={styles.libraryItem} onClick={() => onPick(entry.id)}>
+                  <CatalogPreview id={entry.id} />
+                  <span className={styles.libraryName}>{entry.name}</span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+      {entries ? null : (
       <div className={styles.libraryList}>
         {ELEMENT_TYPES.map((type) => {
           const name = copy.categories[type]
@@ -78,6 +118,7 @@ export function ElementLibrary({ copy, panelRef, onAdd, onClose }: Props) {
           )
         })}
       </div>
+      )}
     </aside>
   )
 }

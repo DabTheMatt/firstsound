@@ -1,4 +1,5 @@
-import { SHED_GOLD, SHED_INK, SHED_WARM_GRAY } from './palette'
+import { SHED_GOLD } from './palette'
+import { SHED_STYLE } from './style'
 
 export type DrawPart = {
   id: string
@@ -70,7 +71,7 @@ export function disk(cx: number, cy: number, r: number): string {
 }
 
 function variedWeight(base: number, salt: number): number {
-  return base + (hash(salt + 4.2) - 0.5) * Math.min(0.28, base * 0.22)
+  return base + (hash(salt + 4.2) - 0.5) * Math.min(SHED_STYLE.strokeWander, base * 0.22)
 }
 
 export function solid(
@@ -80,13 +81,13 @@ export function solid(
   options?: { weight?: number; salt?: number; fillOpacity?: number },
 ): DrawPart {
   const salt = options?.salt ?? id.length * 3
-  const weight = options?.weight ?? 1.15
+  const weight = options?.weight ?? SHED_STYLE.strokeBody
   return {
     id,
     d,
     fill,
-    fillOpacity: options?.fillOpacity ?? 0.94,
-    stroke: SHED_INK,
+    fillOpacity: options?.fillOpacity ?? SHED_STYLE.washOpacity,
+    stroke: SHED_STYLE.ink,
     strokeWidth: variedWeight(weight, salt),
   }
 }
@@ -96,19 +97,19 @@ export function opening(id: string, d: string, fill: string): DrawPart {
     id,
     d,
     fill,
-    fillOpacity: 0.92,
-    stroke: SHED_INK,
-    strokeWidth: 0.7,
+    fillOpacity: SHED_STYLE.openingOpacity,
+    stroke: SHED_STYLE.ink,
+    strokeWidth: SHED_STYLE.strokeOpening,
   }
 }
 
-export function hairline(id: string, d: string, opacity = 0.42): DrawPart {
+export function hairline(id: string, d: string, opacity: number = SHED_STYLE.hairlineOpacity): DrawPart {
   return {
     id,
     d,
     fill: 'none',
-    stroke: SHED_INK,
-    strokeWidth: 0.6,
+    stroke: SHED_STYLE.ink,
+    strokeWidth: SHED_STYLE.strokeHairline,
     strokeOpacity: opacity,
     pointerEvents: 'none',
   }
@@ -119,10 +120,10 @@ export function construction(id: string, d: string): DrawPart {
     id,
     d,
     fill: 'none',
-    stroke: SHED_WARM_GRAY,
-    strokeWidth: 0.55,
-    strokeOpacity: 0.55,
-    strokeDasharray: '3.5 3.5',
+    stroke: SHED_STYLE.constructionLine,
+    strokeWidth: SHED_STYLE.strokeConstruction,
+    strokeOpacity: SHED_STYLE.constructionOpacity,
+    strokeDasharray: SHED_STYLE.constructionDash,
     pointerEvents: 'none',
   }
 }
@@ -133,8 +134,8 @@ export function accent(id: string, d: string, fill = SHED_GOLD): DrawPart {
     d,
     fill,
     fillOpacity: 1,
-    stroke: SHED_INK,
-    strokeWidth: 0.65,
+    stroke: SHED_STYLE.ink,
+    strokeWidth: SHED_STYLE.strokeAccent,
   }
 }
 

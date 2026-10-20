@@ -367,6 +367,123 @@
   display: block;
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.tabs button {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--type-10);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 -2px 0 var(--accent-primary);
+}
+
+.notice {
+  margin: 8px 0 0;
+  color: var(--text-primary);
+  font-size: var(--type-12);
+}
+
+.formChoice {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 92px;
+  min-height: 72px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--type-10);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.formChoice[aria-checked='true'] {
+  border-color: var(--accent-primary);
+}
+
+.formPreview {
+  width: 72px;
+  height: 48px;
+}
+
+.attachment {
+  cursor: pointer;
+}
+
+.attachment:focus {
+  outline: none;
+}
+
+.handleHit {
+  fill: transparent;
+}
+
+.handle {
+  fill: var(--bg-panel);
+  stroke: var(--accent-primary);
+  stroke-width: 1.5;
+}
+
+.handleMark {
+  fill: none;
+  stroke: var(--accent-primary);
+  stroke-width: 1.5;
+}
+
+.attachment:focus-visible .handle {
+  stroke-width: 2.5;
+}
+
+.start {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: min(280px, calc(100% - 32px));
+  margin: 0;
+  text-align: center;
+}
+
+.start p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-14);
+}
+
+.libraryGroup {
+  display: contents;
+}
+
+.libraryGroupTitle {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font-size: var(--type-10);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 @media (max-width: 800px) {
   .sceneWrap {
     display: flex;

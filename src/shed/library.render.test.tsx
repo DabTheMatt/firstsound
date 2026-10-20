@@ -8,7 +8,7 @@ import { ELEMENT_TYPES, defaultElement, type ElementType } from './model'
 import { TowerElement } from './TowerElement'
 import { ShedScene } from './ShedScene'
 import { addElement } from './commands'
-import { defaultShedDocument } from './model'
+import { freeShedDocument } from './model'
 
 function copyFor(locale: typeof EN) {
   return {
@@ -32,6 +32,7 @@ function panel(type: ElementType, locale: typeof EN) {
       copy: copyFor(locale),
       panelRef: { current: null },
       focusOnOpen: false,
+      initialSection: 'geometry',
       onClose: noop,
       onHeight: noop,
       onWidth: noop,
@@ -110,8 +111,6 @@ describe('SHED library interface', () => {
     expect(tower).toContain('Body proportion')
     expect(tower).toContain('Bring forward')
     expect(tower).toContain('Send backward')
-    expect(tower).toContain('Duplicate')
-    expect(tower).toContain('Delete element')
     expect(tower).toContain('Horizontal position')
     expect(tower).toContain('type="range"')
     expect(tower).not.toContain('>Arches<')
@@ -123,13 +122,67 @@ describe('SHED library interface', () => {
     expect(arcade).not.toContain('Body proportion')
     const polish = panel('gate', PL)
     expect(polish).toContain('Przesuń na wierzch')
-    expect(polish).toContain('Usuń element')
-    expect(polish).toContain('Duplikuj')
-    expect(polish).toContain('Brama Floriańska')
+    const actions = renderToStaticMarkup(
+      createElement(ElementPanel, {
+        element: defaultElement('gate', 'gate-1'),
+        status: 'saved',
+        copy: copyFor(PL),
+        panelRef: { current: null },
+        focusOnOpen: false,
+        initialSection: 'actions',
+        onClose: noop,
+        onHeight: noop,
+        onWidth: noop,
+        onRoof: noop,
+        onPrimary: noop,
+        onSecondary: noop,
+        onDetail: noop,
+        onOrnament: noop,
+        onVariant: noop,
+        onParam: noop,
+        onX: noop,
+        onY: noop,
+        onForward: noop,
+        onBackward: noop,
+        onReset: noop,
+        onDuplicate: noop,
+        onDelete: noop,
+      }),
+    )
+    expect(actions).toContain('Usuń element')
+    expect(actions).toContain('Duplikuj')
+    const style = renderToStaticMarkup(
+      createElement(ElementPanel, {
+        element: defaultElement('gate', 'gate-1'),
+        status: 'saved',
+        copy: copyFor(PL),
+        panelRef: { current: null },
+        focusOnOpen: false,
+        initialSection: 'style',
+        onClose: noop,
+        onHeight: noop,
+        onWidth: noop,
+        onRoof: noop,
+        onPrimary: noop,
+        onSecondary: noop,
+        onDetail: noop,
+        onOrnament: noop,
+        onVariant: noop,
+        onParam: noop,
+        onX: noop,
+        onY: noop,
+        onForward: noop,
+        onBackward: noop,
+        onReset: noop,
+        onDuplicate: noop,
+        onDelete: noop,
+      }),
+    )
+    expect(style).toContain('Brama Floriańska')
   })
 
   it('marks the selected element when several overlap in draw order', () => {
-    const document = moveElementToFront(addElement(defaultShedDocument(), 'arcade'))
+    const document = moveElementToFront(addElement(freeShedDocument(), 'arcade'))
     const front = document.scene.elements.at(-1)!
     const markup = renderToStaticMarkup(
       createElement(ShedScene, {
@@ -154,7 +207,7 @@ describe('SHED library interface', () => {
   })
 })
 
-function moveElementToFront(document: ReturnType<typeof defaultShedDocument>) {
+function moveElementToFront(document: ReturnType<typeof freeShedDocument>) {
   const front = document.scene.elements[0]!
   const other = document.scene.elements[1]!
   return {

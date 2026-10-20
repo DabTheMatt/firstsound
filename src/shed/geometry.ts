@@ -1,3 +1,4 @@
+import { buildCatalogSilhouette } from './construction/silhouettes'
 import type { ArchitecturalElement, OrnamentId } from './model'
 import { clampUnit } from './model'
 import { SHED_BLUE, SHED_GOLD, SHED_INK, SHED_LIMESTONE } from './palette'
@@ -1414,6 +1415,10 @@ export function buildOrnament(element: ArchitecturalElement): TowerGraphic {
 }
 
 export function buildElement(element: ArchitecturalElement): TowerGraphic {
+  if (element.catalogId) {
+    const drawn = buildCatalogSilhouette(element)
+    if (drawn) return drawn
+  }
   switch (element.type) {
     case 'facade':
       return buildFacade(element)

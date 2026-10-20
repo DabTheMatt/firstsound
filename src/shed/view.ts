@@ -65,6 +65,11 @@ export function viewTransform(camera: SceneCamera): string {
   return `translate(${cx} ${cy}) scale(${next.zoom}) translate(${(-cx + next.panX).toFixed(1)} ${(-cy + next.panY).toFixed(1)})`
 }
 
+/** Same fit the scene uses when a drawing is larger than the parchment. */
+export function elementFit(width: number, height: number): number {
+  return Math.min(height > 520 ? 520 / height : 1, width > 640 ? 640 / width : 1)
+}
+
 /** Architectural position in scene units. The camera does not change this point. */
 export function elementScenePoint(element: { x: number; y: number }): { x: number; y: number } {
   return { x: element.x * SCENE_WIDTH, y: element.y * SCENE_HEIGHT }

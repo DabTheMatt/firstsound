@@ -17,7 +17,7 @@ import {
   SHED_STORAGE_KEY,
   defaultElement,
   defaultParams,
-  defaultShedDocument,
+  freeShedDocument,
   defaultTower,
 } from './model'
 import { loadShedDocument, parseShedDocument, persistShedDocument, recoverShedDocument, resetShedLoadNotice } from './persistence'
@@ -51,7 +51,7 @@ describe('SHED architectural library', () => {
   })
 
   it('adds unique elements without replacing the ones already there', () => {
-    let document = defaultShedDocument()
+    let document = freeShedDocument()
     const firstId = document.scene.elements[0]?.id
     for (const type of ELEMENT_TYPES) document = addElement(document, type)
     const ids = document.scene.elements.map((element) => element.id)
@@ -62,7 +62,7 @@ describe('SHED architectural library', () => {
   })
 
   it('lets elements share a position and keeps draw order stable', () => {
-    const added = addElement(defaultShedDocument(), 'facade')
+    const added = addElement(freeShedDocument(), 'facade')
     const facade = added.scene.elements[1]!
     const tower = added.scene.elements[0]!
     const overlapped = moveElement(added, facade.id, tower.x, tower.y)
@@ -77,7 +77,7 @@ describe('SHED architectural library', () => {
   })
 
   it('deletes and duplicates an element', () => {
-    const added = addElement(defaultShedDocument(), 'gate')
+    const added = addElement(freeShedDocument(), 'gate')
     const gate = added.scene.elements[1]!
     const copied = duplicateElement(added, gate.id)
     expect(copied.scene.elements).toHaveLength(3)
@@ -116,7 +116,7 @@ describe('SHED architectural library', () => {
   })
 
   it('keeps scene coordinates when the camera zooms and pans', () => {
-    const moved = moveElement(defaultShedDocument(), 'tower-1', 0.33, 0.44)
+    const moved = moveElement(freeShedDocument(), 'tower-1', 0.33, 0.44)
     const element = moved.scene.elements[0]!
     let camera: SceneCamera = { zoom: nextZoom(1, 'in'), panX: 0, panY: 0 }
     camera = panView(camera, 'right')
@@ -130,7 +130,7 @@ describe('SHED architectural library', () => {
   })
 
   it('builds a thirty-element scene deterministically', () => {
-    let document = defaultShedDocument()
+    let document = freeShedDocument()
     for (let index = 0; index < 29; index += 1) document = addElement(document, ELEMENT_TYPES[index % ELEMENT_TYPES.length]!)
     expect(document.scene.elements).toHaveLength(30)
     const started = performance.now()
@@ -269,16 +269,17 @@ describe('SHED document migration', () => {
     const store = memoryStorage()
     store.setItem('field.theme', 'studio-dark')
     vi.stubGlobal('localStorage', store)
-    const empty = deleteElement(defaultShedDocument(), 'tower-1')
+    const empty = deleteElement(freeShedDocument(), 'tower-1')
     expect(persistShedDocument(empty)).toBe(true)
     expect(loadShedDocument().document.scene.elements).toHaveLength(0)
     store.setItem(SHED_STORAGE_KEY, JSON.stringify({ schema: 9, scene: { id: 'future' } }))
     resetShedLoadNotice()
     const loaded = loadShedDocument()
     expect(loaded.status).toBe('restored')
-    expect(loaded.document.scene.elements[0]?.id).toBe('tower-1')
+    expect(loaded.document.schema).toBe(3)
+    expect(loaded.document.scene.elements).toHaveLength(0)
     expect(store.getItem(SHED_STORAGE_KEY)).toContain('"schema":9')
-    expect(persistShedDocument(defaultShedDocument())).toBe(false)
+    expect(persistShedDocument(freeShedDocument())).toBe(false)
     expect(store.getItem(SHED_STORAGE_KEY)).toContain('"schema":9')
     expect(store.getItem('field.theme')).toBe('studio-dark')
     vi.unstubAllGlobals()

@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  attachPiece,
+  deleteBranch,
+  placeFoundation,
+  replaceCatalog,
+  type ConstructionIssueCode,
+} from './construction/build'
+import {
   addElement,
   bringForward,
   deleteElement,
   duplicateElement,
+  editConstruction,
   moveElement,
   nudgeElement,
   resetElement,
@@ -12,11 +20,21 @@ import {
   updateElement,
   type ElementPatch,
 } from './commands'
-import type { ElementType, OrnamentId } from './model'
-import { loadShedDocument, persistShedDocument, type ShedLoad, type ShedLoadStatus } from './persistence'
+import { isConstructionDocument, type AttachmentType, type ElementType, type OrnamentId } from './model'
+import {
+  beginConnectedBuild,
+  hasLegacySheet,
+  loadShedDocument,
+  persistShedDocument,
+  restoreFreeSheet,
+  type ShedLoad,
+  type ShedLoadStatus,
+} from './persistence'
 
 export function useShedDocument() {
   const [state, setState] = useState<ShedLoad>(() => loadShedDocument())
+  const [notice, setNotice] = useState<ConstructionIssueCode | null>(null)
+  const [legacy, setLegacy] = useState(() => hasLegacySheet())
   const documentRef = useRef(state.document)
   const timerRef = useRef(0)
 
@@ -63,6 +81,13 @@ export function useShedDocument() {
   )
   const patch = useCallback(
     (id: string, next: ElementPatch) => {
+      if (isConstructionDocument(documentRef.current)) {
+        const result = editConstruction(documentRef.current, id, next)
+        setNotice(result.error)
+        replace(result.document)
+        return
+      }
+      setNotice(null)
       replace(updateElement(documentRef.current, id, next))
     },
     [replace],
@@ -118,10 +143,66 @@ export function useShedDocument() {
     },
     [replace],
   )
+  const found = useCallback(
+    (catalogId: string) => {
+      const result = placeFoundation(documentRef.current, catalogId)
+      setNotice(result.error)
+      replace(result.document)
+      return result.addedId
+    },
+    [replace],
+  )
+  const attach = useCallback(
+    (parentId: string, direction: AttachmentType, catalogId: string) => {
+      const result = attachPiece(documentRef.current, parentId, direction, catalogId)
+      setNotice(result.error)
+      replace(result.document)
+      return result.addedId
+    },
+    [replace],
+  )
+  const removeBranch = useCallback(
+    (id: string) => {
+      const result = deleteBranch(documentRef.current, id)
+      setNotice(result.error)
+      replace(result.document)
+    },
+    [replace],
+  )
+  const chooseForm = useCallback(
+    (id: string, catalogId: string) => {
+      const result = replaceCatalog(documentRef.current, id, catalogId)
+      setNotice(result.error)
+      replace(result.document)
+    },
+    [replace],
+  )
+  const beginBuild = useCallback(() => {
+    const next = beginConnectedBuild(documentRef.current)
+    setLegacy(true)
+    setNotice(null)
+    replace(next)
+  }, [replace])
+  const restoreFree = useCallback(() => {
+    const next = restoreFreeSheet(documentRef.current)
+    setLegacy(hasLegacySheet())
+    if (!next) return
+    setNotice(null)
+    replace(next)
+  }, [replace])
 
   return {
     document: state.document,
     status: state.status,
+    notice,
+    clearNotice: () => setNotice(null),
+    legacy,
+    found,
+    attach,
+    removeBranch,
+    chooseForm,
+    beginBuild,
+    restoreFree,
     move,
     nudge,
     patch,

@@ -5,6 +5,7 @@ import type { SensoryAxisId } from '../sensory/sensoryParameters'
 import type { ThemeId } from '../theme/tokens'
 import { PARAMS } from '../audio/parameters/definitions'
 import { PL_PARAMS } from './plParams'
+import type { CatalogId } from '../shed/construction/catalog'
 import type { Locale } from './locale'
 import { countNoun, polishCardinal } from './plural'
 
@@ -1196,6 +1197,58 @@ export type Messages = {
       limestone: string
       gray: string
     }
+    startBuild: string
+    extend: string
+    addLeft: string
+    addRight: string
+    addAbove: string
+    connection: string
+    deleteBranch: string
+    deleteBranchHint: string
+    deleteRoot: string
+    deleteRootHint: string
+    cancel: string
+    freeSheet: string
+    startConnected: string
+    restoreFree: string
+    relationRoot: string
+    relationAbove: (parent: string) => string
+    relationLeft: (parent: string) => string
+    relationRight: (parent: string) => string
+    linksAvailable: (list: string) => string
+    linksNone: string
+    structureLabel: (name: string, relation: string, links: string) => string
+    tabs: {
+      style: string
+      geometry: string
+      color: string
+      details: string
+      actions: string
+    }
+    directions: {
+      LEFT: string
+      RIGHT: string
+      TOP: string
+    }
+    groups: {
+      foundations: string
+      floors: string
+      arcades: string
+      attics: string
+      roofs: string
+      towers: string
+      ornaments: string
+    }
+    errors: {
+      incompatible: string
+      overlap: string
+      anchor: string
+      foundation: string
+      support: string
+      limit: string
+      parent: string
+    }
+    pieces: Record<CatalogId, string>
     city: {
       modeGroup: string
       modeArchitecture: string
@@ -2592,6 +2645,81 @@ export const EN: Messages = {
       gold: 'Aged gold',
       limestone: 'Limestone',
       gray: 'Warm gray',
+    },
+    startBuild: 'Start building your SHED',
+    extend: 'Extend',
+    addLeft: 'Add to left',
+    addRight: 'Add to right',
+    addAbove: 'Add above',
+    connection: 'Connection',
+    deleteBranch: 'Delete branch',
+    deleteBranchHint: 'Removes the selected element and everything built on it.',
+    deleteRoot: 'Remove the foundation',
+    deleteRootHint: 'Removes the whole structure.',
+    cancel: 'Cancel',
+    freeSheet: 'This sheet is a free composition from an earlier SHED. A connected build does not rearrange it.',
+    startConnected: 'Start a connected build',
+    restoreFree: 'Return to the free composition',
+    relationRoot: 'standing on the ground line',
+    relationAbove: (parent) => `connected above ${parent}`,
+    relationLeft: (parent) => `connected to the left of ${parent}`,
+    relationRight: (parent) => `connected to the right of ${parent}`,
+    linksAvailable: (list) => `open connections: ${list}`,
+    linksNone: 'no open connections',
+    structureLabel: (name, relation, links) => `${name}, ${relation}, ${links}.`,
+    tabs: { style: 'Style', geometry: 'Geometry', color: 'Color', details: 'Details', actions: 'Actions' },
+    directions: { LEFT: 'left', RIGHT: 'right', TOP: 'above' },
+    groups: {
+      foundations: 'Foundations',
+      floors: 'Floors',
+      arcades: 'Arcades',
+      attics: 'Attics',
+      roofs: 'Roofs',
+      towers: 'Towers',
+      ornaments: 'Ornaments',
+    },
+    errors: {
+      incompatible: 'That piece cannot connect here.',
+      overlap: 'That piece would overlap the structure.',
+      anchor: 'That connection is already used.',
+      foundation: 'The first piece has to be a ground-floor element.',
+      support: 'The pieces already built here would lose their support.',
+      limit: 'The structure cannot grow any further in that direction.',
+      parent: 'Choose a piece that is already part of the structure.',
+    },
+    pieces: {
+      'townhouse-base': 'Townhouse ground floor',
+      'renaissance-base': 'Renaissance arcade base',
+      'gothic-base': 'Gothic brick ground floor',
+      'gate-base': "St. Florian's gate base",
+      'defensive-gate': 'Barbican gate',
+      'townhouse-floor': 'Townhouse floor',
+      'renaissance-floor': 'Wide Renaissance floor',
+      'gothic-windows': 'Gothic window section',
+      'balcony-floor': 'Balcony floor',
+      'single-arch': 'Single arch',
+      'three-arch': 'Three-arch sequence',
+      'courtyard-arcade': 'Wawel courtyard arcade',
+      'pointed-arcade': 'Gothic pointed arcade',
+      'sukiennice-attic': 'Cloth Hall attic',
+      'stepped-attic': 'Stepped attic',
+      parapet: 'Ornamental parapet',
+      'gothic-roof': 'Steep Gothic roof',
+      'townhouse-roof': 'Townhouse roof',
+      'renaissance-roof': 'Renaissance roofline',
+      'small-roof': 'Small decorative roof',
+      'mariacki-tall': "St. Mary's taller tower",
+      'mariacki-low': "St. Mary's lower tower",
+      'wawel-tower': 'Wawel tower',
+      'defensive-tower': 'Defensive tower',
+      'gothic-helmet': 'Gothic helmet',
+      'krakow-crown': 'Kraków tower crown',
+      'wawel-helmet': 'Wawel helmet',
+      finial: 'Finial',
+      star: 'Star',
+      rosette: 'Rosette',
+      crest: 'Decorative crest',
+      relief: 'Architectural relief',
     },
     city: {
       modeGroup: 'SHED scene',
@@ -3995,6 +4123,81 @@ export const PL: Messages = {
       gold: 'Postarzałe złoto',
       limestone: 'Wapień',
       gray: 'Ciepły szary',
+    },
+    startBuild: 'Rozpocznij budowę szopki',
+    extend: 'Rozbuduj',
+    addLeft: 'Dodaj z lewej',
+    addRight: 'Dodaj z prawej',
+    addAbove: 'Dodaj nad',
+    connection: 'Połączenie',
+    deleteBranch: 'Usuń gałąź',
+    deleteBranchHint: 'Usuwa zaznaczony element i wszystko, co na nim stoi.',
+    deleteRoot: 'Usuń fundament',
+    deleteRootHint: 'Usuwa całą budowę.',
+    cancel: 'Anuluj',
+    freeSheet: 'Ta scena jest wolną kompozycją z wcześniejszego SHED. Nowa budowa jej nie przestawia.',
+    startConnected: 'Zacznij budowę połączoną',
+    restoreFree: 'Wróć do wolnej kompozycji',
+    relationRoot: 'stoi na linii gruntu',
+    relationAbove: (parent) => `połączona nad ${parent}`,
+    relationLeft: (parent) => `połączona z lewej strony ${parent}`,
+    relationRight: (parent) => `połączona z prawej strony ${parent}`,
+    linksAvailable: (list) => `dostępne połączenia: ${list}`,
+    linksNone: 'brak wolnych połączeń',
+    structureLabel: (name, relation, links) => `${name}, ${relation}, ${links}.`,
+    tabs: { style: 'Styl', geometry: 'Geometria', color: 'Kolor', details: 'Detale', actions: 'Działania' },
+    directions: { LEFT: 'lewo', RIGHT: 'prawo', TOP: 'góra' },
+    groups: {
+      foundations: 'Fundamenty',
+      floors: 'Piętra',
+      arcades: 'Arkady',
+      attics: 'Attyki',
+      roofs: 'Dachy',
+      towers: 'Wieże',
+      ornaments: 'Ornamenty',
+    },
+    errors: {
+      incompatible: 'Tego elementu nie da się tu połączyć.',
+      overlap: 'Ten element nachodziłby na budowę.',
+      anchor: 'To połączenie jest już zajęte.',
+      foundation: 'Pierwszy element musi stać na parterze.',
+      support: 'To, co już tu stoi, straciłoby podparcie.',
+      limit: 'W tym kierunku budowa nie może już urosnąć.',
+      parent: 'Wybierz element, który już należy do budowy.',
+    },
+    pieces: {
+      'townhouse-base': 'Parter kamienicy',
+      'renaissance-base': 'Renesansowa baza arkadowa',
+      'gothic-base': 'Gotycki parter z cegły',
+      'gate-base': 'Baza Bramy Floriańskiej',
+      'defensive-gate': 'Brama barbakanu',
+      'townhouse-floor': 'Piętro kamienicy',
+      'renaissance-floor': 'Szeroka fasada renesansowa',
+      'gothic-windows': 'Gotycka sekcja okien',
+      'balcony-floor': 'Piętro z balkonem',
+      'single-arch': 'Pojedyncza arkada',
+      'three-arch': 'Ciąg trzech arkad',
+      'courtyard-arcade': 'Krużganek wawelski',
+      'pointed-arcade': 'Arkada ostrołukowa',
+      'sukiennice-attic': 'Attyka Sukiennic',
+      'stepped-attic': 'Attyka schodkowa',
+      parapet: 'Parapet ozdobny',
+      'gothic-roof': 'Stromy dach gotycki',
+      'townhouse-roof': 'Dach kamienicy',
+      'renaissance-roof': 'Linia dachu renesansowego',
+      'small-roof': 'Mały dach ozdobny',
+      'mariacki-tall': 'Wyższa wieża Mariacka',
+      'mariacki-low': 'Niższa wieża Mariacka',
+      'wawel-tower': 'Wieża Wawelu',
+      'defensive-tower': 'Baszta obronna',
+      'gothic-helmet': 'Hełm gotycki',
+      'krakow-crown': 'Korona wieży krakowskiej',
+      'wawel-helmet': 'Hełm wawelski',
+      finial: 'Szpic',
+      star: 'Gwiazda',
+      rosette: 'Rozeta',
+      crest: 'Grzebień ozdobny',
+      relief: 'Relief architektoniczny',
     },
     city: {
       modeGroup: 'Scena SHED',

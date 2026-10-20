@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { I18nProvider } from '../i18n'
 import { AppViewSwitch } from '../app/AppViewSwitch'
 import { defaultTower } from './model'
-import { defaultShedDocument } from './model'
+import { freeShedDocument } from './model'
 import { ShedScene } from './ShedScene'
 import { TowerElement } from './TowerElement'
 
@@ -59,7 +59,7 @@ describe('SHED rendering', () => {
   it('sizes the scene with a viewBox instead of a fixed page width', () => {
     const markup = renderToStaticMarkup(
       <ShedScene
-        document={defaultShedDocument()}
+        document={freeShedDocument()}
         selectedId={null}
         camera={{ zoom: 1, panX: 0, panY: 0 }}
         sceneLabel="Architectural scene"

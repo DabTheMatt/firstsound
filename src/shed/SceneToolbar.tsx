@@ -32,6 +32,9 @@ type Props = {
   onResetView: () => void
   onPan: (direction: 'left' | 'right' | 'up' | 'down') => void
   onAdd: () => void
+  addLabel?: string
+  showAdd?: boolean
+  migration?: { label: string; onClick: () => void } | null
 }
 
 export function SceneToolbar({
@@ -45,6 +48,9 @@ export function SceneToolbar({
   onResetView,
   onPan,
   onAdd,
+  addLabel,
+  showAdd = true,
+  migration = null,
 }: Props) {
   const statusText = status === 'restored' ? copy.restored : copy.saved
   return (
@@ -70,9 +76,16 @@ export function SceneToolbar({
       <button type="button" className={styles.tool} aria-label={copy.panDown} onClick={() => onPan('down')}>
         {copy.panDownShort}
       </button>
-      <button type="button" className={styles.tool} aria-expanded={libraryOpen} aria-controls="shed-library" onClick={onAdd}>
-        {copy.addElement}
-      </button>
+      {showAdd ? (
+        <button type="button" className={styles.tool} aria-expanded={libraryOpen} aria-controls="shed-library" onClick={onAdd}>
+          {addLabel ?? copy.addElement}
+        </button>
+      ) : null}
+      {migration ? (
+        <button type="button" className={styles.tool} onClick={migration.onClick}>
+          {migration.label}
+        </button>
+      ) : null}
       <button type="button" className={styles.tool} aria-pressed={transparent} onClick={onToggleTransparency}>
         {copy.transparency}
       </button>

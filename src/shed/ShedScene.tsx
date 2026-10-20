@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { elementsInDrawOrder } from './commands'
-import type { ArchitecturalElement, ShedDocument } from './model'
+import type { ArchitecturalElement, AttachmentType, ShedDocument } from './model'
 import { SHED_INK, SHED_LIMESTONE, SHED_PARCHMENT } from './palette'
 import { SketchMarks } from './rendering/SketchMarks'
 import { composeSheet } from './rendering/composition'
@@ -23,6 +23,8 @@ type Props = {
   onPan: (panX: number, panY: number) => void
   onZoom: (direction: 'in' | 'out') => void
   transparent?: boolean
+  attachments?: readonly { direction: AttachmentType; label: string; x: number; y: number }[]
+  onAttach?: (direction: AttachmentType) => void
 }
 
 export function ShedScene({
@@ -39,6 +41,8 @@ export function ShedScene({
   onPan,
   onZoom,
   transparent = true,
+  attachments = [],
+  onAttach,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const ordered = elementsInDrawOrder(document)
@@ -165,6 +169,33 @@ export function ShedScene({
             onDelete={onDelete}
             transparent={transparent}
           />
+        ))}
+        {attachments.map((item) => (
+          <g
+            key={item.direction}
+            className={styles.attachment}
+            role="button"
+            tabIndex={0}
+            aria-label={item.label}
+            data-attachment={item.direction}
+            transform={`translate(${item.x.toFixed(1)} ${item.y.toFixed(1)})`}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              event.preventDefault()
+              event.stopPropagation()
+              onAttach?.(item.direction)
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              event.stopPropagation()
+              onAttach?.(item.direction)
+            }}
+          >
+            <circle className={styles.handleHit} r={22} />
+            <circle className={styles.handle} r={7} />
+            <path className={styles.handleMark} d="M-5 0 H5 M0 -5 V5" />
+          </g>
         ))}
       </g>
     </svg>

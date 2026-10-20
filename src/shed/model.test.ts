@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { addTower, moveElement, nudgeElement, resetElement, updateElement } from './commands'
 import { buildTower } from './geometry'
-import { DEFAULT_PRIMARY, defaultShedDocument, defaultTower, SHED_STORAGE_KEY } from './model'
+import { DEFAULT_PRIMARY, defaultTower, freeShedDocument, SHED_STORAGE_KEY } from './model'
 import { loadShedDocument, parseShedDocument, persistShedDocument, resetShedLoadNotice } from './persistence'
 import { nextZoom } from './view'
 
@@ -21,7 +21,7 @@ function memoryStorage() {
 
 describe('SHED document', () => {
   it('moves a tower and keeps it inside the scene', () => {
-    const moved = moveElement(defaultShedDocument(), 'tower-1', 0.2, 0.3)
+    const moved = moveElement(freeShedDocument(), 'tower-1', 0.2, 0.3)
     expect(moved.scene.elements[0]?.x).toBeCloseTo(0.2)
     expect(moved.scene.elements[0]?.y).toBeCloseTo(0.3)
     const edge = moveElement(moved, 'tower-1', -2, 4)
@@ -30,7 +30,7 @@ describe('SHED document', () => {
   })
 
   it('nudges with the arrow keys and a finer shift step', () => {
-    const start = defaultShedDocument()
+    const start = freeShedDocument()
     const nudged = nudgeElement(start, 'tower-1', 'ArrowRight', false)
     expect(nudged.scene.elements[0]?.x).toBeCloseTo(start.scene.elements[0]!.x + 0.02)
     const fine = nudgeElement(start, 'tower-1', 'ArrowUp', true)
@@ -39,7 +39,7 @@ describe('SHED document', () => {
   })
 
   it('edits geometry, color, and ornament, then restores the initial tower', () => {
-    const edited = updateElement(defaultShedDocument(), 'tower-1', {
+    const edited = updateElement(freeShedDocument(), 'tower-1', {
       height: 0.9,
       width: 0.2,
       roof: 0.8,
@@ -60,7 +60,7 @@ describe('SHED document', () => {
   })
 
   it('adds another tower without a placement grid', () => {
-    const next = addTower(defaultShedDocument())
+    const next = addTower(freeShedDocument())
     expect(next.scene.elements).toHaveLength(2)
     expect(next.scene.elements[1]?.type).toBe('tower')
     expect(next.scene.elements[1]?.x).not.toBe(next.scene.elements[0]?.x)
@@ -111,7 +111,7 @@ describe('SHED persistence', () => {
   it('round-trips a document under the SHED storage key', () => {
     const store = memoryStorage()
     vi.stubGlobal('localStorage', store)
-    const edited = moveElement(defaultShedDocument(), 'tower-1', 0.25, 0.5)
+    const edited = moveElement(freeShedDocument(), 'tower-1', 0.25, 0.5)
     expect(persistShedDocument(edited)).toBe(true)
     expect(store.getItem(SHED_STORAGE_KEY)).toContain('"x":0.25')
     expect(loadShedDocument().document.scene.elements[0]).toMatchObject({ x: 0.25, y: 0.5 })
@@ -125,7 +125,8 @@ describe('SHED persistence', () => {
     vi.stubGlobal('localStorage', store)
     const loaded = loadShedDocument()
     expect(loaded.status).toBe('restored')
-    expect(loaded.document.scene.elements[0]?.id).toBe('tower-1')
+    expect(loaded.document.schema).toBe(3)
+    expect(loaded.document.scene.elements).toHaveLength(0)
     expect(parseShedDocument(JSON.parse(store.getItem(SHED_STORAGE_KEY) ?? 'null'))).not.toBeNull()
     expect(loadShedDocument().status).toBe('restored')
     vi.unstubAllGlobals()

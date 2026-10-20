@@ -1,8 +1,12 @@
+import { catalogById, isCatalogId } from './construction/catalog'
+import { issueIn } from './construction/graph'
+import { POSITION_MAX, POSITION_MIN } from './construction/layout'
 import {
   DEFAULT_DETAIL,
   DEFAULT_PRIMARY,
   DEFAULT_SECONDARY,
   PARAM_KEYS,
+  SHED_FREE_SCHEMA,
   SHED_SCHEMA_VERSION,
   SHED_STORAGE_KEY,
   VARIANT_COUNT,
@@ -10,11 +14,15 @@ import {
   clampVariant,
   defaultParams,
   defaultShedDocument,
+  isAttachmentType,
   isColorTreatment,
+  isConstructionDocument,
+  isConstructionRole,
   isElementType,
   isInkStyle,
   isOrnamentId,
   type ArchitecturalElement,
+  type AttachmentType,
   type ElementParams,
   type ElementType,
   type ShedDocument,
@@ -26,6 +34,9 @@ export type ShedLoad = {
   document: ShedDocument
   status: ShedLoadStatus
 }
+
+export const SHED_LEGACY_KEY = 'field.shed.legacy'
+export const SHED_CONSTRUCTION_KEY = 'field.shed.construction'
 
 const HEX = /^#[0-9a-f]{6}$/
 
@@ -93,7 +104,45 @@ function strictParams(value: unknown): ElementParams | null {
 
 type ReadMode = 'strict' | 'recover'
 
-function readElement(value: unknown, seen: Set<string>, mode: ReadMode): ArchitecturalElement | null {
+function constructionPosition(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  if (value < POSITION_MIN || value > POSITION_MAX) return null
+  return value
+}
+
+function repairedConstructionPosition(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return Math.min(POSITION_MAX, Math.max(POSITION_MIN, value))
+}
+
+function connectionOf(
+  raw: Record<string, unknown>,
+  mode: ReadMode,
+): Pick<ArchitecturalElement, 'catalogId' | 'role' | 'parentId' | 'attachmentType' | 'attachmentAnchor'> | null {
+  if (!isCatalogId(raw.catalogId) || !isConstructionRole(raw.role)) return null
+  const entry = catalogById(raw.catalogId)
+  if (!entry || entry.role !== raw.role) return null
+  const parentId = raw.parentId === null ? null : typeof raw.parentId === 'string' && raw.parentId.length > 0 ? raw.parentId : undefined
+  if (parentId === undefined) return null
+  if (parentId === null) {
+    if (raw.attachmentType != null || raw.attachmentAnchor != null) return null
+    return { catalogId: raw.catalogId, role: raw.role, parentId: null, attachmentType: null, attachmentAnchor: null }
+  }
+  if (!isAttachmentType(raw.attachmentType) || raw.attachmentAnchor !== raw.attachmentType) {
+    if (mode === 'recover') return null
+    return null
+  }
+  const attachmentType: AttachmentType = raw.attachmentType
+  return {
+    catalogId: raw.catalogId,
+    role: raw.role,
+    parentId,
+    attachmentType,
+    attachmentAnchor: attachmentType,
+  }
+}
+
+function readElement(value: unknown, seen: Set<string>, mode: ReadMode, construction = false): ArchitecturalElement | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
   if (typeof raw.id !== 'string' || raw.id.length < 1 || raw.id.length > 80) return null
@@ -102,8 +151,8 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
   const type: ElementType = raw.type
 
   if (mode === 'strict') {
-    const x = unit(raw.x)
-    const y = unit(raw.y)
+    const x = construction ? constructionPosition(raw.x) : unit(raw.x)
+    const y = construction ? constructionPosition(raw.y) : unit(raw.y)
     const height = unit(raw.height)
     const width = unit(raw.width)
     const roof = unit(raw.roof)
@@ -116,6 +165,8 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
     if (x == null || y == null || height == null || width == null || roof == null || layer == null) return null
     if (!primary || !secondary || !detail || !isOrnamentId(raw.ornament) || variant == null || !params) return null
     if (variant < 0 || variant >= VARIANT_COUNT[type]) return null
+    const link = construction ? connectionOf(raw, mode) : null
+    if (construction && !link) return null
     seen.add(raw.id)
     return {
       id: raw.id,
@@ -133,16 +184,19 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
       variant,
       params,
       ...sketchFields(raw),
+      ...(link ?? {}),
     }
   }
 
+  const link = construction ? connectionOf(raw, mode) : null
+  if (construction && !link) return null
   const fallback = defaultParams()
   seen.add(raw.id)
   return {
     id: raw.id,
     type,
-    x: clampPosition(repairedUnit(raw.x, 0.5)),
-    y: clampPosition(repairedUnit(raw.y, 0.78)),
+    x: construction ? repairedConstructionPosition(raw.x, 0.5) : clampPosition(repairedUnit(raw.x, 0.5)),
+    y: construction ? repairedConstructionPosition(raw.y, 0.8) : clampPosition(repairedUnit(raw.y, 0.78)),
     layer: repairedLayer(raw.layer, 1),
     height: repairedUnit(raw.height, 0.5),
     width: repairedUnit(raw.width, 0.45),
@@ -154,6 +208,7 @@ function readElement(value: unknown, seen: Set<string>, mode: ReadMode): Archite
     variant: clampVariant(type, typeof raw.variant === 'number' ? raw.variant : 0),
     params: repairedParams(raw.params ?? fallback),
     ...sketchFields(raw),
+    ...(link ?? {}),
   }
 }
 
@@ -199,11 +254,21 @@ function sceneId(value: unknown): string | null {
   return value
 }
 
+function withoutLinks(element: ArchitecturalElement): ArchitecturalElement {
+  const next = { ...element }
+  delete next.catalogId
+  delete next.role
+  delete next.parentId
+  delete next.attachmentType
+  delete next.attachmentAnchor
+  return next
+}
+
 function readDocument(value: unknown, mode: ReadMode): ShedDocument | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
   const schema = raw.schema
-  if (schema !== 1 && schema !== SHED_SCHEMA_VERSION) return null
+  if (schema !== 1 && schema !== SHED_FREE_SCHEMA && schema !== SHED_SCHEMA_VERSION) return null
   if (!raw.scene || typeof raw.scene !== 'object') return null
   const scene = raw.scene as Record<string, unknown>
   const id = sceneId(scene.id)
@@ -211,11 +276,13 @@ function readDocument(value: unknown, mode: ReadMode): ShedDocument | null {
   if (typeof scene.version !== 'number' || !Number.isFinite(scene.version) || scene.version < 0) return null
   if (!Array.isArray(scene.elements)) return null
   if (schema === 1 && scene.elements.length < 1) return null
+  const construction = schema === SHED_SCHEMA_VERSION
+  if (construction && scene.composition !== 'construction') return null
 
   const seen = new Set<string>()
   const elements: ArchitecturalElement[] = []
   for (const item of scene.elements) {
-    const element = schema === 1 ? migrateV1Element(item, seen, mode) : readElement(item, seen, mode)
+    const element = schema === 1 ? migrateV1Element(item, seen, mode) : readElement(item, seen, mode, construction)
     if (!element) {
       if (mode === 'strict') return null
       continue
@@ -223,15 +290,29 @@ function readDocument(value: unknown, mode: ReadMode): ShedDocument | null {
     elements.push(element)
   }
   if (mode === 'strict' && schema === 1 && elements.length < 1) return null
-  if (mode === 'strict' && schema === SHED_SCHEMA_VERSION && elements.length !== scene.elements.length) return null
+  if (mode === 'strict' && elements.length !== scene.elements.length) return null
   const transparentBuildings = scene.transparentBuildings
+  const transparency = transparentBuildings === true || transparentBuildings === false ? { transparentBuildings } : {}
+  if (construction) {
+    if (issueIn(elements)) {
+      if (mode === 'strict') return null
+      return {
+        schema: SHED_FREE_SCHEMA,
+        scene: { id, version: scene.version, elements: elements.map(withoutLinks), ...transparency },
+      }
+    }
+    return {
+      schema: SHED_SCHEMA_VERSION,
+      scene: { id, version: scene.version, composition: 'construction', elements, ...transparency },
+    }
+  }
   return {
-    schema: SHED_SCHEMA_VERSION,
+    schema: SHED_FREE_SCHEMA,
     scene: {
       id,
       version: scene.version,
       elements,
-      ...(transparentBuildings === true || transparentBuildings === false ? { transparentBuildings } : {}),
+      ...transparency,
     },
   }
 }
@@ -243,7 +324,7 @@ export function parseShedDocument(value: unknown): ShedDocument | null {
 export function recoverShedDocument(value: unknown): ShedDocument | null {
   if (!value || typeof value !== 'object') return null
   const raw = value as Record<string, unknown>
-  if (raw.schema !== 1 && raw.schema !== SHED_SCHEMA_VERSION) return null
+  if (raw.schema !== 1 && raw.schema !== SHED_FREE_SCHEMA && raw.schema !== SHED_SCHEMA_VERSION) return null
   return readDocument(value, 'recover')
 }
 
@@ -320,4 +401,48 @@ export function loadShedDocument(): ShedLoad {
 
 export function clampPosition(value: number): number {
   return Math.min(0.96, Math.max(0.04, clampUnit(value)))
+}
+
+export function hasLegacySheet(): boolean {
+  const store = storage()
+  if (!store) return false
+  try {
+    return store.getItem(SHED_LEGACY_KEY) != null
+  } catch {
+    return false
+  }
+}
+
+/** Archives the free sheet and opens the connected build. The free sheet can be restored. */
+export function beginConnectedBuild(current: ShedDocument): ShedDocument {
+  const store = storage()
+  if (!isConstructionDocument(current) && store) {
+    try {
+      store.setItem(SHED_LEGACY_KEY, serializeShedDocument(current))
+      const saved = store.getItem(SHED_CONSTRUCTION_KEY)
+      if (saved) {
+        const recovered = recoverShedDocument(JSON.parse(saved) as unknown)
+        if (recovered && isConstructionDocument(recovered)) return recovered
+      }
+    } catch {
+      return defaultShedDocument()
+    }
+  }
+  return defaultShedDocument()
+}
+
+/** Puts the free sheet back and keeps the connected build beside it. */
+export function restoreFreeSheet(current: ShedDocument): ShedDocument | null {
+  const store = storage()
+  if (!store) return null
+  try {
+    if (isConstructionDocument(current)) store.setItem(SHED_CONSTRUCTION_KEY, serializeShedDocument(current))
+    const saved = store.getItem(SHED_LEGACY_KEY)
+    if (!saved) return null
+    const recovered = recoverShedDocument(JSON.parse(saved) as unknown)
+    if (!recovered || isConstructionDocument(recovered)) return null
+    return recovered
+  } catch {
+    return null
+  }
 }

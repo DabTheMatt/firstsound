@@ -1,9 +1,19 @@
+import {
+  deleteBranch,
+  duplicatePiece,
+  hasBranch,
+  patchConstruction,
+  resetPiece,
+  translateConstruction,
+  type ConstructionResult,
+} from './construction/build'
 import { clampPosition } from './persistence'
 import {
   clampUnit,
   clampVariant,
   defaultElement,
   defaultParams,
+  isConstructionDocument,
   isElementType,
   isOrnamentId,
   PARAM_KEYS,
@@ -103,7 +113,16 @@ function sanitizePatch(element: ArchitecturalElement, patch: ElementPatch): Elem
   return next
 }
 
+export function editConstruction(document: ShedDocument, id: string, patch: ElementPatch): ConstructionResult {
+  const element = document.scene.elements.find((item) => item.id === id)
+  if (!element) return { document, error: null, addedId: null }
+  const clean = sanitizePatch(element, patch)
+  const { x: _x, y: _y, ...rest } = clean
+  return patchConstruction(document, id, rest)
+}
+
 export function updateElement(document: ShedDocument, id: string, patch: ElementPatch): ShedDocument {
+  if (isConstructionDocument(document)) return editConstruction(document, id, patch).document
   return mapElement(document, id, (element) => {
     const clean = sanitizePatch(element, patch)
     const { params, ...rest } = clean
@@ -117,6 +136,7 @@ export function updateElement(document: ShedDocument, id: string, patch: Element
 }
 
 export function moveElement(document: ShedDocument, id: string, x: number, y: number): ShedDocument {
+  if (isConstructionDocument(document)) return translateConstruction(document, id, x, y)
   return updateElement(document, id, { x, y })
 }
 
@@ -129,6 +149,7 @@ export function nudgeElement(document: ShedDocument, id: string, key: string, sh
 }
 
 export function resetElement(document: ShedDocument, id: string): ShedDocument {
+  if (isConstructionDocument(document)) return resetPiece(document, id).document
   return mapElement(document, id, (element) => {
     const initial = defaultElement(element.type, element.id)
     return {
@@ -206,6 +227,7 @@ function nextElementId(document: ShedDocument, type: ElementType): string {
 }
 
 export function addElement(document: ShedDocument, type: ElementType = 'tower'): ShedDocument {
+  if (isConstructionDocument(document)) return document
   if (!isElementType(type)) return document
   if (document.scene.elements.length >= MAX_ELEMENTS) return document
   const index = document.scene.elements.length
@@ -228,6 +250,10 @@ export function addTower(document: ShedDocument): ShedDocument {
 }
 
 export function deleteElement(document: ShedDocument, id: string): ShedDocument {
+  if (isConstructionDocument(document)) {
+    if (hasBranch(document, id)) return document
+    return deleteBranch(document, id).document
+  }
   if (!document.scene.elements.some((element) => element.id === id)) return document
   return {
     ...document,
@@ -240,6 +266,7 @@ export function deleteElement(document: ShedDocument, id: string): ShedDocument 
 }
 
 export function duplicateElement(document: ShedDocument, id: string): ShedDocument {
+  if (isConstructionDocument(document)) return duplicatePiece(document, id).document
   if (document.scene.elements.length >= MAX_ELEMENTS) return document
   const source = document.scene.elements.find((element) => element.id === id)
   if (!source) return document
