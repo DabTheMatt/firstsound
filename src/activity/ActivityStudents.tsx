@@ -28,19 +28,21 @@ export function ActivityStudents({ rows, sort, onSort, maxCount }: Props) {
         <h2 id={titleId} className={styles.heading}>
           {t.activity.students}
         </h2>
-        <Segmented label={t.activity.sortGroup} value={sort} options={options} onChange={onSort} />
+        <div className={styles.control}>
+          <Segmented wrap label={t.activity.sortGroup} value={sort} options={options} onChange={onSort} />
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className={styles.empty}>{t.activity.noStudents}</p>
       ) : (
         <div>
           <div className={styles.studentHead} aria-hidden="true">
-            <span>{t.activity.name}</span>
-            <span>{t.activity.level}</span>
-            <span className={styles.count}>{t.activity.recordings}</span>
-            <span>{t.activity.fileSize}</span>
-            <span>{t.activity.lastActivity}</span>
-            <span>{t.activity.indicator}</span>
+            <span title={t.activity.name}>{t.activity.name}</span>
+            <span title={t.activity.level}>{t.activity.level}</span>
+            <span className={styles.count} title={t.activity.recordings}>{t.activity.recordings}</span>
+            <span title={t.activity.fileSize}>{t.activity.fileSize}</span>
+            <span title={t.activity.lastActivity}>{t.activity.lastActivity}</span>
+            <span title={t.activity.indicator}>{t.activity.indicator}</span>
           </div>
           <ul className={styles.list}>
             {rows.map((row) => {

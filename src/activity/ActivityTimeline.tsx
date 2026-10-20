@@ -48,7 +48,9 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
         <h2 id={titleId} className={styles.heading}>
           {t.activity.timeline}
         </h2>
-        <Segmented label={t.activity.rangeGroup} value={range} options={options} onChange={onRange} />
+        <div className={styles.control}>
+          <Segmented wrap label={t.activity.rangeGroup} value={range} options={options} onChange={onRange} />
+        </div>
       </div>
       {total === 0 ? (
         <p className={styles.empty}>{t.activity.timelineEmpty}</p>

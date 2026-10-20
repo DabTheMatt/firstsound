@@ -11,6 +11,10 @@
   max-width: 100%;
 }
 
+.root > * {
+  flex: 0 0 auto;
+}
+
 .demoBar {
   position: sticky;
   top: 0;
@@ -96,7 +100,7 @@
 }
 
 .timeline {
-  min-height: 0;
+  min-width: 0;
 }
 
 .head {
@@ -105,8 +109,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px 12px;
+  min-width: 0;
   padding: 8px 12px;
   border-bottom: var(--field-control-border-width, 1px) solid var(--border-subtle);
+}
+
+.control {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .plotWrap {
@@ -224,7 +234,7 @@
 
 .studentHead,
 .student {
-  grid-template-columns: minmax(6.5rem, 1.15fr) minmax(6rem, 1.2fr) 2.6rem minmax(4rem, auto) minmax(5rem, auto) minmax(4.5rem, auto);
+  grid-template-columns: minmax(0, 1.15fr) minmax(6rem, 1.15fr) minmax(5.2rem, auto) minmax(4.5rem, auto) minmax(6.4rem, auto) minmax(4.4rem, auto);
 }
 
 .recHead,
@@ -239,6 +249,14 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-bottom: var(--field-control-border-width, 1px) solid var(--border-subtle);
+}
+
+.studentHead > span,
+.recHead > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .student,

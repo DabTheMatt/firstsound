@@ -24,11 +24,11 @@ export function ActivityRecordings({ rows }: Props) {
       ) : (
         <div>
           <div className={styles.recHead} aria-hidden="true">
-            <span>{t.activity.filename}</span>
-            <span>{t.activity.student}</span>
-            <span>{t.activity.uploaded}</span>
-            <span>{t.activity.fileSize}</span>
-            <span>{t.activity.format}</span>
+            <span title={t.activity.filename}>{t.activity.filename}</span>
+            <span title={t.activity.student}>{t.activity.student}</span>
+            <span title={t.activity.uploaded}>{t.activity.uploaded}</span>
+            <span title={t.activity.fileSize}>{t.activity.fileSize}</span>
+            <span title={t.activity.format}>{t.activity.format}</span>
           </div>
           <ul className={styles.list}>
             {rows.map((row) => {

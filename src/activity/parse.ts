@@ -13,10 +13,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
+function stripControls(value: string): string {
+  let out = ''
+  for (const char of value) {
+    if (char.charCodeAt(0) >= 32) out += char
+  }
+  return out
+}
+
 function basename(name: string): string {
   const cut = name.split(/[/\\]/).pop()?.trim() ?? ''
   if (!cut || cut === '.' || cut === '..') return ''
-  return cut.replace(/[\u0000-\u001f]/g, '').slice(0, 180)
+  return stripControls(cut).slice(0, 180)
 }
 
 /** Display names and ids stay free of addresses. */
