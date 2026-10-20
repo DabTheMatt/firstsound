@@ -45,7 +45,7 @@ describe('SHED rendering', () => {
     expect(highHeight).toBeGreaterThan(lowHeight)
   })
 
-  it('offers Workspace and SHED in both locales', () => {
+  it('hides the SHED destination from the header switch', () => {
     const markup = renderToStaticMarkup(
       <I18nProvider>
         <AppViewSwitch view="workspace" onChange={() => undefined} />
@@ -53,9 +53,9 @@ describe('SHED rendering', () => {
     )
     expect(markup).toContain('Workspace')
     expect(markup).toContain('Activity')
-    expect(markup).toContain('SHED')
     expect(markup).toContain('data-app-view="activity"')
-    expect(markup).toContain('data-app-view="shed"')
+    expect(markup).not.toContain('SHED')
+    expect(markup).not.toContain('data-app-view="shed"')
   })
 
   it('sizes the scene with a viewBox instead of a fixed page width', () => {

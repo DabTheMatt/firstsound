@@ -50,7 +50,7 @@ import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
 import { AppViewSwitch } from './AppViewSwitch'
-import { applyAppView, type AppView } from './appView'
+import { applyAppView, SHED_VISIBLE, type AppView } from './appView'
 import { ActivityView } from '../activity/ActivityView'
 import { ShedView } from '../shed/ShedView'
 import { ResetSessionButton } from '../components/header/ResetSessionButton'
@@ -758,6 +758,7 @@ export default function App() {
   }
 
   const chooseView = (view: AppView) => {
+    if (view === 'shed' && !SHED_VISIBLE) return
     const next = applyAppView({ view: appView, mode: uiMode }, view)
     setAppView(next.view)
     announce(t.view[view])
@@ -1736,7 +1737,7 @@ export default function App() {
     )
   }
 
-  if (appView === 'shed') {
+  if (SHED_VISIBLE && appView === 'shed') {
     return (
       <div className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}>
         <SkipLink />

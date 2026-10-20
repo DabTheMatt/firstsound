@@ -27,13 +27,14 @@ function headerMarkup(): string {
 }
 
 describe('technical header menu', () => {
-  it('shows Workspace once, beside Activity and SHED', () => {
+  it('shows Workspace once, beside Activity, and does not offer SHED', () => {
     const html = headerMarkup()
     expect(html.match(/>Workspace</g)).toHaveLength(1)
     expect(html).toContain('data-app-view="workspace"')
     expect(html).toContain('data-app-view="activity"')
     expect(html).toContain('>Activity<')
-    expect(html).toContain('>SHED<')
+    expect(html).not.toContain('>SHED<')
+    expect(html).not.toContain('data-app-view="shed"')
     expect(html.match(/>Guide me</g)).toHaveLength(1)
   })
 })
