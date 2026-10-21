@@ -161,8 +161,8 @@ Zestaw starszy niż trzy godziny (trzy pominięte cykle 60-minutowe) zostaje na 
 - [ ] Na ekranie widać źródło i czas synchronizacji.
 - [ ] Błąd odczytu zestawu nie pokazuje danych demonstracyjnych.
 
-## Przyszła publikacja automatyczna
+## Publikacja automatyczna
 
-Ten etap jej nie wdraża.
+Apps Script dalej zapisuje tylko prywatny `field-activity-snapshot.json`. Nie woła GitHuba. Workflow `.github/workflows/activity-publish.yml` raz na godzinę pobiera ten jeden plik kontem usługi, uruchamia `validatePublicSnapshot` i commituje wyłącznie `public/activity/snapshot.json`, gdy zestaw jest poprawny i różni się od pliku na `main`. Zły JSON, niekompletny skan i błąd pobrania nie podmieniają ostatniego dobrego pliku. Push uruchamia dotychczasowy workflow GitHub Pages.
 
-Bezpieczny następny krok to osobny proces poza przeglądarką: Apps Script nadal zapisuje prywatny plik, a zaufane zadanie (na przykład GitHub Actions na serwerze) z sekretem trzymanym w sekretach CI, nie w kodzie FIELD, pobiera ten plik kontem właściciela, przepuszcza go przez `validatePublicSnapshot` i dopiero wtedy wstawia `public/activity/snapshot.json` do wdrożenia. Folder Dysku pozostaje prywatny. Token zapisu do GitHub nie trafia do aplikacji w przeglądarce. Dopóki tego procesu nie ma, eksport zostaje ręczny.
+Sekrety są tylko w GitHub Actions: `ACTIVITY_DRIVE_CREDENTIALS`, `ACTIVITY_SNAPSHOT_FILE_ID` i `ACTIVITY_COMMIT_TOKEN`. Nie ma ich w kodzie FIELD ani w przeglądarce. Konto usługi ma dostęp Viewer wyłącznie do pliku snapshotu. Folder nagrań zostaje prywatny.

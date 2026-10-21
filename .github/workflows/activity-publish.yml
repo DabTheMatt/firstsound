@@ -1,0 +1,40 @@
+name: Publish activity snapshot
+
+on:
+  schedule:
+    # After the hourly Apps Script sync. A missed hour still leaves the last good file.
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: activity-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.ACTIVITY_COMMIT_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/activity/publishSnapshot.mjs
+        env:
+          ACTIVITY_DRIVE_CREDENTIALS: ${{ secrets.ACTIVITY_DRIVE_CREDENTIALS }}
+          ACTIVITY_SNAPSHOT_FILE_ID: ${{ secrets.ACTIVITY_SNAPSHOT_FILE_ID }}
+      - name: Commit the validated snapshot
+        run: |
+          git diff --quiet -- public/activity/snapshot.json && exit 0
+          git config user.name "field-activity"
+          git config user.email "41898282+field-activity@users.noreply.github.com"
+          git add public/activity/snapshot.json
+          git commit -m "Refresh the published Drive activity snapshot."
+          git push origin HEAD:main
