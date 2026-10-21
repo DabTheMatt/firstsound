@@ -166,14 +166,20 @@ describe('activity dashboard', () => {
     expect(week).not.toContain('No recordings in this range.')
     expect(all).toContain(`<title>${september}:`)
     expect(all).not.toContain('No recordings in this range.')
+    expect(all).toContain('#c9841a')
+    expect(all).toContain('#2f7f9a')
+    expect(all).toContain('Who added recordings')
+    expect(all).toContain('Bartek 1')
   })
 
   it('orders participants by the selected sort', () => {
-    const byCount = markup({ initialSort: 'count' })
-    const byName = markup({ initialSort: 'name' })
+    const meterNames = (html: string) =>
+      [...html.matchAll(/role="meter"[^>]*aria-label="([^",]+),/g)].map((match) => match[1] ?? '')
+    const byCount = meterNames(markup({ initialSort: 'count' }))
+    const byName = meterNames(markup({ initialSort: 'name' }))
     expect(byCount.indexOf('Zofia')).toBeLessThan(byCount.indexOf('Ania'))
     expect(byName.indexOf('Ania')).toBeLessThan(byName.indexOf('Zofia'))
-    expect(byCount).toContain('aria-checked="true"')
+    expect(markup({ initialSort: 'count' })).toContain('aria-checked="true"')
   })
 
   it('renders an empty project without inventing rows', () => {

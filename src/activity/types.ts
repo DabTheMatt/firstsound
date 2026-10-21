@@ -42,10 +42,17 @@ export type ActivityMetrics = {
   last7Days: number
 }
 
+export type TimelineSegment = {
+  studentId: string
+  count: number
+}
+
 export type TimelinePoint = {
   /** UTC midnight of a Europe/Warsaw calendar date, ISO-8601. */
   day: string
   count: number
+  /** Present when the day can be split by participant. Empty on a silent day of a split chart. */
+  segments?: TimelineSegment[]
 }
 
 export type StudentActivityRow = {
@@ -56,6 +63,7 @@ export type StudentActivityRow = {
   lastUpload: string | null
   state: ActivityState
   segments: number
+  color: string
 }
 
 export type RecentRecordingRow = {

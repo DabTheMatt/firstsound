@@ -178,7 +178,12 @@ export function ActivityView({
         <Metric label={t.activity.activeStudents} value={formatCount(metrics.activeStudents, locale)} />
         <Metric label={t.activity.last7Days} value={formatCount(metrics.last7Days, locale)} />
       </div>
-      <ActivityTimeline points={points} range={range} onRange={setRange} />
+      <ActivityTimeline
+        points={points}
+        range={range}
+        onRange={setRange}
+        legend={students.map((row) => ({ id: row.id, name: row.displayName, color: row.color }))}
+      />
       <div className={styles.columns}>
         <ActivityStudents rows={students} sort={sort} onSort={setSort} maxCount={maxCount} />
         <ActivityRecordings rows={recent} notice={recordingNotice} />

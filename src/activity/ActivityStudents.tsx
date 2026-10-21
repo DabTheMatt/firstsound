@@ -57,7 +57,8 @@ export function ActivityStudents({ rows, sort, onSort, maxCount }: Props) {
               return (
                 <li key={row.id} className={styles.student}>
                   <span className={styles.name} title={row.displayName}>
-                    {row.displayName}
+                    <span className={styles.swatch} style={{ background: row.color }} aria-hidden="true" />
+                    <span className={styles.nameText}>{row.displayName}</span>
                   </span>
                   <div
                     className={styles.meter}
@@ -75,6 +76,7 @@ export function ActivityStudents({ rows, sort, onSort, maxCount }: Props) {
                         <span
                           key={index}
                           className={`${styles.seg} ${on ? styles.segOn : ''} ${recent ? styles.segRecent : ''}`}
+                          style={on ? { background: row.color } : undefined}
                           aria-hidden="true"
                         />
                       )

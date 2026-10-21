@@ -1298,6 +1298,8 @@ export type Messages = {
     timelineEmpty: string
     timelineSummary: (count: number, peak: string, day: string) => string
     timelineTable: string
+    legend: string
+    who: string
     day: string
     count: string
     students: string
@@ -2832,6 +2834,8 @@ export const EN: Messages = {
       return `${added} added. Peak ${peak} on ${day}.`
     },
     timelineTable: 'Values',
+    legend: 'Who added recordings',
+    who: 'Who',
     day: 'Day',
     count: 'Count',
     students: 'Participants',
@@ -4380,6 +4384,8 @@ export const PL: Messages = {
       return `Dodano ${added}. Szczyt ${peak}, ${day}.`
     },
     timelineTable: 'Wartości',
+    legend: 'Kto dodał nagrania',
+    who: 'Kto',
     day: 'Dzień',
     count: 'Liczba',
     students: 'Uczestnicy',

@@ -1,5 +1,6 @@
 import { addCalendarDays, calendarDateToIso, calendarWindow, warsawCalendarDate } from '../calendar'
 import { activityState, meterSegments } from '../metrics'
+import { activityColors } from '../palette'
 import { SNAPSHOT_STALE_AFTER_MS } from '../source'
 import type { ActivityRange, StudentActivityRow, StudentSort, TimelinePoint } from '../types'
 import type { PublicActivitySnapshot } from './schema'
@@ -23,6 +24,7 @@ export function publicStudentRows(
   unknownLabel: string,
 ): StudentActivityRow[] {
   const asOf = new Date(snapshot.synchronization.lastSynchronizationAt)
+  const colors = activityColors(snapshot.students.map((student) => student.studentId))
   const rows: StudentActivityRow[] = snapshot.students.map((student) => {
     const displayName = student.displayName.trim() || unknownLabel
     return {
@@ -33,6 +35,7 @@ export function publicStudentRows(
       lastUpload: student.lastActivityAt,
       state: activityState(student.lastActivityAt, asOf),
       segments: 0,
+      color: colors.get(student.studentId) ?? '#c9841a',
     }
   })
   const max = rows.reduce((peak, row) => Math.max(peak, row.recordingCount), 0)
@@ -49,7 +52,9 @@ export function publicStudentRows(
 
 export function publicTimeline(snapshot: PublicActivitySnapshot, range: ActivityRange): TimelinePoint[] {
   const asOf = Date.parse(snapshot.synchronization.lastSynchronizationAt)
+  const split = snapshot.dailyActivity.some((point) => point.byStudent)
   const counts = new Map(snapshot.dailyActivity.map((point) => [point.date, point.count]))
+  const parts = new Map(snapshot.dailyActivity.map((point) => [point.date, point.byStudent ?? []]))
   let bounds: { start: string; end: string } | null
   if (range === '7d') bounds = calendarWindow(7, asOf)
   else if (range === '30d') bounds = calendarWindow(30, asOf)
@@ -65,7 +70,8 @@ export function publicTimeline(snapshot: PublicActivitySnapshot, range: Activity
   if (!bounds) return []
   const points: TimelinePoint[] = []
   for (let day = bounds.start; day <= bounds.end; day = addCalendarDays(day, 1)) {
-    points.push({ day: calendarDateToIso(day), count: counts.get(day) ?? 0 })
+    const count = counts.get(day) ?? 0
+    points.push(split ? { day: calendarDateToIso(day), count, segments: parts.get(day) ?? [] } : { day: calendarDateToIso(day), count })
     if (points.length > MAX_TIMELINE_DAYS) break
   }
   return points

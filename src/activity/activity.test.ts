@@ -6,6 +6,7 @@ import { parseActivitySnapshot } from './parse'
 import { loadActivity } from './loadActivity'
 import { createDemoActivityProvider, createDriveActivityProvider, createPublishedJsonProvider, createStaticSnapshotProvider, ActivitySourceError } from './provider'
 import { ACTIVITY_DATA_SOURCE } from './source'
+import { publicTimeline } from './snapshot/present'
 import { validatePublicSnapshot } from './snapshot/validate'
 import type { ActivitySnapshot, RecordingReference } from './types'
 
@@ -66,6 +67,9 @@ describe('activity metrics', () => {
     expect(all.reduce((sum, point) => sum + point.count, 0)).toBe(7)
     expect(all[0]?.day.startsWith('2026-09-01')).toBe(true)
     expect(week.some((point) => point.day.startsWith('2026-09-01'))).toBe(false)
+    const shared = all.find((point) => point.day.startsWith('2026-10-19'))
+    expect(shared?.segments).toEqual([{ studentId: 's4', count: 2 }])
+    expect(all.every((point) => (point.segments ?? []).reduce((sum, segment) => sum + segment.count, 0) === point.count)).toBe(true)
   })
 
   it('sorts participants by count, recent activity, and name', () => {
@@ -81,6 +85,9 @@ describe('activity metrics', () => {
     expect(rows.find((row) => row.displayName === 'Celina')?.state).toBe('none')
     expect(rows.find((row) => row.displayName === 'Celina')?.segments).toBe(0)
     expect(rows.find((row) => row.displayName === 'Zofia')?.segments).toBe(16)
+    const byCount = studentRows(snapshot, NOW, 'count', 'en', 'Unknown')
+    expect(byCount.find((row) => row.id === 's1')?.color).toBe(rows.find((row) => row.id === 's1')?.color)
+    expect(new Set(rows.map((row) => row.color)).size).toBe(rows.length)
   })
 
   it('lists recent files without a duration', () => {
@@ -312,6 +319,54 @@ describe('activity providers', () => {
     await expect(published.load()).rejects.toBeInstanceOf(ActivitySourceError)
     await expect(createDriveActivityProvider().load()).rejects.toMatchObject({ code: 'not-implemented' })
     await expect(createDriveActivityProvider().load()).rejects.toThrow('not-implemented')
+  })
+})
+
+describe('participant day split', () => {
+  const studentId = 'stu_0123456789abcdef'
+  const base = {
+    schemaVersion: 1,
+    generatedAt: '2026-10-21T12:00:00.000Z',
+    timezone: 'Europe/Warsaw',
+    activityBasis: 'createdTime',
+    synchronization: { status: 'complete', lastSynchronizationAt: '2026-10-21T12:00:00.000Z' },
+    project: {
+      totalStudents: 1,
+      activeStudents: 1,
+      totalRecordings: 1,
+      totalBytes: 10,
+      recordingsLast7Days: 1,
+      recordingsLast30Days: 1,
+      lastSynchronizationAt: '2026-10-21T12:00:00.000Z',
+    },
+    students: [
+      {
+        studentId,
+        displayName: 'Ania',
+        recordingCount: 1,
+        totalBytes: 10,
+        lastActivityAt: '2026-10-21T08:00:00.000Z',
+      },
+    ],
+  }
+
+  it('accepts a daily total and a matching per-participant split', () => {
+    const plain = validatePublicSnapshot({ ...base, dailyActivity: [{ date: '2026-10-21', count: 1 }] })
+    expect(plain.ok).toBe(true)
+    const split = validatePublicSnapshot({
+      ...base,
+      dailyActivity: [{ date: '2026-10-21', count: 1, byStudent: [{ studentId, count: 1 }] }],
+    })
+    expect(split.ok).toBe(true)
+    if (!split.ok) return
+    const points = publicTimeline(split.snapshot, 'all')
+    expect(points.find((point) => point.day.startsWith('2026-10-21'))?.segments).toEqual([{ studentId, count: 1 }])
+    expect(
+      validatePublicSnapshot({
+        ...base,
+        dailyActivity: [{ date: '2026-10-21', count: 1, byStudent: [{ studentId, count: 2 }] }],
+      }).ok,
+    ).toBe(false)
   })
 })
 

@@ -326,6 +326,7 @@ function buildSnapshot_(input) {
 
   var byFolder = {};
   var dailyMap = {};
+  var dailyStudents = {};
   for (var a = 0; a < accepted.length; a++) {
     var item = accepted[a];
     if (!byFolder[item.folderId]) byFolder[item.folderId] = { count: 0, bytes: 0, last: null };
@@ -334,6 +335,9 @@ function buildSnapshot_(input) {
     bucket.bytes += item.sizeBytes;
     if (!bucket.last || Date.parse(item.createdTime) > Date.parse(bucket.last)) bucket.last = item.createdTime;
     dailyMap[item.day] = (dailyMap[item.day] || 0) + 1;
+    var owner = publicStudentId(item.folderId);
+    if (!dailyStudents[item.day]) dailyStudents[item.day] = {};
+    dailyStudents[item.day][owner] = (dailyStudents[item.day][owner] || 0) + 1;
   }
 
   var folderByStudent = {};
@@ -365,7 +369,12 @@ function buildSnapshot_(input) {
   dayKeys.sort();
   var dailyActivity = [];
   for (var d = 0; d < dayKeys.length; d++) {
-    dailyActivity.push({ date: dayKeys[d], count: dailyMap[dayKeys[d]] });
+    var owners = dailyStudents[dayKeys[d]] || {};
+    var ownerIds = Object.keys(owners);
+    ownerIds.sort();
+    var parts = [];
+    for (var b = 0; b < ownerIds.length; b++) parts.push({ studentId: ownerIds[b], count: owners[ownerIds[b]] });
+    dailyActivity.push({ date: dayKeys[d], count: dailyMap[dayKeys[d]], byStudent: parts });
   }
 
   var totalRecordings = 0;
@@ -430,6 +439,26 @@ function exactKeys_(value, allowed) {
   return true;
 }
 
+function readByStudent_(point, seenStudents, contributed) {
+  if (!Array.isArray(point.byStudent) || point.byStudent.length === 0) return null;
+  var parts = [];
+  var sum = 0;
+  var previousId = '';
+  for (var i = 0; i < point.byStudent.length; i++) {
+    var item = point.byStudent[i];
+    if (!exactKeys_(item, ['studentId', 'count'])) return null;
+    if (typeof item.studentId !== 'string' || !seenStudents[item.studentId]) return null;
+    if (!isCount_(item.count) || item.count < 1) return null;
+    if (item.studentId <= previousId) return null;
+    previousId = item.studentId;
+    sum += item.count;
+    contributed[item.studentId] = (contributed[item.studentId] || 0) + item.count;
+    parts.push({ studentId: item.studentId, count: item.count });
+  }
+  if (sum !== point.count) return null;
+  return parts;
+}
+
 function validatePublicSnapshot(input) {
   if (!exactKeys_(input, ['schemaVersion', 'generatedAt', 'timezone', 'activityBasis', 'synchronization', 'project', 'students', 'dailyActivity'])) {
     return { ok: false, errors: ['extra-field'] };
@@ -479,14 +508,25 @@ function validatePublicSnapshot(input) {
   var daily = [];
   var seenDays = {};
   var previous = '';
+  var split = null;
+  var contributed = {};
   for (var d = 0; d < input.dailyActivity.length; d++) {
     var point = input.dailyActivity[d];
-    if (!exactKeys_(point, ['date', 'count'])) return { ok: false, errors: ['daily-field'] };
+    var shape = exactKeys_(point, ['date', 'count']) ? 'plain' : (exactKeys_(point, ['date', 'count', 'byStudent']) ? 'split' : '');
+    if (!shape) return { ok: false, errors: ['daily-field'] };
+    if (split === null) split = shape;
+    else if (split !== shape) return { ok: false, errors: ['daily-field'] };
     if (!isYmd_(point.date) || !isCount_(point.count) || point.count < 1) return { ok: false, errors: ['daily-date'] };
     if (seenDays[point.date] || (previous && point.date <= previous)) return { ok: false, errors: ['daily-date'] };
     seenDays[point.date] = true;
     previous = point.date;
-    daily.push({ date: point.date, count: point.count });
+    var entry = { date: point.date, count: point.count };
+    if (shape === 'split') {
+      var parts = readByStudent_(point, seenStudents, contributed);
+      if (!parts) return { ok: false, errors: ['daily-field'] };
+      entry.byStudent = parts;
+    }
+    daily.push(entry);
   }
 
   for (var s = 0; s < students.length; s++) {
@@ -505,6 +545,13 @@ function validatePublicSnapshot(input) {
   for (var c = 0; c < daily.length; c++) dailyTotal += daily[c].count;
   if (students.length !== project.totalStudents) return { ok: false, errors: ['total-students'] };
   if (totalRecordings !== project.totalRecordings || dailyTotal !== project.totalRecordings) return { ok: false, errors: ['sum-recordings'] };
+  if (split === 'split') {
+    for (var studentIndex = 0; studentIndex < students.length; studentIndex++) {
+      var expected = students[studentIndex].recordingCount;
+      var got = contributed[students[studentIndex].studentId] || 0;
+      if (got !== expected) return { ok: false, errors: ['sum-recordings'] };
+    }
+  }
   if (totalBytes !== project.totalBytes) return { ok: false, errors: ['sum-bytes'] };
 
   var week = calendarWindow_(7, input.synchronization.lastSynchronizationAt);

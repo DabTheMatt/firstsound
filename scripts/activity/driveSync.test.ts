@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { createContext, runInContext, type Context } from 'node:vm'
 import { describe, expect, it } from 'vitest'
 import scriptSource from './driveSync.gs?raw'
@@ -313,6 +314,13 @@ describe('drive metadata sync', () => {
     expect(ania?.recordingCount).toBe(5)
     expect(ania?.studentId.startsWith('stu_')).toBe(true)
     expect(validated.snapshot.dailyActivity.map((point) => point.date)).toEqual(['2026-09-01', '2026-10-20', '2026-10-21'])
+    expect(
+      validated.snapshot.dailyActivity.every((point) => (point.byStudent ?? []).reduce((sum, part) => sum + part.count, 0) === point.count),
+    ).toBe(true)
+    const aniaParts = validated.snapshot.dailyActivity.flatMap((point) => point.byStudent ?? []).filter((part) => part.studentId === ania?.studentId)
+    expect(aniaParts.reduce((sum, part) => sum + part.count, 0)).toBe(5)
+    const publishedFile = JSON.parse(readFileSync(new URL('../../public/activity/snapshot.json', import.meta.url), 'utf8')) as unknown
+    expect(validatePublicSnapshot(publishedFile).ok).toBe(true)
     expect(withNested.diagnostics.counts['missing-created-time']).toBe(1)
     expect(withNested.diagnostics.counts['missing-size']).toBe(1)
     expect(withNested.diagnostics.counts['duplicate-file']).toBe(0)

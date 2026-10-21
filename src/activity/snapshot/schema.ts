@@ -40,6 +40,8 @@ export const PUBLIC_STUDENT_KEYS = [
 
 export const PUBLIC_DAY_KEYS = ['date', 'count'] as const
 
+export const PUBLIC_DAY_STUDENT_KEYS = ['studentId', 'count'] as const
+
 export type PublicStudent = {
   studentId: string
   displayName: string
@@ -48,9 +50,16 @@ export type PublicStudent = {
   lastActivityAt: string | null
 }
 
+export type PublicDayStudent = {
+  studentId: string
+  count: number
+}
+
 export type PublicDailyActivity = {
   date: string
   count: number
+  /** Counts for that Warsaw day. Absent on snapshots that only stored a daily total. */
+  byStudent?: PublicDayStudent[]
 }
 
 export type PublicActivitySnapshot = {

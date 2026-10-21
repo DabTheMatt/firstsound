@@ -10,6 +10,7 @@ import type {
   TimelinePoint,
 } from './types'
 import { audioFormatLabel } from './format'
+import { activityColors } from './palette'
 import { addCalendarDays, calendarDateToIso, calendarWindow, dateInWindow, warsawCalendarDate } from './calendar'
 
 export { DAY_MS } from './calendar'
@@ -79,17 +80,24 @@ export function timelinePoints(recordings: RecordingReference[], range: Activity
   const days = recordings.map((recording) => recordingDay(recording.createdTime)).filter((day): day is string => day !== null)
   const bounds = windowFor(range, now, days)
   if (!bounds) return []
-  const counts = new Map<string, number>()
+  const counts = new Map<string, Map<string, number>>()
   for (let day = bounds.start; day <= bounds.end; day = addCalendarDays(day, 1)) {
-    counts.set(day, 0)
+    counts.set(day, new Map())
     if (counts.size > MAX_TIMELINE_DAYS) break
   }
   for (const recording of recordings) {
     const day = recordingDay(recording.createdTime)
-    if (!day || !counts.has(day)) continue
-    counts.set(day, (counts.get(day) ?? 0) + 1)
+    const bucket = day ? counts.get(day) : undefined
+    if (!bucket) continue
+    bucket.set(recording.studentId, (bucket.get(recording.studentId) ?? 0) + 1)
   }
-  return [...counts.entries()].map(([day, count]) => ({ day: calendarDateToIso(day), count }))
+  return [...counts.entries()].map(([day, bucket]) => {
+    const segments = [...bucket.entries()]
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([studentId, count]) => ({ studentId, count }))
+    const count = segments.reduce((sum, segment) => sum + segment.count, 0)
+    return { day: calendarDateToIso(day), count, segments }
+  })
 }
 
 export function activityState(lastUpload: string | null, now: Date): ActivityState {
@@ -124,6 +132,7 @@ export function studentRows(
     if (!current.last || Date.parse(recording.createdTime) > Date.parse(current.last)) current.last = recording.createdTime
     totals.set(recording.studentId, current)
   }
+  const colors = activityColors(snapshot.students.map((student) => student.id))
   const rows: StudentActivityRow[] = snapshot.students.map((student) => {
     const total = totals.get(student.id) ?? { count: 0, bytes: 0, last: null }
     const displayName = student.displayName.trim() || unknownLabel
@@ -135,6 +144,7 @@ export function studentRows(
       lastUpload: total.last,
       state: activityState(total.last, now),
       segments: 0,
+      color: colors.get(student.id) ?? '#c9841a',
     }
   })
   const max = rows.reduce((peak, row) => Math.max(peak, row.recordingCount), 0)

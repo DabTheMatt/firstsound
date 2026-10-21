@@ -1,14 +1,22 @@
 import { useId } from 'react'
 import { Segmented } from '../components/controls/Segmented'
 import { useI18n } from '../i18n'
+import type { Locale } from '../i18n/locale'
 import { formatActivityDay, formatCount } from './format'
 import type { ActivityRange, TimelinePoint } from './types'
 import styles from './ActivityView.module.css'
+
+type LegendItem = {
+  id: string
+  name: string
+  color: string
+}
 
 type Props = {
   points: TimelinePoint[]
   range: ActivityRange
   onRange: (range: ActivityRange) => void
+  legend?: LegendItem[]
 }
 
 const VIEW_W = 720
@@ -25,7 +33,18 @@ function labelStep(count: number): number {
   return Math.ceil(count / 7)
 }
 
-export function ActivityTimeline({ points, range, onRange }: Props) {
+function pointTitle(point: TimelinePoint, names: Map<string, string>, locale: Locale): string {
+  const day = formatActivityDay(point.day, locale)
+  const total = formatCount(point.count, locale)
+  if (!point.segments?.length) return `${day}: ${total}`
+  const parts = point.segments.map((segment) => {
+    const name = names.get(segment.studentId) ?? segment.studentId
+    return `${name} ${formatCount(segment.count, locale)}`
+  })
+  return `${day}: ${parts.join(', ')}`
+}
+
+export function ActivityTimeline({ points, range, onRange, legend = [] }: Props) {
   const { t, locale } = useI18n()
   const titleId = useId()
   const total = points.reduce((sum, point) => sum + point.count, 0)
@@ -36,6 +55,13 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
   const slot = points.length > 0 ? plotW / points.length : plotW
   const step = labelStep(points.length)
   const ticks = peak.count <= 1 ? [0, 1] : [0, Math.round(max / 2), max]
+  const names = new Map(legend.map((item) => [item.id, item.name]))
+  const colors = new Map(legend.map((item) => [item.id, item.color]))
+  const visible = new Set(points.flatMap((point) => point.segments?.map((segment) => segment.studentId) ?? []))
+  const shown = legend
+    .filter((item) => visible.has(item.id))
+    .sort((left, right) => left.name.localeCompare(right.name, locale, { sensitivity: 'base' }))
+  const split = shown.length > 0
   const options: { value: ActivityRange; label: string }[] = [
     { value: '7d', label: t.activity.range7 },
     { value: '30d', label: t.activity.range30 },
@@ -82,6 +108,30 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
                 const barW = Math.max(1.5, slot * 0.62)
                 const x = PAD_L + index * slot + (slot - barW) / 2
                 const y = PAD_T + plotH - height
+                const title = pointTitle(point, names, locale)
+                const parts = point.segments ?? []
+                if (!silent && parts.length > 0) {
+                  let cursor = PAD_T + plotH
+                  return (
+                    <g key={point.day}>
+                      <title>{title}</title>
+                      {parts.map((segment) => {
+                        const partHeight = (segment.count / max) * plotH
+                        cursor -= partHeight
+                        return (
+                          <rect
+                            key={segment.studentId}
+                            x={x}
+                            y={cursor}
+                            width={barW}
+                            height={partHeight}
+                            fill={colors.get(segment.studentId) ?? 'currentColor'}
+                          />
+                        )
+                      })}
+                    </g>
+                  )
+                }
                 const hot = point.count > 0 && point.count === peak.count
                 return (
                   <rect
@@ -92,7 +142,7 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
                     width={barW}
                     height={height}
                   >
-                    <title>{`${formatActivityDay(point.day, locale)}: ${formatCount(point.count, locale)}`}</title>
+                    <title>{title}</title>
                   </rect>
                 )
               })}
@@ -107,6 +157,16 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
               })}
             </svg>
           </div>
+          {split ? (
+            <ul className={styles.legend} aria-label={t.activity.legend}>
+              {shown.map((item) => (
+                <li key={item.id} className={styles.legendItem}>
+                  <span className={styles.swatch} style={{ background: item.color }} aria-hidden="true" />
+                  <span>{item.name}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <p className={styles.readout}>
             {t.activity.timelineSummary(total, formatCount(peak.count, locale), formatActivityDay(peak.day, locale))}
           </p>
@@ -118,6 +178,7 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
                 <thead>
                   <tr>
                     <th scope="col">{t.activity.day}</th>
+                    {split ? <th scope="col">{t.activity.who}</th> : null}
                     <th className={styles.num} scope="col">
                       {t.activity.count}
                     </th>
@@ -127,6 +188,15 @@ export function ActivityTimeline({ points, range, onRange }: Props) {
                   {points.map((point) => (
                     <tr key={point.day}>
                       <td>{formatActivityDay(point.day, locale)}</td>
+                      {split ? (
+                        <td>
+                          {point.segments?.length
+                            ? point.segments
+                                .map((segment) => `${names.get(segment.studentId) ?? segment.studentId} ${formatCount(segment.count, locale)}`)
+                                .join(', ')
+                            : '—'}
+                        </td>
+                      ) : null}
                       <td className={styles.num}>{formatCount(point.count, locale)}</td>
                     </tr>
                   ))}

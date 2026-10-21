@@ -3,12 +3,14 @@ import { isPrivateLabel } from '../parse'
 import {
   ACTIVITY_SNAPSHOT_SCHEMA_VERSION,
   PUBLIC_DAY_KEYS,
+  PUBLIC_DAY_STUDENT_KEYS,
   PUBLIC_PROJECT_KEYS,
   PUBLIC_SNAPSHOT_KEYS,
   PUBLIC_STUDENT_KEYS,
   PUBLIC_SYNC_KEYS,
   type PublicActivitySnapshot,
   type PublicDailyActivity,
+  type PublicDayStudent,
   type PublicStudent,
 } from './schema'
 
@@ -135,15 +137,41 @@ export function validatePublicSnapshot(input: unknown): SnapshotValidation {
 
   const daily: PublicDailyActivity[] = []
   const seenDays = new Set<string>()
+  const contributed = new Map<string, number>()
   let previous = ''
+  let split: boolean | null = null
   for (const item of raw.dailyActivity) {
     const row = asRecord(item)
-    if (!row || !exactKeys(row, PUBLIC_DAY_KEYS)) return fail(['daily-field'])
+    if (!row) return fail(['daily-field'])
+    const hasSplit = Object.prototype.hasOwnProperty.call(row, 'byStudent')
+    if (split === null) split = hasSplit
+    else if (split !== hasSplit) return fail(['daily-field'])
+    if (!exactKeys(row, hasSplit ? [...PUBLIC_DAY_KEYS, 'byStudent'] : PUBLIC_DAY_KEYS)) return fail(['daily-field'])
     if (!isYmd(row.date) || !isCount(row.count) || row.count < 1) return fail(['daily-date'])
     if (seenDays.has(row.date) || (previous && row.date <= previous)) return fail(['daily-date'])
     seenDays.add(row.date)
     previous = row.date
-    daily.push({ date: row.date, count: row.count })
+    if (!hasSplit) {
+      daily.push({ date: row.date, count: row.count })
+      continue
+    }
+    if (!Array.isArray(row.byStudent) || row.byStudent.length === 0) return fail(['daily-field'])
+    const parts: PublicDayStudent[] = []
+    let sum = 0
+    let previousId = ''
+    for (const part of row.byStudent) {
+      const entry = asRecord(part)
+      if (!entry || !exactKeys(entry, PUBLIC_DAY_STUDENT_KEYS)) return fail(['daily-field'])
+      if (typeof entry.studentId !== 'string' || !seenStudents.has(entry.studentId)) return fail(['daily-field'])
+      if (!isCount(entry.count) || entry.count < 1) return fail(['daily-field'])
+      if (entry.studentId <= previousId) return fail(['daily-field'])
+      previousId = entry.studentId
+      sum += entry.count
+      contributed.set(entry.studentId, (contributed.get(entry.studentId) ?? 0) + entry.count)
+      parts.push({ studentId: entry.studentId, count: entry.count })
+    }
+    if (sum !== row.count) return fail(['daily-field'])
+    daily.push({ date: row.date, count: row.count, byStudent: parts })
   }
 
   for (const student of students) {
@@ -157,6 +185,11 @@ export function validatePublicSnapshot(input: unknown): SnapshotValidation {
   const dailyTotal = daily.reduce((sum, point) => sum + point.count, 0)
   if (students.length !== totalStudents) return fail(['total-students'])
   if (totalRecordings !== projectRecordings || dailyTotal !== projectRecordings) return fail(['sum-recordings'])
+  if (split) {
+    for (const student of students) {
+      if ((contributed.get(student.studentId) ?? 0) !== student.recordingCount) return fail(['sum-recordings'])
+    }
+  }
   if (totalBytes !== projectBytes) return fail(['sum-bytes'])
 
   const syncedAt = Date.parse(sync.lastSynchronizationAt)
