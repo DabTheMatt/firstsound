@@ -349,6 +349,21 @@ describe('intro markup', () => {
     expect(help).toContain('Uruchom przewodnik')
     expect(help).toContain('Pokaż ustawienia dostępności')
     expect(help).toContain('F1')
+    expect(help).toContain('Dostęp słuchowy')
+  })
+
+  it('drops the repeated module introduction and keeps the module note', () => {
+    publishHelpPlace({ mode: 'technical', view: 'wave', focused: false, effect: 'midside', follow: 'effect' })
+    publishHelpDetail(null)
+    const help = renderToStaticMarkup(
+      <I18nProvider>
+        <HelpPanel onClose={() => undefined} />
+      </I18nProvider>,
+    )
+    expect(help).not.toContain('Mid/Side ustawia środek i boki')
+    expect(help).toContain('Mid to środek')
+    expect(help).toContain('Parametry')
+    resetHelpPlace()
   })
 })
 

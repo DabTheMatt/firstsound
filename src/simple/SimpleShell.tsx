@@ -16,18 +16,9 @@ import { radioGroupKey, tabListKey } from '../a11y/keyboard'
 import { focusInitial, trapTab } from '../a11y/dialogFocus'
 import { patchAttentionSignals } from '../a11y/attention/signals'
 import { useI18n } from '../i18n'
-import { LOAD_SAMPLE_LABELS } from '../components/header/loadSampleLabels'
-import { guideChrome } from '../guide/copy'
 import { emitGuideEvent } from '../guide/events'
-import { dispatchGuide } from '../guide/store'
 import { guideTargetAttrs } from '../guide/targets'
-import { StableLabel } from '../components/header/StableLabel'
-import { ThemePicker } from '../components/header/ThemePicker'
-import { Wordmark } from '../components/header/Wordmark'
-import { IntroActions } from '../intro/IntroActions'
-import { ModeSwitch } from '../modes/ModeSwitch'
 import type { UiMode } from '../modes/uiMode'
-import { AppViewSwitch } from '../app/AppViewSwitch'
 import type { AppView } from '../app/appView'
 import { captureDsp, writeDsp } from '../sensory/applySensory'
 import type { DspSnapshot } from '../sensory/mapping/mappingEngine'
@@ -79,6 +70,8 @@ type Sheet = 'none' | 'save' | 'restore'
 type Section = 'edit' | 'sound' | 'effects'
 
 type Props = {
+  header: ReactNode
+  overlay?: ReactNode
   snap: EngineSnapshot
   edit: EditState
   waveRef: RefObject<WaveformHandle | null>
@@ -109,11 +102,12 @@ type Props = {
 }
 
 export function SimpleShell({
+  header,
+  overlay,
   snap,
   edit,
   waveRef,
   menuOpen,
-  onToggleMenu,
   menu,
   dragging,
   onDragOver,
@@ -132,13 +126,9 @@ export function SimpleShell({
   onRestoreOriginal,
   onLevelLoudness,
   onApplyTrim,
-  mode,
   onMode,
-  view,
-  onView,
 }: Props) {
   const { t, locale } = useI18n()
-  const guide = guideChrome(locale)
   const { mode: layoutMode } = useLayoutMode()
   const frame = layoutMode === 'dock-right' ? 'desktop' : layoutMode === 'dock-bottom' ? 'tablet' : 'phone'
   const sidePanel = frame === 'desktop'
@@ -886,42 +876,14 @@ export function SimpleShell({
         if (file) onDrop(file)
       }}
     >
+      <div className={styles.sharedBar} data-stable-region="navigation" data-technical-ui="workspace">
+        {header}
+        <div className={styles.markerRow}>
+          <MarkerPanel mode="simple" onCommit={onRegionCommit} />
+        </div>
+      </div>
+      {overlay}
       <div className={styles.shell}>
-        <header className={styles.header} data-stable-region="navigation">
-          <Wordmark compact={frame === 'phone'} />
-          <button
-            type="button"
-            className={styles.file}
-            title={snap.fileName || t.header.loadSample}
-            aria-label={snap.fileName || t.header.loadSample}
-            onClick={onLoadSample}
-          >
-            {snap.fileName || t.simple.fileUntitled}
-          </button>
-          <div className={styles.modeSlot}>
-            <MarkerPanel mode="simple" onCommit={onRegionCommit} />
-            <AppViewSwitch view={view} onChange={onView} compact={frame === 'phone'} />
-            <ModeSwitch mode={mode} onChange={onMode} compact={frame === 'phone'} />
-          </div>
-          <ThemePicker compact={frame === 'phone'} />
-          <button type="button" className={styles.load} data-load-sample="" onClick={onLoadSample}>
-            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
-          </button>
-          <button
-            type="button"
-            className={styles.menuBtn}
-            aria-label={t.header.settings}
-            aria-expanded={menuOpen}
-            data-settings-toggle=""
-            onClick={onToggleMenu}
-          >
-            ···
-          </button>
-          <button type="button" className={styles.load} onClick={() => dispatchGuide({ type: 'open-library' })}>
-            {guide.guideMe}
-          </button>
-          <IntroActions className={styles.introSlot} />
-        </header>
         <div className={styles.belowHeader}>
           <div className={styles.belowMain}>
             <div className={styles.workspace}>

@@ -3,6 +3,7 @@ import { TOUR_IDS } from './copy'
 import { requestIntroCommand } from './commands'
 import { closeIntro, setIntroStep } from './session'
 import { findSpotlight, spotlightRect, TOUR_SPOTLIGHT, type SpotlightRect } from './spotlight'
+import { HelpRich } from './helpRich'
 import { IntroDialog } from './IntroDialog'
 import { useIntroCopy } from './useIntroCopy'
 import styles from './Intro.module.css'
@@ -70,13 +71,15 @@ export function TourPanel({ step, onClose, onDone, onFeedback }: Props) {
         <div id={bodyId}>
           {current.body.map((paragraph) => (
             <p key={paragraph} className={styles.copy}>
-              {paragraph}
+              <HelpRich text={paragraph} />
             </p>
           ))}
           {current.points?.length ? (
             <ul className={styles.points}>
               {current.points.map((point) => (
-                <li key={point}>{point}</li>
+                <li key={point}>
+                  <HelpRich text={point} />
+                </li>
               ))}
             </ul>
           ) : null}

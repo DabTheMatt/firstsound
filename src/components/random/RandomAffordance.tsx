@@ -4,6 +4,7 @@ import { isRandomizable } from '../../audio/random/distributions'
 import type { ParamId } from '../../audio/parameters/types'
 import { engine, useEngine } from '../../hooks/useEngine'
 import { useI18n } from '../../i18n'
+import { openAffordanceHelp } from '../../intro/openContextual'
 import { DiceIcon } from './icons'
 import styles from './Random.module.css'
 
@@ -35,6 +36,7 @@ export function RandomAffordance({ id, compact = false, touch = false }: Props) 
       onClick={(event) => {
         event.preventDefault()
         event.stopPropagation()
+        openAffordanceHelp('random.once')
         engine.randomizeParam(id)
       }}
     >

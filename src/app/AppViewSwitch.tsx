@@ -13,10 +13,10 @@ type Props = {
 export function AppViewSwitch({ view, onChange, compact = false, variant = 'pill' }: Props) {
   const { t } = useI18n()
   const options: { id: AppView; label: string }[] = [
-    { id: 'workspace', label: t.view.workspace },
     ...(ACTIVITY_VISIBLE ? [{ id: 'activity' as const, label: t.view.activity }] : []),
     ...(SHED_VISIBLE ? [{ id: 'shed' as const, label: t.view.shed }] : []),
   ]
+  if (options.length === 0) return null
   return (
     <div
       className={`${styles.switch} ${variant === 'editorial' ? styles.editorial : ''} ${compact ? styles.compact : ''}`}

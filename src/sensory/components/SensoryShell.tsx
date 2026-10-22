@@ -4,13 +4,6 @@ import { patchAttentionSignals } from '../../a11y/attention/signals'
 import type { EngineSnapshot } from '../../audio/engine/AudioEngine'
 import type { EditState } from '../../app/editorState'
 import type { WaveformHandle } from '../../components/waveform/Waveform'
-import { RuntimeStatus } from '../../components/chrome/RuntimeStatus'
-import { LOAD_SAMPLE_LABELS } from '../../components/header/loadSampleLabels'
-import { StableLabel } from '../../components/header/StableLabel'
-import { Wordmark } from '../../components/header/Wordmark'
-import { IntroActions } from '../../intro/IntroActions'
-import { ModeSwitch } from '../../modes/ModeSwitch'
-import { AppViewSwitch } from '../../app/AppViewSwitch'
 import type { AppView } from '../../app/appView'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
@@ -40,6 +33,8 @@ import { SoundRange } from './SoundRange'
 import styles from './SensoryShell.module.css'
 
 type Props = {
+  header: ReactNode
+  overlay?: ReactNode
   snap: EngineSnapshot
   edit: EditState
   waveRef: RefObject<WaveformHandle | null>
@@ -73,27 +68,23 @@ type Props = {
 }
 
 export function SensoryShell({
+  header,
+  overlay,
   snap,
   edit: _edit,
   waveRef: _waveRef,
   menuOpen,
-  onToggleMenu,
   menu,
   dragging,
   onDragOver,
   onDragLeave,
   onDrop,
-  onLoadSample,
   onLoadDemo,
   onSave: _onSave,
   onRecord: _onRecord,
   onRegionCommit,
   onFades: _onFades,
   onFadesCommit: _onFadesCommit,
-  mode,
-  onMode,
-  view,
-  onView,
   values,
   onValues,
   color,
@@ -165,12 +156,9 @@ export function SensoryShell({
         if (file) onDrop(file)
       }}
     >
-      <header ref={headerRef} className={styles.top} data-stable-region="navigation">
-        <div className={styles.brandRow}>
-          <Wordmark variant="editorial" />
-        </div>
-        <div className={styles.tools}>
-          <RuntimeStatus variant="editorial" />
+      <header ref={headerRef} className={styles.top} data-stable-region="navigation" data-technical-ui="workspace">
+        {header}
+        <div className={styles.localRow}>
           <SensoryThemePicker
             scene={scene}
             onScene={chooseScene}
@@ -193,24 +181,9 @@ export function SensoryShell({
             {t.sensory.strings}
           </button>
           <MarkerPanel mode="sensory" onCommit={onRegionCommit} />
-          <AppViewSwitch variant="editorial" view={view} onChange={onView} />
-          <ModeSwitch variant="editorial" mode={mode} onChange={onMode} />
-          <button type="button" className={styles.loadBtn} data-load-sample="" onClick={onLoadSample}>
-            <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
-          </button>
-          <IntroActions />
-          <button
-            type="button"
-            className={styles.menuBtn}
-            aria-label={t.sensory.menu}
-            aria-expanded={menuOpen}
-            data-settings-toggle=""
-            onClick={onToggleMenu}
-          >
-            ···
-          </button>
         </div>
       </header>
+      {overlay ? <div className={styles.flyHost}>{overlay}</div> : null}
       {menuOpen ? (
         <div className={styles.menuLayer} style={{ top: overlayTop }}>
           {menu}

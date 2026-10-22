@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import styles from './Intro.module.css'
 
-const TOKEN = /\{(focus|plus|trash|dots|power)\}/g
+const TOKEN = /\{(focus|plus|trash|dots|power|ear|mail)\}/g
 
 /** Inline picture of a control the sentence names. Decorative: the words stay around it. */
 export function HelpRich({ text }: { text: string }) {
@@ -14,6 +14,8 @@ export function HelpRich({ text }: { text: string }) {
         if (part === 'trash') return <TrashGlyph key={index} />
         if (part === 'dots') return <DotsGlyph key={index} />
         if (part === 'power') return <PowerGlyph key={index} />
+        if (part === 'ear') return <EarGlyph key={index} />
+        if (part === 'mail') return <MailGlyph key={index} />
         return part
       })}
     </>
@@ -70,6 +72,32 @@ function PowerGlyph() {
     <Frame>
       <path d="M8 2.5v5.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       <path d="M5.15 4.35a4.2 4.2 0 1 0 5.7 0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </Frame>
+  )
+}
+
+function EarGlyph() {
+  return (
+    <svg className={styles.glyph} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M10 12.2c-.4-3.2.6-6.6 3.8-7.6 3.6-1.1 6.8 1.2 7 5.2.2 4-1 7-3.4 9.2-1.8 1.6-4 3-6 2-1.8-.9-1.6-3-.6-4.2-1.8-.8-2.4-2.6-1.2-4.6z M12.4 8.6c1.6-.6 3.2.4 3 2.2-.2 1.6-1.6 2.2-2.4 3.2-.6.8-.4 2 .4 2.6-1 .4-1.8-.6-1.4-1.8.4-1.2 1.6-2 1.4-3.4-.2-1.2-1-1.8-1.8-1.4-.2.6-.8 1-1.4.6.2-1 .8-1.6 1.2-2z"
+      />
+    </svg>
+  )
+}
+
+function MailGlyph() {
+  return (
+    <Frame>
+      <path
+        d="M2.6 4.6h10.8v7.2H2.6zM2.6 4.6l5.4 4.2 5.4-4.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
     </Frame>
   )
 }

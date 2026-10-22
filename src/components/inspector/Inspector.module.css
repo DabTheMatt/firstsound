@@ -320,6 +320,38 @@
   pointer-events: none;
 }
 
+.nudge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.nudge:hover:not(:disabled),
+.nudge:focus-visible:not(:disabled) {
+  color: var(--accent-primary);
+  background: transparent;
+}
+
+.nudge:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.nudge svg {
+  display: block;
+}
+
 .remove {
   flex: none;
   min-height: 22px;

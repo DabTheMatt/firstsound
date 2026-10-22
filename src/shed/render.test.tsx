@@ -51,8 +51,9 @@ describe('SHED rendering', () => {
         <AppViewSwitch view="workspace" onChange={() => undefined} />
       </I18nProvider>,
     )
-    expect(markup).toContain('Workspace')
-    expect(markup).toContain('data-app-view="workspace"')
+    expect(markup).toBe('')
+    expect(markup).not.toContain('Workspace')
+    expect(markup).not.toContain('data-app-view="workspace"')
     expect(markup).not.toContain('Activity')
     expect(markup).not.toContain('data-app-view="activity"')
     expect(markup).not.toContain('SHED')

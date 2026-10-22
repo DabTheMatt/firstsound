@@ -20,6 +20,7 @@ import { LfoConnectButton } from './LfoConnectButton'
 import { lfoUiState, readStoredLfoOpen, storedExpansionForSection, writeLfoOpen } from './lfoOpen'
 import { lfoAddTone, lfoNumberTone } from './lfoSlots'
 import { ValueKnob } from '../controls/ValueKnob'
+import { openAffordanceHelp } from '../../intro/openContextual'
 import { TapCycleButton } from './TapCycleButton'
 import styles from './Inspector.module.css'
 
@@ -277,6 +278,7 @@ export function FxLfoSection({
             tabIndex={shown >= FX_LFO_SLOTS ? -1 : undefined}
             aria-hidden={shown >= FX_LFO_SLOTS}
             onClick={() => {
+              openAffordanceHelp('lfo.assign')
               const next = engine.addFxLfo(kind)
               if (next != null) chooseSlot(next)
             }}
@@ -335,6 +337,7 @@ function CompactAddLfo({ shown, onAdd }: { shown: number; onAdd: () => void }) {
       aria-label="Add LFO"
       title="Add LFO"
       onClick={() => {
+        openAffordanceHelp('lfo.assign')
         if (canAdd) onAdd()
       }}
     >

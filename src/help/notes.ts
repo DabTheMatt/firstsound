@@ -14,6 +14,14 @@ export type HelpNote = {
   title?: LocalizedText
 }
 
+export function writtenNoteParagraphs(id: string, locale: 'en' | 'pl'): string[] {
+  const note = TOOL_NOTES[id]
+  if (!note) return []
+  return [note.summary, note.practical, note.technical]
+    .map((item) => item?.[locale]?.trim() ?? '')
+    .filter((paragraph) => paragraph.length > 0)
+}
+
 export function paramFamily(id: string): 'eq.freq' | 'eq.gain' | 'eq.q' | null {
   if (/^eq\d+Freq$/.test(id)) return 'eq.freq'
   if (/^eq\d+Gain$/.test(id)) return 'eq.gain'
@@ -733,6 +741,38 @@ export const TOOL_NOTES: Record<string, HelpNote> = {
     technical: text(
       'Assignment stores a stable parameter id, and an EQ route also stores the band id. Bypass keeps the route. Remove clears it.',
       'Przypisanie zapisuje stały identyfikator parametru, a trasa EQ zapisuje też identyfikator pasma. Ominięcie zostawia trasę. Usunięcie ją czyści.',
+    ),
+  },
+  'lfo.assign': {
+    manualId: 'lfo',
+    title: text('Add an LFO', 'Dodaj LFO'),
+    summary: text(
+      'This icon adds an LFO for the parameter, or opens the one already connected. The LFO moves that value over time. It does not rewrite the sample.',
+      'Ta ikona dodaje LFO dla parametru albo otwiera już podłączone. LFO rusza tę wartość w czasie. Nie przepisuje sampla.',
+    ),
+    practical: text(
+      'Choose a shape, a rate, and a depth, then leave the route connected. Depth zero holds the parameter still. The LFO center in the header lists every route.',
+      'Wybierz kształt, tempo i głębokość, potem zostaw trasę podłączoną. Zerowa głębokość trzyma parametr w miejscu. Centrum LFO w nagłówku pokazuje każdą trasę.',
+    ),
+    technical: text(
+      'The stored value stays the center. Depth swings around it, inside the parameter range. Bypass keeps the route. Remove clears it. Automation, when playing, is applied before the LFO.',
+      'Zapisana wartość zostaje środkiem. Głębokość odchyla się wokół niej, w zakresie parametru. Ominięcie zostawia trasę. Usunięcie ją czyści. Automatyzacja, gdy gra, jest liczona przed LFO.',
+    ),
+  },
+  'random.once': {
+    manualId: 'lfo',
+    title: text('Randomize this value', 'Losuj tę wartość'),
+    summary: text(
+      'This icon rolls a new value for this parameter once. It does not start continuous motion and it does not change the sample.',
+      'Ta ikona losuje nową wartość tego parametru jeden raz. Nie uruchamia ciągłego ruchu i nie zmienia sampla.',
+    ),
+    practical: text(
+      'One roll works without Chaos. Auto Random, on the effect, needs Chaos. The setup control on the effect chooses which parameters take part.',
+      'Jedno losowanie działa bez Chaosu. Auto Random na efekcie potrzebuje Chaosu. Ustawienie na efekcie wybiera, które parametry biorą udział.',
+    ),
+    technical: text(
+      'The roll stays inside the parameter range and writes the stored value. A connected LFO still moves around that new center.',
+      'Losowanie zostaje w zakresie parametru i zapisuje wartość. Podłączone LFO nadal rusza się wokół tego nowego środka.',
     ),
   },
   'fft.spectrum': {

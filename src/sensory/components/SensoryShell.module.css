@@ -225,12 +225,26 @@
   left: 0;
   right: 0;
   z-index: 12;
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 8px 8px;
+  background: var(--bg-app);
+  pointer-events: auto;
+}
+
+.localRow {
+  display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 18px 22px 8px;
-  pointer-events: none;
+  flex-wrap: wrap;
+}
+
+.flyHost {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
 }
 
 .brandRow {
@@ -379,8 +393,7 @@
 
 @media (max-width: 900px) {
   .top {
-    grid-template-columns: max-content minmax(0, 1fr);
-    padding: 12px 12px 8px;
+    padding: 2px 8px 8px;
   }
 
   .tools {
@@ -394,16 +407,8 @@
 }
 
 @media (max-width: 700px) {
-  .top {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .brandRow,
-  .tools {
-    flex: 1 1 100%;
-    width: auto;
+  .localRow {
+    justify-content: flex-start;
   }
 }
 

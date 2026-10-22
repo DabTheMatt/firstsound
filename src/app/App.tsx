@@ -49,7 +49,6 @@ import { ANALYSER_FFT_IDLE } from '../audio/engine/analyserBudget'
 import { inspectorWidth } from './layoutMode'
 import { useLayoutMode } from './useLayoutMode'
 import { AppHeader } from '../components/header/AppHeader'
-import { AppViewSwitch } from './AppViewSwitch'
 import { ACTIVITY_VISIBLE, applyAppView, SHED_VISIBLE, type AppView } from './appView'
 import { ActivityScreen } from '../activity/ActivityScreen'
 import { ShedView } from '../shed/ShedView'
@@ -63,7 +62,7 @@ import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
 import { helpEffectFrom, publishHelpDetail, publishHelpPlace, type HelpFollow } from '../intro/context'
 import { helpClicksOn } from '../intro/helpClick'
 import { isHelpParam } from '../intro/effectHelp'
-import { openContextualHelp } from '../intro/openContextual'
+import { HELP_AFFORDANCE, openContextualHelp } from '../intro/openContextual'
 import { openIntro } from '../intro/session'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
@@ -1152,6 +1151,19 @@ export default function App() {
   }, [uiMode, workspaceId, activeFocus])
 
   useEffect(() => {
+    const onAffordance = (event: Event) => {
+      const id = event instanceof CustomEvent && typeof event.detail === 'string' ? event.detail : ''
+      if (!id || !helpClicksOn()) return
+      setModeBrief(false)
+      publishHelpDetail(id)
+      setHelpFollow('effect')
+      openContextualHelp()
+    }
+    document.addEventListener(HELP_AFFORDANCE, onAffordance)
+    return () => document.removeEventListener(HELP_AFFORDANCE, onAffordance)
+  }, [setHelpFollow])
+
+  useEffect(() => {
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : null
       if (!target || target.closest('[data-intro-dialog], [role="menu"]')) return
@@ -1403,7 +1415,7 @@ export default function App() {
         {isPhoneLayout ? <ThemePicker compact /> : null}
         {isPhoneLayout ? (
           <div className={styles.modeCluster}>
-            <ModeSwitch mode="technical" onChange={chooseMode} compact />
+            <ModeSwitch mode={uiMode} onChange={chooseMode} compact />
           </div>
         ) : null}
         <button
@@ -1560,7 +1572,7 @@ export default function App() {
         <TechnicalInterfaceSetting value={technicalUi} onChange={setTechnicalUi} />
       </div>
     ),
-    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, locale, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi],
+    [history, snap.hasSource, snap.recording, snap.sampleLoaded, t, locale, libraryTick, isPhoneLayout, resetSession, technicalUi, setTechnicalUi, uiMode],
   )
 
   const fileInputs = (
@@ -1788,6 +1800,56 @@ export default function App() {
     automationLaneId: snap.automation.selectedParamId,
   })
 
+  const fieldHeader = (
+    <AppHeader
+      snap={snap}
+      settingsOpen={moreOpen}
+      lfoCenterOpen={lfoCenterOpen}
+      onToggleSettings={() => {
+        toggleSettings()
+        setLfoCenterOpen(false)
+      }}
+      onToggleLfoCenter={() => {
+        setLfoCenterOpen((open) => !open)
+        setMenuOpen(false)
+      }}
+      onLoadSample={() => sampleInput.current?.click()}
+      onReset={resetSession}
+      onRecord={() => {
+        if (engine.getSnapshot().recording) engine.stopMicRecord()
+        else void engine.startMicRecord()
+      }}
+      compact={sheet}
+      minimal={isPhoneLayout}
+      modeSwitch={
+        isPhoneLayout ? undefined : (
+          <div className={styles.modeCluster}>
+            <ModeSwitch mode={uiMode} onChange={chooseMode} />
+          </div>
+        )
+      }
+      guideLabel={guideChrome(locale).guideMe}
+      onOpenGuide={() => {
+        rememberTrigger('guide')
+        dispatchGuide({ type: 'open-library' })
+      }}
+    />
+  )
+
+  const lfoOverlay = lfoCenterOpen ? (
+    <div className={styles.overlay}>
+      <button
+        type="button"
+        className={styles.settingsScrim}
+        aria-label={t.settings.closeLfo}
+        onClick={() => setLfoCenterOpen(false)}
+      />
+      <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
+        <LfoCenter snap={snap} onReveal={revealLfo} />
+      </div>
+    </div>
+  ) : null
+
   if (ACTIVITY_VISIBLE && appView === 'activity') {
     return (
       <div className={`${styles.page} ${isPhoneLayout ? styles.phonePage : ''}`}>
@@ -1796,47 +1858,9 @@ export default function App() {
         <ExplainHost />
         <IntroHost />
         <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
-          <AppHeader
-            snap={snap}
-            settingsOpen={moreOpen}
-            lfoCenterOpen={lfoCenterOpen}
-            onToggleSettings={() => {
-              toggleSettings()
-              setLfoCenterOpen(false)
-            }}
-            onToggleLfoCenter={() => {
-              setLfoCenterOpen((open) => !open)
-              setMenuOpen(false)
-            }}
-            onLoadSample={() => sampleInput.current?.click()}
-            onReset={resetSession}
-            onRecord={() => {
-              if (engine.getSnapshot().recording) engine.stopMicRecord()
-              else void engine.startMicRecord()
-            }}
-            compact={sheet}
-            minimal={isPhoneLayout}
-            viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
-            guideLabel={guideChrome(locale).guideMe}
-            onOpenGuide={() => {
-              rememberTrigger('guide')
-              dispatchGuide({ type: 'open-library' })
-            }}
-          />
+          {fieldHeader}
           <ActivityScreen />
-          {lfoCenterOpen ? (
-            <div className={styles.overlay}>
-              <button
-                type="button"
-                className={styles.settingsScrim}
-                aria-label={t.settings.closeLfo}
-                onClick={() => setLfoCenterOpen(false)}
-              />
-              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
-                <LfoCenter snap={snap} onReveal={revealLfo} />
-              </div>
-            </div>
-          ) : null}
+          {lfoOverlay}
           {settingsMenu}
         </main>
         {fileInputs}
@@ -1856,47 +1880,9 @@ export default function App() {
         <ExplainHost />
         <IntroHost />
         <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
-          <AppHeader
-            snap={snap}
-            settingsOpen={moreOpen}
-            lfoCenterOpen={lfoCenterOpen}
-            onToggleSettings={() => {
-              toggleSettings()
-              setLfoCenterOpen(false)
-            }}
-            onToggleLfoCenter={() => {
-              setLfoCenterOpen((open) => !open)
-              setMenuOpen(false)
-            }}
-            onLoadSample={() => sampleInput.current?.click()}
-            onReset={resetSession}
-            onRecord={() => {
-              if (engine.getSnapshot().recording) engine.stopMicRecord()
-              else void engine.startMicRecord()
-            }}
-            compact={sheet}
-            minimal={isPhoneLayout}
-            viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
-            guideLabel={guideChrome(locale).guideMe}
-            onOpenGuide={() => {
-              rememberTrigger('guide')
-              dispatchGuide({ type: 'open-library' })
-            }}
-          />
+          {fieldHeader}
           <ShedView />
-          {lfoCenterOpen ? (
-            <div className={styles.overlay}>
-              <button
-                type="button"
-                className={styles.settingsScrim}
-                aria-label={t.settings.closeLfo}
-                onClick={() => setLfoCenterOpen(false)}
-              />
-              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
-                <LfoCenter snap={snap} onReveal={revealLfo} />
-              </div>
-            </div>
-          ) : null}
+          {lfoOverlay}
           {settingsMenu}
         </main>
         {fileInputs}
@@ -1916,6 +1902,8 @@ export default function App() {
         <ExplainHost />
         <IntroHost />
         <SimpleShell
+          header={fieldHeader}
+          overlay={lfoOverlay}
           snap={snap}
           edit={edit}
           waveRef={waveRef}
@@ -1980,6 +1968,8 @@ export default function App() {
         <ExplainHost />
         <IntroHost />
         <SensoryShell
+          header={fieldHeader}
+          overlay={lfoOverlay}
           snap={snap}
           edit={edit}
           waveRef={waveRef}
@@ -2073,40 +2063,7 @@ export default function App() {
             : undefined
         }
       >
-        <AppHeader
-          snap={snap}
-          settingsOpen={moreOpen}
-          lfoCenterOpen={lfoCenterOpen}
-          onToggleSettings={() => {
-            toggleSettings()
-            setLfoCenterOpen(false)
-          }}
-          onToggleLfoCenter={() => {
-            setLfoCenterOpen((v) => !v)
-            setMenuOpen(false)
-          }}
-          onLoadSample={() => sampleInput.current?.click()}
-          onReset={resetSession}
-          onRecord={() => {
-            if (engine.getSnapshot().recording) engine.stopMicRecord()
-            else void engine.startMicRecord()
-          }}
-          compact={sheet}
-          minimal={isPhoneLayout}
-          modeSwitch={
-            isPhoneLayout ? undefined : (
-            <div className={styles.modeCluster}>
-              <ModeSwitch mode="technical" onChange={chooseMode} compact={isPhoneLayout} />
-            </div>
-            )
-          }
-          viewSwitch={<AppViewSwitch view={appView} onChange={chooseView} compact={isPhoneLayout} />}
-          guideLabel={guideChrome(locale).guideMe}
-          onOpenGuide={() => {
-            rememberTrigger('guide')
-            dispatchGuide({ type: 'open-library' })
-          }}
-        />
+        {fieldHeader}
         <div className={styles.stage}>
           <div className={styles.stageMain}>
         <div id="main-controls" className={styles.chrome}>
@@ -2566,19 +2523,7 @@ export default function App() {
 
         <p className={styles.sr}>{t.transport.selectionSr(formatTimecode(snap.params.start), formatTimecode(snap.params.end))}</p>
           </div>
-          {lfoCenterOpen ? (
-            <div className={styles.overlay}>
-              <button
-                type="button"
-                className={styles.settingsScrim}
-                aria-label={t.settings.closeLfo}
-                onClick={() => setLfoCenterOpen(false)}
-              />
-              <div className={`${styles.settingsFly} ${styles.lfoFly}`}>
-                <LfoCenter snap={snap} onReveal={revealLfo} />
-              </div>
-            </div>
-          ) : null}
+          {lfoOverlay}
           {settingsMenu}
         </div>
 

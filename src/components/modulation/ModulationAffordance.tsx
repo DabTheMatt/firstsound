@@ -43,6 +43,7 @@ import {
   setModulationEditorOpen,
   subscribeModulationEditor,
 } from './modulationEditor'
+import { openAffordanceHelp } from '../../intro/openContextual'
 import { MobileModulationSheet } from './MobileModulationSheet'
 import { LfoRandomActions } from '../random/LfoRandomActions'
 import { modulationAffordanceModel, parameterModulationState, type ModulationSourceId } from './modulationModel'
@@ -142,6 +143,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
             const active = press.current
             press.current = null
             if (active && active.role !== 'pending') return
+            openAffordanceHelp('lfo.assign')
             toggleEditor()
           }}
         >
@@ -191,6 +193,7 @@ export function ModulationAffordance({ id, compact = false, touch = false }: Pro
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
+          openAffordanceHelp('lfo.assign')
           toggleEditor()
         }}
       >

@@ -19,7 +19,7 @@ type HeaderProps = {
   className?: string
 }
 
-export function IntroActions({ labeled = false, className }: HeaderProps) {
+export function IntroActions({ className }: HeaderProps) {
   const copy = useIntroCopy()
   return (
     <div className={`${styles.slot} ${className ?? ''}`}>
@@ -31,10 +31,7 @@ export function IntroActions({ labeled = false, className }: HeaderProps) {
         title={copy.helpLabel}
         onClick={() => openFromTrigger('help')}
       >
-        <span className={styles.mark} aria-hidden="true">
-          ?
-        </span>
-        {labeled ? <span>{copy.helpWord}</span> : null}
+        <span>{copy.helpWord}</span>
       </button>
       <button
         type="button"

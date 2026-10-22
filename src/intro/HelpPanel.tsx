@@ -2,6 +2,7 @@ import { useEffect, useId, useSyncExternalStore } from 'react'
 import { useI18n } from '../i18n'
 import { paramLabel } from '../i18n/messages'
 import { formatCombo, SHORTCUTS, shortcutPlatform } from '../a11y/shortcuts/registry'
+import { writtenNoteParagraphs } from '../help/notes'
 import { resolveHelp } from '../help/resolve'
 import { requestIntroCommand, type IntroCommand } from './commands'
 import {
@@ -54,10 +55,14 @@ export function HelpPanel({ onClose }: Props) {
   const moduleNote = subject ? resolveHelp(moduleNoteId(subject), locale) : null
   const params = subject ? effectParamIds(subject) : []
   const detail = detailId ? resolveHelp(detailId, locale) : null
-  const known = new Set<string>([...topic.body, ...(topic.points ?? [])])
-  const extra = [moduleNote?.summary, moduleNote?.practical, moduleNote?.technical].filter(
-    (paragraph): paragraph is string => typeof paragraph === 'string' && paragraph.length > 0 && !known.has(paragraph),
+  const written = subject ? writtenNoteParagraphs(moduleNoteId(subject), locale) : []
+  const resolved = [moduleNote?.summary, moduleNote?.practical, moduleNote?.technical].filter(
+    (paragraph): paragraph is string => typeof paragraph === 'string' && paragraph.length > 0,
   )
+  const intro = new Set<string>([...topic.body, ...(topic.points ?? [])])
+  const moduleParagraphs = written.length ? written : resolved.filter((paragraph) => !intro.has(paragraph))
+  const lead = written.length ? [] : topic.body
+  const leadPoints = written.length ? [] : [...(topic.points ?? [])]
 
   const choose = (next: HelpScope) => {
     writeHelpScope(next)
@@ -107,21 +112,21 @@ export function HelpPanel({ onClose }: Props) {
               </section>
             ) : (
               <>
-            {topic.body.map((paragraph) => (
+            {lead.map((paragraph) => (
               <p key={paragraph}>
                 <HelpRich text={paragraph} />
               </p>
             ))}
-            {topic.points ? (
+            {leadPoints.length ? (
               <ul className={styles.points}>
-                {topic.points.map((point) => (
+                {leadPoints.map((point) => (
                   <li key={point}>
                     <HelpRich text={point} />
                   </li>
                 ))}
               </ul>
             ) : null}
-            {extra.map((paragraph) => (
+            {moduleParagraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
             {params.length ? (
@@ -150,7 +155,9 @@ export function HelpPanel({ onClose }: Props) {
             <section key={section.id} className={styles.section} aria-labelledby={`intro-help-${section.id}`}>
               <h3 id={`intro-help-${section.id}`}>{section.title}</h3>
               {section.body.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
+                <p key={paragraph}>
+                  <HelpRich text={paragraph} />
+                </p>
               ))}
               {section.id === 'intro' ? (
                 <div className={styles.sectionActions}>

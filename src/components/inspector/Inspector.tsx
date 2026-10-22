@@ -561,21 +561,38 @@ function EffectOrderButtons({ chain, instanceId }: { chain: ChainModule[]; insta
     <>
       <button
         type="button"
+        className={styles.nudge}
         aria-label={earlier && !isFixedType(earlier.type) ? t.chain.moveBefore(name, moduleLabel(earlier, chain, t.modules)) : t.chain.moveEarlier}
         disabled={index <= 1}
         onClick={() => move(-1)}
       >
-        ‹
+        <NudgeIcon dir={-1} />
       </button>
       <button
         type="button"
+        className={styles.nudge}
         aria-label={later && !isFixedType(later.type) ? t.chain.moveAfter(name, moduleLabel(later, chain, t.modules)) : t.chain.moveLater}
         disabled={index >= chain.length - 2}
         onClick={() => move(1)}
       >
-        ›
+        <NudgeIcon dir={1} />
       </button>
     </>
+  )
+}
+
+function NudgeIcon({ dir }: { dir: -1 | 1 }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d={dir < 0 ? 'M10 3.5 5.5 8 10 12.5' : 'M6 3.5 10.5 8 6 12.5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 

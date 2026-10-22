@@ -329,7 +329,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                       moveModule(index, -1)
                     }}
                   >
-                    ‹
+                    <ChainNudge dir={-1} />
                   </button>
                   <button
                     type="button"
@@ -341,7 +341,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                       moveModule(index, 1)
                     }}
                   >
-                    ›
+                    <ChainNudge dir={1} />
                   </button>
                 </div>
               ) : null}
@@ -415,5 +415,20 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
           )
         : null}
     </nav>
+  )
+}
+
+function ChainNudge({ dir }: { dir: -1 | 1 }) {
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <path
+        d={dir < 0 ? 'M10 3.5 5.5 8 10 12.5' : 'M6 3.5 10.5 8 6 12.5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

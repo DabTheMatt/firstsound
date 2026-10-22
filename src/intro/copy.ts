@@ -239,6 +239,7 @@ const pl: IntroCopy = {
         'Opisy parametrów są włączone na starcie. Optymalizacje czytnika ściszają dodatkowe komunikaty na żywo. Nazwy i wartości zostają.',
         'F1 pokazuje objaśnienie kontrolki. To tekst w aplikacji, nie synteza mowy. Czasy dla czytnika są podawane słownie.',
         'Motyw zmienisz w nagłówku. Są wśród nich Black & White oraz przyjazne oczom Soft Slate, Warm Paper i Dusk. Więcej → Wysoki kontrast / słabowidzący.',
+        'Ucho {ear} przy eksporcie to Dostęp słuchowy. {focus} w rogu obrazu to Focus. Przycisk Pomoc i koperta {mail} są w nagłówku, w tym samym miejscu w każdym trybie.',
         'Ograniczenie ruchu uwzględnia też ustawienie systemu. Komfort sensoryczny uspokaja mierniki, widmo i ozdobny ruch.',
         'Hearing, obok Fali, EQ, FFT i Auto, rysuje dźwięk. Przydaje się każdemu, kto woli zobaczyć nagranie, nie tylko osobom, którym przeszkadza słuch. Dostęp słuchowy w sekcji Więcej pokazuje te same cechy wizualnie i może użyć wibracji. To nie jest czytnik ekranu ani aparat słuchowy.',
       ],
@@ -494,7 +495,7 @@ const pl: IntroCopy = {
       id: 'access',
       title: 'Dostępność',
       body: [
-        'Ustawienia → Dostępność (FIELD ACCESS) zbiera rozmiar, kontrast, fokus, ruch i sposób obsługi.',
+        'Ustawienia → Dostępność (FIELD ACCESS) zbiera rozmiar, kontrast, fokus, ruch i sposób obsługi. Ucho {ear} przy eksporcie to Dostęp słuchowy. {focus} w rogu obrazu to Focus. Przycisk Pomoc i koperta {mail} są w nagłówku.',
         'Hearing rysuje dźwięk dla każdego, kto chce go zobaczyć. Dostęp słuchowy nie jest czytnikiem ekranu ani aparatem słuchowym.',
         'Czytnik ekranu zostaje w Twoim systemie. FIELD nie odczytuje przewodnika głosem sam z siebie.',
       ],
@@ -691,6 +692,7 @@ const en: IntroCopy = {
         'Parameter descriptions start on. Screen reader optimizations keep extra live updates quiet. Names and values stay.',
         'F1 explains the focused control. That note is text in the app, not speech synthesis. Times are written out for a screen reader.',
         'Themes are in the header, including Black & White and the eyes-friendly Soft Slate, Warm Paper, and Dusk. More → High Contrast / Low Vision Theme.',
+        'The ear {ear} beside export is Hearing Access. {focus} in the corner of the picture is Focus. The Help button and the envelope {mail} sit in the header, in the same place in every mode.',
         'Reduced Motion also follows the system setting. Sensory Comfort calms meters, the spectrum, and decorative motion.',
         'Hearing, beside Wave, EQ, FFT, and Auto, draws the sound. It is there for anyone who wants to see a recording, not only for people whose hearing gets in the way. Hearing Access, under More, shows those same cues visually and can use device vibration. It is not a screen reader and not a hearing aid.',
       ],
@@ -946,7 +948,7 @@ const en: IntroCopy = {
       id: 'access',
       title: 'Accessibility',
       body: [
-        'Settings → Accessibility (FIELD ACCESS) gathers size, contrast, focus, motion, and how you operate the controls.',
+        'Settings → Accessibility (FIELD ACCESS) gathers size, contrast, focus, motion, and how you operate the controls. The ear {ear} beside export is Hearing Access. {focus} in the corner of the picture is Focus. The Help button and the envelope {mail} sit in the header.',
         'Hearing draws the sound for anyone who wants to see it. Hearing Access is not a screen reader and not a hearing aid.',
         'A screen reader stays in your system. FIELD does not read this guide aloud on its own.',
       ],
