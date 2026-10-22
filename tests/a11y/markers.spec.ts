@@ -101,6 +101,10 @@ test.describe('audio markers popover', () => {
     await page.keyboard.press('Escape')
 
     await page.getByRole('radio', { name: 'Sensory' }).click()
+    const modeHelp = page.getByRole('dialog', { name: 'Sensory' })
+    await expect(modeHelp).toBeVisible()
+    await modeHelp.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(modeHelp).toBeHidden()
     await expect(page.getByRole('button', { name: 'Markers, 0' })).toBeVisible()
     await openMarkers(page)
     await page.keyboard.press('Escape')
