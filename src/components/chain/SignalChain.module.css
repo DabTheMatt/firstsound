@@ -332,33 +332,40 @@
 .add {
   position: relative;
   z-index: 1;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   width: auto;
   min-width: 28px;
   height: 28px;
   margin: 0;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 4px;
+  padding: 0 10px;
+  border: 1px dashed color-mix(in srgb, var(--text-secondary) 75%, transparent);
+  border-radius: 999px;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--type-12);
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0;
   white-space: nowrap;
-  opacity: 0.9;
   cursor: pointer;
+}
+
+.add::before {
+  content: '+';
+  font-weight: 600;
+  line-height: 1;
 }
 
 .add:hover,
 .add:focus-visible,
 .addOpen {
-  opacity: 1;
-  color: var(--accent-primary);
+  color: var(--text-on-accent);
+  border-style: solid;
   border-color: var(--accent-primary);
-  background: var(--accent-soft);
+  background: var(--accent-primary);
 }
 
 .add:disabled {
@@ -456,19 +463,37 @@
 }
 
 .addOne {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: none;
   width: auto;
   min-width: 44px;
   height: 36px;
   margin-left: 4px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
+  padding: 0 12px;
+  border: 1px dashed color-mix(in srgb, var(--text-secondary) 75%, transparent);
+  border-radius: 999px;
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--type-12);
   line-height: 1.2;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.addOne::before {
+  content: '+';
+  font-weight: 600;
+  line-height: 1;
+}
+
+.addOne:hover,
+.addOne:focus-visible {
+  color: var(--text-on-accent);
+  border-style: solid;
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
 }
 
 :global(html[data-high-visibility='on']) .tile[data-effect-state='bypassed'] {

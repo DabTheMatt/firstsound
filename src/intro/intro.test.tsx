@@ -7,6 +7,7 @@ import {
   emptyFeedbackDraft,
   feedbackAccepted,
   feedbackEndpoint,
+  feedbackNeedsActivation,
   feedbackIssues,
   feedbackMessage,
   feedbackRequestBody,
@@ -23,7 +24,7 @@ import hostSource from './IntroHost.tsx?raw'
 import feedbackSource from './feedback.ts?raw'
 import { visibleBox } from './spotlight'
 import { helpTopic, publishHelpPlace, resetHelpPlace } from './context'
-import { markWelcomeSeen, parseIntroRecord, readIntroRecord, shouldShowWelcome, writeIntroRecord, INTRO_STORAGE_KEY } from './storage'
+import { markWelcomeSeen, parseIntroRecord, readIntroRecord, setWelcomeAtStartup, shouldShowWelcome, welcomeAtStartup, writeIntroRecord, INTRO_STORAGE_KEY } from './storage'
 import { WelcomePanel } from './WelcomePanel'
 import { FeedbackForm } from './FeedbackForm'
 
@@ -80,6 +81,12 @@ describe('welcome storage', () => {
     expect(readIntroRecord()).toEqual({ seen: true, suppress: false })
     markWelcomeSeen(true)
     expect(shouldShowWelcome()).toBe(false)
+    setWelcomeAtStartup(true)
+    expect(welcomeAtStartup()).toBe(true)
+    expect(shouldShowWelcome()).toBe(true)
+    setWelcomeAtStartup(false)
+    expect(welcomeAtStartup()).toBe(false)
+    expect(shouldShowWelcome()).toBe(false)
     const raw = localStorage.getItem(INTRO_STORAGE_KEY) ?? ''
     expect(raw).not.toContain('@')
     expect(raw).not.toContain('difficulty')
@@ -102,11 +109,12 @@ describe('help topic', () => {
 
   it('follows the technical picture, and Focus when it is on', () => {
     expect(helpTopic()).toBe('wave')
-    expect(helpTopic({ mode: 'simple', view: 'eq', focused: true })).toBe('simple')
-    expect(helpTopic({ mode: 'sensory', view: 'wave', focused: false })).toBe('sensory')
-    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false })).toBe('eq')
-    expect(helpTopic({ mode: 'technical', view: 'eq', focused: true })).toBe('eq-focus')
-    publishHelpPlace({ mode: 'technical', view: 'fft', focused: true })
+    expect(helpTopic({ mode: 'simple', view: 'eq', focused: true, effect: 'eq' })).toBe('simple')
+    expect(helpTopic({ mode: 'sensory', view: 'wave', focused: false, effect: null })).toBe('sensory')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false, effect: null })).toBe('eq')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: true, effect: 'filter' })).toBe('eq-focus')
+    expect(helpTopic({ mode: 'technical', view: 'wave', focused: false, effect: 'filter' })).toBe('fx-filter')
+    publishHelpPlace({ mode: 'technical', view: 'fft', focused: true, effect: null })
     expect(helpTopic()).toBe('fft-focus')
   })
 })
@@ -246,10 +254,15 @@ describe('feedback delivery', () => {
     const body = feedbackRequestBody('https://formsubmit.co/ajax/example', 'note', 'a@b.c')
     expect(body._subject).toBe(FEEDBACK_SUBJECT)
     expect(body.message).toBe('note')
+    expect(body.name).toBe('FIELD')
+    expect(body._template).toBeUndefined()
     expect(body._replyto).toBe('a@b.c')
     expect(feedbackAccepted(200, 'application/json', '{"success":"true"}', true)).toBe(true)
+    expect(feedbackAccepted(200, 'text/plain', '{"success":"true"}', true)).toBe(true)
     expect(feedbackAccepted(200, 'text/html', '<html>', true)).toBe(false)
     expect(feedbackAccepted(403, 'application/json', '{"success":"true"}', true)).toBe(false)
+    expect(feedbackNeedsActivation('This form needs Activation.')).toBe(true)
+    expect(feedbackNeedsActivation('The form was submitted successfully.')).toBe(false)
   })
 
   it('does not embed a mail API secret in the client', () => {
@@ -291,7 +304,7 @@ describe('intro markup', () => {
     expect(form).toContain('Np. znalezienie funkcji, zrozumienie parametru, obsługa na telefonie…')
     expect(form).not.toContain('Co działa dobrze, a co można poprawić?')
 
-    publishHelpPlace({ mode: 'technical', view: 'eq', focused: true })
+    publishHelpPlace({ mode: 'technical', view: 'eq', focused: true, effect: null })
     const help = renderToStaticMarkup(
       <I18nProvider>
         <HelpPanel onClose={() => undefined} />

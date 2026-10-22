@@ -29,12 +29,20 @@ export function readIntroRecord(): IntroRecord {
   }
 }
 
+const recordListeners = new Set<() => void>()
+
+export function subscribeIntroRecord(listener: () => void): () => void {
+  recordListeners.add(listener)
+  return () => recordListeners.delete(listener)
+}
+
 export function writeIntroRecord(next: IntroRecord): void {
   try {
     localStorage.setItem(INTRO_STORAGE_KEY, JSON.stringify({ seen: next.seen === true, suppress: next.suppress === true }))
   } catch {
     /* private mode */
   }
+  for (const listener of recordListeners) listener()
 }
 
 /** Shown at each start, until the person asks for it to stay hidden. */
@@ -45,4 +53,13 @@ export function shouldShowWelcome(record: IntroRecord = readIntroRecord()): bool
 export function markWelcomeSeen(suppress = false): void {
   const current = readIntroRecord()
   writeIntroRecord({ seen: true, suppress: suppress || current.suppress })
+}
+
+export function welcomeAtStartup(record: IntroRecord = readIntroRecord()): boolean {
+  return !record.suppress
+}
+
+/** Settings switch. Turning it off hides the welcome on later starts. */
+export function setWelcomeAtStartup(on: boolean): void {
+  writeIntroRecord({ seen: true, suppress: !on })
 }

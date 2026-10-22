@@ -30,6 +30,8 @@ function failureCopy(reason: Exclude<SendResult, { ok: true }>['reason'], copy: 
   if (reason === 'unconfigured') return copy.errorUnconfigured
   if (reason === 'rate') return copy.errorRate
   if (reason === 'busy') return copy.sending
+  if (reason === 'activation') return copy.activationBody
+  if (reason === 'rejected') return copy.errorRejected
   return copy.errorNetwork
 }
 
@@ -52,12 +54,13 @@ export function FeedbackForm({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
+  const [activation, setActivation] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const configured = feedbackConfigured()
 
   useEffect(() => {
-    if (done) titleRef.current?.focus()
-  }, [done])
+    if (done || activation) titleRef.current?.focus()
+  }, [done, activation])
 
   const update = (patch: Partial<FeedbackDraft>) => {
     setDraft((current) => {
@@ -86,7 +89,13 @@ export function FeedbackForm({ onClose }: Props) {
     setSending(false)
     if (result.ok) {
       clearFeedbackDraft()
+      setActivation(false)
       setDone(true)
+      return
+    }
+    if (result.reason === 'activation') {
+      setError(null)
+      setActivation(true)
       return
     }
     setError(failureCopy(result.reason, copy))
@@ -104,11 +113,15 @@ export function FeedbackForm({ onClose }: Props) {
         }}
       >
         <h2 id={titleId} ref={titleRef} className={styles.title} tabIndex={-1} data-dialog-initial="">
-          {done ? copy.thanksTitle : copy.formTitle}
+          {done ? copy.thanksTitle : activation ? copy.activationTitle : copy.formTitle}
         </h2>
         {done ? (
-          <p id={leadId} className={styles.lead}>
+          <p id={leadId} className={styles.lead} role="status" data-feedback-result="thanks">
             {copy.thanksBody}
+          </p>
+        ) : activation ? (
+          <p id={leadId} className={styles.lead} role="status" data-feedback-result="activation">
+            {copy.activationBody}
           </p>
         ) : (
           <>

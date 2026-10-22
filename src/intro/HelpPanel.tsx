@@ -4,6 +4,7 @@ import { formatCombo, SHORTCUTS, shortcutPlatform } from '../a11y/shortcuts/regi
 import { requestIntroCommand, type IntroCommand } from './commands'
 import { getHelpPlace, helpTopic, readHelpScope, subscribeHelpPlace, writeHelpScope, type HelpScope } from './context'
 import { closeIntro, openIntro, setIntroPinned } from './session'
+import { HelpRich } from './helpRich'
 import { IntroDialog } from './IntroDialog'
 import { useIntroCopy } from './useIntroCopy'
 import styles from './Intro.module.css'
@@ -64,12 +65,16 @@ export function HelpPanel({ onClose }: Props) {
           <section className={styles.section} aria-labelledby="intro-help-topic" data-help-topic={helpTopic(place)}>
             <h3 id="intro-help-topic">{topic.title}</h3>
             {topic.body.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
+              <p key={paragraph}>
+                <HelpRich text={paragraph} />
+              </p>
             ))}
             {topic.points ? (
               <ul className={styles.points}>
                 {topic.points.map((point) => (
-                  <li key={point}>{point}</li>
+                  <li key={point}>
+                    <HelpRich text={point} />
+                  </li>
                 ))}
               </ul>
             ) : null}

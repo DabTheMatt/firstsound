@@ -48,7 +48,9 @@ export function WelcomePanel({ onClose }: Props) {
         <button type="button" className={`${styles.primary} ${styles.grow}`} onClick={() => start(false)}>
           {copy.start}
         </button>
-        <button type="button" className={`${styles.ghost} ${styles.grow}`} onClick={() => start(true)}>
+      </div>
+      <div className={styles.dismissRow}>
+        <button type="button" className={styles.dismiss} onClick={() => start(true)}>
           {copy.dismiss}
         </button>
       </div>

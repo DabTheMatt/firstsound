@@ -30,6 +30,11 @@ test.describe('first experience', () => {
     const stored = await page.evaluate(() => localStorage.getItem('field.intro'))
     expect(stored).toContain('"suppress":true')
     expect(stored).not.toContain('@')
+    await page.getByRole('button', { name: 'Ustawienia', exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Pokazuj ekran powitalny przy starcie' }).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: '/opt/cursor/artifacts/welcome-startup-pl.png' })
+    await page.getByRole('checkbox', { name: 'Pokazuj ekran powitalny przy starcie' }).click()
+    await expect(page.locator('[data-intro-dialog]').getByRole('heading', { name: 'FIELD' })).toBeVisible()
   })
 
   test('walks the guide and returns to it from help', async ({ page }) => {
@@ -65,6 +70,19 @@ test.describe('first experience', () => {
     const dialog = page.locator('[data-intro-dialog]')
     await expect(dialog.getByRole('heading', { name: 'Pomóż rozwijać FIELD' })).toBeVisible()
     await expect(dialog.getByText('Co działa dobrze, a co można poprawić?')).toHaveCount(0)
+    let accept = false
+    let activation = false
+    await page.route('https://formsubmit.co/**', async (route) => {
+      await route.fulfill({
+        status: accept ? 200 : 503,
+        contentType: 'text/plain',
+        body: activation
+          ? '{"success":"false","message":"This form needs Activation."}'
+          : accept
+            ? '{"success":"true"}'
+            : '{"success":"false"}',
+      })
+    })
     await dialog.getByRole('group', { name: 'Czy korzystasz z funkcji dostępności?' }).getByRole('radio', { name: 'Tak', exact: true }).click()
     await expect(dialog.getByText('Co działa dobrze, a co można poprawić?')).toBeVisible()
     await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
@@ -76,20 +94,22 @@ test.describe('first experience', () => {
     await expect(dialog.getByRole('alert')).toContainText('e-mail')
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
     await dialog.getByLabel('Adres e-mail').fill('')
-    let accept = false
-    await page.route('https://formsubmit.co/**', async (route) => {
-      await route.fulfill({
-        status: accept ? 200 : 503,
-        contentType: 'application/json',
-        body: accept ? '{"success":"true"}' : '{"success":"false"}',
-      })
-    })
     await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
     await expect(dialog.getByRole('alert')).toContainText('formularzu')
     await dialog.getByRole('alert').scrollIntoViewIfNeeded()
     await page.screenshot({ path: '/opt/cursor/artifacts/feedback-phone-pl.png' })
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
     await expect(dialog.getByRole('heading', { name: 'Dziękujemy!' })).toHaveCount(0)
+    activation = true
+    await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
+    await expect(dialog.getByRole('heading', { name: 'Sprawdź skrzynkę' })).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/feedback-activation-pl.png' })
+    activation = false
+    accept = true
+    await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
+    await expect(dialog.getByRole('heading', { name: 'Dziękujemy!' })).toBeVisible()
+    await expect(dialog.getByText('Twoja opinia została przesłana.')).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/feedback-thanks-pl.png' })
     const geometry = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       width: window.innerWidth,
@@ -144,14 +164,51 @@ test.describe('first experience', () => {
     await expect(dialog.getByRole('radio', { name: 'Contextual' })).toBeChecked()
     await page.getByRole('tab', { name: 'EQ', exact: true }).click()
     await expect(dialog.getByRole('heading', { name: 'EQ', exact: true })).toBeVisible()
-    await expect(dialog.getByText('Add band in the inspector creates the next filter.')).toBeVisible()
+    await expect(dialog.getByText('Double-click the EQ graph to create a bell filter at that point.')).toBeVisible()
     await page.screenshot({ path: '/opt/cursor/artifacts/help-eq-en.png' })
     await page.getByRole('button', { name: 'Enter Focus Mode' }).click()
     await expect(dialog.getByRole('heading', { name: 'EQ Focus' })).toBeVisible()
-    await expect(dialog.getByText('The + in the band header adds a filter. Its name is Add band.')).toBeVisible()
+    await expect(dialog.getByText('in the band header adds a filter. Its name is Add band.')).toBeVisible()
+    await expect(dialog.getByText('Double-click the graph to add a bell filter at that point.')).toBeVisible()
     await page.screenshot({ path: '/opt/cursor/artifacts/help-eq-focus-en.png' })
     await dialog.getByRole('radio', { name: 'General' }).click()
     await expect(dialog.getByRole('heading', { name: 'Ways of working' })).toBeVisible()
     await expect(dialog.getByRole('heading', { name: 'EQ Focus' })).toHaveCount(0)
+  })
+
+  test('styles Add effect as its own control and describes the selected effect', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page, { locale: 'en', mode: 'technical' })
+    const add = page.getByRole('button', { name: 'Add effect' }).first()
+    await expect(add).toBeVisible()
+    const resting = await add.evaluate((element) => getComputedStyle(element).borderTopStyle)
+    expect(resting).toBe('dashed')
+    await add.hover()
+    await expect.poll(async () => add.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+    await page.screenshot({ path: '/opt/cursor/artifacts/chain-add-hover-en.png' })
+    await add.click()
+    await page.getByRole('menuitem', { name: 'Filter', exact: true }).click()
+    await page.locator('[data-intro-help]').click()
+    const dialog = page.locator('[data-intro-dialog]')
+    await expect(dialog.getByRole('heading', { name: 'Filter', exact: true })).toBeVisible()
+    await expect(dialog.getByText('separate from the EQ')).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/help-filter-en.png' })
+  })
+
+  test('opens the info mark without freezing the page', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page, { locale: 'en', mode: 'technical' })
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Show info marks' }).check()
+    await page.evaluate(() => localStorage.setItem('field.helpLevel', 'technical'))
+    await page.keyboard.press('Escape')
+    await page.reload()
+    await page.getByRole('button', { name: 'Settings', exact: true }).waitFor()
+    await page.locator('[data-explain-mark]').first().click()
+    await expect(page.locator('[data-explain-popover]')).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/explain-mark-en.png' })
+    await expect(page.getByRole('button', { name: 'Add effect' }).first()).toBeEnabled()
+    await page.getByRole('button', { name: 'Add effect' }).first().click()
+    await expect(page.getByRole('menuitem', { name: 'Filter', exact: true })).toBeVisible()
   })
 })

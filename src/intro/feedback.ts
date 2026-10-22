@@ -46,7 +46,7 @@ export type TechInfo = {
 
 export type SendResult =
   | { ok: true }
-  | { ok: false; reason: 'unconfigured' | 'rate' | 'busy' | 'network' | 'rejected' }
+  | { ok: false; reason: 'unconfigured' | 'rate' | 'busy' | 'network' | 'rejected' | 'activation' }
 
 export function emptyFeedbackDraft(): FeedbackDraft {
   return {
@@ -185,7 +185,7 @@ export function feedbackRequestBody(endpoint: string, text: string, replyEmail: 
     return {
       _subject: FEEDBACK_SUBJECT,
       _captcha: 'false',
-      _template: 'box',
+      name: 'FIELD',
       message: text,
       _replyto: replyEmail ?? '',
     }
@@ -197,16 +197,28 @@ export function feedbackRequestBody(endpoint: string, text: string, replyEmail: 
   }
 }
 
+export function feedbackReply(body: string): { success: boolean; message: string } | null {
+  try {
+    const data = JSON.parse(body) as { success?: unknown; message?: unknown }
+    return {
+      success: data.success === true || data.success === 'true',
+      message: typeof data.message === 'string' ? data.message : '',
+    }
+  } catch {
+    return null
+  }
+}
+
+/** FormSubmit's first reply asks the mailbox to activate. That mail is not a visitor note. */
+export function feedbackNeedsActivation(message: string): boolean {
+  return /activat/i.test(message)
+}
+
 export function feedbackAccepted(status: number, contentType: string, body: string, formSubmit: boolean): boolean {
   if (status < 200 || status >= 300) return false
   if (!formSubmit) return true
-  if (!contentType.toLowerCase().includes('json')) return false
-  try {
-    const data = JSON.parse(body) as { success?: unknown }
-    return data.success === true || data.success === 'true'
-  } catch {
-    return false
-  }
+  void contentType
+  return feedbackReply(body)?.success === true
 }
 
 export function feedbackConfigured(): boolean {
@@ -330,6 +342,10 @@ export async function submitFeedback(input: {
       body: JSON.stringify(feedbackRequestBody(endpoint, text, replyEmail)),
     })
     const payload = await response.text()
+    if (formSubmit) {
+      const reply = feedbackReply(payload)
+      if (reply && !reply.success && feedbackNeedsActivation(reply.message)) return { ok: false, reason: 'activation' }
+    }
     const accepted = feedbackAccepted(response.status, response.headers.get('content-type') ?? '', payload, formSubmit)
     if (!accepted) return { ok: false, reason: 'rejected' }
     stamps.write([...history, now])

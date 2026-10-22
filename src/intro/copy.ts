@@ -32,6 +32,14 @@ export type HelpTopicId =
   | 'auto-focus'
   | 'hearing'
   | 'hearing-focus'
+  | 'fx-filter'
+  | 'fx-grain'
+  | 'fx-distortion'
+  | 'fx-midside'
+  | 'fx-delay'
+  | 'fx-reverb'
+  | 'fx-compressor'
+  | 'fx-limiter'
 
 export type HelpTopicCopy = {
   title: string
@@ -56,6 +64,7 @@ export type IntroCopy = {
   discover: string
   start: string
   dismiss: string
+  welcomeStartup: string
   close: string
   back: string
   next: string
@@ -109,6 +118,9 @@ export type IntroCopy = {
   thanksBody: string
   errorUnconfigured: string
   errorNetwork: string
+  errorRejected: string
+  activationTitle: string
+  activationBody: string
   errorRate: string
   errorEmpty: string
   errorEmail: string
@@ -138,6 +150,7 @@ const pl: IntroCopy = {
   discover: 'Odkryj FIELD',
   start: 'Rozpocznij pracę',
   dismiss: 'Nie pokazuj tego okna przy starcie',
+  welcomeStartup: 'Pokazuj ekran powitalny przy starcie',
   close: 'Zamknij',
   back: 'Wstecz',
   next: 'Dalej',
@@ -275,7 +288,7 @@ const pl: IntroCopy = {
         'Fala pokazuje przebieg w czasie. Wyższe miejsca to większe wychylenie, nie pełna miara głośności.',
         'Przeciągnij po przebiegu, żeby zaznaczyć fragment. Potem możesz go przyciąć albo dodać narastanie i wygaszanie.',
       ],
-      points: ['Ikona w prawym górnym rogu obrazu otwiera Focus fali. Ta sama ikona z niego wychodzi. Dźwięk, zaznaczenie i głowica zostają.'],
+      points: ['Ikona {focus} w prawym górnym rogu obrazu otwiera Focus fali. Ta sama ikona z niego wychodzi. Dźwięk, zaznaczenie i głowica zostają.'],
     },
     'wave-focus': {
       title: 'Focus fali',
@@ -291,9 +304,10 @@ const pl: IntroCopy = {
         'Każdy filtr to jeden wiersz na całą szerokość: wybór typu i pokrętła, których ten typ używa.',
       ],
       points: [
-        'Przycisk „Add band” w inspektorze tworzy kolejny filtr.',
+        'Kliknij dwa razy na wykresie EQ, żeby utworzyć filtr dzwonkowy w tym miejscu.',
+        'Przycisk „Add band” w inspektorze dodaje kolejny filtr.',
         'Punkt na wykresie przeciągasz, a pokrętłem kręcisz ten sam parametr.',
-        'Ikona w rogu obrazu otwiera EQ Focus. Dźwięk się od tego nie zmienia.',
+        'Ikona {focus} w rogu obrazu otwiera EQ Focus. Dźwięk się od tego nie zmienia.',
       ],
     },
     'eq-focus': {
@@ -301,36 +315,37 @@ const pl: IntroCopy = {
       body: [
         'EQ Focus to ten sam korektor bez otaczającego interfejsu. Zostaje, gdy reszta ekranu rozprasza.',
         'Filtry są wypisane po lewej stronie wykresu. Pokrętła stoją na środku i unoszą się nad siatką. Menu typu filtra jest w nagłówku pasma, obok nazwy.',
-        'Ta sama ikona w rogu wychodzi z Focus. Odtwarzanie, zaznaczenie i głowica zostają.',
+        'Ta sama ikona {focus} w rogu wychodzi z Focus. Odtwarzanie, zaznaczenie i głowica zostają.',
       ],
       points: [
-        'Plus w nagłówku pasma dodaje filtr. Ma nazwę „Dodaj pasmo”.',
-        'Przeciągnij punkt na wykresie albo obróć pokrętło częstotliwości, wzmocnienia albo dobroci — zostają te, których używa wybrany typ.',
+        'Kliknij dwa razy na wykresie, żeby dodać filtr dzwonkowy w tym miejscu.',
+        '{plus} w nagłówku pasma dodaje filtr. Ma nazwę „Dodaj pasmo”.',
+        'Przeciągnij punkt na wykresie albo obróć pokrętło częstotliwości, wzmocnienia albo dobroci. Zostają te, których używa wybrany typ.',
         'Wskazówka pokrętła pokazuje wartość skuteczną. Gdy na pokrętle jest LFO, wskazówka idzie za tym ruchem.',
-        'Kosz w nagłówku pasma wyłącza ten filtr. Ma nazwę „Usuń węzeł”.',
-        'Zakres w menu wykresu, 60, 90 albo 120 dB, mówi, jak głęboko sięgają słupki widma. Nie skaluje krzywej EQ.',
+        '{trash} w nagłówku pasma wyłącza ten filtr. Ma nazwę „Usuń węzeł”.',
+        'Zakres w menu {dots}, 60, 90 albo 120 dB, mówi, jak głęboko sięgają słupki widma. Nie skaluje krzywej EQ.',
       ],
     },
     fft: {
       title: 'FFT',
       body: [
         'FFT pokazuje widmo nagrania. Na belce obrazu zostają Before, After, Both oraz 2D / 3D.',
-        '••• na końcu belki otwiera ustawienia analizatora. To pomiar dźwięku, nie krzywa korektora.',
+        '{dots} na końcu belki otwiera ustawienia analizatora. To pomiar dźwięku, nie krzywa korektora.',
       ],
-      points: ['Ikona w rogu otwiera FFT Focus. Dźwięk się nie zmienia.'],
+      points: ['Ikona {focus} w rogu otwiera FFT Focus. Dźwięk się nie zmienia.'],
     },
     'fft-focus': {
       title: 'FFT Focus',
       body: [
-        'FFT Focus zostawia widmo. Ustawienia analizatora są pod ••• na belce.',
-        'Ta sama ikona wychodzi z Focus i przywraca otoczenie.',
+        'FFT Focus zostawia widmo. Ustawienia analizatora są pod {dots} na belce.',
+        'Ta sama ikona {focus} wychodzi z Focus i przywraca otoczenie.',
       ],
     },
     auto: {
       title: 'Auto',
       body: [
         'Auto pokazuje automatyzację parametru w czasie, na tym samym obrazie.',
-        'Krzywa mówi, jak wartość zmienia się wzdłuż nagrania. Ikona w rogu otwiera Focus automatyzacji.',
+        'Krzywa mówi, jak wartość zmienia się wzdłuż nagrania. Ikona {focus} w rogu otwiera Focus automatyzacji.',
       ],
     },
     'auto-focus': {
@@ -344,7 +359,7 @@ const pl: IntroCopy = {
       title: 'Hearing',
       body: [
         'Hearing rysuje dźwięk obok Fali, EQ, FFT i Auto. Jest dla każdego, kto woli zobaczyć nagranie, nie tylko dla osób, którym przeszkadza słuch.',
-        'To nie jest czytnik ekranu ani aparat słuchowy. Ikona w rogu otwiera Hearing Focus.',
+        'To nie jest czytnik ekranu ani aparat słuchowy. Ikona {focus} w rogu otwiera Hearing Focus.',
       ],
     },
     'hearing-focus': {
@@ -352,7 +367,63 @@ const pl: IntroCopy = {
       body: [
         'Hearing Focus zostawia mapę dźwięku w tej samej ramce co pozostałe widoki Focus.',
         'Przeciągnięcie po fali zaznacza fragment. Puszczenie zamienia zaznaczenie w pętlę. Klik tylko przesuwa głowicę.',
-        'Ta sama ikona wychodzi z Focus i nie zmienia dźwięku.',
+        'Ta sama ikona {focus} wychodzi z Focus i nie zmienia dźwięku.',
+      ],
+    },
+    'fx-filter': {
+      title: 'Filter',
+      body: [
+        'Filter jest osobnym efektem w łańcuchu, nie korektorem EQ.',
+        'Do tej instancji należą cutoff, rezonans, drive, mix i jej LFO. Przycisk {power} na kafelku omija efekt i go nie usuwa.',
+      ],
+    },
+    'fx-grain': {
+      title: 'Grain',
+      body: [
+        'Przełącznik Grain w inspektorze przechodzi między zwykłym odtwarzaniem a trybem ziarna.',
+        'Pokrętła w tym inspektorze należą do tej instancji. Ominięcie na kafelku nie usuwa modułu.',
+      ],
+    },
+    'fx-distortion': {
+      title: 'Zniekształcenie',
+      body: [
+        'W inspektorze wybierasz typ zniekształcenia, a potem pokrętła tej instancji.',
+        'Ominięcie na kafelku wyłącza efekt bez usuwania go z łańcucha.',
+      ],
+    },
+    'fx-midside': {
+      title: 'Mid/Side',
+      body: [
+        'Mid/Side ustawia środek i boki: wzmocnienie mid i side, obrót i crossfeed.',
+        'To osobny moduł, nie EQ. Ominięcie na kafelku zostawia go w łańcuchu.',
+      ],
+    },
+    'fx-delay': {
+      title: 'Delay',
+      body: [
+        'Czas, feedback i wet są osobne dla tej instancji delay.',
+        'Kill FX ucina ogon delay bez usuwania modułu z łańcucha.',
+      ],
+    },
+    'fx-reverb': {
+      title: 'Pogłos',
+      body: [
+        'Ta instancja ma własny rozmiar, wybrzmienie i miks wet.',
+        'Gdy Dry i Wet są zlinkowane, to jeden Mix. Kill FX ucina ogon pogłosu i nie usuwa modułu.',
+      ],
+    },
+    'fx-compressor': {
+      title: 'Kompresor',
+      body: [
+        'Ta instancja ma własny próg, ratio, atak, zwolnienie, kolano i makeup.',
+        'To nie jest limiter bezpieczeństwa łańcucha. Drugi kompresor nie dzieli z nim ustawień.',
+      ],
+    },
+    'fx-limiter': {
+      title: 'Limiter',
+      body: [
+        'Limiter trzyma szczyty tego miejsca w łańcuchu.',
+        'Chaos włącza ten limiter, jeśli był pominięty albo go nie było. Nie dodaje drugiego limitera.',
       ],
     },
   },
@@ -474,6 +545,10 @@ const pl: IntroCopy = {
   thanksBody: 'Twoja opinia została przesłana. Dzięki takim wiadomościom FIELD może stawać się coraz lepszy.',
   errorUnconfigured: 'Nie udało się wysłać opinii, bo wysyłka nie jest jeszcze włączona na tym serwerze. Odpowiedzi zostały w formularzu.',
   errorNetwork: 'Nie udało się wysłać opinii. Sprawdź połączenie i spróbuj ponownie. Odpowiedzi zostały w formularzu.',
+  errorRejected: 'Serwer nie potwierdził wysłania. Odpowiedzi zostały w formularzu.',
+  activationTitle: 'Sprawdź skrzynkę',
+  activationBody:
+    'Na skrzynkę FIELD poszła prośba o aktywację adresu, nie wypełniona opinia. Otwórz tę wiadomość i potwierdź adres. Potem wyślij formularz jeszcze raz — wtedy pojawi się potwierdzenie wysłania.',
   errorRate: 'Z tej karty wysłano już kilka opinii. Spróbuj ponownie później. Odpowiedzi zostały w formularzu.',
   errorEmpty: 'Dodaj choć jedną odpowiedź. Puste zgłoszenie nie zostanie wysłane.',
   errorEmail: 'Adres e-mail wygląda na niepełny. Możesz go poprawić albo zostawić pole puste.',
@@ -503,6 +578,7 @@ const en: IntroCopy = {
   discover: 'Discover FIELD',
   start: 'Start working',
   dismiss: 'Don’t show this window at startup',
+  welcomeStartup: 'Show the welcome screen at startup',
   close: 'Close',
   back: 'Back',
   next: 'Next',
@@ -640,7 +716,7 @@ const en: IntroCopy = {
         'Wave shows the recording across time. Taller parts are a larger swing of the wave, not a full measure of loudness.',
         'Drag across the waveform to select a region. You can then trim it or add a fade in and a fade out.',
       ],
-      points: ['The icon in the top-right corner of the picture opens Wave Focus. The same icon leaves it. The sound, the selection, and the playhead stay.'],
+      points: ['The {focus} icon in the top-right corner of the picture opens Wave Focus. The same icon leaves it. The sound, the selection, and the playhead stay.'],
     },
     'wave-focus': {
       title: 'Wave Focus',
@@ -656,9 +732,10 @@ const en: IntroCopy = {
         'Each filter is one full-width row: a type and the knobs that type uses.',
       ],
       points: [
-        'Add band in the inspector creates the next filter.',
+        'Double-click the EQ graph to create a bell filter at that point.',
+        'Add band in the inspector adds the next filter.',
         'Drag a point on the graph, or turn a knob, to change the same parameter.',
-        'The icon in the corner of the picture opens EQ Focus. The sound does not change because of that.',
+        'The {focus} icon in the corner of the picture opens EQ Focus. The sound does not change because of that.',
       ],
     },
     'eq-focus': {
@@ -666,36 +743,37 @@ const en: IntroCopy = {
       body: [
         'EQ Focus is the same equalizer without the surrounding chrome. It stays when the rest of the screen is distracting.',
         'Filters are listed to the left of the graph. The knobs sit in the center and float over the grid. The filter type menu is in the band header, next to the name.',
-        'The same icon in the corner leaves Focus. Playback, the selection, and the playhead stay.',
+        'The same {focus} icon in the corner leaves Focus. Playback, the selection, and the playhead stay.',
       ],
       points: [
-        'The + in the band header adds a filter. Its name is Add band.',
+        'Double-click the graph to add a bell filter at that point.',
+        'The {plus} in the band header adds a filter. Its name is Add band.',
         'Drag a point on the graph, or turn the frequency, gain, or Q knob. A type keeps only the knobs it uses.',
         'The knob indicator shows the effective value. When an LFO is on that knob, the indicator follows the motion.',
-        'The trash control in the band header turns that filter off. Its name is Delete node.',
-        'Range in the graph menu, 60, 90, or 120 dB, is how far down the spectrum bars reach. It does not scale the EQ curve.',
+        'The {trash} in the band header turns that filter off. Its name is Delete node.',
+        'Range in the {dots} menu, 60, 90, or 120 dB, is how far down the spectrum bars reach. It does not scale the EQ curve.',
       ],
     },
     fft: {
       title: 'FFT',
       body: [
         'FFT shows the spectrum of the recording. Before, After, Both, and 2D / 3D stay on the picture bar.',
-        '••• at the end of that bar opens the analyzer settings. It measures the sound. It does not draw the EQ curve.',
+        '{dots} at the end of that bar opens the analyzer settings. It measures the sound. It does not draw the EQ curve.',
       ],
-      points: ['The icon in the corner opens FFT Focus. The sound does not change.'],
+      points: ['The {focus} icon in the corner opens FFT Focus. The sound does not change.'],
     },
     'fft-focus': {
       title: 'FFT Focus',
       body: [
-        'FFT Focus keeps the spectrum. Analyzer settings stay under ••• on the bar.',
-        'The same icon leaves Focus and restores the chrome.',
+        'FFT Focus keeps the spectrum. Analyzer settings stay under {dots} on the bar.',
+        'The same {focus} icon leaves Focus and restores the chrome.',
       ],
     },
     auto: {
       title: 'Auto',
       body: [
         'Auto shows a parameter’s automation across time, on the same picture.',
-        'The curve is how that value changes along the recording. The icon in the corner opens automation Focus.',
+        'The curve is how that value changes along the recording. The {focus} icon in the corner opens automation Focus.',
       ],
     },
     'auto-focus': {
@@ -709,7 +787,7 @@ const en: IntroCopy = {
       title: 'Hearing',
       body: [
         'Hearing draws the sound beside Wave, EQ, FFT, and Auto. It is there for anyone who wants to see a recording, not only for people whose hearing gets in the way.',
-        'It is not a screen reader and not a hearing aid. The icon in the corner opens Hearing Focus.',
+        'It is not a screen reader and not a hearing aid. The {focus} icon in the corner opens Hearing Focus.',
       ],
     },
     'hearing-focus': {
@@ -717,7 +795,63 @@ const en: IntroCopy = {
       body: [
         'Hearing Focus keeps the sound map in the same frame as the other Focus views.',
         'Drag across the waveform to select a fragment. Releasing that drag turns the selection into the loop. A click only moves the playhead.',
-        'The same icon leaves Focus and does not change the sound.',
+        'The same {focus} icon leaves Focus and does not change the sound.',
+      ],
+    },
+    'fx-filter': {
+      title: 'Filter',
+      body: [
+        'Filter is its own effect in the chain, separate from the EQ.',
+        'Cutoff, resonance, drive, mix, and its LFO belong to this instance. The {power} button on the tile bypasses it and does not remove it.',
+      ],
+    },
+    'fx-grain': {
+      title: 'Grain',
+      body: [
+        'The Grain switch in the inspector moves between ordinary playback and the grain engine.',
+        'The knobs in that inspector belong to this instance. Bypass on the tile does not delete the module.',
+      ],
+    },
+    'fx-distortion': {
+      title: 'Distortion',
+      body: [
+        'Choose a distortion type in the inspector, then the knobs for this instance.',
+        'Bypass on the tile turns the effect off without removing it from the chain.',
+      ],
+    },
+    'fx-midside': {
+      title: 'Mid/Side',
+      body: [
+        'Mid/Side sets the center and the sides: mid gain, side gain, rotate, and crossfeed.',
+        'It is its own module, not the EQ. Bypass on the tile leaves it in the chain.',
+      ],
+    },
+    'fx-delay': {
+      title: 'Delay',
+      body: [
+        'Time, feedback, and wet belong to this delay instance.',
+        'Kill FX cuts the delay tail without removing the module from the chain.',
+      ],
+    },
+    'fx-reverb': {
+      title: 'Reverb',
+      body: [
+        'This instance keeps its own size, decay, and wet mix.',
+        'When Dry and Wet are linked, they are one Mix. Kill FX cuts the reverb tail and does not remove the module.',
+      ],
+    },
+    'fx-compressor': {
+      title: 'Compressor',
+      body: [
+        'This instance has its own threshold, ratio, attack, release, knee, and makeup.',
+        'It is not the chain safety limiter. A second compressor does not share its settings.',
+      ],
+    },
+    'fx-limiter': {
+      title: 'Limiter',
+      body: [
+        'The limiter holds the peaks at this place in the chain.',
+        'Chaos turns this limiter on if it was bypassed or missing. It does not add a second limiter.',
       ],
     },
   },
@@ -839,6 +973,10 @@ const en: IntroCopy = {
   thanksBody: 'Your feedback was sent. Notes like this help FIELD get better.',
   errorUnconfigured: 'The note could not be sent, because delivery is not turned on for this copy of FIELD yet. Your answers are still in the form.',
   errorNetwork: 'The note could not be sent. Check the connection and try again. Your answers are still in the form.',
+  errorRejected: 'The server did not confirm the send. Your answers are still in the form.',
+  activationTitle: 'Check the mailbox',
+  activationBody:
+    'FIELD’s mailbox received an address activation request, not a filled-in note. Open that message and confirm the address. Send the form once more after that, and FIELD will show that it was sent.',
   errorRate: 'A few notes were already sent from this tab. Try again later. Your answers are still in the form.',
   errorEmpty: 'Add at least one answer. An empty note is not sent.',
   errorEmail: 'That email address looks incomplete. You can correct it, or leave the field empty.',

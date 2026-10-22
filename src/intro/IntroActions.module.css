@@ -59,3 +59,23 @@
   flex: none;
   color: var(--text-secondary);
 }
+
+.menuCheck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-14);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.menuCheck input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--accent-primary);
+}

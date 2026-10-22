@@ -58,9 +58,9 @@ import { ManualDialog } from '../components/manual/ManualDialog'
 import { ExplainHost } from '../help/ExplainHost'
 import { OPEN_MANUAL_EVENT } from '../help/manual'
 import { IntroHost } from '../intro/IntroHost'
-import { IntroMenuButtons } from '../intro/IntroActions'
+import { IntroMenuButtons, WelcomeStartupControl } from '../intro/IntroActions'
 import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
-import { publishHelpPlace } from '../intro/context'
+import { helpEffectFrom, publishHelpPlace } from '../intro/context'
 import { openIntro } from '../intro/session'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
@@ -1114,13 +1114,16 @@ export default function App() {
     })
   }, [rememberLayout, activeFocus, workspaceId, inspectorOpen, contextLevel, sheetLevel])
 
+  const helpEffect = uiMode === 'technical' && resolvedFocus.kind === 'module' ? helpEffectFrom(resolvedFocus.type) : null
+
   useEffect(() => {
     publishHelpPlace({
       mode: uiMode,
       view: activeFocus ?? workspaceId,
       focused: uiMode === 'technical' && activeFocus != null,
+      effect: helpEffect,
     })
-  }, [uiMode, activeFocus, workspaceId])
+  }, [uiMode, activeFocus, workspaceId, helpEffect])
 
   useEffect(() => {
     const restore = () => {
@@ -1309,6 +1312,13 @@ export default function App() {
               rememberTrigger('intro', document.activeElement)
               closeSettings(false)
               openIntro(surface)
+            }}
+          />
+          <WelcomeStartupControl
+            onShow={() => {
+              rememberTrigger('intro', document.activeElement)
+              closeSettings(false)
+              openIntro('welcome')
             }}
           />
           <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>

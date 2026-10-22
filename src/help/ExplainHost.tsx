@@ -37,6 +37,7 @@ export function ExplainHost() {
   }
   const detailsOpen = detailsState.open
   const [box, setBox] = useState<ReturnType<typeof placeExplainPanel> | null>(null)
+  const detailsRef = useRef<HTMLDetailsElement>(null)
   const help = session ? resolveHelp(session.id, locale) : null
 
   useEffect(() => {
@@ -221,9 +222,14 @@ export function ExplainHost() {
           </p>
         ) : null}
         <details
+          ref={detailsRef}
           className={styles.details}
           open={detailsOpen}
-          onToggle={(event) => setDetailsState((current) => ({ ...current, open: event.currentTarget.open }))}
+          onToggle={() => {
+            const next = detailsRef.current?.open
+            if (typeof next !== 'boolean') return
+            setDetailsState((current) => (current.open === next ? current : { ...current, open: next }))
+          }}
         >
           <summary>{chrome.details}</summary>
           {help.facts.map((fact) => (

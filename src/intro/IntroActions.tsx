@@ -1,6 +1,8 @@
+import { useSyncExternalStore } from 'react'
 import { rememberTrigger } from '../a11y/dialogFocus'
 import { EnvelopeIcon } from './icons'
 import { openIntro } from './session'
+import { readIntroRecord, setWelcomeAtStartup, subscribeIntroRecord } from './storage'
 import { useIntroCopy } from './useIntroCopy'
 import styles from './IntroActions.module.css'
 
@@ -49,6 +51,29 @@ export function IntroActions({ labeled = false, className }: HeaderProps) {
 
 type MenuProps = {
   onOpen: (surface: Surface) => void
+}
+
+type StartupProps = {
+  onShow: () => void
+}
+
+export function WelcomeStartupControl({ onShow }: StartupProps) {
+  const copy = useIntroCopy()
+  const on = useSyncExternalStore(subscribeIntroRecord, () => !readIntroRecord().suppress, () => true)
+  return (
+    <label className={styles.menuCheck}>
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(event) => {
+          const next = event.target.checked
+          setWelcomeAtStartup(next)
+          if (next) onShow()
+        }}
+      />
+      <span>{copy.welcomeStartup}</span>
+    </label>
+  )
 }
 
 export function IntroMenuButtons({ onOpen }: MenuProps) {
