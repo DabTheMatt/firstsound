@@ -1216,6 +1216,258 @@ export const TOOL_NOTES: Record<string, HelpNote> = {
       'To przełącznik wspomaganej edycji. Nie wyłącza skrótów klawiszowych.',
     ),
   },
+  'a11y.reduceMotion': {
+    manualId: 'a11y',
+    title: text('Reduced motion', 'Ogranicz ruch'),
+    summary: text(
+      'Reduced motion turns down decorative animation. The playhead, waveform, meters, and the sound stay.',
+      'Ograniczenie ruchu ścisza dekoracyjną animację. Głowica, fala, mierniki i dźwięk zostają.',
+    ),
+    practical: text(
+      'If the device asks for reduced motion, FIELD follows that even when this switch is off.',
+      'Gdy urządzenie prosi o mniej ruchu, FIELD idzie za tym nawet przy wyłączonym przełączniku.',
+    ),
+    technical: text(
+      'The switch does not override the device and does not change the audio engine.',
+      'Przełącznik nie nadpisuje urządzenia i nie zmienia silnika audio.',
+    ),
+  },
+  'a11y.attentionStrength': {
+    manualId: 'attention-focus',
+    title: text('Focus strength', 'Siła wyróżnienia'),
+    summary: text(
+      'Subtle is a small difference. Clear is easier to see. Neither hides text, and neither flashes.',
+      'Subtelna to mała różnica. Wyraźna jest łatwiejsza do zobaczenia. Żadna nie ukrywa tekstu i nie miga.',
+    ),
+    practical: text(
+      'Use Clear when the current edit is still hard to find. Other controls stay reachable.',
+      'Użyj Wyraźnej, gdy bieżącą edycję nadal trudno znaleźć. Pozostałe kontrolki zostają osiągalne.',
+    ),
+  },
+  'a11y.attentionHighlight': {
+    manualId: 'attention-focus',
+    title: text('Highlight related controls', 'Wyróżniaj powiązane kontrolki'),
+    summary: text(
+      'This marks the controls that belong to the edit you are doing. It does not hide the others.',
+      'To oznacza kontrolki, które należą do edycji, którą robisz. Nie ukrywa pozostałych.',
+    ),
+    practical: text(
+      'The mark can sit on the waveform, a fade, a trim, a selected effect, or the guided step.',
+      'Znak może być na fali, zaniku, przycięciu, wybranym efekcie albo na kroku przewodnika.',
+    ),
+  },
+  'a11y.attentionReduce': {
+    manualId: 'attention-focus',
+    title: text('Reduce unrelated emphasis', 'Ścisz niepowiązane elementy'),
+    summary: text(
+      'This quiets decorative contrast around areas that are not part of the current edit. Text stays readable.',
+      'To ścisza dekoracyjny kontrast wokół obszarów spoza bieżącej edycji. Tekst zostaje czytelny.',
+    ),
+    practical: text(
+      'Warnings, the clip light, and Play stay easy to see.',
+      'Ostrzeżenia, lampka przesterowania i Odtwarzanie zostają łatwe do zobaczenia.',
+    ),
+  },
+  'a11y.stablePanels': {
+    manualId: 'predictable-layout',
+    title: text('Stable panels', 'Stabilne panele'),
+    summary: text(
+      'Stable panels keep the inspector, the effect chain, and the transport in steady places. Extra content scrolls inside.',
+      'Stabilne panele trzymają inspektor, łańcuch efektów i transport na stałych miejscach. Dodatkowa treść przewija się w środku.',
+    ),
+    technical: text(
+      'The boxes do not jump when a panel has more to show. The sound does not change.',
+      'Ramki nie skaczą, gdy panel ma więcej do pokazania. Dźwięk się nie zmienia.',
+    ),
+  },
+  'a11y.rememberLayout': {
+    manualId: 'predictable-layout',
+    title: text('Remember workspace layout', 'Zapamiętaj układ obszaru roboczego'),
+    summary: text(
+      'This remembers the workspace and whether panels were open, for each mode, while this page is open.',
+      'To pamięta obszar roboczy i to, czy panele były otwarte, dla każdego trybu, dopóki ta strona jest otwarta.',
+    ),
+    practical: text(
+      'A reload starts with the switch off. The memory is the interface, not the audio project.',
+      'Odświeżenie zaczyna z wyłączonym przełącznikiem. Pamięć to interfejs, nie projekt audio.',
+    ),
+  },
+  'a11y.reduceLayout': {
+    manualId: 'predictable-layout',
+    title: text('Reduce layout movement', 'Ogranicz ruch układu'),
+    summary: text(
+      'This shortens panel animation and other layout motion. The screen still adapts when the window changes size.',
+      'To skraca animację paneli i inny ruch układu. Ekran nadal dopasowuje się, gdy zmienia się okno.',
+    ),
+    technical: text(
+      'Browser zoom stays on. The audio engine is not involved.',
+      'Powiększenie przeglądarki zostaje włączone. Silnik audio nie bierze w tym udziału.',
+    ),
+  },
+  'a11y.restoreLayout': {
+    manualId: 'predictable-layout',
+    title: text('Restore workspace layout', 'Przywróć układ obszaru roboczego'),
+    summary: text(
+      'This puts panels back in their usual places. It does not turn Predictable Layout off, and it does not change the sample.',
+      'To przywraca panele na zwykłe miejsca. Nie wyłącza przewidywalnego układu i nie zmienia sampla.',
+    ),
+  },
+  'a11y.visualActivity': {
+    manualId: 'sensory-comfort',
+    title: text('Visual activity', 'Aktywność wizualna'),
+    summary: text(
+      'Low draws nonessential pictures less often. Measurements and the audio stay the same.',
+      'Niska rysuje zbędne obrazy rzadziej. Pomiary i audio zostają te same.',
+    ),
+    practical: text(
+      'That includes the FFT picture, meter motion on screen, and decorative Sensory drawing.',
+      'Dotyczy to obrazu FFT, ruchu mierników na ekranie i dekoracyjnego rysunku Sensorycznego.',
+    ),
+    technical: text(
+      'It does not change the analysis size, the hop, or how often the audio itself is processed.',
+      'Nie zmienia rozmiaru analizy, hopu ani tego, jak często przetwarzane jest samo audio.',
+    ),
+  },
+  'a11y.reduceDecorativeMotion': {
+    manualId: 'sensory-comfort',
+    title: text('Reduce decorative motion', 'Ogranicz ruch dekoracyjny'),
+    summary: text(
+      'This stops ornamental animation. The playhead, selection, trim, fades, and keyboard focus stay.',
+      'To zatrzymuje ozdobną animację. Głowica, zaznaczenie, przycięcie, zaniki i fokus klawiatury zostają.',
+    ),
+  },
+  'a11y.calmMeters': {
+    manualId: 'sensory-comfort',
+    title: text('Calm meters', 'Spokojne mierniki'),
+    summary: text(
+      'Meters draw more steadily. The peak, the clip point, and the measured level stay exact.',
+      'Mierniki rysują się spokojniej. Szczyt, punkt przesterowania i zmierzony poziom zostają dokładne.',
+    ),
+    practical: text(
+      'The word Clip stays visible and does not rely on a flashing light.',
+      'Słowo Przester zostaje widoczne i nie polega na migającej lampce.',
+    ),
+  },
+  'a11y.calmSpectrum': {
+    manualId: 'sensory-comfort',
+    title: text('Calm spectrum', 'Spokojne widmo'),
+    summary: text(
+      'The 2D FFT and the 3D waterfall draw more calmly. Frequency and level mapping stay.',
+      'FFT 2D i wodospad 3D rysują się spokojniej. Mapowanie częstotliwości i poziomu zostaje.',
+    ),
+    technical: text(
+      'Analysis settings stay the same. Pausing the waterfall still pauses the picture only.',
+      'Ustawienia analizy zostają te same. Pauza wodospadu nadal pauzuje tylko obraz.',
+    ),
+  },
+  'a11y.reduceVisualEffects': {
+    manualId: 'sensory-comfort',
+    title: text('Reduce visual effects', 'Ogranicz efekty wizualne'),
+    summary: text(
+      'This lowers glow, blur, pulsing shadows, and decorative particles. Focus rings stay visible.',
+      'To obniża poświatę, rozmycie, pulsujące cienie i ozdobne cząstki. Obręcze fokusu zostają widoczne.',
+    ),
+  },
+  'a11y.quietNotifications': {
+    manualId: 'sensory-comfort',
+    title: text('Quiet notifications', 'Ciche powiadomienia'),
+    summary: text(
+      'Informational notes stay hidden. Errors, clipping, and failed actions stay visible.',
+      'Komunikaty informacyjne zostają ukryte. Błędy, przesterowanie i nieudane działania zostają widoczne.',
+    ),
+    practical: text(
+      'A successful tempo guess can stay quiet. An export error does not.',
+      'Udane odgadnięcie tempa może zostać ciche. Błąd eksportu nie.',
+    ),
+  },
+  'a11y.focus': {
+    manualId: 'a11y',
+    title: text('Enhanced focus visibility', 'Wyraźniejszy fokus klawiatury'),
+    summary: text(
+      'This draws a stronger keyboard focus ring. An ordinary click does not turn the ring on.',
+      'To rysuje mocniejszą obręcz fokusu klawiatury. Zwykłe kliknięcie nie włącza obręczy.',
+    ),
+    practical: text(
+      'The ring uses the theme’s text and background colors. The usual focus style remains when the switch is off.',
+      'Obręcz bierze kolory tekstu i tła z motywu. Zwykły styl fokusu zostaje, gdy przełącznik jest wyłączony.',
+    ),
+  },
+  'a11y.larger': {
+    manualId: 'scaling',
+    title: text('Larger controls', 'Większe elementy sterujące'),
+    summary: text(
+      'This enlarges the area you can press on buttons, knobs, sliders, and editing handles. Values and the audio stay the same.',
+      'To powiększa obszar, który naciskasz na przyciskach, gałkach, suwakach i uchwytach edycji. Wartości i audio zostają te same.',
+    ),
+    technical: text(
+      'Interface Size is a separate control. The two are not multiplied into one huge target.',
+      'Rozmiar interfejsu to osobna kontrolka. Te dwie nie mnożą się w jeden ogromny cel.',
+    ),
+  },
+  'a11y.waveformNav': {
+    manualId: 'accessible-waveform',
+    title: text('Accessible waveform navigation', 'Dostępna nawigacja po nagraniu'),
+    summary: text(
+      'This adds Open waveform navigation beside the waveform you already have. It does not draw a second waveform.',
+      'To dodaje Otwórz nawigację po nagraniu obok fali, którą już masz. Nie rysuje drugiej fali.',
+    ),
+    practical: text(
+      'Keyboard and screen reader access to the waveform stays available when this is off.',
+      'Klawiatura i czytnik ekranu nadal opisują falę, gdy ta preferencja jest wyłączona.',
+    ),
+  },
+  'a11y.lowVision': {
+    manualId: 'a11y',
+    title: text('High contrast theme', 'Wysoki kontrast'),
+    summary: text(
+      'This switches to a higher-contrast theme for low vision. The sound does not change.',
+      'To przełącza na motyw o wyższym kontraście dla słabego widzenia. Dźwięk się nie zmienia.',
+    ),
+    practical: text(
+      'High Visibility Controls is the separate switch that strengthens outlines without replacing the theme.',
+      'Zwiększona widoczność kontrolek to osobny przełącznik, który wzmacnia obrysy bez podmiany motywu.',
+    ),
+  },
+  'a11y.tips': {
+    manualId: 'a11y',
+    title: text('Tooltips', 'Podpowiedzi'),
+    summary: text(
+      'Tooltips show a short description when you point at a control. The control name stays either way.',
+      'Podpowiedzi pokazują krótki opis, gdy wskażesz kontrolkę. Nazwa kontrolki zostaje w obu przypadkach.',
+    ),
+    practical: text(
+      'Turn them off when the floating note gets in the way. F1 still opens the longer explanation.',
+      'Wyłącz je, gdy unosząca się notatka przeszkadza. F1 nadal otwiera dłuższe wyjaśnienie.',
+    ),
+  },
+  'a11y.screenReader': {
+    manualId: 'a11y',
+    title: text('Screen reader optimizations', 'Optymalizacje czytnika ekranu'),
+    summary: text(
+      'This keeps extra live updates quiet. Names, values, and keyboard access stay on.',
+      'To wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
+    ),
+  },
+  'a11y.shortcuts': {
+    manualId: 'keys',
+    title: text('Transport keyboard shortcuts', 'Skróty klawiszowe transportu'),
+    summary: text(
+      'When this is on, Space plays or pauses. A text field still takes the character, and Tab is never captured.',
+      'Gdy to jest włączone, spacja odtwarza albo pauzuje. Pole tekstowe nadal przyjmuje znak, a Tab nigdy nie jest przechwytywany.',
+    ),
+    practical: text(
+      'With the special accessibility options off, Space does that even while a button, switch, or slider has focus.',
+      'Przy wyłączonych specjalnych opcjach dostępności spacja robi to także, gdy fokus jest na przycisku, przełączniku albo suwaku.',
+    ),
+  },
+  'a11y.restore': {
+    manualId: 'a11y',
+    title: text('Restore accessibility defaults', 'Przywróć domyślne ustawienia dostępności'),
+    summary: text(
+      'This resets the accessibility preferences. It does not delete audio, effects, automation, or the project.',
+      'To zeruje preferencje dostępności. Nie usuwa audio, efektów, automatyzacji ani projektu.',
+    ),
+  },
   'a11y.interfaceSize': {
     manualId: 'scaling',
     title: text('Interface size', 'Rozmiar interfejsu'),

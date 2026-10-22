@@ -21,14 +21,6 @@
   background: var(--bg-app);
 }
 
-.markerRow {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 0 4px;
-}
-
 .shell {
   width: 100%;
   max-width: 100%;

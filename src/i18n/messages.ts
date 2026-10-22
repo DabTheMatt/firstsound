@@ -840,6 +840,7 @@ export type Messages = {
     textSizeHelp: string
     interaction: string
     theme: string
+    themeHelp: string
     reduceMotion: string
     reducedMotionHelp: string
     reducedMotionSystem: string
@@ -853,6 +854,7 @@ export type Messages = {
     attentionFocus: string
     attentionFocusHelp: string
     attentionStrength: string
+    attentionStrengthHelp: string
     attentionSubtle: string
     attentionClear: string
     attentionHighlight: string
@@ -874,9 +876,11 @@ export type Messages = {
     off: string
     saved: string
     restore: string
+    restoreHelp: string
     restored: string
     more: string
     tips: string
+    tipsHelp: string
     sr: string
     srHelp: string
     shortcuts: string
@@ -2312,6 +2316,7 @@ export const EN: Messages = {
     textSizeHelp: 'Increase text size without enlarging the entire interface.',
     interaction: 'Interaction',
     theme: 'High Contrast / Low Vision Theme',
+    themeHelp: 'Switches to a higher-contrast theme for low vision. The sound does not change.',
     reduceMotion: 'Reduced Motion',
     reducedMotionHelp: 'Reduce unnecessary animations.',
     reducedMotionSystem: "Your device's reduced-motion setting is also respected.",
@@ -2325,6 +2330,7 @@ export const EN: Messages = {
     attentionFocus: 'Attention Focus',
     attentionFocusHelp: 'Highlight controls related to your current editing activity.',
     attentionStrength: 'Focus Strength',
+    attentionStrengthHelp: 'Subtle is a small difference. Clear is easier to see. Neither one hides text or flashes.',
     attentionSubtle: 'Subtle',
     attentionClear: 'Clear',
     attentionHighlight: 'Highlight Related Controls',
@@ -2346,9 +2352,11 @@ export const EN: Messages = {
     off: 'Off',
     saved: 'These choices last while this page is open. A reload starts from the defaults. They are not kept in the browser yet.',
     restore: 'Restore accessibility defaults',
+    restoreHelp: 'Resets these preferences. It does not delete audio, effects, automation, or the project.',
     restored: 'Accessibility defaults restored.',
     more: 'More accessibility options',
     tips: 'Tooltips / parameter descriptions',
+    tipsHelp: 'Shows a short description when you point at a control. The control name stays either way.',
     sr: 'Screen reader optimizations',
     srHelp: 'Keeps extra live updates quiet. Names, values, and keyboard access stay on.',
     shortcuts: 'Transport keyboard shortcuts',
@@ -3863,6 +3871,7 @@ export const PL: Messages = {
     textSizeHelp: 'Powiększ tekst niezależnie od wielkości całego interfejsu.',
     interaction: 'Interakcja',
     theme: 'Wysoki kontrast / słabowidzący',
+    themeHelp: 'Przełącza na motyw o wyższym kontraście dla słabego widzenia. Dźwięk się nie zmienia.',
     reduceMotion: 'Ogranicz ruch',
     reducedMotionHelp: 'Ogranicza zbędne animacje.',
     reducedMotionSystem: 'Ustawienie ograniczenia ruchu w urządzeniu też jest respektowane.',
@@ -3876,6 +3885,7 @@ export const PL: Messages = {
     attentionFocus: 'Koncentracja uwagi',
     attentionFocusHelp: 'Wyróżniaj elementy związane z aktualnie wykonywaną czynnością.',
     attentionStrength: 'Siła wyróżnienia',
+    attentionStrengthHelp: 'Subtelna to mała różnica. Wyraźna jest łatwiejsza do zobaczenia. Żadna nie ukrywa tekstu i nie miga.',
     attentionSubtle: 'Subtelna',
     attentionClear: 'Wyraźna',
     attentionHighlight: 'Wyróżniaj powiązane kontrolki',
@@ -3897,9 +3907,11 @@ export const PL: Messages = {
     off: 'Wył.',
     saved: 'Te wybory zostają, dopóki strona jest otwarta. Odświeżenie wraca do wartości domyślnych. Przeglądarka ich jeszcze nie trzyma.',
     restore: 'Przywróć domyślne ustawienia dostępności',
+    restoreHelp: 'Zeruje te preferencje. Nie usuwa audio, efektów, automatyzacji ani projektu.',
     restored: 'Przywrócono domyślne ustawienia dostępności.',
     more: 'Więcej opcji dostępności',
     tips: 'Podpowiedzi / opisy parametrów',
+    tipsHelp: 'Pokazuje krótki opis, gdy wskażesz kontrolkę. Nazwa kontrolki zostaje w obu przypadkach.',
     sr: 'Optymalizacje czytnika ekranu',
     srHelp: 'Wycisza dodatkowe komunikaty na żywo. Nazwy, wartości i obsługa klawiaturą pozostają włączone.',
     shortcuts: 'Skróty klawiszowe transportu',

@@ -71,6 +71,7 @@ function PreferenceSwitch({
         aria-labelledby={labelId}
         aria-describedby={describedBy}
         disabled={disabled}
+        title={extraDescription ? `${description} ${extraDescription}` : description}
         data-explain={explain}
         onClick={() => onChange(!checked)}
       >
@@ -118,6 +119,7 @@ function ScalePreference({ label, description, value, min, max, presets, explain
           aria-labelledby={labelId}
           aria-describedby={helpId}
           aria-valuetext={`${percent}%`}
+          title={description}
           data-explain={explain}
           onChange={(event) => onChange(clampScale(Number(event.target.value), min, max))}
         />
@@ -153,6 +155,7 @@ function StrengthChoice({
   value,
   subtle,
   clear,
+  explain,
   onChange,
 }: {
   label: string
@@ -160,6 +163,7 @@ function StrengthChoice({
   value: AttentionStrength
   subtle: string
   clear: string
+  explain?: string
   onChange: (next: AttentionStrength) => void
 }) {
   const labelId = useId()
@@ -174,11 +178,11 @@ function StrengthChoice({
           {description}
         </p>
       </div>
-      <div className={styles.choices} role="radiogroup" aria-labelledby={labelId} aria-describedby={helpId}>
-        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'subtle'} onClick={() => onChange('subtle')}>
+      <div className={styles.choices} role="radiogroup" aria-labelledby={labelId} aria-describedby={helpId} data-explain={explain}>
+        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'subtle'} title={description} onClick={() => onChange('subtle')}>
           {subtle}
         </button>
-        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'clear'} onClick={() => onChange('clear')}>
+        <button type="button" className={styles.strength} role="radio" aria-checked={value === 'clear'} title={description} onClick={() => onChange('clear')}>
           {clear}
         </button>
       </div>
@@ -193,6 +197,7 @@ type ActivityProps = {
   lowLabel: string
   value: VisualActivity
   disabled?: boolean
+  explain?: string
   onChange: (next: VisualActivity) => void
 }
 
@@ -203,12 +208,13 @@ function VisualActivityChoice({
   lowLabel,
   value,
   disabled = false,
+  explain,
   onChange,
 }: ActivityProps) {
   const name = useId()
   const helpId = useId()
   return (
-    <fieldset className={styles.choice} disabled={disabled} aria-describedby={helpId}>
+    <fieldset className={styles.choice} disabled={disabled} aria-describedby={helpId} data-explain={explain}>
       <legend className={styles.optionLabel}>{label}</legend>
       <p id={helpId} className={styles.help}>
         {description}
@@ -220,12 +226,13 @@ function VisualActivityChoice({
             name={name}
             value="standard"
             checked={value === 'standard'}
+            title={description}
             onChange={() => onChange('standard')}
           />
           {standardLabel}
         </label>
         <label className={styles.choiceLabel}>
-          <input type="radio" name={name} value="low" checked={value === 'low'} onChange={() => onChange('low')} />
+          <input type="radio" name={name} value="low" checked={value === 'low'} title={description} onChange={() => onChange('low')} />
           {lowLabel}
         </label>
       </div>
@@ -296,6 +303,7 @@ export function A11ySettings({ onBack }: Props) {
           label={a.reduceMotion}
           description={a.reducedMotionHelp}
           extraDescription={a.reducedMotionSystem}
+          explain="a11y.reduceMotion"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(reduceMotion) => setSettings({ reduceMotion })}
@@ -315,16 +323,18 @@ export function A11ySettings({ onBack }: Props) {
         />
         <StrengthChoice
           label={a.attentionStrength}
-          description={`${a.attentionSubtle} / ${a.attentionClear}`}
+          description={a.attentionStrengthHelp}
           value={settings.attentionStrength}
           subtle={a.attentionSubtle}
           clear={a.attentionClear}
+          explain="a11y.attentionStrength"
           onChange={(attentionStrength) => setSettings({ attentionStrength })}
         />
         <PreferenceSwitch
           checked={settings.attentionHighlight}
           label={a.attentionHighlight}
           description={a.attentionHighlightHelp}
+          explain="a11y.attentionHighlight"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(attentionHighlight) => setSettings({ attentionHighlight })}
@@ -333,6 +343,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.attentionReduce}
           label={a.attentionReduce}
           description={a.attentionReduceHelp}
+          explain="a11y.attentionReduce"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(attentionReduce) => setSettings({ attentionReduce })}
@@ -350,6 +361,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.stablePanels}
           label={a.stablePanels}
           description={a.stablePanelsHelp}
+          explain="a11y.stablePanels"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(stablePanels) => setSettings({ stablePanels })}
@@ -358,6 +370,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.rememberWorkspaceLayout}
           label={a.rememberLayout}
           description={a.rememberLayoutHelp}
+          explain="a11y.rememberLayout"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(rememberWorkspaceLayout) => setSettings({ rememberWorkspaceLayout })}
@@ -366,6 +379,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.reduceLayoutMovement}
           label={a.reduceLayout}
           description={a.reduceLayoutHelp}
+          explain="a11y.reduceLayout"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(reduceLayoutMovement) => setSettings({ reduceLayoutMovement })}
@@ -374,6 +388,8 @@ export function A11ySettings({ onBack }: Props) {
         <button
           type="button"
           className={styles.restore}
+          title={a.restoreLayoutHelp}
+          data-explain="a11y.restoreLayout"
           onClick={() => {
             requestLayoutRestore()
             announce(a.layoutRestored)
@@ -401,12 +417,14 @@ export function A11ySettings({ onBack }: Props) {
           standardLabel={a.visualActivityStandard}
           lowLabel={a.visualActivityLow}
           value={settings.visualActivity}
+          explain="a11y.visualActivity"
           onChange={(visualActivity) => setSettings({ visualActivity })}
         />
         <PreferenceSwitch
           checked={settings.reduceDecorativeMotion}
           label={a.reduceDecorativeMotion}
           description={a.reduceDecorativeMotionHelp}
+          explain="a11y.reduceDecorativeMotion"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(reduceDecorativeMotion) => setSettings({ reduceDecorativeMotion })}
@@ -415,6 +433,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.calmMeters}
           label={a.calmMeters}
           description={a.calmMetersHelp}
+          explain="a11y.calmMeters"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(calmMeters) => setSettings({ calmMeters })}
@@ -423,6 +442,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.calmSpectrum}
           label={a.calmSpectrum}
           description={a.calmSpectrumHelp}
+          explain="a11y.calmSpectrum"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(calmSpectrum) => setSettings({ calmSpectrum })}
@@ -431,6 +451,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.reduceVisualEffects}
           label={a.reduceVisualEffects}
           description={a.reduceVisualEffectsHelp}
+          explain="a11y.reduceVisualEffects"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(reduceVisualEffects) => setSettings({ reduceVisualEffects })}
@@ -439,6 +460,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.quietNotifications}
           label={a.quietNotifications}
           description={a.quietNotificationsHelp}
+          explain="a11y.quietNotifications"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(quietNotifications) => setSettings({ quietNotifications })}
@@ -451,6 +473,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.enhancedFocus}
           label={a.focus}
           description={a.focusHelp}
+          explain="a11y.focus"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(enhancedFocus) => setSettings({ enhancedFocus })}
@@ -459,6 +482,7 @@ export function A11ySettings({ onBack }: Props) {
           checked={settings.largerInterface}
           label={a.larger}
           description={a.largerHelp}
+          explain="a11y.larger"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(largerInterface) => setSettings({ largerInterface })}
@@ -487,6 +511,7 @@ export function A11ySettings({ onBack }: Props) {
           label={a.waveformNav}
           description={a.waveformNavHelp}
           extraDescription={a.waveformNavAlways}
+          explain="a11y.waveformNav"
           onLabel={a.on}
           offLabel={a.off}
           onChange={(accessibleWaveform) => setSettings({ accessibleWaveform })}
@@ -494,41 +519,47 @@ export function A11ySettings({ onBack }: Props) {
       </div>
 
       <p className={styles.saved}>{a.saved}</p>
-      <button type="button" className={styles.restore} onClick={restore}>
+      <button type="button" className={styles.restore} title={a.restoreHelp} data-explain="a11y.restore" onClick={restore}>
         {a.restore}
       </button>
 
       <details className={styles.more}>
         <summary>{a.more}</summary>
-        <label className={styles.check}>
+        <label className={styles.check} data-explain="a11y.lowVision">
           <input
             type="checkbox"
             checked={settings.lowVision}
+            title={a.themeHelp}
             onChange={(event) => setSettings({ lowVision: event.target.checked })}
           />
           <span>{a.theme}</span>
         </label>
-        <label className={styles.check}>
+        <p className={styles.help}>{a.themeHelp}</p>
+        <label className={styles.check} data-explain="a11y.tips">
           <input
             type="checkbox"
             checked={settings.showDescriptions}
+            title={a.tipsHelp}
             onChange={(event) => setSettings({ showDescriptions: event.target.checked })}
           />
           <span>{a.tips}</span>
         </label>
-        <label className={styles.check}>
+        <p className={styles.help}>{a.tipsHelp}</p>
+        <label className={styles.check} data-explain="a11y.screenReader">
           <input
             type="checkbox"
             checked={settings.screenReaderOptimizations}
+            title={a.srHelp}
             onChange={(event) => setSettings({ screenReaderOptimizations: event.target.checked })}
           />
           <span>{a.sr}</span>
         </label>
         <p className={styles.help}>{a.srHelp}</p>
-        <label className={styles.check}>
+        <label className={styles.check} data-explain="a11y.shortcuts">
           <input
             type="checkbox"
             checked={settings.shortcutsEnabled}
+            title={a.shortcutsHelp}
             onChange={(event) => setSettings({ shortcutsEnabled: event.target.checked })}
           />
           <span>{a.shortcuts}</span>

@@ -10,7 +10,7 @@ import { useLayoutMode } from '../app/useLayoutMode'
 import { engine } from '../hooks/useEngine'
 import { pushHearingAlert } from '../hearing/alerts'
 import { AccessibleWaveform } from '../a11y/waveform/AccessibleWaveform'
-import { MarkerPanel } from '../components/markers/MarkerPanel'
+import { MarkerHost } from '../components/markers/MarkerPanel'
 import { DragFreeWave } from '../edit/dragFree/DragFreeWave'
 import { radioGroupKey, tabListKey } from '../a11y/keyboard'
 import { focusInitial, trapTab } from '../a11y/dialogFocus'
@@ -878,10 +878,8 @@ export function SimpleShell({
     >
       <div className={styles.sharedBar} data-stable-region="navigation" data-technical-ui="workspace">
         {header}
-        <div className={styles.markerRow}>
-          <MarkerPanel mode="simple" onCommit={onRegionCommit} />
-        </div>
       </div>
+      <MarkerHost mode="simple" onCommit={onRegionCommit} />
       {overlay}
       <div className={styles.shell}>
         <div className={styles.belowHeader}>

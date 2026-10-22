@@ -7,10 +7,9 @@ import type { WaveformHandle } from '../../components/waveform/Waveform'
 import type { AppView } from '../../app/appView'
 import type { UiMode } from '../../modes/uiMode'
 import { engine } from '../../hooks/useEngine'
-import { EMOTIONAL_STATES, emotionalValues, surpriseLabel, surpriseSensoryValues } from '../emotionalStates'
 import type { SensoryAxisId } from '../sensoryParameters'
-import { persistSensoryScene, readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
-import { persistSensoryStrings, readStoredSensoryStrings } from '../sensoryStrings'
+import { readStoredSensoryScene, type SensorySceneId } from '../sensoryScene'
+import { readStoredSensoryStrings } from '../sensoryStrings'
 import { RAIL_AXIS_IDS } from '../sensoryFeelings'
 import { useI18n } from '../../i18n'
 import type { ColorSound } from '../colorSound'
@@ -18,15 +17,13 @@ import type { SensoryValues } from '../sensoryState'
 import { resolveSensoryPresentation, sensoryCalmFactors } from '../../a11y/sensoryComfort'
 import { calmSensoryVisual, sensoryVisualState, visualCssVars } from '../visualization/sensoryVisualState'
 import { ColorSoundPad } from './ColorSoundPad'
-import { EmotionalStates } from './EmotionalStates'
 import { FeelingRail } from './FeelingRail'
 import { OverviewStrip } from './OverviewStrip'
 import { ParameterStrings } from './ParameterStrings'
 import { PlaybackFeel } from './PlaybackFeel'
 import { PlayheadClock } from './PlayheadClock'
-import { SensoryThemePicker } from './SensoryThemePicker'
 import { AccessibleWaveform } from '../../a11y/waveform/AccessibleWaveform'
-import { MarkerPanel } from '../../components/markers/MarkerPanel'
+import { MarkerHost } from '../../components/markers/MarkerPanel'
 import { DragFreeWave } from '../../edit/dragFree/DragFreeWave'
 import { SensoryExact } from './SensoryExact'
 import { SoundRange } from './SoundRange'
@@ -98,11 +95,10 @@ export function SensoryShell({
   const { t } = useI18n()
   const headerRef = useRef<HTMLElement>(null)
   const [overlayTop, setOverlayTop] = useState(0)
-  const [placesOpen, setPlacesOpen] = useState(false)
-  const [scene, setScene] = useState<SensorySceneId>(() => readStoredSensoryScene())
+  const [scene] = useState<SensorySceneId>(() => readStoredSensoryScene())
   const [feelingId, setFeelingId] = useState<SensoryAxisId | null>(null)
   const [editingId, setEditingId] = useState<SensoryAxisId | null>(null)
-  const [stringsOn, setStringsOn] = useState(() => readStoredSensoryStrings())
+  const [stringsOn] = useState(() => readStoredSensoryStrings())
   const { settings: a11y, systemReducedMotion } = useA11ySettings()
   const presentation = resolveSensoryPresentation(a11y, systemReducedMotion)
   const reduced = presentation.motionReduced
@@ -134,11 +130,6 @@ export function SensoryShell({
     }
   }, [])
 
-  const chooseScene = (next: SensorySceneId) => {
-    setScene(next)
-    persistSensoryScene(next)
-  }
-
   return (
     <div
       className={`${styles.page} ${styles.rangePage} ${sceneClass} ${dragging ? styles.drop : ''}`}
@@ -158,30 +149,6 @@ export function SensoryShell({
     >
       <header ref={headerRef} className={styles.top} data-stable-region="navigation" data-technical-ui="workspace">
         {header}
-        <div className={styles.localRow}>
-          <SensoryThemePicker
-            scene={scene}
-            onScene={chooseScene}
-            onPlaces={() => setPlacesOpen((v) => !v)}
-          />
-          <button
-            type="button"
-            className={styles.stringsBtn}
-            data-geometry="pill"
-            aria-pressed={stringsOn}
-            aria-label={stringsOn ? t.sensory.stringsHideAria : t.sensory.stringsAria}
-            onClick={() => {
-              setStringsOn((on) => {
-                const next = !on
-                persistSensoryStrings(next)
-                return next
-              })
-            }}
-          >
-            {t.sensory.strings}
-          </button>
-          <MarkerPanel mode="sensory" onCommit={onRegionCommit} />
-        </div>
       </header>
       {overlay ? <div className={styles.flyHost}>{overlay}</div> : null}
       {menuOpen ? (
@@ -299,25 +266,7 @@ export function SensoryShell({
         <PlayheadClock duration={snap.duration} compact />
       </div>
 
-      <EmotionalStates
-        open={placesOpen}
-        onPick={(id) => {
-          const next = emotionalValues(id)
-          onValues(next)
-          onMoodLabel(t.sensory.emotions[id] ?? EMOTIONAL_STATES.find((s) => s.id === id)?.label ?? id)
-          setPlacesOpen(false)
-          onCommitSensory()
-        }}
-        onSurprise={() => {
-          const next = surpriseSensoryValues()
-          onValues(next)
-          const raw = surpriseLabel(next)
-          const found = EMOTIONAL_STATES.find((s) => s.label === raw)
-          onMoodLabel(found ? t.sensory.emotions[found.id] : raw)
-          setPlacesOpen(false)
-          onCommitSensory()
-        }}
-      />
+      <MarkerHost mode="sensory" onCommit={onRegionCommit} />
       {sampleInput}
       <div className={styles.atmosphere} aria-hidden="true">
         <div className={styles.blur} data-decorative="" />

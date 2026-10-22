@@ -62,16 +62,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   box-sizing: border-box;
   flex: none;
+  min-width: 44px;
   min-height: 44px;
   padding: 0 10px;
   border: 0;
-  border-radius: var(--toolbar-radius);
+  border-radius: var(--toolbar-radius, 8px);
   background: transparent;
-  color: var(--text-muted);
-  font-size: var(--toolbar-font);
-  letter-spacing: var(--toolbar-tracking);
+  color: var(--text-primary);
+  font-size: var(--toolbar-font, var(--type-11));
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
@@ -455,7 +457,6 @@
   color: var(--text-primary);
 }
 
-:global([data-technical-ui='workspace']) .guide,
 :global([data-technical-ui='workspace']) .load,
 :global([data-technical-ui='workspace']) .settings,
 :global([data-technical-ui='workspace']) .lfo,

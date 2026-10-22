@@ -94,20 +94,23 @@ test.describe('audio markers popover', () => {
   test('fits Simple, Sensory, and narrow widths without a second close control', async ({ page }) => {
     await boot(page, { mode: 'simple' })
     await loadDemo(page)
-    await expect(page.getByRole('button', { name: 'Markers, 0' })).toBeVisible()
-    await openMarkers(page)
-    await expect(page.getByRole('button', { name: /^Suggestions/ })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Close markers', exact: true })).toHaveCount(1)
-    await page.keyboard.press('Escape')
+    await expect(page.getByRole('button', { name: /^Markers, / })).toHaveCount(0)
 
     await page.getByRole('radio', { name: 'Sensory' }).click()
     const modeHelp = page.getByRole('dialog', { name: 'Sensory' })
     await expect(modeHelp).toBeVisible()
     await modeHelp.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(modeHelp).toBeHidden()
+    await expect(page.getByRole('button', { name: /^Markers, / })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Strings', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Atmosphere:/ })).toHaveCount(0)
+
+    await page.getByRole('radio', { name: 'Technical' }).click()
+    const technicalHelp = page.getByRole('dialog', { name: 'Technical' })
+    await expect(technicalHelp).toBeVisible()
+    await technicalHelp.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(technicalHelp).toBeHidden()
     await expect(page.getByRole('button', { name: 'Markers, 0' })).toBeVisible()
-    await openMarkers(page)
-    await page.keyboard.press('Escape')
 
     for (const width of [320, 375, 390, 430]) {
       await page.setViewportSize({ width, height: 700 })
