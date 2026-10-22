@@ -45,15 +45,16 @@ describe('SHED rendering', () => {
     expect(highHeight).toBeGreaterThan(lowHeight)
   })
 
-  it('hides the SHED destination from the header switch', () => {
+  it('hides Activity and SHED from the header switch', () => {
     const markup = renderToStaticMarkup(
       <I18nProvider>
         <AppViewSwitch view="workspace" onChange={() => undefined} />
       </I18nProvider>,
     )
     expect(markup).toContain('Workspace')
-    expect(markup).toContain('Activity')
-    expect(markup).toContain('data-app-view="activity"')
+    expect(markup).toContain('data-app-view="workspace"')
+    expect(markup).not.toContain('Activity')
+    expect(markup).not.toContain('data-app-view="activity"')
     expect(markup).not.toContain('SHED')
     expect(markup).not.toContain('data-app-view="shed"')
   })
