@@ -38,6 +38,15 @@ const en: ManualSection[] = [
     ],
   },
   {
+    id: 'first-experience',
+    title: 'Welcome, guide, and feedback',
+    body: [
+      'The first visit opens a short welcome over the editor. Discover FIELD starts a seven-screen guide. Start working closes it. Don’t show again keeps it closed. The choice is stored in this browser. There is no account. Help and Send feedback stay in the header, next to Settings, and inside the settings menu. Opening them does not stop playback.',
+      'The guide covers loading a sound, Simple, Technical, and Sensory, a basic edit, tone, accessibility, WAV export, and the fact that FIELD is still in testing. Skip, Back, and Next move through it. Show accessibility settings opens FIELD ACCESS. The guide can be started again from Help. Guided Tasks and the manual stay available from there too. F1 still explains the focused control.',
+      'Send feedback opens a short form. You do not have to answer every question. An optional email is used only if you want a reply. The form can include the FIELD version, language, window size, and browser. It does not ask about disability, and it is not saved in this browser. Delivery is off until this build has an https endpoint in VITE_FIELD_FEEDBACK_URL. The Pages workflow reads the repository variable FIELD_FEEDBACK_URL. The worker in ops/field-feedback receives the note and forwards it. Until that variable is set, the form keeps your answers and says that sending is not turned on.',
+    ],
+  },
+  {
     id: 'language',
     title: 'Language',
     body: [
@@ -562,6 +571,15 @@ const pl: ManualSection[] = [
     body: [
       'FIELD otwiera się w Technical, w układzie Workspace. Simple to szybki edytor wykończenia sampla. Technical to pełny edytor. Sensoryczny kształtuje dźwięk odczuciem. Wszystkie trzy korzystają z tego samego silnika. Simple i Sensoryczny zostają w nagłówku. Zapisany w tej przeglądarce wybór zostaje.',
       'Zezwól na dźwięk, gdy przeglądarka zapyta. Jeśli status mówi, że audio jest zablokowane, kliknij stronę jeszcze raz, żeby AudioContext mógł wystartować.',
+    ],
+  },
+  {
+    id: 'first-experience',
+    title: 'Powitanie, przewodnik i opinia',
+    body: [
+      'Pierwsza wizyta otwiera krótkie powitanie nad edytorem. Odkryj FIELD uruchamia przewodnik o siedmiu ekranach. Rozpocznij pracę zamyka powitanie. Nie pokazuj ponownie zostawia je zamknięte. Wybór zostaje w tej przeglądarce. Nie ma konta. Pomoc i Prześlij opinię są w nagłówku, obok Ustawień, oraz w menu ustawień. Otwarcie ich nie zatrzymuje odtwarzania.',
+      'Przewodnik mówi o wczytaniu dźwięku, trybach Prosty, Techniczny i Sensoryczny, podstawowej edycji, brzmieniu, dostępności, eksporcie WAV i o tym, że FIELD jest wciąż testowany. Pomiń, Wstecz i Dalej prowadzą po ekranach. Pokaż ustawienia dostępności otwiera FIELD ACCESS. Przewodnik można uruchomić ponownie z Pomocy. Zadania z przewodnikiem i podręcznik zostają dostępne stamtąd. F1 dalej wyjaśnia kontrolkę w fokusie.',
+      'Prześlij opinię otwiera krótki formularz. Nie trzeba odpowiadać na każde pytanie. Opcjonalny e-mail służy tylko wtedy, gdy chcesz odpowiedzi. Formularz może dołączyć wersję FIELD, język, rozmiar okna i przeglądarkę. Nie pyta o niepełnosprawność i nie zapisuje odpowiedzi w tej przeglądarce. Wysyłka jest wyłączona, dopóki ta kompilacja nie ma adresu https w VITE_FIELD_FEEDBACK_URL. Workflow Pages czyta zmienną repozytorium FIELD_FEEDBACK_URL. Worker w ops/field-feedback przyjmuje zgłoszenie i przekazuje je dalej. Zanim ta zmienna jest ustawiona, formularz zostawia odpowiedzi i mówi, że wysyłka nie jest włączona.',
     ],
   },
   {

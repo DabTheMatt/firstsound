@@ -24,6 +24,7 @@ import { guideTargetAttrs } from '../guide/targets'
 import { StableLabel } from '../components/header/StableLabel'
 import { ThemePicker } from '../components/header/ThemePicker'
 import { Wordmark } from '../components/header/Wordmark'
+import { IntroActions } from '../intro/IntroActions'
 import { ModeSwitch } from '../modes/ModeSwitch'
 import type { UiMode } from '../modes/uiMode'
 import { AppViewSwitch } from '../app/AppViewSwitch'
@@ -919,6 +920,7 @@ export function SimpleShell({
           <button type="button" className={styles.load} onClick={() => dispatchGuide({ type: 'open-library' })}>
             {guide.guideMe}
           </button>
+          <IntroActions className={styles.introSlot} />
         </header>
         <div className={styles.belowHeader}>
           <div className={styles.belowMain}>

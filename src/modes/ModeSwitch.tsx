@@ -27,6 +27,7 @@ export function ModeSwitch({ mode, onChange, variant = 'pill', compact = false }
       className={`${styles.switch} ${variant === 'editorial' ? styles.editorial : ''} ${compact ? styles.compact : ''}`}
       role="radiogroup"
       aria-label={t.mode.group}
+      data-mode-switch=""
       onKeyDown={(event) => radioGroupKey(event)}
     >
       {UI_MODES.map((id) => (

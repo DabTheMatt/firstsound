@@ -8,6 +8,7 @@ import { RuntimeStatus } from '../../components/chrome/RuntimeStatus'
 import { LOAD_SAMPLE_LABELS } from '../../components/header/loadSampleLabels'
 import { StableLabel } from '../../components/header/StableLabel'
 import { Wordmark } from '../../components/header/Wordmark'
+import { IntroActions } from '../../intro/IntroActions'
 import { ModeSwitch } from '../../modes/ModeSwitch'
 import { AppViewSwitch } from '../../app/AppViewSwitch'
 import type { AppView } from '../../app/appView'
@@ -197,6 +198,7 @@ export function SensoryShell({
           <button type="button" className={styles.loadBtn} data-load-sample="" onClick={onLoadSample}>
             <StableLabel text={t.header.loadSample} samples={LOAD_SAMPLE_LABELS} />
           </button>
+          <IntroActions />
           <button
             type="button"
             className={styles.menuBtn}

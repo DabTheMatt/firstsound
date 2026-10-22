@@ -149,6 +149,10 @@
     width: auto;
     min-height: max(32px, var(--toolbar-h));
   }
+
+  .introSlot {
+    order: 3;
+  }
 }
 
 .menuBtn {

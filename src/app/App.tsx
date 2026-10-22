@@ -57,6 +57,10 @@ import { ResetSessionButton } from '../components/header/ResetSessionButton'
 import { ManualDialog } from '../components/manual/ManualDialog'
 import { ExplainHost } from '../help/ExplainHost'
 import { OPEN_MANUAL_EVENT } from '../help/manual'
+import { IntroHost } from '../intro/IntroHost'
+import { IntroMenuButtons } from '../intro/IntroActions'
+import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
+import { openIntro } from '../intro/session'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
 import { trackAccentStyle, trackColorVar, trackHasAudio } from '../audio/mix/tracks'
@@ -289,8 +293,35 @@ export default function App() {
       setManualSection(sectionId)
       setManualOpen(true)
     }
+    const onIntro = (event: Event) => {
+      const command = (event as CustomEvent<IntroCommand>).detail
+      if (command === 'access') {
+        rememberTrigger('settings', document.querySelector('[data-intro-help], [data-settings-toggle]'))
+        setSettingsPage('access')
+        setMenuOpen(true)
+        return
+      }
+      if (command === 'keyboard') {
+        rememberTrigger('keyboard-help', document.querySelector('[data-intro-help]'))
+        setKeysOpen(true)
+        return
+      }
+      if (command === 'manual') {
+        rememberTrigger('manual', document.querySelector('[data-intro-help]'))
+        setManualOpen(true)
+        return
+      }
+      if (command === 'guided') {
+        rememberTrigger('guide', document.querySelector('[data-intro-help]'))
+        dispatchGuide({ type: 'open-library' })
+      }
+    }
     document.addEventListener(OPEN_MANUAL_EVENT, onOpen)
-    return () => document.removeEventListener(OPEN_MANUAL_EVENT, onOpen)
+    document.addEventListener(INTRO_COMMAND_EVENT, onIntro)
+    return () => {
+      document.removeEventListener(OPEN_MANUAL_EVENT, onOpen)
+      document.removeEventListener(INTRO_COMMAND_EVENT, onIntro)
+    }
   }, [])
   const [history, setHistory] = useState(() =>
     createHistory(
@@ -1263,6 +1294,13 @@ export default function App() {
           <button type="button" onClick={() => setSettingsPage('access')}>
             {t.a11y.open}
           </button>
+          <IntroMenuButtons
+            onOpen={(surface) => {
+              rememberTrigger('intro', document.activeElement)
+              closeSettings(false)
+              openIntro(surface)
+            }}
+          />
           <button type="button" className={styles.loadProminent} onClick={() => sampleInput.current?.click()}>
             {t.settings.loadSample}
           </button>
@@ -1684,6 +1722,7 @@ export default function App() {
         <SkipLink />
         <LiveAnnouncer />
         <ExplainHost />
+        <IntroHost />
         <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
           <AppHeader
             snap={snap}
@@ -1743,6 +1782,7 @@ export default function App() {
         <SkipLink />
         <LiveAnnouncer />
         <ExplainHost />
+        <IntroHost />
         <main className={`${styles.shell} ${isPhoneLayout ? styles.phoneShell : ''}`} data-technical-ui={workspaceOn ? 'workspace' : 'classic'}>
           <AppHeader
             snap={snap}
@@ -1802,6 +1842,7 @@ export default function App() {
         <SkipLink />
         <LiveAnnouncer />
         <ExplainHost />
+        <IntroHost />
         <SimpleShell
           snap={snap}
           edit={edit}
@@ -1865,6 +1906,7 @@ export default function App() {
         <SkipLink />
         <LiveAnnouncer />
         <ExplainHost />
+        <IntroHost />
         <SensoryShell
           snap={snap}
           edit={edit}
@@ -1941,6 +1983,7 @@ export default function App() {
       <SkipLink />
       <LiveAnnouncer />
       <ExplainHost />
+      <IntroHost />
       <main
         className={`${styles.shell} ${styles[mode]} ${dragging ? styles.drop : ''} ${inspectorOpen ? '' : styles.inspectorHidden} ${isPhoneLayout ? styles.phoneShell : ''}`}
         data-orient={isPhoneLayout && viewportWidth > viewportHeight ? 'landscape' : 'portrait'}

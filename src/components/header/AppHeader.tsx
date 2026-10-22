@@ -10,6 +10,7 @@ import { ChaosControl } from '../random/ChaosControl'
 import { ResetSessionButton } from './ResetSessionButton'
 import { ThemePicker } from './ThemePicker'
 import { Wordmark } from './Wordmark'
+import { IntroActions } from '../../intro/IntroActions'
 import styles from './AppHeader.module.css'
 
 type Props = {
@@ -161,6 +162,7 @@ export function AppHeader({
           ) : null}
           <ResetSessionButton onReset={onReset} label={t.header.resetAction} toolbar />
           <ChaosControl />
+          {minimal ? null : <IntroActions labeled />}
           <button
             type="button"
             className={styles.settings}

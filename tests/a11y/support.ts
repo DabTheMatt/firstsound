@@ -19,6 +19,8 @@ type Boot = {
   theme?: string
   a11y?: Record<string, boolean | number | string>
   reducedMotion?: 'reduce' | 'no-preference'
+  /** First-run welcome. Existing suites keep it dismissed. */
+  intro?: 'fresh'
 }
 
 export async function boot(page: Page, init: Boot = {}): Promise<void> {
@@ -28,6 +30,9 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
     localStorage.setItem('firstsound.uiMode', state.mode ?? 'technical')
     localStorage.setItem('field.theme', state.theme ?? 'studio-dark')
     localStorage.setItem('field.technicalInterface', 'workspace')
+    if (state.intro !== 'fresh') {
+      localStorage.setItem('field.intro', JSON.stringify({ seen: true, suppress: true }))
+    }
     if (state.a11y) {
       localStorage.removeItem('field.accessibility.v1')
       localStorage.setItem('field.a11y', JSON.stringify(state.a11y))
@@ -35,6 +40,10 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
   }, init)
   await page.goto('/')
   await page.locator('#root').waitFor()
+  if (init.intro === 'fresh') {
+    await page.locator('[data-intro-dialog]').waitFor({ timeout: 20_000 })
+    return
+  }
   // Phone layouts hide the mode radiogroup. Settings (Technical) or Menu (Sensory) is always present.
   await page.getByRole('button', { name: /^(Settings|Menu|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
 }

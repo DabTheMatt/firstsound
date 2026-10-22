@@ -1,0 +1,61 @@
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.help,
+.mail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--toolbar-radius, 8px);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--toolbar-font, var(--type-11));
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.help:hover,
+.mail:hover,
+.help:focus-visible,
+.mail:focus-visible {
+  background: var(--bg-control-hover);
+  color: var(--text-primary);
+}
+
+.help:focus-visible,
+.mail:focus-visible,
+.menuItem:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.mark {
+  font-size: var(--type-16);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.menuItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: 100%;
+}
+
+.menuIcon {
+  flex: none;
+  color: var(--text-secondary);
+}
