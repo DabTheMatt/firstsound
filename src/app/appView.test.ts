@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import appSource from './App.tsx?raw'
 import uiSource from '../modes/uiMode.ts?raw'
-import { applyAppView, parseAppView } from './appView'
+import switchSource from './AppViewSwitch.tsx?raw'
+import { ACTIVITY_VISIBLE, applyAppView, parseAppView, SHED_VISIBLE } from './appView'
 
 describe('application view', () => {
   it('parses the destinations', () => {
@@ -42,5 +43,15 @@ describe('application view', () => {
     expect(match?.[0]).not.toContain('engine')
     expect(appSource).toContain("appView === 'shed'")
     expect(appSource).toContain("appView === 'activity'")
+  })
+
+  it('keeps Activity and SHED in the codebase without offering them', () => {
+    expect(ACTIVITY_VISIBLE).toBe(false)
+    expect(SHED_VISIBLE).toBe(false)
+    expect(switchSource).toContain('ACTIVITY_VISIBLE')
+    expect(switchSource).toContain('SHED_VISIBLE')
+    expect(appSource).toContain("ACTIVITY_VISIBLE && appView === 'activity'")
+    expect(appSource).toContain("SHED_VISIBLE && appView === 'shed'")
+    expect(appSource).toContain("view === 'activity' && !ACTIVITY_VISIBLE")
   })
 })
