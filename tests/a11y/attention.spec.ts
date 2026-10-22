@@ -19,7 +19,7 @@ test.describe('attention focus', () => {
     await expect(page.locator('html')).toHaveAttribute('data-attention-highlight', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-attention-reduce', 'on')
     await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().waitFor()
     await expect(page.locator('html')).toHaveAttribute('data-attention', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-attention-strength', 'subtle')
     const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))

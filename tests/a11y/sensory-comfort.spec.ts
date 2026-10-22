@@ -24,7 +24,7 @@ test.describe('sensory comfort', () => {
     await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'on')
     await expect(page.locator('html')).toHaveAttribute('data-visual-activity', 'low')
     await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().waitFor()
     await expect(page.locator('html')).toHaveAttribute('data-sensory-comfort', 'off')
     await expect(page.locator('html')).toHaveAttribute('data-calm-spectrum', 'off')
     await openAccess(page)

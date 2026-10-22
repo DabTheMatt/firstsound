@@ -49,7 +49,7 @@ test.describe('FIELD ACCESS preferences', () => {
     expect(os).toBe(true)
     const transition = await page.locator('button').first().evaluate((el) => getComputedStyle(el).transitionProperty)
     expect(transition).toBe('none')
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.getByRole('button', { name: 'Accessibility', exact: true }).click()
     const motion = page.getByRole('switch', { name: 'Reduced Motion' })
     await expect(motion).not.toBeChecked()

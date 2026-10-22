@@ -44,8 +44,8 @@ export async function boot(page: Page, init: Boot = {}): Promise<void> {
     await page.locator('[data-intro-dialog]').waitFor({ timeout: 20_000 })
     return
   }
-  // Phone layouts hide the mode radiogroup. Settings (Technical) or Menu (Sensory) is always present.
-  await page.getByRole('button', { name: /^(Settings|Menu|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
+  // Phone layouts hide the mode radiogroup. Settings is on the shared header in every mode.
+  await page.getByRole('button', { name: /^(Settings|Ustawienia)$/ }).first().waitFor({ timeout: 20_000 })
 }
 
 /** axe WCAG tags. A clean result is not a conformance claim. */
@@ -71,9 +71,7 @@ export async function openSettings(page: Page): Promise<void> {
 }
 
 export async function openAccess(page: Page): Promise<void> {
-  const settings = page.getByRole('button', { name: 'Settings', exact: true })
-  if (await settings.count()) await settings.click()
-  else await page.getByRole('button', { name: 'Menu', exact: true }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'Accessibility', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'FIELD ACCESS' })).toBeVisible()
 }

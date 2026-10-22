@@ -59,9 +59,9 @@ test.describe('keyboard scopes', () => {
   test('edits a sensory parameter from the keyboard', async ({ page }) => {
     await boot(page, { mode: 'sensory' })
     await prepareAccess(page, { switches: ['Keyboard-First'] })
-    await page.getByRole('button', { name: 'Menu', exact: true }).focus()
+    await page.getByRole('button', { name: 'Settings', exact: true }).focus()
     await page.keyboard.press('Enter')
-    const menu = page.getByRole('dialog')
+    const menu = page.getByRole('dialog', { name: 'Settings' })
     await menu.getByRole('button', { name: 'Generate demo sample' }).focus()
     await page.keyboard.press('Enter')
     await page.keyboard.press('Escape')

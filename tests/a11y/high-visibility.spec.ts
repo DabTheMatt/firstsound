@@ -15,7 +15,7 @@ test.describe('high visibility controls', () => {
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'on')
     await page.screenshot({ path: '/opt/cursor/artifacts/hv-access-on.png' })
     await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().waitFor()
     await expect(page.locator('html')).toHaveAttribute('data-high-visibility', 'off')
     const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
     expect(stored).toBeNull()

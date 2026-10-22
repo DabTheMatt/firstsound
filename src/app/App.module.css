@@ -204,21 +204,21 @@
 
 /* Workspace modes match the rest of the bar: same type, soft wash, no pill. */
 
-.shell[data-technical-ui='workspace'] .modeCluster button {
+:global([data-technical-ui='workspace']) .modeCluster button {
   border-radius: 4px !important;
   color: var(--text-secondary);
   background: transparent;
   box-shadow: none;
 }
 
-.shell[data-technical-ui='workspace'] .modeCluster button:hover,
-.shell[data-technical-ui='workspace'] .modeCluster button:focus-visible {
+:global([data-technical-ui='workspace']) .modeCluster button:hover,
+:global([data-technical-ui='workspace']) .modeCluster button:focus-visible {
   color: var(--text-primary);
   background: var(--ws-bar-hover);
 }
 
-.shell[data-technical-ui='workspace'] .modeCluster button[aria-checked='true'],
-.shell[data-technical-ui='workspace'] .modeCluster button[aria-checked='true']:hover {
+:global([data-technical-ui='workspace']) .modeCluster button[aria-checked='true'],
+:global([data-technical-ui='workspace']) .modeCluster button[aria-checked='true']:hover {
   color: var(--text-primary);
   background: var(--ws-bar-on);
 }

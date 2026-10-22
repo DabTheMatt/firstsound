@@ -86,10 +86,10 @@ test.describe('accessible waveform navigation', () => {
 
     await boot(page, { mode: 'sensory' })
     await prepareAccess(page, { switches: ['Accessible Waveform Navigation'] })
-    const menu = page.getByRole('button', { name: 'Menu', exact: true })
+    const menu = page.getByRole('button', { name: 'Settings', exact: true })
     await menu.focus()
     await page.keyboard.press('Enter')
-    const menuDialog = page.getByRole('dialog')
+    const menuDialog = page.getByRole('dialog', { name: 'Settings' })
     await menuDialog.getByRole('button', { name: 'Generate demo sample' }).focus()
     await page.keyboard.press('Enter')
     await page.keyboard.press('Escape')

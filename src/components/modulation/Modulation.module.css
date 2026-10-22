@@ -92,7 +92,7 @@
 
 .editor {
   position: fixed;
-  z-index: 40;
+  z-index: 80;
   width: min(280px, calc(100vw - 16px));
   max-height: min(70vh, 520px);
   overflow: auto;
@@ -392,7 +392,7 @@
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   justify-content: center;

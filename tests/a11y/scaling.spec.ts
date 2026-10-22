@@ -19,7 +19,7 @@ test.describe('interface and text scaling', () => {
     })
     expect(scales).toEqual({ interfaceScale: '1.25', textScale: '2' })
     await page.reload()
-    await page.getByRole('button', { name: /^(Settings|Menu)$/ }).first().waitFor()
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().waitFor()
     await expect(page.locator('html')).toHaveAttribute('data-interface-scale', '100')
     await expect(page.locator('html')).toHaveAttribute('data-text-scale', '100')
     const stored = await page.evaluate(() => localStorage.getItem('field.accessibility.v1'))
@@ -89,7 +89,7 @@ test.describe('interface and text scaling', () => {
     await prepareAccess(page, { interfaceScale: 150, textScale: 200 })
     const overlap = await page.evaluate(() => {
       const header = document.querySelector('[data-region="sensory"] header')
-      const rails = [...document.querySelectorAll('[data-region="sensory"] [class*="rail"]')]
+      const rails = [...document.querySelectorAll('[aria-label="Effect feelings, left"], [aria-label="Effect feelings, right"]')]
       if (!header || rails.length === 0) return 'missing'
       const headerBottom = header.getBoundingClientRect().bottom
       const covered = rails.filter((rail) => rail.getBoundingClientRect().top + 1 < headerBottom)
