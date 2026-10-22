@@ -60,6 +60,7 @@ import { OPEN_MANUAL_EVENT } from '../help/manual'
 import { IntroHost } from '../intro/IntroHost'
 import { IntroMenuButtons } from '../intro/IntroActions'
 import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
+import { publishHelpPlace } from '../intro/context'
 import { openIntro } from '../intro/session'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
@@ -1112,6 +1113,14 @@ export default function App() {
       sheetLevel,
     })
   }, [rememberLayout, activeFocus, workspaceId, inspectorOpen, contextLevel, sheetLevel])
+
+  useEffect(() => {
+    publishHelpPlace({
+      mode: uiMode,
+      view: activeFocus ?? workspaceId,
+      focused: uiMode === 'technical' && activeFocus != null,
+    })
+  }, [uiMode, activeFocus, workspaceId])
 
   useEffect(() => {
     const restore = () => {

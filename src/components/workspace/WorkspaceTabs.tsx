@@ -1,6 +1,5 @@
 import { tabListKey } from '../../a11y/keyboard'
 import { useI18n } from '../../i18n'
-import { BackgroundControl } from '../waveform/BackgroundControl'
 import { TECHNICAL_WORKSPACES, type TechnicalWorkspaceId } from './workspaces'
 import styles from './Workspace.module.css'
 
@@ -52,7 +51,6 @@ export function WorkspaceTabs({
       })}
       </div>
       <span className={styles.tabSpacer} />
-      <BackgroundControl appearance="text" />
       {contextClosed ? (
         <button type="button" className={styles.textButton} onClick={onOpenContext}>
           {t.workspace.context}

@@ -124,7 +124,7 @@ export function BackgroundControl({ appearance = 'icon' }: Props) {
         type="button"
         className={
           appearance === 'text'
-            ? `${styles.textTrigger} ${state.imageUrl ? styles.textOn : ''}`
+            ? `${styles.phrase} ${state.imageUrl ? styles.phraseOn : ''}`
             : `${barStyles.iconBtn} ${state.imageUrl ? barStyles.active : ''}`
         }
         aria-label={copy.background}
@@ -132,14 +132,7 @@ export function BackgroundControl({ appearance = 'icon' }: Props) {
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
       >
-        {appearance === 'text' ? (
-          copy.backgroundCaption
-        ) : (
-          <>
-            <ImageIcon />
-            <span className={barStyles.caption}>{copy.backgroundCaption}</span>
-          </>
-        )}
+        {appearance === 'text' ? copy.backgroundCaption : <ImageIcon />}
       </button>
       {open && menuPos
         ? createPortal(

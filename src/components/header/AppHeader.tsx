@@ -9,6 +9,7 @@ import { StableLabel } from './StableLabel'
 import { ChaosControl } from '../random/ChaosControl'
 import { ResetSessionButton } from './ResetSessionButton'
 import { ThemePicker } from './ThemePicker'
+import { BackgroundControl } from '../waveform/BackgroundControl'
 import { Wordmark } from './Wordmark'
 import { IntroActions } from '../../intro/IntroActions'
 import styles from './AppHeader.module.css'
@@ -82,6 +83,7 @@ export function AppHeader({
       {minimal ? null : (
       <div className={styles.tools}>
         <ThemePicker compact={false} />
+        <BackgroundControl appearance="text" />
         <button
           type="button"
           className={`${styles.rec} ${snap.recording ? styles.recOn : ''}`}

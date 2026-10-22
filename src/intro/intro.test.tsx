@@ -22,6 +22,7 @@ import { HelpPanel } from './HelpPanel'
 import hostSource from './IntroHost.tsx?raw'
 import feedbackSource from './feedback.ts?raw'
 import { visibleBox } from './spotlight'
+import { helpTopic, publishHelpPlace, resetHelpPlace } from './context'
 import { markWelcomeSeen, parseIntroRecord, readIntroRecord, shouldShowWelcome, writeIntroRecord, INTRO_STORAGE_KEY } from './storage'
 import { WelcomePanel } from './WelcomePanel'
 import { FeedbackForm } from './FeedbackForm'
@@ -72,8 +73,11 @@ describe('welcome storage', () => {
     vi.stubGlobal('localStorage', api)
   })
 
-  it('shows once, then remembers a dismissal without personal data', () => {
+  it('returns at each start until the startup option is chosen', () => {
     expect(shouldShowWelcome()).toBe(true)
+    markWelcomeSeen(false)
+    expect(shouldShowWelcome()).toBe(true)
+    expect(readIntroRecord()).toEqual({ seen: true, suppress: false })
     markWelcomeSeen(true)
     expect(shouldShowWelcome()).toBe(false)
     const raw = localStorage.getItem(INTRO_STORAGE_KEY) ?? ''
@@ -82,11 +86,28 @@ describe('welcome storage', () => {
     expect(parseIntroRecord(raw)).toEqual({ seen: true, suppress: true })
   })
 
-  it('ignores a broken record', () => {
+  it('ignores a broken record and still shows until suppress is set', () => {
     localStorage.setItem(INTRO_STORAGE_KEY, '{')
     expect(readIntroRecord()).toEqual({ seen: false, suppress: false })
+    expect(shouldShowWelcome()).toBe(true)
     writeIntroRecord({ seen: true, suppress: false })
+    expect(shouldShowWelcome()).toBe(true)
+    writeIntroRecord({ seen: true, suppress: true })
     expect(shouldShowWelcome()).toBe(false)
+  })
+})
+
+describe('help topic', () => {
+  afterEach(() => resetHelpPlace())
+
+  it('follows the technical picture, and Focus when it is on', () => {
+    expect(helpTopic()).toBe('wave')
+    expect(helpTopic({ mode: 'simple', view: 'eq', focused: true })).toBe('simple')
+    expect(helpTopic({ mode: 'sensory', view: 'wave', focused: false })).toBe('sensory')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false })).toBe('eq')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: true })).toBe('eq-focus')
+    publishHelpPlace({ mode: 'technical', view: 'fft', focused: true })
+    expect(helpTopic()).toBe('fft-focus')
   })
 })
 
@@ -256,7 +277,7 @@ describe('intro markup', () => {
     )
     expect(welcome).toContain('Odkryj FIELD')
     expect(welcome).toContain('Rozpocznij pracę')
-    expect(welcome).toContain('Nie pokazuj ponownie')
+    expect(welcome).toContain('Nie pokazuj tego okna przy starcie')
     expect(welcome).toContain('role="dialog"')
 
     const form = renderToStaticMarkup(
@@ -270,6 +291,29 @@ describe('intro markup', () => {
     expect(form).toContain('Np. znalezienie funkcji, zrozumienie parametru, obsługa na telefonie…')
     expect(form).not.toContain('Co działa dobrze, a co można poprawić?')
 
+    publishHelpPlace({ mode: 'technical', view: 'eq', focused: true })
+    const help = renderToStaticMarkup(
+      <I18nProvider>
+        <HelpPanel onClose={() => undefined} />
+      </I18nProvider>,
+    )
+    expect(help).toContain('Kontekstowa')
+    expect(help).toContain('Ogólna')
+    expect(help).toContain('EQ Focus')
+    expect(help).toContain('Dodaj pasmo')
+    expect(help).not.toContain('Uruchom przewodnik')
+    resetHelpPlace()
+  })
+
+  it('renders the general guide when that scope is saved', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => {
+        if (key === 'field.uiLocale') return 'pl'
+        if (key === 'field.help.scope') return 'general'
+        return null
+      },
+      setItem: () => undefined,
+    })
     const help = renderToStaticMarkup(
       <I18nProvider>
         <HelpPanel onClose={() => undefined} />

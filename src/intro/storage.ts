@@ -37,9 +37,9 @@ export function writeIntroRecord(next: IntroRecord): void {
   }
 }
 
-/** Shown once, until the person starts, explores, or asks not to see it. */
+/** Shown at each start, until the person asks for it to stay hidden. */
 export function shouldShowWelcome(record: IntroRecord = readIntroRecord()): boolean {
-  return !record.seen && !record.suppress
+  return !record.suppress
 }
 
 export function markWelcomeSeen(suppress = false): void {

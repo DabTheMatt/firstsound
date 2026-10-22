@@ -19,6 +19,26 @@ export type HelpSectionCopy = {
   body: readonly string[]
 }
 
+export type HelpTopicId =
+  | 'simple'
+  | 'sensory'
+  | 'wave'
+  | 'wave-focus'
+  | 'eq'
+  | 'eq-focus'
+  | 'fft'
+  | 'fft-focus'
+  | 'auto'
+  | 'auto-focus'
+  | 'hearing'
+  | 'hearing-focus'
+
+export type HelpTopicCopy = {
+  title: string
+  body: readonly string[]
+  points?: readonly string[]
+}
+
 export type Impression = 'very-positive' | 'positive' | 'neutral' | 'negative' | 'very-negative'
 export type Ease = 'yes' | 'mostly' | 'not-really' | 'no'
 export type AccessUse = 'yes' | 'no' | 'later'
@@ -52,6 +72,10 @@ export type IntroCopy = {
   feedbackLabel: string
   tour: readonly TourStepCopy[]
   helpTitle: string
+  scopeLabel: string
+  scopeContext: string
+  scopeGeneral: string
+  topics: Record<HelpTopicId, HelpTopicCopy>
   helpSections: readonly HelpSectionCopy[]
   replayWelcome: string
   replayTour: string
@@ -113,7 +137,7 @@ const pl: IntroCopy = {
   ],
   discover: 'Odkryj FIELD',
   start: 'Rozpocznij pracę',
-  dismiss: 'Nie pokazuj ponownie',
+  dismiss: 'Nie pokazuj tego okna przy starcie',
   close: 'Zamknij',
   back: 'Wstecz',
   next: 'Dalej',
@@ -203,7 +227,7 @@ const pl: IntroCopy = {
       title: 'Wygląd i klimat',
       body: [
         'Motyw wybierasz w nagłówku. Są ciemne, jasne, przyjazne oczom i mocniej graficzne. Własny zestaw kolorów możesz zapisać.',
-        'Tło widoku, na belce obrazu, przyjmuje JPG albo PNG. Zdjęcie albo wzór zostaje za przebiegiem i może przywołać klimat nagrania. Obok ustawiasz krycie i ziarno.',
+        'Dodaj tło, obok motywu w nagłówku, przyjmuje JPG albo PNG. Zdjęcie albo wzór zostaje za przebiegiem i może przywołać klimat nagrania. Obok ustawiasz krycie i ziarno.',
         'Obraz zostaje tylko na tę sesję i nie zmienia dźwięku. Przy otwartym panelu tła możesz go wkleić.',
       ],
     },
@@ -227,6 +251,111 @@ const pl: IntroCopy = {
     },
   ],
   helpTitle: 'Pomoc',
+  scopeLabel: 'Zakres pomocy',
+  scopeContext: 'Kontekstowa',
+  scopeGeneral: 'Ogólna',
+  topics: {
+    simple: {
+      title: 'Prosty',
+      body: [
+        'Prosty wykańcza nagranie: przycięcie, narastanie, wygaszanie, brzmienie, pogłos, opóźnienie i zapis.',
+        'Obok siebie porównujesz Oryginał i Po. To ten sam dźwięk co w pozostałych trybach, w krótszym układzie.',
+      ],
+    },
+    sensory: {
+      title: 'Sensoryczny',
+      body: [
+        'Sensoryczny kształtuje dźwięk przez odczucie, bez stołu mikserskiego.',
+        'Pod spodem zostaje ten sam dźwięk. Przełącznik trybu jest w nagłówku.',
+      ],
+    },
+    wave: {
+      title: 'Fala',
+      body: [
+        'Fala pokazuje przebieg w czasie. Wyższe miejsca to większe wychylenie, nie pełna miara głośności.',
+        'Przeciągnij po przebiegu, żeby zaznaczyć fragment. Potem możesz go przyciąć albo dodać narastanie i wygaszanie.',
+      ],
+      points: ['Ikona w prawym górnym rogu obrazu otwiera Focus fali. Ta sama ikona z niego wychodzi. Dźwięk, zaznaczenie i głowica zostają.'],
+    },
+    'wave-focus': {
+      title: 'Focus fali',
+      body: [
+        'Focus fali zostawia przebieg i mały transport: odtwarzanie, stop, pętlę i czas. Reszta otoczenia jest schowana.',
+        'Uchwyty zaniku są pod paskiem. Wyjście przywraca otoczenie i nie zmienia dźwięku.',
+      ],
+    },
+    eq: {
+      title: 'EQ',
+      body: [
+        'EQ w Workspace otwiera korektor w inspektorze, gdy equalizer jest w łańcuchu. Wykres zajmuje wysokość nad transportem.',
+        'Każdy filtr to jeden wiersz na całą szerokość: wybór typu i pokrętła, których ten typ używa.',
+      ],
+      points: [
+        'Przycisk „Add band” w inspektorze tworzy kolejny filtr.',
+        'Punkt na wykresie przeciągasz, a pokrętłem kręcisz ten sam parametr.',
+        'Ikona w rogu obrazu otwiera EQ Focus. Dźwięk się od tego nie zmienia.',
+      ],
+    },
+    'eq-focus': {
+      title: 'EQ Focus',
+      body: [
+        'EQ Focus to ten sam korektor bez otaczającego interfejsu. Zostaje, gdy reszta ekranu rozprasza.',
+        'Filtry są wypisane po lewej stronie wykresu. Pokrętła stoją na środku i unoszą się nad siatką. Menu typu filtra jest w nagłówku pasma, obok nazwy.',
+        'Ta sama ikona w rogu wychodzi z Focus. Odtwarzanie, zaznaczenie i głowica zostają.',
+      ],
+      points: [
+        'Plus w nagłówku pasma dodaje filtr. Ma nazwę „Dodaj pasmo”.',
+        'Przeciągnij punkt na wykresie albo obróć pokrętło częstotliwości, wzmocnienia albo dobroci — zostają te, których używa wybrany typ.',
+        'Wskazówka pokrętła pokazuje wartość skuteczną. Gdy na pokrętle jest LFO, wskazówka idzie za tym ruchem.',
+        'Kosz w nagłówku pasma wyłącza ten filtr. Ma nazwę „Usuń węzeł”.',
+        'Zakres w menu wykresu, 60, 90 albo 120 dB, mówi, jak głęboko sięgają słupki widma. Nie skaluje krzywej EQ.',
+      ],
+    },
+    fft: {
+      title: 'FFT',
+      body: [
+        'FFT pokazuje widmo nagrania. Na belce obrazu zostają Before, After, Both oraz 2D / 3D.',
+        '••• na końcu belki otwiera ustawienia analizatora. To pomiar dźwięku, nie krzywa korektora.',
+      ],
+      points: ['Ikona w rogu otwiera FFT Focus. Dźwięk się nie zmienia.'],
+    },
+    'fft-focus': {
+      title: 'FFT Focus',
+      body: [
+        'FFT Focus zostawia widmo. Ustawienia analizatora są pod ••• na belce.',
+        'Ta sama ikona wychodzi z Focus i przywraca otoczenie.',
+      ],
+    },
+    auto: {
+      title: 'Auto',
+      body: [
+        'Auto pokazuje automatyzację parametru w czasie, na tym samym obrazie.',
+        'Krzywa mówi, jak wartość zmienia się wzdłuż nagrania. Ikona w rogu otwiera Focus automatyzacji.',
+      ],
+    },
+    'auto-focus': {
+      title: 'Focus automatyzacji',
+      body: [
+        'Focus automatyzacji zostawia krzywą parametru i mały transport.',
+        'Wyjście przywraca otoczenie. Zaznaczenie i głowica zostają.',
+      ],
+    },
+    hearing: {
+      title: 'Hearing',
+      body: [
+        'Hearing rysuje dźwięk obok Fali, EQ, FFT i Auto. Jest dla każdego, kto woli zobaczyć nagranie, nie tylko dla osób, którym przeszkadza słuch.',
+        'To nie jest czytnik ekranu ani aparat słuchowy. Ikona w rogu otwiera Hearing Focus.',
+      ],
+    },
+    'hearing-focus': {
+      title: 'Hearing Focus',
+      body: [
+        'Hearing Focus zostawia mapę dźwięku w tej samej ramce co pozostałe widoki Focus.',
+        'Przeciągnięcie po fali zaznacza fragment. Puszczenie zamienia zaznaczenie w pętlę. Klik tylko przesuwa głowicę.',
+        'Ta sama ikona wychodzi z Focus i nie zmienia dźwięku.',
+      ],
+    },
+  },
   helpSections: [
     {
       id: 'intro',
@@ -273,7 +402,7 @@ const pl: IntroCopy = {
       id: 'look',
       title: 'Wygląd',
       body: [
-        'Motyw jest w nagłówku. Tło widoku przyjmuje JPG albo PNG na tę sesję, także wklejony przy otwartym panelu. Krycie i ziarno zostają przy obrazie.',
+        'Motyw jest w nagłówku. Dodaj tło stoi obok niego i przyjmuje JPG albo PNG na tę sesję, także wklejony przy otwartym panelu. Krycie i ziarno zostają przy obrazie.',
       ],
     },
     {
@@ -373,7 +502,7 @@ const en: IntroCopy = {
   ],
   discover: 'Discover FIELD',
   start: 'Start working',
-  dismiss: 'Don’t show again',
+  dismiss: 'Don’t show this window at startup',
   close: 'Close',
   back: 'Back',
   next: 'Next',
@@ -463,7 +592,7 @@ const en: IntroCopy = {
       title: 'Look and mood',
       body: [
         'Choose a theme in the header. There are dark, light, eyes-friendly, and more graphic sets. You can save your own colors.',
-        'View background, on the picture bar, takes a JPG or PNG. A photo or a pattern sits behind the waveform and can recall the mood of the recording. Opacity and grain sit beside it.',
+        'Add background, beside the theme in the header, takes a JPG or PNG. A photo or a pattern sits behind the waveform and can recall the mood of the recording. Opacity and grain sit beside it.',
         'The image lasts for this session only and does not change the sound. With the background panel open, you can paste it.',
       ],
     },
@@ -487,6 +616,111 @@ const en: IntroCopy = {
     },
   ],
   helpTitle: 'Help',
+  scopeLabel: 'Help scope',
+  scopeContext: 'Contextual',
+  scopeGeneral: 'General',
+  topics: {
+    simple: {
+      title: 'Simple',
+      body: [
+        'Simple finishes a recording: trim, fades, tone, reverb, delay, and export.',
+        'Original and After sit side by side. It is the same sound as the other modes, in a shorter layout.',
+      ],
+    },
+    sensory: {
+      title: 'Sensory',
+      body: [
+        'Sensory shapes the sound by feeling, without a mixing desk.',
+        'The same sound stays underneath. The mode switch is in the header.',
+      ],
+    },
+    wave: {
+      title: 'Wave',
+      body: [
+        'Wave shows the recording across time. Taller parts are a larger swing of the wave, not a full measure of loudness.',
+        'Drag across the waveform to select a region. You can then trim it or add a fade in and a fade out.',
+      ],
+      points: ['The icon in the top-right corner of the picture opens Wave Focus. The same icon leaves it. The sound, the selection, and the playhead stay.'],
+    },
+    'wave-focus': {
+      title: 'Wave Focus',
+      body: [
+        'Wave Focus keeps the waveform and a small transport: play, stop, loop, and the time. The rest of the chrome is hidden.',
+        'Fade handles sit below the bar. Leaving restores the chrome and does not change the sound.',
+      ],
+    },
+    eq: {
+      title: 'EQ',
+      body: [
+        'EQ in Workspace opens the equalizer in the inspector when an equalizer is in the chain. The graph uses the height above the transport.',
+        'Each filter is one full-width row: a type and the knobs that type uses.',
+      ],
+      points: [
+        'Add band in the inspector creates the next filter.',
+        'Drag a point on the graph, or turn a knob, to change the same parameter.',
+        'The icon in the corner of the picture opens EQ Focus. The sound does not change because of that.',
+      ],
+    },
+    'eq-focus': {
+      title: 'EQ Focus',
+      body: [
+        'EQ Focus is the same equalizer without the surrounding chrome. It stays when the rest of the screen is distracting.',
+        'Filters are listed to the left of the graph. The knobs sit in the center and float over the grid. The filter type menu is in the band header, next to the name.',
+        'The same icon in the corner leaves Focus. Playback, the selection, and the playhead stay.',
+      ],
+      points: [
+        'The + in the band header adds a filter. Its name is Add band.',
+        'Drag a point on the graph, or turn the frequency, gain, or Q knob. A type keeps only the knobs it uses.',
+        'The knob indicator shows the effective value. When an LFO is on that knob, the indicator follows the motion.',
+        'The trash control in the band header turns that filter off. Its name is Delete node.',
+        'Range in the graph menu, 60, 90, or 120 dB, is how far down the spectrum bars reach. It does not scale the EQ curve.',
+      ],
+    },
+    fft: {
+      title: 'FFT',
+      body: [
+        'FFT shows the spectrum of the recording. Before, After, Both, and 2D / 3D stay on the picture bar.',
+        '••• at the end of that bar opens the analyzer settings. It measures the sound. It does not draw the EQ curve.',
+      ],
+      points: ['The icon in the corner opens FFT Focus. The sound does not change.'],
+    },
+    'fft-focus': {
+      title: 'FFT Focus',
+      body: [
+        'FFT Focus keeps the spectrum. Analyzer settings stay under ••• on the bar.',
+        'The same icon leaves Focus and restores the chrome.',
+      ],
+    },
+    auto: {
+      title: 'Auto',
+      body: [
+        'Auto shows a parameter’s automation across time, on the same picture.',
+        'The curve is how that value changes along the recording. The icon in the corner opens automation Focus.',
+      ],
+    },
+    'auto-focus': {
+      title: 'Automation Focus',
+      body: [
+        'Automation Focus keeps the parameter curve and a small transport.',
+        'Leaving restores the chrome. The selection and the playhead stay.',
+      ],
+    },
+    hearing: {
+      title: 'Hearing',
+      body: [
+        'Hearing draws the sound beside Wave, EQ, FFT, and Auto. It is there for anyone who wants to see a recording, not only for people whose hearing gets in the way.',
+        'It is not a screen reader and not a hearing aid. The icon in the corner opens Hearing Focus.',
+      ],
+    },
+    'hearing-focus': {
+      title: 'Hearing Focus',
+      body: [
+        'Hearing Focus keeps the sound map in the same frame as the other Focus views.',
+        'Drag across the waveform to select a fragment. Releasing that drag turns the selection into the loop. A click only moves the playhead.',
+        'The same icon leaves Focus and does not change the sound.',
+      ],
+    },
+  },
   helpSections: [
     {
       id: 'intro',
@@ -533,7 +767,7 @@ const en: IntroCopy = {
       id: 'look',
       title: 'Appearance',
       body: [
-        'The theme is in the header. View background takes a JPG or PNG for this session, including a paste while its panel is open. Opacity and grain stay with the image.',
+        'The theme is in the header. Add background sits beside it and takes a JPG or PNG for this session, including a paste while its panel is open. Opacity and grain stay with the image.',
       ],
     },
     {
