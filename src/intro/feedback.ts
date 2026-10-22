@@ -197,6 +197,33 @@ export function feedbackRequestBody(endpoint: string, text: string, replyEmail: 
   }
 }
 
+/**
+ * FormSubmit rejects a JSON body at the preflight. That OPTIONS request does not
+ * carry clearance cookies, so a Cloudflare challenge never answers it and the
+ * dialog stays on Sending with no confirmation. Multipart is a simple request:
+ * the browser posts directly and can still read a JSON success.
+ */
+export function feedbackFetchInit(
+  endpoint: string,
+  text: string,
+  replyEmail: string | null,
+): { headers: Record<string, string>; body: BodyInit } {
+  if (usesFormSubmit(endpoint)) {
+    const body = new FormData()
+    for (const [key, value] of Object.entries(feedbackRequestBody(endpoint, text, replyEmail))) {
+      if (typeof value === 'string' && value.length > 0) body.append(key, value)
+    }
+    return { headers: { accept: 'application/json' }, body }
+  }
+  return {
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify(feedbackRequestBody(endpoint, text, replyEmail)),
+  }
+}
+
+/** A stalled challenge must not leave the dialog on Sending. */
+export const FEEDBACK_TIMEOUT_MS = 20_000
+
 export function feedbackReply(body: string): { success: boolean; message: string } | null {
   try {
     const data = JSON.parse(body) as { success?: unknown; message?: unknown }
@@ -319,6 +346,7 @@ export async function submitFeedback(input: {
   endpoint?: string | null
   fetchImpl?: typeof fetch
   stamps?: StampStore
+  timeoutMs?: number
 }): Promise<SendResult> {
   if (inflight) return { ok: false, reason: 'busy' }
   if (input.draft.company.trim()) return { ok: true }
@@ -332,14 +360,17 @@ export async function submitFeedback(input: {
   const locale = input.locale === 'pl' ? 'pl' : 'en'
   const text = feedbackMessage(input.draft, input.copy, tech, new Date(now), locale)
   const replyEmail = input.draft.email.trim() || null
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? FEEDBACK_TIMEOUT_MS)
   inflight = true
   try {
     const fetchImpl = input.fetchImpl ?? fetch
     const formSubmit = usesFormSubmit(endpoint)
+    const init = feedbackFetchInit(endpoint, text, replyEmail)
     const response = await fetchImpl(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(feedbackRequestBody(endpoint, text, replyEmail)),
+      ...init,
+      signal: controller.signal,
     })
     const payload = await response.text()
     if (formSubmit) {
@@ -353,6 +384,7 @@ export async function submitFeedback(input: {
   } catch {
     return { ok: false, reason: 'network' }
   } finally {
+    clearTimeout(timer)
     inflight = false
   }
 }

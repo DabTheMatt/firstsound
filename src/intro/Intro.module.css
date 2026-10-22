@@ -167,6 +167,11 @@
   background: var(--bg-panel);
 }
 
+.footerAlert {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
 .footer button,
 .choice,
 .text,

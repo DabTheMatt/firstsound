@@ -7,6 +7,7 @@ import {
   emptyFeedbackDraft,
   feedbackAccepted,
   feedbackEndpoint,
+  feedbackFetchInit,
   feedbackNeedsActivation,
   feedbackIssues,
   feedbackMessage,
@@ -277,6 +278,57 @@ describe('feedback delivery', () => {
     expect(feedbackAccepted(403, 'application/json', '{"success":"true"}', true)).toBe(false)
     expect(feedbackNeedsActivation('This form needs Activation.')).toBe(true)
     expect(feedbackNeedsActivation('The form was submitted successfully.')).toBe(false)
+    const init = feedbackFetchInit('https://formsubmit.co/ajax/example', 'note', 'a@b.c')
+    expect(init.headers['content-type']).toBeUndefined()
+    expect(init.body).toBeInstanceOf(FormData)
+    expect((init.body as FormData).get('_subject')).toBe(FEEDBACK_SUBJECT)
+    expect((init.body as FormData).get('message')).toBe('note')
+    expect((init.body as FormData).get('_replyto')).toBe('a@b.c')
+    expect((init.body as FormData).get('_captcha')).toBe('false')
+    const noReply = feedbackFetchInit('https://formsubmit.co/ajax/example', 'note', null)
+    expect((noReply.body as FormData).get('_replyto')).toBeNull()
+  })
+
+  it('posts multipart to the public form and leaves Sending when the request stalls', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('{"success":"true"}', { status: 200, headers: { 'content-type': 'application/json' } }),
+    )
+    const sent = await submitFeedback({
+      draft: { ...emptyFeedbackDraft(), ideas: 'keep the confirmation' },
+      copy: introCopy('en'),
+      locale: 'en',
+      mode: null,
+      endpoint: 'https://formsubmit.co/ajax/example@example.com',
+      fetchImpl,
+      stamps: memoryStampStore(),
+    })
+    expect(sent).toEqual({ ok: true })
+    const init = fetchImpl.mock.calls[0]?.[1] as RequestInit
+    const headers = init.headers as Record<string, string>
+    expect(headers['content-type']).toBeUndefined()
+    expect(init.body).toBeInstanceOf(FormData)
+    expect((init.body as FormData).get('message')).toContain('keep the confirmation')
+
+    resetFeedbackSendLock()
+    const stalled: typeof fetch = (_url, request) =>
+      new Promise((_resolve, reject) => {
+        request?.signal?.addEventListener('abort', () => {
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+        })
+      })
+    const started = Date.now()
+    const hung = await submitFeedback({
+      draft: { ...emptyFeedbackDraft(), ease: 'yes' },
+      copy: introCopy('en'),
+      locale: 'en',
+      mode: null,
+      endpoint: 'https://formsubmit.co/ajax/example@example.com',
+      fetchImpl: stalled,
+      stamps: memoryStampStore(),
+      timeoutMs: 30,
+    })
+    expect(hung).toEqual({ ok: false, reason: 'network' })
+    expect(Date.now() - started).toBeLessThan(2_000)
   })
 
   it('does not embed a mail API secret in the client', () => {
