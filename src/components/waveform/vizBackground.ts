@@ -268,6 +268,14 @@ async function sessionUrlForFile(file: File): Promise<string> {
   return URL.createObjectURL(blob)
 }
 
+/** First JPG or PNG in a paste or a file list. Other types are ignored. */
+export function firstAcceptedImageFile(files: readonly File[]): File | null {
+  for (const file of files) {
+    if (acceptVizBackgroundFile(file)) return file
+  }
+  return null
+}
+
 /** Load a JPG or PNG for this session. Returns false when the file is rejected. */
 export async function loadVizBackgroundFile(file: File): Promise<boolean> {
   if (!acceptVizBackgroundFile(file)) return false

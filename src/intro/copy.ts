@@ -1,6 +1,6 @@
 import type { Locale } from '../i18n/locale'
 
-export const TOUR_IDS = ['sound', 'modes', 'edit', 'tone', 'access', 'save', 'together'] as const
+export const TOUR_IDS = ['sound', 'modes', 'edit', 'tone', 'access', 'look', 'save', 'together'] as const
 
 export type TourId = (typeof TOUR_IDS)[number]
 
@@ -11,7 +11,7 @@ export type TourStepCopy = {
   points?: readonly string[]
 }
 
-export type HelpSectionId = 'intro' | 'guide' | 'modes' | 'basics' | 'access' | 'keys' | 'status'
+export type HelpSectionId = 'intro' | 'guide' | 'modes' | 'basics' | 'access' | 'look' | 'keys' | 'status'
 
 export type HelpSectionCopy = {
   id: HelpSectionId
@@ -40,6 +40,8 @@ export type IntroCopy = {
   back: string
   next: string
   skip: string
+  pin: string
+  unpin: string
   step: (index: number, total: number) => string
   showAccess: string
   sendFeedback: string
@@ -106,6 +108,7 @@ const pl: IntroCopy = {
     'Nie musisz znać się na produkcji muzycznej ani rozumieć wszystkich narzędzi.',
     'Wczytaj dźwięk. Posłuchaj go. Zmień coś.',
     'Możesz pracować precyzyjnie albo po prostu eksperymentować. Nie ma jednej właściwej drogi.',
+    'Kiedy na ekranie jest za dużo naraz, tryb Focus zostawia jeden obszar pracy i chowa resztę. Dźwięk się nie zmienia.',
     'Zacznij od jednego dźwięku.',
   ],
   discover: 'Odkryj FIELD',
@@ -115,6 +118,8 @@ const pl: IntroCopy = {
   back: 'Wstecz',
   next: 'Dalej',
   skip: 'Pomiń',
+  pin: 'Zostaw podczas edycji',
+  unpin: 'Wróć na środek',
   step: (index, total) => `Krok ${index} z ${total}`,
   showAccess: 'Pokaż ustawienia dostępności',
   sendFeedback: 'Prześlij opinię',
@@ -144,13 +149,14 @@ const pl: IntroCopy = {
         'Prosty wykańcza nagranie: przycięcie, narastanie, wygaszanie, brzmienie, pogłos, opóźnienie i zapis.',
         'Techniczny otwiera pełny edytor, łańcuch efektów i inspektor. Domyślny układ to Workspace.',
         'Sensoryczny kształtuje dźwięk przez odczucie, bez stołu mikserskiego.',
+        'Focus, w rogu obrazu w trybie Technicznym, chowa otoczenie i zostawia falę, EQ, widmo, automatyzację albo Hearing. Pomaga, gdy reszta interfejsu rozprasza. Wyjście przywraca otoczenie bez zmiany dźwięku.',
       ],
     },
     {
       id: 'edit',
       title: 'Podstawowa edycja',
       body: [
-        'Odtwarzanie i pauza są na transporcie, obok zatrzymania. Przeciągnij po przebiegu, żeby zaznaczyć fragment, a potem go przytnij albo dodaj narastanie i wygaszanie.',
+        'Odtwarzanie i pauza są na transporcie, obok zatrzymania. Przeciągnij po przebiegu, żeby zaznaczyć fragment, a potem go przytnij albo dodaj narastanie i wygaszanie. W łańcuchu Technicznego nowy efekt dodajesz przyciskiem „Dodaj efekt”.',
         'Po zmianie odsłuchaj rezultat. W trybie Prostym porównasz Oryginał i Po.',
         'Przebieg to obraz dźwięku w czasie. Wyższe miejsca to większe wychylenie fali, nie pełna miara głośności.',
       ],
@@ -167,6 +173,8 @@ const pl: IntroCopy = {
         'Prosty: brzmienie, pogłos i opóźnienie.',
         'Techniczny: EQ, filtr, pogłos, delay, kompresor, limiter, zniekształcenie i Mid/Side.',
         'Sensoryczny prowadzi przez odczucie, a pod spodem zostaje ten sam dźwięk.',
+        'Przy parametrach, które to obsługują, możesz podłączyć LFO albo wylosować wartość. Centrum LFO jest w nagłówku.',
+        'Chaos w nagłówku poszerza losowanie i włącza limiter bezpieczeństwa łańcucha, jeśli był pominięty. Jedno losowanie działa także bez Chaosu. Auto Random potrzebuje Chaosu.',
       ],
     },
     {
@@ -187,7 +195,16 @@ const pl: IntroCopy = {
         'F1 pokazuje objaśnienie kontrolki. To tekst w aplikacji, nie synteza mowy. Czasy dla czytnika są podawane słownie.',
         'Motyw zmienisz w nagłówku. Są wśród nich Black & White oraz przyjazne oczom Soft Slate, Warm Paper i Dusk. Więcej → Wysoki kontrast / słabowidzący.',
         'Ograniczenie ruchu uwzględnia też ustawienie systemu. Komfort sensoryczny uspokaja mierniki, widmo i ozdobny ruch.',
-        'Dostęp słuchowy, w sekcji Więcej, pokazuje dźwięk wizualnie i może użyć wibracji urządzenia. To nie jest czytnik ekranu ani aparat słuchowy.',
+        'Hearing, obok Fali, EQ, FFT i Auto, rysuje dźwięk. Przydaje się każdemu, kto woli zobaczyć nagranie, nie tylko osobom, którym przeszkadza słuch. Dostęp słuchowy w sekcji Więcej pokazuje te same cechy wizualnie i może użyć wibracji. To nie jest czytnik ekranu ani aparat słuchowy.',
+      ],
+    },
+    {
+      id: 'look',
+      title: 'Wygląd i klimat',
+      body: [
+        'Motyw wybierasz w nagłówku. Są ciemne, jasne, przyjazne oczom i mocniej graficzne. Własny zestaw kolorów możesz zapisać.',
+        'Tło widoku, na belce obrazu, przyjmuje JPG albo PNG. Zdjęcie albo wzór zostaje za przebiegiem i może przywołać klimat nagrania. Obok ustawiasz krycie i ziarno.',
+        'Obraz zostaje tylko na tę sesję i nie zmienia dźwięku. Przy otwartym panelu tła możesz go wkleić.',
       ],
     },
     {
@@ -222,7 +239,7 @@ const pl: IntroCopy = {
       id: 'guide',
       title: 'Przewodnik po interfejsie',
       body: [
-        'Krótki przewodnik ma siedem ekranów: dźwięk, tryby, edycja, brzmienie, dostępność, zapis i rozwój FIELD.',
+        'Krótki przewodnik prowadzi przez dźwięk, tryby i Focus, edycję, brzmienie, dostępność, wygląd, zapis i rozwój FIELD.',
         'Możesz go pominąć i wrócić później. Otwarcie pomocy nie zatrzymuje odtwarzania.',
       ],
     },
@@ -232,14 +249,15 @@ const pl: IntroCopy = {
       body: [
         'Prosty, Techniczny i Sensoryczny pracują na tym samym dźwięku.',
         'Prosty wykańcza nagranie. Techniczny daje pełny edytor. Sensoryczny prowadzi przez odczucie. Żaden nie jest właściwszy.',
+        'Focus chowa otoczenie jednego obszaru pracy, kiedy reszta ekranu rozprasza. Dźwięk zostaje.',
       ],
     },
     {
       id: 'basics',
       title: 'Podstawowe operacje',
       body: [
-        'Wczytaj sample, odtwórz go, zaznacz fragment na przebiegu i przytnij albo dodaj narastanie i wygaszanie.',
-        'F1 wyjaśnia kontrolkę w fokusie. Dłuższe objaśnienia trudniejszych parametrów, takich jak dobroć Q, są już przy tych kontrolkach.',
+        'Wczytaj sample, odtwórz go, zaznacz fragment na przebiegu i przytnij albo dodaj narastanie i wygaszanie. W łańcuchu nowy efekt to „Dodaj efekt”.',
+        'Przy wielu parametrach jest LFO i losowanie wartości. Chaos poszerza to losowanie. F1 wyjaśnia kontrolkę w fokusie. Dobroć Q ma już swoje objaśnienie.',
       ],
     },
     {
@@ -247,7 +265,15 @@ const pl: IntroCopy = {
       title: 'Dostępność',
       body: [
         'Ustawienia → Dostępność (FIELD ACCESS) zbiera rozmiar, kontrast, fokus, ruch i sposób obsługi.',
+        'Hearing rysuje dźwięk dla każdego, kto chce go zobaczyć. Dostęp słuchowy nie jest czytnikiem ekranu ani aparatem słuchowym.',
         'Czytnik ekranu zostaje w Twoim systemie. FIELD nie odczytuje przewodnika głosem sam z siebie.',
+      ],
+    },
+    {
+      id: 'look',
+      title: 'Wygląd',
+      body: [
+        'Motyw jest w nagłówku. Tło widoku przyjmuje JPG albo PNG na tę sesję, także wklejony przy otwartym panelu. Krycie i ziarno zostają przy obrazie.',
       ],
     },
     {
@@ -342,6 +368,7 @@ const en: IntroCopy = {
     'You do not need to know music production, or every tool.',
     'Load a sound. Listen to it. Change something.',
     'You can work precisely, or just experiment. There is no single right way.',
+    'When the screen is too busy, Focus mode keeps one workspace and hides the rest. The sound stays as it is.',
     'Start with one sound.',
   ],
   discover: 'Discover FIELD',
@@ -351,6 +378,8 @@ const en: IntroCopy = {
   back: 'Back',
   next: 'Next',
   skip: 'Skip',
+  pin: 'Keep open while editing',
+  unpin: 'Return to the center',
   step: (index, total) => `Step ${index} of ${total}`,
   showAccess: 'Show accessibility settings',
   sendFeedback: 'Send feedback',
@@ -380,13 +409,14 @@ const en: IntroCopy = {
         'Simple finishes a recording: trim, fade in, fade out, tone, reverb, delay, and export.',
         'Technical opens the full editor, the effect chain, and the inspector. Workspace is the default layout.',
         'Sensory shapes sound by feeling, without a mixing desk.',
+        'Focus, in the corner of the picture in Technical, hides the surrounding chrome and leaves the wave, EQ, spectrum, automation, or Hearing. It helps when the rest of the interface is distracting. Leaving it restores the chrome and does not change the sound.',
       ],
     },
     {
       id: 'edit',
       title: 'A simple edit',
       body: [
-        'Play and pause sit on the transport, next to stop. Drag across the waveform to select a region, then trim it or add a fade in and a fade out.',
+        'Play and pause sit on the transport, next to stop. Drag across the waveform to select a region, then trim it or add a fade in and a fade out. In the Technical chain, a new effect is the Add effect button.',
         'Listen to the result. In Simple you can compare Original and After.',
         'The waveform is a picture of the sound over time. Taller places are a larger swing of the wave, not a full measure of loudness.',
       ],
@@ -403,6 +433,8 @@ const en: IntroCopy = {
         'Simple: tone, reverb, and delay.',
         'Technical: EQ, filter, reverb, delay, compressor, limiter, distortion, and Mid/Side.',
         'Sensory leads by feeling. Underneath, it is the same sound.',
+        'On parameters that support it, you can connect an LFO or randomize the value. The LFO center is in the header.',
+        'Chaos in the header widens randomization and enables the chain safety limiter if it was bypassed. One randomization still works without Chaos. Auto Random needs Chaos.',
       ],
     },
     {
@@ -423,7 +455,16 @@ const en: IntroCopy = {
         'F1 explains the focused control. That note is text in the app, not speech synthesis. Times are written out for a screen reader.',
         'Themes are in the header, including Black & White and the eyes-friendly Soft Slate, Warm Paper, and Dusk. More → High Contrast / Low Vision Theme.',
         'Reduced Motion also follows the system setting. Sensory Comfort calms meters, the spectrum, and decorative motion.',
-        'Hearing Access, under More, shows sound visually and can use device vibration. It is not a screen reader and not a hearing aid.',
+        'Hearing, beside Wave, EQ, FFT, and Auto, draws the sound. It is there for anyone who wants to see a recording, not only for people whose hearing gets in the way. Hearing Access, under More, shows those same cues visually and can use device vibration. It is not a screen reader and not a hearing aid.',
+      ],
+    },
+    {
+      id: 'look',
+      title: 'Look and mood',
+      body: [
+        'Choose a theme in the header. There are dark, light, eyes-friendly, and more graphic sets. You can save your own colors.',
+        'View background, on the picture bar, takes a JPG or PNG. A photo or a pattern sits behind the waveform and can recall the mood of the recording. Opacity and grain sit beside it.',
+        'The image lasts for this session only and does not change the sound. With the background panel open, you can paste it.',
       ],
     },
     {
@@ -458,7 +499,7 @@ const en: IntroCopy = {
       id: 'guide',
       title: 'Interface guide',
       body: [
-        'The short guide has seven screens: sound, modes, editing, tone, accessibility, export, and how FIELD is growing.',
+        'The short guide walks through sound, modes and Focus, editing, tone, accessibility, appearance, export, and how FIELD is growing.',
         'You can skip it and return later. Opening help does not stop playback.',
       ],
     },
@@ -468,14 +509,15 @@ const en: IntroCopy = {
       body: [
         'Simple, Technical, and Sensory work on the same sound.',
         'Simple finishes a recording. Technical is the full editor. Sensory leads by feeling. None of them is the right one.',
+        'Focus hides the chrome around one workspace when the rest of the screen is distracting. The sound stays.',
       ],
     },
     {
       id: 'basics',
       title: 'Basic actions',
       body: [
-        'Load a sample, play it, select a region on the waveform, then trim or add fades.',
-        'F1 explains the focused control. Harder parameters, such as filter Q, already carry that explanation.',
+        'Load a sample, play it, select a region on the waveform, then trim or add fades. In the chain, a new effect is Add effect.',
+        'Many parameters can take an LFO or a randomized value. Chaos widens that randomization. F1 explains the focused control. Filter Q already has its explanation.',
       ],
     },
     {
@@ -483,7 +525,15 @@ const en: IntroCopy = {
       title: 'Accessibility',
       body: [
         'Settings → Accessibility (FIELD ACCESS) gathers size, contrast, focus, motion, and how you operate the controls.',
+        'Hearing draws the sound for anyone who wants to see it. Hearing Access is not a screen reader and not a hearing aid.',
         'A screen reader stays in your system. FIELD does not read this guide aloud on its own.',
+      ],
+    },
+    {
+      id: 'look',
+      title: 'Appearance',
+      body: [
+        'The theme is in the header. View background takes a JPG or PNG for this session, including a paste while its panel is open. Opacity and grain stay with the image.',
       ],
     },
     {

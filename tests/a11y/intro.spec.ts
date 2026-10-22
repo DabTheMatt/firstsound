@@ -70,8 +70,16 @@ test.describe('first experience', () => {
     await expect(dialog.getByRole('alert')).toContainText('e-mail')
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
     await dialog.getByLabel('Adres e-mail').fill('')
+    let accept = false
+    await page.route('https://formsubmit.co/**', async (route) => {
+      await route.fulfill({
+        status: accept ? 200 : 503,
+        contentType: 'application/json',
+        body: accept ? '{"success":"true"}' : '{"success":"false"}',
+      })
+    })
     await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
-    await expect(dialog.getByRole('alert')).toContainText('nie jest jeszcze włączona')
+    await expect(dialog.getByRole('alert')).toContainText('formularzu')
     await dialog.getByRole('alert').scrollIntoViewIfNeeded()
     await page.screenshot({ path: '/opt/cursor/artifacts/feedback-phone-pl.png' })
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
@@ -99,5 +107,24 @@ test.describe('first experience', () => {
     await page.screenshot({ path: '/opt/cursor/artifacts/guide-en.png' })
     await page.keyboard.press('Escape')
     await expect(page.locator('[data-intro-help]')).toBeFocused()
+  })
+
+  test('shows Guide me once and keeps help floating while settings open', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await boot(page, { locale: 'en', mode: 'technical' })
+    await expect(page.getByRole('button', { name: 'Guide me', exact: true })).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Add effect' }).first()).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/chain-add-en.png' })
+    await page.locator('[data-intro-help]').click()
+    const dialog = page.locator('[data-intro-dialog]')
+    await dialog.getByRole('button', { name: 'Keep open while editing' }).click()
+    await expect(dialog).toHaveAttribute('data-intro-pinned', '')
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Help' })).toBeVisible()
+    await page.screenshot({ path: '/opt/cursor/artifacts/help-float-en.png' })
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden()
+    await expect(dialog).toBeVisible()
   })
 })

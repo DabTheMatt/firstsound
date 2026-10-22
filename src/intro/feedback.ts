@@ -154,11 +154,17 @@ export function rateLimited(stamps: readonly number[], now: number): boolean {
 }
 
 /**
+ * Public FormSubmit address. The mailbox is the destination the form was
+ * built for. It is not an API secret. A custom https URL replaces it.
+ */
+export const DEFAULT_FEEDBACK_URL = 'https://formsubmit.co/ajax/inspiromaciek@gmail.com'
+
+/**
  * Public HTTPS endpoint, or a local http URL for tests.
- * A secret never belongs here. An empty value means delivery is off.
+ * An empty value uses the built-in form endpoint. A secret never belongs here.
  */
 export function feedbackEndpoint(raw: string | null | undefined = import.meta.env.VITE_FIELD_FEEDBACK_URL): string | null {
-  if (!raw?.trim()) return null
+  if (!raw?.trim()) return DEFAULT_FEEDBACK_URL
   try {
     const url = new URL(raw.trim())
     if (url.protocol === 'https:') return url.toString()
@@ -167,6 +173,39 @@ export function feedbackEndpoint(raw: string | null | undefined = import.meta.en
     return null
   } catch {
     return null
+  }
+}
+
+export function usesFormSubmit(endpoint: string): boolean {
+  return endpoint.includes('formsubmit.co')
+}
+
+export function feedbackRequestBody(endpoint: string, text: string, replyEmail: string | null): Record<string, string | null> {
+  if (usesFormSubmit(endpoint)) {
+    return {
+      _subject: FEEDBACK_SUBJECT,
+      _captcha: 'false',
+      _template: 'box',
+      message: text,
+      _replyto: replyEmail ?? '',
+    }
+  }
+  return {
+    subject: FEEDBACK_SUBJECT,
+    text,
+    replyEmail,
+  }
+}
+
+export function feedbackAccepted(status: number, contentType: string, body: string, formSubmit: boolean): boolean {
+  if (status < 200 || status >= 300) return false
+  if (!formSubmit) return true
+  if (!contentType.toLowerCase().includes('json')) return false
+  try {
+    const data = JSON.parse(body) as { success?: unknown }
+    return data.success === true || data.success === 'true'
+  } catch {
+    return false
   }
 }
 
@@ -284,17 +323,15 @@ export async function submitFeedback(input: {
   inflight = true
   try {
     const fetchImpl = input.fetchImpl ?? fetch
+    const formSubmit = usesFormSubmit(endpoint)
     const response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({
-        subject: FEEDBACK_SUBJECT,
-        text,
-        replyEmail,
-        company: input.draft.company,
-      }),
+      body: JSON.stringify(feedbackRequestBody(endpoint, text, replyEmail)),
     })
-    if (!response.ok) return { ok: false, reason: 'rejected' }
+    const payload = await response.text()
+    const accepted = feedbackAccepted(response.status, response.headers.get('content-type') ?? '', payload, formSubmit)
+    if (!accepted) return { ok: false, reason: 'rejected' }
     stamps.write([...history, now])
     return { ok: true }
   } catch {

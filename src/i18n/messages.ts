@@ -379,6 +379,7 @@ export type Messages = {
     backgroundRemove: string
     backgroundSession: string
     backgroundReject: string
+    backgroundPaste: string
     spectral: {
       title: string
       experimental: string
@@ -1744,8 +1745,9 @@ export const EN: Messages = {
     backgroundOpacity: 'Opacity',
     backgroundGrain: 'Grain',
     backgroundRemove: 'Remove',
-    backgroundSession: 'Image stays for this session only.',
+    backgroundSession: 'Image stays for this session only. With this panel open, paste a JPG or PNG.',
     backgroundReject: 'Use a JPG or PNG.',
+    backgroundPaste: 'Paste image',
     spectral: {
       title: 'Spectral Bands',
       experimental: 'Experimental',
@@ -3294,8 +3296,9 @@ export const PL: Messages = {
     backgroundOpacity: 'Krycie',
     backgroundGrain: 'Ziarno',
     backgroundRemove: 'Usuń',
-    backgroundSession: 'Obraz zostaje tylko na tę sesję.',
+    backgroundSession: 'Obraz zostaje tylko na tę sesję. Przy otwartym panelu wklej JPG albo PNG.',
     backgroundReject: 'Użyj pliku JPG lub PNG.',
+    backgroundPaste: 'Wklej obraz',
     spectral: {
       title: 'Pasma widmowe',
       experimental: 'Eksperymentalne',

@@ -5,9 +5,11 @@ import { introCopy, TOUR_IDS } from './copy'
 import {
   clearFeedbackDraft,
   emptyFeedbackDraft,
+  feedbackAccepted,
   feedbackEndpoint,
   feedbackIssues,
   feedbackMessage,
+  feedbackRequestBody,
   memoryStampStore,
   rateLimited,
   readFeedbackDraft,
@@ -152,8 +154,8 @@ describe('feedback delivery', () => {
     expect(readFeedbackDraft().ideas).toBe('')
   })
 
-  it('refuses a public secret and a non-local http address', () => {
-    expect(feedbackEndpoint('')).toBeNull()
+  it('uses the public form when no custom endpoint is set', () => {
+    expect(feedbackEndpoint('')).toContain('https://formsubmit.co/ajax/')
     expect(feedbackEndpoint('http://example.com/feedback')).toBeNull()
     expect(feedbackEndpoint('https://feedback.example/post')).toBe('https://feedback.example/post')
     expect(feedbackEndpoint('http://127.0.0.1:8787/')).toBe('http://127.0.0.1:8787/')
@@ -219,8 +221,18 @@ describe('feedback delivery', () => {
     expect(body.text).not.toContain('RESEND')
   })
 
-  it('does not embed a mailbox secret in the client', () => {
-    expect(feedbackSource).not.toContain('gmail.com')
+  it('posts the public form fields and accepts only a real success', () => {
+    const body = feedbackRequestBody('https://formsubmit.co/ajax/example', 'note', 'a@b.c')
+    expect(body._subject).toBe(FEEDBACK_SUBJECT)
+    expect(body.message).toBe('note')
+    expect(body._replyto).toBe('a@b.c')
+    expect(feedbackAccepted(200, 'application/json', '{"success":"true"}', true)).toBe(true)
+    expect(feedbackAccepted(200, 'text/html', '<html>', true)).toBe(false)
+    expect(feedbackAccepted(403, 'application/json', '{"success":"true"}', true)).toBe(false)
+  })
+
+  it('does not embed a mail API secret in the client', () => {
+    expect(feedbackSource).toContain('formsubmit.co')
     expect(feedbackSource).not.toContain('RESEND_API_KEY')
     expect(hostSource).not.toContain('AudioEngine')
     expect(hostSource).not.toContain('togglePlay')

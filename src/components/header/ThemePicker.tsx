@@ -99,6 +99,7 @@ export function ThemePicker({ compact = false }: { compact?: boolean }) {
         aria-expanded={open}
         aria-label={t.theme.named(triggerLabel)}
         title={triggerLabel}
+        data-theme-trigger=""
         onClick={() => setOpen((v) => !v)}
       >
         <span className={styles.swatches} aria-hidden="true">

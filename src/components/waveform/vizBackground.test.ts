@@ -6,6 +6,7 @@ import {
   VIZ_BG_OPACITY_KEY,
   VIZ_BG_OPACITY_MAX,
   acceptVizBackgroundFile,
+  firstAcceptedImageFile,
   clampVizBgGrain,
   clampVizBgOpacity,
   clearVizBackgroundImage,
@@ -86,6 +87,13 @@ describe('viz background settings', () => {
     expect(acceptVizBackgroundFile({ type: 'image/gif', name: 'a.gif' })).toBe(false)
     expect(acceptVizBackgroundFile({ type: 'image/webp', name: 'a.png' })).toBe(false)
     expect(acceptVizBackgroundFile({ type: '', name: 'notes.txt' })).toBe(false)
+  })
+
+  it('keeps the first pasted JPG or PNG', () => {
+    const gif = new File(['gif'], 'a.gif', { type: 'image/gif' })
+    const png = new File(['png'], 'pasted.png', { type: 'image/png' })
+    expect(firstAcceptedImageFile([gif, png])).toBe(png)
+    expect(firstAcceptedImageFile([gif])).toBeNull()
   })
 
   it('caps opacity and grain and hides the scrim when the photo is invisible', () => {

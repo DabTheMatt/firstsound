@@ -7,6 +7,7 @@ export const TOUR_SPOTLIGHT: Record<TourId, string | null> = {
   edit: '[data-stable-region="transport"]',
   tone: '[data-guide-target="technical.effectChain"], [data-guide-target="effect.reverb"], [data-guide-target="effect.eq"]',
   access: '[data-settings-toggle]',
+  look: '[data-theme-trigger]',
   save: '[data-export-open], [data-simple-export], [data-guide-target="export.open"]',
   together: null,
 }

@@ -1,8 +1,8 @@
 # FIELD feedback delivery
 
-The form in FIELD posts JSON to `VITE_FIELD_FEEDBACK_URL`. That address is public. The mail secret stays on the worker.
+Without a custom URL, the form posts to the public FormSubmit address for `inspiromaciek@gmail.com`. A real browser has to get a JSON success back before FIELD shows thanks. This environment received a Cloudflare challenge from FormSubmit, so inbox delivery was not confirmed here.
 
-Sending is **not active** until the steps below are done and a real message arrives at `inspiromaciek@gmail.com`.
+`VITE_FIELD_FEEDBACK_URL` replaces that address with your own https endpoint. The mail secret stays on the worker.
 
 ## 1. Deploy the worker
 

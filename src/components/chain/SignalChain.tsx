@@ -230,7 +230,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
                     openInsert(index - 1, event.currentTarget)
                   }}
                 >
-                  +
+                  {t.chain.addEffect}
                 </button>
               </span>
             ) : null}
@@ -393,7 +393,7 @@ export function SignalChain({ chain, selectedId, onSelect, touch, minimal = fals
           {...guideTargetAttrs('technical.addEffect', '1')}
           onClick={(event) => openInsert(Math.max(0, chain.length - 2), event.currentTarget)}
         >
-          +
+          {t.chain.addEffect}
         </button>
       ) : null}
       {addAt != null && menuPos

@@ -2099,11 +2099,6 @@ export default function App() {
               onWorkspace={activateWorkspace}
               contextClosed={contextLevel === 'closed' && !eqStrips}
               onOpenContext={() => setContextLevel('compact')}
-              guideLabel={guideChrome(locale).guideMe}
-              onOpenGuide={() => {
-            rememberTrigger('guide')
-            dispatchGuide({ type: 'open-library' })
-          }}
             />
           </div>
         ) : (

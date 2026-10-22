@@ -6,6 +6,7 @@ import {
   VIZ_BG_OPACITY_MAX,
   clearVizBackgroundImage,
   getVizBackground,
+  firstAcceptedImageFile,
   loadVizBackgroundFile,
   setVizBackgroundGrain,
   setVizBackgroundOpacity,
@@ -13,6 +14,26 @@ import {
 } from './vizBackground'
 import barStyles from './WaveformToolbar.module.css'
 import styles from './BackgroundControl.module.css'
+
+async function pasteClipboardImage(): Promise<boolean | null> {
+  const clipboard = navigator.clipboard
+  if (!clipboard || typeof clipboard.read !== 'function') return null
+  try {
+    const items = await clipboard.read()
+    const files: File[] = []
+    for (const item of items) {
+      const type = item.types.find((entry) => entry === 'image/png' || entry === 'image/jpeg')
+      if (!type) continue
+      const blob = await item.getType(type)
+      files.push(new File([blob], type === 'image/png' ? 'pasted.png' : 'pasted.jpg', { type }))
+    }
+    const file = firstAcceptedImageFile(files)
+    if (!file) return false
+    return loadVizBackgroundFile(file)
+  } catch {
+    return null
+  }
+}
 
 function percent(value: number, max: number): number {
   if (!(max > 0)) return 0
@@ -68,11 +89,28 @@ export function BackgroundControl({ appearance = 'icon' }: Props) {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
+    const onPaste = (event: ClipboardEvent) => {
+      const data = event.clipboardData
+      const files: File[] = data ? [...data.files] : []
+      if (!files.length && data) {
+        for (const item of data.items) {
+          if (item.kind !== 'file') continue
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      const file = firstAcceptedImageFile(files)
+      if (!file) return
+      event.preventDefault()
+      void loadVizBackgroundFile(file).then((ok) => setRejected(!ok))
+    }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
+    document.addEventListener('paste', onPaste)
     return () => {
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
+      document.removeEventListener('paste', onPaste)
     }
   }, [open])
 
@@ -124,6 +162,18 @@ export function BackgroundControl({ appearance = 'icon' }: Props) {
                 }}
               >
                 {copy.backgroundLoad}
+              </button>
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => {
+                  void pasteClipboardImage().then((ok) => {
+                    if (ok === null) return
+                    setRejected(!ok)
+                  })
+                }}
+              >
+                {copy.backgroundPaste}
               </button>
               <input
                 ref={fileRef}
