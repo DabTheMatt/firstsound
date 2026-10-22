@@ -68,38 +68,27 @@ export function HelpPanel({ onClose }: Props) {
     if (readHelpScope() === 'context') setIntroPinned(true)
   }, [])
 
+  const scopeSwitch = (
+    <div className={styles.scope} role="radiogroup" aria-label={copy.scopeLabel}>
+      <label className={styles.scopeOption}>
+        <input type="radio" name={scopeName} checked={scope === 'context'} onChange={() => choose('context')} />
+        <span>{copy.scopeContext}</span>
+      </label>
+      <label className={styles.scopeOption}>
+        <input type="radio" name={scopeName} checked={scope === 'general'} onChange={() => choose('general')} />
+        <span>{copy.scopeGeneral}</span>
+      </label>
+    </div>
+  )
+
   return (
-    <IntroDialog titleId={titleId} closeLabel={copy.close} wide onClose={onClose}>
+    <IntroDialog titleId={titleId} closeLabel={copy.close} wide leading={scopeSwitch} onClose={onClose}>
       <div className={`${styles.body} ${styles.helpBody}`}>
-        <div className={styles.scope} role="radiogroup" aria-label={copy.scopeLabel}>
-          <label className={styles.scopeOption}>
-            <input type="radio" name={scopeName} checked={scope === 'context'} onChange={() => choose('context')} />
-            <span>{copy.scopeContext}</span>
-          </label>
-          <label className={styles.scopeOption}>
-            <input type="radio" name={scopeName} checked={scope === 'general'} onChange={() => choose('general')} />
-            <span>{copy.scopeGeneral}</span>
-          </label>
-        </div>
         <h2 id={titleId} className={styles.topicTitle} tabIndex={-1} data-dialog-initial="">
           {scope === 'context' ? topic.title : copy.scopeGeneral}
         </h2>
         {scope === 'context' ? (
           <section className={styles.section} aria-labelledby={titleId} data-help-topic={topicId}>
-            {topic.body.map((paragraph) => (
-              <p key={paragraph}>
-                <HelpRich text={paragraph} />
-              </p>
-            ))}
-            {topic.points ? (
-              <ul className={styles.points}>
-                {topic.points.map((point) => (
-                  <li key={point}>
-                    <HelpRich text={point} />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
             {detail ? (
               <section className={styles.paramNote} data-help-param={detail.id} aria-labelledby="intro-help-param">
                 <h3 id="intro-help-param">{detail.title}</h3>
@@ -116,6 +105,21 @@ export function HelpPanel({ onClose }: Props) {
                   </ul>
                 ) : null}
               </section>
+            ) : (
+              <>
+            {topic.body.map((paragraph) => (
+              <p key={paragraph}>
+                <HelpRich text={paragraph} />
+              </p>
+            ))}
+            {topic.points ? (
+              <ul className={styles.points}>
+                {topic.points.map((point) => (
+                  <li key={point}>
+                    <HelpRich text={point} />
+                  </li>
+                ))}
+              </ul>
             ) : null}
             {extra.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -137,6 +141,8 @@ export function HelpPanel({ onClose }: Props) {
                 </ul>
               </>
             ) : null}
+              </>
+            )}
           </section>
         ) : null}
         {scope === 'general' ? <div className={styles.sections}>

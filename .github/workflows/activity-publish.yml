@@ -1,9 +1,7 @@
 name: Publish activity snapshot
 
 on:
-  schedule:
-    # After the hourly Apps Script sync. A missed hour still leaves the last good file.
-    - cron: '15 * * * *'
+  # Hourly refresh is off. Start this workflow by hand when a new snapshot should publish.
   workflow_dispatch:
 
 permissions:

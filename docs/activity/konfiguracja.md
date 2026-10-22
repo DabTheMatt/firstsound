@@ -163,6 +163,6 @@ Zestaw starszy niż trzy godziny (trzy pominięte cykle 60-minutowe) zostaje na 
 
 ## Publikacja automatyczna
 
-Apps Script dalej zapisuje tylko prywatny `field-activity-snapshot.json`. Nie woła GitHuba. Workflow `.github/workflows/activity-publish.yml` raz na godzinę pobiera ten jeden plik kontem usługi, uruchamia `validatePublicSnapshot` i commituje wyłącznie `public/activity/snapshot.json`, gdy zestaw jest poprawny i różni się od pliku na `main`. Zły JSON, niekompletny skan i błąd pobrania nie podmieniają ostatniego dobrego pliku. Push uruchamia dotychczasowy workflow GitHub Pages.
+Apps Script dalej zapisuje tylko prywatny `field-activity-snapshot.json`. Nie woła GitHuba. Automatyczne odświeżanie jest wyłączone. Workflow `.github/workflows/activity-publish.yml` nie ma harmonogramu. Uruchamia się ręcznie, pobiera ten jeden plik kontem usługi, uruchamia `validatePublicSnapshot` i commituje wyłącznie `public/activity/snapshot.json`, gdy zestaw jest poprawny i różni się od pliku na `main`. Zły JSON, niekompletny skan i błąd pobrania nie podmieniają ostatniego dobrego pliku. Push uruchamia dotychczasowy workflow GitHub Pages.
 
 Sekrety są tylko w GitHub Actions: `ACTIVITY_DRIVE_CREDENTIALS`, `ACTIVITY_SNAPSHOT_FILE_ID` i `ACTIVITY_COMMIT_TOKEN`. Nie ma ich w kodzie FIELD ani w przeglądarce. Konto usługi ma dostęp Viewer wyłącznie do pliku snapshotu. Folder nagrań zostaje prywatny.

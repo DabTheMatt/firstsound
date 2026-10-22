@@ -68,8 +68,16 @@
 
 .pinRow {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  padding: 8px 10px 0;
+  gap: 12px;
+  min-height: 36px;
+  padding: 8px 12px 0;
+}
+
+.pinLead {
+  margin-right: auto;
+  min-width: 0;
 }
 
 .pin {
@@ -270,9 +278,7 @@
 }
 
 .paramNote {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle);
+  margin-top: 8px;
 }
 
 .paramNote h3 {

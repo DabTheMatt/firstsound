@@ -11,10 +11,12 @@ type Props = {
   wide?: boolean
   onClose: () => void
   overlay?: ReactNode
+  /** Sits on the left of the top row, opposite the pin control. */
+  leading?: ReactNode
   children: ReactNode
 }
 
-export function IntroDialog({ titleId, describedBy, closeLabel, wide = false, onClose, overlay = null, children }: Props) {
+export function IntroDialog({ titleId, describedBy, closeLabel, wide = false, onClose, overlay = null, leading = null, children }: Props) {
   const copy = useIntroCopy()
   const pinned = useSyncExternalStore(subscribeIntro, () => getIntroState().pinned, () => false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -76,6 +78,7 @@ export function IntroDialog({ titleId, describedBy, closeLabel, wide = false, on
         }}
       >
         <div className={styles.pinRow}>
+          {leading ? <div className={styles.pinLead}>{leading}</div> : null}
           <button
             type="button"
             className={styles.pin}
