@@ -202,7 +202,16 @@
   background: var(--accent-soft);
 }
 
-/* Workspace modes match the rest of the bar: same type, soft wash, no pill. */
+/* Workspace modes match the rest of the bar: same type, soft wash, no pill.
+   The bar tokens live on the technical shell. Simple and Sensory headers are not that shell. */
+
+:global([data-technical-ui='workspace']) {
+  --ws-bar-size: var(--type-11);
+  --ws-bar-weight: 500;
+  --ws-bar-track: 0.08em;
+  --ws-bar-hover: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --ws-bar-on: color-mix(in srgb, var(--text-primary) 16%, transparent);
+}
 
 :global([data-technical-ui='workspace']) .modeCluster button {
   border-radius: 4px !important;
