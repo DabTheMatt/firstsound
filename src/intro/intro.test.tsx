@@ -280,6 +280,7 @@ describe('feedback delivery', () => {
     expect(feedbackNeedsActivation('The form was submitted successfully.')).toBe(false)
     const init = feedbackFetchInit('https://formsubmit.co/ajax/example', 'note', 'a@b.c')
     expect(init.headers['content-type']).toBeUndefined()
+    expect(init.headers.accept).toBeUndefined()
     expect(init.body).toBeInstanceOf(FormData)
     expect((init.body as FormData).get('_subject')).toBe(FEEDBACK_SUBJECT)
     expect((init.body as FormData).get('message')).toBe('note')
@@ -306,6 +307,7 @@ describe('feedback delivery', () => {
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit
     const headers = init.headers as Record<string, string>
     expect(headers['content-type']).toBeUndefined()
+    expect(headers.accept).toBeUndefined()
     expect(init.body).toBeInstanceOf(FormData)
     expect((init.body as FormData).get('message')).toContain('keep the confirmation')
 

@@ -198,10 +198,11 @@ export function feedbackRequestBody(endpoint: string, text: string, replyEmail: 
 }
 
 /**
- * FormSubmit rejects a JSON body at the preflight. That OPTIONS request does not
- * carry clearance cookies, so a Cloudflare challenge never answers it and the
- * dialog stays on Sending with no confirmation. Multipart is a simple request:
- * the browser posts directly and can still read a JSON success.
+ * `Content-Type: application/json` forces a CORS preflight. FormSubmit's edge
+ * answers that OPTIONS request without `Access-Control-Allow-Origin`, so the
+ * browser rejects the send or leaves the dialog on Sending. Multipart is a
+ * simple request: the browser posts directly and can still read the JSON body.
+ * Leave Accept unset. Safari preflights a non-standard Accept value.
  */
 export function feedbackFetchInit(
   endpoint: string,
@@ -213,7 +214,7 @@ export function feedbackFetchInit(
     for (const [key, value] of Object.entries(feedbackRequestBody(endpoint, text, replyEmail))) {
       if (typeof value === 'string' && value.length > 0) body.append(key, value)
     }
-    return { headers: { accept: 'application/json' }, body }
+    return { headers: {}, body }
   }
   return {
     headers: { 'content-type': 'application/json', accept: 'application/json' },
