@@ -40,6 +40,8 @@ export type HelpTopicId =
   | 'fx-reverb'
   | 'fx-compressor'
   | 'fx-limiter'
+  | 'fx-input'
+  | 'fx-output'
 
 export type HelpTopicCopy = {
   title: string
@@ -84,6 +86,7 @@ export type IntroCopy = {
   scopeLabel: string
   scopeContext: string
   scopeGeneral: string
+  parametersHeading: string
   topics: Record<HelpTopicId, HelpTopicCopy>
   helpSections: readonly HelpSectionCopy[]
   replayWelcome: string
@@ -267,6 +270,7 @@ const pl: IntroCopy = {
   scopeLabel: 'Zakres pomocy',
   scopeContext: 'Kontekstowa',
   scopeGeneral: 'Ogólna',
+  parametersHeading: 'Parametry',
   topics: {
     simple: {
       title: 'Prosty',
@@ -424,6 +428,20 @@ const pl: IntroCopy = {
       body: [
         'Limiter trzyma szczyty tego miejsca w łańcuchu.',
         'Chaos włącza ten limiter, jeśli był pominięty albo go nie było. Nie dodaje drugiego limitera.',
+      ],
+    },
+    'fx-input': {
+      title: 'Wejście',
+      body: [
+        'Wejście stoi na początku łańcucha. Wzmocnienie, szybkość i wysokość kształtują źródło, zanim sygnał wejdzie w efekty.',
+        'To nie jest głośność wyjścia ani głośność śladu. Normalizacja jest osobną czynnością na zaznaczeniu.',
+      ],
+    },
+    'fx-output': {
+      title: 'Wyjście',
+      body: [
+        'Wyjście jest ostatnim poziomem instrumentu, po efektach.',
+        'Wyciszenie milczy na wyjściu i nie usuwa modułów z łańcucha.',
       ],
     },
   },
@@ -695,6 +713,7 @@ const en: IntroCopy = {
   scopeLabel: 'Help scope',
   scopeContext: 'Contextual',
   scopeGeneral: 'General',
+  parametersHeading: 'Parameters',
   topics: {
     simple: {
       title: 'Simple',
@@ -852,6 +871,20 @@ const en: IntroCopy = {
       body: [
         'The limiter holds the peaks at this place in the chain.',
         'Chaos turns this limiter on if it was bypassed or missing. It does not add a second limiter.',
+      ],
+    },
+    'fx-input': {
+      title: 'Input',
+      body: [
+        'Input is the start of the chain. Gain, speed, and pitch shape the source before the signal reaches the effects.',
+        'This is not output level and it is not track volume. Normalize is a separate action on the selection.',
+      ],
+    },
+    'fx-output': {
+      title: 'Output',
+      body: [
+        'Output is the last level of the instrument, after the effects.',
+        'Mute silences the output and does not remove modules from the chain.',
       ],
     },
   },

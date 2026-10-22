@@ -23,7 +23,7 @@ import { HelpPanel } from './HelpPanel'
 import hostSource from './IntroHost.tsx?raw'
 import feedbackSource from './feedback.ts?raw'
 import { visibleBox } from './spotlight'
-import { helpTopic, publishHelpPlace, resetHelpPlace } from './context'
+import { getHelpDetail, helpTopic, publishHelpDetail, publishHelpPlace, resetHelpPlace } from './context'
 import { markWelcomeSeen, parseIntroRecord, readIntroRecord, setWelcomeAtStartup, shouldShowWelcome, welcomeAtStartup, writeIntroRecord, INTRO_STORAGE_KEY } from './storage'
 import { WelcomePanel } from './WelcomePanel'
 import { FeedbackForm } from './FeedbackForm'
@@ -109,13 +109,24 @@ describe('help topic', () => {
 
   it('follows the technical picture, and Focus when it is on', () => {
     expect(helpTopic()).toBe('wave')
-    expect(helpTopic({ mode: 'simple', view: 'eq', focused: true, effect: 'eq' })).toBe('simple')
-    expect(helpTopic({ mode: 'sensory', view: 'wave', focused: false, effect: null })).toBe('sensory')
-    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false, effect: null })).toBe('eq')
-    expect(helpTopic({ mode: 'technical', view: 'eq', focused: true, effect: 'filter' })).toBe('eq-focus')
-    expect(helpTopic({ mode: 'technical', view: 'wave', focused: false, effect: 'filter' })).toBe('fx-filter')
-    publishHelpPlace({ mode: 'technical', view: 'fft', focused: true, effect: null })
+    expect(helpTopic({ mode: 'simple', view: 'eq', focused: true, effect: 'eq', follow: 'view' })).toBe('simple')
+    expect(helpTopic({ mode: 'sensory', view: 'wave', focused: false, effect: null, follow: 'view' })).toBe('sensory')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false, effect: null, follow: 'view' })).toBe('eq')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: true, effect: 'filter', follow: 'effect' })).toBe('eq-focus')
+    expect(helpTopic({ mode: 'technical', view: 'wave', focused: false, effect: 'filter', follow: 'effect' })).toBe('fx-filter')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false, effect: 'reverb', follow: 'effect' })).toBe('fx-reverb')
+    expect(helpTopic({ mode: 'technical', view: 'eq', focused: false, effect: 'reverb', follow: 'view' })).toBe('eq')
+    publishHelpPlace({ mode: 'technical', view: 'fft', focused: true, effect: null, follow: 'view' })
     expect(helpTopic()).toBe('fft-focus')
+  })
+
+  it('keeps a parameter note when only the follow target changes', () => {
+    publishHelpPlace({ mode: 'technical', view: 'wave', focused: false, effect: 'reverb', follow: 'view' })
+    publishHelpDetail('reverbDecay')
+    publishHelpPlace({ mode: 'technical', view: 'wave', focused: false, effect: 'reverb', follow: 'effect' })
+    expect(getHelpDetail()).toBe('reverbDecay')
+    publishHelpPlace({ mode: 'technical', view: 'wave', focused: false, effect: 'delay', follow: 'effect' })
+    expect(getHelpDetail()).toBeNull()
   })
 })
 
@@ -304,7 +315,7 @@ describe('intro markup', () => {
     expect(form).toContain('Np. znalezienie funkcji, zrozumienie parametru, obsługa na telefonie…')
     expect(form).not.toContain('Co działa dobrze, a co można poprawić?')
 
-    publishHelpPlace({ mode: 'technical', view: 'eq', focused: true, effect: null })
+    publishHelpPlace({ mode: 'technical', view: 'eq', focused: true, effect: null, follow: 'view' })
     const help = renderToStaticMarkup(
       <I18nProvider>
         <HelpPanel onClose={() => undefined} />

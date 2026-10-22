@@ -82,10 +82,7 @@ import { ParamActionPair } from '../random/ParamActionPair'
 import { inspectorAccentStyle, TrackIdentity } from './TrackIdentity'
 import { primaryParamIds } from '../workspace/disclosure'
 import styles from './Inspector.module.css'
-import { ExplainMark } from '../../help/ExplainMark'
 import helpStyles from '../../help/ExplainHost.module.css'
-import { moduleHelpId } from '../../help/resolve'
-
 export type EditActions = {
   canCopy: boolean
   canCut: boolean
@@ -305,7 +302,7 @@ function ToolInspector({
     <>
       <div className={styles.head}>
         <TrackIdentity snap={snap} />
-        <h2 className={`${styles.title} ${helpStyles.hostTitle}`}>{t.inspector.edit}<ExplainMark fallback="wave.editor" /></h2>
+        <h2 className={`${styles.title} ${helpStyles.hostTitle}`}>{t.inspector.edit}</h2>
         {onHideInspector ? (
           <div className={styles.headActions}>
             <InspectorEye open onClick={onHideInspector} />
@@ -639,7 +636,6 @@ function ModuleInspector({
           <div className={styles.head}>
             <h2 className={`${styles.title} ${helpStyles.hostTitle}`} id={`module-${instanceId}-title`}>
               {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
-              <ExplainMark fallback={moduleHelpId(type)} />
             </h2>
             <div className={styles.headActions}>
               {type !== 'gain' && type !== 'output' ? (
@@ -670,7 +666,6 @@ function ModuleInspector({
         <TrackIdentity snap={snap} />
         <h2 className={`${styles.title} ${helpStyles.hostTitle}`} id={`module-${instanceId}-title`}>
           {mod ? moduleLabel(mod, snap.chain, t.modules) : t.modules[type]}
-          <ExplainMark fallback={moduleHelpId(type)} />
         </h2>
         <div className={styles.headActions}>
           {type !== 'gain' && type !== 'output' ? (

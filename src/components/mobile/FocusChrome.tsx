@@ -28,6 +28,8 @@ import { automationFocusLfoCue, parameterModulationState } from '../modulation/m
 import { automationEffectLabel, automationLaneTitle } from '../waveform/automationLabels'
 import { formatAutomationNodeValue } from '../waveform/automationValue'
 import { SegmentCurveControl } from '../waveform/SegmentCurveControl'
+import { openContextualHelp } from '../../intro/openContextual'
+import { useIntroCopy } from '../../intro/useIntroCopy'
 import { EqFocusCluster } from './EqFocusCluster'
 import { FftFocusTools } from './FftFocusTools'
 import styles from './FocusChrome.module.css'
@@ -94,6 +96,7 @@ export function FocusChrome({
   touch = false,
 }: Props) {
   const { t } = useI18n()
+  const intro = useIntroCopy()
   const snap = useEngine()
   const track = snap.tracks.find((item) => item.id === snap.selectedTrackId)
   const title =
@@ -103,7 +106,7 @@ export function FocusChrome({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       if (isTypingTarget(event.target) || event.target instanceof HTMLSelectElement) return
-      if (document.querySelector('[data-focus-popover]')) return
+      if (document.querySelector('[data-focus-popover], [data-intro-dialog]')) return
       onExit()
     }
     window.addEventListener('keydown', onKey)
@@ -135,6 +138,16 @@ export function FocusChrome({
           {workspace === 'wave' ? <WaveTools edit={edit} /> : null}
         </div>
         <div className={styles.actions} data-focus-zone="actions">
+          <button
+            type="button"
+            className={styles.hit}
+            data-focus-help=""
+            aria-label={intro.helpLabel}
+            title={intro.helpLabel}
+            onClick={() => openContextualHelp()}
+          >
+            <span aria-hidden="true">?</span>
+          </button>
           {workspace === 'fft' && touch ? <FftFocusTools /> : null}
           <FocusTransport
             playing={playing}

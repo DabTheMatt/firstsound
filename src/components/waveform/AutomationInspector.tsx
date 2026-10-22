@@ -23,7 +23,6 @@ import { AutomationColorPicker } from './AutomationColorPicker'
 import { automationEffectLabel, automationLaneTitle } from './automationLabels'
 import { SegmentCurveControl } from './SegmentCurveControl'
 import styles from './AutomationInspector.module.css'
-import { ExplainMark } from '../../help/ExplainMark'
 import helpStyles from '../../help/ExplainHost.module.css'
 
 let rememberedScroll = 0
@@ -159,7 +158,6 @@ export function AutomationInspector({ sheet, compact, onHideInspector, onCommit,
         </span>
         <h2 className={`${styles.laneTitle} ${helpStyles.hostTitle}`} title={titleFor(selected)}>
           {titleFor(selected)}
-          <ExplainMark fallback="auto.lane" />
         </h2>
         {onHideInspector ? (
           <div className={inspectorStyles.headActions}>

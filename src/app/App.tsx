@@ -60,7 +60,9 @@ import { OPEN_MANUAL_EVENT } from '../help/manual'
 import { IntroHost } from '../intro/IntroHost'
 import { IntroMenuButtons, WelcomeStartupControl } from '../intro/IntroActions'
 import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
-import { helpEffectFrom, publishHelpPlace } from '../intro/context'
+import { helpEffectFrom, publishHelpDetail, publishHelpPlace, type HelpFollow } from '../intro/context'
+import { isHelpParam } from '../intro/effectHelp'
+import { openContextualHelp } from '../intro/openContextual'
 import { openIntro } from '../intro/session'
 import { FIELD_VERSION } from '../version'
 import { clearPointerInteraction, installPointerSession } from './pointerSession'
@@ -113,7 +115,6 @@ import { colorSoundsEqual, NEUTRAL_COLOR_SOUND, type ColorSound } from '../senso
 import { defaultSensoryValues, sensoryValuesEqual, type SensoryValues } from '../sensory/sensoryState'
 import { useTechnicalInterface } from './useTechnicalInterface'
 import { useEqWorkspaceLayout } from './useEqWorkspaceLayout'
-import { ExplainMarksSetting } from '../components/workspace/ExplainMarksSetting'
 import { TechnicalInterfaceSetting } from '../components/workspace/TechnicalInterfaceSetting'
 import { WorkspaceTabs } from '../components/workspace/WorkspaceTabs'
 import { ContextBar } from '../components/workspace/ContextBar'
@@ -276,6 +277,10 @@ export default function App() {
     instanceId: 'gain-1',
     type: 'gain',
   })
+  const [helpFollow, setHelpFollowState] = useState<HelpFollow>('view')
+  const setHelpFollow = useCallback((next: HelpFollow) => {
+    setHelpFollowState((current) => (current === next ? current : next))
+  }, [])
   const [inspectorMemory, setInspectorMemory] = useState<TrackInspectorMemory>({})
   const focusRef = useRef(focus)
   const eqViewHoldRef = useRef<EqViewHold | null>(null)
@@ -887,6 +892,7 @@ export default function App() {
 
   const selectModule = (instanceId: string, pane?: 'main' | 'advanced') => {
     eqViewHoldRef.current = null
+    setHelpFollow('effect')
     engine.focusEffect(instanceId)
     const live = engine.getSnapshot().chain
     const mod = live.find((m) => m.instanceId === instanceId)
@@ -1122,8 +1128,30 @@ export default function App() {
       view: activeFocus ?? workspaceId,
       focused: uiMode === 'technical' && activeFocus != null,
       effect: helpEffect,
+      follow: activeFocus ? 'view' : helpFollow,
     })
-  }, [uiMode, activeFocus, workspaceId, helpEffect])
+  }, [uiMode, activeFocus, workspaceId, helpEffect, helpFollow])
+
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target || target.closest('[data-intro-dialog], [role="menu"]')) return
+      const paramId = target.closest('[data-param-id]')?.getAttribute('data-param-id')
+      if (isHelpParam(paramId)) {
+        publishHelpDetail(paramId)
+        setHelpFollow('effect')
+        openContextualHelp()
+        return
+      }
+      if (target.closest('[data-effect-tab], [data-attention-region="inspector"]')) {
+        publishHelpDetail(null)
+        setHelpFollow('effect')
+        openContextualHelp()
+      }
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [setHelpFollow])
 
   useEffect(() => {
     const restore = () => {
@@ -1139,6 +1167,8 @@ export default function App() {
   }, [])
 
   const activateWorkspace = (id: TechnicalWorkspaceId) => {
+    setHelpFollow('view')
+    publishHelpDetail(null)
     if (id === 'hearing') {
       setHearingBoard(true)
       const current = readStoredHearingSettings()
@@ -1303,7 +1333,6 @@ export default function App() {
             <span>{t.lang.group}</span>
             <LanguageSwitch />
           </div>
-          <ExplainMarksSetting />
           <button type="button" onClick={() => setSettingsPage('access')}>
             {t.a11y.open}
           </button>
