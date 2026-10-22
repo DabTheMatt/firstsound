@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { rememberTrigger } from '../a11y/dialogFocus'
+import { helpClicksOn, setHelpClicks, subscribeHelpClicks } from './helpClick'
 import { EnvelopeIcon } from './icons'
 import { openIntro } from './session'
 import { readIntroRecord, setWelcomeAtStartup, subscribeIntroRecord } from './storage'
@@ -72,6 +73,22 @@ export function WelcomeStartupControl({ onShow }: StartupProps) {
         }}
       />
       <span>{copy.welcomeStartup}</span>
+    </label>
+  )
+}
+
+/** Settings mark. Checked while a parameter click opens help. */
+export function HelpClickControl() {
+  const copy = useIntroCopy()
+  const on = useSyncExternalStore(subscribeHelpClicks, helpClicksOn, () => true)
+  return (
+    <label className={styles.menuCheck}>
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(event) => setHelpClicks(event.target.checked)}
+      />
+      <span>{on ? copy.helpOn : copy.helpOff}</span>
     </label>
   )
 }

@@ -4,6 +4,7 @@ import { peekTrigger, restoreTrigger } from '../a11y/dialogFocus'
 import { FeedbackForm } from './FeedbackForm'
 import { HelpPanel } from './HelpPanel'
 import { closeIntro, getIntroState, openIntro, subscribeIntro } from './session'
+import { claimStartupWelcome } from './startupWelcome'
 import { markWelcomeSeen, shouldShowWelcome } from './storage'
 import { TourPanel } from './TourPanel'
 import { WelcomePanel } from './WelcomePanel'
@@ -20,6 +21,7 @@ export function IntroHost() {
   const state = useSyncExternalStore(subscribeIntro, getIntroState, getIntroState)
 
   useEffect(() => {
+    if (!claimStartupWelcome()) return
     if (shouldShowWelcome() && getIntroState().surface === 'closed') openIntro('welcome')
   }, [])
 

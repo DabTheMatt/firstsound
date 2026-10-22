@@ -42,8 +42,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
   const active = band && band.type !== 'off' ? band : null
   const canAdd = !eq || (bands.length < EQ_MAX_BANDS && planEqBandInsert(bands) != null)
   const shared = eq ? eqInstanceUsesSharedLfo(snap.chain, eq.instanceId) : false
-  const ids = index >= 0 ? eqBandLfoIds(index) : null
-  const knobs = active ? focusEqKnobs(active.type) : []
   const live = eq && snap.liveByInstance[eq.instanceId] ? snap.liveByInstance[eq.instanceId] : snap.liveParams
   const tone = readThemeColors()
   const accent =
@@ -51,6 +49,18 @@ export function EqFocusCluster({ onSelectModule }: Props) {
       ? listedBandColor(active.frequency, eqBandTone(index, tone).curve, freqColors)
       : undefined
   const listed = bands.filter((item) => item.type !== 'off')
+  const panelIndex = active ? index : listed[0] ? bands.indexOf(listed[0]) : -1
+  const panelBand = panelIndex >= 0 ? bands[panelIndex] : undefined
+  const panel = panelBand && panelBand.type !== 'off' ? panelBand : null
+  const reveal = useKnobReveal(panel != null)
+  const snapshot = eq && panel ? { eqId: eq.instanceId, index: panelIndex, band: panel } : null
+  const [frozen, setFrozen] = useState(snapshot)
+  if (snapshot && !sameSlide(snapshot, frozen)) setFrozen(snapshot)
+  const slide = snapshot ?? (reveal.mounted ? frozen : null)
+  const slideIds = slide ? eqBandLfoIds(slide.index) : null
+  const slideKnobs = slide ? focusEqKnobs(slide.band.type) : []
+  const slideAccent =
+    slide ? listedBandColor(slide.band.frequency, eqBandTone(slide.index, tone).curve, freqColors) : undefined
 
   const addBand = () => {
     const live = engine.getSnapshot()
@@ -61,11 +71,6 @@ export function EqFocusCluster({ onSelectModule }: Props) {
     if (created == null) return
     selectEqBand({ instanceId: id, index: created })
     onSelectModule(id)
-  }
-
-  const setType = (type: EqFilterType) => {
-    if (!eq || !active) return
-    engine.setEqBand(index, focusEqTypePatch(active, type), eq.instanceId)
   }
 
   const selectRow = (row: number) => {
@@ -121,7 +126,7 @@ export function EqFocusCluster({ onSelectModule }: Props) {
             })}
           </ul>
         </div>
-        <div className={styles.eqWell} data-eq-well="">
+        <div className={styles.eqWell} data-eq-well="" data-eq-knobs={reveal.shown ? 'true' : 'false'}>
       <div className={styles.eqHead}>
         <button
           type="button"
@@ -133,74 +138,74 @@ export function EqFocusCluster({ onSelectModule }: Props) {
         >
           +
         </button>
-        {active ? (
-          <span className={styles.eqName} style={{ color: accent }}>
-            {t.focus.bandName(index + 1)}
-          </span>
-        ) : null}
-        {eq && active ? (
-          <label className={styles.typeField}>
-            <span className="sr-only">{t.mobile.type}</span>
-            <select
-              data-eq-type=""
-              aria-label={t.mobile.type}
-              value={active.type}
-              onChange={(event) => {
-                setType(event.target.value as EqFilterType)
-                event.currentTarget.blur()
-              }}
-            >
-              {focusEqTypeOptions().map((value) => (
-                <option key={value} value={value}>
-                  {EQ_FILTER_TYPES.find((item) => item.value === value)?.short ?? value}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
         <EffectRandomMenu type="eq" />
-        {eq && active ? (
-          <button
-            type="button"
-            className={styles.hit}
-            aria-label={t.focus.deleteNode}
-            title={t.focus.deleteNode}
-            onClick={() => {
-              engine.setEqBand(index, { type: 'off' }, eq.instanceId)
-              selectEqBand(null)
+      </div>
+      <div className={styles.eqSlide} data-open={reveal.shown ? 'true' : 'false'}>
+        <div className={styles.eqSlideInner}>
+      {slide ? (
+        <>
+      <div className={styles.eqHead}>
+        <span className={styles.eqName} style={{ color: slideAccent }}>
+          {t.focus.bandName(slide.index + 1)}
+        </span>
+        <label className={styles.typeField}>
+          <span className="sr-only">{t.mobile.type}</span>
+          <select
+            data-eq-type=""
+            aria-label={t.mobile.type}
+            value={slide.band.type}
+            onChange={(event) => {
+              engine.setEqBand(slide.index, focusEqTypePatch(slide.band, event.target.value as EqFilterType), slide.eqId)
+              event.currentTarget.blur()
             }}
           >
-            <TrashIcon />
-          </button>
-        ) : null}
+            {focusEqTypeOptions().map((value) => (
+              <option key={value} value={value}>
+                {EQ_FILTER_TYPES.find((item) => item.value === value)?.short ?? value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className={styles.hit}
+          aria-label={t.focus.deleteNode}
+          title={t.focus.deleteNode}
+          onClick={() => {
+            engine.setEqBand(slide.index, { type: 'off' }, slide.eqId)
+            const rest = bands.findIndex((item, row) => row !== slide.index && item.type !== 'off')
+            selectEqBand(rest >= 0 ? { instanceId: slide.eqId, index: rest } : null)
+          }}
+        >
+          <TrashIcon />
+        </button>
       </div>
-      {eq && active ? (
         <div className={styles.eqKnobs}>
-          {knobs.map((field) => {
+          {slideKnobs.map((field) => {
             if (field === 'freq') {
               return (
                 <EqKnob
                   key={field}
                   field={field}
                   label={t.mobile.freq}
-                  valueText={formatFocusHz(liveHz(live, ids?.freq, active.frequency))}
-                  baseValueText={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? formatFocusHz(active.frequency) : undefined}
-                  normalized={toNormalized(active.frequency, PARAMS.eq1Freq)}
-                  visualNormalized={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.freq] ?? active.frequency, PARAMS.eq1Freq) : undefined}
-                  lfoRange={ids && drives(snap, ids.freq, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.freq, toNormalized(active.frequency, PARAMS.eq1Freq)) : undefined}
-                  instanceId={eq?.instanceId}
-                  bandId={active.id}
+                  valueText={formatFocusHz(liveHz(live, slideIds?.freq, slide.band.frequency))}
+                  baseValueText={slideIds && drives(snap, slideIds.freq, slide.eqId, shared, slide.band.id) ? formatFocusHz(slide.band.frequency) : undefined}
+                  normalized={toNormalized(slide.band.frequency, PARAMS.eq1Freq)}
+                  visualNormalized={slideIds && drives(snap, slideIds.freq, slide.eqId, shared, slide.band.id) ? toNormalized(live[slideIds.freq] ?? slide.band.frequency, PARAMS.eq1Freq) : undefined}
+                  lfoRange={slideIds && drives(snap, slideIds.freq, slide.eqId, shared, slide.band.id) ? lfoRangeFor(snap, slideIds.freq, toNormalized(slide.band.frequency, PARAMS.eq1Freq)) : undefined}
+                  instanceId={slide.eqId}
+                  bandId={slide.band.id}
                   includeUnscoped={shared}
                   min={EQ_MIN_HZ}
                   max={EQ_MAX_HZ}
-                  now={active.frequency}
-                  paramId={ids?.freq}
+                  now={slide.band.frequency}
+                  paramId={slideIds?.freq}
                   afford
-                  onChange={(n) => engine.setEqBand(index, { frequency: fromNormalized(n, PARAMS.eq1Freq) }, eq.instanceId)}
+                  onChange={(n) => engine.setEqBand(slide.index, { frequency: fromNormalized(n, PARAMS.eq1Freq) }, slide.eqId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, EQ_MIN_HZ, EQ_MAX_HZ, 'Hz')
                     if (next == null) return false
-                    engine.setEqBand(index, { frequency: next }, eq.instanceId)
+                    engine.setEqBand(slide.index, { frequency: next }, slide.eqId)
                     return true
                   }}
                 />
@@ -212,24 +217,24 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   key={field}
                   field={field}
                   label={t.mobile.gain}
-                  valueText={formatFocusDb(liveNum(live, ids?.gain, active.gain))}
-                  baseValueText={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? formatFocusDb(active.gain) : undefined}
-                  normalized={toNormalized(active.gain, PARAMS.eq1Gain)}
-                  visualNormalized={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.gain] ?? active.gain, PARAMS.eq1Gain) : undefined}
-                  lfoRange={ids && drives(snap, ids.gain, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.gain, toNormalized(active.gain, PARAMS.eq1Gain)) : undefined}
-                  instanceId={eq?.instanceId}
-                  bandId={active.id}
+                  valueText={formatFocusDb(liveNum(live, slideIds?.gain, slide.band.gain))}
+                  baseValueText={slideIds && drives(snap, slideIds.gain, slide.eqId, shared, slide.band.id) ? formatFocusDb(slide.band.gain) : undefined}
+                  normalized={toNormalized(slide.band.gain, PARAMS.eq1Gain)}
+                  visualNormalized={slideIds && drives(snap, slideIds.gain, slide.eqId, shared, slide.band.id) ? toNormalized(live[slideIds.gain] ?? slide.band.gain, PARAMS.eq1Gain) : undefined}
+                  lfoRange={slideIds && drives(snap, slideIds.gain, slide.eqId, shared, slide.band.id) ? lfoRangeFor(snap, slideIds.gain, toNormalized(slide.band.gain, PARAMS.eq1Gain)) : undefined}
+                  instanceId={slide.eqId}
+                  bandId={slide.band.id}
                   includeUnscoped={shared}
                   min={PARAMS.eq1Gain.min}
                   max={PARAMS.eq1Gain.max}
-                  now={active.gain}
-                  paramId={ids?.gain}
+                  now={slide.band.gain}
+                  paramId={slideIds?.gain}
                   afford
-                  onChange={(n) => engine.setEqBand(index, { gain: fromNormalized(n, PARAMS.eq1Gain) }, eq.instanceId)}
+                  onChange={(n) => engine.setEqBand(slide.index, { gain: fromNormalized(n, PARAMS.eq1Gain) }, slide.eqId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, PARAMS.eq1Gain.min, PARAMS.eq1Gain.max, 'dB')
                     if (next == null) return false
-                    engine.setEqBand(index, { gain: next }, eq.instanceId)
+                    engine.setEqBand(slide.index, { gain: next }, slide.eqId)
                     return true
                   }}
                 />
@@ -241,24 +246,24 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                   key={field}
                   field={field}
                   label={t.mobile.q}
-                  valueText={formatFocusQValue(liveNum(live, ids?.q, active.q))}
-                  baseValueText={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? formatFocusQValue(active.q) : undefined}
-                  normalized={toNormalized(active.q, PARAMS.eq1Q)}
-                  visualNormalized={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? toNormalized(live[ids.q] ?? active.q, PARAMS.eq1Q) : undefined}
-                  lfoRange={ids && drives(snap, ids.q, eq?.instanceId, shared, active.id) ? lfoRangeFor(snap, ids.q, toNormalized(active.q, PARAMS.eq1Q)) : undefined}
-                  instanceId={eq?.instanceId}
-                  bandId={active.id}
+                  valueText={formatFocusQValue(liveNum(live, slideIds?.q, slide.band.q))}
+                  baseValueText={slideIds && drives(snap, slideIds.q, slide.eqId, shared, slide.band.id) ? formatFocusQValue(slide.band.q) : undefined}
+                  normalized={toNormalized(slide.band.q, PARAMS.eq1Q)}
+                  visualNormalized={slideIds && drives(snap, slideIds.q, slide.eqId, shared, slide.band.id) ? toNormalized(live[slideIds.q] ?? slide.band.q, PARAMS.eq1Q) : undefined}
+                  lfoRange={slideIds && drives(snap, slideIds.q, slide.eqId, shared, slide.band.id) ? lfoRangeFor(snap, slideIds.q, toNormalized(slide.band.q, PARAMS.eq1Q)) : undefined}
+                  instanceId={slide.eqId}
+                  bandId={slide.band.id}
                   includeUnscoped={shared}
                   min={PARAMS.eq1Q.min}
                   max={PARAMS.eq1Q.max}
-                  now={active.q}
-                  paramId={ids?.q}
+                  now={slide.band.q}
+                  paramId={slideIds?.q}
                   afford
-                  onChange={(n) => engine.setEqBand(index, { q: fromNormalized(n, PARAMS.eq1Q) }, eq.instanceId)}
+                  onChange={(n) => engine.setEqBand(slide.index, { q: fromNormalized(n, PARAMS.eq1Q) }, slide.eqId)}
                   onTypedValue={(text) => {
                     const next = parseTypedRange(text, PARAMS.eq1Q.min, PARAMS.eq1Q.max)
                     if (next == null) return false
-                    engine.setEqBand(index, { q: next }, eq.instanceId)
+                    engine.setEqBand(slide.index, { q: next }, slide.eqId)
                     return true
                   }}
                 />
@@ -269,27 +274,78 @@ export function EqFocusCluster({ onSelectModule }: Props) {
                 key={field}
                 field={field}
                 label={t.mobile.slope}
-                valueText={formatFocusSlope(active.slope)}
-                normalized={slopeToNormalized(active.slope)}
+                valueText={formatFocusSlope(slide.band.slope)}
+                normalized={slopeToNormalized(slide.band.slope)}
                 min={12}
                 max={96}
-                now={active.slope}
-                onChange={(n) => engine.setEqBand(index, { slope: slopeFromNormalized(n) }, eq.instanceId)}
+                now={slide.band.slope}
+                onChange={(n) => engine.setEqBand(slide.index, { slope: slopeFromNormalized(n) }, slide.eqId)}
                 onTypedValue={(text) => {
                   const next = parseTypedRange(text, 12, 96, 'dB')
                   if (next == null) return false
-                  engine.setEqBand(index, { slope: nearestFilterSlope(next) }, eq.instanceId)
+                  engine.setEqBand(slide.index, { slope: nearestFilterSlope(next) }, slide.eqId)
                   return true
                 }}
               />
             )
           })}
         </div>
+        </>
       ) : null}
+        </div>
+      </div>
         </div>
       </div>
     </div>
   )
+}
+
+const KNOB_SLIDE_MS = 340
+
+function motionReduced(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.reducedMotion === 'true'
+}
+
+type SlideSnap = { eqId: string; index: number; band: { id?: string; type: string; frequency: number; gain: number; q: number; slope: number } }
+
+function sameSlide(a: SlideSnap | null, b: SlideSnap | null): boolean {
+  if (!a || !b) return false
+  return (
+    a.eqId === b.eqId &&
+    a.index === b.index &&
+    a.band.id === b.band.id &&
+    a.band.type === b.band.type &&
+    a.band.frequency === b.band.frequency &&
+    a.band.gain === b.band.gain &&
+    a.band.q === b.band.q &&
+    a.band.slope === b.band.slope
+  )
+}
+
+/** Keep the knob panel mounted for the slide, then drop it after the last filter leaves. */
+function useKnobReveal(open: boolean): { mounted: boolean; shown: boolean } {
+  const reduce = motionReduced()
+  const [mounted, setMounted] = useState(open)
+  const [shown, setShown] = useState(open)
+  if (reduce) {
+    if (mounted !== open) setMounted(open)
+    if (shown !== open) setShown(open)
+  } else {
+    if (open && !mounted) setMounted(true)
+    if (!open && shown) setShown(false)
+  }
+  useEffect(() => {
+    if (reduce || !open) return
+    const frame = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(frame)
+  }, [open, reduce])
+  useEffect(() => {
+    if (reduce || open || !mounted) return
+    const timer = window.setTimeout(() => setMounted(false), KNOB_SLIDE_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, reduce, mounted])
+  return { mounted, shown }
 }
 
 function EqKnob({

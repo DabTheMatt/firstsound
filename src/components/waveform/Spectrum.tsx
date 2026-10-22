@@ -599,7 +599,7 @@ export function Spectrum({ active, compact = false, phoneEq = false, phoneFocus 
           return
         }
         const layer = view.layer
-        const follow = focusPlot ? 'peak' : prefsNow.follow
+        const follow = prefsNow.follow
         const eqSurface = drawSurface === 'eq'
         const paintColor = spectrumPaintColor(
           { colorMode: prefsNow.colorMode, regionColors: view.regionColors },

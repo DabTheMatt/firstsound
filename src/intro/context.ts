@@ -44,6 +44,8 @@ export type HelpPlace = {
   effect: HelpEffect | null
   /** Effect click follows the module. A picture click follows the view. */
   follow: HelpFollow
+  /** After a mode change, describe that mode until a picture or a parameter is chosen. */
+  modeBrief?: boolean
 }
 
 export type HelpScope = 'general' | 'context'
@@ -88,10 +90,11 @@ export function publishHelpPlace(next: HelpPlace): void {
     place.view === next.view &&
     place.focused === next.focused &&
     place.effect === next.effect &&
-    place.follow === next.follow
+    place.follow === next.follow &&
+    place.modeBrief === (next.modeBrief === true)
   if (same) return
-  const clearDetail = place.effect !== next.effect || place.focused !== next.focused
-  place = next
+  const clearDetail = place.effect !== next.effect || place.focused !== next.focused || (next.modeBrief === true && !place.modeBrief)
+  place = { ...next, modeBrief: next.modeBrief === true }
   emit()
   if (clearDetail) publishHelpDetail(null)
 }
@@ -117,6 +120,11 @@ export function resetHelpPlace(): void {
  * Otherwise the open view. The EQ picture describes the equalizer.
  */
 export function helpTopic(current: HelpPlace = place): HelpTopicId {
+  if (current.modeBrief) {
+    if (current.mode === 'simple') return 'simple'
+    if (current.mode === 'sensory') return 'sensory'
+    return 'technical'
+  }
   if (current.mode === 'simple') return 'simple'
   if (current.mode === 'sensory') return 'sensory'
   if (current.focused) return current.view === 'eq' ? 'eq-focus' : `${current.view}-focus`
@@ -127,6 +135,7 @@ export function helpTopic(current: HelpPlace = place): HelpTopicId {
 
 /** Module whose parameters belong under the current contextual topic. */
 export function helpSubject(current: HelpPlace = place): HelpEffect | null {
+  if (current.modeBrief) return null
   if (current.mode !== 'technical') return null
   if (current.focused) return current.view === 'eq' ? 'eq' : null
   if (current.follow === 'effect') return current.effect

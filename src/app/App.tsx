@@ -58,9 +58,10 @@ import { ManualDialog } from '../components/manual/ManualDialog'
 import { ExplainHost } from '../help/ExplainHost'
 import { OPEN_MANUAL_EVENT } from '../help/manual'
 import { IntroHost } from '../intro/IntroHost'
-import { IntroMenuButtons, WelcomeStartupControl } from '../intro/IntroActions'
+import { HelpClickControl, IntroMenuButtons, WelcomeStartupControl } from '../intro/IntroActions'
 import { INTRO_COMMAND_EVENT, type IntroCommand } from '../intro/commands'
 import { helpEffectFrom, publishHelpDetail, publishHelpPlace, type HelpFollow } from '../intro/context'
+import { helpClicksOn } from '../intro/helpClick'
 import { isHelpParam } from '../intro/effectHelp'
 import { openContextualHelp } from '../intro/openContextual'
 import { openIntro } from '../intro/session'
@@ -281,6 +282,7 @@ export default function App() {
   const setHelpFollow = useCallback((next: HelpFollow) => {
     setHelpFollowState((current) => (current === next ? current : next))
   }, [])
+  const [modeBrief, setModeBrief] = useState(false)
   const [inspectorMemory, setInspectorMemory] = useState<TrackInspectorMemory>({})
   const focusRef = useRef(focus)
   const eqViewHoldRef = useRef<EqViewHold | null>(null)
@@ -788,8 +790,10 @@ export default function App() {
   }
 
   const chooseMode = (mode: UiMode) => {
+    if (mode === uiModeRef.current) return
     persistUiMode(mode)
     if (mode === 'sensory') prepareSensoryLayer()
+    setModeBrief(true)
     setUiMode(mode)
     focusSelector(`[data-mode-option="${mode}"]`)
   }
@@ -1129,21 +1133,39 @@ export default function App() {
       focused: uiMode === 'technical' && activeFocus != null,
       effect: helpEffect,
       follow: activeFocus ? 'view' : helpFollow,
+      modeBrief,
     })
-  }, [uiMode, activeFocus, workspaceId, helpEffect, helpFollow])
+  }, [uiMode, activeFocus, workspaceId, helpEffect, helpFollow, modeBrief])
+
+  useEffect(() => {
+    if (!modeBrief || !helpClicksOn()) return
+    openContextualHelp()
+  }, [modeBrief, uiMode])
+
+  const briefMode = useRef(uiMode)
+  useEffect(() => {
+    if (briefMode.current !== uiMode) {
+      briefMode.current = uiMode
+      return
+    }
+    setModeBrief(false)
+  }, [uiMode, workspaceId, activeFocus])
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : null
       if (!target || target.closest('[data-intro-dialog], [role="menu"]')) return
+      if (!helpClicksOn()) return
       const paramId = target.closest('[data-param-id]')?.getAttribute('data-param-id')
       if (isHelpParam(paramId)) {
+        setModeBrief(false)
         publishHelpDetail(paramId)
         setHelpFollow('effect')
         openContextualHelp()
         return
       }
       if (target.closest('[data-effect-tab], [data-attention-region="inspector"]')) {
+        setModeBrief(false)
         publishHelpDetail(null)
         setHelpFollow('effect')
         openContextualHelp()
@@ -1336,6 +1358,7 @@ export default function App() {
           <button type="button" onClick={() => setSettingsPage('access')}>
             {t.a11y.open}
           </button>
+          <HelpClickControl />
           <IntroMenuButtons
             onOpen={(surface) => {
               rememberTrigger('intro', document.activeElement)

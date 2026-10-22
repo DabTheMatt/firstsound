@@ -15,7 +15,13 @@ import {
   subscribeGraphSnapshot,
 } from '../../audio/engine/graphSnapshot'
 import {
+  SPECTRUM_BAND_CHOICES,
+  SPECTRUM_FALL_MODES,
+  SPECTRUM_FOLLOW_MODES,
   SPECTRUM_RANGE_CHOICES,
+  clampSpectrumBandCount,
+  clampSpectrumFallMode,
+  clampSpectrumFollowMode,
   clampSpectrumRange,
 } from '../../audio/engine/spectrumBands'
 import { EQ_CHANNEL_MODES, type EqChannelMode } from '../../audio/engine/eqGraph'
@@ -127,6 +133,43 @@ export function SpectrumDisplaySettings({ surface }: Props) {
           </ChoiceRow>
         </>
       )}
+      {surface === 'eq' ? (
+        <>
+          <ChoiceRow label={copy.columns} hint={copy.columnsTitle}>
+            {SPECTRUM_BAND_CHOICES.map((count) => (
+              <Choice
+                key={count}
+                pressed={prefs.bands === count}
+                onClick={() => patchSpectrumPrefs({ bands: clampSpectrumBandCount(count) })}
+              >
+                {count}
+              </Choice>
+            ))}
+          </ChoiceRow>
+          <ChoiceRow label={copy.fall} hint={copy.fallTitle}>
+            {SPECTRUM_FALL_MODES.map((mode) => (
+              <Choice
+                key={mode}
+                pressed={prefs.fall === mode}
+                onClick={() => patchSpectrumPrefs({ fall: clampSpectrumFallMode(mode) })}
+              >
+                {mode === 'slow' ? copy.slow : mode === 'fast' ? copy.fast : copy.normal}
+              </Choice>
+            ))}
+          </ChoiceRow>
+          <ChoiceRow label={copy.follow} hint={copy.followTitle}>
+            {SPECTRUM_FOLLOW_MODES.map((mode) => (
+              <Choice
+                key={mode}
+                pressed={prefs.follow === mode}
+                onClick={() => patchSpectrumPrefs({ follow: clampSpectrumFollowMode(mode) })}
+              >
+                {mode === 'peak' ? copy.peak : mode === 'slow' ? copy.slow : copy.both}
+              </Choice>
+            ))}
+          </ChoiceRow>
+        </>
+      ) : null}
       <OnOff label={copy.bars} hint={copy.barsHint} on={display.showBars} onChange={(showBars) => paint({ showBars })} />
       <OnOff label={copy.line} hint={copy.lineHint} on={display.showLine} onChange={(showLine) => paint({ showLine })} />
       <OnOff

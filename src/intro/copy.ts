@@ -22,6 +22,7 @@ export type HelpSectionCopy = {
 export type HelpTopicId =
   | 'simple'
   | 'sensory'
+  | 'technical'
   | 'wave'
   | 'wave-focus'
   | 'eq'
@@ -79,6 +80,8 @@ export type IntroCopy = {
   helpWord: string
   helpLabel: string
   helpMenu: string
+  helpOn: string
+  helpOff: string
   feedbackTooltip: string
   feedbackLabel: string
   tour: readonly TourStepCopy[]
@@ -166,6 +169,8 @@ const pl: IntroCopy = {
   helpWord: 'Pomoc',
   helpLabel: 'Pomoc',
   helpMenu: 'Pomoc',
+  helpOn: 'Pomoc włączona',
+  helpOff: 'Pomoc wyłączona',
   feedbackTooltip: 'Prześlij opinię',
   feedbackLabel: 'Prześlij opinię',
   tour: [
@@ -284,6 +289,13 @@ const pl: IntroCopy = {
       body: [
         'Sensoryczny kształtuje dźwięk przez odczucie, bez stołu mikserskiego.',
         'Pod spodem zostaje ten sam dźwięk. Przełącznik trybu jest w nagłówku.',
+      ],
+    },
+    technical: {
+      title: 'Techniczny',
+      body: [
+        'Techniczny otwiera pełny edytor: falę, EQ, FFT, automatyzację, Hearing, łańcuch efektów i inspektor.',
+        'Przełącznik trybu jest w nagłówku. Ten sam dźwięk zostaje pod spodem.',
       ],
     },
     wave: {
@@ -609,6 +621,8 @@ const en: IntroCopy = {
   helpWord: 'Help',
   helpLabel: 'Help',
   helpMenu: 'Help',
+  helpOn: 'Help on',
+  helpOff: 'Help off',
   feedbackTooltip: 'Send feedback',
   feedbackLabel: 'Send feedback',
   tour: [
@@ -727,6 +741,13 @@ const en: IntroCopy = {
       body: [
         'Sensory shapes the sound by feeling, without a mixing desk.',
         'The same sound stays underneath. The mode switch is in the header.',
+      ],
+    },
+    technical: {
+      title: 'Technical',
+      body: [
+        'Technical opens the full editor: the wave, EQ, FFT, automation, Hearing, the effect chain, and the inspector.',
+        'The mode switch is in the header. The same sound stays underneath.',
       ],
     },
     wave: {
