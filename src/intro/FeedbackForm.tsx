@@ -56,10 +56,14 @@ export function FeedbackForm({ onClose }: Props) {
   const [done, setDone] = useState(false)
   const [activation, setActivation] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const configured = feedbackConfigured()
 
   useEffect(() => {
-    if (done || activation) titleRef.current?.focus()
+    if (done || activation) {
+      if (formRef.current) formRef.current.scrollTop = 0
+      titleRef.current?.focus()
+    }
   }, [done, activation])
 
   const update = (patch: Partial<FeedbackDraft>) => {
@@ -80,30 +84,34 @@ export function FeedbackForm({ onClose }: Props) {
     }
     setSending(true)
     setError(null)
-    const result = await submitFeedback({
-      draft,
-      copy,
-      locale,
-      mode: readInterfaceMode(),
-    })
-    setSending(false)
-    if (result.ok) {
-      clearFeedbackDraft()
-      setActivation(false)
-      setDone(true)
-      return
+    try {
+      const result = await submitFeedback({
+        draft,
+        copy,
+        locale,
+        mode: readInterfaceMode(),
+      })
+      if (result.ok) {
+        clearFeedbackDraft()
+        setActivation(false)
+        setDone(true)
+        return
+      }
+      if (result.reason === 'activation') {
+        setError(null)
+        setActivation(true)
+        return
+      }
+      setError(failureCopy(result.reason, copy))
+    } finally {
+      setSending(false)
     }
-    if (result.reason === 'activation') {
-      setError(null)
-      setActivation(true)
-      return
-    }
-    setError(failureCopy(result.reason, copy))
   }
 
   return (
     <IntroDialog titleId={titleId} describedBy={leadId} closeLabel={copy.cancel} onClose={onClose}>
       <form
+        ref={formRef}
         id={formId}
         className={styles.body}
         noValidate
@@ -131,12 +139,6 @@ export function FeedbackForm({ onClose }: Props) {
             <p className={styles.hint}>{copy.formOptional}</p>
             {configured ? null : <p className={styles.status}>{copy.unconfiguredNote}</p>}
             <p className={styles.status}>{copy.privacyNote}</p>
-            {error ? (
-              <p id={errorId} className={styles.alert} role="alert">
-                {error}
-              </p>
-            ) : null}
-
             <fieldset className={styles.field}>
               <legend className={styles.legend}>{copy.qImpression}</legend>
               {copy.impressions.map((choice) => (
@@ -289,6 +291,11 @@ export function FeedbackForm({ onClose }: Props) {
         )}
       </form>
       <div className={styles.footer}>
+        {error && !done && !activation ? (
+          <p id={errorId} className={`${styles.alert} ${styles.footerAlert}`} role="alert">
+            {error}
+          </p>
+        ) : null}
         {done ? (
           <button type="button" className={`${styles.primary} ${styles.grow}`} onClick={onClose}>
             {copy.close}
@@ -298,7 +305,7 @@ export function FeedbackForm({ onClose }: Props) {
             <button type="submit" form={formId} className={`${styles.primary} ${styles.grow}`} disabled={sending} aria-busy={sending}>
               {sending ? copy.sending : copy.submit}
             </button>
-            <button type="button" className={`${styles.quiet} ${styles.grow}`} onClick={onClose} disabled={sending}>
+            <button type="button" className={`${styles.quiet} ${styles.grow}`} onClick={onClose}>
               {copy.cancel}
             </button>
           </>

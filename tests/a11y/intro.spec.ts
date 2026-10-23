@@ -94,9 +94,18 @@ test.describe('first experience', () => {
     await expect(dialog.getByRole('alert')).toContainText('e-mail')
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
     await dialog.getByLabel('Adres e-mail').fill('')
+    await dialog.locator('form').evaluate((node) => {
+      node.scrollTop = node.scrollHeight
+    })
     await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
-    await expect(dialog.getByRole('alert')).toContainText('formularzu')
-    await dialog.getByRole('alert').scrollIntoViewIfNeeded()
+    const alert = dialog.getByRole('alert')
+    await expect(alert).toContainText('formularzu')
+    const alertInView = await alert.evaluate((node) => {
+      const box = node.getBoundingClientRect()
+      return box.height > 0 && box.top >= 0 && box.bottom <= window.innerHeight
+    })
+    expect(alertInView).toBe(true)
+    await expect(dialog.getByRole('button', { name: 'Anuluj' })).toBeEnabled()
     await page.screenshot({ path: '/opt/cursor/artifacts/feedback-phone-pl.png' })
     await expect(note).toHaveValue('Na telefonie trudno znaleźć eksport.')
     await expect(dialog.getByRole('heading', { name: 'Dziękujemy!' })).toHaveCount(0)
@@ -106,8 +115,17 @@ test.describe('first experience', () => {
     await page.screenshot({ path: '/opt/cursor/artifacts/feedback-activation-pl.png' })
     activation = false
     accept = true
+    await dialog.locator('form').evaluate((node) => {
+      node.scrollTop = node.scrollHeight
+    })
     await dialog.getByRole('button', { name: 'Wyślij opinię' }).click()
-    await expect(dialog.getByRole('heading', { name: 'Dziękujemy!' })).toBeVisible()
+    const thanks = dialog.getByRole('heading', { name: 'Dziękujemy!' })
+    await expect(thanks).toBeVisible()
+    const thanksInView = await thanks.evaluate((node) => {
+      const box = node.getBoundingClientRect()
+      return box.height > 0 && box.top >= 0 && box.bottom <= window.innerHeight
+    })
+    expect(thanksInView).toBe(true)
     await expect(dialog.getByText('Twoja opinia została przesłana.')).toBeVisible()
     await page.screenshot({ path: '/opt/cursor/artifacts/feedback-thanks-pl.png' })
     const geometry = await page.evaluate(() => ({
