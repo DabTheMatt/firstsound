@@ -53,6 +53,64 @@ test('drops the extra sensory and simple rows and matches Guide me to Help', asy
   await expect(page.getByRole('button', { name: 'Markers, 0' })).toBeVisible()
 })
 
+test('keeps a MacBook Pro header on one row and hides memory and UI load', async ({ page }) => {
+  async function bar() {
+    return page.evaluate(() => {
+      const header = document.querySelector('header[data-stable-region="navigation"]')
+      if (!(header instanceof HTMLElement)) return null
+      const box = header.getBoundingClientRect()
+      const controls = [...header.querySelectorAll('button, [role="radio"]')]
+        .filter((node) => node instanceof HTMLElement && node.getClientRects().length > 0)
+        .map((node) => {
+          const rect = node.getBoundingClientRect()
+          return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right }
+        })
+      const tops = controls.map((rect) => rect.top)
+      let overlap = false
+      for (let i = 0; i < controls.length; i++) {
+        for (let j = i + 1; j < controls.length; j++) {
+          const a = controls[i]
+          const b = controls[j]
+          if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlap = true
+        }
+      }
+      return {
+        display: getComputedStyle(header).display,
+        height: Math.round(box.height),
+        text: header.innerText.replace(/\s+/g, ' '),
+        rowSpan: tops.length ? Math.max(...tops) - Math.min(...tops) : 0,
+        overlap,
+      }
+    })
+  }
+
+  for (const width of [1512, 1728]) {
+    await page.setViewportSize({ width, height: 982 })
+    await boot(page, { mode: 'technical' })
+    const layout = await bar()
+    expect(layout).not.toBeNull()
+    expect(layout!.display).toBe('flex')
+    expect(layout!.height).toBeLessThan(56)
+    expect(layout!.rowSpan).toBeLessThan(20)
+    expect(layout!.overlap).toBe(false)
+    expect(layout!.text).not.toMatch(/Mem /)
+    expect(layout!.text).not.toMatch(/UI \d+%/)
+    expect(layout!.text).not.toMatch(/00:00/)
+    expect(layout!.text).toContain('LOAD SAMPLE')
+    expect(layout!.text).toContain('TECHNICAL')
+  }
+
+  await page.screenshot({ path: '/opt/cursor/artifacts/header-mbp-native.png' })
+
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await expect.poll(async () => (await bar())?.text ?? '').toMatch(/Mem /)
+  const wide = await bar()
+  expect(wide!.display).toBe('flex')
+  expect(wide!.height).toBeLessThan(56)
+  expect(wide!.text).toMatch(/UI \d+%/)
+  expect(wide!.text).toMatch(/00:00/)
+})
+
 test('explains every accessibility switch from its tooltip', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await boot(page, { mode: 'technical' })

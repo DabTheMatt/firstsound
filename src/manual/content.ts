@@ -501,6 +501,7 @@ const en: ManualSection[] = [
     body: [
       'The header shows UI load, a smoothed estimate of main-thread event-loop delay. It is not the operating system’s process CPU percentage. Browsers do not expose that figure to a page.',
       'Memory, when the browser provides it, is the JavaScript heap, not the whole machine.',
+      'On a narrower window, including a MacBook Pro at its native resolution, the header hides memory, UI load, the sample rate, the channel count, and the duration. The rest of the menu stays on one row. Those readings return when the window is wide enough to keep that row.',
     ],
   },
   {
@@ -1036,6 +1037,7 @@ const pl: ManualSection[] = [
     body: [
       'Nagłówek pokazuje obciążenie UI: wygładzone opóźnienie pętli zdarzeń wątku głównego. To nie jest procent CPU procesu w systemie. Przeglądarka nie udostępnia tej liczby stronie.',
       'Pamięć, gdy przeglądarka ją podaje, to sterta JavaScript, nie cała maszyna.',
+      'Na węższym oknie, także na MacBooku Pro w natywnej rozdzielczości, nagłówek chowa pamięć, obciążenie UI, częstotliwość próbkowania, liczbę kanałów i czas trwania. Reszta menu zostaje w jednym rzędzie. Te odczyty wracają, gdy okno jest dość szerokie, żeby ten rząd się utrzymał.',
     ],
   },
   {

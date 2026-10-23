@@ -349,26 +349,21 @@
   }
 }
 
-@container app-header (max-width: 1320px) {
+/* Memory, UI load, sample rate, channels, and duration leave the bar on a laptop
+   so a MacBook Pro at its native width stays on one row. */
+@container app-header (max-width: 1760px) {
+  .runtime,
   .meta {
     display: none;
   }
 }
 
-@container app-header (max-width: 980px) {
-  .runtime {
-    display: none;
-  }
-}
-
-/* A container cannot query itself, so this breakpoint is a viewport media query.
-   One row fits only once the destination switch, the sample name, and Load Sample
-   no longer cover each other. Until then, row one keeps the destination and
-   Settings, and row two keeps theme, Record, and the mode switch. */
+/* A container cannot query itself, so the split is a viewport media query.
+   Large type and low vision keep two rows on a laptop. The default bar stays
+   one row until the sample name and Load Sample would cover each other. */
 @media (max-width: 1760px) {
-  .header,
-  :global(html[data-low-vision='on']) .header,
-  :global(html[data-ui-scale='large']) .header {
+  :global(html[data-low-vision='on']) .header:not(.minimal),
+  :global(html[data-ui-scale='large']) .header:not(.minimal) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -381,15 +376,18 @@
     overflow: hidden;
   }
 
-  .brand {
+  :global(html[data-low-vision='on']) .header:not(.minimal) .brand,
+  :global(html[data-ui-scale='large']) .header:not(.minimal) .brand {
     grid-area: brand;
   }
 
-  .tools {
+  :global(html[data-low-vision='on']) .header:not(.minimal) .tools,
+  :global(html[data-ui-scale='large']) .header:not(.minimal) .tools {
     grid-area: tools;
   }
 
-  .trailing {
+  :global(html[data-low-vision='on']) .header:not(.minimal) .trailing,
+  :global(html[data-ui-scale='large']) .header:not(.minimal) .trailing {
     grid-area: trailing;
     margin-left: 0;
   }
@@ -425,6 +423,34 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+}
+
+@media (max-width: 1340px) {
+  .header:not(.minimal) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand trailing'
+      'tools tools';
+    align-items: center;
+    row-gap: 6px;
+    column-gap: 8px;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .header:not(.minimal) .brand {
+    grid-area: brand;
+  }
+
+  .header:not(.minimal) .tools {
+    grid-area: tools;
+  }
+
+  .header:not(.minimal) .trailing {
+    grid-area: trailing;
+    margin-left: 0;
+  }
 }
 
 /* Workspace bar: one size and weight, no strokes. Hover and the active control share a soft wash. */
